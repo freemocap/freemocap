@@ -2,7 +2,7 @@
 WebSocket settings protocol: handles settings/patch, settings/request,
 and pushes settings/state on changes.
 
-Add this as a task in WebsocketServer.run() alongside the existing
+Runs as a task in WebsocketServer.run() alongside the existing
 _frontend_image_relay, _logs_relay, and _client_message_handler tasks.
 """
 import asyncio
@@ -11,6 +11,7 @@ from copy import deepcopy
 
 from starlette.websockets import WebSocket, WebSocketState
 
+from freemocap.app.freemocap_application import FreemocapApplication
 from freemocap.app.settings import SettingsManager
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ async def settings_state_relay(
         if websocket.client_state == WebSocketState.CONNECTED:
             state_msg = settings_manager.get_state_message()
             await websocket.send_json(state_msg)
-            logger.info(f"Sent initial settings/state ")
+            logger.info("Sent initial settings/state")
 
         # Push on every subsequent change
         while should_continue():
@@ -41,7 +42,7 @@ async def settings_state_relay(
                 break
             state_msg = settings_manager.get_state_message()
             await websocket.send_json(state_msg)
-            logger.debug(f"Pushed settings/state")
+            logger.debug("Pushed settings/state")
 
     except asyncio.CancelledError:
         logger.debug("Settings state relay task cancelled")
@@ -53,7 +54,7 @@ async def settings_state_relay(
 def handle_settings_message(
     data: dict,
     settings_manager: SettingsManager,
-    app: "FreemocapApplication",
+    app: FreemocapApplication,
 ) -> None:
     """
     Handle an incoming settings-related WebSocket message.
@@ -86,7 +87,7 @@ def handle_settings_message(
 def _sync_patch_to_app(
     patch: dict,
     settings_manager: SettingsManager,
-    app: "FreemocapApplication",
+    app: FreemocapApplication,
 ) -> None:
     """
     After a settings patch is applied, push relevant config changes
@@ -115,6 +116,5 @@ def _sync_patch_to_app(
                 pipeline.update_config(new_config=new_config)
         logger.info("Synced mocap config to active pipelines")
 
-    # If camera configs were patched, we'd handle that here too.
-    # For now, camera config changes still go through the REST
-    # /camera/group/apply endpoint
+    # Camera config changes still go through the REST
+    # /camera/group/apply endpoint for now.

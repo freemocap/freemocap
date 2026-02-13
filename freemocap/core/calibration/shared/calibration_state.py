@@ -111,8 +111,13 @@ class CalibrationStateTracker:
         *,
         frame_number: int,
         frame_observations_by_camera: dict[CameraIdString, BaseObservation],
+        max_reprojection_error_px: float,
     ) -> dict[str, NDArray[np.float64]] | None:
-        """Attempt triangulation with the current calibration.
+        """Attempt triangulation with reprojection error gating.
+
+        After DLT triangulation, each 3D point is reprojected into all cameras.
+        Points whose mean reprojection error exceeds max_reprojection_error_px
+        are replaced with NaN (and excluded from the returned dict).
 
         Returns the triangulated 3D points as a dict of {point_name: xyz},
         or None if no valid calibration is loaded or triangulation failed.
@@ -144,9 +149,6 @@ class CalibrationStateTracker:
                 data_by_cam[matched_name] = arr_2d[..., :2]
 
             if len(data_by_cam) < 2:
-                logger.debug(
-                    f"Frame {frame_number}: only {len(data_by_cam)} cameras matched, need >= 2"
-                )
                 return {}
 
             # Build subset triangulator if we don't have all cameras
@@ -174,6 +176,20 @@ class CalibrationStateTracker:
             triangulated = sub_triangulator.triangulate_array(data2d=stacked)
             # triangulated shape: (1, n_points, 3)
             points_3d = triangulated[0]  # (n_points, 3)
+
+            # --- Reprojection error gate (before rotation) ---
+            # Squeeze frame dim from 2D data: (n_cameras, n_points, 2)
+            stacked_2d = stacked[:, 0, :, :]
+            mean_reproj_error = sub_triangulator.mean_reprojection_error(
+                points_3d=points_3d,
+                points_2d=stacked_2d,
+            )  # (n_points,)
+
+            # NaN out points with excessive reprojection error
+            bad_mask = mean_reproj_error > max_reprojection_error_px
+            n_rejected = int(np.sum(bad_mask))
+            if n_rejected > 0:
+                points_3d[bad_mask] = np.nan
 
             # Rotate 180 deg about X (freemocap convention)
             rotation_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])

@@ -38,7 +38,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from fabrik_solver import FabrikTree, estimate_bone_lengths, solve_tree
+from fabrik_solver import FabrikTree, estimate_bone_lengths, solve_fabrik_tree
 from one_euro_filter import OneEuroFilter3D
 from mediapipe_skeleton_config import SkeletonDefinition
 
@@ -179,7 +179,7 @@ class SkeletonFilterPipeline:
                 for name in self.fabrik_tree.topo_order
             }
 
-            solved = solve_tree(
+            solved = solve_fabrik_tree(
                 targets=fabrik_targets,
                 tree=self.fabrik_tree,
                 bone_lengths=self.bone_lengths,

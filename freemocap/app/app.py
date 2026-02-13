@@ -17,9 +17,10 @@ from starlette.responses import FileResponse
 import freemocap
 from freemocap.api.http.app.health import health_router
 from freemocap.api.http.app.shutdown import shutdown_router
+from freemocap.api.http.app.state import state_router
 from freemocap.api.middleware.add_middleware import add_middleware
 from freemocap.api.middleware.cors import cors
-from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS
+from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
 from freemocap.api.server_constants import APP_URL
 from freemocap.api.websocket.websocket_connect import websocket_router
 from freemocap.app.freemocap_application import create_freemocap_app
@@ -100,9 +101,10 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(websocket_router)
     for route in websocket_router.routes:
         logger.api(f"\tRegistered WebSocket route: {route.path}")
-    # Health and shutdown routes (no prefix)
+
+    # Health, shutdown, and settings state routes (no prefix)
     logger.api("\nRegistering App level routes:")
-    for router in [health_router, shutdown_router]:
+    for router in APP_ROUTERS:
         app.include_router(router)
         for route in router.routes:
             logger.api(f"\tRegistered: {route.path} with methods: [{', '.join(route.methods)}]")

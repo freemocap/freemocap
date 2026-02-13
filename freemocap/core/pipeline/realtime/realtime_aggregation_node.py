@@ -30,8 +30,9 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellycam.utilities.wait_functions import wait_1ms
 
 from freemocap.core.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.mocap.skeleton_dewiggler.bone_length_estimator import AnthropometricPrior
-from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
     RealtimeSkeletonFilter
 from freemocap.core.pipeline.base_node import BaseNode
@@ -222,6 +223,12 @@ class RealtimeAggregationNode(BaseNode):
         filter_config = RealtimeFilterConfig()
         skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
 
+        # Initialize velocity gate for rejecting teleportation spikes
+        point_gate = RealtimePointGate(
+            max_velocity_m_per_s=filter_config.max_velocity_m_per_s,
+            max_rejected_streak=filter_config.max_rejected_streak,
+        )
+
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in config.camera_configs.keys()
         }
@@ -245,11 +252,12 @@ class RealtimeAggregationNode(BaseNode):
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"reloaded calibration from {calibration.calibration_path}"
                         )
-                        # Reset filter state — coordinate frame may have changed
+                        # Reset filter + gate state — coordinate frame may have changed
                         skeleton_filter.reset()
+                        point_gate.reset()
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reset skeleton filter after calibration reload"
+                            f"reset skeleton filter and point gate after calibration reload"
                         )
 
                 # ---- Handle explicit calibration signals ----
@@ -261,9 +269,10 @@ class RealtimeAggregationNode(BaseNode):
                             f"reloaded calibration after ShouldCalibrate signal"
                         )
                         skeleton_filter.reset()
+                        point_gate.reset()
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reset skeleton filter after calibration reload"
+                            f"reset skeleton filter and point gate after calibration reload"
                         )
 
                 # ---- Request new frames if ready ----
@@ -324,6 +333,7 @@ class RealtimeAggregationNode(BaseNode):
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=mediapipe_observations_by_camera,
+                                max_reprojection_error_px=filter_config.max_reprojection_error_px,
                             ),
                             into=tracked_points3d,
                         )
@@ -340,9 +350,30 @@ class RealtimeAggregationNode(BaseNode):
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
+                                max_reprojection_error_px=filter_config.max_reprojection_error_px,
                             ),
                             into=tracked_points3d,
                         )
+
+                    # ---- Velocity gate: reject teleportation spikes ----
+                    if tracked_points3d:
+                        raw_arrays: dict[str, np.ndarray] = {
+                            name: np.array([pt.x, pt.y, pt.z], dtype=np.float64)
+                            for name, pt in tracked_points3d.items()
+                        }
+                        gated_arrays = point_gate.gate(
+                            t=time.monotonic(),
+                            points=raw_arrays,
+                        )
+                        # Rebuild tracked_points3d with only gated points
+                        tracked_points3d = {
+                            name: Point3d(
+                                x=float(arr[0]),
+                                y=float(arr[1]),
+                                z=float(arr[2]),
+                            )
+                            for name, arr in gated_arrays.items()
+                        }
 
                     # ---- Filter + constrain skeleton keypoints ----
                     if tracked_points3d:

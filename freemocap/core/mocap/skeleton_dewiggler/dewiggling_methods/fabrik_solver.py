@@ -35,7 +35,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
 
 
 # ============================================================
@@ -205,7 +205,7 @@ def _enforce_bone_length(
     return from_pos + (direction / dist) * length
 
 
-def solve_tree(
+def solve_fabrik_tree(
     *,
     targets: dict[str, np.ndarray],
     tree: FabrikTree,

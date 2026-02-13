@@ -5,7 +5,16 @@ import {AppDispatch} from '@/store/types';
 import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
-import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
+import {
+    backendFramerateUpdated,
+    DetailedFramerate,
+    frontendFramerateUpdated,
+    logAdded,
+    LogRecord,
+    serverSettingsCleared,
+    serverSettingsUpdated,
+} from '@/store';
+import {SettingsStateMessage} from '@/store/slices/settings/settings-types';
 
 import {serverUrls} from "@/hooks/server-urls";
 import {
@@ -35,6 +44,7 @@ export interface Point3d {
 
 export interface ServerContextValue {
     isConnected: boolean;
+    connectionState: ConnectionState;
     connect: () => void;
     disconnect: () => void;
     send: (data: string | object) => void;
@@ -55,13 +65,24 @@ function arraysEqual(a: string[], b: string[]): boolean {
     return sortedA.every((val, idx) => val === sortedB[idx]);
 }
 
-function isLogRecord(data: any): data is LogRecord {
+function isLogRecord(data: unknown): data is LogRecord {
     return (
-        data &&
         typeof data === 'object' &&
-        data.message_type === 'log_record' &&
-        typeof data.levelname === 'string' &&
-        typeof data.message === 'string'
+        data !== null &&
+        (data as Record<string, unknown>).message_type === 'log_record' &&
+        typeof (data as Record<string, unknown>).levelname === 'string' &&
+        typeof (data as Record<string, unknown>).message === 'string'
+    );
+}
+
+function isSettingsStateMessage(data: unknown): data is SettingsStateMessage {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        (data as Record<string, unknown>).message_type === 'settings/state' &&
+        typeof (data as Record<string, unknown>).settings === 'object' &&
+        (data as Record<string, unknown>).settings !== null &&
+        typeof (data as Record<string, unknown>).version === 'number'
     );
 }
 
@@ -72,24 +93,26 @@ interface FramerateUpdateMessage {
     frontend_framerate: DetailedFramerate;
 }
 
-function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
+function isFramerateUpdate(data: unknown): data is FramerateUpdateMessage {
+    const d = data as Record<string, unknown>;
     return (
-        data &&
         typeof data === 'object' &&
-        data.message_type === 'framerate_update' &&
-        typeof data.camera_group_id === 'string' &&
-        data.backend_framerate &&
-        typeof data.backend_framerate === 'object' &&
-        data.frontend_framerate &&
-        typeof data.frontend_framerate === 'object'
+        data !== null &&
+        d.message_type === 'framerate_update' &&
+        typeof d.camera_group_id === 'string' &&
+        typeof d.backend_framerate === 'object' &&
+        d.backend_framerate !== null &&
+        typeof d.frontend_framerate === 'object' &&
+        d.frontend_framerate !== null
     );
 }
 
-function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessage {
+function isCharucoOverlayDataMessage(data: unknown): data is CharucoOverlayDataMessage {
     const result = CharucoOverlayDataMessageSchema.safeParse(data);
     return result.success;
 }
-function isMediapipeOverlayDataMessage(data: any): data is MediapipeOverlayDataMessage {
+
+function isMediapipeOverlayDataMessage(data: unknown): data is MediapipeOverlayDataMessage {
     const result = MediapipeOverlayDataMessageSchema.safeParse(data);
     return result.success;
 }
@@ -103,6 +126,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const dispatch = useDispatch<AppDispatch>();
 
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
 
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
@@ -120,7 +144,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             url: serverUrls.getWebSocketUrl(),
             reconnectDelay: 1000,
             maxReconnectAttempts: 5,
-            heartbeatInterval: 30000
+            heartbeatInterval: 30000,
+            autoConnect: true,
+            autoConnectInterval: 3000,
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
@@ -147,11 +173,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         const ws = wsConnectionRef.current;
         if (!ws) return;
 
-        const handleStateChange = (newState: ConnectionState): void => {
+        const handleStateChange = (newState: ConnectionState, previousState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
+            console.log(`[WS] State transition: ${previousState} → ${newState} (connected=${connected})`);
             setIsConnected(connected);
+            setConnectionState(newState);
 
-            if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
+            // Only run cleanup when we've actually lost a connection,
+            // not on every non-connected state during discovery
+            if (previousState === ConnectionState.CONNECTED && !connected) {
+                console.log('[WS] Lost connection — clearing state');
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
                 overlayManagerRef.current?.clearAll();
@@ -159,6 +190,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 latestMediapipeRef.current.clear();
                 latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
+                dispatch(serverSettingsCleared());
             }
         };
 
@@ -188,7 +220,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         return prevIds;
                     });
 
-                    // Track remaining frames to render
                     let remainingFrames = frames.length;
                     const maxFrameNumber = Math.max(...Array.from(frameNumbers));
 
@@ -199,7 +230,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         }
                     };
 
-                    // Process frames with both overlay types composited sequentially
                     const overlayManager = overlayManagerRef.current!;
                     for (const frameData of frames) {
                         const charucoObservation = latestCharucoRef.current.get(frameData.cameraId) ?? null;
@@ -212,7 +242,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             mediapipeObservation,
                         );
 
-                        // Send to subscribers if any
                         if (frameSubscribersRef.current.size > 0) {
                             const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
                             if (subscribers && subscribers.size > 0) {
@@ -223,7 +252,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             }
                         }
 
-                        // Send to canvas worker
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
                             compositeBitmap,
@@ -234,46 +262,62 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     console.error('Error processing frame:', error);
                     throw error;
                 }
-            }
-            else if (typeof event.data === 'string') {
-                try {
-                    const jsonData = JSON.parse(event.data);
+            } else if (typeof event.data === 'string') {
+                const text = event.data;
 
-                    // Handle different observation types
-                    if (isCharucoOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
-                        }
-                    }
-                    else if (isMediapipeOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
-                        }
-                        // console.log(JSON.stringify(jsonData))
-                    }
-                    else if ('model_info' in jsonData && jsonData.model_info) {
-                        // Handle model info updates
-                        handleModelInfoUpdate(jsonData.model_info);
-                    }
-                    else if ('tracked_points3d' in jsonData) {
-                        // Handle 3D tracked points
-                        latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
-                        // console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
+                // Handle plain-text protocol messages before attempting JSON parse
+                if (text === 'pong') {
+                    // Expected heartbeat reply — nothing to do
+                    return;
+                }
+                if (text.startsWith('ping')) {
+                    ws.send('pong');
+                    return;
+                }
 
-                        for (const subscriber of trackedPointsSubscribersRef.current) {
-                            subscriber(latestTrackedPoints.current);
-                        }
+                // Everything else should be JSON
+                const jsonData = JSON.parse(text);
+
+                // Settings state from the backend — dispatch to Redux
+                if (isSettingsStateMessage(jsonData)) {
+                    console.log(`[WS] Received settings/state v${jsonData.version}`, jsonData.settings);
+                    dispatch(serverSettingsUpdated(jsonData));
+                }
+                // Charuco overlay observations
+                else if (isCharucoOverlayDataMessage(jsonData)) {
+                    for (const [cameraId, observation] of Object.entries(jsonData)) {
+                        latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
                     }
-                    else if (isLogRecord(jsonData)) {
-                        dispatch(logAdded(jsonData));
+                }
+                // Mediapipe overlay observations
+                else if (isMediapipeOverlayDataMessage(jsonData)) {
+                    for (const [cameraId, observation] of Object.entries(jsonData)) {
+                        latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
                     }
-                    else if (isFramerateUpdate(jsonData)) {
-                        dispatch(backendFramerateUpdated(jsonData.backend_framerate));
-                        dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
+                }
+                // Model info updates for overlay rendering
+                else if ('model_info' in jsonData && jsonData.model_info) {
+                    handleModelInfoUpdate(jsonData.model_info);
+                }
+                // 3D tracked points
+                else if ('tracked_points3d' in jsonData) {
+                    latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
+                    for (const subscriber of trackedPointsSubscribersRef.current) {
+                        subscriber(latestTrackedPoints.current);
                     }
-                } catch (error) {
-                    console.error('Error parsing JSON message:', error);
-                    throw error;
+                }
+                // Backend log records
+                else if (isLogRecord(jsonData)) {
+                    dispatch(logAdded(jsonData));
+                }
+                // Framerate telemetry
+                else if (isFramerateUpdate(jsonData)) {
+                    dispatch(backendFramerateUpdated(jsonData.backend_framerate));
+                    dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
+                }
+                // Unknown JSON message
+                else {
+                    console.warn('[WS] Unhandled JSON message:', Object.keys(jsonData));
                 }
             }
         };
@@ -281,7 +325,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         ws.on('state-change', handleStateChange);
         ws.on('message', handleMessage);
 
-        ws.connect();
+        // Start in auto-discovery mode — silently poll until the server appears
+        ws.startDiscovery();
 
         return () => {
             ws.off('state-change', handleStateChange);
@@ -328,7 +373,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const subscribeToTrackedPoints = useCallback((callback: TrackedPointsSubscriber): (() => void) => {
         trackedPointsSubscribersRef.current.add(callback);
 
-        // Immediately call with current points if any exist
         if (latestTrackedPoints.current.size > 0) {
             callback(latestTrackedPoints.current);
         }
@@ -345,6 +389,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     return (
         <ServerContext.Provider value={{
             isConnected,
+            connectionState,
             connect,
             disconnect,
             send,
@@ -353,7 +398,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             connectedCameraIds,
             subscribeToFrames,
             subscribeToTrackedPoints,
-            getLatestTrackedPoints
+            getLatestTrackedPoints,
         }}>
             {children}
         </ServerContext.Provider>

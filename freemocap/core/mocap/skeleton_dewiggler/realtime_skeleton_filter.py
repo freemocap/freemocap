@@ -32,11 +32,11 @@ from dataclasses import dataclass, field
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from freemocap.core.mocap.skeleton_dewiggler.bone_length_estimator import EstimatorConfig, BoneLengthEstimator, \
-    AnthropometricPrior
-from freemocap.core.mocap.skeleton_dewiggler.fabrik_solver import FabrikTree, solve_tree
-from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
-from freemocap.core.mocap.skeleton_dewiggler.one_euro_filter import OneEuroFilter3D
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import EstimatorConfig, \
+    BoneLengthEstimator, AnthropometricPrior
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.fabrik_solver import FabrikTree, solve_fabrik_tree
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.one_euro_filter import OneEuroFilter3D
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,18 @@ class RealtimeFilterConfig(BaseModel):
     noise_sigma: float = 0.008
     estimator_config: EstimatorConfig = EstimatorConfig()
 
+    # Reprojection error gate: reject triangulated points whose mean
+    # reprojection error across cameras exceeds this threshold (pixels).
+    max_reprojection_error_px: float = 15.0
+
+    # Velocity gate: reject points that jump faster than this (meters/second).
+    # Human body parts rarely exceed ~10 m/s even during fast movements.
+    max_velocity_m_per_s: float = 10.0
+
+    # Velocity gate: after this many consecutive rejections, accept
+    # unconditionally to prevent permanent lockout.
+    max_rejected_streak: int = 15
+
 
 @dataclass
 class RealtimeSkeletonFilter:
@@ -80,7 +92,7 @@ class RealtimeSkeletonFilter:
 
     skeleton: SkeletonDefinition
     config: RealtimeFilterConfig
-    estimator: BoneLengthEstimator
+    bone_estimator: BoneLengthEstimator
     fabrik_tree: FabrikTree = field(repr=False)
     _filters: dict[str, OneEuroFilter3D] = field(
         default_factory=dict, init=False, repr=False,
@@ -105,7 +117,7 @@ class RealtimeSkeletonFilter:
         return cls(
             skeleton=skeleton,
             config=config,
-            estimator=estimator,
+            bone_estimator=estimator,
             fabrik_tree=fabrik_tree,
         )
 
@@ -114,12 +126,12 @@ class RealtimeSkeletonFilter:
         self._filters.clear()
         # Re-create the estimator to clear observation history
         # (prior lengths are preserved via the estimator's create path)
-        self.estimator = BoneLengthEstimator.create(
+        self.bone_estimator = BoneLengthEstimator.create(
             skeleton=self.skeleton,
             prior=AnthropometricPrior(
                 ratios={
                     bone_key: length / self.config.height_meters
-                    for bone_key, length in self.estimator.prior_lengths.items()
+                    for bone_key, length in self.bone_estimator.prior_lengths.items()
                 },
             ),
             height_meters=self.config.height_meters,
@@ -148,7 +160,7 @@ class RealtimeSkeletonFilter:
             return {}
 
         # --- Step 0: Feed the bone length estimator ---
-        self.estimator.observe(positions=positions)
+        self.bone_estimator.observe(positions=positions)
 
         # --- Step 1: One Euro filter each keypoint ---
         filtered: dict[str, np.ndarray] = {}
@@ -185,14 +197,14 @@ class RealtimeSkeletonFilter:
             # Can't run FABRIK with missing joints — return filter-only
             return filtered
 
-        bone_lengths = self.estimator.current_lengths
+        bone_lengths = self.bone_estimator.current_lengths
 
         fabrik_targets: dict[str, np.ndarray] = {
             name: filtered[name]
             for name in self.fabrik_tree.topo_order
         }
 
-        solved = solve_tree(
+        solved = solve_fabrik_tree(
             targets=fabrik_targets,
             tree=self.fabrik_tree,
             bone_lengths=bone_lengths,
@@ -213,9 +225,9 @@ class RealtimeSkeletonFilter:
     @property
     def current_bone_lengths(self) -> dict[str, float]:
         """Current blended bone length estimates."""
-        return self.estimator.current_lengths
+        return self.bone_estimator.current_lengths
 
     @property
     def current_confidence(self) -> dict[str, float]:
         """Current bone length estimation confidence (0→1) per bone."""
-        return self.estimator.current_confidence
+        return self.bone_estimator.current_confidence

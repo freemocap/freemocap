@@ -22,6 +22,7 @@ class ServerUrls {
             // Server management
             health: `${baseUrl}/health`,
             shutdown: `${baseUrl}/shutdown`,
+            settings: `${baseUrl}/settings`,
 
             // Camera endpoints
             detectCameras: `${baseUrl}/skellycam/camera/detect`,

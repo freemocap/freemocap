@@ -44,7 +44,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from freemocap.core.mocap.skeleton_dewiggler.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
 
 
 # ============================================================

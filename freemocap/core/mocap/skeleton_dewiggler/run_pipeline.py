@@ -11,9 +11,9 @@ Produces:
 
 import numpy as np
 
-from bone_length_estimator import AnthropometricPrior, BoneLengthEstimator, EstimatorConfig
-from mediapipe_skeleton_config import SkeletonDefinition
-from skeleton_filter_pipeline import FilterConfig, SkeletonFilterPipeline
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior, BoneLengthEstimator, EstimatorConfig
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.skeleton_filter_pipeline import FilterConfig, SkeletonFilterPipeline
 
 
 def run_pipeline(

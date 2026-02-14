@@ -2381,7 +2381,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2023.9.1086"
-source = { git = "https://github.com/freemocap/skellycam?branch=development#f1ae85a487ba2c5556e6d7ccf0b74f2b4d18063b" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development#e4ea812a0635989859b4e030d1bbc4dc6e9d86bb" }
 dependencies = [
     { name = "cv2-enumerate-cameras" },
     { name = "fastapi" },

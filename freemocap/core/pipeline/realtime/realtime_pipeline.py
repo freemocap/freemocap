@@ -155,6 +155,13 @@ class RealtimePipeline:
     def shutdown(self) -> None:
         logger.debug(f"Shutting down RealtimePipeline [{self.id}]")
         self.ipc.shutdown_pipeline()
+
+        # Mark all workers as intentionally terminated BEFORE they die
+        # so the ProcessRegistry child monitor doesn't trigger a cascade kill
+        for node in self.camera_nodes.values():
+            node.worker._intentionally_terminated = True
+        self.aggregation_node.worker._intentionally_terminated = True
+
         self.pubsub.close()
         for node in self.camera_nodes.values():
             if node.is_alive:

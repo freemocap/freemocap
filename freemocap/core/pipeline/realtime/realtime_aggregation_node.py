@@ -35,6 +35,7 @@ from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skelet
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
     RealtimeSkeletonFilter
+
 from freemocap.core.pipeline.base_node import BaseNode
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
@@ -219,8 +220,7 @@ class RealtimeAggregationNode(BaseNode):
             )
 
         # Initialize skeleton filter for 3D smoothing + bone length constraint
-        # TODO: pull filter_config from RealtimePipelineConfig when wired up
-        filter_config = RealtimeFilterConfig()
+        filter_config = config.mocap_config.skeleton_filter
         skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
 
         # Initialize velocity gate for rejecting teleportation spikes
@@ -276,6 +276,12 @@ class RealtimeAggregationNode(BaseNode):
                         )
 
                 # ---- Request new frames if ready ----
+                if not camera_group_shm.valid:
+                    logger.debug(
+                        f"RealtimeAggregationNode [{camera_group_id}] "
+                        f"shared memory invalidated, exiting"
+                    )
+                    break
                 current_multiframe_number = camera_group_shm.latest_multiframe_number
                 if (current_multiframe_number > latest_requested_frame
                         and last_received_frame >= latest_requested_frame):

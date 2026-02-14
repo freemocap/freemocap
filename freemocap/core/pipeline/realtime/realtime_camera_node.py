@@ -145,6 +145,13 @@ class RealtimeCameraNode(BaseNode):
                 if process_frame_number_sub.empty():
                     continue
 
+                if not camera_shm.valid:
+                    logger.debug(
+                        f"RealtimeCameraNode [{camera_id}] "
+                        f"shared memory invalidated, exiting"
+                    )
+                    break
+
                 frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get()
                 frame_rec_array = camera_shm.get_data_by_index(
                     index=frame_msg.frame_number,

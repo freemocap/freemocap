@@ -75,6 +75,7 @@ class BaseNode:
         for escalating force.
         """
         self.shutdown_self_flag.value = True
+        self.worker._intentionally_terminated = True
         if self.worker.is_alive():
             logger.debug(f"Shutting down {type(self).__name__} worker '{self.worker.name}'")
             self.worker.terminate_gracefully()

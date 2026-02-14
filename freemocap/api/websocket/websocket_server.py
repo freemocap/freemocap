@@ -211,13 +211,20 @@ class WebsocketServer:
         try:
             while self.should_continue:
                 if not logs_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-                    log_record: logging.LogRecord = logs_queue.get_nowait()
-                    if log_record.levelno < ws_log_level:
+                    try:
+                        # Skellycam's WebSocketQueueHandler puts LogRecordModel dicts
+                        # into the queue via put_nowait(). On rare occasions a child
+                        # process exit (cancel_join_thread) can leave a partial pickle
+                        # in the pipe — the except below handles that gracefully.
+                        log_entry: dict = logs_queue.get_nowait()
+                    except (EOFError, OSError):
+                        # Partial write from a dying child process — skip it
                         continue
-                    if log_record.exc_info:
-                        log_record.exc_text = logging.Formatter().formatException(log_record.exc_info)
-                        log_record.exc_info = None
-                    await self.websocket.send_json(log_record)
+                    if not isinstance(log_entry, dict):
+                        continue
+                    if log_entry.get("levelno", 0) < ws_log_level:
+                        continue
+                    await self.websocket.send_json(log_entry)
                 else:
                     await await_10ms()
         except asyncio.CancelledError:

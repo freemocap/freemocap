@@ -27,8 +27,8 @@ import {SortableSectionWrapper} from "@/components/common/SortableSectionWrapper
 import {ServerConnectionStatus} from "@/components/ServerConnectionStatus";
 import {ProcessingPipelinePanel} from "@/components/processing-pipeline-panel/ProcessingPipelinePanel";
 import {CameraConfigTreeView} from "@/components/camera-config-tree-view/CameraConfigTreeView";
-import {CalibrationControlPanel} from "@/components/calibration-task-panel/CalibrationControlPanel";
-import {MocapTaskTreeItem} from "@/components/mocap-task-panel/MocapTaskTreeItem";
+import {CalibrationControlPanel} from "@/components/calibration-control-panel/CalibrationControlPanel";
+import {MocapTaskTreeItem} from "@/components/mocap-control-panel/MocapTaskTreeItem";
 
 const STORAGE_KEY = "freemocap-sidebar-section-order";
 

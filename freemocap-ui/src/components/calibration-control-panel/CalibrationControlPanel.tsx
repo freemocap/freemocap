@@ -30,6 +30,7 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useElectronIPC} from "@/services";
+import {CalibrationSolverSection} from "@/components/calibration-control-panel/CalibrationSolverSection";
 
 type BoardPreset = "5x3" | "7x5" | "custom";
 
@@ -571,6 +572,9 @@ export const CalibrationControlPanel: React.FC = () => {
                         fullWidth
                         inputProps={{min: 1, step: 0.1}}
                     />
+
+                    {/* Solver Method & Groundplane */}
+                    <CalibrationSolverSection />
 
                     {/* Recording Progress */}
                     {isRecording && (

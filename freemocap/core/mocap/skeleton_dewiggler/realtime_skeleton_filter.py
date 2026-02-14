@@ -30,7 +30,7 @@ import logging
 from dataclasses import dataclass, field
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import EstimatorConfig, \
     BoneLengthEstimator, AnthropometricPrior
@@ -43,8 +43,6 @@ logger = logging.getLogger(__name__)
 
 class RealtimeFilterConfig(BaseModel):
     """Tunable parameters for the realtime filtering pipeline."""
-
-    model_config = ConfigDict(frozen=True)
 
     # One Euro Filter params
     min_cutoff: float = 0.004
@@ -62,15 +60,16 @@ class RealtimeFilterConfig(BaseModel):
 
     # Reprojection error gate: reject triangulated points whose mean
     # reprojection error across cameras exceeds this threshold (pixels).
-    max_reprojection_error_px: float = 15.0
+    max_reprojection_error_px: float = 40.0
 
     # Velocity gate: reject points that jump faster than this (meters/second).
-    # Human body parts rarely exceed ~10 m/s even during fast movements.
-    max_velocity_m_per_s: float = 10.0
+    # Human body parts rarely exceed ~15 m/s even during fast movements,
+    # but noisy triangulation can produce brief spikes, so we keep this generous.
+    max_velocity_m_per_s: float = 25.0
 
     # Velocity gate: after this many consecutive rejections, accept
     # unconditionally to prevent permanent lockout.
-    max_rejected_streak: int = 15
+    max_rejected_streak: int = 5
 
 
 @dataclass

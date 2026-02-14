@@ -24,6 +24,8 @@ import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {useMocap} from "@/hooks/useMocap";
 import {useElectronIPC} from "@/services";
+import {MediapipeConfigPanel} from "@/components/mocap-control-panel/MediapipeConfigPanel";
+import {SkeletonFilterConfigPanel} from "@/components/mocap-control-panel/SkeletonFilterConfigPanel";
 
 export const MocapTaskTreeItem: React.FC = () => {
     const theme = useTheme();
@@ -450,6 +452,12 @@ export const MocapTaskTreeItem: React.FC = () => {
                             </Box>
                         </Box>
                     )}
+
+                    {/* MediaPipe Detector Config */}
+                    <MediapipeConfigPanel />
+
+                    {/* Skeleton Filter Config */}
+                    <SkeletonFilterConfigPanel />
 
                     {/* Process Recording Button */}
                     <Button

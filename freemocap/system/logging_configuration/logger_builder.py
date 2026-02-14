@@ -4,6 +4,7 @@ from multiprocessing import Queue
 from typing import Optional
 
 from .filters.delta_time import DeltaTimeFilter
+from .filters.stringify_traceback import StringifyTracebackFilter
 from .handlers.colored_console import ColoredConsoleHandler
 from .handlers.websocket_log_queue_handler import WebSocketQueueHandler
 from .log_format_string import LOG_FORMAT_STRING
@@ -23,6 +24,9 @@ class LoggerBuilder:
     def _configure_root_logger(self):
         root = logging.getLogger()
         root.setLevel(self.level.value)
+        # Stringify live traceback objects before any handler sees the record, to
+        # to avoid pickling errors when sendnig to the frontend
+        root.addFilter(StringifyTracebackFilter())
 
         # Clear existing handlers
         for handler in root.handlers[:]:
@@ -44,12 +48,11 @@ class LoggerBuilder:
     def _build_file_handler(self):
         handler = logging.FileHandler(get_log_file_path(), encoding="utf-8")
         handler.setFormatter(logging.Formatter(LOG_FORMAT_STRING))
-        handler.addFilter(DeltaTimeFilter())  # Add this line
+        handler.addFilter(DeltaTimeFilter())
         handler.setLevel(LogLevels.TRACE.value)
         return handler
 
     def _build_websocket_handler(self):
-        print("\n\n\n\nBuilding WebSocket log handler\n\n\n\n")
         handler = WebSocketQueueHandler(self.queue)
         handler.setLevel(self.level.value)
         return handler

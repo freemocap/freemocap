@@ -65,8 +65,29 @@ export interface BackendCalibrationSettings {
 // MoCap config (mirrors MocapPipelineConfig)
 // ---------------------------------------------------------------------------
 
+export interface BackendEstimatorConfig {
+    max_samples: number;
+    min_samples_for_full_confidence: number;
+    iqr_confidence_sensitivity: number;
+}
+
+export interface BackendRealtimeFilterConfig {
+    min_cutoff: number;
+    beta: number;
+    d_cutoff: number;
+    fabrik_tolerance: number;
+    fabrik_max_iterations: number;
+    height_meters: number;
+    noise_sigma: number;
+    estimator_config: BackendEstimatorConfig;
+    max_reprojection_error_px: number;
+    max_velocity_m_per_s: number;
+    max_rejected_streak: number;
+}
+
 export interface BackendMocapConfig {
-    [key: string]: unknown; // Currently empty on backend
+    detector: Record<string, unknown>;
+    skeleton_filter: BackendRealtimeFilterConfig;
 }
 
 export interface BackendMocapSettings {

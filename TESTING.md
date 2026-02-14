@@ -3,8 +3,12 @@
 ## Quick Start
 
 ```bash
-# Run EVERYTHING (backend + frontend) — works on Windows, macOS, Linux:
+# Backend (from repo root):
 uv run poe test-all
+
+# Frontend (from freemocap-ui/):
+cd freemocap-ui
+npm test
 ```
 
 ## Setup (one time)
@@ -20,29 +24,10 @@ npm install
 
 ## Running Tests
 
-Every command below works identically on Windows, macOS, and Linux.
-
-### All tests
+### Backend (from repo root)
 
 ```bash
-uv run poe test-all        # Backend (pytest) + frontend (vitest)
-```
-
-### Backend only
-
-```bash
-uv run poe test            # All backend tests
-```
-
-### Frontend only
-
-```bash
-uv run poe test-ui         # All frontend tests (vitest)
-```
-
-### Targeted backend runs
-
-```bash
+uv run poe test-all        # All backend tests
 uv run poe test-schema     # Schema contract tests (field names, defaults)
 uv run poe test-settings   # SettingsManager unit tests (merge, patch, version)
 uv run poe test-http       # HTTP endpoint integration tests
@@ -50,11 +35,12 @@ uv run poe test-ws         # WebSocket protocol tests
 uv run poe test-sync       # All 4 sync test files together
 ```
 
-### Watch mode (frontend)
+### Frontend (from freemocap-ui/)
 
 ```bash
 cd freemocap-ui
-npx vitest
+npm test                   # Run once
+npm run test:watch         # Watch mode (re-runs on save)
 ```
 
 ### Nox (CI / multi-Python)
@@ -62,7 +48,7 @@ npx vitest
 ```bash
 nox -s test          # Backend on Python 3.11 + 3.12
 nox -s test_sync     # Just sync tests on 3.12
-nox -s test_ui       # Frontend vitest
+nox -s test_ui       # Frontend (requires npm on PATH)
 nox -s test_all      # Backend + frontend on 3.12
 nox -s coverage      # Backend with coverage report
 ```
@@ -73,9 +59,7 @@ Run `uv run poe --help` for the full list. Testing tasks:
 
 | Task | What runs |
 |---|---|
-| `test` | All backend tests (`pytest freemocap/tests/`) |
-| `test-all` | Backend + frontend |
-| `test-ui` | Frontend vitest suite |
+| `test-all` | All backend tests |
 | `test-schema` | Schema contract: Pydantic ↔ TypeScript field names & defaults |
 | `test-settings` | SettingsManager: merge, patch, version, async notify |
 | `test-http` | HTTP endpoints: payload validation, settings sync |
@@ -103,6 +87,6 @@ Run `uv run poe --help` for the full list. Testing tasks:
 | `SettingsManager` or `_deep_merge` | `uv run poe test-settings` |
 | An HTTP endpoint or request/response model | `uv run poe test-http` |
 | WebSocket message handling | `uv run poe test-ws` |
-| A Redux slice, thunk, or type guard | `uv run poe test-ui` |
+| A Redux slice, thunk, or type guard | `cd freemocap-ui && npm test` |
 | Anything in the settings sync path | `uv run poe test-sync` |
-| About to push a commit | `uv run poe test-all` |
+| About to push a commit | `uv run poe test-all` then `cd freemocap-ui && npm test` |

@@ -1,6 +1,7 @@
 """
 Consolidated FastAPI app factory with proper lifecycle management.
 """
+import asyncio
 import logging
 import multiprocessing
 from contextlib import asynccontextmanager
@@ -22,8 +23,9 @@ from freemocap.api.middleware.add_middleware import add_middleware
 from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
 from freemocap.api.server_constants import APP_URL
+from freemocap.api.udp.vmc_relay import vmc_relay_task
 from freemocap.api.websocket.websocket_connect import websocket_router
-from freemocap.app.freemocap_application import create_freemocap_app
+from freemocap.app.freemocap_application import create_freemocap_app, get_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
@@ -53,10 +55,23 @@ async def app_lifespan(
         f"Swagger API docs: {APP_URL}/docs"
     )
 
+    # # Start the VMC relay as a background task (runs independently of browser connections)
+    # freemocap_app = get_freemocap_app()
+    # vmc_task = asyncio.create_task(
+    #     vmc_relay_task(app=freemocap_app),
+    #     name="VMCRelayTask",
+    # )
+
     yield
 
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
+
+    vmc_task.cancel()
+    try:
+        await vmc_task
+    except asyncio.CancelledError:
+        pass
 
     app.state.global_kill_flag.value = True
 

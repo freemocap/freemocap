@@ -45,8 +45,8 @@ function makeSettings(overrides?: Partial<FreeMoCapSettings>): FreeMoCapSettings
             config: {
                 detector: {},
                 skeleton_filter: {
-                    min_cutoff: 0.01,
-                    beta: 0.5,
+                    min_cutoff: 0.005,
+                    beta: 0.3,
                     d_cutoff: 1.0,
                     fabrik_tolerance: 1e-4,
                     fabrik_max_iterations: 20,
@@ -59,7 +59,9 @@ function makeSettings(overrides?: Partial<FreeMoCapSettings>): FreeMoCapSettings
                     },
                     max_reprojection_error_px: 60.0,
                     max_velocity_m_per_s: 50.0,
-                    max_rejected_streak: 3,
+                    max_rejected_streak: 5,
+                    max_prediction_frames: 15,
+                    prediction_velocity_decay: 0.75,
                 },
             },
             is_recording: false,

@@ -15,6 +15,7 @@ from freemocap.app.settings import (
     MocapSettings,
     PipelineSettings,
     SettingsManager,
+    VMCSettings,
 )
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
@@ -37,7 +38,7 @@ class TestFreeMoCapSettingsSchema:
 
     def test_has_expected_top_level_keys(self) -> None:
         dumped = FreeMoCapSettings().model_dump()
-        expected_keys = {"cameras", "pipeline", "calibration", "mocap"}
+        expected_keys = {"cameras", "pipeline", "calibration", "mocap", "vmc"}
         assert set(dumped.keys()) == expected_keys
 
     def test_cameras_defaults_to_empty_dict(self) -> None:
@@ -231,6 +232,8 @@ class TestRealtimeFilterConfigSchema:
         "max_reprojection_error_px",
         "max_velocity_m_per_s",
         "max_rejected_streak",
+        "max_prediction_frames",
+        "prediction_velocity_decay",
     }
 
     def test_has_expected_keys(self) -> None:
@@ -248,12 +251,12 @@ class TestRealtimeFilterConfigSchema:
         }
 
     def test_default_min_cutoff_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has min_cutoff: 0.01."""
-        assert RealtimeFilterConfig().min_cutoff == 0.01
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has min_cutoff: 0.005."""
+        assert RealtimeFilterConfig().min_cutoff == 0.005
 
     def test_default_beta_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has beta: 0.5."""
-        assert RealtimeFilterConfig().beta == 0.5
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has beta: 0.3."""
+        assert RealtimeFilterConfig().beta == 0.3
 
     def test_default_d_cutoff_matches_frontend(self) -> None:
         """Frontend DEFAULT_REALTIME_FILTER_CONFIG has d_cutoff: 1.0."""
@@ -284,8 +287,16 @@ class TestRealtimeFilterConfigSchema:
         assert RealtimeFilterConfig().max_velocity_m_per_s == 50.0
 
     def test_default_max_rejected_streak_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_rejected_streak: 3."""
-        assert RealtimeFilterConfig().max_rejected_streak == 3
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_rejected_streak: 5."""
+        assert RealtimeFilterConfig().max_rejected_streak == 5
+
+    def test_default_max_prediction_frames_matches_frontend(self) -> None:
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_prediction_frames: 15."""
+        assert RealtimeFilterConfig().max_prediction_frames == 15
+
+    def test_default_prediction_velocity_decay_matches_frontend(self) -> None:
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has prediction_velocity_decay: 0.75."""
+        assert RealtimeFilterConfig().prediction_velocity_decay == 0.75
 
 
 class TestEstimatorConfigDefaults:
@@ -383,6 +394,35 @@ class TestSettingsStateMessageFormat:
         manager = SettingsManager()
         msg = manager.get_state_message()
         assert msg["version"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Calibration solver method enum
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# VMC settings
+# ---------------------------------------------------------------------------
+
+
+class TestVMCSettingsSchema:
+    """Verify VMCSettings matches the frontend (once a frontend VMC type is added)."""
+
+    EXPECTED_KEYS = {"enabled", "host", "port"}
+
+    def test_has_expected_keys(self) -> None:
+        dumped = VMCSettings().model_dump()
+        assert set(dumped.keys()) == self.EXPECTED_KEYS
+
+    def test_default_enabled_false(self) -> None:
+        assert VMCSettings().enabled is False
+
+    def test_default_host(self) -> None:
+        assert VMCSettings().host == "127.0.0.1"
+
+    def test_default_port(self) -> None:
+        assert VMCSettings().port == 39539
 
 
 # ---------------------------------------------------------------------------

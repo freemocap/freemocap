@@ -6,7 +6,7 @@ used to tell child processes which detector to instantiate.
 """
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
@@ -79,6 +79,8 @@ class CalibrationSolverMethod(str, Enum):
 
 
 class CalibrationPipelineConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     calibration_recording_folder: str | None = Field(
         default=None, alias="calibrationRecordingFolder",
     )

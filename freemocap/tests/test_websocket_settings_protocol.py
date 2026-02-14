@@ -23,6 +23,9 @@ from freemocap.core.pipeline.pipeline_configs import (
 )
 
 
+from starlette.websockets import WebSocketState
+
+
 # ---------------------------------------------------------------------------
 # Mock helpers
 # ---------------------------------------------------------------------------
@@ -53,13 +56,11 @@ class MockApp:
 
 
 class FakeWebSocket:
-    """Minimal WebSocket mock that records sent messages."""
-
-    class ClientState:
-        CONNECTED = "CONNECTED"
+    """Minimal WebSocket mock that records sent messages.
+    Uses the real WebSocketState enum so comparisons in the relay work."""
 
     def __init__(self) -> None:
-        self.client_state = self.ClientState.CONNECTED
+        self.client_state = WebSocketState.CONNECTED
         self.sent_json: list[dict[str, Any]] = []
 
     async def send_json(self, data: dict[str, Any]) -> None:

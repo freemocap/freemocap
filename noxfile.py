@@ -30,7 +30,7 @@ def test_sync(session: Session) -> None:
 def test_ui(session: Session) -> None:
     """Run the frontend vitest suite (no Python needed)."""
     with session.cd("freemocap-ui"):
-        session.run("npx", "vitest", "run", external=True)
+        session.run("npm", "run", "test", external=True)
 
 
 @nox.session(python="3.12")
@@ -39,7 +39,7 @@ def test_all(session: Session) -> None:
     session.install("-e", ".[dev]")
     session.run("pytest", "freemocap/tests", "-v")
     with session.cd("freemocap-ui"):
-        session.run("npx", "vitest", "run", external=True)
+        session.run("npm", "run", "test", external=True)
 
 
 @nox.session(python="3.12")

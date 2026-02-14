@@ -129,12 +129,12 @@ test-settings = { cmd = "pytest freemocap/tests/test_settings_manager.py -v", he
 test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
 test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
 test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run all frontend/backend sync tests" }
-test-all      = { sequence = ["test", "test-ui"], help = "Run ALL tests (backend + frontend)" }
+test-all      = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
 [tool.poe.tasks.test-ui]
-cmd  = "npx vitest run"
+cmd  = "npm run test"
 cwd  = "freemocap-ui"
-help = "Run frontend tests (vitest)"
+help = "Run frontend tests — only works if npm is on PATH (otherwise run `npm test` in freemocap-ui/ directly)"
 
 
 # =============================================================================

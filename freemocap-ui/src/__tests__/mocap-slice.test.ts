@@ -80,11 +80,11 @@ describe('default constants match backend', () => {
 
     describe('DEFAULT_REALTIME_FILTER_CONFIG', () => {
         // Must match RealtimeFilterConfig defaults in realtime_skeleton_filter.py
-        it('has min_cutoff 0.01', () => {
-            expect(DEFAULT_REALTIME_FILTER_CONFIG.min_cutoff).toBe(0.01);
+        it('has min_cutoff 0.005', () => {
+            expect(DEFAULT_REALTIME_FILTER_CONFIG.min_cutoff).toBe(0.005);
         });
-        it('has beta 0.5', () => {
-            expect(DEFAULT_REALTIME_FILTER_CONFIG.beta).toBe(0.5);
+        it('has beta 0.3', () => {
+            expect(DEFAULT_REALTIME_FILTER_CONFIG.beta).toBe(0.3);
         });
         it('has d_cutoff 1.0', () => {
             expect(DEFAULT_REALTIME_FILTER_CONFIG.d_cutoff).toBe(1.0);
@@ -101,8 +101,14 @@ describe('default constants match backend', () => {
         it('has max_velocity_m_per_s 50.0', () => {
             expect(DEFAULT_REALTIME_FILTER_CONFIG.max_velocity_m_per_s).toBe(50.0);
         });
-        it('has max_rejected_streak 3', () => {
-            expect(DEFAULT_REALTIME_FILTER_CONFIG.max_rejected_streak).toBe(3);
+        it('has max_rejected_streak 5', () => {
+            expect(DEFAULT_REALTIME_FILTER_CONFIG.max_rejected_streak).toBe(5);
+        });
+        it('has max_prediction_frames 15', () => {
+            expect(DEFAULT_REALTIME_FILTER_CONFIG.max_prediction_frames).toBe(15);
+        });
+        it('has prediction_velocity_decay 0.75', () => {
+            expect(DEFAULT_REALTIME_FILTER_CONFIG.prediction_velocity_decay).toBe(0.75);
         });
     });
 });

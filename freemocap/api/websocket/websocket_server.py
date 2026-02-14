@@ -19,7 +19,6 @@ from freemocap.app.settings_protocol import (
     handle_settings_message,
     settings_state_relay,
 )
-from freemocap.core.mocap.skeleton_dewiggler.vmc_sender import VMCSender
 from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import (
     get_websocket_log_queue,
@@ -55,7 +54,6 @@ class WebsocketServer:
         self.last_sent_frame_number: int = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
-        self._vmc_sender: VMCSender | None = None
 
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
@@ -72,27 +70,7 @@ class WebsocketServer:
         for task in self.ws_tasks:
             if not task.done():
                 task.cancel()
-        if self._vmc_sender:
-            self._vmc_sender.close()
-            self._vmc_sender = None
         logger.debug("WebsocketRunner context manager exited.")
-
-    def _sync_vmc_sender(self) -> None:
-        """Create, recreate, or destroy the VMC sender based on current settings."""
-        vmc = self._settings_manager.settings.vmc
-        if vmc.enabled:
-            if (
-                self._vmc_sender is None
-                or self._vmc_sender._host != vmc.host
-                or self._vmc_sender._port != vmc.port
-            ):
-                if self._vmc_sender:
-                    self._vmc_sender.close()
-                self._vmc_sender = VMCSender(host=vmc.host, port=vmc.port)
-        else:
-            if self._vmc_sender:
-                self._vmc_sender.close()
-                self._vmc_sender = None
 
     @property
     def should_continue(self):
@@ -208,11 +186,6 @@ class WebsocketServer:
                                     for bone_key, pose in frontend_payload.rigid_body_poses.items()
                                 }
                                 await self.websocket.send_json({"rigid_body_poses": rigid_body_dict})
-
-                            # ---- VMC broadcast (UDP, non-blocking) ----
-                            self._sync_vmc_sender()
-                            if self._vmc_sender and frontend_payload and frontend_payload.rigid_body_poses:
-                                self._vmc_sender.send(frontend_payload.rigid_body_poses)
 
                             if frame_number is not None:
                                 self.last_sent_frame_number = frame_number

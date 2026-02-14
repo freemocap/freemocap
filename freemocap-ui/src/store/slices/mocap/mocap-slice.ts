@@ -60,6 +60,9 @@ export interface RealtimeFilterConfig {
     max_reprojection_error_px: number;
     max_velocity_m_per_s: number;
     max_rejected_streak: number;
+    // Prediction params
+    max_prediction_frames: number;
+    prediction_velocity_decay: number;
 }
 
 /**
@@ -105,8 +108,8 @@ export const DEFAULT_ESTIMATOR_CONFIG: EstimatorConfig = {
 
 /** Default RealtimeFilterConfig matching backend defaults. */
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
-    min_cutoff: 0.01,
-    beta: 0.5,
+    min_cutoff: 0.005,
+    beta: 0.3,
     d_cutoff: 1.0,
     fabrik_tolerance: 1e-4,
     fabrik_max_iterations: 20,
@@ -115,7 +118,9 @@ export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
     estimator_config: { ...DEFAULT_ESTIMATOR_CONFIG },
     max_reprojection_error_px: 60.0,
     max_velocity_m_per_s: 50.0,
-    max_rejected_streak: 3,
+    max_rejected_streak: 5,
+    max_prediction_frames: 15,
+    prediction_velocity_decay: 0.75,
 };
 
 export interface MocapDirectoryInfo {

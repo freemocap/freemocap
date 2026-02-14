@@ -83,6 +83,8 @@ export interface BackendRealtimeFilterConfig {
     max_reprojection_error_px: number;
     max_velocity_m_per_s: number;
     max_rejected_streak: number;
+    max_prediction_frames: number;
+    prediction_velocity_decay: number;
 }
 
 export interface BackendMocapConfig {
@@ -118,16 +120,6 @@ export interface BackendPipelineSettings {
 }
 
 // ---------------------------------------------------------------------------
-// VMC (Virtual Motion Capture) output settings
-// ---------------------------------------------------------------------------
-
-export interface BackendVMCSettings {
-    enabled: boolean;
-    host: string;
-    port: number;
-}
-
-// ---------------------------------------------------------------------------
 // Top-level settings blob
 // ---------------------------------------------------------------------------
 
@@ -136,7 +128,6 @@ export interface FreeMoCapSettings {
     pipeline: BackendPipelineSettings;
     calibration: BackendCalibrationSettings;
     mocap: BackendMocapSettings;
-    vmc: BackendVMCSettings;
 }
 
 // ---------------------------------------------------------------------------

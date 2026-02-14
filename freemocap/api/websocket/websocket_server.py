@@ -126,22 +126,22 @@ class WebsocketServer:
             skipped_previous = False
             while self.should_continue:
                 await await_10ms()
-                try:
-                    frontend_payloads = self._app.get_latest_frontend_payloads(
-                        if_newer_than=self.last_sent_frame_number
-                    )
-                except IndexError:
-                    logger.warning(
-                        f"Ring buffer overwrite detected (last_sent_frame_number={self.last_sent_frame_number}). "
-                        f"Resetting to latest frame."
-                    )
-                    self.last_sent_frame_number = -1
-                    continue
-
                 if self.check_frame_acknowledgment_status():
                     if skipped_previous:
                         skipped_previous = False
                     else:
+                        try:
+                            frontend_payloads = self._app.get_latest_frontend_payloads(
+                                if_newer_than=self.last_sent_frame_number
+                            )
+                        except IndexError:
+                            logger.warning(
+                                f"Ring buffer overwrite detected (last_sent_frame_number={self.last_sent_frame_number}). "
+                                f"Resetting to latest frame."
+                            )
+                            self.last_sent_frame_number = -1
+                            continue
+
                         for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
                             frame_number = None
                             if not payload_bytes and not frontend_payload:
@@ -159,7 +159,6 @@ class WebsocketServer:
                                         f"Invalid payload bytes on frame {frame_number} - "
                                         f"got type {type(payload_bytes).__name__}"
                                     )
-
                                 await self.websocket.send_bytes(payload_bytes)
 
                             if frontend_payload and frontend_payload.charuco_overlays:
@@ -187,8 +186,8 @@ class WebsocketServer:
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if (
-                        backpressure > BACKPRESSURE_WARNING_THRESHOLD
-                        and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0
+                            backpressure > BACKPRESSURE_WARNING_THRESHOLD
+                            and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0
                     ):
                         logger.trace(
                             f"Backpressure detected: {backpressure} frames not acknowledged by frontend! "

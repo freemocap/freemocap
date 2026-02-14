@@ -44,8 +44,22 @@ function detectPreset(
     return "custom";
 }
 
+/** Shared slider sx that matches the camera config panel style. */
+const useSliderSx = () => {
+    const theme = useTheme();
+    return {
+        color: theme.palette.primary.light,
+        "& .MuiSlider-thumb": {
+            "&:hover, &.Mui-focusVisible": {
+                boxShadow: `0px 0px 0px 8px ${theme.palette.primary.light}33`,
+            },
+        },
+    } as const;
+};
+
 export const MediapipeConfigPanel: React.FC = () => {
     const theme = useTheme();
+    const sliderSx = useSliderSx();
     const {detectorConfig, updateDetectorConfig, replaceDetectorConfig, isLoading} = useMocap();
 
     const currentPreset = detectPreset(detectorConfig);
@@ -123,11 +137,8 @@ export const MediapipeConfigPanel: React.FC = () => {
                     onChange={(_ , value) =>
                         updateDetectorConfig({min_detection_confidence: value as number})
                     }
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    size="small"
-                    disabled={isLoading}
+                    min={0} max={1} step={0.05} size="small" disabled={isLoading}
+                    sx={sliderSx}
                 />
             </Box>
 
@@ -140,11 +151,8 @@ export const MediapipeConfigPanel: React.FC = () => {
                     onChange={(_, value) =>
                         updateDetectorConfig({min_tracking_confidence: value as number})
                     }
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    size="small"
-                    disabled={isLoading}
+                    min={0} max={1} step={0.05} size="small" disabled={isLoading}
+                    sx={sliderSx}
                 />
             </Box>
 

@@ -25,7 +25,7 @@ class LoggerBuilder:
         root = logging.getLogger()
         root.setLevel(self.level.value)
         # Stringify live traceback objects before any handler sees the record, to
-        # to avoid pickling errors when sendnig to the frontend
+        # to avoid pickling errors when sendin g to the frontend
         root.addFilter(StringifyTracebackFilter())
 
         # Clear existing handlers

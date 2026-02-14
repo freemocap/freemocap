@@ -8,6 +8,7 @@ import {useAppSelector} from "@/store/hooks";
 import {selectBackendPipeline} from "@/store/slices/settings";
 import {useServer} from "@/hooks/useServer";
 import {MediapipeConfigPanel} from "@/components/mocap-control-panel/MediapipeConfigPanel";
+import {SkeletonFilterConfigPanel} from "@/components/mocap-control-panel/SkeletonFilterConfigPanel";
 
 export const ProcessingPipelinePanel: React.FC = () => {
     const theme = useTheme();
@@ -16,6 +17,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
 
     const pipelineConfig = backendPipeline?.config;
     const isPipelineConnected = backendPipeline?.is_connected ?? false;
+    const canToggle = isConnected && isPipelineConnected;
 
     const handleToggleCalibrationDetection = (_: React.ChangeEvent, checked: boolean) => {
         send({
@@ -53,58 +55,58 @@ export const ProcessingPipelinePanel: React.FC = () => {
         >
             <Box sx={{p: 2}}>
                 <Stack spacing={2}>
-                    {/* Detection toggles — only visible when pipeline is connected */}
-                    {isPipelineConnected && pipelineConfig ? (
-                        <>
-                            <Typography
-                                variant="subtitle2"
-                                sx={{color: theme.palette.text.secondary, fontWeight: 600}}
-                            >
-                                Detection Stages
-                            </Typography>
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        size="small"
-                                        checked={pipelineConfig.calibration_detection_enabled}
-                                        onChange={handleToggleCalibrationDetection}
-                                        disabled={!isConnected}
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body2">
-                                        Charuco Detection (Calibration)
-                                    </Typography>
-                                }
-                            />
-                            <FormControlLabel
-                                control={
-                                    <Switch
-                                        size="small"
-                                        checked={pipelineConfig.mocap_detection_enabled}
-                                        onChange={handleToggleMocapDetection}
-                                        disabled={!isConnected}
-                                    />
-                                }
-                                label={
-                                    <Typography variant="body2">
-                                        MediaPipe Detection (MoCap)
-                                    </Typography>
-                                }
-                            />
-
-                            {/* MediaPipe config — show when mocap detection is enabled */}
-                            {pipelineConfig.mocap_detection_enabled && (
-                                <Box sx={{mt: 1, pl: 1, borderLeft: `2px solid ${theme.palette.divider}`}}>
-                                    <MediapipeConfigPanel />
-                                </Box>
-                            )}
-                        </>
-                    ) : (
-                        <Typography variant="body2" color="text.secondary">
-                            Connect a pipeline to configure detection stages.
+                    {/* Detection toggles — always visible, disabled when pipeline not connected */}
+                    <Typography
+                        variant="subtitle2"
+                        sx={{color: theme.palette.text.secondary, fontWeight: 600}}
+                    >
+                        Detection Stages
+                    </Typography>
+                    {!isPipelineConnected && (
+                        <Typography variant="caption" color="text.secondary" sx={{fontStyle: "italic"}}>
+                            Connect a pipeline to enable detection toggles.
                         </Typography>
                     )}
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                size="small"
+                                checked={pipelineConfig?.calibration_detection_enabled ?? true}
+                                onChange={handleToggleCalibrationDetection}
+                                disabled={!canToggle}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2">
+                                Charuco Detection (Calibration)
+                            </Typography>
+                        }
+                    />
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                size="small"
+                                checked={pipelineConfig?.mocap_detection_enabled ?? true}
+                                onChange={handleToggleMocapDetection}
+                                disabled={!canToggle}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2">
+                                MediaPipe Detection (MoCap)
+                            </Typography>
+                        }
+                    />
+
+                    {/* MediaPipe config — always visible */}
+                    <Box sx={{mt: 1, pl: 1, borderLeft: `2px solid ${theme.palette.divider}`}}>
+                        <MediapipeConfigPanel />
+                    </Box>
+
+                    {/* Skeleton filter config — always visible */}
+                    <Box sx={{mt: 1, pl: 1, borderLeft: `2px solid ${theme.palette.divider}`}}>
+                        <SkeletonFilterConfigPanel />
+                    </Box>
                 </Stack>
             </Box>
         </CollapsibleSidebarSection>

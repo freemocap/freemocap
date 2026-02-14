@@ -105,17 +105,17 @@ export const DEFAULT_ESTIMATOR_CONFIG: EstimatorConfig = {
 
 /** Default RealtimeFilterConfig matching backend defaults. */
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
-    min_cutoff: 0.004,
-    beta: 0.7,
+    min_cutoff: 0.01,
+    beta: 0.5,
     d_cutoff: 1.0,
     fabrik_tolerance: 1e-4,
     fabrik_max_iterations: 20,
     height_meters: 1.75,
-    noise_sigma: 0.008,
+    noise_sigma: 0.015,
     estimator_config: { ...DEFAULT_ESTIMATOR_CONFIG },
-    max_reprojection_error_px: 40.0,
-    max_velocity_m_per_s: 25.0,
-    max_rejected_streak: 5,
+    max_reprojection_error_px: 60.0,
+    max_velocity_m_per_s: 50.0,
+    max_rejected_streak: 3,
 };
 
 export interface MocapDirectoryInfo {

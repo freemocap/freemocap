@@ -18,6 +18,7 @@ from skellytracker.trackers.mediapipe_tracker.mediapipe_detector_config import (
 )
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
+from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
 
 # ---------------------------------------------------------------------------
 # Detector spec: the picklable union that video nodes use to create detectors
@@ -118,6 +119,7 @@ class CalibrationPipelineConfig(BaseModel):
 
 class MocapPipelineConfig(BaseModel):
     detector: MediapipeDetectorConfig
+    skeleton_filter: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
 
     @classmethod
     def default_realtime(cls) -> "MocapPipelineConfig":

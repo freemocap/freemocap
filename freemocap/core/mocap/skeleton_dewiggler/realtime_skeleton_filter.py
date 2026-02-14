@@ -45,8 +45,11 @@ class RealtimeFilterConfig(BaseModel):
     """Tunable parameters for the realtime filtering pipeline."""
 
     # One Euro Filter params
-    min_cutoff: float = 0.004
-    beta: float = 0.7
+    # min_cutoff: minimum cutoff frequency (Hz). Lower = more smoothing, higher = more responsive.
+    min_cutoff: float = 0.01
+    # beta: speed coefficient. Higher = less lag during fast motion, but more jitter at rest.
+    beta: float = 0.5
+    # d_cutoff: cutoff frequency for the derivative (speed estimate) filter.
     d_cutoff: float = 1.0
 
     # FABRIK params
@@ -54,22 +57,26 @@ class RealtimeFilterConfig(BaseModel):
     fabrik_max_iterations: int = 20
 
     # Bone length estimation params
+    # height_meters: assumed subject height, used to scale anthropometric bone length priors.
     height_meters: float = 1.75
-    noise_sigma: float = 0.008
+    # noise_sigma: expected measurement noise (meters). Higher = trust raw measurements less.
+    noise_sigma: float = 0.015
     estimator_config: EstimatorConfig = EstimatorConfig()
 
     # Reprojection error gate: reject triangulated points whose mean
     # reprojection error across cameras exceeds this threshold (pixels).
-    max_reprojection_error_px: float = 40.0
+    # Higher = more permissive (keeps noisier triangulations).
+    max_reprojection_error_px: float = 60.0
 
     # Velocity gate: reject points that jump faster than this (meters/second).
     # Human body parts rarely exceed ~15 m/s even during fast movements,
-    # but noisy triangulation can produce brief spikes, so we keep this generous.
-    max_velocity_m_per_s: float = 25.0
+    # but noisy triangulation can produce brief spikes. Keep generous to
+    # avoid rejecting real fast motions.
+    max_velocity_m_per_s: float = 50.0
 
     # Velocity gate: after this many consecutive rejections, accept
-    # unconditionally to prevent permanent lockout.
-    max_rejected_streak: int = 5
+    # unconditionally to prevent permanent lockout. Lower = recover faster.
+    max_rejected_streak: int = 3
 
 
 @dataclass

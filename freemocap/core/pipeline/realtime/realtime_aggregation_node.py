@@ -32,9 +32,9 @@ from skellycam.utilities.wait_functions import wait_1ms
 from freemocap.core.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
-from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate, GateResult
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
-    RealtimeSkeletonFilter
+    RealtimeSkeletonFilter, FilterResult
 
 from freemocap.core.pipeline.base_node import BaseNode
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
@@ -107,6 +107,10 @@ def _filter_skeleton_points(
 
     Only skeleton keypoints are filtered+constrained. Non-skeleton points
     (e.g. charuco board corners) are passed through unchanged.
+
+    The filter may return predicted positions for keypoints that were not in this
+    frame's tracked_points3d (extrapolated from previous frames). These
+    predicted keypoints are included in the output to prevent blinking.
     """
     skeleton_keypoint_names = skeleton_filter.skeleton.keypoint_names
 
@@ -119,17 +123,17 @@ def _filter_skeleton_points(
     if not skeleton_positions:
         return tracked_points3d
 
-    # Run the filter
-    filtered_positions = skeleton_filter.process_frame(
+    # Run the filter — returns FilterResult with positions (including predicted) and predicted_names
+    filter_result: FilterResult = skeleton_filter.process_frame(
         t=t,
         positions=skeleton_positions,
     )
 
-    # Build output: filtered skeleton points + unmodified non-skeleton points
+    # Build output: filtered skeleton points + predicted skeleton points + unmodified non-skeleton points
     result: dict[str, Point3d] = {}
     for name, point in tracked_points3d.items():
-        if name in filtered_positions:
-            coords = filtered_positions[name]
+        if name in filter_result.positions:
+            coords = filter_result.positions[name]
             result[name] = Point3d(
                 x=float(coords[0]),
                 y=float(coords[1]),
@@ -137,6 +141,16 @@ def _filter_skeleton_points(
             )
         else:
             result[name] = point
+
+    # Add predicted keypoints that weren't in this frame's tracked_points3d
+    for name in filter_result.predicted_names:
+        if name not in result and name in filter_result.positions:
+            coords = filter_result.positions[name]
+            result[name] = Point3d(
+                x=float(coords[0]),
+                y=float(coords[1]),
+                z=float(coords[2]),
+            )
 
     return result
 
@@ -367,18 +381,19 @@ class RealtimeAggregationNode(BaseNode):
                             name: np.array([pt.x, pt.y, pt.z], dtype=np.float64)
                             for name, pt in tracked_points3d.items()
                         }
-                        gated_arrays = point_gate.gate(
+                        gate_result: GateResult = point_gate.gate(
                             t=time.monotonic(),
                             points=raw_arrays,
                         )
-                        # Rebuild tracked_points3d with only gated points
+                        # Rebuild tracked_points3d from gated positions
+                        # (rejected points get their last-accepted position held)
                         tracked_points3d = {
                             name: Point3d(
                                 x=float(arr[0]),
                                 y=float(arr[1]),
                                 z=float(arr[2]),
                             )
-                            for name, arr in gated_arrays.items()
+                            for name, arr in gate_result.positions.items()
                         }
 
                     # ---- Filter + constrain skeleton keypoints ----

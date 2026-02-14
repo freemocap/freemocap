@@ -65,6 +65,8 @@ dev = [
     "bumpver",
     "pip-tools",
     "pytest>=8.4.0",
+    "pytest-asyncio>=1.0.0",
+    "httpx>=0.28.0",
     "nuitka>=2.7.7",
     "pyinstaller>=6.15.0",
     "ruff>=0.9.0",
@@ -119,7 +121,28 @@ tc-fix   = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-
 tc       = { sequence = ["tc-fix", "test"], help = "Move type-only imports + run tests to verify" }
 lint     = { cmd = "ruff check freemocap/", help = "Run all ruff lint rules" }
 lint-fix = { cmd = "ruff check --fix freemocap/", help = "Auto-fix all ruff lint violations" }
-test     = { cmd = "pytest", help = "Run test suite" }
+
+# --- Testing ---
+test          = { cmd = "pytest freemocap/tests/ -v", help = "Run all backend tests" }
+test-schema   = { cmd = "pytest freemocap/tests/test_schema_contract.py -v", help = "Run schema contract tests (frontend/backend sync)" }
+test-settings = { cmd = "pytest freemocap/tests/test_settings_manager.py -v", help = "Run SettingsManager unit tests" }
+test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
+test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
+test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run all frontend/backend sync tests" }
+test-all      = { sequence = ["test", "test-ui"], help = "Run ALL tests (backend + frontend)" }
+
+[tool.poe.tasks.test-ui]
+cmd  = "npx vitest run"
+cwd  = "freemocap-ui"
+help = "Run frontend tests (vitest)"
+
+
+# =============================================================================
+# Pytest config
+# =============================================================================
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
 
 
 # =============================================================================

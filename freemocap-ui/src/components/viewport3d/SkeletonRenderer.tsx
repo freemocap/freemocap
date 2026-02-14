@@ -17,12 +17,12 @@ import {
     MAX_POINTS,
     MAX_SEGMENTS,
     Z_OFFSET,
-    SKELETON_COLORS,
     SEGMENT_DEFINITIONS,
     SEGMENT_COLORS,
     getPointStyle,
-} from "@/components/viewport3d/skeleton-config";
+} from "@/components/skeleton-colors.ts/skeleton-config";
 import { resolvePoint } from "@/components/viewport3d/virtual-points";
+import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 
 const DUMMY = new Object3D();
 const FAR_AWAY = new Vector3(10000, 10000, 10000);

@@ -1,5 +1,7 @@
 import { Color } from "three";
 import { PointStyle } from "@/components/viewport3d/viewport3d-types";
+import { buildFaceContourSegments, buildFaceContourColors } from "@/components/viewport3d/face-contours";
+import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 
 // Maximum tracked points the instanced mesh can hold
 export const MAX_POINTS = 1000;
@@ -9,28 +11,21 @@ export const Z_OFFSET = -15;
 
 // --- Color palette (matches 2D overlay) ---
 
-export const SKELETON_COLORS = {
-    left:       new Color('#4488FF'),
-    right:      new Color('#FF4444'),
-    center:     new Color('#00AA00'),
-    leftHand:   new Color('#00FFFF'),
-    rightHand:  new Color('#FF00FF'),
-    face:       new Color('#FFD700'),
-    hidden:     new Color('#000000'),
-} as const;
+
 
 // --- Point styling: color + sphere scale per body part ---
 
 export function getPointStyle(name: string): PointStyle {
+    // Face landmarks — near-invisible dots, contour lines carry the visual
     if (name.startsWith('face.')) {
-        return { color: SKELETON_COLORS.face, scale: 0.15 };
+        return { color: SKELETON_COLORS.face, scale: 0.02 };
     }
 
     if (name.startsWith('left_hand.')) {
-        return { color: SKELETON_COLORS.leftHand, scale: 0.125 };
+        return { color: SKELETON_COLORS.leftHand, scale: 0.075 };
     }
     if (name.startsWith('right_hand.')) {
-        return { color: SKELETON_COLORS.rightHand, scale: 0.125 };
+        return { color: SKELETON_COLORS.rightHand, scale: 0.075 };
     }
 
     // Body — eyes, ears, mouth are small
@@ -38,13 +33,13 @@ export function getPointStyle(name: string): PointStyle {
         const side = name.includes('left') ? SKELETON_COLORS.left
             : name.includes('right') ? SKELETON_COLORS.right
             : SKELETON_COLORS.center;
-        return { color: side, scale: 0.2 };
+        return { color: side, scale: 0.125 };
     }
 
     // Body — fingers at wrist level
     if (name.includes('pinky') || name.includes('index') || name.includes('thumb')) {
         const side = name.includes('left') ? SKELETON_COLORS.left : SKELETON_COLORS.right;
-        return { color: side, scale: 0.25 };
+        return { color: side, scale: 0.05 };
     }
 
     // Body — feet
@@ -55,14 +50,14 @@ export function getPointStyle(name: string): PointStyle {
 
     // Body — major joints (shoulder, elbow, wrist, hip, knee)
     if (name.includes('left')) {
-        return { color: SKELETON_COLORS.left, scale: 0.4 };
+        return { color: SKELETON_COLORS.left, scale: 0.2 };
     }
     if (name.includes('right')) {
-        return { color: SKELETON_COLORS.right, scale: 0.4 };
+        return { color: SKELETON_COLORS.right, scale: 0.2 };
     }
 
     // Center (nose, etc.)
-    return { color: SKELETON_COLORS.center, scale: 0.35 };
+    return { color: SKELETON_COLORS.center, scale: 0.15 };
 }
 
 // --- Segment color determined by segment name ---
@@ -120,9 +115,9 @@ function buildHandSegments(handPrefix: string): Record<string, { proximal: strin
     return segments;
 }
 
-// --- Segment definitions: body + both hands ---
+// --- Body + hand segment definitions ---
 
-export const SEGMENT_DEFINITIONS: Record<string, { proximal: string; distal: string }> = {
+const BODY_HAND_SEGMENTS: Record<string, { proximal: string; distal: string }> = {
     // Body
     head:               { proximal: "body.left_ear",        distal: "body.right_ear" },
     neck:               { proximal: "head_center",          distal: "neck_center" },
@@ -152,7 +147,22 @@ export const SEGMENT_DEFINITIONS: Record<string, { proximal: string; distal: str
     ...buildHandSegments('left_hand'),
 };
 
+// Pre-compute body+hand segment colors
+const BODY_HAND_COLORS: Color[] = Object.keys(BODY_HAND_SEGMENTS).map(getSegmentColor);
+
+// --- Face contour segments ---
+
+const FACE_SEGMENTS = buildFaceContourSegments();
+const FACE_COLORS = buildFaceContourColors();
+
+// --- Combined: body + hands + face contours ---
+
+export const SEGMENT_DEFINITIONS: Record<string, { proximal: string; distal: string }> = {
+    ...BODY_HAND_SEGMENTS,
+    ...FACE_SEGMENTS,
+};
+
 export const MAX_SEGMENTS = Object.keys(SEGMENT_DEFINITIONS).length;
 
-// Pre-computed segment colors (static, never changes)
-export const SEGMENT_COLORS: Color[] = Object.keys(SEGMENT_DEFINITIONS).map(getSegmentColor);
+// Colors in matching order: body+hand first, then face contours
+export const SEGMENT_COLORS: Color[] = [...BODY_HAND_COLORS, ...FACE_COLORS];

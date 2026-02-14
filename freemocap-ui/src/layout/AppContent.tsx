@@ -7,6 +7,7 @@ import { createExtendedTheme } from '@/layout/paperbase-theme';
 import { useAppSelector } from '@/store';
 import { BaseContentRouter } from '@/layout/BaseContentRouter';
 import { FirstLaunchRedirect } from '@/components/setup-wizard/FirstLaunchRedirect';
+import { MenuNavigationListener } from '@/components/MenuNavigationListener';
 
 export const AppContent = function () {
     const themeMode = useAppSelector(state => state.theme.mode);
@@ -21,6 +22,7 @@ export const AppContent = function () {
             <CssBaseline />
             <HashRouter>
                 <FirstLaunchRedirect />
+                <MenuNavigationListener />
                 <BasePanelLayout>
                     <BaseContentRouter />
                 </BasePanelLayout>

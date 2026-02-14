@@ -112,12 +112,6 @@ export const api = t.router({
         install: t.procedure
             .input(z.object({ dependencyId: z.string() }))
             .mutation(({ input }) => DependencyManager.install(input.dependencyId)),
-
-        getPythonEnvStatus: t.procedure
-            .query(() => DependencyManager.getPythonEnvStatus()),
-
-        getPythonEnvPath: t.procedure
-            .query(() => DependencyManager.getPythonEnvPath()),
     }),
 
     // Persistent Settings (file-backed at ~/.freemocap/settings.json)

@@ -3,7 +3,6 @@ import { promisify } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import {AppSettings} from "./app-settings";
 
 const execAsync = promisify(exec);
 
@@ -22,32 +21,10 @@ export interface DependencyInfo {
     error: string | null;
 }
 
-export interface PythonEnvStatus {
-    envExists: boolean;
-    envPath: string;
-    packages: { name: string; version: string }[];
-    missingPackages: string[];
-}
-
-export interface InstallProgress {
-    dependencyId: string;
-    stage: string;
-    percent: number | null;
-}
-
 // ── Constants ──
 
-const FREEMOCAP_ENV_DIR = path.join(AppSettings.getConfigDir(), 'python-env');
 const UV_INSTALL_URL_WINDOWS = 'https://astral.sh/uv/install.ps1';
 const UV_INSTALL_URL_UNIX = 'https://astral.sh/uv/install.sh';
-
-const REQUIRED_PYTHON_PACKAGES = [
-    'skellycam',
-    'skellytracker',
-    'skellyforge',
-    'aniposelib',
-    'mediapipe',
-];
 
 // ── Helpers ──
 
@@ -146,8 +123,8 @@ async function detectUv(): Promise<DependencyInfo> {
     const info: DependencyInfo = {
         id: 'uv',
         name: 'uv',
-        description: 'Fast Python package manager — used to manage the FreeMoCap processing environment.',
-        required: true,
+        description: 'Fast Python package manager — useful for development and managing additional processing tools.',
+        required: false,
         status: 'checking',
         version: null,
         installedPath: null,
@@ -193,13 +170,13 @@ async function detectUv(): Promise<DependencyInfo> {
     return info;
 }
 
-// ── Python Environment Detection ──
+// ── FreeMoCap Server Executable Detection ──
 
-async function detectPythonEnv(): Promise<DependencyInfo> {
+async function detectFreemocapServer(): Promise<DependencyInfo> {
     const info: DependencyInfo = {
-        id: 'python-env',
-        name: 'Processing Environment',
-        description: 'Managed Python environment with pose estimation and motion capture processing libraries.',
+        id: 'freemocap-server',
+        name: 'FreeMoCap Server',
+        description: 'Bundled Python server that handles cameras, processing, and WebSocket communication.',
         required: true,
         status: 'checking',
         version: null,
@@ -207,51 +184,23 @@ async function detectPythonEnv(): Promise<DependencyInfo> {
         error: null,
     };
 
-    info.installedPath = FREEMOCAP_ENV_DIR;
-
-    // Check if the venv exists
-    const pythonBin = process.platform === 'win32'
-        ? path.join(FREEMOCAP_ENV_DIR, 'Scripts', 'python.exe')
-        : path.join(FREEMOCAP_ENV_DIR, 'bin', 'python');
-
-    if (!fs.existsSync(pythonBin)) {
-        info.status = 'missing';
-        return info;
-    }
-
-    // Check Python version
+    // Use the PythonServer candidate validation to find the exe
     try {
-        const { stdout } = await execAsync(`"${pythonBin}" --version`, { timeout: 10000 });
-        info.version = stdout.trim();
-    } catch {
-        info.status = 'error';
-        info.error = 'Python environment exists but the interpreter is broken.';
-        return info;
-    }
+        const { PythonServer } = await import('./python-server');
+        const candidates = await PythonServer.validateAllCandidates();
+        const validCandidate = candidates.find(c => c.isValid);
 
-    // Check if required packages are installed
-    try {
-        const pipBin = process.platform === 'win32'
-            ? path.join(FREEMOCAP_ENV_DIR, 'Scripts', 'pip.exe')
-            : path.join(FREEMOCAP_ENV_DIR, 'bin', 'pip');
-
-        const { stdout } = await execAsync(`"${pipBin}" list --format=json`, { timeout: 30000 });
-        const installed = JSON.parse(stdout) as { name: string; version: string }[];
-        const installedNames = new Set(installed.map(p => p.name.toLowerCase()));
-
-        const missing = REQUIRED_PYTHON_PACKAGES.filter(
-            pkg => !installedNames.has(pkg.toLowerCase()),
-        );
-
-        if (missing.length > 0) {
-            info.status = 'outdated';
-            info.error = `Missing packages: ${missing.join(', ')}`;
-        } else {
+        if (validCandidate) {
             info.status = 'installed';
+            info.installedPath = validCandidate.path;
+            info.version = validCandidate.name;
+        } else {
+            info.status = 'missing';
+            info.error = 'No valid freemocap_server executable found. Reinstall the application or build the server.';
         }
     } catch (err) {
         info.status = 'error';
-        info.error = `Failed to check packages: ${err instanceof Error ? err.message : String(err)}`;
+        info.error = `Detection failed: ${err instanceof Error ? err.message : String(err)}`;
     }
 
     return info;
@@ -366,62 +315,13 @@ async function installUv(): Promise<void> {
     }
 }
 
-async function resolveUvPath(): Promise<string> {
-    const { exists, output } = await commandExists('uv');
-    if (exists) return output.split('\n')[0].trim();
-
-    // Check common locations
-    const home = os.homedir();
-    const candidates = process.platform === 'win32'
-        ? [
-            path.join(home, '.local', 'bin', 'uv.exe'),
-            path.join(home, '.cargo', 'bin', 'uv.exe'),
-        ]
-        : [
-            path.join(home, '.local', 'bin', 'uv'),
-            path.join(home, '.cargo', 'bin', 'uv'),
-        ];
-
-    for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) return candidate;
-    }
-
-    throw new Error('uv is not installed. Install it first.');
-}
-
-async function createPythonEnv(): Promise<void> {
-    const uv = await resolveUvPath();
-
-    // Create the venv
-    console.log(`Creating Python environment at ${FREEMOCAP_ENV_DIR}...`);
-    fs.mkdirSync(path.dirname(FREEMOCAP_ENV_DIR), { recursive: true });
-    await execAsync(`"${uv}" venv "${FREEMOCAP_ENV_DIR}" --python 3.11`, { timeout: 120000 });
-
-    // Install packages
-    console.log('Installing processing packages...');
-    await execAsync(
-        `"${uv}" pip install --python "${FREEMOCAP_ENV_DIR}" skellytracker[all] skellyforge aniposelib skellycam freemocap`,
-        { timeout: 1800000 }, // 30 min — mediapipe + torch are huge
-    );
-}
-
-async function updatePythonEnv(): Promise<void> {
-    const uv = await resolveUvPath();
-
-    console.log('Updating processing packages...');
-    await execAsync(
-        `"${uv}" pip install --python "${FREEMOCAP_ENV_DIR}" --upgrade skellytracker[all] skellyforge aniposelib skellycam freemocap`,
-        { timeout: 1800000 },
-    );
-}
-
 // ── Public API ──
 
 export class DependencyManager {
     static async detectAll(): Promise<DependencyInfo[]> {
         const results = await Promise.all([
+            detectFreemocapServer(),
             detectUv(),
-            detectPythonEnv(),
             detectCuda(),
             detectBlender(),
         ]);
@@ -430,11 +330,16 @@ export class DependencyManager {
 
     static async detect(dependencyId: string): Promise<DependencyInfo> {
         switch (dependencyId) {
-            case 'blender': return detectBlender();
-            case 'uv': return detectUv();
-            case 'python-env': return detectPythonEnv();
-            case 'cuda': return detectCuda();
-            default: throw new Error(`Unknown dependency: ${dependencyId}`);
+            case 'freemocap-server':
+                return detectFreemocapServer();
+            case 'uv':
+                return detectUv();
+            case 'blender':
+                return detectBlender();
+            case 'cuda':
+                return detectCuda();
+            default:
+                throw new Error(`Unknown dependency: ${dependencyId}`);
         }
     }
 
@@ -448,15 +353,11 @@ export class DependencyManager {
                 await installUv();
                 return detectUv();
 
-            case 'python-env': {
-                const envInfo = await detectPythonEnv();
-                if (envInfo.status === 'missing') {
-                    await createPythonEnv();
-                } else if (envInfo.status === 'outdated') {
-                    await updatePythonEnv();
-                }
-                return detectPythonEnv();
-            }
+            case 'freemocap-server':
+                throw new Error(
+                    'The FreeMoCap server executable is bundled with the application. ' +
+                    'Reinstall the app to restore it.',
+                );
 
             case 'cuda':
                 throw new Error(
@@ -467,47 +368,5 @@ export class DependencyManager {
             default:
                 throw new Error(`Unknown dependency: ${dependencyId}`);
         }
-    }
-
-    static getPythonEnvPath(): string {
-        return FREEMOCAP_ENV_DIR;
-    }
-
-    static async getPythonEnvStatus(): Promise<PythonEnvStatus> {
-        const pythonBin = process.platform === 'win32'
-            ? path.join(FREEMOCAP_ENV_DIR, 'Scripts', 'python.exe')
-            : path.join(FREEMOCAP_ENV_DIR, 'bin', 'python');
-
-        const envExists = fs.existsSync(pythonBin);
-
-        if (!envExists) {
-            return {
-                envExists: false,
-                envPath: FREEMOCAP_ENV_DIR,
-                packages: [],
-                missingPackages: [...REQUIRED_PYTHON_PACKAGES],
-            };
-        }
-
-        let packages: { name: string; version: string }[] = [];
-        try {
-            const pipBin = process.platform === 'win32'
-                ? path.join(FREEMOCAP_ENV_DIR, 'Scripts', 'pip.exe')
-                : path.join(FREEMOCAP_ENV_DIR, 'bin', 'pip');
-            const { stdout } = await execAsync(`"${pipBin}" list --format=json`, { timeout: 30000 });
-            packages = JSON.parse(stdout);
-        } catch { /* pip list failed */ }
-
-        const installedNames = new Set(packages.map(p => p.name.toLowerCase()));
-        const missingPackages = REQUIRED_PYTHON_PACKAGES.filter(
-            pkg => !installedNames.has(pkg.toLowerCase()),
-        );
-
-        return {
-            envExists,
-            envPath: FREEMOCAP_ENV_DIR,
-            packages,
-            missingPackages,
-        };
     }
 }

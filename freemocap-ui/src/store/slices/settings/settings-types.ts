@@ -118,6 +118,16 @@ export interface BackendPipelineSettings {
 }
 
 // ---------------------------------------------------------------------------
+// VMC (Virtual Motion Capture) output settings
+// ---------------------------------------------------------------------------
+
+export interface BackendVMCSettings {
+    enabled: boolean;
+    host: string;
+    port: number;
+}
+
+// ---------------------------------------------------------------------------
 // Top-level settings blob
 // ---------------------------------------------------------------------------
 
@@ -126,6 +136,7 @@ export interface FreeMoCapSettings {
     pipeline: BackendPipelineSettings;
     calibration: BackendCalibrationSettings;
     mocap: BackendMocapSettings;
+    vmc: BackendVMCSettings;
 }
 
 // ---------------------------------------------------------------------------

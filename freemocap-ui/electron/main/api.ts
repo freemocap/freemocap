@@ -6,6 +6,7 @@ import superjson from 'superjson';
 import { PythonServer } from './services/python-server';
 import { SystemScanner } from './services/system-scanner';
 import { DependencyManager } from './services/dependency-manager';
+import { AppSettings } from './services/app-settings';
 import { dialog, shell, app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -117,6 +118,31 @@ export const api = t.router({
 
         getPythonEnvPath: t.procedure
             .query(() => DependencyManager.getPythonEnvPath()),
+    }),
+
+    // Persistent Settings (file-backed at ~/.freemocap/settings.json)
+    settings: t.router({
+        get: t.procedure
+            .input(z.object({ key: z.string() }))
+            .query(({ input }) => AppSettings.get(input.key)),
+
+        set: t.procedure
+            .input(z.object({ key: z.string(), value: z.unknown() }))
+            .mutation(({ input }) => {
+                AppSettings.set(input.key, input.value);
+            }),
+
+        delete: t.procedure
+            .input(z.object({ key: z.string() }))
+            .mutation(({ input }) => {
+                AppSettings.delete(input.key);
+            }),
+
+        getAll: t.procedure
+            .query(() => AppSettings.getAll()),
+
+        getConfigDir: t.procedure
+            .query(() => AppSettings.getConfigDir()),
     }),
 
     // File System Operations

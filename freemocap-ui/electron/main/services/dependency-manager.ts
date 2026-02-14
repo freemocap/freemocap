@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
-import { app } from 'electron';
+import {AppSettings} from "./app-settings";
 
 const execAsync = promisify(exec);
 
@@ -37,7 +37,7 @@ export interface InstallProgress {
 
 // ── Constants ──
 
-const FREEMOCAP_ENV_DIR = path.join(app.getPath('home'), '.freemocap', 'python-env');
+const FREEMOCAP_ENV_DIR = path.join(AppSettings.getConfigDir(), 'python-env');
 const UV_INSTALL_URL_WINDOWS = 'https://astral.sh/uv/install.ps1';
 const UV_INSTALL_URL_UNIX = 'https://astral.sh/uv/install.sh';
 

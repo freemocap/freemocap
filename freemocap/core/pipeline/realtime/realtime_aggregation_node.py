@@ -33,6 +33,7 @@ from freemocap.core.calibration.shared.calibration_state import CalibrationState
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import SkeletonDefinition
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate, GateResult
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import estimate_rigid_bodies, RigidBodyPose
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
     RealtimeSkeletonFilter, FilterResult
 
@@ -340,6 +341,7 @@ class RealtimeAggregationNode(BaseNode):
 
                 # ---- Triangulate mediapipe and charuco observations if calibration is valid ----
                 tracked_points3d: dict[str, Point3d] = {}
+                rigid_body_poses: dict[str, RigidBodyPose] = {}
                 if calibration.is_valid:
                     # Triangulate mediapipe observations
                     mediapipe_observations_by_camera = {
@@ -404,6 +406,18 @@ class RealtimeAggregationNode(BaseNode):
                             t=time.monotonic(),
                         )
 
+                    # ---- Estimate rigid body segment poses ----
+                    if tracked_points3d and skeleton_filter.current_bone_lengths:
+                        point_arrays: dict[str, np.ndarray] = {
+                            name: np.array([pt.x, pt.y, pt.z], dtype=np.float64)
+                            for name, pt in tracked_points3d.items()
+                        }
+                        rigid_body_poses = estimate_rigid_bodies(
+                            positions=point_arrays,
+                            skeleton=skeleton_filter.skeleton,
+                            bone_lengths=skeleton_filter.current_bone_lengths,
+                        )
+
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
@@ -413,6 +427,7 @@ class RealtimeAggregationNode(BaseNode):
                         pipeline_config=config,
                         camera_node_outputs=camera_node_outputs,
                         tracked_points3d=tracked_points3d,
+                        rigid_body_poses=rigid_body_poses,
                     ),
                 )
 

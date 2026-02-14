@@ -22,9 +22,11 @@ import {
     isCharucoOverlayDataMessage, isFramerateUpdate, isLogRecord, isMediapipeOverlayDataMessage,
     isSettingsStateMessage
 } from "@/services/server/server-helpers/websocket-message-types";
+import {RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
 
 type FrameSubscriber = (bitmap: ImageBitmap) => void;
 type TrackedPointsSubscriber = (points: Map<string, Point3d>) => void;
+type RigidBodiesSubscriber = (poses: Map<string, RigidBodyPose>) => void;
 
 export interface Point3d {
     x: number;
@@ -44,6 +46,7 @@ export interface ServerContextValue {
     subscribeToFrames: (cameraId: string, callback: FrameSubscriber) => () => void;
     subscribeToTrackedPoints: (callback: TrackedPointsSubscriber) => () => void;
     getLatestTrackedPoints: () => Map<string, Point3d>;
+    subscribeToRigidBodies: (callback: RigidBodiesSubscriber) => () => void;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);
@@ -64,6 +67,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
     const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
     const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
+    const latestRigidBodies = useRef<Map<string, RigidBodyPose>>(new Map());
+    const rigidBodiesSubscribersRef = useRef<Set<RigidBodiesSubscriber>>(new Set());
 
     useEffect(() => {
         wsConnectionRef.current = new WebSocketConnection({
@@ -92,6 +97,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             latestMediapipeRef.current.clear();
             latestTrackedPoints.current.clear();
             trackedPointsSubscribersRef.current.clear();
+            latestRigidBodies.current.clear();
+            rigidBodiesSubscribersRef.current.clear();
         };
     }, []);
 
@@ -117,6 +124,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
                 dispatch(serverSettingsCleared());
+                latestRigidBodies.current.clear();
             }
         };
 
@@ -235,6 +243,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         subscriber(latestTrackedPoints.current);
                     }
                 }
+                // Rigid body segment poses
+                else if ('rigid_body_poses' in jsonData) {
+                    latestRigidBodies.current = new Map(
+                        Object.entries(jsonData.rigid_body_poses as Record<string, RigidBodyPose>)
+                    );
+                    for (const subscriber of rigidBodiesSubscribersRef.current) {
+                        subscriber(latestRigidBodies.current);
+                    }
+                }
                 // Backend log records
                 else if (isLogRecord(jsonData)) {
                     dispatch(logAdded(jsonData));
@@ -315,6 +332,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return latestTrackedPoints.current;
     }, []);
 
+    const subscribeToRigidBodies = useCallback((callback: RigidBodiesSubscriber): (() => void) => {
+        rigidBodiesSubscribersRef.current.add(callback);
+
+        if (latestRigidBodies.current.size > 0) {
+            callback(latestRigidBodies.current);
+        }
+
+        return () => {
+            rigidBodiesSubscribersRef.current.delete(callback);
+        };
+    }, []);
+
     return (
         <ServerContext.Provider value={{
             isConnected,
@@ -328,6 +357,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             subscribeToFrames,
             subscribeToTrackedPoints,
             getLatestTrackedPoints,
+            subscribeToRigidBodies,
         }}>
             {children}
         </ServerContext.Provider>

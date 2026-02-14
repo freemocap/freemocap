@@ -6,6 +6,7 @@ from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.types.type_overloads import TrackedPointNameString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
@@ -27,6 +28,7 @@ class FrontendPayload(BaseModel):
     charuco_overlays: dict[CameraIdString, CharucoOverlayData]
     mediapipe_overlays: dict[CameraIdString, MediapipeOverlayData]
     tracked_points3d: dict[TrackedPointNameString, Point3d]
+    rigid_body_poses: dict[str, RigidBodyPose]
 
     @classmethod
     def from_aggregation_output(
@@ -39,6 +41,7 @@ class FrontendPayload(BaseModel):
             charuco_overlays=aggregation_output.charuco_overlay_data,
             mediapipe_overlays=aggregation_output.mediapipe_overlay_data,
             tracked_points3d=aggregation_output.tracked_points3d,
+            rigid_body_poses=aggregation_output.rigid_body_poses,
         )
 
     def to_websocket_dict(self) -> dict:
@@ -56,5 +59,9 @@ class FrontendPayload(BaseModel):
             "tracked_points3d": {
                 name: point.model_dump()
                 for name, point in self.tracked_points3d.items()
+            },
+            "rigid_body_poses": {
+                bone_key: pose.model_dump()
+                for bone_key, pose in self.rigid_body_poses.items()
             },
         }

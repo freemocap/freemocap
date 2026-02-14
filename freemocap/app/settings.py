@@ -66,6 +66,13 @@ class MocapSettings(BaseModel):
     last_recording_path: str | None = None
 
 
+class VMCSettings(BaseModel):
+    """VMC (Virtual Motion Capture) protocol output settings."""
+    enabled: bool = False
+    host: str = "127.0.0.1"
+    port: int = 39539
+
+
 # ---------------------------------------------------------------------------
 # Top-level settings blob
 # ---------------------------------------------------------------------------
@@ -82,6 +89,7 @@ class FreeMoCapSettings(BaseModel):
     pipeline: PipelineSettings = Field(default_factory=PipelineSettings)
     calibration: CalibrationSettings = Field(default_factory=CalibrationSettings)
     mocap: MocapSettings = Field(default_factory=MocapSettings)
+    vmc: VMCSettings = Field(default_factory=VMCSettings)
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +218,7 @@ class SettingsManager:
             pipeline=pipeline,
             calibration=calibration,
             mocap=mocap,
+            vmc=self._settings.vmc,
         )
         self.notify_changed()
 

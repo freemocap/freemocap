@@ -3,6 +3,7 @@ import { CameraControls } from "@react-three/drei";
 import type CameraControlsImpl from "camera-controls";
 import { SceneEnvironment } from "@/components/viewport3d/SceneEnvironment";
 import { SkeletonRenderer } from "@/components/viewport3d/SkeletonRenderer";
+import { RigidBodyRenderer } from "@/components/viewport3d/RigidBodyRenderer";
 
 interface ThreeJsSceneProps {
     cameraControlsRef: RefObject<CameraControlsImpl>;
@@ -15,6 +16,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <CameraControls ref={cameraControlsRef} makeDefault />
             <SceneEnvironment />
             <SkeletonRenderer />
+            <RigidBodyRenderer />
         </>
     );
 }

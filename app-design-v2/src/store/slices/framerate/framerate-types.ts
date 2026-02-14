@@ -1,4 +1,4 @@
-// framerate-types.ts
+// framerate-viewport3d-types.ts
 import { z } from 'zod';
 
 // The actual framerate data structure used in the Redux store

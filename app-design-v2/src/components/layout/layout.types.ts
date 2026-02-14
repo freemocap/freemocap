@@ -1,4 +1,4 @@
-// types/layout.types.ts
+// types/layout.viewport3d-types.ts
 
 import { type ReactElement, type MouseEvent } from "react";
 

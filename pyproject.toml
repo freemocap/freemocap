@@ -128,7 +128,8 @@ test-schema   = { cmd = "pytest freemocap/tests/test_schema_contract.py -v", hel
 test-settings = { cmd = "pytest freemocap/tests/test_settings_manager.py -v", help = "Run SettingsManager unit tests" }
 test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
 test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
-test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run all frontend/backend sync tests" }
+test-e2e      = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
+test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
 test-all      = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
 [tool.poe.tasks.test-ui]

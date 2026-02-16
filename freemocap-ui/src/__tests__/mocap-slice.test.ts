@@ -161,9 +161,9 @@ describe('skeletonFilterConfigUpdated', () => {
         const state = getInitialState();
         const updated = reducer(state, skeletonFilterConfigUpdated({ beta: 0.1 }));
         expect(updated.config.skeleton_filter.beta).toBe(0.1);
-        // Other fields preserved
-        expect(updated.config.skeleton_filter.min_cutoff).toBe(0.01);
-        expect(updated.config.skeleton_filter.max_rejected_streak).toBe(3);
+        // Other fields preserved from DEFAULT_REALTIME_FILTER_CONFIG
+        expect(updated.config.skeleton_filter.min_cutoff).toBe(0.005);
+        expect(updated.config.skeleton_filter.max_rejected_streak).toBe(5);
     });
 });
 

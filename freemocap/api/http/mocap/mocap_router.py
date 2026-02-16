@@ -127,7 +127,7 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
         logger.info("Mocap recording stopped, posthoc mocap pipeline launched")
         return {"success": True}
     except Exception as e:
-        logger.error(f"Error stopping mocap recording: {e}")
+        logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -148,5 +148,5 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
             results={},
         )
     except Exception as e:
-        logger.error(f"Error processing mocap recording: {e}")
+        logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))

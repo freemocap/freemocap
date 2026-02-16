@@ -14,7 +14,7 @@ def test(session: Session) -> None:
 
 @nox.session(python="3.12")
 def test_sync(session: Session) -> None:
-    """Run only the frontend/backend sync tests (schema, settings, HTTP, WebSocket)."""
+    """Run only the frontend/backend sync tests (schema, settings, HTTP, WebSocket, E2E)."""
     session.install("-e", ".[dev]")
     session.run(
         "pytest",
@@ -22,6 +22,20 @@ def test_sync(session: Session) -> None:
         "freemocap/tests/test_settings_manager.py",
         "freemocap/tests/test_http_config_endpoints.py",
         "freemocap/tests/test_websocket_settings_protocol.py",
+        "freemocap/tests/test_e2e_http_settings_sync.py",
+        "freemocap/tests/test_e2e_websocket_settings_sync.py",
+        "-v",
+    )
+
+
+@nox.session(python="3.12")
+def test_e2e(session: Session) -> None:
+    """Run end-to-end integration tests (HTTP + WebSocket round-trip)."""
+    session.install("-e", ".[dev]")
+    session.run(
+        "pytest",
+        "freemocap/tests/test_e2e_http_settings_sync.py",
+        "freemocap/tests/test_e2e_websocket_settings_sync.py",
         "-v",
     )
 

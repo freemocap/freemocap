@@ -133,25 +133,6 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
-# Calibration signals
-# ---------------------------------------------------------------------------
-
-class ShouldCalibrateMessage(TopicMessageABC):
-    """Signal that calibration should be performed."""
-    pass
-
-
-class StartRealtimeCalibrationTrackingMessage(TopicMessageABC):
-    """Signal that realtime calibration tracking should start."""
-    pass
-
-
-class CalibrationCompletedMessage(TopicMessageABC):
-    """Signal that a calibration has completed (posthoc or realtime)."""
-    calibration_toml_path: str
-
-
-# ---------------------------------------------------------------------------
 # Posthoc progress reporting
 # ---------------------------------------------------------------------------
 
@@ -168,11 +149,8 @@ class PosthocProgressMessage(TopicMessageABC):
 # ---------------------------------------------------------------------------
 
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
-ShouldCalibrateTopic = create_topic(ShouldCalibrateMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
-StartRealtimeCalibrationTrackingTopic = create_topic(StartRealtimeCalibrationTrackingMessage)
-CalibrationCompletedTopic = create_topic(CalibrationCompletedMessage)
 PosthocProgressTopic = create_topic(PosthocProgressMessage)

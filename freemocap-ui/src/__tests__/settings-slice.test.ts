@@ -68,6 +68,11 @@ function makeSettings(overrides?: Partial<FreeMoCapSettings>): FreeMoCapSettings
             recording_progress: 0,
             last_recording_path: null,
         },
+        vmc: {
+            enabled: false,
+            host: '127.0.0.1',
+            port: 39539,
+        },
         ...overrides,
     };
 }

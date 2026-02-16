@@ -129,7 +129,7 @@ async def stop_calibration_recording(
         logger.info("Calibration recording stopped, posthoc calibration pipeline launched")
         return {"success": True}
     except Exception as e:
-        logger.error(f"Error stopping calibration recording: {e}")
+        logger.exception(f"Error stopping calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -150,5 +150,5 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
             results={},
         )
     except Exception as e:
-        logger.error(f"Error calibrating recording: {e}")
+        logger.exception(f"Error calibrating recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))

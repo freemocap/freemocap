@@ -7,6 +7,7 @@ _frontend_image_relay, _logs_relay, and _client_message_handler tasks.
 """
 import asyncio
 import logging
+from collections.abc import Callable
 from copy import deepcopy
 
 from starlette.websockets import WebSocket, WebSocketState
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 async def settings_state_relay(
     websocket: WebSocket,
     settings_manager: SettingsManager,
-    should_continue: callable,
+    should_continue: Callable[[], bool],
 ) -> None:
     """
     Push `settings/state` to the frontend whenever settings change.

@@ -66,7 +66,7 @@ export default defineConfig(({command}) => {
         },
         server: {
             host: '127.0.0.1',
-            port: 7777,
+            port: 7877,
             headers: {
                 "Cross-Origin-Opener-Policy": "same-origin",
                 "Cross-Origin-Embedder-Policy": "require-corp",

@@ -4,10 +4,13 @@ triangulates mediapipe and charuco observations (if calibration is valid),
 filters+constrains the triangulated skeleton via One Euro + FABRIK,
 and publishes aggregated output.
 
-Uses CalibrationStateTracker for graceful degradation: if triangulation fails,
-the calibration is invalidated and we continue publishing 2D-only data until
-a new calibration is loaded (triggered by a config update after posthoc
-calibration completes).
+Uses CalibrationStateTracker for graceful degradation: if triangulation fails
+repeatedly, the calibration is invalidated and we continue publishing 2D-only
+data until a new calibration file appears on disk.
+
+Calibration hot-reload: the node polls the calibration file on disk once per
+second. If the file has changed (e.g. after posthoc calibration completes),
+the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
 Skeleton filtering (One Euro + FABRIK) runs on the triangulated 3D mediapipe
 points. Bone lengths are estimated online from observed inter-keypoint distances
@@ -51,10 +54,12 @@ from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     AggregationNodeOutputTopic,
     PipelineConfigUpdateMessage,
-    ShouldCalibrateTopic,
 )
 
 logger = logging.getLogger(__name__)
+
+# How often (seconds) to poll the calibration file for changes
+CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 
 
 def _merge_triangulated_arrays(
@@ -170,9 +175,6 @@ class RealtimeAggregationNode(BaseNode):
                 pipeline_config_sub=pubsub.get_subscription(
                     PipelineConfigUpdateTopic,
                 ),
-                should_calibrate_sub=pubsub.get_subscription(
-                    ShouldCalibrateTopic,
-                ),
                 process_frame_number_pub=pubsub.get_publication_queue(
                     ProcessFrameNumberTopic,
                 ),
@@ -196,7 +198,6 @@ class RealtimeAggregationNode(BaseNode):
         camera_group_shm_dto: CameraGroupSharedMemoryDTO,
         camera_node_sub: TopicSubscriptionQueue,
         pipeline_config_sub: TopicSubscriptionQueue,
-        should_calibrate_sub: TopicSubscriptionQueue,
         process_frame_number_pub: TopicPublicationQueue,
         aggregation_output_pub: TopicPublicationQueue,
     ) -> None:
@@ -233,46 +234,34 @@ class RealtimeAggregationNode(BaseNode):
         }
         latest_requested_frame: int = -1
         last_received_frame: int = -1
+        last_calibration_poll: float = time.monotonic()
 
         try:
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
 
-                # ---- Handle config updates (also triggers calibration reload) ----
+                # ---- Handle config updates ----
                 while not pipeline_config_sub.empty():
                     msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
                     config = msg.pipeline_config
+                    filter_config = config.mocap_config.skeleton_filter
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
-                    if calibration.reload():
-                        logger.info(
-                            f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reloaded calibration from {calibration.calibration_path}"
-                        )
-                        # Reset filter + gate state — coordinate frame may have changed
-                        skeleton_filter.reset()
-                        point_gate.reset()
-                        logger.info(
-                            f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reset skeleton filter and point gate after calibration reload"
-                        )
 
-                # ---- Handle explicit calibration signals ----
-                while not should_calibrate_sub.empty():
-                    should_calibrate_sub.get()
-                    if calibration.reload():
+                # ---- Periodically check if calibration file changed on disk ----
+                now = time.monotonic()
+                if now - last_calibration_poll >= CALIBRATION_POLL_INTERVAL_SECONDS:
+                    last_calibration_poll = now
+                    if calibration.check_for_update():
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reloaded calibration after ShouldCalibrate signal"
+                            f"hot-reloaded calibration from {calibration.calibration_path}"
                         )
+                        # Coordinate frame may have changed — reset filter + gate
                         skeleton_filter.reset()
                         point_gate.reset()
-                        logger.info(
-                            f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"reset skeleton filter and point gate after calibration reload"
-                        )
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:

@@ -91,7 +91,7 @@ export class WindowManager {
 
         if (APP_ENVIRONMENT.IS_DEV && APP_ENVIRONMENT.VITE_DEV_SERVER_URL) {
             window.loadURL(APP_ENVIRONMENT.VITE_DEV_SERVER_URL);
-            window.webContents.openDevTools();
+            // window.webContents.openDevTools();
         } else {
             window.loadFile(APP_PATHS.RENDERER_HTML);
         }

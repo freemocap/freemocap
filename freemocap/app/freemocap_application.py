@@ -165,12 +165,6 @@ class FreemocapApplication:
         self.posthoc_pipeline_manager.evict_completed()
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
-
-        # Always drain pipeline aggregation queues to prevent unbounded memory
-        # growth, even when we fall back to raw camera group payloads below.
-        for pipeline in realtime_pipelines.values():
-            pipeline.drain_aggregation_queue()
-
         if len(realtime_pipelines) == 0 or all(
             not p.alive for p in realtime_pipelines.values()
         ):

@@ -29,18 +29,21 @@ class CalibrationStateTracker:
       1. On creation, optimistically try to load the latest calibration.
       2. Triangulation requests go through try_triangulate(), which returns
          None if no valid calibration is loaded.
-      3. On triangulation failure, the calibration is invalidated — we stop
-         trying until explicitly reloaded.
-      4. reload() re-reads from disk (call after a posthoc calibration completes).
+      3. If triangulation fails, the calibration is invalidated and all
+         subsequent calls return None until reload() is called.
+      4. reload() can be called after a new calibration is saved to disk.
     """
 
-    def __init__(self) -> None:
-        self._triangulator: Triangulator | None = None
+    def __init__(self, data_folder: str | Path | None = None):
+        self._data_folder = Path(data_folder) if data_folder else None
         self._calibration: CalibrationResult | None = None
-        self._is_valid: bool = False
+        self._triangulator: Triangulator | None = None
+        self._is_valid = False
+        self._failure_count = 0
         self._calibration_path: Path | None = None
-        self._failure_count: int = 0
 
+        if self._data_folder:
+            self._try_load_latest()
     @classmethod
     def create_and_try_load(cls) -> "CalibrationStateTracker":
         """Create a tracker and optimistically try to load the latest calibration."""
@@ -56,55 +59,56 @@ class CalibrationStateTracker:
     def calibration_path(self) -> Path | None:
         return self._calibration_path if self._is_valid else None
 
-    @property
-    def calibration(self) -> CalibrationResult | None:
-        return self._calibration if self._is_valid else None
-
-    @property
-    def triangulator(self) -> Triangulator | None:
-        return self._triangulator if self._is_valid else None
-
-    def reload(self) -> bool:
-        """Try to load (or re-load) the latest calibration from disk.
-
-        Returns True if a valid calibration was loaded.
-        """
+    def _try_load_latest(self) -> None:
+        """Try to load the most recent calibration file."""
         try:
-            path = get_last_successful_calibration_toml_path()
-            if path is None:
-                logger.debug("No calibration file found on disk")
-                self._invalidate()
-                return False
+            path = get_last_successful_calibration_toml_path(self._data_folder)
+            if path and path.exists():
+                self._load_from_path(path)
+        except Exception as e:
+            logger.debug(f"No existing calibration found: {e}")
 
-            path = Path(str(path))
-            if not path.exists():
-                logger.debug(f"Calibration path does not exist: {path}")
-                self._invalidate()
-                return False
-
-            calibration = CalibrationResult.load_anipose_toml(path)
-            if len(calibration.cameras) == 0:
-                raise ValueError(
-                    f"Calibration file at {path} contains no cameras — "
-                    f"file may be corrupt or incomplete"
-                )
-
-            triangulator = Triangulator.from_calibration_result(calibration=calibration)
-
+    def _load_from_path(self, path: Path) -> None:
+        """Load calibration from a TOML file."""
+        try:
+            calibration = CalibrationResult.from_toml(path)
+            cameras = calibration.to_camera_models()
+            self._triangulator = Triangulator(cameras=cameras)
             self._calibration = calibration
-            self._triangulator = triangulator
             self._calibration_path = path
             self._is_valid = True
             self._failure_count = 0
             logger.info(
-                f"Loaded calibration from {path} with cameras: {triangulator.camera_names}"
+                f"Loaded calibration from {path} with "
+                f"{len(cameras)} cameras: {[c.name for c in cameras]}"
             )
-            return True
-
         except Exception as e:
-            logger.error(f"Failed to load calibration: {e}", exc_info=True)
+            logger.warning(f"Failed to load calibration from {path}: {e}")
             self._invalidate()
-            return False
+
+    @property
+    def is_valid(self) -> bool:
+        return self._is_valid
+
+    @property
+    def calibration_path(self) -> Path | None:
+        return self._calibration_path
+
+    def reload(self, path: Path | None = None) -> bool:
+        """Reload calibration from disk.
+
+        Args:
+            path: Explicit path, or None to re-discover latest.
+
+        Returns:
+            True if calibration was loaded successfully.
+        """
+        self._invalidate()
+        if path:
+            self._load_from_path(path)
+        elif self._data_folder:
+            self._try_load_latest()
+        return self._is_valid
 
     def try_triangulate(
         self,
@@ -126,7 +130,7 @@ class CalibrationStateTracker:
             return None
 
         try:
-            # Stack 2D observations from all cameras in triangulator order
+            # Stack 2D observations from all cameras in triangulator order.
             # Each BaseObservation.to_2d_array() returns (n_points, 2)
             camera_names = self._triangulator.camera_names
             data_by_cam: dict[str, NDArray[np.float64]] = {}
@@ -164,28 +168,24 @@ class CalibrationStateTracker:
 
             # Stack into (n_cameras, 1, n_points, 2)
             ordered_names = sub_triangulator.camera_names
-            n_points = next(iter(data_by_cam.values())).shape[0]
             stacked = np.stack(
                 [data_by_cam[name] for name in ordered_names],
                 axis=0,
             )  # (n_cameras, n_points, 2)
 
-            # Add frame dimension
             stacked = stacked[:, np.newaxis, :, :]  # (n_cameras, 1, n_points, 2)
 
             triangulated = sub_triangulator.triangulate_array(data2d=stacked)
             # triangulated shape: (1, n_points, 3)
             points_3d = triangulated[0]  # (n_points, 3)
 
-            # --- Reprojection error gate (before rotation) ---
-            # Squeeze frame dim from 2D data: (n_cameras, n_points, 2)
+            # --- Reprojection error gate ---
             stacked_2d = stacked[:, 0, :, :]
             mean_reproj_error = sub_triangulator.mean_reprojection_error(
                 points_3d=points_3d,
                 points_2d=stacked_2d,
             )  # (n_points,)
 
-            # NaN out points with excessive reprojection error
             bad_mask = mean_reproj_error > max_reprojection_error_px
             n_rejected = int(np.sum(bad_mask))
             if n_rejected > 0:
@@ -195,13 +195,16 @@ class CalibrationStateTracker:
             rotation_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
             points_3d = points_3d @ rotation_matrix.T
 
-            # Build point name dict from first observation
+            # Get point names from the PointCloud — structurally guaranteed
+            # to match to_2d_array() row order because both read from the
+            # same PointCloud. This replaces the old to_tracked_points().keys()
+            # pattern which could desync when NaN filtering was inconsistent.
             first_obs = next(iter(frame_observations_by_camera.values()))
-            point_names = list(first_obs.to_tracked_points().keys())
+            point_names: tuple[str, ...] = first_obs.points.names
 
             result: dict[str, NDArray[np.float64]] = {}
             for i, name in enumerate(point_names):
-                if i < points_3d.shape[0]:
+                if i < points_3d.shape[0] and not np.isnan(points_3d[i]).any():
                     result[name] = points_3d[i]
 
             return result

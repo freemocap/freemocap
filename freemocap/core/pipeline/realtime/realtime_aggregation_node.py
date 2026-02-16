@@ -57,30 +57,31 @@ from freemocap.pubsub.pubsub_topics import (
 logger = logging.getLogger(__name__)
 
 
-def _merge_triangulated_points(
+def _merge_triangulated_arrays(
     *,
     triangulated: dict[str, np.ndarray] | None,
-    into: dict[str, Point3d],
+    into: dict[str, np.ndarray],
 ) -> None:
-    """Merge triangulated 3D points into the output dict, skipping NaN entries."""
+    """Merge triangulated 3D point arrays into the output dict, skipping NaN entries."""
     if triangulated is None:
         return
     for point_name, coords in triangulated.items():
-        if isinstance(coords, np.ndarray):
-            if np.any(np.isnan(coords)):
-                continue
-            into[point_name] = Point3d(
-                x=float(coords[0]),
-                y=float(coords[1]),
-                z=float(coords[2]),
-            )
-        elif isinstance(coords, Point3d):
-            into[point_name] = coords
-        else:
+        if not isinstance(coords, np.ndarray):
             raise TypeError(
                 f"Unexpected type for triangulated point '{point_name}': "
-                f"{type(coords).__name__}"
+                f"{type(coords).__name__} (expected np.ndarray)"
             )
+        if np.any(np.isnan(coords)):
+            continue
+        into[point_name] = coords
+
+
+def _arrays_to_point3d(arrays: dict[str, np.ndarray]) -> dict[str, Point3d]:
+    """Convert dict of {name: ndarray(3,)} to dict of {name: Point3d}. Done once at the end."""
+    return {
+        name: Point3d(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
+        for name, arr in arrays.items()
+    }
 
 
 def _create_skeleton_filter(
@@ -97,61 +98,44 @@ def _create_skeleton_filter(
     )
 
 
-def _filter_skeleton_points(
+def _filter_skeleton_arrays(
     *,
-    tracked_points3d: dict[str, Point3d],
+    point_arrays: dict[str, np.ndarray],
     skeleton_filter: RealtimeSkeletonFilter,
     t: float,
-) -> dict[str, Point3d]:
+) -> dict[str, np.ndarray]:
     """
-    Run the skeleton filter on triangulated points, returning filtered results.
+    Run the skeleton filter on triangulated point arrays, returning filtered results.
 
-    Only skeleton keypoints are filtered+constrained. Non-skeleton points
-    (e.g. charuco board corners) are passed through unchanged.
-
-    The filter may return predicted positions for keypoints that were not in this
-    frame's tracked_points3d (extrapolated from previous frames). These
-    predicted keypoints are included in the output to prevent blinking.
+    Operates entirely on dict[str, ndarray] — no Point3d conversion.
     """
     skeleton_keypoint_names = skeleton_filter.skeleton.keypoint_names
 
-    # Extract skeleton keypoints as numpy arrays
-    skeleton_positions: dict[str, np.ndarray] = {}
-    for name, point in tracked_points3d.items():
-        if name in skeleton_keypoint_names:
-            skeleton_positions[name] = np.array([point.x, point.y, point.z], dtype=np.float64)
+    skeleton_positions: dict[str, np.ndarray] = {
+        name: arr for name, arr in point_arrays.items()
+        if name in skeleton_keypoint_names
+    }
 
     if not skeleton_positions:
-        return tracked_points3d
+        return point_arrays
 
-    # Run the filter — returns FilterResult with positions (including predicted) and predicted_names
     filter_result: FilterResult = skeleton_filter.process_frame(
         t=t,
         positions=skeleton_positions,
     )
 
-    # Build output: filtered skeleton points + predicted skeleton points + unmodified non-skeleton points
-    result: dict[str, Point3d] = {}
-    for name, point in tracked_points3d.items():
+    # Build output: filtered skeleton + unmodified non-skeleton points
+    result: dict[str, np.ndarray] = {}
+    for name, arr in point_arrays.items():
         if name in filter_result.positions:
-            coords = filter_result.positions[name]
-            result[name] = Point3d(
-                x=float(coords[0]),
-                y=float(coords[1]),
-                z=float(coords[2]),
-            )
+            result[name] = filter_result.positions[name]
         else:
-            result[name] = point
+            result[name] = arr
 
-    # Add predicted keypoints that weren't in this frame's tracked_points3d
+    # Add predicted keypoints that weren't in this frame
     for name in filter_result.predicted_names:
         if name not in result and name in filter_result.positions:
-            coords = filter_result.positions[name]
-            result[name] = Point3d(
-                x=float(coords[0]),
-                y=float(coords[1]),
-                z=float(coords[2]),
-            )
+            result[name] = filter_result.positions[name]
 
     return result
 
@@ -339,9 +323,12 @@ class RealtimeAggregationNode(BaseNode):
 
                 last_received_frame = latest_requested_frame
 
-                # ---- Triangulate mediapipe and charuco observations if calibration is valid ----
-                tracked_points3d: dict[str, Point3d] = {}
+                # ---- Triangulate and process if calibration is valid ----
+                # All processing stays in dict[str, ndarray] until final
+                # conversion to Point3d for the output message.
+                point_arrays: dict[str, np.ndarray] = {}
                 rigid_body_poses: dict[str, RigidBodyPose] = {}
+
                 if calibration.is_valid:
                     # Triangulate mediapipe observations
                     mediapipe_observations_by_camera = {
@@ -351,13 +338,13 @@ class RealtimeAggregationNode(BaseNode):
                         and output.mediapipe_observation is not None
                     }
                     if mediapipe_observations_by_camera:
-                        _merge_triangulated_points(
+                        _merge_triangulated_arrays(
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=mediapipe_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                             ),
-                            into=tracked_points3d,
+                            into=point_arrays,
                         )
 
                     # Triangulate charuco observations
@@ -368,55 +355,41 @@ class RealtimeAggregationNode(BaseNode):
                         and output.charuco_observation is not None
                     }
                     if charuco_observations_by_camera:
-                        _merge_triangulated_points(
+                        _merge_triangulated_arrays(
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                             ),
-                            into=tracked_points3d,
+                            into=point_arrays,
                         )
 
-                    # ---- Velocity gate: reject teleportation spikes ----
-                    if tracked_points3d:
-                        raw_arrays: dict[str, np.ndarray] = {
-                            name: np.array([pt.x, pt.y, pt.z], dtype=np.float64)
-                            for name, pt in tracked_points3d.items()
-                        }
+                    # Velocity gate: reject teleportation spikes
+                    if point_arrays:
                         gate_result: GateResult = point_gate.gate(
                             t=time.monotonic(),
-                            points=raw_arrays,
+                            points=point_arrays,
                         )
-                        # Rebuild tracked_points3d from gated positions
-                        # (rejected points get their last-accepted position held)
-                        tracked_points3d = {
-                            name: Point3d(
-                                x=float(arr[0]),
-                                y=float(arr[1]),
-                                z=float(arr[2]),
-                            )
-                            for name, arr in gate_result.positions.items()
-                        }
+                        point_arrays = dict(gate_result.positions)
 
-                    # ---- Filter + constrain skeleton keypoints ----
-                    if tracked_points3d:
-                        tracked_points3d = _filter_skeleton_points(
-                            tracked_points3d=tracked_points3d,
+                    # Filter + constrain skeleton keypoints
+                    if point_arrays:
+                        point_arrays = _filter_skeleton_arrays(
+                            point_arrays=point_arrays,
                             skeleton_filter=skeleton_filter,
                             t=time.monotonic(),
                         )
 
-                    # ---- Estimate rigid body segment poses ----
-                    if tracked_points3d and skeleton_filter.current_bone_lengths:
-                        point_arrays: dict[str, np.ndarray] = {
-                            name: np.array([pt.x, pt.y, pt.z], dtype=np.float64)
-                            for name, pt in tracked_points3d.items()
-                        }
+                    # Estimate rigid body segment poses
+                    if point_arrays and skeleton_filter.current_bone_lengths:
                         rigid_body_poses = estimate_rigid_bodies(
                             positions=point_arrays,
                             skeleton=skeleton_filter.skeleton,
                             bone_lengths=skeleton_filter.current_bone_lengths,
                         )
+
+                # Convert to Point3d once at the end for the output message
+                tracked_points3d: dict[str, Point3d] = _arrays_to_point3d(point_arrays)
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

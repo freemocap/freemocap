@@ -18,8 +18,18 @@ async def main() -> None:
     from skellycam.utilities.kill_process_on_port import kill_process_on_port
     from skellycam.utilities.wait_functions import await_1s
 
-    from freemocap.api.server_constants import HOSTNAME, PORT
+    from freemocap.api.server_constants import (
+        HOSTNAME,
+        find_available_port,
+        format_port_sentinel,
+    )
     from freemocap.app.app import create_fastapi_app
+
+    port = find_available_port()
+
+    # Print the port sentinel to stdout so the Electron main process can discover it.
+    # flush=True ensures it arrives immediately even when stdout is buffered.
+    print(format_port_sentinel(port=port), flush=True)
 
     global_kill_flag = multiprocessing.Value("b", False)
     process_registry = ProcessRegistry(
@@ -41,27 +51,28 @@ async def main() -> None:
             server.should_exit = True
 
     for sigint, signal_name in signum_to_signal_name.items():
-        logger.trace(f"Registering shutdown signal {sigint}({signum_to_signal_name[sigint]})")
+        logger.trace(f"Registering shutdown signal {sigint}: ({signum_to_signal_name[sigint]})")
         signal.signal(sigint, handle_signal)
 
     try:
-        kill_process_on_port(port=PORT)
+        kill_process_on_port(port=port)
 
         app = create_fastapi_app(
             global_kill_flag=global_kill_flag,
             process_registry=process_registry,
+            port=port,
         )
 
         config = uvicorn.Config(
             app=app,
             host=HOSTNAME,
-            port=PORT,
+            port=port,
             log_level="warning",
             reload=False,
         )
         server = uvicorn.Server(config)
 
-        logger.info(f"Starting server on {HOSTNAME}:{PORT}")
+        logger.info(f"Starting server on {HOSTNAME}:{port}")
         await server.serve()
 
     except KeyboardInterrupt:

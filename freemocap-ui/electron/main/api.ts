@@ -92,6 +92,9 @@ export const api = t.router({
 
         getProcessInfo: t.procedure
             .query(() => PythonServer.getProcessInfo()),
+
+        getPort: t.procedure
+            .query(() => PythonServer.getPort()),
     }),
 
     // System Scanner

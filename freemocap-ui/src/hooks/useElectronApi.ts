@@ -1,16 +1,17 @@
 // src/hooks/useElectronAPI.ts
 import {useEffect, useMemo, useState} from 'react';
 import {electronIpcClient, isElectron} from "@/services";
+import {serverUrls} from "@/hooks/server-urls";
 
 interface UseElectronAPIReturn {
     isElectron: boolean;
     isLoading: boolean;
     api: typeof electronIpcClient | null;
-    // Helper methods for common operations
     pythonServer: {
-        start: (exePath?: string | null) => Promise<void>;
+        start: (exePath?: string | null) => Promise<number>;
         stop: () => Promise<void>;
         isRunning: () => Promise<boolean>;
+        getPort: () => Promise<number>;
         getStatus: () => Promise<{
             running: boolean;
             path: string | null;
@@ -30,56 +31,45 @@ export function useElectronAPI(): UseElectronAPIReturn {
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        // Check if we're in Electron environment
         const electronAvailable = isElectron();
         setIsElectronEnv(electronAvailable);
         setIsLoading(false);
 
-        // Log the environment for debugging
         console.log('Electron environment detected:', electronAvailable);
     }, []);
 
-    // Create memoized helper objects
     const pythonServer = useMemo(() => {
         if (!isElectronEnv) return null;
 
         return {
-            start: async (exePath: string | null = null) => {
-                try {
-                    await electronIpcClient.pythonServer.start.mutate({ exePath });
-                } catch (error) {
-                    console.error('Failed to start Python server:', error);
-                    throw error;
-                }
+            /**
+             * Start the Python server. Returns the port the server bound to.
+             * Also updates the global serverUrls singleton so all HTTP/WS
+             * connections automatically use the correct port.
+             */
+            start: async (exePath: string | null = null): Promise<number> => {
+                const port: number = await electronIpcClient.pythonServer.start.mutate({ exePath });
+                serverUrls.setPort(port);
+                return port;
             },
             stop: async () => {
-                try {
-                    await electronIpcClient.pythonServer.stop.mutate();
-                } catch (error) {
-                    console.error('Failed to stop Python server:', error);
-                    throw error;
-                }
+                await electronIpcClient.pythonServer.stop.mutate();
             },
             isRunning: async () => {
-                try {
-                    return await electronIpcClient.pythonServer.isRunning.query();
-                } catch (error) {
-                    console.error('Failed to check Python server status:', error);
-                    return false;
-                }
+                return await electronIpcClient.pythonServer.isRunning.query();
+            },
+            getPort: async (): Promise<number> => {
+                const port: number = await electronIpcClient.pythonServer.getPort.query();
+                serverUrls.setPort(port);
+                return port;
             },
             getStatus: async () => {
-                try {
-                    const [running, path, processInfo] = await Promise.all([
-                        electronIpcClient.pythonServer.isRunning.query(),
-                        electronIpcClient.pythonServer.getExecutablePath.query(),
-                        electronIpcClient.pythonServer.getProcessInfo.query(),
-                    ]);
-                    return { running, path, processInfo };
-                } catch (error) {
-                    console.error('Failed to get Python server status:', error);
-                    return { running: false, path: null, processInfo: null };
-                }
+                const [running, path, processInfo] = await Promise.all([
+                    electronIpcClient.pythonServer.isRunning.query(),
+                    electronIpcClient.pythonServer.getExecutablePath.query(),
+                    electronIpcClient.pythonServer.getProcessInfo.query(),
+                ]);
+                return { running, path, processInfo };
             },
         };
     }, [isElectronEnv]);
@@ -90,7 +80,7 @@ export function useElectronAPI(): UseElectronAPIReturn {
         return {
             openSelectDirectoryDialog: async () => {
                 try {
-                    return await electronIpcClient.fileSystem.openSelectDirectoryDialog.mutate();
+                    return await electronIpcClient.fileSystem.selectDirectory.mutate();
                 } catch (error) {
                     console.error('Failed to select directory:', error);
                     return null;
@@ -132,5 +122,4 @@ export function useElectronAPI(): UseElectronAPIReturn {
     };
 }
 
-// Export a singleton instance for use outside of React components
 export const electronAPI = isElectron() ? electronIpcClient : null;

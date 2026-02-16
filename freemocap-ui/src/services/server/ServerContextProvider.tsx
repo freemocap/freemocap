@@ -57,6 +57,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
+    // Tracks the port so the WebSocket connection is recreated when it changes.
+    // Updated via serverUrls.onPortChange() subscription.
+    const [serverPort, setServerPort] = useState<number>(serverUrls.getPort());
 
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
@@ -70,7 +73,24 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const latestRigidBodies = useRef<Map<string, RigidBodyPose>>(new Map());
     const rigidBodiesSubscribersRef = useRef<Set<RigidBodiesSubscriber>>(new Set());
 
+    // Subscribe to port changes from the serverUrls singleton.
+    // When useElectronAPI().pythonServer.start() resolves, it calls serverUrls.setPort(),
+    // which triggers this callback and causes the WebSocket to reconnect on the correct port.
     useEffect(() => {
+        return serverUrls.onPortChange((port: number) => {
+            console.log(`[ServerContext] Port changed to ${port}, will recreate WebSocket connection`);
+            setServerPort(port);
+        });
+    }, []);
+
+    // Create / recreate the WebSocket connection whenever the port changes.
+    useEffect(() => {
+        if (wsConnectionRef.current) {
+            wsConnectionRef.current.disconnect();
+        }
+        canvasManagerRef.current?.terminateAllWorkers();
+        frameProcessorRef.current?.reset();
+
         wsConnectionRef.current = new WebSocketConnection({
             url: serverUrls.getWebSocketUrl(),
             reconnectDelay: 1000,
@@ -100,7 +120,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             latestRigidBodies.current.clear();
             rigidBodiesSubscribersRef.current.clear();
         };
-    }, []);
+    }, [serverPort]);
 
     useEffect(() => {
         const ws = wsConnectionRef.current;
@@ -112,8 +132,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             setIsConnected(connected);
             setConnectionState(newState);
 
-            // Only run cleanup when we've actually lost a connection,
-            // not on every non-connected state during discovery
             if (previousState === ConnectionState.CONNECTED && !connected) {
                 console.log('[WS] Lost connection — clearing state');
                 canvasManagerRef.current?.terminateAllWorkers();
@@ -156,8 +174,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
                     // Acknowledge receipt immediately so the backend can prepare
                     // the next frame without waiting for rendering to complete.
-                    // The offscreen workers already drop stale frames if they
-                    // arrive faster than the display can render.
                     if (frameNumbers.size > 0) {
                         const maxFrameNumber = Math.max(...Array.from(frameNumbers));
                         ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
@@ -180,7 +196,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             compositeBitmap = frameData.bitmap;
                         }
 
-                        if (frameSubscribersRef.current.size > 0) {
+                        {
                             const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
                             if (subscribers && subscribers.size > 0) {
                                 for (const callback of subscribers) {
@@ -202,9 +218,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             } else if (typeof event.data === 'string') {
                 const text = event.data;
 
-                // Handle plain-text protocol messages before attempting JSON parse
                 if (text === 'pong') {
-                    // Expected heartbeat reply — nothing to do
                     return;
                 }
                 if (text.startsWith('ping')) {
@@ -212,57 +226,39 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     return;
                 }
 
-                // Everything else should be JSON
                 const jsonData = JSON.parse(text);
 
-                // Settings state from the backend — dispatch to Redux
                 if (isSettingsStateMessage(jsonData)) {
                     console.log(`[WS] Received settings/state v${jsonData.version}`, jsonData.settings);
                     dispatch(serverSettingsUpdated(jsonData));
-                }
-                // Charuco overlay observations
-                else if (isCharucoOverlayDataMessage(jsonData)) {
+                } else if (isCharucoOverlayDataMessage(jsonData)) {
                     for (const [cameraId, observation] of Object.entries(jsonData)) {
                         latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
                     }
-                }
-                // Mediapipe overlay observations
-                else if (isMediapipeOverlayDataMessage(jsonData)) {
+                } else if (isMediapipeOverlayDataMessage(jsonData)) {
                     for (const [cameraId, observation] of Object.entries(jsonData)) {
                         latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
                     }
-                }
-                // Model info updates for overlay rendering
-                else if ('model_info' in jsonData && jsonData.model_info) {
+                } else if ('model_info' in jsonData && jsonData.model_info) {
                     handleModelInfoUpdate(jsonData.model_info);
-                }
-                // 3D tracked points
-                else if ('tracked_points3d' in jsonData) {
+                } else if ('tracked_points3d' in jsonData) {
                     latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
                     for (const subscriber of trackedPointsSubscribersRef.current) {
                         subscriber(latestTrackedPoints.current);
                     }
-                }
-                // Rigid body segment poses
-                else if ('rigid_body_poses' in jsonData) {
+                } else if ('rigid_body_poses' in jsonData) {
                     latestRigidBodies.current = new Map(
                         Object.entries(jsonData.rigid_body_poses as Record<string, RigidBodyPose>)
                     );
                     for (const subscriber of rigidBodiesSubscribersRef.current) {
                         subscriber(latestRigidBodies.current);
                     }
-                }
-                // Backend log records
-                else if (isLogRecord(jsonData)) {
+                } else if (isLogRecord(jsonData)) {
                     dispatch(logAdded(jsonData));
-                }
-                // Framerate telemetry
-                else if (isFramerateUpdate(jsonData)) {
+                } else if (isFramerateUpdate(jsonData)) {
                     dispatch(backendFramerateUpdated(jsonData.backend_framerate));
                     dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
-                }
-                // Unknown JSON message
-                else {
+                } else {
                     console.warn('[WS] Unhandled JSON message:', Object.keys(jsonData));
                 }
             }
@@ -279,7 +275,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             ws.off('message', handleMessage);
             ws.disconnect();
         };
-    }, [dispatch]);
+    }, [dispatch, serverPort]);
 
     const connect = useCallback((): void => {
         wsConnectionRef.current?.connect();

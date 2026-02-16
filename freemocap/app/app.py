@@ -22,7 +22,7 @@ from freemocap.api.http.app.state import state_router
 from freemocap.api.middleware.add_middleware import add_middleware
 from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
-from freemocap.api.server_constants import APP_URL
+from freemocap.api.server_constants import PROTOCOL, HOSTNAME
 from freemocap.api.udp.vmc_relay import vmc_relay_task
 from freemocap.api.websocket.websocket_connect import websocket_router
 from freemocap.app.freemocap_application import create_freemocap_app, get_freemocap_app
@@ -49,29 +49,17 @@ async def app_lifespan(
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
 
+    app_url = f"{PROTOCOL}://{HOSTNAME}:{app.state.port}"
 
     logger.success(
         f"FreeMoCap API {freemocap.__version__} started successfully 💀✨\n"
-        f"Swagger API docs: {APP_URL}/docs"
+        f"Swagger API docs: {app_url}/docs"
     )
-
-    # # Start the VMC relay as a background task (runs independently of browser connections)
-    # freemocap_app = get_freemocap_app()
-    # vmc_task = asyncio.create_task(
-    #     vmc_relay_task(app=freemocap_app),
-    #     name="VMCRelayTask",
-    # )
 
     yield
 
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
-
-    # vmc_task.cancel()
-    # try:
-    #     await vmc_task
-    # except asyncio.CancelledError:
-    #     pass
 
     app.state.global_kill_flag.value = True
 
@@ -82,6 +70,7 @@ def create_fastapi_app(
         *,
         global_kill_flag: multiprocessing.Value,
         process_registry: ProcessRegistry,
+        port: int,
 ) -> FastAPI:
     """
     Create and configure the FastAPI application.
@@ -90,6 +79,7 @@ def create_fastapi_app(
 
     app.state.global_kill_flag = global_kill_flag
     app.state.process_registry = process_registry
+    app.state.port = port
     create_freemocap_app(fastapi_app=app)
     cors(app)
     _register_routes(app)

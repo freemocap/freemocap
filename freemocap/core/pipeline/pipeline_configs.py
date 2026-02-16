@@ -10,12 +10,10 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_detector_config import (
-    MediapipeDetectorConfig,
-    MediapipeModelComplexity,
-    MEDIAPIPE_TRACKER_REALTIME_PRESET,
-    MEDIAPIPE_TRACKER_POSTHOC_PRESET,
-)
+from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
+from skellytracker.trackers.mediapipe_tracker.body.mediapipe_pose_config import MediapipePoseConfig
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
+
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
@@ -39,7 +37,7 @@ def create_detector_from_spec(spec: DetectorSpec):
             from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
             return CharucoDetector.create(config=spec)
         case MediapipeDetectorConfig():
-            from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+            from skellytracker.trackers.mediapipe_tracker import MediapipeDetector
             return MediapipeDetector.create(config=spec)
         case _:
             raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")
@@ -51,13 +49,13 @@ def create_annotator_from_spec(spec: DetectorSpec):
     Called inside child processes for drawing detection results onto frames.
     """
     from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
-    from skellytracker.trackers.mediapipe_tracker.mediapipe_annotator import MediapipeImageAnnotator, MediapipeAnnotatorConfig
+    from skellytracker.trackers.mediapipe_tracker import MediapipeAnnotator, MediapipeAnnotatorConfig
 
     match spec:
         case CharucoDetectorConfig():
             return CharucoImageAnnotator.create(config=CharucoAnnotatorConfig())
         case MediapipeDetectorConfig():
-            return MediapipeImageAnnotator.create(config=MediapipeAnnotatorConfig())
+            return MediapipeAnnotator.create(config=MediapipeAnnotatorConfig())
         case _:
             raise TypeError(f"Unknown detector spec type for annotator: {type(spec).__name__}")
 
@@ -125,11 +123,15 @@ class MocapPipelineConfig(BaseModel):
 
     @classmethod
     def default_realtime(cls) -> "MocapPipelineConfig":
-        return cls(detector=MEDIAPIPE_TRACKER_REALTIME_PRESET)
+        return cls(detector=MediapipeDetectorConfig(
+            pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.FULL)
+        ))
 
     @classmethod
     def default_posthoc(cls) -> "MocapPipelineConfig":
-        return cls(detector=MEDIAPIPE_TRACKER_POSTHOC_PRESET)
+        return cls(detector=MediapipeDetectorConfig(
+            pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.HEAVY)
+        ))
 
 
 

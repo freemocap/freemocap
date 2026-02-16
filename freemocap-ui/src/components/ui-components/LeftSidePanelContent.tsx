@@ -221,14 +221,14 @@ export const LeftSidePanelContent = () => {
                             <VideocamIcon sx={{ fontSize: 18 }} />
                         </IconButton>
 
-                        <Tooltip title="Setup & System Info">
+                        <Tooltip title="Settings">
                             <IconButton
                                 size="small"
-                                onClick={() => navigate('/setup')}
+                                onClick={() => navigate('/settings')}
                                 sx={{
                                     padding: '4px',
                                     color:
-                                        location.pathname === '/setup'
+                                        location.pathname === '/settings'
                                             ? theme.palette.success.main
                                             : theme.palette.text.secondary,
                                 }}

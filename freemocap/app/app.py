@@ -67,11 +67,11 @@ async def app_lifespan(
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
 
-    vmc_task.cancel()
-    try:
-        await vmc_task
-    except asyncio.CancelledError:
-        pass
+    # vmc_task.cancel()
+    # try:
+    #     await vmc_task
+    # except asyncio.CancelledError:
+    #     pass
 
     app.state.global_kill_flag.value = True
 

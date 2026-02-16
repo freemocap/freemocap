@@ -92,7 +92,7 @@ class RealtimeCameraNode(BaseNode):
     ) -> None:
         import cv2
         from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-        from skellytracker.trackers.mediapipe_tracker.mediapipe_detector import MediapipeDetector
+        from skellytracker.trackers.mediapipe_tracker import MediapipeDetector
 
         logger.debug(f"RealtimeCameraNode [{camera_id}] initializing")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(
@@ -109,7 +109,7 @@ class RealtimeCameraNode(BaseNode):
             )
         if config.mocap_detection_enabled:
             mediapipe_detector = MediapipeDetector.create(
-                config=config.mocap_config.detector,
+                config=config.mocap_config.default_realtime  ,
             )
 
         frame_rec_array: np.recarray | None = None
@@ -141,16 +141,17 @@ class RealtimeCameraNode(BaseNode):
 
                     config = new_config
 
-                # ---- Process frames ----
-                if process_frame_number_sub.empty():
-                    continue
-
+                # ---- Check shared memory validity every iteration ----
                 if not camera_shm.valid:
                     logger.debug(
                         f"RealtimeCameraNode [{camera_id}] "
                         f"shared memory invalidated, exiting"
                     )
                     break
+
+                # ---- Process frames ----
+                if process_frame_number_sub.empty():
+                    continue
 
                 frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get()
                 frame_rec_array = camera_shm.get_data_by_index(

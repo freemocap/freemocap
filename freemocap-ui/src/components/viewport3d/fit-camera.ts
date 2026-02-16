@@ -1,6 +1,6 @@
 import { Box3, Vector3 } from "three";
 import type CameraControlsImpl from "camera-controls";
-import { Z_OFFSET } from "@/components/skeleton-colors.ts/skeleton-config";
+import { Z_OFFSET } from "@/components/viewport3d/skeleton-config";
 import {Point3d} from "@/services";
 
 const PADDING = 0.5;

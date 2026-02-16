@@ -13,7 +13,7 @@ from pathlib import Path
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
-from skellytracker.trackers.mediapipe_tracker.mediapipe_observation import MediapipeObservation
+from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \

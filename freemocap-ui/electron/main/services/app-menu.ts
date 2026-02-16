@@ -17,8 +17,8 @@ export function buildAppMenu(mainWindow: BrowserWindow): void {
                 { role: 'about' as const },
                 { type: 'separator' as const },
                 {
-                    label: 'Setup Wizard…',
-                    click: () => sendNavigate(mainWindow, '/setup'),
+                    label: 'Settings…',
+                    click: () => sendNavigate(mainWindow, '/settings'),
                 },
                 { type: 'separator' as const },
                 { role: 'services' as const },
@@ -74,9 +74,9 @@ export function buildAppMenu(mainWindow: BrowserWindow): void {
             label: 'Tools',
             submenu: [
                 {
-                    label: 'Setup Wizard…',
+                    label: 'Settings…',
                     accelerator: isMac ? 'Cmd+Shift+S' : 'Ctrl+Shift+S',
-                    click: () => sendNavigate(mainWindow, '/setup'),
+                    click: () => sendNavigate(mainWindow, '/settings'),
                 },
                 { type: 'separator' as const },
                 {
@@ -125,8 +125,8 @@ export function buildAppMenu(mainWindow: BrowserWindow): void {
                 },
                 { type: 'separator' as const },
                 {
-                    label: 'Setup Wizard…',
-                    click: () => sendNavigate(mainWindow, '/setup'),
+                    label: 'Settings…',
+                    click: () => sendNavigate(mainWindow, '/settings'),
                 },
             ],
         },

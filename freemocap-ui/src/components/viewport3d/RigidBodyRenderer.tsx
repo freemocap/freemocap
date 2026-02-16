@@ -9,7 +9,7 @@ import {
 import { useFrame } from "@react-three/fiber";
 import { useServer } from "@/services";
 import { RigidBodyPose } from "@/components/viewport3d/viewport3d-types";
-import { Z_OFFSET } from "@/components/skeleton-colors.ts/skeleton-config";
+import { Z_OFFSET } from "@/components/viewport3d/skeleton-config";
 import { SKELETON_COLORS } from "@/components/viewport3d/skeleton-colors";
 
 /** Maximum bone segments the instanced mesh can hold. */

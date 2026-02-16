@@ -16,10 +16,10 @@ export const FirstLaunchRedirect: React.FC = () => {
     useEffect(() => {
         if (loading) return;
         if (!required) return;
-        // Don't redirect if we're already on the setup page
-        if (location.pathname === '/setup') return;
+        // Don't redirect if we're already on the settings page
+        if (location.pathname === '/settings') return;
 
-        navigate('/setup', { replace: true });
+        navigate('/settings', { replace: true });
     }, [loading, required, location.pathname, navigate]);
 
     return null;

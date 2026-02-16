@@ -45,17 +45,33 @@ class PosthocPipelineManager:
     # ------------------------------------------------------------------
 
     def _evict_dead(self) -> None:
-        """Remove pipelines whose processes have all exited. Caller must hold self.lock."""
+        """Remove pipelines whose processes have all exited. Caller must hold self.lock.
+
+        Calls shutdown() on each dead pipeline to release PubSub resources
+        (relay thread, multiprocessing.Queue instances, OS pipes).
+        """
         dead_ids: list[PipelineIdString] = [
             pid for pid, pipeline in self.pipelines.items()
             if pipeline.started and not pipeline.alive
         ]
         for pid in dead_ids:
             pipeline = self.pipelines.pop(pid)
+            pipeline.shutdown()
             logger.debug(
                 f"Evicted completed PosthocPipeline [{pid}] "
                 f"for '{pipeline.recording_info.recording_name}'"
             )
+
+    def evict_completed(self) -> None:
+        """Clean up any posthoc pipelines that have finished running.
+
+        Safe to call frequently — skips lock acquisition when there are no
+        pipelines to check.
+        """
+        if not self.pipelines:
+            return
+        with self.lock:
+            self._evict_dead()
 
     # ------------------------------------------------------------------
     # Pipeline creation
@@ -120,10 +136,14 @@ class PosthocPipelineManager:
     # ------------------------------------------------------------------
 
     def shutdown(self) -> None:
-        """Force-shutdown all running posthoc pipelines."""
+        """Force-shutdown all posthoc pipelines (running or completed).
+
+        Calls shutdown() on every pipeline to release PubSub resources,
+        not just alive ones — completed pipelines still hold relay threads
+        and multiprocessing.Queue instances until explicitly closed.
+        """
         with self.lock:
             for pipeline in self.pipelines.values():
-                if pipeline.alive:
-                    pipeline.shutdown()
+                pipeline.shutdown()
             self.pipelines.clear()
         logger.info("PosthocPipelineManager: all pipelines shut down")

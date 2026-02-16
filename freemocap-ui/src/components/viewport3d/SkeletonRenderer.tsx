@@ -20,7 +20,7 @@ import {
     SEGMENT_DEFINITIONS,
     SEGMENT_COLORS,
     getPointStyle,
-} from "@/components/skeleton-colors.ts/skeleton-config";
+} from "@/components/viewport3d/skeleton-config";
 import { resolvePoint } from "@/components/viewport3d/virtual-points";
 import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 

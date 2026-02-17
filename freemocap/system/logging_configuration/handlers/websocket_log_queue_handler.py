@@ -65,7 +65,7 @@ class WebSocketQueueHandler(logging.Handler):
         self.setFormatter(CustomFormatter(LOG_FORMAT_STRING))
 
     def emit(self, record: logging.LogRecord) -> None:
-        if record.levelno <= MIN_LOG_LEVEL_FOR_WEBSOCKET:
+        if record.levelno < MIN_LOG_LEVEL_FOR_WEBSOCKET:
             return
         try:
             # Format first — populates record.message and record.asctime
@@ -75,8 +75,9 @@ class WebSocketQueueHandler(logging.Handler):
             exc_info_str: str | None = None
             if record.exc_info:
                 try:
-                    exc_info_str = traceback_module.format_exception(*record.exc_info)
-                    exc_info_str = "".join(exc_info_str)
+                    exc_info_str = "".join(
+                        traceback_module.format_exception(*record.exc_info)
+                    )
                 except Exception:
                     exc_info_str = f"{record.exc_info[0].__name__}: {record.exc_info[1]}"
 

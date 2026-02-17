@@ -124,7 +124,7 @@ class MocapPipelineConfig(BaseModel):
     @classmethod
     def default_realtime(cls) -> "MocapPipelineConfig":
         return cls(detector=MediapipeDetectorConfig(
-            pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.FULL)
+            pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.LITE)
         ))
 
     @classmethod

@@ -277,7 +277,7 @@ const WelcomePage: React.FC = () => {
                         <br />
                         <br />
                         <MuiLink
-                            href="https://freemocap.github.io/documentation/validation/"
+                            href="https://aaroncherian.github.io/freemocap_validation/"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -286,7 +286,7 @@ const WelcomePage: React.FC = () => {
                         </MuiLink>
                         <br />
                         <MuiLink
-                            href="https://freemocap.github.io/documentation/community/fda_pathway/"
+                            href="https://github.com/freemocap/freemocap_foundation/issues/32"
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}

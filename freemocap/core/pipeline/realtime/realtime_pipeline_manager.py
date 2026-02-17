@@ -16,7 +16,7 @@ import multiprocessing
 from dataclasses import dataclass, field
 
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
@@ -37,7 +37,7 @@ class RealtimePipelineManager:
     an updated config).
     """
 
-    process_registry: ProcessRegistry
+    worker_registry: WorkerRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, RealtimePipeline] = field(default_factory=dict)
 
@@ -65,7 +65,7 @@ class RealtimePipelineManager:
             pipeline = RealtimePipeline.create(
                 pipeline_config=pipeline_config,
                 camera_group=camera_group,
-                process_registry=self.process_registry,
+                worker_registry=self.worker_registry,
             )
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline

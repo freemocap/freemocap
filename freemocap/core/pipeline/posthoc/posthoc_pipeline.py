@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.pipeline_configs import DetectorSpec
@@ -68,7 +68,7 @@ class PosthocPipeline:
         recording_info: RecordingInfo,
         detector_spec: DetectorSpec,
         task_fn: PosthocAggregationNodeTaskFn,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         global_kill_flag: multiprocessing.Value,
         save_annotated_video: bool = True,
     ) -> "PosthocPipeline":
@@ -80,7 +80,7 @@ class PosthocPipeline:
             detector_spec: Which detector to run on each video frame.
             task_fn: The processing function (with task_config pre-bound via
                      functools.partial) to call after all frames are collected.
-            process_registry: For creating managed processes.
+            worker_registry: For creating managed processes.
             global_kill_flag: Shared app-wide kill flag.
             save_annotated_video: Write annotated video output during detection.
                 If an annotated video already exists, new annotations are layered
@@ -96,7 +96,7 @@ class PosthocPipeline:
 
         ipc = PipelineIPC.create(
             global_kill_flag=global_kill_flag,
-            heartbeat_timestamp=process_registry.heartbeat_timestamp,
+            heartbeat_timestamp=worker_registry.heartbeat_timestamp,
             pipeline_id=pipeline_id,
         )
         pubsub = PubSubTopicManager.create(
@@ -109,7 +109,7 @@ class PosthocPipeline:
                 video_id=video_id,
                 video_path=video_helper.video_path,
                 detector_spec=detector_spec,
-                process_registry=process_registry,
+                worker_registry=worker_registry,
                 ipc=ipc,
                 pubsub=pubsub,
                 recording_path=recording_path,
@@ -121,7 +121,7 @@ class PosthocPipeline:
             video_metadata=video_group.video_metadata_by_id,
             pipeline_id=pipeline_id,
             recording_info=recording_info,
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             ipc=ipc,
             pubsub=pubsub,
         )

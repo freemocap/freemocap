@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
@@ -82,14 +82,14 @@ class RealtimePipeline:
         cls,
         *,
         camera_group: CameraGroup,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         pipeline_config: RealtimePipelineConfig,
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
 
         ipc = PipelineIPC.create(
             global_kill_flag=global_kill_flag,
-            heartbeat_timestamp=process_registry.heartbeat_timestamp,
+            heartbeat_timestamp=worker_registry.heartbeat_timestamp,
         )
         pubsub = PubSubTopicManager.create(
             global_kill_flag=global_kill_flag,
@@ -98,7 +98,7 @@ class RealtimePipeline:
         camera_nodes = {
             camera_id: RealtimeCameraNode.create(
                 camera_id=camera_id,
-                process_registry=process_registry,
+                worker_registry=worker_registry,
                 camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                 config=pipeline_config,
                 ipc=ipc,
@@ -109,7 +109,7 @@ class RealtimePipeline:
 
         aggregation_node = RealtimeAggregationNode.create(
             camera_group_id=camera_group.id,
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             camera_group_shm_dto=camera_group.shm.to_dto(),
             config=pipeline_config,
             ipc=ipc,
@@ -157,7 +157,7 @@ class RealtimePipeline:
         self.ipc.shutdown_pipeline()
 
         # Mark all workers as intentionally terminated BEFORE they die
-        # so the ProcessRegistry child monitor doesn't trigger a cascade kill
+        # so the WorkerRegistry child monitor doesn't trigger a cascade kill
         for node in self.camera_nodes.values():
             node.worker._intentionally_terminated = True
         self.aggregation_node.worker._intentionally_terminated = True

@@ -23,7 +23,7 @@ import time
 from dataclasses import dataclass
 
 import numpy as np
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
@@ -154,7 +154,7 @@ class RealtimeAggregationNode(BaseNode):
         *,
         config: RealtimePipelineConfig,
         camera_group_id: CameraGroupIdString,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         camera_group_shm_dto: CameraGroupSharedMemoryDTO,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
@@ -162,7 +162,7 @@ class RealtimeAggregationNode(BaseNode):
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"CameraGroup-{camera_group_id}-AggregationNode",
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
                 config=config,

@@ -24,7 +24,7 @@ from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
 )
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 
@@ -109,14 +109,14 @@ def run_posthoc_calibration(
 
     # Create the multiprocessing infrastructure the pipeline requires
     global_kill_flag: multiprocessing.Value = multiprocessing.Value("b", False)
-    process_registry = ProcessRegistry(
+    worker_registry = WorkerRegistry(
         global_kill_flag=global_kill_flag,
     )
-    process_registry.start_heartbeat()
+    worker_registry.start_heartbeat()
 
     pipeline_manager = PosthocPipelineManager(
         global_kill_flag=global_kill_flag,
-        process_registry=process_registry,
+        worker_registry=worker_registry,
     )
 
     # Launch the calibration pipeline (starts all worker processes)
@@ -134,12 +134,12 @@ def run_posthoc_calibration(
     except KeyboardInterrupt:
         logger.info("Interrupted — shutting down pipeline...")
         pipeline_manager.shutdown()
-        process_registry.shutdown_all()
+        worker_registry.shutdown_all()
         raise
 
     logger.info(f"Pipeline [{pipeline.id}] completed. Output saved to {recording_path}")
     pipeline_manager.shutdown()
-    process_registry.shutdown_all()
+    worker_registry.shutdown_all()
 
 
 if __name__ == "__main__":

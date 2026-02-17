@@ -230,7 +230,6 @@ class WebsocketServer:
                         continue
                     if log_entry.get("levelno", 0) < ws_log_level:
                         continue
-                    print(f"sending log entry: {log_entry}")
                     await self.websocket.send_json(log_entry)
                 else:
                     await await_10ms()

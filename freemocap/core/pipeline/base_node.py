@@ -3,11 +3,11 @@ BaseNode: abstract base for all pipeline nodes (realtime and posthoc).
 
 Encapsulates the common lifecycle pattern shared by every node:
   - A `shutdown_self_flag` (per-node shutdown signal)
-  - A `worker` (ManagedProcess wrapping the child process)
+  - A `worker` (ManagedWorker wrapping the child process)
   - `start()` / `shutdown()` / `is_alive` lifecycle methods
 
 Subclasses implement a `@classmethod create()` factory that calls
-`_create_worker()` to build the ManagedProcess, and a `@staticmethod _run()`
+`_create_worker()` to build the ManagedWorker, and a `@staticmethod _run()`
 that contains the child-side logic. The `_run()` method receives the
 `shutdown_self_flag` as a kwarg and should poll it alongside `ipc.should_continue`
 in its main loop.
@@ -24,8 +24,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Optional, ClassVar
 
-from skellycam.core.ipc.process_management.managed_process import ManagedProcess
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.managed_worker import ManagedWorker
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -42,13 +42,13 @@ class BaseNode:
     """
     Base class for all pipeline worker nodes.
 
-    Every node owns a ManagedProcess and a per-node shutdown flag.
+    Every node owns a ManagedWorker and a per-node shutdown flag.
     The common lifecycle (start / shutdown / is_alive) is implemented here
     so subclasses only need to define `create()` and `_run()`.
     """
 
     shutdown_self_flag: multiprocessing.Value = field(repr=False)
-    worker: ManagedProcess = field(repr=False)
+    worker: ManagedWorker = field(repr=False)
 
     @property
     def is_alive(self) -> bool:
@@ -71,7 +71,7 @@ class BaseNode:
         Signal the node to stop, then escalate through SIGTERM → SIGKILL.
 
         Sets the per-node shutdown flag first (so the child's main loop can
-        exit cleanly), then delegates to ManagedProcess.terminate_gracefully()
+        exit cleanly), then delegates to ManagedWorker.terminate_gracefully()
         for escalating force.
         """
         self.shutdown_self_flag.value = True
@@ -87,14 +87,14 @@ class BaseNode:
         *,
         target: Callable[..., None],
         name: str,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         log_queue: Optional[multiprocessing.Queue],
         kwargs: dict,
-    ) -> tuple[multiprocessing.Value, ManagedProcess]:
+    ) -> tuple[multiprocessing.Value, ManagedWorker]:
         """
         Convenience helper for subclass `create()` methods.
 
-        Creates a shutdown_self_flag + ManagedProcess pair with consistent
+        Creates a shutdown_self_flag + ManagedWorker pair with consistent
         setup. The shutdown_self_flag is automatically injected into kwargs
         so the child _run() receives it.
 
@@ -103,7 +103,7 @@ class BaseNode:
         """
         shutdown_self_flag: multiprocessing.Value = multiprocessing.Value('b', False)
         kwargs["shutdown_self_flag"] = shutdown_self_flag
-        worker = process_registry.create_process(
+        worker = worker_registry.create_worker(
             target=target,
             name=name,
             log_queue=log_queue,

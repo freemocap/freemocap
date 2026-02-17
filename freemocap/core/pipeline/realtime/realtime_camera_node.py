@@ -9,7 +9,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
@@ -46,7 +46,7 @@ class RealtimeCameraNode(BaseNode):
         *,
         camera_id: CameraIdString,
         camera_shm_dto: SharedMemoryRingBufferDTO,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         config: RealtimePipelineConfig,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
@@ -54,7 +54,7 @@ class RealtimeCameraNode(BaseNode):
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"RealtimeCameraNode-{camera_id}",
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
                 camera_id=camera_id,

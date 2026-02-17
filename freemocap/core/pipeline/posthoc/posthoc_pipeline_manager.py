@@ -13,7 +13,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass, field
 
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.calibration.calibration_task import run_calibration_task
@@ -36,7 +36,7 @@ class PosthocPipelineManager:
     """
 
     global_kill_flag: multiprocessing.Value
-    process_registry: ProcessRegistry
+    worker_registry: WorkerRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
 
@@ -91,7 +91,7 @@ class PosthocPipelineManager:
             recording_info=recording_info,
             detector_spec=calibration_config.detector_spec,
             task_fn=calibration_aggregation_task_fn,
-            process_registry=self.process_registry,
+            worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
         )
         pipeline.start()
@@ -118,7 +118,7 @@ class PosthocPipelineManager:
             recording_info=recording_info,
             detector_spec=mocap_config.detector,
             task_fn=task_fn,
-            process_registry=self.process_registry,
+            worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
         )
         pipeline.start()

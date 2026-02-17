@@ -22,7 +22,7 @@ import multiprocessing
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
@@ -54,14 +54,14 @@ class PosthocAggregationNode(BaseNode):
         video_metadata: dict[VideoIdString, VideoMetadata],
         pipeline_id: PipelineIdString,
         recording_info: RecordingInfo,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
     ) -> "PosthocAggregationNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
                 aggregation_task_fn=aggregation_task_fn,

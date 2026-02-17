@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera_group.camera_group import CameraGroupState
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
@@ -48,7 +48,7 @@ class AppState(BaseModel):
 class FreemocapApplication:
 
     global_kill_flag: multiprocessing.Value
-    process_registry: ProcessRegistry
+    worker_registry: WorkerRegistry
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
@@ -57,17 +57,17 @@ class FreemocapApplication:
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
         global_kill_flag = fastapi_app.state.global_kill_flag
-        process_registry = fastapi_app.state.process_registry
+        worker_registry = fastapi_app.state.worker_registry
 
         return cls(
             global_kill_flag=global_kill_flag,
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             realtime_pipeline_manager=RealtimePipelineManager(
-                process_registry=process_registry,
+                worker_registry=worker_registry,
             ),
             posthoc_pipeline_manager=PosthocPipelineManager(
                 global_kill_flag=global_kill_flag,
-                process_registry=process_registry,
+                worker_registry=worker_registry,
             ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
             settings_manager=SettingsManager(),

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import cv2
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 from freemocap.core.pipeline.base_node import BaseNode
 from freemocap.core.pipeline.pipeline_configs import DetectorSpec, create_detector_from_spec, create_annotator_from_spec
@@ -41,7 +41,7 @@ class VideoNode(BaseNode):
         video_id: VideoIdString,
         video_path: Path,
         detector_spec: DetectorSpec,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
         recording_path: Path,
@@ -50,7 +50,7 @@ class VideoNode(BaseNode):
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"VideoNode-{video_path.stem}",
-            process_registry=process_registry,
+            worker_registry=worker_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
                 video_id=video_id,

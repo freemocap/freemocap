@@ -28,7 +28,7 @@ from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
 )
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from scripts.compare_calibrations import CalibrationComparisonResult, compare_calibration_results
@@ -78,12 +78,12 @@ def _run_single_pipeline(
     )
 
     global_kill_flag = multiprocessing.Value("b", False)
-    process_registry = ProcessRegistry(global_kill_flag=global_kill_flag)
-    process_registry.start_heartbeat()
+    worker_registry = WorkerRegistry(global_kill_flag=global_kill_flag)
+    worker_registry.start_heartbeat()
 
     pipeline_manager = PosthocPipelineManager(
         global_kill_flag=global_kill_flag,
-        process_registry=process_registry,
+        worker_registry=worker_registry,
     )
 
     solver_name = calibration_config.solver_method.value
@@ -100,12 +100,12 @@ def _run_single_pipeline(
     except KeyboardInterrupt:
         logger.info("Interrupted — shutting down pipeline...")
         pipeline_manager.shutdown()
-        process_registry.shutdown_all()
+        worker_registry.shutdown_all()
         raise
 
     logger.info(f"Pipeline [{pipeline.id}] completed ({solver_name})")
     pipeline_manager.shutdown()
-    process_registry.shutdown_all()
+    worker_registry.shutdown_all()
 
 
 def run_both_and_compare(

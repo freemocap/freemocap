@@ -12,7 +12,7 @@ import skellycam
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import RedirectResponse
-from skellycam.core.ipc.process_management.process_registry import ProcessRegistry
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from starlette.responses import FileResponse
 
 import freemocap
@@ -69,7 +69,7 @@ async def app_lifespan(
 def create_fastapi_app(
         *,
         global_kill_flag: multiprocessing.Value,
-        process_registry: ProcessRegistry,
+        worker_registry: WorkerRegistry,
         port: int,
 ) -> FastAPI:
     """
@@ -78,7 +78,7 @@ def create_fastapi_app(
     app = FastAPI(lifespan=app_lifespan)
 
     app.state.global_kill_flag = global_kill_flag
-    app.state.process_registry = process_registry
+    app.state.worker_registry = worker_registry
     app.state.port = port
     create_freemocap_app(fastapi_app=app)
     cors(app)

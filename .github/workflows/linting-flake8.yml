@@ -15,7 +15,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up Python 3.x
-        uses: wntrblm/nox@2022.8.7
+        uses: wntrblm/nox@2026.02.09
         with:
           python-versions: "3.12"
       - name: Run noxfile

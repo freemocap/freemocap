@@ -51,73 +51,150 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 --
 ## QUICKSTART
 
-> [!NOTE] 
-> For  detailed installation instructions, see our [official documentation's Installation page](https://freemocap.github.io/documentation/installation.html#detailed-pip-installation-instructions)
+> [!NOTE]
+> For detailed installation instructions, see our [official documentation's Installation page](https://freemocap.github.io/documentation/installation.html#detailed-pip-installation-instructions)
 
+### Option A — uv (Recommended)
 
-#### 0. Create a a Python 3.10 through 3.12 environment (python3.12 recommended)
-#### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
+[uv](https://docs.astral.sh/uv/) is a fast Python package manager that handles environments automatically.
 
+Install uv ([full instructions](https://docs.astral.sh/uv/getting-started/installation/)):
+
+```bash
+# macOS / Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
+
+Then install and run FreeMoCap:
+
+```bash
+uv tool install freemocap
+freemocap
+```
+
+<details>
+<summary><strong>Option B — pip + venv</strong></summary>
+
+#### Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
 pip install freemocap
 ```
 
-#### 2. Launch the GUI by entering the command:
+#### macOS / Linux
 
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install freemocap
 ```
-freemocap
-``` 
 
-####  3. A GUI should pop up that looks like this: 
+Launch the GUI:
+
+```bash
+freemocap
+```
+
+</details>
+
+<details>
+<summary><strong>Option C — Anaconda</strong></summary>
+
+```bash
+conda create -n freemocap-env python=3.12
+conda activate freemocap-env
+pip install freemocap
+```
+
+Launch the GUI:
+
+```bash
+freemocap
+```
+
+</details>
+
+> **Python version:** FreeMoCap supports Python 3.10 – 3.12 (3.12 recommended).
+
+#### A GUI should pop up that looks like this:
 
    <img width="1457" alt="image" src="https://github.com/freemocap/freemocap/assets/15314521/90ef7e7b-48f3-4f46-8d4a-5b5bcc3254b3">
 
-#### 4. Have fun! See the [Beginner Tutorials](https://freemocap.github.io/documentation/your-first-recording.html) on our official docs for detailed instructions.
+#### Have fun! See the [Beginner Tutorials](https://freemocap.github.io/documentation/your-first-recording.html) on our official docs for detailed instructions.
 
-#### 5. [Join the Discord and let us know how it went!](https://discord.gg/nxv5dNTfKT)
+#### [Join the Discord and let us know how it went!](https://discord.gg/nxv5dNTfKT)
 
 
 
 ___
 ## Install/run from source code (i.e. the code in this repo)
 
-Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environment management) and enter the following commands:
+Choose your preferred method below. All methods require [Git](https://git-scm.com/).
 
-1) Create a `Python` environment (Recommended version  is `python3.11`)
+### Option A — uv (Recommended)
 
-```bash
-conda create -n freemocap-env python=3.11
-```
-
-2) Activate that newly created environment
-
-```bash
-conda activate freemocap-env
-```
-
-3) Clone the repository
+[uv](https://docs.astral.sh/uv/) manages Python versions and virtual environments for you.
+If you don't have uv yet, see the [installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
 ```bash
 git clone https://github.com/freemocap/freemocap
-```
-
-4) Navigate into the newly cloned/downloaded `freemocap` folder
-
-```bash
 cd freemocap
+uv sync
 ```
 
-5) Install the package via the `pyproject.toml` file
+Launch the GUI:
 
 ```bash
+uv run freemocap
+```
+
+<details>
+<summary><strong>Option B — pip + venv</strong></summary>
+
+#### Windows
+
+```bash
+git clone https://github.com/freemocap/freemocap
+cd freemocap
+python -m venv .venv
+.venv\Scripts\activate
 pip install -e .
-```
-
-6) Launch the GUI (via the `freemocap.__main__.py` entry point)
-
-```bash
 python -m freemocap
 ```
+
+#### macOS / Linux
+
+```bash
+git clone https://github.com/freemocap/freemocap
+cd freemocap
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+python -m freemocap
+```
+
+</details>
+
+<details>
+<summary><strong>Option C — Anaconda</strong></summary>
+
+Open an [Anaconda-enabled command prompt](https://www.anaconda.org) and enter the following commands:
+
+```bash
+conda create -n freemocap-env python=3.12
+conda activate freemocap-env
+git clone https://github.com/freemocap/freemocap
+cd freemocap
+pip install -e .
+python -m freemocap
+```
+
+</details>
 
 A GUI should pop up!
 

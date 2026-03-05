@@ -6,29 +6,30 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "aniposelib>=0.7.0",
-    #    "freemocap-blender-addon",
-    "ajc27_freemocap_blender_addon==v2024.12.1032",
     "libsass>=0.23.0",
     "opencv-contrib-python==4.10.*",
     "pyinstaller>=6.11.0",
     "requests>=2.32.3",
-    #    "skelly-synchronize",
-    "skelly-viewer",
-    "skellycam",
-    "skellyforge",
-    "skellytracker[mediapipe]",
     "pydantic>=2.10.4",
     "numpydantic>=1.6.7",
-    #    "ltrt"
     "scikit-learn>=1.7.2",
     "pyceres>=2.5",
     "tomli-w>=1.2.0",
+
+#    "ajc27_freemocap_blender_addon==v2024.12.1032",
+    "skellycam",
+    "skellyforge",
+    "skellytracker[mediapipe]",
+    "skellylogs",
+    "skellypings"
 ]
 
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development" }
+skellylogs = { git = "https://github.com/freemocap/skellylogs" }
+skellypings = { git = "https://github.com/freemocap/skellypings" }
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
@@ -67,7 +68,7 @@ dev = [
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
     "httpx>=0.28.0",
-    "nuitka>=2.7.7",
+#    "nuitka>=2.7.7",
     "pyinstaller>=6.15.0",
     "ruff>=0.9.0",
     "poethepoet>=0.32.0",

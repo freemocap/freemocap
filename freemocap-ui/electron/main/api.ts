@@ -4,6 +4,9 @@ import superjson from 'superjson';
 
 // Services
 import { PythonServer } from './services/python-server';
+import { SystemScanner } from './services/system-scanner';
+import { DependencyManager } from './services/dependency-manager';
+import { AppSettings } from './services/app-settings';
 import { dialog, shell, app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -11,7 +14,7 @@ import { APP_PATHS } from './app-paths';
 
 // Initialize tRPC
 const t = initTRPC.create({
-    transformer: superjson, // Handles Date/undefined/etc serialization
+    transformer: superjson,
 });
 
 // Helper function to check if a directory contains video files
@@ -49,7 +52,6 @@ function findCameraCalibrationToml(dirPath: string): string | null {
     try {
         const entries = fs.readdirSync(dirPath);
 
-        // Look for files matching pattern: *_camera_calibration.toml
         const calibrationFile = entries.find(entry => {
             const fullPath = path.join(dirPath, entry);
             const stats = fs.statSync(fullPath);
@@ -90,6 +92,54 @@ export const api = t.router({
 
         getProcessInfo: t.procedure
             .query(() => PythonServer.getProcessInfo()),
+
+        getPort: t.procedure
+            .query(() => PythonServer.getPort()),
+    }),
+
+    // System Scanner
+    system: t.router({
+        scan: t.procedure
+            .query(() => SystemScanner.scan()),
+    }),
+
+    // Dependency Management
+    dependencies: t.router({
+        detectAll: t.procedure
+            .query(() => DependencyManager.detectAll()),
+
+        detect: t.procedure
+            .input(z.object({ dependencyId: z.string() }))
+            .query(({ input }) => DependencyManager.detect(input.dependencyId)),
+
+        install: t.procedure
+            .input(z.object({ dependencyId: z.string() }))
+            .mutation(({ input }) => DependencyManager.install(input.dependencyId)),
+    }),
+
+    // Persistent Settings (file-backed at ~/.freemocap/settings.json)
+    settings: t.router({
+        get: t.procedure
+            .input(z.object({ key: z.string() }))
+            .query(({ input }) => AppSettings.get(input.key)),
+
+        set: t.procedure
+            .input(z.object({ key: z.string(), value: z.unknown() }))
+            .mutation(({ input }) => {
+                AppSettings.set(input.key, input.value);
+            }),
+
+        delete: t.procedure
+            .input(z.object({ key: z.string() }))
+            .mutation(({ input }) => {
+                AppSettings.delete(input.key);
+            }),
+
+        getAll: t.procedure
+            .query(() => AppSettings.getAll()),
+
+        getConfigDir: t.procedure
+            .query(() => AppSettings.getConfigDir()),
     }),
 
     // File System Operations
@@ -160,17 +210,14 @@ export const api = t.router({
                 };
 
                 try {
-                    // Check if directory exists
                     result.exists = fs.existsSync(input.directoryPath);
 
                     if (!result.exists) {
-                        // Directory doesn't exist - can record here (will be created)
                         result.canRecord = true;
                         result.canCalibrate = false;
                         return result;
                     }
 
-                    // Directory exists - check its contents
                     const stats = fs.statSync(input.directoryPath);
 
                     if (!stats.isDirectory()) {
@@ -178,30 +225,23 @@ export const api = t.router({
                         return result;
                     }
 
-                    // Check for synchronized_videos folder
                     const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
                     result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
                         fs.statSync(synchronizedVideosPath).isDirectory();
 
-                    // Check for videos in synchronized_videos folder
                     if (result.hasSynchronizedVideos) {
                         result.hasVideos = hasVideoFiles(synchronizedVideosPath);
                     }
 
-                    // If no synchronized_videos, check for videos in root directory
                     if (!result.hasVideos) {
                         result.hasVideos = hasVideoFiles(input.directoryPath);
                     }
 
-                    // Determine if we can record
-                    // Can record if directory is empty or only has non-video files
                     const entries = fs.readdirSync(input.directoryPath);
                     result.canRecord = entries.length === 0 || !result.hasVideos;
 
-                    // Can calibrate if we have videos
                     result.canCalibrate = result.hasVideos;
 
-                    // Look for camera calibration TOML file
                     result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
 
                     return result;
@@ -227,17 +267,14 @@ export const api = t.router({
                 };
 
                 try {
-                    // Check if directory exists
                     result.exists = fs.existsSync(input.directoryPath);
 
                     if (!result.exists) {
-                        // Directory doesn't exist - can record here (will be created)
                         result.canRecord = true;
                         result.canProcess = false;
                         return result;
                     }
 
-                    // Directory exists - check its contents
                     const stats = fs.statSync(input.directoryPath);
 
                     if (!stats.isDirectory()) {
@@ -245,31 +282,23 @@ export const api = t.router({
                         return result;
                     }
 
-                    // Check for synchronized_videos folder
                     const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
                     result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
                         fs.statSync(synchronizedVideosPath).isDirectory();
 
-                    // Check for videos in synchronized_videos folder
                     if (result.hasSynchronizedVideos) {
                         result.hasVideos = hasVideoFiles(synchronizedVideosPath);
                     }
 
-                    // If no synchronized_videos, check for videos in root directory
                     if (!result.hasVideos) {
                         result.hasVideos = hasVideoFiles(input.directoryPath);
                     }
 
-                    // Determine if we can record
-                    // Can record if directory is empty or only has non-video files
                     const entries = fs.readdirSync(input.directoryPath);
-                    result.canRecord =  !result.hasVideos;
-                    // Look for camera calibration TOML file
+                    result.canRecord = !result.hasVideos;
                     result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
 
-                    // Can process if we have videos and a calibration file
-                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath
-
+                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath !== null;
 
                     return result;
 
@@ -288,7 +317,6 @@ export const api = t.router({
                 try {
                     let logoPath: string | null = null;
 
-                    // Check for logo in order of preference
                     if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {
                         logoPath = APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH;
                     } else if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH)) {
@@ -300,12 +328,10 @@ export const api = t.router({
                         return null;
                     }
 
-                    // Read the file and convert to base64
                     const imageBuffer = fs.readFileSync(logoPath);
                     const base64String = imageBuffer.toString('base64');
-                    const mimeType = 'image/png'; // Since we know it's a PNG
+                    const mimeType = 'image/png';
 
-                    // Return as a data URL that can be used directly in img src
                     return `data:${mimeType};base64,${base64String}`;
                 } catch (error) {
                     console.error('Failed to load logo as base64:', error);
@@ -313,7 +339,6 @@ export const api = t.router({
                 }
             }),
 
-        // Keep the old method for backward compatibility if needed
         getLogoPngPath: t.procedure
             .query(() => {
                 if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {

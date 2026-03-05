@@ -1,4 +1,4 @@
-// store/slices/server/server-types.ts
+// store/slices/server/server-viewport3d-types.ts
 
 /**
  * Server connection status

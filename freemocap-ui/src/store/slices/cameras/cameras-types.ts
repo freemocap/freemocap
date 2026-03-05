@@ -1,4 +1,4 @@
-// cameras-types.ts
+// cameras-viewport3d-types.ts
 import {z} from 'zod';
 
 // ==================== Constants ====================

@@ -1,14 +1,13 @@
 import logging
+from copy import deepcopy
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from pydantic import Field
+from pydantic import BaseModel, Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.posthoc_pipelines.posthoc_mocap_pipeline.posthoc_mocap_pipeline import \
-    MocapPipelineTaskConfig
+from freemocap.core.pipeline.pipeline_configs import MocapPipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +18,7 @@ mocap_router = APIRouter(prefix="/mocap", tags=["Mocap"])
 
 
 class MocapConfigRequest(BaseModel):
-    config: MocapPipelineTaskConfig
+    config: MocapPipelineConfig
 
 
 class MocapConfigResponse(BaseModel):
@@ -29,34 +28,34 @@ class MocapConfigResponse(BaseModel):
 
 class StartMocapRecordingRequest(BaseModel):
     mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
-        recordings_directory = Path(self.mocap_recording_directory).expanduser().parent
-        recording_name = Path(self.mocap_recording_directory).stem
-        if not recording_name.endswith('_mocap'):
-            recording_name += '_mocap'
+        recording_dir = Path(self.mocap_recording_directory).expanduser()
+        recording_name = recording_dir.stem
+        if not recording_name.endswith("_mocap"):
+            recording_name += "_mocap"
         return RecordingInfo(
-            recording_directory=str(recordings_directory),
+            recording_directory=str(recording_dir.parent),
             recording_name=recording_name,
-            mic_device_index=-1
+            mic_device_index=-1,
         )
 
 
-
 class StopMocapRecordingRequest(BaseModel):
-    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
 
 
 class ProcessMocapRecordingRequest(BaseModel):
     mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_task_config: MocapPipelineTaskConfig = Field(alias="mocapTaskConfig")
+    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
+        recording_dir = Path(self.mocap_recording_directory).expanduser()
         return RecordingInfo(
-            recording_directory=str(Path(self.mocap_recording_directory).parent),
-            recording_name=Path(self.mocap_recording_directory).stem,
-            mic_device_index=-1
+            recording_directory=str(recording_dir.parent),
+            recording_name=recording_dir.stem,
+            mic_device_index=-1,
         )
 
 
@@ -73,63 +72,81 @@ class MocapRecordingResponse(BaseModel):
 
 # ==================== Endpoints ====================
 
+
 @mocap_router.post("/config/update/all")
 def update_all_mocap_config(request: MocapConfigRequest) -> MocapConfigResponse:
-    """Update mocap configuration."""
+    """Update mocap configuration on all active realtime pipelines via SettingsManager."""
     try:
-        get_freemocap_app().realtime_pipeline_manager.update_mocap_task_config(request.config)
-        return MocapConfigResponse(success=True, message="Mocap Configuration updated")
+        app = get_freemocap_app()
+
+        # Update settings manager (source of truth), which notifies WebSocket clients
+        app.settings_manager.apply_patch({
+            "mocap": {"config": request.config.model_dump()},
+        })
+
+        # Sync to running pipelines
+        with app.realtime_pipeline_manager.lock:
+            for pipeline in app.realtime_pipeline_manager.pipelines.values():
+                new_config = deepcopy(pipeline.config)
+                new_config.mocap_config = request.config
+                pipeline.update_config(new_config=new_config)
+
+        return MocapConfigResponse(success=True, message="Mocap configuration updated")
     except Exception as e:
         logger.exception(f"Error updating mocap config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @mocap_router.post("/recording/start")
-async def start_mocap_recording(request: StartMocapRecordingRequest) -> StartMocapRecordingResponse:
+async def start_mocap_recording(
+    request: StartMocapRecordingRequest,
+) -> StartMocapRecordingResponse:
     """Start mocap recording with given config."""
     try:
         recording_info = request.to_recording_info()
-        if not recording_info.recording_name.endswith('_mocap'):
-            recording_info.recording_name += '_mocap'
-
-        # await get_freemocap_app().create_or_update_realtime_mocap_pipeline(request.mocap_task_config)
-        await get_freemocap_app().start_recording_all(recording_info=recording_info, )
-        logger.info(f"Starting mocap recording : {recording_info}")
+        await get_freemocap_app().start_recording_all(recording_info=recording_info)
+        logger.info(f"Starting mocap recording: {recording_info}")
         return StartMocapRecordingResponse(success=True, message="Mocap recording started")
     except Exception as e:
-        logger.exception(f"Error starting recording: {e}")
+        logger.exception(f"Error starting mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @mocap_router.post("/recording/stop")
 async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, bool]:
-    """Stop current mocap recording."""
+    """Stop current mocap recording and launch posthoc mocap pipeline."""
     app = get_freemocap_app()
     try:
         recording_info = await app.stop_recording_all()
-        await app.posthoc_pipeline_manager.create_posthoc_mocap_pipeline(recording_info=recording_info,
-                                                                         mocap_task_config=request.mocap_task_config)
-        logger.info("Stopping recording")
+        if recording_info is None:
+            raise RuntimeError("No active recording to stop")
+        await app.create_posthoc_mocap_pipeline(
+            recording_info=recording_info,
+            mocap_config=request.mocap_config,
+        )
+        logger.info("Mocap recording stopped, posthoc mocap pipeline launched")
         return {"success": True}
     except Exception as e:
-        logger.error(f"Error stopping recording: {e}")
+        logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @mocap_router.post("/recording/process")
 async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> MocapRecordingResponse:
-    """Process and calibrate a recorded session."""
+    """Process a previously recorded session with mocap pipeline."""
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
-        await app.posthoc_pipeline_manager.create_posthoc_mocap_pipeline(recording_info=recording_info,
-                                                                         mocap_task_config=request.mocap_task_config)
+        await app.create_posthoc_mocap_pipeline(
+            recording_info=recording_info,
+            mocap_config=request.mocap_config,
+        )
         logger.info(f"Processing mocap recording at: {recording_info.full_recording_path}")
         return MocapRecordingResponse(
             success=True,
-            message="Mocap processing pipeline completed",
-            results={}
+            message="Mocap processing pipeline launched",
+            results={},
         )
     except Exception as e:
-        logger.error(f"Error calibrating recording: {e}")
+        logger.exception(f"Error processing mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))

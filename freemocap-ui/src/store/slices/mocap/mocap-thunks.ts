@@ -2,61 +2,7 @@ import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
 import {serverUrls} from "@/hooks/server-urls";
 import {selectMocapRecordingPath} from "./mocap-slice";
-
-// Helper function to extract detailed error info from failed responses
-async function getDetailedErrorMessage(response: Response): Promise<string> {
-    let errorDetails: unknown;
-
-    try {
-        // Try to parse JSON error response
-        errorDetails = await response.json();
-        console.error('❌ Server returned validation/error details:', errorDetails);
-    } catch {
-        // If not JSON, try to get text
-        try {
-            errorDetails = await response.text();
-            console.error('❌ Server returned error text:', errorDetails);
-        } catch {
-            console.error('❌ Could not read error response body');
-        }
-    }
-
-    // Build comprehensive error message
-    const baseError = `HTTP ${response.status}: ${response.statusText}`;
-
-    if (errorDetails) {
-        // Pretty print the error details
-        const detailsStr = typeof errorDetails === 'string'
-            ? errorDetails
-            : JSON.stringify(errorDetails, null, 2);
-        return `${baseError}\n\nValidation/Error Details:\n${detailsStr}`;
-    }
-
-    return baseError;
-}
-
-// Helper function to generate mocap recording name based on recording config
-function generateMocapRecordingName(state: RootState): string {
-    const recordingConfig = state.recording.config;
-    const parts: string[] = [];
-
-    // Add base name if configured
-    if (recordingConfig.baseName && recordingConfig.baseName !== 'recording') {
-        parts.push(recordingConfig.baseName);
-    }
-
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    parts.push(timestamp);
-
-    // Add recording tag if provided
-    if (recordingConfig.recordingTag) {
-        parts.push(recordingConfig.recordingTag);
-    }
-
-    parts.push('mocap');
-
-    return parts.join('_');
-}
+import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 
 export const startMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; mocapRecordingPath?: string },

@@ -5,28 +5,28 @@ import {AppDispatch} from '@/store/types';
 import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
-import {backendFramerateUpdated, DetailedFramerate, frontendFramerateUpdated, logAdded, LogRecord} from '@/store';
+import {
+    backendFramerateUpdated,
+    frontendFramerateUpdated,
+    logAdded,
+    serverSettingsCleared,
+    serverSettingsUpdated,
+} from '@/store';
 
-import {FrameCompositor} from "@/services/server/server-helpers/frame_compositor";
 import {serverUrls} from "@/hooks/server-urls";
-import {
-    CharucoObservation,
-    CharucoOverlayDataMessage,
-    CharucoOverlayDataMessageSchema
-} from "@/services/server/server-helpers/image-overlay/charuco-types";
-import {
-    MediapipeOverlayDataMessage,
-    MediapipeOverlayDataMessageSchema
-} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
-import {
-    OverlayManager,
-    OverlayRendererFactory
-} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
-import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
+import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
+import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-overlay-renderer";
+import {
+    arraysEqual, handleModelInfoUpdate,
+    isCharucoOverlayDataMessage, isFramerateUpdate, isLogRecord, isMediapipeOverlayDataMessage,
+    isSettingsStateMessage
+} from "@/services/server/server-helpers/websocket-message-types";
+import {RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
 
 type FrameSubscriber = (bitmap: ImageBitmap) => void;
 type TrackedPointsSubscriber = (points: Map<string, Point3d>) => void;
+type RigidBodiesSubscriber = (poses: Map<string, RigidBodyPose>) => void;
 
 export interface Point3d {
     x: number;
@@ -36,6 +36,7 @@ export interface Point3d {
 
 export interface ServerContextValue {
     isConnected: boolean;
+    connectionState: ConnectionState;
     connect: () => void;
     disconnect: () => void;
     send: (data: string | object) => void;
@@ -45,88 +46,62 @@ export interface ServerContextValue {
     subscribeToFrames: (cameraId: string, callback: FrameSubscriber) => () => void;
     subscribeToTrackedPoints: (callback: TrackedPointsSubscriber) => () => void;
     getLatestTrackedPoints: () => Map<string, Point3d>;
+    subscribeToRigidBodies: (callback: RigidBodiesSubscriber) => () => void;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);
-
-function arraysEqual(a: string[], b: string[]): boolean {
-    if (a.length !== b.length) return false;
-    const sortedA = [...a].sort();
-    const sortedB = [...b].sort();
-    return sortedA.every((val, idx) => val === sortedB[idx]);
-}
-
-function isLogRecord(data: any): data is LogRecord {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'log_record' &&
-        typeof data.levelname === 'string' &&
-        typeof data.message === 'string'
-    );
-}
-
-interface FramerateUpdateMessage {
-    message_type: 'framerate_update';
-    camera_group_id: string;
-    backend_framerate: DetailedFramerate;
-    frontend_framerate: DetailedFramerate;
-}
-
-function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'framerate_update' &&
-        typeof data.camera_group_id === 'string' &&
-        data.backend_framerate &&
-        typeof data.backend_framerate === 'object' &&
-        data.frontend_framerate &&
-        typeof data.frontend_framerate === 'object'
-    );
-}
-
-function isCharucoOverlayDataMessage(data: any): data is CharucoOverlayDataMessage {
-    const result = CharucoOverlayDataMessageSchema.safeParse(data);
-    return result.success;
-}
-function isMediapipeOverlayDataMessage(data: any): data is MediapipeOverlayDataMessage {
-    const result = MediapipeOverlayDataMessageSchema.safeParse(data);
-    return result.success;
-}
-
-function handleModelInfoUpdate(modelInfo: ModelInfo): void {
-    console.log(`Received model info for tracker: ${modelInfo.tracker_name}`);
-    OverlayRendererFactory.setModelInfo(modelInfo.tracker_name, modelInfo);
-}
 
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const dispatch = useDispatch<AppDispatch>();
 
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
+    // Tracks the port so the WebSocket connection is recreated when it changes.
+    // Updated via serverUrls.onPortChange() subscription.
+    const [serverPort, setServerPort] = useState<number>(serverUrls.getPort());
 
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const overlayManagerRef = useRef<OverlayManager | null>(null);
-    const frameCompositorRef = useRef<FrameCompositor | null>(null);
     const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
-    const latestObservationsRef = useRef<Map<string, CharucoObservation|MediapipeObservation>>(new Map());
+    const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
+    const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
     const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
     const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
+    const latestRigidBodies = useRef<Map<string, RigidBodyPose>>(new Map());
+    const rigidBodiesSubscribersRef = useRef<Set<RigidBodiesSubscriber>>(new Set());
 
+    // Subscribe to port changes from the serverUrls singleton.
+    // When useElectronAPI().pythonServer.start() resolves, it calls serverUrls.setPort(),
+    // which triggers this callback and causes the WebSocket to reconnect on the correct port.
     useEffect(() => {
+        return serverUrls.onPortChange((port: number) => {
+            console.log(`[ServerContext] Port changed to ${port}, will recreate WebSocket connection`);
+            setServerPort(port);
+        });
+    }, []);
+
+    // Create / recreate the WebSocket connection whenever the port changes.
+    useEffect(() => {
+        if (wsConnectionRef.current) {
+            wsConnectionRef.current.disconnect();
+        }
+        canvasManagerRef.current?.terminateAllWorkers();
+        frameProcessorRef.current?.reset();
+
         wsConnectionRef.current = new WebSocketConnection({
             url: serverUrls.getWebSocketUrl(),
             reconnectDelay: 1000,
             maxReconnectAttempts: 5,
-            heartbeatInterval: 30000
+            heartbeatInterval: 30000,
+            autoConnect: true,
+            autoConnectInterval: 3000,
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
         overlayManagerRef.current = new OverlayManager();
-        frameCompositorRef.current = new FrameCompositor();
 
         return () => {
             if (wsConnectionRef.current) {
@@ -138,30 +113,36 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
-            if (frameCompositorRef.current) {
-                frameCompositorRef.current.destroy();
-            }
-            latestObservationsRef.current.clear();
+            latestCharucoRef.current.clear();
+            latestMediapipeRef.current.clear();
             latestTrackedPoints.current.clear();
             trackedPointsSubscribersRef.current.clear();
+            latestRigidBodies.current.clear();
+            rigidBodiesSubscribersRef.current.clear();
         };
-    }, []);
+    }, [serverPort]);
 
     useEffect(() => {
         const ws = wsConnectionRef.current;
         if (!ws) return;
 
-        const handleStateChange = (newState: ConnectionState): void => {
+        const handleStateChange = (newState: ConnectionState, previousState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
+            console.log(`[WS] State transition: ${previousState} → ${newState} (connected=${connected})`);
             setIsConnected(connected);
+            setConnectionState(newState);
 
-            if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
+            if (previousState === ConnectionState.CONNECTED && !connected) {
+                console.log('[WS] Lost connection — clearing state');
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
                 overlayManagerRef.current?.clearAll();
-                latestObservationsRef.current.clear();
+                latestCharucoRef.current.clear();
+                latestMediapipeRef.current.clear();
                 latestTrackedPoints.current.clear();
                 setConnectedCameraIds([]);
+                dispatch(serverSettingsCleared());
+                latestRigidBodies.current.clear();
             }
         };
 
@@ -182,8 +163,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             for (const cameraId of removedCameras) {
                                 console.log(`Removing camera ${cameraId} - not in latest payload`);
                                 canvasManagerRef.current?.terminateWorker(cameraId);
-                                overlayManagerRef.current?.clearCamera(cameraId);  // Clear overlay renderer
-                                latestObservationsRef.current.delete(cameraId);
+                                latestCharucoRef.current.delete(cameraId);
+                                latestMediapipeRef.current.delete(cameraId);
                             }
 
                             return currentCameraIds;
@@ -191,31 +172,31 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         return prevIds;
                     });
 
-                    // Track remaining frames to render
-                    let remainingFrames = frames.length;
-                    const maxFrameNumber = Math.max(...Array.from(frameNumbers));
+                    // Acknowledge receipt immediately so the backend can prepare
+                    // the next frame without waiting for rendering to complete.
+                    if (frameNumbers.size > 0) {
+                        const maxFrameNumber = Math.max(...Array.from(frameNumbers));
+                        ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
+                    }
 
-                    const onFrameRendered = (): void => {
-                        remainingFrames--;
-                        if (remainingFrames === 0) {
-                            ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
-                        }
-                    };
-
-                    // Process frames with generic overlay manager
                     const overlayManager = overlayManagerRef.current!;
                     for (const frameData of frames) {
-                        const observation = latestObservationsRef.current.get(frameData.cameraId) || null;
+                        const charucoObservation = latestCharucoRef.current.get(frameData.cameraId) ?? null;
+                        const mediapipeObservation = latestMediapipeRef.current.get(frameData.cameraId) ?? null;
 
-                        // Use generic overlay manager to composite frame
-                        const compositeBitmap = await overlayManager.processFrame(
-                            frameData.cameraId,
-                            frameData.bitmap,
-                            observation
-                        );
+                        let compositeBitmap: ImageBitmap;
+                        if (charucoObservation || mediapipeObservation) {
+                            compositeBitmap = await overlayManager.processFrame(
+                                frameData.cameraId,
+                                frameData.bitmap,
+                                charucoObservation,
+                                mediapipeObservation,
+                            );
+                        } else {
+                            compositeBitmap = frameData.bitmap;
+                        }
 
-                        // Send to subscribers if any
-                        if (frameSubscribersRef.current.size > 0) {
+                        {
                             const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
                             if (subscribers && subscribers.size > 0) {
                                 for (const callback of subscribers) {
@@ -225,56 +206,60 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             }
                         }
 
-                        // Send to canvas worker
                         canvasManagerRef.current!.sendFrameToWorker(
                             frameData.cameraId,
                             compositeBitmap,
-                            onFrameRendered
                         );
                     }
                 } catch (error) {
                     console.error('Error processing frame:', error);
                     throw error;
                 }
-            }
-            else if (typeof event.data === 'string') {
-                try {
-                    const jsonData = JSON.parse(event.data);
+            } else if (typeof event.data === 'string') {
+                const text = event.data;
 
-                    // Handle different observation types
-                    if (isCharucoOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestObservationsRef.current.set(cameraId, observation);
-                        }
-                    }
-                    else if (isMediapipeOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestObservationsRef.current.set(cameraId, observation);
-                        }
-                    }
-                    else if ('model_info' in jsonData && jsonData.model_info) {
-                        // Handle model info updates
-                        handleModelInfoUpdate(jsonData.model_info);
-                    }
-                    else if ('tracked_points3d' in jsonData) {
-                        // Handle 3D tracked points
-                        console.log(`Received 3d data - ${JSON.stringify(jsonData.tracked_points3d)}`);
-                        latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
+                if (text === 'pong') {
+                    return;
+                }
+                if (text.startsWith('ping')) {
+                    ws.send('pong');
+                    return;
+                }
 
-                        for (const subscriber of trackedPointsSubscribersRef.current) {
-                            subscriber(latestTrackedPoints.current);
-                        }
+                const jsonData = JSON.parse(text);
+
+                if (isSettingsStateMessage(jsonData)) {
+                    console.log(`[WS] Received settings/state v${jsonData.version}`, jsonData.settings);
+                    dispatch(serverSettingsUpdated(jsonData));
+                } else if (isCharucoOverlayDataMessage(jsonData)) {
+                    for (const [cameraId, observation] of Object.entries(jsonData)) {
+                        latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
                     }
-                    else if (isLogRecord(jsonData)) {
-                        dispatch(logAdded(jsonData));
+                } else if (isMediapipeOverlayDataMessage(jsonData)) {
+                    for (const [cameraId, observation] of Object.entries(jsonData)) {
+                        latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
                     }
-                    else if (isFramerateUpdate(jsonData)) {
-                        dispatch(backendFramerateUpdated(jsonData.backend_framerate));
-                        dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
+                } else if ('model_info' in jsonData && jsonData.model_info) {
+                    handleModelInfoUpdate(jsonData.model_info);
+                } else if ('tracked_points3d' in jsonData) {
+                    latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
+                    for (const subscriber of trackedPointsSubscribersRef.current) {
+                        subscriber(latestTrackedPoints.current);
                     }
-                } catch (error) {
-                    console.error('Error parsing JSON message:', error);
-                    throw error;
+                } else if ('rigid_body_poses' in jsonData) {
+                    latestRigidBodies.current = new Map(
+                        Object.entries(jsonData.rigid_body_poses as Record<string, RigidBodyPose>)
+                    );
+                    for (const subscriber of rigidBodiesSubscribersRef.current) {
+                        subscriber(latestRigidBodies.current);
+                    }
+                } else if (isLogRecord(jsonData)) {
+                    dispatch(logAdded(jsonData));
+                } else if (isFramerateUpdate(jsonData)) {
+                    dispatch(backendFramerateUpdated(jsonData.backend_framerate));
+                    dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
+                } else {
+                    console.warn('[WS] Unhandled JSON message:', Object.keys(jsonData));
                 }
             }
         };
@@ -282,14 +267,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         ws.on('state-change', handleStateChange);
         ws.on('message', handleMessage);
 
-        ws.connect();
+        // Start in auto-discovery mode — silently poll until the server appears
+        ws.startDiscovery();
 
         return () => {
             ws.off('state-change', handleStateChange);
             ws.off('message', handleMessage);
             ws.disconnect();
         };
-    }, [dispatch]);
+    }, [dispatch, serverPort]);
 
     const connect = useCallback((): void => {
         wsConnectionRef.current?.connect();
@@ -329,7 +315,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const subscribeToTrackedPoints = useCallback((callback: TrackedPointsSubscriber): (() => void) => {
         trackedPointsSubscribersRef.current.add(callback);
 
-        // Immediately call with current points if any exist
         if (latestTrackedPoints.current.size > 0) {
             callback(latestTrackedPoints.current);
         }
@@ -343,9 +328,22 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return latestTrackedPoints.current;
     }, []);
 
+    const subscribeToRigidBodies = useCallback((callback: RigidBodiesSubscriber): (() => void) => {
+        rigidBodiesSubscribersRef.current.add(callback);
+
+        if (latestRigidBodies.current.size > 0) {
+            callback(latestRigidBodies.current);
+        }
+
+        return () => {
+            rigidBodiesSubscribersRef.current.delete(callback);
+        };
+    }, []);
+
     return (
         <ServerContext.Provider value={{
             isConnected,
+            connectionState,
             connect,
             disconnect,
             send,
@@ -354,7 +352,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             connectedCameraIds,
             subscribeToFrames,
             subscribeToTrackedPoints,
-            getLatestTrackedPoints
+            getLatestTrackedPoints,
+            subscribeToRigidBodies,
         }}>
             {children}
         </ServerContext.Provider>

@@ -1,10 +1,6 @@
 import re
-from pathlib import Path
-
-from pydantic import BaseModel, ConfigDict, model_validator
 
 from freemocap.core.pipeline.posthoc_pipelines.video_helper import VideoHelper, VideoMetadata
-from freemocap.core.types.type_overloads import VideoIdString
 
 
 def extract_camera_id(filename: str) -> str | None:

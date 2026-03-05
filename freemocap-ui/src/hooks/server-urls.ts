@@ -1,20 +1,48 @@
+const DEFAULT_HOST = 'localhost';
+const DEFAULT_PORT = 53117;
+
+type PortChangeCallback = (port: number) => void;
+
 class ServerUrls {
-    private readonly host = 'localhost';
-    private readonly port = 53117;
+    private readonly host = DEFAULT_HOST;
+    private port = DEFAULT_PORT;
+    private portChangeListeners = new Set<PortChangeCallback>();
 
     /**
-     * Get HTTP base URL
+     * Update the port at runtime. Notifies all subscribers so components
+     * can recreate connections with the correct URL.
      */
+    setPort(port: number): void {
+        if (port === this.port) return;
+        console.log(`[ServerUrls] Port updated: ${this.port} → ${port}`);
+        this.port = port;
+        for (const listener of this.portChangeListeners) {
+            listener(port);
+        }
+    }
+
+    getPort(): number {
+        return this.port;
+    }
+
+    /**
+     * Subscribe to port changes. Returns an unsubscribe function.
+     */
+    onPortChange(callback: PortChangeCallback): () => void {
+        this.portChangeListeners.add(callback);
+        return () => {
+            this.portChangeListeners.delete(callback);
+        };
+    }
+
     getHttpUrl(): string {
         return `http://${this.host}:${this.port}`;
     }
 
-    /**
-     * Get WebSocket base URL
-     */
     getWebSocketUrl(): string {
         return `ws://${this.host}:${this.port}/websocket/connect`;
     }
+
     get endpoints() {
         const baseUrl = this.getHttpUrl();
 
@@ -22,6 +50,7 @@ class ServerUrls {
             // Server management
             health: `${baseUrl}/health`,
             shutdown: `${baseUrl}/shutdown`,
+            settings: `${baseUrl}/settings`,
 
             // Camera endpoints
             detectCameras: `${baseUrl}/skellycam/camera/detect`,
@@ -59,5 +88,4 @@ class ServerUrls {
     }
 }
 
-// Export singleton instance
 export const serverUrls = new ServerUrls();

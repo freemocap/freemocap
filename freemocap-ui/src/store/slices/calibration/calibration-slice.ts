@@ -1,4 +1,3 @@
-// store/slices/calibration/calibration-slice.ts
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
 import {
@@ -10,6 +9,8 @@ import {
 
 // ==================== Types ====================
 
+export type CalibrationSolverMethod = 'anipose' | 'pyceres';
+
 export interface CalibrationConfig {
     liveTrackCharuco: boolean;
     charucoBoardXSquares: number;
@@ -17,12 +18,14 @@ export interface CalibrationConfig {
     charucoSquareLength: number;
     minSharedViewsPerCamera: number;
     autoStopOnMinViewCount: boolean;
+    solverMethod: CalibrationSolverMethod;
+    useGroundplane: boolean;
 }
 
 export interface CalibrationDirectoryInfo {
     exists: boolean;
-    canRecord: boolean; // true if directory doesn't exist OR exists but is empty
-    canCalibrate: boolean; // true if has videos (either in synchronized_videos or root)
+    canRecord: boolean;
+    canCalibrate: boolean;
     cameraCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
@@ -35,9 +38,9 @@ export interface CalibrationState {
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
-    lastCalibrationRecordingPath: string | null; // Path from last recording
-    manualCalibrationRecordingPath: string | null; // User-selected override path
-    directoryInfo: CalibrationDirectoryInfo | null; // Info about the current calibration directory
+    lastCalibrationRecordingPath: string | null;
+    manualCalibrationRecordingPath: string | null;
+    directoryInfo: CalibrationDirectoryInfo | null;
 }
 
 // ==================== Initial State ====================
@@ -50,6 +53,8 @@ const initialState: CalibrationState = {
         charucoSquareLength: 1,
         minSharedViewsPerCamera: 200,
         autoStopOnMinViewCount: true,
+        solverMethod: 'anipose',
+        useGroundplane: false,
     },
     isRecording: false,
     recordingProgress: 0,
@@ -78,17 +83,14 @@ export const calibrationSlice = createSlice({
             state.error = null;
         },
 
-        // New action to set manual path
         manualCalibrationRecordingPathChanged: (state, action: PayloadAction<string>) => {
             state.manualCalibrationRecordingPath = action.payload;
         },
 
-        // New action to clear manual path (revert to default)
         manualCalibrationRecordingPathCleared: (state) => {
             state.manualCalibrationRecordingPath = null;
         },
 
-        // New action to update directory info
         calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
@@ -97,7 +99,6 @@ export const calibrationSlice = createSlice({
     },
 
     extraReducers: (builder) => {
-        // Start Recording
         builder
             .addCase(startCalibrationRecording.pending, (state) => {
                 state.isLoading = true;
@@ -107,7 +108,6 @@ export const calibrationSlice = createSlice({
                 state.isLoading = false;
                 state.isRecording = true;
                 state.recordingProgress = 0;
-                // Store the path returned from the server
                 if (action.payload.calibrationRecordingPath) {
                     state.lastCalibrationRecordingPath = action.payload.calibrationRecordingPath;
                 }
@@ -117,7 +117,6 @@ export const calibrationSlice = createSlice({
                 state.error = action.payload || 'Failed to start recording';
             });
 
-        // Stop Recording
         builder
             .addCase(stopCalibrationRecording.pending, (state) => {
                 state.isLoading = true;
@@ -133,7 +132,6 @@ export const calibrationSlice = createSlice({
                 state.error = action.payload || 'Failed to stop recording';
             });
 
-        // Calibrate Recording
         builder
             .addCase(calibrateRecording.pending, (state) => {
                 state.isLoading = true;
@@ -147,7 +145,6 @@ export const calibrationSlice = createSlice({
                 state.error = action.payload || 'Failed to calibrate recording';
             });
 
-        // Update Config on Server
         builder
             .addCase(updateCalibrationConfigOnServer.rejected, (state, action) => {
                 state.error = action.payload || 'Failed to sync config to server';
@@ -175,13 +172,11 @@ export const selectCalibrationRecordingPath = createSelector(
         if (manualPath) return manualPath;
         if (lastPath) return lastPath;
 
-        // Build calibration path from recording computed values
         const calibrationFolderName = `${recordingComputed.recordingName}_calibration`;
         return `${recordingComputed.fullRecordingPath}/${calibrationFolderName}`;
     }
 );
 
-// Selector to check if using manual path
 export const selectIsUsingManualCalibrationPath = createSelector(
     [(state: RootState) => state.calibration.manualCalibrationRecordingPath],
     (manualPath) => manualPath !== null
@@ -195,7 +190,6 @@ export const selectCanStartCalibrationRecording = createSelector(
         selectCalibrationDirectoryInfo
     ],
     (isRecording, isLoading, recordingPath, directoryInfo) => {
-        // Can start if: not recording, not loading, have a path, and directory can be recorded to
         return !isRecording && !isLoading && !!recordingPath && (directoryInfo?.canRecord ?? true);
     }
 );
@@ -208,7 +202,6 @@ export const selectCanCalibrate = createSelector(
         selectCalibrationDirectoryInfo
     ],
     (calibrationPath, isLoading, isRecording, directoryInfo) => {
-        // Can calibrate if: have path, not loading, not recording, and directory has videos
         return !!calibrationPath && !isLoading && !isRecording && (directoryInfo?.canCalibrate ?? false);
     }
 );
@@ -224,7 +217,5 @@ export const {
     calibrationDirectoryInfoUpdated,
     resetCalibrationState
 } = calibrationSlice.actions;
-
-// ==================== Reducer Export ====================
 
 export default calibrationSlice.reducer;

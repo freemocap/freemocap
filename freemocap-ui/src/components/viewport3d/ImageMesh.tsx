@@ -1,7 +1,7 @@
-import {useEffect, useMemo, useRef} from 'react';
-import {useFrame} from '@react-three/fiber';
+import { useEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import {useServer} from '@/services';
+import { useServer } from '@/services';
 
 interface ImageMeshProps {
     cameraId: string;
@@ -15,9 +15,9 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
     const textureRef = useRef<THREE.Texture | null>(null);
     const hasNewFrameRef = useRef<boolean>(false);
 
-    // FIX 1: Change from CanvasTexture to Texture
+    // Base texture — updated each frame with the latest ImageBitmap
     const texture = useMemo(() => {
-        const tex = new THREE.Texture(); // ← Changed from CanvasTexture
+        const tex = new THREE.Texture();
         tex.minFilter = THREE.LinearFilter;
         tex.magFilter = THREE.LinearFilter;
         tex.format = THREE.RGBAFormat;
@@ -33,10 +33,9 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
         });
     }, [texture]);
 
-    // FIX 2: Subscribe with cameraId parameter
+    // Stream camera frames as ImageBitmaps
     useEffect(() => {
         const unsubscribe = subscribeToFrames(cameraId, (bitmap) => {
-            // Close previous bitmap to free memory
             if (currentBitmapRef.current) {
                 currentBitmapRef.current.close();
             }
@@ -53,7 +52,7 @@ export function ImageMesh({ cameraId, position }: ImageMeshProps) {
         };
     }, [cameraId, subscribeToFrames]);
 
-    // Update texture in render loop
+    // Push the latest bitmap to the GPU texture each frame
     useFrame(() => {
         if (hasNewFrameRef.current && currentBitmapRef.current && textureRef.current) {
             textureRef.current.image = currentBitmapRef.current;

@@ -12,3 +12,4 @@ export * from './slices/theme';
 export * from './slices/videos';
 export * from './slices/pipeline';
 export * from './slices/mocap';
+export * from './slices/settings';

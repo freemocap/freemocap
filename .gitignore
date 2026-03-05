@@ -161,3 +161,4 @@ realease/*
 pyapp-*/
 pyapp.zip
 .vite
+*.zip

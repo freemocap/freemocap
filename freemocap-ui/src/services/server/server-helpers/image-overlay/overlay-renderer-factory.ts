@@ -86,63 +86,60 @@ export class OverlayRendererFactory {
 }
 
 /**
- * Manager for handling overlay rendering across multiple cameras
+ * Manager for handling overlay rendering across multiple cameras.
+ *
+ * Composites both charuco and mediapipe overlays sequentially onto each
+ * frame: source → charuco → mediapipe. Each renderer draws on top of
+ * the previous result rather than clearing and redrawing from scratch.
  */
 export class OverlayManager {
-    private renderers: Map<string, BaseOverlayRenderer> = new Map();
-    private observationTypeMap: Map<string, ObservationType> = new Map();
+    private charucoRenderer: CharucoOverlayRenderer = new CharucoOverlayRenderer();
+    private mediapipeRenderer: MediapipeOverlayRenderer = new MediapipeOverlayRenderer();
 
     /**
-     * Process a frame with overlay
+     * Composite both overlay types onto a single frame, chained sequentially.
+     * The charuco overlay is drawn first, then mediapipe on top of the result.
      */
     public async processFrame(
         cameraId: string,
         sourceBitmap: ImageBitmap,
-        observation: CharucoObservation | MediapipeObservation | null
+        charucoObservation: CharucoObservation | null,
+        mediapipeObservation: MediapipeObservation | null,
     ): Promise<ImageBitmap> {
-        // Determine observation type
-        const observationType = observation?.message_type as ObservationType;
+        let currentBitmap = sourceBitmap;
 
-        if (!observationType && !observation) {
-            // No observation, just return the source bitmap
-            return sourceBitmap;
+        if (charucoObservation) {
+            currentBitmap = await this.charucoRenderer.compositeFrame(
+                currentBitmap,
+                charucoObservation,
+            );
         }
 
-        // Get or create renderer for this camera
-        let renderer = this.renderers.get(cameraId);
-        const previousType = this.observationTypeMap.get(cameraId);
-
-        // Check if we need a different renderer type
-        if (!renderer || previousType !== observationType) {
-            renderer = OverlayRendererFactory.getRenderer(observationType);
-            this.renderers.set(cameraId, renderer);
-            this.observationTypeMap.set(cameraId, observationType);
+        if (mediapipeObservation) {
+            currentBitmap = await this.mediapipeRenderer.compositeFrame(
+                currentBitmap,
+                mediapipeObservation,
+            );
         }
 
-        // Process the frame
-        return renderer.compositeFrame(sourceBitmap, observation);
+        return currentBitmap;
     }
 
     /**
-     * Clear renderer for a specific camera
+     * Set model info on both renderers
      */
-    public clearCamera(cameraId: string): void {
-        const renderer = this.renderers.get(cameraId);
-        if (renderer) {
-            renderer.destroy();
-            this.renderers.delete(cameraId);
-            this.observationTypeMap.delete(cameraId);
-        }
+    public setModelInfo(modelInfo: ModelInfo): void {
+        this.charucoRenderer.setModelInfo(modelInfo);
+        this.mediapipeRenderer.setModelInfo(modelInfo);
     }
 
     /**
      * Clear all renderers
      */
     public clearAll(): void {
-        for (const renderer of this.renderers.values()) {
-            renderer.destroy();
-        }
-        this.renderers.clear();
-        this.observationTypeMap.clear();
+        this.charucoRenderer.destroy();
+        this.mediapipeRenderer.destroy();
+        this.charucoRenderer = new CharucoOverlayRenderer();
+        this.mediapipeRenderer = new MediapipeOverlayRenderer();
     }
 }

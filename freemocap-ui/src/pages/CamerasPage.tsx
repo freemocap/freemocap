@@ -10,16 +10,20 @@ import {
 } from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 
-interface CameraSettings {
+export type LayoutDirection = 'vertical' | 'horizontal';
+
+export interface CameraSettings {
     columns: number | null;
     show3dView: boolean;
+    layoutDirection: LayoutDirection;
 }
 
 export const CamerasPage = () => {
     const theme = useTheme();
     const [settings, setSettings] = useState<CameraSettings>({
-        columns: null, // auto
+        columns: null,
         show3dView: true,
+        layoutDirection: 'horizontal',
     });
     const [resetKey, setResetKey] = useState<number>(0);
 
@@ -30,6 +34,8 @@ export const CamerasPage = () => {
     const handleResetViews = () => {
         setResetKey(prev => prev + 1);
     };
+
+    const isHorizontal = settings.layoutDirection === 'horizontal';
 
     return (
         <React.Fragment>
@@ -52,45 +58,49 @@ export const CamerasPage = () => {
                     onResetViews={handleResetViews}
                 />
 
-                <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                <Box sx={{flex: 1, overflow: 'hidden'}}>
                     {settings.show3dView ? (
-                        <PanelGroup key={`main-panels-${resetKey}`} direction="vertical">
+                        <PanelGroup
+                            key={`main-panels-${resetKey}-${settings.layoutDirection}`}
+                            direction={settings.layoutDirection}
+                        >
                             {/* Camera Grid View Panel */}
-                            <Panel defaultSize={80} minSize={20}>
-                                <Box sx={{ height: '100%', overflow: 'auto' }}>
+                            <Panel defaultSize={isHorizontal ? 60 : 80} minSize={20}>
+                                <Box sx={{height: '100%', overflow: 'auto'}}>
                                     <ErrorBoundary>
-                                        <CameraViewsGrid settings={settings} resetKey={resetKey} />
+                                        <CameraViewsGrid settings={settings} resetKey={resetKey}/>
                                     </ErrorBoundary>
                                 </Box>
                             </Panel>
 
-                            {/* Vertical Resize Handle */}
+                            {/* Resize Handle — adapts to layout direction */}
                             <PanelResizeHandle
                                 style={{
-                                    height: "2px",
-                                    cursor: "row-resize",
+                                    ...(isHorizontal
+                                        ? {width: "4px", cursor: "col-resize"}
+                                        : {height: "2px", cursor: "row-resize"}),
                                     backgroundColor: theme.palette.primary.dark,
                                 }}
                             />
 
                             {/* 3D View Panel */}
-                            <Panel defaultSize={20} minSize={10}>
-                                <Box sx={{ height: '100%' }}>
-                                    <ThreeJsCanvas />
+                            <Panel defaultSize={isHorizontal ? 40 : 20} minSize={10}>
+                                <Box sx={{height: '100%'}}>
+                                    <ThreeJsCanvas/>
                                 </Box>
                             </Panel>
                         </PanelGroup>
                     ) : (
-                        <Box sx={{ height: '100%', overflow: 'auto' }}>
+                        <Box sx={{height: '100%', overflow: 'auto'}}>
                             <ErrorBoundary>
-                                <CameraViewsGrid settings={settings} resetKey={resetKey} />
+                                <CameraViewsGrid settings={settings} resetKey={resetKey}/>
                             </ErrorBoundary>
                         </Box>
                     )}
                 </Box>
 
-                <Box component="footer" sx={{ p: 1 }}>
-                    <Footer />
+                <Box component="footer" sx={{p: 1}}>
+                    <Footer/>
                 </Box>
             </Box>
         </React.Fragment>

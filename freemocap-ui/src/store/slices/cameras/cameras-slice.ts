@@ -1,8 +1,8 @@
-// cameras-slice.ts
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {areConfigsEqual, CameraConfig, CamerasState, extractConfigSettings,} from './cameras-types';
 import {detectCameras,} from './cameras-thunks';
 import {closePipeline, connectRealtimePipeline} from '../pipeline/pipeline-thunks';
+import {serverSettingsCleared, serverSettingsUpdated} from '../settings/settings-slice';
 
 
 const initialState: CamerasState = {
@@ -25,7 +25,6 @@ export const cameraSlice = createSlice({
         },
 
         // ========== Configuration ==========
-        // User updates desired config
         cameraDesiredConfigUpdated: (
             state,
             action: PayloadAction<{
@@ -38,7 +37,6 @@ export const cameraSlice = createSlice({
             );
             if (camera) {
                 camera.desiredConfig = {...camera.desiredConfig, ...action.payload.config};
-                // Check if there's now a mismatch
                 camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
             }
         },
@@ -47,7 +45,6 @@ export const cameraSlice = createSlice({
             const sourceCamera = state.cameras.find(cam => cam.id === action.payload);
             if (!sourceCamera) return;
 
-            // Extract copyable settings (exclude identity fields)
             const settings = extractConfigSettings(sourceCamera.desiredConfig);
 
             state.cameras.forEach(camera => {
@@ -78,14 +75,13 @@ export const cameraSlice = createSlice({
                 state.error = action.error.message || 'Failed to detect cameras';
             })
 
-            // ========== Connect Pipeline ==========
+            // ========== Connect Pipeline (HTTP) ==========
             .addCase(connectRealtimePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
             .addCase(connectRealtimePipeline.fulfilled, (state, action) => {
                 state.isLoading = false;
-                // Update camera actual configs from server response
                 Object.entries(action.payload.camera_configs).forEach(
                     ([cameraId, config]) => {
                         const camera = state.cameras.find(cam => cam.id === cameraId);
@@ -102,12 +98,41 @@ export const cameraSlice = createSlice({
                 state.error = action.error.message || 'Failed to connect to cameras';
             })
 
-            // ========== Close Pipeline ==========
+            // ========== Close Pipeline (HTTP) ==========
             .addCase(closePipeline.fulfilled, (state) => {
                 state.cameras.forEach(camera => {
                     camera.connectionStatus = 'available';
                     camera.metrics = undefined;
                     camera.hasConfigMismatch = false;
+                });
+            })
+
+            // ========== WebSocket settings/state — sync camera connection status ==========
+            .addCase(serverSettingsUpdated, (state, action) => {
+                const backendCameras = action.payload.settings.cameras;
+                for (const camera of state.cameras) {
+                    const backendCam = backendCameras[camera.id];
+                    if (backendCam) {
+                        // Sync connection status from authoritative backend state
+                        if (backendCam.status === 'connected') {
+                            camera.connectionStatus = 'connected';
+                        } else if (backendCam.status === 'error') {
+                            camera.connectionStatus = 'error';
+                        } else {
+                            camera.connectionStatus = 'available';
+                        }
+                    } else {
+                        // Backend doesn't know about this camera — it's not connected
+                        camera.connectionStatus = 'available';
+                    }
+                }
+            })
+
+            // ========== WebSocket disconnected — clear all connected state ==========
+            .addCase(serverSettingsCleared, (state) => {
+                state.cameras.forEach(camera => {
+                    camera.connectionStatus = 'available';
+                    camera.metrics = undefined;
                 });
             });
     },

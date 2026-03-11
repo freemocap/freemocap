@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: Free up disk space
@@ -21,7 +21,7 @@ jobs:
           docker-images: false
           swap-storage: false
       - name: Set up Python 3.x
-        uses: wntrblm/nox@2022.8.7
+        uses: wntrblm/nox@2026.02.09
         with:
           python-versions: "3.10"
       - name: Install libegl1

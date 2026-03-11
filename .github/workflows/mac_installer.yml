@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: System Info
@@ -18,7 +18,7 @@ jobs:
           gcc --version || true
           env
       - name: Set up Python 3.x
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: '3.11'
@@ -64,7 +64,7 @@ jobs:
           cp ${{ github.workspace }}/freemocap/assets/mac_app_files/freemocap.icns ${{ github.workspace }}/freemocap.app/Contents/Resources
           cp ${{ github.workspace }}/freemocap/assets/mac_app_files/Info.plist ${{ github.workspace }}/freemocap.app/Contents
           tar -czvf freemocap.tar.gz freemocap.app
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: freemocap_mac_app
           path: freemocap.tar.gz

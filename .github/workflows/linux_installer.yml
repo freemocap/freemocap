@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: System Info
@@ -19,7 +19,7 @@ jobs:
           gcc --version || true
           env
       - name: Set up Python 3.x
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: '3.11'
@@ -57,7 +57,7 @@ jobs:
           cd ${{ github.workspace }}
           mv ${{ github.workspace }}/bin/pyapp freemocap_app && chmod +x freemocap_app
           tar -czvf freemocap_app.tar.gz freemocap_app
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: freemocap_linux_app
           path: freemocap_app.tar.gz

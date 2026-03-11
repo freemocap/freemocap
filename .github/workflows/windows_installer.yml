@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
       - name: System Info
@@ -17,7 +17,7 @@ jobs:
           systeminfo || true
           env
       - name: Set up Python 3.x
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           # Semantic version range syntax or exact version of a Python version
           python-version: '3.11'
@@ -68,7 +68,7 @@ jobs:
       - name: Set Executable Icon
         run: |
           rcedit "freemocap_app.exe" --set-icon "${{ github.workspace }}/freemocap/assets/logo/freemocap_skelly_logo.ico"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: freemocap_windows_exe
           path: freemocap_app.exe

@@ -36,14 +36,43 @@ def headless_calibration(
 
 
 if __name__ == "__main__":
-    path_to_folder_of_calibration_videos = Path("/Users/philipqueen/freemocap_data/recording_sessions/iphone_testing_calibration/synchronized_videos/")
+    import sys
+    path_to_folder_of_calibration_videos = Path("")
     charuco_square_size = 57  # size of a black square on your charuco board in mm
     charuco_definition = charuco_7x5()
     # charuco_definition = charuco_5x3()
 
-    use_charuco_as_groundplane = True
+    use_charuco_as_groundplane = False
 
     recording_name = "headless_calibration" # change this is any string, or to None for default
+
+    args = sys.argv[1:]
+
+    if len(args > 0):
+        path_to_folder_of_calibration_videos = Path(args[0])
+
+    if not path_to_folder_of_calibration_videos.exists():
+        print(f"Error: Directory does not exist: {path_to_folder_of_calibration_videos}")
+        print("\nUsage: python headless_calibration.py [path_to_folder_of_calibration_videos]"
+            "[--recording_name NAME] [--square-size MM] {--7x5 | --5x3} {--use-groundplane | --no-groundplane}")
+        sys.exit(1)
+
+    if "--recording-name" in args:
+        recording_name = args[args.index("--recording-name") + 1]
+
+    if "--square-size" in args:
+        charuco_square_size = float(args[args.index("--square-size") + 1])
+
+    if "--7x5" in args:
+        charuco_definition = charuco_7x5()
+    elif "--5x3" in args:
+        charuco_definition = charuco_5x3()
+
+    if "--use-groundplane" in args:
+        use_charuco_as_groundplane = True
+    elif "--no-groundplane" in args:
+        use_charuco_as_groundplane = False
+
 
     headless_calibration(
         path_to_folder_of_calibration_videos=path_to_folder_of_calibration_videos,

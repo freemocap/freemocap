@@ -99,15 +99,31 @@ def process_recording_without_gui(
 
 
 if __name__ == "__main__":
+    import sys
     path_to_folder_of_session_folders = Path(r"D:\footropter_pilot_04_19_23\1.0_recordings")
 
     # Add path to camera calibration toml file you would like to default to
     path_to_camera_calibration_toml = None
 
+    # Set to None if you don't want to use blender (necessary if skipping blender from CLI as well)
     path_to_blender_executable = Path(r"C:\Program Files\Blender Foundation\Blender 3.1\blender.exe")
+    
+    max_num_processes = cpu_count() - 1
+
+    # Usage: script.py [session_folder] [--calibration TOML_PATH] [--blender EXE_PATH] [--max-processes N]
+    args = sys.argv[1:]
+    if len(args) > 0 and not args[0].startswith("--"):
+        path_to_folder_of_session_folders = Path(args[0])
+    if "--calibration" in args:
+        path_to_camera_calibration_toml = Path(args[args.index("--calibration") + 1])
+    if "--blender" in args:
+        path_to_blender_executable = Path(args[args.index("--blender") + 1])
+    if "--max-processes" in args:
+        max_num_processes = int(args[args.index("--max-processes") + 1])
 
     process_folder_of_session_folders(
         path_to_folder_of_session_folders=path_to_folder_of_session_folders,
         path_to_camera_calibration_toml=path_to_camera_calibration_toml,
         path_to_blender_executable=path_to_blender_executable,
+        max_num_processes=max_num_processes,
     )

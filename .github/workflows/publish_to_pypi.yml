@@ -14,11 +14,11 @@ jobs:
       # IMPORTANT: this permission is mandatory for trusted publishing - https://docs.pypi.org/trusted-publishers/using-a-publisher/
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: '3.11'
 
@@ -30,14 +30,6 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
 
-      - name: Cache Poetry dependencies
-        uses: actions/cache@v5
-        with:
-          path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
       - name: Update dependencies
         run: poetry update
 
@@ -48,4 +40,4 @@ jobs:
         run: poetry build
 
       - name: Publish package to pypi
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ec4db0b4ddc65acdf4bff5fa45ac92d78b56bdf0

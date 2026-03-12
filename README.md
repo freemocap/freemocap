@@ -30,12 +30,8 @@ system and platform for decentralized scientific research, education, and traini
         <img src="https://img.shields.io/badge/contributions-welcome-ff69b4.svg" alt="Contributions Welcome">
     </a>
 
-<a href="https://github.com/psf/black">
-    <img alt="https://img.shields.io/badge/code%20style-black-000000.svg" src="https://img.shields.io/badge/code%20style-black-000000.svg">
-  </a>
-
 <a href="https://discord.gg/SgdnzbHDTG">
-    <img alt="Discord Community Server" src="https://dcbadge.vercel.app/api/server/SgdnzbHDTG?style=flat">
+    <img src="https://img.shields.io/badge/join_us-on_discord-5865F2?logo=discord&logoColor=white" alt="Discord server" />
   </a>
 
 
@@ -46,9 +42,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 
 
 
-
-
---
+___
 ## QUICKSTART
 
 > [!NOTE] 

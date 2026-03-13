@@ -67,6 +67,217 @@ def triangulate_simple(points, camera_mats):
     return p3d
 
 
+def project_point_to_cam(p3d, P):
+    """
+    Project 3D world point to 2D image coordinates.
+    
+    Args:
+        p3d: (3,) array, 3D point [X, Y, Z]
+        P: (3,4) array, camera projection matrix
+        
+    Returns:
+        (2,) array, normalized image coordinates [u, v]
+        
+    Note: Performs homogeneous projection: [u, v] = (P @ [X, Y, Z, 1])[:2] / (P @ [X, Y, Z, 1])[2]
+    """
+    hom = np.array([p3d[0], p3d[1], p3d[2], 1.0])
+    x = P @ hom
+    return x[:2] / x[2]
+
+
+def triangulate_with_outlier_rejection(
+    subp: np.ndarray,
+    cam_mats: np.ndarray,
+    min_cams: int = 2,
+    mean_error_threshold: float = 0.01,
+    error_improvement_threshold: float = 2.0,
+    marker_index = None,
+    number_of_tracked_points = None,
+    enable_debug: bool = True,
+    smooth_transition: bool = True,
+):
+    """
+    Triangulates 3D points with progressive outlier rejection.
+    
+    Performs triangulation using all valid cameras, and if reprojection error
+    exceeds threshold, iteratively tests camera combinations to find optimal subset.
+    
+    Args:
+        subp: (N,2) array of 2D detections from N valid cameras
+        cam_mats: (N,3,4) array of camera matrices for valid cameras
+        min_cams: Minimum number of cameras required for triangulation
+        mean_error_threshold: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
+        error_improvement_threshold: Minimum improvement ratio to accept refined solution
+        marker_index: Flattened index for tracking specific markers
+        number_of_tracked_points: Total points per frame for index calculation
+        enable_debug: Enable debug logging for specific markers/frames
+        smooth_transition: If True, uses weighted average for ratios near threshold to avoid oscillation
+    
+    Returns:
+        np.ndarray: 3D point coordinates
+    """
+    # --- DEBUG LOGIC ---
+    # Compute true frame + marker from flattened index
+    if marker_index is not None and number_of_tracked_points is not None:
+        real_marker_index = marker_index % number_of_tracked_points
+        real_frame_index  = marker_index // number_of_tracked_points
+    else:
+        real_marker_index = None
+        real_frame_index = None
+
+    # Enable debug only for specific markers and frames
+    if enable_debug and real_marker_index is not None:
+        enable_debug = (((real_marker_index == 26) 
+            and (real_frame_index in range(1010, 1039)))
+            # or ((real_marker_index == 28) 
+            # and (real_frame_index in range(24, 50))) or
+            # ((real_marker_index == 28) 
+            # and (real_frame_index in range(92, 100))) or
+            # ((real_marker_index == 28) 
+            # and (real_frame_index in range(157, 179))) or
+            # ((real_marker_index == 7) 
+            # and (real_frame_index in range(183, 195)))
+            )
+    # ---
+
+    # Get the total of valid cameras
+    total_valid_cams = len(cam_mats)
+    # Create local indices (0, 1, 2, ... for the valid cameras)
+    local_indices = list(range(total_valid_cams))
+
+    if enable_debug:
+        print(
+            "----- DEBUG TRIANGULATION -----\n"
+            f"Frame: {real_frame_index} "
+            f"Marker: {real_marker_index}\n"
+        )
+
+    # Calculate default triangulation with all the valid cameras
+    default_p3d = triangulate_simple(subp, cam_mats)
+
+    # Reproject to compute error
+    default_proj = np.array([
+        project_point_to_cam(default_p3d, M) for M in cam_mats
+    ])
+    # Calculate the mean error
+    default_errors = np.linalg.norm(default_proj - subp, axis=1)
+    default_mean_error = np.mean(default_errors)
+
+    if enable_debug:
+        print(
+            f"Kept cameras: {local_indices} "
+            f"Default Mean error: {default_mean_error:.4f} (norm units) "
+            f"Default p3d:  {default_p3d}\n"
+        )
+
+    # If the error is lower than the threshold return the default
+    # triangulation, if not then start the N-X camera combination loop
+    if default_mean_error < mean_error_threshold:
+        return default_p3d
+    else:
+        if enable_debug:
+            print("Default triangulation error above threshold."
+                  " Starting N-X camera combination loop...")
+
+        # Set the final_p3d and best_error from the total camera triangulation 
+        best_p3d = default_p3d
+        best_error = default_mean_error
+        error_improvement_ratio = 1.0
+
+        # For now only do N-1 combinations as the correct combination criteria
+        # is not solid yet. Getting the lowest mean error does not always
+        # mean getting the correct cameras. This happens mostly when there are
+        # more than one camera with incorrect detection. When the lowest error
+        # is multiple times lower than the second lowest error then there is high
+        # certainty that the only bad camera was removed. If not, then N-2
+        # combinations don't provide a clear decision based only on mean error.
+        # Probably to analyze a window of past triangulations would provide
+        # good info to decide (at the expense of more processing time).
+        for camera_drop_count in range(1, 2):
+            selected_camera_count = total_valid_cams - camera_drop_count
+
+            if selected_camera_count < min_cams:
+                return default_p3d
+
+            # Generate all combinations using LOCAL indices
+            combinations = list(itertools.combinations(local_indices, selected_camera_count))        
+
+            if enable_debug:
+                print(f"N-{camera_drop_count}: Keeping {selected_camera_count} cameras")
+
+            for combo in combinations:
+
+                # combo contains LOCAL indices (0, 1, 2, ...)
+                kept_local_indices = list(combo)
+                kept_cameras = [local_indices[i] for i in kept_local_indices]
+            
+                candidate_pts = subp[kept_local_indices]
+                candidate_cams = cam_mats[kept_local_indices]
+
+                candidate_p3d = triangulate_simple(candidate_pts, candidate_cams)
+
+                candidate_proj = np.array([
+                    project_point_to_cam(candidate_p3d, M) for M in candidate_cams
+                ])
+
+                candidate_errors = np.linalg.norm(candidate_proj - candidate_pts, axis=1)
+                candidate_mean_error = np.mean(candidate_errors)
+                
+                if enable_debug:
+                    print(
+                        f"Camera combination: {kept_cameras} "
+                        f"Candidate Mean error: {candidate_mean_error:.4f} (norm units) "
+                        f"Candidate p3d: {candidate_p3d}"
+                    )
+
+                # Update best solution if current candidate has lower reprojection error
+                if candidate_mean_error < best_error:
+                    best_error = candidate_mean_error
+                    best_p3d = candidate_p3d
+                    best_camera_combo = kept_cameras
+                    error_improvement_ratio = default_mean_error / best_error
+
+        if enable_debug:
+            print(
+                f"Best camera combo: {best_camera_combo} "
+                f"Best Mean error: {best_error:.4f} (norm units) "
+                f"Error improvement ratio: {error_improvement_ratio:.4f} "
+                f"Refined p3d: {best_p3d}\n"
+            )
+
+        # Return the best_p3d if the error improvement ratio is higher
+        # than the threshold
+        if error_improvement_ratio > error_improvement_threshold:
+            return best_p3d
+        elif smooth_transition and 1.0 < error_improvement_ratio <= error_improvement_threshold:
+            # Use exponential weighting for smoother transition
+            # Create a normalized parameter between 0 and 1
+            t = (error_improvement_ratio - 1.0) / (error_improvement_threshold - 1.0)
+            
+            # Exponential weighting gives more weight to default when near 1,
+            # and transitions smoothly to best as ratio approaches threshold
+            # Using exp(5*t) gives a good smooth curve
+            weight = 1.0 - np.exp(-5.0 * t)
+            
+            # Ensure weight is between 0 and 1
+            weight = np.clip(weight, 0.0, 1.0)
+            
+            # Blend the two solutions
+            blended_p3d = (1.0 - weight) * default_p3d + weight * best_p3d
+            
+            if enable_debug:
+                print(
+                    f"Using exponential blend with weight {weight:.3f} (t={t:.3f}):\n"
+                    f"  Default p3d: {default_p3d}\n"
+                    f"  Best p3d:    {best_p3d}\n"
+                    f"  Blended p3d: {blended_p3d}"
+                )
+            
+            return blended_p3d
+        else:
+            return default_p3d
+            
+
 def get_error_dict(errors_full, min_points=10):
     n_cams = errors_full.shape[0]
     errors_norm = np.linalg.norm(errors_full, axis=2)
@@ -724,7 +935,7 @@ class CameraGroup:
 
         return out
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
+    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None, number_of_tracked_points=None):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -763,7 +974,8 @@ class CameraGroup:
             subp = points[:, ip, :]
             good = ~np.isnan(subp[:, 0])
             if np.sum(good) >= 2:
-                out[ip] = triangulate_simple(subp[good], cam_mats[good])
+                # out[ip] = triangulate_simple(subp[good], cam_mats[good])
+                out[ip] = triangulate_with_outlier_rejection(subp[good], cam_mats[good], marker_index=ip, number_of_tracked_points=number_of_tracked_points)
 
             if kill_event is not None and kill_event.is_set():
                 return None

@@ -48,7 +48,7 @@ if __name__ == "__main__":
 
     args = sys.argv[1:]
 
-    if len(args > 0):
+    if len(args) > 0:
         path_to_folder_of_calibration_videos = Path(args[0])
 
     if not path_to_folder_of_calibration_videos.exists():

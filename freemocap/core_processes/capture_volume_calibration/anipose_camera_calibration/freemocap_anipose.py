@@ -88,12 +88,15 @@ def project_point_to_cam(p3d, P):
 def triangulate_with_outlier_rejection(
     subp: np.ndarray,
     cam_mats: np.ndarray,
+    valid_camera_indices: np.ndarray,
     min_cams: int = 2,
+    max_drop_amount: int = 1,
+    max_drop_ratio: float = 0.4,
     mean_error_threshold: float = 0.01,
     error_improvement_threshold: float = 2.0,
     marker_index = None,
     number_of_tracked_points = None,
-    enable_debug: bool = True,
+    enable_debug: bool = False,
     smooth_transition: bool = True,
 ):
     """
@@ -105,7 +108,10 @@ def triangulate_with_outlier_rejection(
     Args:
         subp: (N,2) array of 2D detections from N valid cameras
         cam_mats: (N,3,4) array of camera matrices for valid cameras
+        valid_camera_indices: Indices of valid cameras
         min_cams: Minimum number of cameras required for triangulation
+        max_drop_amount: Maximum number of cameras to drop
+        max_drop_ratio: Maximum ratio of cameras to drop (from the total number of valid cameras)
         mean_error_threshold: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
         error_improvement_threshold: Minimum improvement ratio to accept refined solution
         marker_index: Flattened index for tracking specific markers
@@ -125,18 +131,21 @@ def triangulate_with_outlier_rejection(
         real_marker_index = None
         real_frame_index = None
 
+    # TEMPORAL DEBUG for checking the 2D coordinates of the valid cameras.
+    # Note that the valid cameras not always match the annotated markers in the videos.
+    # A marker could not be drawn in a video because it has visibility < 0.5 or presence < 0.5.
+    # But it could still have 2D coordinates that participate in the triangulation.
+    # This debug shows the 2D coordinates of the valid cameras for a specific marker and frame.
+    # if real_marker_index == 28 and real_frame_index is not None and 215 <= real_frame_index <= 265:
+    #     print(f"----- TEMPORAL DEBUG -----")
+    #     print(f"Frame: {real_frame_index}, Marker: {real_marker_index}")
+    #     print(f"Valid camera indices: {valid_camera_indices}")
+    #     print(f"2D coordinates:\n{subp}")
+
     # Enable debug only for specific markers and frames
     if enable_debug and real_marker_index is not None:
-        enable_debug = (((real_marker_index == 26) 
-            and (real_frame_index in range(1010, 1039)))
-            # or ((real_marker_index == 28) 
-            # and (real_frame_index in range(24, 50))) or
-            # ((real_marker_index == 28) 
-            # and (real_frame_index in range(92, 100))) or
-            # ((real_marker_index == 28) 
-            # and (real_frame_index in range(157, 179))) or
-            # ((real_marker_index == 7) 
-            # and (real_frame_index in range(183, 195)))
+        enable_debug = (((real_marker_index == 28) 
+            and (real_frame_index in range(260, 269)))
             )
     # ---
 
@@ -173,7 +182,7 @@ def triangulate_with_outlier_rejection(
     # If the error is lower than the threshold return the default
     # triangulation, if not then start the N-X camera combination loop
     if default_mean_error < mean_error_threshold:
-        return default_p3d
+        return default_p3d, valid_camera_indices
     else:
         if enable_debug:
             print("Default triangulation error above threshold."
@@ -184,20 +193,15 @@ def triangulate_with_outlier_rejection(
         best_error = default_mean_error
         error_improvement_ratio = 1.0
 
-        # For now only do N-1 combinations as the correct combination criteria
-        # is not solid yet. Getting the lowest mean error does not always
-        # mean getting the correct cameras. This happens mostly when there are
-        # more than one camera with incorrect detection. When the lowest error
-        # is multiple times lower than the second lowest error then there is high
-        # certainty that the only bad camera was removed. If not, then N-2
-        # combinations don't provide a clear decision based only on mean error.
-        # Probably to analyze a window of past triangulations would provide
-        # good info to decide (at the expense of more processing time).
-        for camera_drop_count in range(1, 2):
+        # Make the N-X camera combination loop
+        for camera_drop_count in range(1, max_drop_amount + 1):
             selected_camera_count = total_valid_cams - camera_drop_count
 
             if selected_camera_count < min_cams:
-                return default_p3d
+                break
+
+            if camera_drop_count > max_drop_ratio * total_valid_cams:
+                break
 
             # Generate all combinations using LOCAL indices
             combinations = list(itertools.combinations(local_indices, selected_camera_count))        
@@ -248,7 +252,8 @@ def triangulate_with_outlier_rejection(
         # Return the best_p3d if the error improvement ratio is higher
         # than the threshold
         if error_improvement_ratio > error_improvement_threshold:
-            return best_p3d
+            used_global_indices = [valid_camera_indices[idx] for idx in best_camera_combo]
+            return best_p3d, used_global_indices
         elif smooth_transition and 1.0 < error_improvement_ratio <= error_improvement_threshold:
             # Use exponential weighting for smoother transition
             # Create a normalized parameter between 0 and 1
@@ -273,9 +278,9 @@ def triangulate_with_outlier_rejection(
                     f"  Blended p3d: {blended_p3d}"
                 )
             
-            return blended_p3d
+            return blended_p3d, valid_camera_indices
         else:
-            return default_p3d
+            return default_p3d, valid_camera_indices
             
 
 def get_error_dict(errors_full, min_points=10):
@@ -935,7 +940,7 @@ class CameraGroup:
 
         return out
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None, number_of_tracked_points=None):
+    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -974,8 +979,7 @@ class CameraGroup:
             subp = points[:, ip, :]
             good = ~np.isnan(subp[:, 0])
             if np.sum(good) >= 2:
-                # out[ip] = triangulate_simple(subp[good], cam_mats[good])
-                out[ip] = triangulate_with_outlier_rejection(subp[good], cam_mats[good], marker_index=ip, number_of_tracked_points=number_of_tracked_points)
+                out[ip] = triangulate_simple(subp[good], cam_mats[good])
 
             if kill_event is not None and kill_event.is_set():
                 return None
@@ -984,6 +988,82 @@ class CameraGroup:
             out = out[0]
 
         return out
+
+    def triangulate_using_outlier_rejection(
+        self,
+        points,
+        undistort=True,
+        progress=False,
+        kill_event: multiprocessing.Event = None,
+        number_of_tracked_points=None,
+        max_drop_amount: int = 1,
+        max_drop_ratio: float = 0.4,
+        mean_error_threshold: float = 0.01,
+        error_improvement_threshold: float = 2.0,
+    ):
+        """Given an CxNx2 array, this returns an Nx3 array of points,
+        where N is the number of points and C is the number of cameras"""
+
+        assert points.shape[0] == len(
+            self.cameras
+        ), "Invalid points shape, first dim should be equal to" " number of cameras ({}), but shape is {}".format(
+            len(self.cameras), points.shape
+        )
+
+        one_point = False
+        if len(points.shape) == 2:
+            points = points.reshape(-1, 1, 2)
+            one_point = True
+
+        if undistort:
+            new_points = np.empty(points.shape)
+            for cnum, cam in enumerate(self.cameras):
+                # must copy in order to satisfy opencv underneath
+                sub = np.copy(points[cnum])
+                new_points[cnum] = cam.undistort_points(sub)
+            points = new_points
+
+        n_cams, n_points, _ = points.shape
+
+        out = np.empty((n_points, 3))
+        out[:] = np.nan
+        
+        used_cameras_mask = np.zeros((n_points, n_cams), dtype=bool)
+
+        cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
+
+        if progress:
+            iterator = trange(n_points, ncols=70)
+        else:
+            iterator = range(n_points)
+
+        for ip in iterator:
+            subp = points[:, ip, :]
+            good = ~np.isnan(subp[:, 0])
+            if np.sum(good) >= 2:
+                valid_camera_indices = np.where(good)[0]
+                p3d, used_cams = triangulate_with_outlier_rejection(
+                    subp[good],
+                    cam_mats[good],
+                    marker_index=ip,
+                    number_of_tracked_points=number_of_tracked_points,
+                    valid_camera_indices=valid_camera_indices,
+                    max_drop_amount=max_drop_amount,
+                    max_drop_ratio=max_drop_ratio,
+                    mean_error_threshold=mean_error_threshold,
+                    error_improvement_threshold=error_improvement_threshold,
+                )
+                out[ip] = p3d
+                used_cameras_mask[ip, used_cams] = True
+
+            if kill_event is not None and kill_event.is_set():
+                return None, None
+
+        if one_point:
+            out = out[0]
+            used_cameras_mask = used_cameras_mask[0]
+
+        return out, used_cameras_mask
 
     def triangulate_possible(
             self,

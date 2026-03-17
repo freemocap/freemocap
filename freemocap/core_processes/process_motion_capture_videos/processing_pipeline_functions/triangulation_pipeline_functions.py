@@ -79,10 +79,16 @@ def get_triangulated_data(
             skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
             skeleton_reprojection_error_cam_fr_mar,
+            used_cameras_mask,
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             image_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
             use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+            use_triangulate_outlier_rejection=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection,
+            max_drop_amount=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_amount,
+            max_drop_ratio=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_ratio,
+            mean_error_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.mean_error_threshold,
+            error_improvement_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.error_improvement_threshold,
             kill_event=kill_event,
         )
         save_3d_data_to_npy(
@@ -93,6 +99,12 @@ def get_triangulated_data(
             processing_level="raw",
             file_prefix=processing_parameters.tracking_model_info.name,
         )
+
+        if processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection and used_cameras_mask is not None:
+            mask_filename = f"{processing_parameters.tracking_model_info.name}_outlier_rejection_used_cameras_mask.npy"
+            mask_filepath = Path(processing_parameters.recording_info_model.raw_data_folder_path) / mask_filename
+            logger.info(f"Saving used cameras mask to {mask_filepath}")
+            np.save(mask_filepath, used_cameras_mask)
 
         if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:
             logger.info("Filtering 3d triangulation...")

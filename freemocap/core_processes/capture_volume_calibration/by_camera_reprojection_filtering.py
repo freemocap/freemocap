@@ -125,6 +125,7 @@ def filter_by_reprojection_error(
             retriangulated_data_frame_marker_xyz,
             new_reprojection_error_flat,
             new_reprojError_cam_frame_marker,
+            _,
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             image_2d_data=data_to_reproject_camera_frame_marker_xy,

@@ -10,6 +10,10 @@ class CharucoVelocityError(RuntimeError):
     """Raised when the velocity of the ChArUco corners is too high to be considered stationary."""
 
 
+class CharucoNormalizationError(RuntimeError):
+    """Raised when a ChArUco-derived vector cannot be normalized."""
+
+
 def get_charuco_x_and_y_idx(number_of_squares_width: int, number_of_squares_height: int):
     """
     For a given board definition, get the corner marker indexes needed to make the x and y vectors
@@ -25,7 +29,10 @@ def get_charuco_x_and_y_idx(number_of_squares_width: int, number_of_squares_heig
 
 
 def get_unit_vector(vector: np.ndarray) -> np.ndarray:
-    return vector / np.linalg.norm(vector)
+    norm = np.linalg.norm(vector)
+    if not np.isfinite(norm) or np.isclose(norm, 0.0):
+        raise CharucoNormalizationError("Cannot normalize a zero-length or invalid vector.")
+    return vector / norm
 
 
 def compute_basis_vectors_of_new_reference(

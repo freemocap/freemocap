@@ -21,7 +21,6 @@ class AniposeTriangulate3DParametersModel(BaseModel):
     max_drop_amount: int = 1
     max_drop_ratio: float = 0.4
     mean_error_threshold: float = 0.01
-    error_improvement_threshold: float = 2.0
     run_3d_triangulation: bool = True
     flatten_single_camera_data: bool = True
 

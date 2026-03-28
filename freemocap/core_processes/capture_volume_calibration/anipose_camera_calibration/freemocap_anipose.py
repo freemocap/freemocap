@@ -93,11 +93,9 @@ def triangulate_with_outlier_rejection(
     max_drop_amount: int = 1,
     max_drop_ratio: float = 0.4,
     mean_error_threshold: float = 0.01,
-    error_improvement_threshold: float = 2.0,
     marker_index = None,
     number_of_tracked_points = None,
     enable_debug: bool = False,
-    smooth_transition: bool = True,
 ):
     """
     Triangulates 3D points with progressive outlier rejection.
@@ -113,11 +111,9 @@ def triangulate_with_outlier_rejection(
         max_drop_amount: Maximum number of cameras to drop
         max_drop_ratio: Maximum ratio of cameras to drop (from the total number of valid cameras)
         mean_error_threshold: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
-        error_improvement_threshold: Minimum improvement ratio to accept refined solution
         marker_index: Flattened index for tracking specific markers
         number_of_tracked_points: Total points per frame for index calculation
         enable_debug: Enable debug logging for specific markers/frames
-        smooth_transition: If True, uses weighted average for ratios near threshold to avoid oscillation
     
     Returns:
         np.ndarray: 3D point coordinates
@@ -191,7 +187,11 @@ def triangulate_with_outlier_rejection(
         # Set the final_p3d and best_error from the total camera triangulation 
         best_p3d = default_p3d
         best_error = default_mean_error
-        error_improvement_ratio = 1.0
+        
+        # Initialize variables for weighted average of combinations (including the default one)
+        default_weight = np.exp(-5.0 * default_mean_error / mean_error_threshold)
+        weighted_p3d_sum = default_weight * default_p3d
+        total_weight = default_weight
 
         # Make the N-X camera combination loop
         for camera_drop_count in range(1, max_drop_amount + 1):
@@ -226,11 +226,18 @@ def triangulate_with_outlier_rejection(
 
                 candidate_errors = np.linalg.norm(candidate_proj - candidate_pts, axis=1)
                 candidate_mean_error = np.mean(candidate_errors)
+
+                # Calculate exponential weight for this combination
+                # (Lower error = higher weight)
+                weight = np.exp(-5.0 * candidate_mean_error / mean_error_threshold)
+                weighted_p3d_sum += weight * candidate_p3d
+                total_weight += weight
                 
                 if enable_debug:
                     print(
                         f"Camera combination: {kept_cameras} "
                         f"Candidate Mean error: {candidate_mean_error:.4f} (norm units) "
+                        f"Weight: {weight:.4f} "
                         f"Candidate p3d: {candidate_p3d}"
                     )
 
@@ -239,46 +246,32 @@ def triangulate_with_outlier_rejection(
                     best_error = candidate_mean_error
                     best_p3d = candidate_p3d
                     best_camera_combo = kept_cameras
-                    error_improvement_ratio = default_mean_error / best_error
+
+            # If we met the target accuracy threshold at this current level (N-1, N-2, etc.)
+            # we can stop here and avoid dropping even more cameras.
+            if best_error < mean_error_threshold:
+                if enable_debug:
+                    print(f"Target accuracy met at N-{camera_drop_count}. Breaking search.")
+                break
+
+        # Calculate the final weighted 3D point from all tested combinations
+        if total_weight > 1e-12:
+            weighted_p3d = weighted_p3d_sum / total_weight
+        else:
+            # Fallback for numerical underflow from extremely large errors
+            weighted_p3d = best_p3d
 
         if enable_debug:
             print(
                 f"Best camera combo: {best_camera_combo} "
                 f"Best Mean error: {best_error:.4f} (norm units) "
-                f"Error improvement ratio: {error_improvement_ratio:.4f} "
-                f"Refined p3d: {best_p3d}\n"
+                f"Weighted p3d: {weighted_p3d}\n"
             )
 
-        # Return the best_p3d if the error improvement ratio is higher
-        # than the threshold
-        if error_improvement_ratio > error_improvement_threshold:
+        # Return the weighted_p3d if the error was improved by at least one combination
+        if best_error < default_mean_error:
             used_global_indices = [valid_camera_indices[idx] for idx in best_camera_combo]
-            return best_p3d, used_global_indices
-        elif smooth_transition and 1.0 < error_improvement_ratio <= error_improvement_threshold:
-            # Use exponential weighting for smoother transition
-            # Create a normalized parameter between 0 and 1
-            t = (error_improvement_ratio - 1.0) / (error_improvement_threshold - 1.0)
-            
-            # Exponential weighting gives more weight to default when near 1,
-            # and transitions smoothly to best as ratio approaches threshold
-            # Using exp(5*t) gives a good smooth curve
-            weight = 1.0 - np.exp(-5.0 * t)
-            
-            # Ensure weight is between 0 and 1
-            weight = np.clip(weight, 0.0, 1.0)
-            
-            # Blend the two solutions
-            blended_p3d = (1.0 - weight) * default_p3d + weight * best_p3d
-            
-            if enable_debug:
-                print(
-                    f"Using exponential blend with weight {weight:.3f} (t={t:.3f}):\n"
-                    f"  Default p3d: {default_p3d}\n"
-                    f"  Best p3d:    {best_p3d}\n"
-                    f"  Blended p3d: {blended_p3d}"
-                )
-            
-            return blended_p3d, valid_camera_indices
+            return weighted_p3d, used_global_indices
         else:
             return default_p3d, valid_camera_indices
             
@@ -999,7 +992,6 @@ class CameraGroup:
         max_drop_amount: int = 1,
         max_drop_ratio: float = 0.4,
         mean_error_threshold: float = 0.01,
-        error_improvement_threshold: float = 2.0,
     ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
@@ -1051,7 +1043,6 @@ class CameraGroup:
                     max_drop_amount=max_drop_amount,
                     max_drop_ratio=max_drop_ratio,
                     mean_error_threshold=mean_error_threshold,
-                    error_improvement_threshold=error_improvement_threshold,
                 )
                 out[ip] = p3d
                 used_cameras_mask[ip, used_cams] = True

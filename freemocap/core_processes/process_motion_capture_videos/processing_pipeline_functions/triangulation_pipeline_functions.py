@@ -88,7 +88,6 @@ def get_triangulated_data(
             max_drop_amount=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_amount,
             max_drop_ratio=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_ratio,
             mean_error_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.mean_error_threshold,
-            error_improvement_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.error_improvement_threshold,
             kill_event=kill_event,
         )
         save_3d_data_to_npy(

@@ -20,7 +20,6 @@ def triangulate_3d_data(
         max_drop_amount: int = 1,
         max_drop_ratio: float = 0.4,
         mean_error_threshold: float = 0.01,
-        error_improvement_threshold: float = 2.0,
         kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     number_of_cameras = image_2d_data.shape[0]
@@ -60,7 +59,6 @@ def triangulate_3d_data(
             max_drop_amount=max_drop_amount,
             max_drop_ratio=max_drop_ratio,
             mean_error_threshold=mean_error_threshold,
-            error_improvement_threshold=error_improvement_threshold,
         )
         used_cameras_mask = used_cameras_mask_flat.reshape(number_of_frames, number_of_tracked_points, number_of_cameras)
     else:
@@ -149,12 +147,6 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--error_improvement_threshold",
-        type=float,
-        help="minimum improvement ratio to accept refined solution",
-        required=False,
-    )
-    parser.add_argument(
         "--file_prefix",
         type=str,
         help="file prefix",
@@ -185,9 +177,6 @@ if __name__ == "__main__":
     if args.mean_error_threshold is None:
         args.mean_error_threshold = 0.01
 
-    if args.error_improvement_threshold is None:
-        args.error_improvement_threshold = 2.0
-
     if args.file_prefix is None:
         args.file_prefix = ""
 
@@ -211,7 +200,6 @@ if __name__ == "__main__":
         max_drop_amount=args.max_drop_amount,
         max_drop_ratio=args.max_drop_ratio,
         mean_error_threshold=args.mean_error_threshold,
-        error_improvement_threshold=args.error_improvement_threshold,
     )
     save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,

@@ -30,8 +30,6 @@ OUTLIER_REJECTION_MAX_DROP_RATIO = "Max Drop Ratio"
 
 OUTLIER_REJECTION_MEAN_ERROR_THRESHOLD = "Mean Error Threshold"
 
-OUTLIER_REJECTION_ERROR_IMPROVEMENT_THRESHOLD = "Error Improvement Threshold"
-
 ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
 
 REPROJECTION_ERROR_FILTERING_TREE_NAME = "Reprojection Error Filtering"
@@ -212,12 +210,6 @@ def create_3d_triangulation_parameter_group(
                         value=parameter_model.mean_error_threshold,
                         tip="Maximum acceptable mean reprojection error.",
                     ),
-                    dict(
-                        name=OUTLIER_REJECTION_ERROR_IMPROVEMENT_THRESHOLD,
-                        type="float",
-                        value=parameter_model.error_improvement_threshold,
-                        tip="Minimum improvement ratio to accept refined solution.",
-                    ),
                 ],
             ),
             dict(
@@ -314,7 +306,6 @@ def extract_parameter_model_from_parameter_tree(
             max_drop_amount=parameter_values_dictionary[OUTLIER_REJECTION_MAX_DROP_AMOUNT],
             max_drop_ratio=parameter_values_dictionary[OUTLIER_REJECTION_MAX_DROP_RATIO],
             mean_error_threshold=parameter_values_dictionary[OUTLIER_REJECTION_MEAN_ERROR_THRESHOLD],
-            error_improvement_threshold=parameter_values_dictionary[OUTLIER_REJECTION_ERROR_IMPROVEMENT_THRESHOLD],
             run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],
         ),
         post_processing_parameters_model=PostProcessingParametersModel(

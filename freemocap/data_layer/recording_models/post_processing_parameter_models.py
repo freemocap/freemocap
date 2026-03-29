@@ -18,9 +18,9 @@ class AniposeTriangulate3DParametersModel(BaseModel):
     minimum_cameras_to_reproject: int = 3
     use_triangulate_ransac_method: bool = False
     use_triangulate_outlier_rejection: bool = False
-    max_drop_amount: int = 1
-    max_drop_ratio: float = 0.4
-    mean_error_threshold: float = 0.01
+    minimum_cameras_for_triangulation: int = 2
+    maximum_cameras_to_drop: int = 1
+    target_reprojection_error: float = 0.01
     run_3d_triangulation: bool = True
     flatten_single_camera_data: bool = True
 

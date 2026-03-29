@@ -89,10 +89,9 @@ def triangulate_with_outlier_rejection(
     subp: np.ndarray,
     cam_mats: np.ndarray,
     valid_camera_indices: np.ndarray,
-    min_cams: int = 2,
-    max_drop_amount: int = 1,
-    max_drop_ratio: float = 0.4,
-    mean_error_threshold: float = 0.01,
+    minimum_cameras_for_triangulation: int = 2,
+    maximum_cameras_to_drop: int = 1,
+    target_reprojection_error: float = 0.01,
     marker_index = None,
     number_of_tracked_points = None,
     enable_debug: bool = False,
@@ -107,10 +106,9 @@ def triangulate_with_outlier_rejection(
         subp: (N,2) array of 2D detections from N valid cameras
         cam_mats: (N,3,4) array of camera matrices for valid cameras
         valid_camera_indices: Indices of valid cameras
-        min_cams: Minimum number of cameras required for triangulation
-        max_drop_amount: Maximum number of cameras to drop
-        max_drop_ratio: Maximum ratio of cameras to drop (from the total number of valid cameras)
-        mean_error_threshold: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
+        minimum_cameras_for_triangulation: Minimum number of cameras required for triangulation
+        maximum_cameras_to_drop: Maximum number of cameras to drop
+        target_reprojection_error: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
         marker_index: Flattened index for tracking specific markers
         number_of_tracked_points: Total points per frame for index calculation
         enable_debug: Enable debug logging for specific markers/frames
@@ -175,9 +173,9 @@ def triangulate_with_outlier_rejection(
             f"Default p3d:  {default_p3d}\n"
         )
 
-    # If the error is lower than the threshold return the default
+    # If the error is lower than the target return the default
     # triangulation, if not then start the N-X camera combination loop
-    if default_mean_error < mean_error_threshold:
+    if default_mean_error < target_reprojection_error:
         return default_p3d, valid_camera_indices
     else:
         if enable_debug:
@@ -189,18 +187,15 @@ def triangulate_with_outlier_rejection(
         best_error = default_mean_error
         
         # Initialize variables for weighted average of combinations (including the default one)
-        default_weight = np.exp(-5.0 * default_mean_error / mean_error_threshold)
+        default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
         weighted_p3d_sum = default_weight * default_p3d
         total_weight = default_weight
 
         # Make the N-X camera combination loop
-        for camera_drop_count in range(1, max_drop_amount + 1):
+        for camera_drop_count in range(1, maximum_cameras_to_drop + 1):
             selected_camera_count = total_valid_cams - camera_drop_count
 
-            if selected_camera_count < min_cams:
-                break
-
-            if camera_drop_count > max_drop_ratio * total_valid_cams:
+            if selected_camera_count < minimum_cameras_for_triangulation:
                 break
 
             # Generate all combinations using LOCAL indices
@@ -229,7 +224,7 @@ def triangulate_with_outlier_rejection(
 
                 # Calculate exponential weight for this combination
                 # (Lower error = higher weight)
-                weight = np.exp(-5.0 * candidate_mean_error / mean_error_threshold)
+                weight = np.exp(-5.0 * candidate_mean_error / target_reprojection_error)
                 weighted_p3d_sum += weight * candidate_p3d
                 total_weight += weight
                 
@@ -247,9 +242,9 @@ def triangulate_with_outlier_rejection(
                     best_p3d = candidate_p3d
                     best_camera_combo = kept_cameras
 
-            # If we met the target accuracy threshold at this current level (N-1, N-2, etc.)
+            # If we met the target accuracy at this current level (N-1, N-2, etc.)
             # we can stop here and avoid dropping even more cameras.
-            if best_error < mean_error_threshold:
+            if best_error < target_reprojection_error:
                 if enable_debug:
                     print(f"Target accuracy met at N-{camera_drop_count}. Breaking search.")
                 break
@@ -989,9 +984,9 @@ class CameraGroup:
         progress=False,
         kill_event: multiprocessing.Event = None,
         number_of_tracked_points=None,
-        max_drop_amount: int = 1,
-        max_drop_ratio: float = 0.4,
-        mean_error_threshold: float = 0.01,
+        minimum_cameras_for_triangulation: int = 2,
+        maximum_cameras_to_drop: int = 1,
+        target_reprojection_error: float = 0.01,
     ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
@@ -1040,9 +1035,9 @@ class CameraGroup:
                     marker_index=ip,
                     number_of_tracked_points=number_of_tracked_points,
                     valid_camera_indices=valid_camera_indices,
-                    max_drop_amount=max_drop_amount,
-                    max_drop_ratio=max_drop_ratio,
-                    mean_error_threshold=mean_error_threshold,
+                    minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+                    maximum_cameras_to_drop=maximum_cameras_to_drop,
+                    target_reprojection_error=target_reprojection_error,
                 )
                 out[ip] = p3d
                 used_cameras_mask[ip, used_cams] = True

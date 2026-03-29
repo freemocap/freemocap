@@ -85,9 +85,9 @@ def get_triangulated_data(
             image_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
             use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
             use_triangulate_outlier_rejection=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection,
-            max_drop_amount=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_amount,
-            max_drop_ratio=processing_parameters.anipose_triangulate_3d_parameters_model.max_drop_ratio,
-            mean_error_threshold=processing_parameters.anipose_triangulate_3d_parameters_model.mean_error_threshold,
+            minimum_cameras_for_triangulation=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_for_triangulation,
+            maximum_cameras_to_drop=processing_parameters.anipose_triangulate_3d_parameters_model.maximum_cameras_to_drop,
+            target_reprojection_error=processing_parameters.anipose_triangulate_3d_parameters_model.target_reprojection_error,
             kill_event=kill_event,
         )
         save_3d_data_to_npy(

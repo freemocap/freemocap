@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from typing import Optional
 from pathlib import Path
 
 import numpy as np
@@ -17,11 +18,11 @@ def triangulate_3d_data(
         image_2d_data: np.ndarray,
         use_triangulate_ransac: bool = False,
         use_triangulate_outlier_rejection: bool = False,
-        max_drop_amount: int = 1,
-        max_drop_ratio: float = 0.4,
-        mean_error_threshold: float = 0.01,
+        minimum_cameras_for_triangulation: int = 2,
+        maximum_cameras_to_drop: int = 1,
+        target_reprojection_error: float = 0.01,
         kill_event: multiprocessing.Event = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]:
     number_of_cameras = image_2d_data.shape[0]
     number_of_frames = image_2d_data.shape[1]
     number_of_tracked_points = image_2d_data.shape[2]
@@ -56,9 +57,9 @@ def triangulate_3d_data(
             progress=True, 
             kill_event=kill_event, 
             number_of_tracked_points=number_of_tracked_points,
-            max_drop_amount=max_drop_amount,
-            max_drop_ratio=max_drop_ratio,
-            mean_error_threshold=mean_error_threshold,
+            minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+            maximum_cameras_to_drop=maximum_cameras_to_drop,
+            target_reprojection_error=target_reprojection_error,
         )
         used_cameras_mask = used_cameras_mask_flat.reshape(number_of_frames, number_of_tracked_points, number_of_cameras)
     else:
@@ -129,19 +130,19 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--max_drop_amount",
+        "--minimum_cameras_for_triangulation",
+        type=int,
+        help="minimum number of cameras required for triangulation",
+        required=False,
+    )
+    parser.add_argument(
+        "--maximum_cameras_to_drop",
         type=int,
         help="maximum amount of cameras permitted to drop",
         required=False,
     )
     parser.add_argument(
-        "--max_drop_ratio",
-        type=float,
-        help="maximum camera drop ratio allowed",
-        required=False,
-    )
-    parser.add_argument(
-        "--mean_error_threshold",
+        "--target_reprojection_error",
         type=float,
         help="maximum acceptable mean reprojection error",
         required=False,
@@ -168,14 +169,14 @@ if __name__ == "__main__":
     if args.use_triangulate_outlier_rejection is None:
         args.use_triangulate_outlier_rejection = False
 
-    if args.max_drop_amount is None:
-        args.max_drop_amount = 1
+    if args.minimum_cameras_for_triangulation is None:
+        args.minimum_cameras_for_triangulation = 2
 
-    if args.max_drop_ratio is None:
-        args.max_drop_ratio = 0.4
+    if args.maximum_cameras_to_drop is None:
+        args.maximum_cameras_to_drop = 1
 
-    if args.mean_error_threshold is None:
-        args.mean_error_threshold = 0.01
+    if args.target_reprojection_error is None:
+        args.target_reprojection_error = 0.01
 
     if args.file_prefix is None:
         args.file_prefix = ""
@@ -197,9 +198,9 @@ if __name__ == "__main__":
         image_2d_data=data_2d,
         use_triangulate_ransac=args.use_triangulate_ransac,
         use_triangulate_outlier_rejection=args.use_triangulate_outlier_rejection,
-        max_drop_amount=args.max_drop_amount,
-        max_drop_ratio=args.max_drop_ratio,
-        mean_error_threshold=args.mean_error_threshold,
+        minimum_cameras_for_triangulation=args.minimum_cameras_for_triangulation,
+        maximum_cameras_to_drop=args.maximum_cameras_to_drop,
+        target_reprojection_error=args.target_reprojection_error,
     )
     save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,

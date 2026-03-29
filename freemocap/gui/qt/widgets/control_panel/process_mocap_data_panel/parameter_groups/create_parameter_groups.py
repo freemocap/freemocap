@@ -24,11 +24,11 @@ OUTLIER_REJECTION_TREE_NAME = "Outlier Rejection"
 
 USE_OUTLIER_REJECTION_METHOD = "Use Outlier Rejection Method?"
 
-OUTLIER_REJECTION_MAX_DROP_AMOUNT = "Max Drop Amount"
+OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP = "Maximum Cameras to Drop"
 
-OUTLIER_REJECTION_MAX_DROP_RATIO = "Max Drop Ratio"
+OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION = "Minimum Cameras for Triangulation"
 
-OUTLIER_REJECTION_MEAN_ERROR_THRESHOLD = "Mean Error Threshold"
+OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR = "Target Reprojection Error"
 
 ANIPOSE_CONFIDENCE_CUTOFF = "Confidence Threshold Cut-off"
 
@@ -193,22 +193,29 @@ def create_3d_triangulation_parameter_group(
                         tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
                     ),
                     dict(
-                        name=OUTLIER_REJECTION_MAX_DROP_AMOUNT,
+                        name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
                         type="int",
-                        value=parameter_model.max_drop_amount,
+                        value=parameter_model.maximum_cameras_to_drop,
+                        limits=(0, 100),
+                        step=1,
                         tip="Maximum amount of cameras permitted to drop.",
                     ),
                     dict(
-                        name=OUTLIER_REJECTION_MAX_DROP_RATIO,
-                        type="float",
-                        value=parameter_model.max_drop_ratio,
-                        tip="Maximum camera drop ratio allowed.",
+                        name=OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
+                        type="int",
+                        value=parameter_model.minimum_cameras_for_triangulation,
+                        limits=(1, 100),
+                        step=1,
+                        tip="Minimum number of cameras required for triangulation.",
                     ),
                     dict(
-                        name=OUTLIER_REJECTION_MEAN_ERROR_THRESHOLD,
+                        name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
                         type="float",
-                        value=parameter_model.mean_error_threshold,
-                        tip="Maximum acceptable mean reprojection error.",
+                        value=parameter_model.target_reprojection_error,
+                        limits=(0.0, 1.0),
+                        step=0.001,
+                        tip="The target reprojection error that stops the outlier rejection search.\n"
+                            "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
                     ),
                 ],
             ),
@@ -303,9 +310,9 @@ def extract_parameter_model_from_parameter_tree(
             use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             flatten_single_camera_data=parameter_values_dictionary[FLATTEN_SINGLE_CAMERA_DATA],
             use_triangulate_outlier_rejection=parameter_values_dictionary[USE_OUTLIER_REJECTION_METHOD],
-            max_drop_amount=parameter_values_dictionary[OUTLIER_REJECTION_MAX_DROP_AMOUNT],
-            max_drop_ratio=parameter_values_dictionary[OUTLIER_REJECTION_MAX_DROP_RATIO],
-            mean_error_threshold=parameter_values_dictionary[OUTLIER_REJECTION_MEAN_ERROR_THRESHOLD],
+            minimum_cameras_for_triangulation=parameter_values_dictionary[OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION],
+            maximum_cameras_to_drop=parameter_values_dictionary[OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP],
+            target_reprojection_error=parameter_values_dictionary[OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR],
             run_3d_triangulation=parameter_values_dictionary[RUN_3D_TRIANGULATION_NAME],
         ),
         post_processing_parameters_model=PostProcessingParametersModel(

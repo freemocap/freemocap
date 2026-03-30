@@ -27,12 +27,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -66,13 +66,13 @@ jobs:
           source .venv/bin/activate || source .venv/Scripts/activate
           python freemocap/diagnostics/calibration/calculate_calibration_diagnostics.py
       
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: data_current_calibration_${{ runner.os }}
           path: data_current_calibration.csv
 
       - name: Upload OS-specific calibration
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: test_data_calibration_files${{ matrix.os }}
           path: |
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           persist-credentials: false
 
@@ -99,7 +99,7 @@ jobs:
           uv pip install pandas plotly==5.* jinja2 packaging
 
       - name: Download OS calibration data
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           pattern: data_current_calibration_*
           path: collected
@@ -111,13 +111,13 @@ jobs:
           python freemocap/diagnostics/calibration/merge_calibration_data.py
 
       - name: Upload calibration report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: calibration_diagnostics_report
           path: freemocap/diagnostics/calibration_diagnostics.html
 
       - name: Upload summary csv
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: calibration_diagnostics_csv
           path: freemocap/diagnostics/diagnostic_data/calibration_diagnostics_summary.csv

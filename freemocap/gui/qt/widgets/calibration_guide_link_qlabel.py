@@ -42,7 +42,7 @@ class CalibrationGuideLinkQLabel(QLabel):
 
     def _open_calibration_docs(self, url: str) -> None:
         """Open the calibration documentation in the default web browser."""
-        QDesktopServices.openUrl(url=url)
+        QDesktopServices.openUrl(url)
 
     def set_url(self, url: str) -> None:
         """

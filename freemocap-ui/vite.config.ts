@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
 
+const __dirname = import.meta.dirname
+
 // https://vitejs.dev/config/
 export default defineConfig(({command}) => {
     rmSync('dist-electron', {recursive: true, force: true})
@@ -37,10 +39,7 @@ export default defineConfig(({command}) => {
                             minify: isBuild,
                             outDir: 'dist-electron/main',
                             rollupOptions: {
-                                external: [
-                                    ...Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
-                                    'electron-devtools-installer',
-                                ],
+                                external: Object.keys('dependencies' in pkg ? pkg.dependencies : {}),
                             },
                         },
                     },

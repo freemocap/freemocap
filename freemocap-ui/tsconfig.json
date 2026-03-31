@@ -28,7 +28,6 @@
   },
   "include": [
     "src",
-    "old_electron",
     "src/lib/**/*"
   ],
   "references": [

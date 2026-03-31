@@ -1,5 +1,5 @@
 /*
- * ::::: by  Pooya Deperson 2025  <pooyadeperson@gmail.com> :::::
+ * ::::: by  Pooya Moradi M. 2025  <poamrd@gmail.com> :::::
  *
  *  React Component: CameraSettingsModal
  *

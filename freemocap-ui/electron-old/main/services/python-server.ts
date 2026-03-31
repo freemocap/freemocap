@@ -9,20 +9,29 @@ import {PYTHON_EXECUTABLE_CANDIDATES} from "../app-paths";
 const treeKillAsync = promisify(treeKill);
 let pythonProcess: ReturnType<typeof exec> | null = null;
 
+const PORT_SENTINEL = "FREEMOCAP_PORT";
+const DEFAULT_PORT = 53117;
+const PORT_DISCOVERY_TIMEOUT_MS = 30_000;
+
 export interface ExecutableCandidate {
     name: string;
     path: string;
     description: string;
     isValid?: boolean;
     error?: string;
-    resolvedPath?: string; // Add resolved path for deduplication
+    resolvedPath?: string;
 }
 
 export class PythonServer {
     private static currentExecutablePath: string | null = null;
     private static validatedCandidates: ExecutableCandidate[] = [];
+    private static discoveredPort: number | null = null;
 
-    static async start(exePath: string | null = null) {
+    /**
+     * Start the Python server and wait for it to report which port it bound to.
+     * Returns the actual port number.
+     */
+    static async start(exePath: string | null = null): Promise<number> {
         console.log('Starting python server subprocess...');
 
         try {
@@ -31,17 +40,16 @@ export class PythonServer {
             let executablePath: string;
 
             if (exePath) {
-                // If specific path provided, validate it
                 this.validateExecutable(exePath);
                 executablePath = exePath;
                 console.log(`Using provided executable path: ${executablePath}`);
             } else {
-                // Find first valid executable from candidates
                 executablePath = await this.findValidExecutablePath();
                 console.log(`Using auto-detected executable path: ${executablePath}`);
             }
 
             this.currentExecutablePath = executablePath;
+            this.discoveredPort = null;
             console.log(`Launching Python server from: ${executablePath}`);
             pythonProcess = exec(`"${executablePath}"`, {
                 env: {
@@ -67,11 +75,65 @@ export class PythonServer {
             LifecycleLogger.logPythonProcess(pythonProcess);
             console.log(`✔ Python server started successfully (PID: ${pythonProcess.pid})`);
 
+            const port = await this.waitForPort(pythonProcess);
+            this.discoveredPort = port;
+            console.log(`✔ Python server bound to port ${port}`);
+
+            return port;
+
         } catch (error) {
             console.error('Failed to start Python server:', error);
             this.currentExecutablePath = null;
             throw error;
         }
+    }
+
+    /**
+     * Read stdout line-by-line until we find the port sentinel or time out.
+     */
+    private static waitForPort(proc: ReturnType<typeof exec>): Promise<number> {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                reject(new Error(
+                    `Python server did not report a port within ${PORT_DISCOVERY_TIMEOUT_MS}ms`
+                ));
+            }, PORT_DISCOVERY_TIMEOUT_MS);
+
+            const onData = (chunk: Buffer | string): void => {
+                const text = chunk.toString();
+                for (const line of text.split('\n')) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith(`${PORT_SENTINEL}=`)) {
+                        const portStr = trimmed.slice(PORT_SENTINEL.length + 1);
+                        const port = parseInt(portStr, 10);
+                        if (isNaN(port)) {
+                            clearTimeout(timeout);
+                            reject(new Error(`Invalid port in sentinel line: ${trimmed}`));
+                            return;
+                        }
+                        clearTimeout(timeout);
+                        proc.stdout?.off('data', onData);
+                        resolve(port);
+                        return;
+                    }
+                }
+            };
+
+            if (!proc.stdout) {
+                clearTimeout(timeout);
+                reject(new Error('Python process has no stdout stream'));
+                return;
+            }
+
+            proc.stdout.on('data', onData);
+
+            proc.on('exit', (code) => {
+                clearTimeout(timeout);
+                reject(new Error(
+                    `Python server exited with code ${code} before reporting a port`
+                ));
+            });
+        });
     }
 
     static async shutdown() {
@@ -83,12 +145,10 @@ export class PythonServer {
         console.log(`Shutting down Python server (PID: ${pythonProcess.pid})`);
 
         try {
-            // Kill entire process tree
             await treeKillAsync(pythonProcess.pid);
             console.log('✔ Python server process tree terminated');
         } catch (error) {
             console.error('Error killing process tree:', error);
-            // Fallback to direct kill
             try {
                 pythonProcess?.kill('SIGKILL');
                 console.log('✔ Python server force-killed as fallback');
@@ -97,7 +157,6 @@ export class PythonServer {
             }
         }
 
-        // Wait a moment for cleanup
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         if (pythonProcess && !pythonProcess.killed) {
@@ -106,7 +165,15 @@ export class PythonServer {
 
         pythonProcess = null;
         this.currentExecutablePath = null;
+        this.discoveredPort = null;
         console.log('✔ Python server shutdown complete');
+    }
+
+    /**
+     * Get the port the Python server is currently bound to, or the default if not yet started.
+     */
+    static getPort(): number {
+        return this.discoveredPort ?? DEFAULT_PORT;
     }
 
     static getCurrentExecutablePath(): string | null {
@@ -116,12 +183,10 @@ export class PythonServer {
     static async findValidExecutablePath(): Promise<string> {
         console.log('Searching for valid Python server executable...');
 
-        // Validate all candidates if not done yet
         if (this.validatedCandidates.length === 0) {
             await this.validateAllCandidates();
         }
 
-        // Find first valid candidate
         const validCandidate = this.validatedCandidates.find(candidate => candidate.isValid);
 
         if (!validCandidate) {
@@ -137,7 +202,6 @@ export class PythonServer {
     static async validateAllCandidates(): Promise<ExecutableCandidate[]> {
         console.log('Validating all executable candidates...');
 
-        // First, validate all candidates
         const allValidatedCandidates = await Promise.all(
             PYTHON_EXECUTABLE_CANDIDATES.map(async (candidate) => {
                 const validatedCandidate: ExecutableCandidate = {
@@ -148,7 +212,6 @@ export class PythonServer {
                 try {
                     this.validateExecutable(candidate.path);
                     validatedCandidate.isValid = true;
-                    // Store resolved path for deduplication
                     validatedCandidate.resolvedPath = fs.existsSync(candidate.path)
                         ? path.resolve(candidate.path)
                         : candidate.path;
@@ -162,18 +225,15 @@ export class PythonServer {
             })
         );
 
-        // Deduplicate by resolved path
         const seenPaths = new Set<string>();
         this.validatedCandidates = allValidatedCandidates.filter(candidate => {
             const pathKey = candidate.resolvedPath || candidate.path;
 
-            // If we've seen this path before, skip it
             if (seenPaths.has(pathKey)) {
                 console.log(`  ⚠ Skipping duplicate: ${candidate.name} (same as another candidate)`);
                 return false;
             }
 
-            // Add to seen paths
             seenPaths.add(pathKey);
             return true;
         });
@@ -185,7 +245,7 @@ export class PythonServer {
     }
 
     static getPythonServerExecutableCandidates(): ExecutableCandidate[] {
-        return [...this.validatedCandidates]; // Return copy to prevent mutation
+        return [...this.validatedCandidates];
     }
 
     static async refreshCandidates(): Promise<ExecutableCandidate[]> {
@@ -208,23 +268,18 @@ export class PythonServer {
     }
 
     private static validateExecutable(exePath: string): void {
-        // Check if file exists
         if (!fs.existsSync(exePath)) {
             throw new Error(`Executable not found at: ${exePath}`);
         }
 
-        // Check if it's actually a file (not a directory)
         const stats = fs.statSync(exePath);
         if (!stats.isFile()) {
             throw new Error(`Path is not a file: ${exePath}`);
         }
 
-        // Check if file is executable
         try {
             fs.accessSync(exePath, fs.constants.F_OK | fs.constants.R_OK);
 
-            // On Windows, we mainly check if file exists and is readable
-            // On Unix systems, we can check execute permissions
             if (process.platform !== 'win32') {
                 fs.accessSync(exePath, fs.constants.X_OK);
             }
@@ -232,7 +287,6 @@ export class PythonServer {
             throw new Error(`File is not accessible or executable: ${exePath}`);
         }
 
-        // Additional validation: check file extension on Windows
         if (process.platform === 'win32' && !exePath.toLowerCase().endsWith('.exe')) {
             console.warn(`Warning: Executable doesn't have .exe extension: ${exePath}`);
         }

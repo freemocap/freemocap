@@ -2,8 +2,6 @@
 import { ipcMain } from 'electron';
 import { api } from './api';
 import superjson from 'superjson';
-import { buildApplicationMenu } from './services/menu-builder';
-import type { MenuBuildParams } from './services/menu-builder';
 
 export function setupIPC(): void {
   ipcMain.handle('trpc', async (_event, { path, input }) => {
@@ -33,10 +31,5 @@ export function setupIPC(): void {
       console.error(`IPC Error for ${path}:`, error);
       throw error;
     }
-  });
-
-  // Rebuild the native menu when the renderer sends translated labels
-  ipcMain.on('update-menu-labels', (_event, params: MenuBuildParams) => {
-    buildApplicationMenu(params);
   });
 }

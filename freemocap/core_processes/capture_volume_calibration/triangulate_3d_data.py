@@ -46,13 +46,13 @@ def triangulate_3d_data(
         f"number_of_spatial_dimensions: {number_of_spatial_dimensions}"
     )
 
-    used_cameras_mask = None
+    normalized_camera_weights = None
     if use_triangulate_ransac:
         logger.info("Using `triangulate_ransac` method")
         data3d_flat = anipose_calibration_object.triangulate_ransac(data2d_flat, progress=True, kill_event=kill_event)
     elif use_triangulate_outlier_rejection:
         logger.info("Using `triangulate_using_outlier_rejection` method")
-        data3d_flat, used_cameras_mask_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
+        data3d_flat, normalized_camera_weights_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
             data2d_flat, 
             progress=True, 
             kill_event=kill_event, 
@@ -61,7 +61,7 @@ def triangulate_3d_data(
             maximum_cameras_to_drop=maximum_cameras_to_drop,
             target_reprojection_error=target_reprojection_error,
         )
-        used_cameras_mask = used_cameras_mask_flat.reshape(number_of_frames, number_of_tracked_points, number_of_cameras)
+        normalized_camera_weights = normalized_camera_weights_flat.reshape(number_of_frames, number_of_tracked_points, number_of_cameras)
     else:
         logger.info("Using simple `triangulate` method ")
         data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)
@@ -82,7 +82,7 @@ def triangulate_3d_data(
         spatial_data3d_numFrames_numTrackedPoints_XYZ,
         reprojection_error_data3d_numFrames_numTrackedPoints,
         reprojectionError_cam_frame_marker,
-        used_cameras_mask,
+        normalized_camera_weights,
     )
 
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
         skel3d_frame_marker_xyz,
         skeleton_reprojection_error_fr_mar,
         skeleton_reprojection_error_cam_fr_mar,
-        used_cameras_mask,
+        normalized_camera_weights,
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         image_2d_data=data_2d,

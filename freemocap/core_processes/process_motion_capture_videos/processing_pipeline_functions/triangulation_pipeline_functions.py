@@ -79,7 +79,7 @@ def get_triangulated_data(
             skel3d_frame_marker_xyz,
             skeleton_reprojection_error_fr_mar,
             skeleton_reprojection_error_cam_fr_mar,
-            used_cameras_mask,
+            normalized_camera_weights,
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             image_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
@@ -99,11 +99,11 @@ def get_triangulated_data(
             file_prefix=processing_parameters.tracking_model_info.name,
         )
 
-        if processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection and used_cameras_mask is not None:
-            mask_filename = f"{processing_parameters.tracking_model_info.name}_outlier_rejection_used_cameras_mask.npy"
-            mask_filepath = Path(processing_parameters.recording_info_model.raw_data_folder_path) / mask_filename
-            logger.info(f"Saving used cameras mask to {mask_filepath}")
-            np.save(mask_filepath, used_cameras_mask)
+        if processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection and normalized_camera_weights is not None:
+            weights_filename = f"{processing_parameters.tracking_model_info.name}_outlier_rejection_normalized_camera_weights.npy"
+            weights_filepath = Path(processing_parameters.recording_info_model.raw_data_folder_path) / weights_filename
+            logger.info(f"Saving normalized camera weights to {weights_filepath}")
+            np.save(weights_filepath, normalized_camera_weights)
 
         if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:
             logger.info("Filtering 3d triangulation...")

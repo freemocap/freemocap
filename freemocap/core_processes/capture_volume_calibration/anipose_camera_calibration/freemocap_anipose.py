@@ -114,7 +114,7 @@ def triangulate_with_outlier_rejection(
         enable_debug: Enable debug logging for specific markers/frames
     
     Returns:
-        np.ndarray: 3D point coordinates
+        tuple[np.ndarray, np.ndarray]: (3D point coordinates, normalized camera weights)
     """
     # --- DEBUG LOGIC ---
     # Compute true frame + marker from flattened index
@@ -143,10 +143,13 @@ def triangulate_with_outlier_rejection(
             )
     # ---
 
-    # Get the total of valid cameras
+    # Get the total number of valid cameras (those with 2D points)
     total_valid_cams = len(cam_mats)
     # Create local indices (0, 1, 2, ... for the valid cameras)
     local_indices = list(range(total_valid_cams))
+
+    # Initialize normalized camera weights for the valid cameras
+    normalized_camera_weights = np.zeros(total_valid_cams)
 
     if enable_debug:
         print(
@@ -176,7 +179,8 @@ def triangulate_with_outlier_rejection(
     # If the error is lower than the target return the default
     # triangulation, if not then start the N-X camera combination loop
     if default_mean_error < target_reprojection_error:
-        return default_p3d, valid_camera_indices
+        normalized_camera_weights[:] = 1.0
+        return default_p3d, normalized_camera_weights
     else:
         if enable_debug:
             print("Default triangulation error above threshold."
@@ -190,6 +194,8 @@ def triangulate_with_outlier_rejection(
         default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
         weighted_p3d_sum = default_weight * default_p3d
         total_weight = default_weight
+        
+        normalized_camera_weights[:] += default_weight
 
         # Make the N-X camera combination loop
         for camera_drop_count in range(1, maximum_cameras_to_drop + 1):
@@ -227,6 +233,7 @@ def triangulate_with_outlier_rejection(
                 weight = np.exp(-5.0 * candidate_mean_error / target_reprojection_error)
                 weighted_p3d_sum += weight * candidate_p3d
                 total_weight += weight
+                normalized_camera_weights[kept_local_indices] += weight
                 
                 if enable_debug:
                     print(
@@ -252,9 +259,15 @@ def triangulate_with_outlier_rejection(
         # Calculate the final weighted 3D point from all tested combinations
         if total_weight > 1e-12:
             weighted_p3d = weighted_p3d_sum / total_weight
+            normalized_camera_weights /= total_weight
         else:
             # Fallback for numerical underflow from extremely large errors
             weighted_p3d = best_p3d
+            normalized_camera_weights[:] = 0.0
+            if 'best_camera_combo' in locals():
+                normalized_camera_weights[best_camera_combo] = 1.0
+            else:
+                normalized_camera_weights[:] = 1.0
 
         if enable_debug:
             print(
@@ -265,10 +278,10 @@ def triangulate_with_outlier_rejection(
 
         # Return the weighted_p3d if the error was improved by at least one combination
         if best_error < default_mean_error:
-            used_global_indices = [valid_camera_indices[idx] for idx in best_camera_combo]
-            return weighted_p3d, used_global_indices
+            return weighted_p3d, normalized_camera_weights
         else:
-            return default_p3d, valid_camera_indices
+            normalized_camera_weights[:] = 1.0
+            return default_p3d, normalized_camera_weights
             
 
 def get_error_dict(errors_full, min_points=10):
@@ -1015,7 +1028,7 @@ class CameraGroup:
         out = np.empty((n_points, 3))
         out[:] = np.nan
         
-        used_cameras_mask = np.zeros((n_points, n_cams), dtype=bool)
+        normalized_camera_weights = np.zeros((n_points, n_cams), dtype=float)
 
         cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
 
@@ -1029,7 +1042,7 @@ class CameraGroup:
             good = ~np.isnan(subp[:, 0])
             if np.sum(good) >= 2:
                 valid_camera_indices = np.where(good)[0]
-                p3d, used_cams = triangulate_with_outlier_rejection(
+                p3d, weights = triangulate_with_outlier_rejection(
                     subp[good],
                     cam_mats[good],
                     marker_index=ip,
@@ -1040,16 +1053,16 @@ class CameraGroup:
                     target_reprojection_error=target_reprojection_error,
                 )
                 out[ip] = p3d
-                used_cameras_mask[ip, used_cams] = True
+                normalized_camera_weights[ip, valid_camera_indices] = weights
 
             if kill_event is not None and kill_event.is_set():
                 return None, None
 
         if one_point:
             out = out[0]
-            used_cameras_mask = used_cameras_mask[0]
+            normalized_camera_weights = normalized_camera_weights[0]
 
-        return out, used_cameras_mask
+        return out, normalized_camera_weights
 
     def triangulate_possible(
             self,

@@ -8,9 +8,6 @@ import numpy as np
 from freemocap.core_processes.capture_volume_calibration.anipose_camera_calibration.get_anipose_calibration_object import (
     load_anipose_calibration_toml_from_path,
 )
-from freemocap.core_processes.capture_volume_calibration.by_camera_reprojection_filtering import (
-    run_reprojection_error_filtering,
-)
 from freemocap.core_processes.capture_volume_calibration.save_3d_data_to_npy import (
     save_3d_data_to_npy,
 )
@@ -104,16 +101,5 @@ def get_triangulated_data(
             mask_filepath = Path(processing_parameters.recording_info_model.raw_data_folder_path) / mask_filename
             logger.info(f"Saving used cameras mask to {mask_filepath}")
             np.save(mask_filepath, used_cameras_mask)
-
-        if processing_parameters.anipose_triangulate_3d_parameters_model.run_reprojection_error_filtering:
-            logger.info("Filtering 3d triangulation...")
-            skel3d_frame_marker_xyz = run_reprojection_error_filtering(
-                image_data_numCams_numFrames_numTrackedPts_XYZ=image_data_numCams_numFrames_numTrackedPts_XYZ,
-                raw_skel3d_frame_marker_xyz=skel3d_frame_marker_xyz,
-                skeleton_reprojection_error_fr_mar=skeleton_reprojection_error_fr_mar,
-                skeleton_reprojection_error_cam_fr_mar=skeleton_reprojection_error_cam_fr_mar,
-                anipose_calibration_object=anipose_calibration_object,
-                processing_parameters=processing_parameters,
-            )
 
     return skel3d_frame_marker_xyz

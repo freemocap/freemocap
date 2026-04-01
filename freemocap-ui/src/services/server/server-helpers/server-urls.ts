@@ -1,6 +1,6 @@
 export const DEFAULT_HOST = 'localhost';
 export const DEFAULT_PORT = 53117;
-export const WS_PATH = '/freemocap/websocket/connect';
+export const WS_PATH = '/websocket/connect';
 
 class ServerUrls {
     private host: string = DEFAULT_HOST;
@@ -44,24 +44,24 @@ class ServerUrls {
             shutdown: `${baseUrl}/shutdown`,
 
             // Camera endpoints
-            detectCameras: `${baseUrl}/freemocap/camera/detect`,
-            camerasConnectOrUpdate: `${baseUrl}/freemocap/camera/group/apply`,
-            closeAll: `${baseUrl}/freemocap/camera/group/close/all`,
-            updateConfigs: `${baseUrl}/freemocap/camera/update`,
-            pauseUnpauseCameras: `${baseUrl}/freemocap/camera/group/all/pause_unpause`,
-            detectMicrophones: `${baseUrl}/freemocap/camera/microphone/detect`,
+            detectCameras: `${baseUrl}/skellycam/camera/detect`,
+            camerasConnectOrUpdate: `${baseUrl}/skellycam/camera/group/apply`,
+            closeAll: `${baseUrl}/skellycam/camera/group/close/all`,
+            updateConfigs: `${baseUrl}/skellycam/camera/update`,
+            pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
+            detectMicrophones: `${baseUrl}/skellycam/camera/microphone/detect`,
 
             // Recording endpoints
-            startRecording: `${baseUrl}/freemocap/camera/group/all/record/start`,
-            stopRecording: `${baseUrl}/freemocap/camera/group/all/record/stop`,
+            startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
+            stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
             // Playback endpoints
-            playbackRecordings: `${baseUrl}/freemocap/playback/recordings`,
-            playbackLoad: `${baseUrl}/freemocap/playback/load`,
-            playbackVideos: `${baseUrl}/freemocap/playback/videos`,
-            playbackVideoStream: (videoId: string) => `${baseUrl}/freemocap/playback/video/${videoId}`,
-            playbackTimestamps: (videoId: string) => `${baseUrl}/freemocap/playback/timestamps/${videoId}`,
-            playbackAllTimestamps: `${baseUrl}/freemocap/playback/timestamps`,
+            playbackRecordings: `${baseUrl}/skellycam/playback/recordings`,
+            playbackLoad: `${baseUrl}/skellycam/playback/load`,
+            playbackVideos: `${baseUrl}/skellycam/playback/videos`,
+            playbackVideoStream: (videoId: string) => `${baseUrl}/skellycam/playback/video/${videoId}`,
+            playbackTimestamps: (videoId: string) => `${baseUrl}/skellycam/playback/timestamps/${videoId}`,
+            playbackAllTimestamps: `${baseUrl}/skellycam/playback/timestamps`,
 
             // Pipeline endpoints
             pipelineConnectOrUpdate: `${baseUrl}/freemocap/pipeline/connect`,

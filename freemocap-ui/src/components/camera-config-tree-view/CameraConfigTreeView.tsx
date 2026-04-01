@@ -1,156 +1,131 @@
-import React, {useEffect, useState} from "react";
-import {Box, Chip, Typography, useTheme} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
+import React, { useEffect, useState } from "react";
+import {
+    Box,
+    Paper,
+    Typography,
+    useTheme,
+} from "@mui/material";
+import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import ExpandMore from "@mui/icons-material/ExpandMore";
 import ChevronRight from "@mui/icons-material/ChevronRight";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideoCameraFrontIcon from "@mui/icons-material/VideoCameraFront";
+import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
 
-import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {CameraHeaderActions} from "./CameraHeaderActions";
-import {CameraGroupTreeItem} from "./CameraGroupTreeItem";
+import { CameraConfigTreeViewHeader } from "./CameraConfigTreeViewHeader";
+import { CameraGroupTreeItem } from "./CameraGroupTreeItem";
+import { NoCamerasPlaceholder } from "./NoCamerasPlaceholder";
 import {
-    Camera,
-    detectCameras,
-    selectCameras,
-    selectConnectedCameras,
-    selectIsLoading, selectSelectedCameras,
     useAppDispatch,
     useAppSelector,
+    selectCameras,
+    selectIsLoading,
+    selectConnectedCameras,
+    selectSelectedCameras,
+    selectIsPaused,
+    detectCameras,
+    Camera
 } from "@/store";
-import {useServer} from "@/hooks/useServer";
+import {useServer} from "@/services/server/ServerContextProvider";
+import { useTranslation } from 'react-i18next';
+
 
 export const CameraConfigTreeView: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
-    const {isConnected} = useServer();
-
+    const { t } = useTranslation();
+    const {isConnected} = useServer()
+    // Redux state
     const cameras = useAppSelector(selectCameras);
     const isLoading = useAppSelector(selectIsLoading);
     const connectedCameras = useAppSelector(selectConnectedCameras);
     const selectedCameras = useAppSelector(selectSelectedCameras);
 
-    // Expand state for the inner camera group tree
+    // Local state
     const [expandedItems, setExpandedItems] = useState<string[]>([
+        "cameras-root",
         "cameras-connected",
-        "cameras-available",
+        "cameras-available"
     ]);
-    const [isPaused, setIsPaused] = useState<boolean>(false);
 
-    const availableCameras = cameras.filter(
-        (cam: Camera) => cam.connectionStatus !== "connected"
-    );
+    // Pause state from Redux (shared with keyboard shortcut)
+    const isPaused = useAppSelector(selectIsPaused);
+
+    // Group cameras by status
+    const availableCameras = cameras.filter((cam: Camera) => cam.connectionStatus !== "connected");
     const isConnectedToCameras = connectedCameras.length > 0;
+    const hasSelectedCameras = selectedCameras.length > 0;
 
-    // Detect cameras on initial connection
+    // Initial camera detection
     useEffect(() => {
-        if (isConnected && cameras.length === 0) {
-            dispatch(detectCameras({filterVirtual: true}));
+        if (isConnected  && cameras.length === 0) {
+            dispatch(detectCameras({ filterVirtual: true }));
         }
     }, [isConnected, cameras.length, dispatch]);
 
     const handleExpandedItemsChange = (
-        _event: React.SyntheticEvent,
+        event: React.SyntheticEvent,
         itemIds: string[]
     ): void => {
         setExpandedItems(itemIds);
     };
 
-    const handlePauseToggle = (): void => {
-        setIsPaused(!isPaused);
-    };
-
-    // Build summary content: camera count chips
-    const summaryChips = (
-        <Box sx={{display: "flex", gap: 0.5, alignItems: "center"}}>
-            {connectedCameras.length > 0 && (
-                <Chip
-                    label={`${connectedCameras.length} connected`}
-                    size="small"
-                    sx={{
-                        height: 18,
-                        fontSize: 10,
-                        fontWeight: 600,
-                        backgroundColor: theme.palette.success.main,
-                        color: theme.palette.getContrastText(theme.palette.success.main),
-                    }}
-                />
-            )}
-            {cameras.length > 0 && connectedCameras.length === 0 && (
-                <Chip
-                    label={`${cameras.length} detected`}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                        height: 18,
-                        fontSize: 10,
-                        borderColor: "rgba(255,255,255,0.4)",
-                        color: "inherit",
-                    }}
-                />
-            )}
-        </Box>
-    );
 
     return (
-        <CollapsibleSidebarSection
-            icon={<VideocamIcon sx={{color: "inherit"}} />}
-            title="Cameras"
-            summaryContent={summaryChips}
-            primaryControl={
-                <CameraHeaderActions
-                    isLoading={isLoading}
-                    isPaused={isPaused}
-                    onPauseToggle={handlePauseToggle}
-                />
-            }
-            defaultExpanded={true}
+        <Paper
+            elevation={3}
+            sx={{
+                borderRadius: 2,
+                overflow: "hidden",
+            }}
         >
-            {cameras.length === 0 ? (
-                <Box sx={{p: 3, textAlign: "center"}}>
-                    <Typography variant="body2" color="text.secondary">
-                        No cameras detected
-                    </Typography>
-                    <Typography
-                        variant="caption"
-                        color="text.disabled"
-                        sx={{mt: 1, display: "block"}}
-                    >
-                        Click refresh to scan for available cameras
-                    </Typography>
-                </Box>
-            ) : (
-                <SimpleTreeView
-                    expandedItems={expandedItems}
-                    onExpandedItemsChange={handleExpandedItemsChange}
-                    slots={{
-                        collapseIcon: ExpandMore,
-                        expandIcon: ChevronRight,
-                    }}
+            <SimpleTreeView
+                expandedItems={expandedItems}
+                onExpandedItemsChange={handleExpandedItemsChange}
+                slots={{
+                    collapseIcon: ExpandMore,
+                    expandIcon: ChevronRight,
+                }}
+            >
+                <TreeItem
+                    itemId="cameras-root"
+                    label={
+                        <CameraConfigTreeViewHeader
+                            cameraCount={cameras.length}
+                            isLoading={isLoading}
+                            isPaused={isPaused}
+                            hasSelectedCameras={hasSelectedCameras}
+                        />
+                    }
                 >
-                    {/* Connected Cameras Group */}
-                    {isConnectedToCameras && connectedCameras.length > 0 && (
-                        <CameraGroupTreeItem
-                            groupId="cameras-connected"
-                            title="Connected Cameras"
-                            cameras={connectedCameras}
-                            icon={<VideoCameraFrontIcon color="success" />}
-                            expandedItems={expandedItems}
-                        />
-                    )}
+                    {cameras.length === 0 ? (
+                        <NoCamerasPlaceholder />
+                    ) : (
+                        <>
+                            {/* Connected Cameras Group */}
+                            {isConnectedToCameras && connectedCameras.length > 0 && (
+                                <CameraGroupTreeItem
+                                    groupId="cameras-connected"
+                                    title={t("connectedCameras")}
+                                    cameras={connectedCameras}
+                                    icon={<VideoCameraFrontIcon color="success" />}
+                                    expandedItems={expandedItems}
+                                />
+                            )}
 
-                    {/* Available Cameras Group */}
-                    {availableCameras.length > 0 && (
-                        <CameraGroupTreeItem
-                            groupId="cameras-available"
-                            title="Available Cameras"
-                            cameras={availableCameras}
-                            icon={<VideoCameraFrontIcon color="info" />}
-                            expandedItems={expandedItems}
-                        />
+                            {/* Available Cameras Group */}
+                            {availableCameras.length > 0 && (
+                                <CameraGroupTreeItem
+                                    groupId="cameras-available"
+                                    title={t("availableCameras")}
+                                    cameras={availableCameras}
+                                    icon={<VideoCameraFrontIcon color="info" />}
+                                    expandedItems={expandedItems}
+                                />
+                            )}
+                        </>
                     )}
-                </SimpleTreeView>
-            )}
-        </CollapsibleSidebarSection>
+                </TreeItem>
+            </SimpleTreeView>
+        </Paper>
     );
 };

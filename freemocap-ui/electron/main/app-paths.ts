@@ -75,8 +75,8 @@ export const APP_PATHS = {
         __dirname,
         "../../../shared/freemocap-logo/freemocap-favicon.ico"
     ),
-    SKELLYCAM_LOGO_PNG_RESOURCES_PATH: path.join(getResourcesPath(), 'dist/freemocap-logo.png'),
-    SKELLYCAM_LOGO_PNG_SHARED_PATH:path.resolve(
+    FREEMOCAP_LOGO_PNG_RESOURCES_PATH: path.join(getResourcesPath(), 'dist/freemocap-logo.png'),
+    FREEMOCAP_LOGO_PNG_SHARED_PATH:path.resolve(
         __dirname,
         "../../../shared/freemocap-logo/freemocap-logo.png"
     ),

@@ -196,11 +196,12 @@ export const api = t.router({
                     let logoPath: string | null = null;
 
                     // Check for logo in order of preference
-                    if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH)) {
-                        logoPath = APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH;
-                    } else if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH)) {
-                        logoPath = APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH;
-                    }
+                    if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {
+                        logoPath = APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH;
+                    } else if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH)) {
+                        logoPath = APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH;
+                    } 
+
 
                     if (!logoPath) {
                         console.error('Logo file not found in any expected location');
@@ -222,10 +223,10 @@ export const api = t.router({
 
         getLogoPngPath: t.procedure
             .query(() => {
-                if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH)) {
-                    return APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH;
+                if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {
+                    return APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH;
                 }
-                return APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH;
+                return APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH;
             }),
     }),
 });

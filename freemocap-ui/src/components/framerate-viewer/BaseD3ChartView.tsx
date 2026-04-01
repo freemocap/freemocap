@@ -1,8 +1,9 @@
 // src/components/framerate-viewer/BaseD3ChartView.tsx
-import {useEffect, useRef, useState} from "react"
+import {useEffect, useRef, useState, useCallback, memo} from "react"
 import * as d3 from "d3"
 import {Box, Fade, IconButton, Tooltip, Typography} from "@mui/material"
 import {RestartAlt, ZoomIn, ZoomOut} from "@mui/icons-material"
+import {useTranslation} from "react-i18next"
 
 export type ChartMargins = {
     top: number
@@ -11,131 +12,184 @@ export type ChartMargins = {
     left: number
 }
 
-// Define a type for elements that should be updated on zoom
-export type ZoomableElement = {
-    selector: string;
-    updateFn: (selection: d3.Selection<any, any, any, any>, transform: d3.ZoomTransform) => void;
+/** Persistent D3 scaffolding created once on mount/resize. */
+export type ChartScaffolding = {
+    svg: d3.Selection<SVGGElement, unknown, null, undefined>
+    chartArea: d3.Selection<SVGGElement, unknown, null, undefined>
+    xAxisG: d3.Selection<SVGGElement, unknown, null, undefined>
+    yAxisG: d3.Selection<SVGGElement, unknown, null, undefined>
+    width: number
+    height: number
+    margin: ChartMargins
+}
+
+/** Returned by initChart, stored by BaseD3ChartView for the lifetime of the scaffolding. */
+export type ChartLifecycle = {
+    onZoom?: (transform: d3.ZoomTransform) => void
+    cleanup?: () => void
 }
 
 type BaseChartViewProps = {
     title?: string
-    renderChart: (params: {
-        svg: d3.Selection<SVGGElement, unknown, null, undefined>
-        chartArea: d3.Selection<SVGGElement, unknown, null, undefined>
-        width: number
-        height: number
-        margin: ChartMargins
-        transform: d3.ZoomTransform
-    }) => void
+    /** Called once when the chart mounts or resizes. Creates persistent DOM elements (tooltip, etc). */
+    initChart: (scaffolding: ChartScaffolding) => ChartLifecycle | void
+    /** Called on every data update. Performs in-place D3 updates on the existing scaffolding. */
+    updateChart: (scaffolding: ChartScaffolding) => void
     margin?: ChartMargins
 }
 
-export default function BaseD3ChartView({
-                                            title,
-                                            renderChart,
-                                            margin = {top: 20, right: 100, bottom: 30, left: 60}
-                                        }: BaseChartViewProps) {
+let nextClipId = 0
+
+/** How often (ms) to run the imperative D3 data-update. */
+const CHART_UPDATE_INTERVAL_MS = 500
+
+export default memo(function BaseD3ChartView({
+    title,
+    initChart,
+    updateChart,
+    margin = {top: 20, right: 20, bottom: 30, left: 50},
+}: BaseChartViewProps) {
+    const {t} = useTranslation()
     const svgRef = useRef<SVGSVGElement>(null)
-    const chartRef = useRef<{
+    const containerRef = useRef<HTMLDivElement>(null)
+    const chartStateRef = useRef<{
         cleanup?: () => void
+        onZoom?: (transform: d3.ZoomTransform) => void
+        scaffolding?: ChartScaffolding
     }>({})
-    const [transform, setTransform] = useState<d3.ZoomTransform>(d3.zoomIdentity)
     const zoomRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null)
+    const clipIdRef = useRef<string>(`clip-chart-${nextClipId++}`)
     const [showControls, setShowControls] = useState(false)
+    const [containerSize, setContainerSize] = useState<{width: number; height: number}>({width: 0, height: 0})
 
+    // Always holds the latest updateChart without triggering re-renders.
+    const updateChartRef = useRef(updateChart)
+    updateChartRef.current = updateChart
+
+    // Track container size with ResizeObserver
     useEffect(() => {
-        if (!svgRef.current) return
+        const container = containerRef.current
+        if (!container) return
 
-        // Clear previous chart
+        const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+                const {width, height} = entry.contentRect
+                setContainerSize(prev => {
+                    const w = Math.round(width)
+                    const h = Math.round(height)
+                    if (prev.width === w && prev.height === h) return prev
+                    return {width: w, height: h}
+                })
+            }
+        })
+        observer.observe(container)
+        return () => observer.disconnect()
+    }, [])
+
+    // Build chart scaffolding on mount/resize — runs rarely
+    useEffect(() => {
+        if (!svgRef.current || containerSize.width === 0 || containerSize.height === 0) return
+
+        // Tear down previous scaffolding
         d3.select(svgRef.current).selectAll("*").remove()
+        if (chartStateRef.current.cleanup) {
+            chartStateRef.current.cleanup()
+        }
+        chartStateRef.current = {}
 
-        // Set up dimensions
-        let width = svgRef.current.clientWidth - margin.left - margin.right
-        let height = svgRef.current.clientHeight - margin.top - margin.bottom
-        if (width < 0) {
-            width = 0
-        }
-        if (height < 0) {
-            height = 0
-        }
-        // Create SVG with a clip path for zooming
+        const width = Math.max(0, containerSize.width - margin.left - margin.right)
+        const height = Math.max(0, containerSize.height - margin.top - margin.bottom)
+        if (width <= 0 || height <= 0) return
+
+        const clipId = clipIdRef.current
+
         const svg = d3.select(svgRef.current)
             .append("g")
             .attr("transform", `translate(${margin.left},${margin.top})`)
 
-        // Add clip path to prevent drawing outside the chart area
-        svg
-            .append("defs")
+        svg.append("defs")
             .append("clipPath")
-            .attr("id", "clip-chart")
+            .attr("id", clipId)
             .append("rect")
             .attr("width", width)
             .attr("height", height)
 
-        // Create a group for the chart content that will be clipped
-        const chartArea = svg.append("g").attr("clip-path", "url(#clip-chart)")
+        const chartArea = svg.append("g").attr("clip-path", `url(#${clipId})`)
 
-        // Call the render function provided by the child component
-        const cleanup = renderChart({svg, chartArea, width, height, margin, transform})
+        const xAxisG = svg
+            .append("g")
+            .attr("class", "x-axis")
+            .attr("transform", `translate(0,${height})`)
+        const yAxisG = svg.append("g").attr("class", "y-axis")
 
-        // Store cleanup function if one is returned
-        if (typeof cleanup === 'function') {
-            chartRef.current.cleanup = cleanup
+        const scaffolding: ChartScaffolding = {svg, chartArea, xAxisG, yAxisG, width, height, margin}
+        chartStateRef.current.scaffolding = scaffolding
+
+        const result = initChart(scaffolding)
+        if (result) {
+            chartStateRef.current.cleanup = result.cleanup
+            chartStateRef.current.onZoom = result.onZoom
         }
 
-        // Define zoom behavior
+        // Set up zoom behavior
         const zoom = d3
             .zoom<SVGSVGElement, unknown>()
             .scaleExtent([0.5, 20])
-            .extent([
-                [0, 0],
-                [width, height],
-            ])
+            .extent([[0, 0], [width, height]])
             .on("zoom", (event) => {
-                // Update the transform state
-                setTransform(event.transform)
+                chartStateRef.current.onZoom?.(event.transform)
             })
 
-        // Store zoom reference for external controls
         zoomRef.current = zoom
-
-        // Apply zoom to the SVG
         d3.select(svgRef.current).call(zoom)
 
-        // Cleanup function
         return () => {
-            if (chartRef.current.cleanup) {
-                chartRef.current.cleanup()
+            if (chartStateRef.current.cleanup) {
+                chartStateRef.current.cleanup()
+                chartStateRef.current = {}
             }
         }
-    }, [renderChart, margin, transform])
+    }, [initChart, margin, containerSize])
 
-    // Zoom control handlers
-    const handleZoomIn = () => {
+    // Imperative D3 data update on a fixed interval. The updateChart callback
+    // (stored in the ref) reads directly from the FramerateStore each tick,
+    // so no React state or re-renders are involved in the data path.
+    useEffect(() => {
+        const tick = () => {
+            const scaffolding = chartStateRef.current.scaffolding
+            if (scaffolding) updateChartRef.current(scaffolding)
+        }
+        tick()
+        const id = setInterval(tick, CHART_UPDATE_INTERVAL_MS)
+        return () => clearInterval(id)
+    }, [])
+
+    const handleZoomIn = useCallback(() => {
         if (svgRef.current && zoomRef.current) {
             d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 1.5)
         }
-    }
+    }, [])
 
-    const handleZoomOut = () => {
+    const handleZoomOut = useCallback(() => {
         if (svgRef.current && zoomRef.current) {
             d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.scaleBy, 0.75)
         }
-    }
+    }, [])
 
-    const handleResetZoom = () => {
+    const handleResetZoom = useCallback(() => {
         if (svgRef.current && zoomRef.current) {
             d3.select(svgRef.current).transition().duration(300).call(zoomRef.current.transform, d3.zoomIdentity)
         }
-    }
+    }, [])
 
     return (
         <Box
+            ref={containerRef}
             sx={{
                 width: "100%",
                 height: "100%",
                 position: "relative",
-                overflow: "hidden"
+                overflow: "hidden",
             }}
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
@@ -145,17 +199,21 @@ export default function BaseD3ChartView({
                     variant="caption"
                     sx={{
                         position: "absolute",
-                        top: 5,
-                        left: 10,
-                        fontSize: '0.7rem',
-                        opacity: 0.8
+                        top: 2,
+                        left: 8,
+                        fontSize: "0.7rem",
+                        opacity: 0.9,
+                        zIndex: 5,
+                        bgcolor: "background.default",
+                        px: 0.5,
+                        borderRadius: 0.5,
+                        lineHeight: 1.4,
                     }}
                 >
                     {title}
                 </Typography>
             )}
 
-            {/* Zoom controls that fade in/out on hover */}
             <Fade in={showControls}>
                 <Box
                     sx={{
@@ -171,19 +229,19 @@ export default function BaseD3ChartView({
                         flexDirection: "column",
                     }}
                 >
-                    <Tooltip title="Zoom In" placement="right">
+                    <Tooltip title={t("zoomIn")} placement="right">
                         <IconButton size="small" onClick={handleZoomIn} sx={{p: 0.5}}>
-                            <ZoomIn fontSize="small"/>
+                            <ZoomIn fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Zoom Out" placement="right">
+                    <Tooltip title={t("zoomOut")} placement="right">
                         <IconButton size="small" onClick={handleZoomOut} sx={{p: 0.5}}>
-                            <ZoomOut fontSize="small"/>
+                            <ZoomOut fontSize="small" />
                         </IconButton>
                     </Tooltip>
-                    <Tooltip title="Reset Zoom" placement="right">
+                    <Tooltip title={t("resetZoom")} placement="right">
                         <IconButton size="small" onClick={handleResetZoom} sx={{p: 0.5}}>
-                            <RestartAlt fontSize="small"/>
+                            <RestartAlt fontSize="small" />
                         </IconButton>
                     </Tooltip>
                 </Box>
@@ -191,13 +249,14 @@ export default function BaseD3ChartView({
 
             <svg
                 ref={svgRef}
-                width="100%"
-                height="100%"
-                style={{
-                    display: 'block',
-                    overflow: "visible"
-                }}
+                width={containerSize.width}
+                height={containerSize.height}
+                style={{display: "block", overflow: "hidden"}}
             />
         </Box>
     )
-}
+}, (prev, next) => {
+    return prev.title === next.title
+        && prev.initChart === next.initChart
+        && prev.margin === next.margin
+})

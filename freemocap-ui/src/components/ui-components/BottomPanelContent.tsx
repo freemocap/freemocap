@@ -11,12 +11,11 @@ export default function BottomPanelContent() {
 
     return (
         <Box sx={{width: '100%', height: '100%'}}>
-            <PanelGroup direction="horizontal">
+            <PanelGroup direction="horizontal" style={{direction: "ltr"}}>
                 {/* Framerate Viewer Panel */}
                 <Panel defaultSize={30} minSize={20}>
                     <Box sx={{height: '100%', overflow: 'auto'}}>
                         <FramerateViewerPanel/>
-                        Framerate  Viewer
                     </Box>
                 </Panel>
 

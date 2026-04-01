@@ -1,12 +1,12 @@
 // binary-frame-parser.ts
 import {
-    FRAME_HEADER_FIELDS,
-    FRAME_HEADER_SIZE,
     MESSAGE_TYPE,
-    PAYLOAD_FOOTER_FIELDS,
-    PAYLOAD_FOOTER_SIZE,
     PAYLOAD_HEADER_FIELDS,
     PAYLOAD_HEADER_SIZE,
+    FRAME_HEADER_FIELDS,
+    FRAME_HEADER_SIZE,
+    PAYLOAD_FOOTER_FIELDS,
+    PAYLOAD_FOOTER_SIZE,
 } from './binary-protocol';
 
 export interface ParsedFrame {
@@ -19,7 +19,7 @@ export interface ParsedFrame {
     bitmap: ImageBitmap;
 }
 
-// Single reusable TextDecoder
+// Single reusable TextDecoder - created once, used forever
 const sharedTextDecoder = new TextDecoder();
 
 // Optimized ImageBitmap options for camera feeds

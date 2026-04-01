@@ -13,6 +13,7 @@ import {
 
 interface RecordingControlsSectionProps {
     recordingDirectory: string;
+    recordingName: string;
     recordingTag: string;
     useDelayStart: boolean;
     delaySeconds: number;
@@ -36,6 +37,7 @@ interface RecordingControlsSectionProps {
 
 export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> = ({
                                                                                       recordingDirectory,
+                                                                                      recordingName,
                                                                                       recordingTag,
                                                                                       useDelayStart,
                                                                                       delaySeconds,
@@ -66,10 +68,11 @@ export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> =
             />
 
             <BaseRecordingDirectoryInput
-                baseRecordingFolder={recordingDirectory}
+                value={recordingDirectory}
             />
 
             <RecordingNamePreview
+                name={recordingName}
                 tag={recordingTag}
                 isRecording={isRecording}
                 onTagChange={onTagChange}

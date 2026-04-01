@@ -45,9 +45,9 @@ const getBaseTheme = (mode: PaletteMode) => ({
 const darkPalette = {
     mode: 'dark' as PaletteMode,
     primary: {
-        light: '#5e92f3',
-        main: '#104172',
-        dark: '#002a60',
+        light: '#90b4f8',
+        main: '#5e92f3',
+        dark: '#163a6d',
         contrastText: '#ffffff',
     },
     secondary: {
@@ -220,7 +220,7 @@ export const createExtendedTheme = (mode: PaletteMode) => {
                     root: {
                         color: mode === 'dark' ? baseTheme.palette.grey[400] : baseTheme.palette.grey[600],
                         '&.Mui-checked': {
-                            color: baseTheme.palette.primary.main,
+                            color: mode === 'dark' ? baseTheme.palette.info.main : baseTheme.palette.primary.main,
                         },
                         '&.Mui-disabled': {
                             color: mode === 'dark' ? baseTheme.palette.grey[700] : baseTheme.palette.grey[400],
@@ -233,7 +233,7 @@ export const createExtendedTheme = (mode: PaletteMode) => {
                     root: {
                         color: mode === 'dark' ? baseTheme.palette.grey[400] : baseTheme.palette.grey[600],
                         '&.Mui-checked': {
-                            color: baseTheme.palette.primary.main,
+                            color: mode === 'dark' ? baseTheme.palette.info.main : baseTheme.palette.primary.main,
                         },
                     },
                 },

@@ -1,8 +1,10 @@
 import React from "react";
-import {Box, Typography} from "@mui/material";
-import {TreeItem} from "@mui/x-tree-view/TreeItem";
+import { Box, Typography } from "@mui/material";
+import { TreeItem } from "@mui/x-tree-view/TreeItem";
+import { useTranslation } from "react-i18next";
 
 export const NoCamerasPlaceholder: React.FC = () => {
+    const { t } = useTranslation();
     return (
         <TreeItem
             itemId="no-cameras"
@@ -15,14 +17,14 @@ export const NoCamerasPlaceholder: React.FC = () => {
                     }}
                 >
                     <Typography variant="body1" color="text.secondary">
-                        No cameras detected
+                        {t('noCamerasDetected')}
                     </Typography>
                     <Typography
                         variant="caption"
                         color="text.disabled"
                         sx={{ mt: 1, display: "block" }}
                     >
-                        Click refresh to scan for available cameras
+                        {t('clickRefreshToScan')}
                     </Typography>
                 </Box>
             }

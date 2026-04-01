@@ -3,38 +3,17 @@ export interface WebSocketConfig {
     reconnectDelay?: number;
     maxReconnectAttempts?: number;
     heartbeatInterval?: number;
-    /** When true, silently poll for the server and auto-connect when it appears. */
-    autoConnect?: boolean;
-    /** Polling interval (ms) when in auto-connect discovery mode. */
-    autoConnectInterval?: number;
 }
 
 export enum ConnectionState {
-    /** Idle — not trying to connect. */
     DISCONNECTED = 'DISCONNECTED',
-    /** Actively opening a WebSocket connection. */
     CONNECTING = 'CONNECTING',
-    /** WebSocket is open. */
     CONNECTED = 'CONNECTED',
-    /** Lost connection, attempting to re-establish. */
     RECONNECTING = 'RECONNECTING',
-    /** Silently polling for the server to become available. */
-    DISCOVERING = 'DISCOVERING',
+    FAILED = 'FAILED'
 }
 
-/** Typed event map — each key declares its callback signature. */
-interface WebSocketEventMap {
-    'state-change': (newState: ConnectionState, previousState: ConnectionState) => void;
-    'message': (event: MessageEvent) => void;
-    'open': () => void;
-    'close': (event: CloseEvent) => void;
-    'error': (event: Event) => void;
-    'send-failed': (data: string | object) => void;
-    'send-error': (error: unknown) => void;
-    'max-reconnect-attempts': () => void;
-}
-
-type EventName = keyof WebSocketEventMap;
+type EventCallback = (...args: any[]) => void;
 
 export class WebSocketConnection {
     private ws: WebSocket | null = null;
@@ -42,59 +21,47 @@ export class WebSocketConnection {
     private reconnectAttempts: number = 0;
     private reconnectTimer: number | null = null;
     private heartbeatTimer: number | null = null;
-    private discoveryTimer: number | null = null;
     private state: ConnectionState = ConnectionState.DISCONNECTED;
 
-    private listeners: { [K in EventName]?: Set<WebSocketEventMap[K]> } = {};
+    // Simple event emitter implementation for browser
+    private listeners: Map<string, Set<EventCallback>> = new Map();
 
     constructor(config: WebSocketConfig) {
         this.config = {
             reconnectDelay: config.reconnectDelay ?? 1000,
             maxReconnectAttempts: config.maxReconnectAttempts ?? 5,
             heartbeatInterval: config.heartbeatInterval ?? 30000,
-            autoConnect: config.autoConnect ?? false,
-            autoConnectInterval: config.autoConnectInterval ?? 3000,
-            url: config.url,
+            url: config.url
         };
     }
 
-    public on<K extends EventName>(event: K, callback: WebSocketEventMap[K]): void {
-        if (!this.listeners[event]) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            this.listeners[event] = new Set() as any;
+    // Simple event emitter methods
+    public on(event: string, callback: EventCallback): void {
+        if (!this.listeners.has(event)) {
+            this.listeners.set(event, new Set());
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.listeners[event] as any).add(callback);
+        this.listeners.get(event)!.add(callback);
     }
 
-    public off<K extends EventName>(event: K, callback: WebSocketEventMap[K]): void {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.listeners[event] as any)?.delete(callback);
+    public off(event: string, callback: EventCallback): void {
+        this.listeners.get(event)?.delete(callback);
     }
 
-    private emit<K extends EventName>(event: K, ...args: Parameters<WebSocketEventMap[K]>): void {
-        const set = this.listeners[event];
-        if (!set) return;
-        for (const callback of set) {
+    private emit(event: string, ...args: any[]): void {
+        this.listeners.get(event)?.forEach(callback => {
             try {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (callback as any)(...args);
+                callback(...args);
             } catch (error) {
                 console.error(`Error in event listener for ${event}:`, error);
             }
-        }
+        });
     }
 
-    /**
-     * Begin actively trying to open the WebSocket connection.
-     * If autoConnect is enabled and the attempt fails, falls back to discovery mode.
-     */
     public connect(): void {
         if (this.state === ConnectionState.CONNECTING || this.state === ConnectionState.CONNECTED) {
             return;
         }
 
-        this.stopDiscovery();
         this.setState(ConnectionState.CONNECTING);
 
         try {
@@ -110,15 +77,12 @@ export class WebSocketConnection {
         }
     }
 
-    /**
-     * Cleanly close the connection and stop all reconnection/discovery.
-     */
     public disconnect(): void {
         this.clearTimers();
-        this.stopDiscovery();
         this.reconnectAttempts = 0;
 
         if (this.ws) {
+            // Remove handlers to avoid reconnection on close
             this.ws.onclose = null;
             this.ws.close();
             this.ws = null;
@@ -127,22 +91,9 @@ export class WebSocketConnection {
         this.setState(ConnectionState.DISCONNECTED);
     }
 
-    /**
-     * Enter discovery mode: silently poll for the server at a fixed interval.
-     * Does not surface errors — just keeps trying until the server appears.
-     */
-    public startDiscovery(): void {
-        if (this.state === ConnectionState.CONNECTED || this.state === ConnectionState.CONNECTING) {
-            return;
-        }
-
-        console.log(`[WS] Entering discovery mode (polling every ${this.config.autoConnectInterval}ms)`);
-        this.setState(ConnectionState.DISCOVERING);
-        this.scheduleDiscoveryAttempt();
-    }
-
     public send(data: string | object): boolean {
         if (!this.isConnected()) {
+            console.warn('WebSocket not connected, queuing message');
             this.emit('send-failed', data);
             return false;
         }
@@ -162,13 +113,17 @@ export class WebSocketConnection {
         return this.ws?.readyState === WebSocket.OPEN;
     }
 
+    public getUrl(): string {
+        return this.config.url;
+    }
+
+    public updateUrl(url: string): void {
+        this.config.url = url;
+    }
+
     public getState(): ConnectionState {
         return this.state;
     }
-
-    // -----------------------------------------------------------
-    // Private
-    // -----------------------------------------------------------
 
     private setState(state: ConnectionState): void {
         const previousState = this.state;
@@ -179,7 +134,6 @@ export class WebSocketConnection {
     private handleOpen(): void {
         console.log('WebSocket connected');
         this.reconnectAttempts = 0;
-        this.stopDiscovery();
         this.setState(ConnectionState.CONNECTED);
         this.startHeartbeat();
         this.emit('open');
@@ -188,32 +142,24 @@ export class WebSocketConnection {
     private handleClose(event: CloseEvent): void {
         console.log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
         this.clearTimers();
-        this.ws = null;
 
-        // Always transition to DISCONNECTED first — this triggers cleanup
-        // in listeners (e.g. ServerContextProvider dispatches serverSettingsCleared)
-        this.setState(ConnectionState.DISCONNECTED);
-        this.emit('close', event);
+        const wasConnected = this.state === ConnectionState.CONNECTED;
 
-        // If autoConnect is on, immediately start polling for the server again
-        if (this.config.autoConnect) {
-            this.startDiscovery();
-            return;
-        }
-
-        if (this.reconnectAttempts < this.config.maxReconnectAttempts) {
+        if (wasConnected && this.reconnectAttempts < this.config.maxReconnectAttempts) {
             this.scheduleReconnect();
-        } else {
+        } else if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
+            this.setState(ConnectionState.FAILED);
             this.emit('max-reconnect-attempts');
+        } else {
+            this.setState(ConnectionState.DISCONNECTED);
         }
+
+        this.emit('close', event);
     }
 
-    private handleError(_error: Event): void {
-        // In discovery mode, errors are expected and silenced
-        if (this.state === ConnectionState.DISCOVERING) {
-            return;
-        }
-        this.emit('error', _error);
+    private handleError(error: Event): void {
+        console.error('WebSocket error:', error);
+        this.emit('error', error);
     }
 
     private handleMessage(event: MessageEvent): void {
@@ -226,7 +172,7 @@ export class WebSocketConnection {
         this.setState(ConnectionState.RECONNECTING);
         const delay = Math.min(
             this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts),
-            10000,
+            10000 // Max 10 seconds
         );
 
         console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.config.maxReconnectAttempts})`);
@@ -238,69 +184,29 @@ export class WebSocketConnection {
         }, delay);
     }
 
-    /**
-     * Schedule one discovery probe. On failure, schedule the next one.
-     * On success, handleOpen() takes over.
-     */
-    private scheduleDiscoveryAttempt(): void {
-        if (this.discoveryTimer !== null) return;
-
-        this.discoveryTimer = window.setTimeout(() => {
-            this.discoveryTimer = null;
-
-            if (this.state !== ConnectionState.DISCOVERING) return;
-
-            try {
-                const probe = new WebSocket(this.config.url);
-                probe.binaryType = 'arraybuffer';
-
-                probe.onopen = () => {
-                    console.log('[WS] Discovery probe succeeded — promoting to main connection');
-                    // Discovery succeeded — promote this socket to the main connection
-                    this.ws = probe;
-                    probe.onclose = this.handleClose.bind(this);
-                    probe.onerror = this.handleError.bind(this);
-                    probe.onmessage = this.handleMessage.bind(this);
-                    this.handleOpen();
-                };
-
-                probe.onerror = () => {
-                    // Silently swallow — try again on the next interval
-                    try { probe.close(); } catch { /* ignore */ }
-                    if (this.state === ConnectionState.DISCOVERING) {
-                        this.scheduleDiscoveryAttempt();
-                    }
-                };
-
-                probe.onclose = () => {
-                    // If we get a close without ever opening, try again
-                    if (this.state === ConnectionState.DISCOVERING) {
-                        this.scheduleDiscoveryAttempt();
-                    }
-                };
-            } catch {
-                // WebSocket constructor threw — try again
-                if (this.state === ConnectionState.DISCOVERING) {
-                    this.scheduleDiscoveryAttempt();
-                }
-            }
-        }, this.config.autoConnectInterval);
-    }
-
-    private stopDiscovery(): void {
-        if (this.discoveryTimer !== null) {
-            clearTimeout(this.discoveryTimer);
-            this.discoveryTimer = null;
-        }
-    }
-
     private startHeartbeat(): void {
         this.heartbeatTimer = window.setInterval(() => {
             if (this.isConnected()) {
-                // Send plain text "ping" — the backend expects this format
-                this.ws!.send('ping');
+                this.sendRaw('ping');
             }
         }, this.config.heartbeatInterval);
+    }
+
+    /**
+     * Send a raw text string over the WebSocket without JSON serialization.
+     * Used for protocol-level messages like ping/pong.
+     */
+    public sendRaw(text: string): boolean {
+        if (!this.isConnected()) {
+            return false;
+        }
+        try {
+            this.ws!.send(text);
+            return true;
+        } catch (error) {
+            console.error('Failed to send raw WebSocket message:', error);
+            return false;
+        }
     }
 
     private clearTimers(): void {

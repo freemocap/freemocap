@@ -55,6 +55,7 @@ export const RecordingInfoSchema = z.object({
     duration: z.number().nullable(),
     config: RecordingConfigSchema,
     computed: ComputedRecordingPathSchema,
+    completionData: StopRecordingResponseSchema.nullable(),
 });
 
 export type RecordingConfig = z.infer<typeof RecordingConfigSchema>;

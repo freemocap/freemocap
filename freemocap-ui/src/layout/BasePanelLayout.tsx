@@ -57,8 +57,8 @@ export const BasePanelLayout = ({children}: { children: React.ReactNode }) => {
                             onExpand={handlePanelExpand}
                         >
                             <LeftSidePanelContent
-                                isCollapsed={isCollapsed}
-                                onToggleCollapse={handleToggleCollapse}
+                                // isCollapsed={isCollapsed}
+                                // onToggleCollapse={handleToggleCollapse}
                             />
                         </Panel>
                         {/* Horizontal Resize Handle */}

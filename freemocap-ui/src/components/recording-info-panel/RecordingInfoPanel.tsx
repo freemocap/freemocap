@@ -18,6 +18,9 @@ import {electronIpc, useElectronIPC} from "@/services/electron-ipc/electron-ipc"
 import {useServer} from "@/services/server/ServerContextProvider";
 import {getTimestampString} from "@/components/recording-info-panel/getTimestampString";
 import {RecordingCompleteDialog} from "@/components/recording-info-panel/RecordingCompleteDialog";
+import {PipelineSummary} from "@/components/processing-pipeline-panel/PipelineSummary";
+import {PipelineConnectionToggle} from "@/components/processing-pipeline-panel/PipelineConnectionToggle";
+import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 
 interface RecordingOperation {
     type: 'start' | 'stop';
@@ -157,7 +160,7 @@ export const RecordingInfoPanel: React.FC = () => {
         }
 
         // Set pending state before dispatching
-        setPendingOperation({ type: 'start', timestamp: Date.now() });
+        setPendingOperation({type: 'start', timestamp: Date.now()});
 
         try {
             await dispatch(
@@ -182,7 +185,7 @@ export const RecordingInfoPanel: React.FC = () => {
 
         if (recordingInfo.isRecording) {
             console.log("Stopping recording...");
-            setPendingOperation({ type: 'stop', timestamp: Date.now() });
+            setPendingOperation({type: 'stop', timestamp: Date.now()});
 
             try {
                 await dispatch(stopRecording()).unwrap();
@@ -205,100 +208,117 @@ export const RecordingInfoPanel: React.FC = () => {
         : undefined;
 
     return (
-        <Box
-            sx={{
-                color: "text.primary",
-                backgroundColor: theme.palette.primary.dark,
-                borderRadius: 1,
-                mx: 1,
-                my: 0.5,
-            }}
+        <CollapsibleSidebarSection
+            icon={<VideocamIcon sx={{transform: "", color: "inherit"}}/>}
+            title="Recording"
+            // TODO - Integrate this button more aesthetically, update Summary to better represent recording
+            summaryContent={<PipelineSummary/>}
+            primaryControl={<StartStopRecordingButton
+                isRecording={recordingInfo.isRecording}
+                isPending={pendingOperation !== null}
+                countdown={countdown}
+                recordingStartTime={recordingStartTime}
+                disabled={noCamerasConnected && !recordingInfo.isRecording}
+                onClick={handleRecordButtonClick}
+            />}
+            defaultExpanded={false}
         >
-            <SimpleTreeView
-                defaultExpandedItems={["recording-main"]}
-                slots={{
-                    collapseIcon: ExpandMoreIcon,
-                    expandIcon: ChevronRightIcon,
-                }}
+            <Box
                 sx={{
-                    flexGrow: 1,
-                    '& .MuiTreeItem-content': {
-                        padding: '2px 4px',
-                        margin: '1px 0',
-                    },
-                    '& .MuiTreeItem-label': {
-                        fontSize: 13,
-                        padding: '1px 0',
-                    },
+                    color: "text.primary",
+                    backgroundColor: theme.palette.primary.dark,
+                    borderRadius: 1,
+                    mx: 1,
+                    my: 0.5,
                 }}
             >
-                <TreeItem
-                    itemId="recording-main"
-                    label={
-                        <Box
-                            sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                width: "100%",
-                                py: 0.25,
-                            }}
-                        >
-                            <VideocamIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                            <Typography sx={{ flexGrow: 1, fontSize: 13, fontWeight: 500 }}>
-                                Record
-                            </Typography>
-
-                            <Box onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} sx={{ flexGrow: 1, ml: 1.5 }}>
-                                <StartStopRecordingButton
-                                    isRecording={recordingInfo.isRecording}
-                                    isPending={pendingOperation !== null}
-                                    countdown={countdown}
-                                    recordingStartTime={recordingStartTime}
-                                    disabled={noCamerasConnected && !recordingInfo.isRecording}
-                                    onClick={handleRecordButtonClick}
-                                />
-                            </Box>
-                        </Box>
-                    }
-                >{/* Microphone selector */}
+                <SimpleTreeView
+                    defaultExpandedItems={["recording-main"]}
+                    slots={{
+                        collapseIcon: ExpandMoreIcon,
+                        expandIcon: ChevronRightIcon,
+                    }}
+                    sx={{
+                        flexGrow: 1,
+                        '& .MuiTreeItem-content': {
+                            padding: '2px 4px',
+                            margin: '1px 0',
+                        },
+                        '& .MuiTreeItem-label': {
+                            fontSize: 13,
+                            padding: '1px 0',
+                        },
+                    }}
+                >
                     <TreeItem
-                        itemId="recording-mic"
+                        itemId="recording-main"
                         label={
-                            <MicrophoneSelector
-                                selectedMicIndex={micDeviceIndex}
-                                onMicSelected={setMicDeviceIndex}
-                                disabled={recordingInfo.isRecording}
-                            />
+                            <Box
+                                sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    width: "100%",
+                                    py: 0.25,
+                                }}
+                            >
+                                <VideocamIcon sx={{fontSize: 16, mr: 0.5}}/>
+                                <Typography sx={{flexGrow: 1, fontSize: 13, fontWeight: 500}}>
+                                    Record
+                                </Typography>
+
+                                <Box onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}
+                                     sx={{flexGrow: 1, ml: 1.5}}>
+                                    <StartStopRecordingButton
+                                        isRecording={recordingInfo.isRecording}
+                                        isPending={pendingOperation !== null}
+                                        countdown={countdown}
+                                        recordingStartTime={recordingStartTime}
+                                        disabled={noCamerasConnected && !recordingInfo.isRecording}
+                                        onClick={handleRecordButtonClick}
+                                    />
+                                </Box>
+                            </Box>
                         }
-                    />
-                    <RecordingPathTreeItem
-                        recordingDirectory={recordingInfo.recordingDirectory}
-                        recordingName={recordingName}
-                        subfolder={subfolderName}
-                        countdown={countdown}
-                        recordingTag={recordingTag}
-                        useDelayStart={useDelayStart}
-                        delaySeconds={delaySeconds}
-                        useTimestamp={useTimestamp}
-                        baseName={baseName}
-                        useIncrement={useIncrement}
-                        currentIncrement={currentIncrement}
-                        createSubfolder={createSubfolder}
-                        customSubfolderName={customSubfolderName}
-                        isRecording={recordingInfo.isRecording}
-                        onDelayToggle={setUseDelayStart}
-                        onDelayChange={setDelaySeconds}
-                        onTagChange={handleRecordingTagChange}
-                        onUseTimestampChange={setUseTimestamp}
-                        onBaseNameChange={setBaseName}
-                        onUseIncrementChange={setUseIncrement}
-                        onIncrementChange={setCurrentIncrement}
-                        onCreateSubfolderChange={setCreateSubfolder}
-                        onCustomSubfolderNameChange={setCustomSubfolderName}
-                    />
-                </TreeItem>
-            </SimpleTreeView>
-            <RecordingCompleteDialog />
-        </Box>
+                    >{/* Microphone selector */}
+                        <TreeItem
+                            itemId="recording-mic"
+                            label={
+                                <MicrophoneSelector
+                                    selectedMicIndex={micDeviceIndex}
+                                    onMicSelected={setMicDeviceIndex}
+                                    disabled={recordingInfo.isRecording}
+                                />
+                            }
+                        />
+                        <RecordingPathTreeItem
+                            recordingDirectory={recordingInfo.recordingDirectory}
+                            recordingName={recordingName}
+                            subfolder={subfolderName}
+                            countdown={countdown}
+                            recordingTag={recordingTag}
+                            useDelayStart={useDelayStart}
+                            delaySeconds={delaySeconds}
+                            useTimestamp={useTimestamp}
+                            baseName={baseName}
+                            useIncrement={useIncrement}
+                            currentIncrement={currentIncrement}
+                            createSubfolder={createSubfolder}
+                            customSubfolderName={customSubfolderName}
+                            isRecording={recordingInfo.isRecording}
+                            onDelayToggle={setUseDelayStart}
+                            onDelayChange={setDelaySeconds}
+                            onTagChange={handleRecordingTagChange}
+                            onUseTimestampChange={setUseTimestamp}
+                            onBaseNameChange={setBaseName}
+                            onUseIncrementChange={setUseIncrement}
+                            onIncrementChange={setCurrentIncrement}
+                            onCreateSubfolderChange={setCreateSubfolder}
+                            onCustomSubfolderNameChange={setCustomSubfolderName}
+                        />
+                    </TreeItem>
+                </SimpleTreeView>
+                <RecordingCompleteDialog/>
+            </Box>
+        </CollapsibleSidebarSection>
     );
 };

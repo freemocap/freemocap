@@ -34,7 +34,7 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.detectMicrophones);
+            const response = await fetch(serverUrls.endpoints.detectMicrophones);
             if (!response.ok) {
                 throw new Error(`Failed to detect microphones: ${response.statusText}`);
             }

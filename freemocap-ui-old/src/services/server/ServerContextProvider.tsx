@@ -13,7 +13,7 @@ import {
     serverSettingsUpdated,
 } from '@/store';
 
-import {serverUrls} from "@/hooks/server-urls";
+import {serverUrls} from "../../../../freemocap-ui/src/hooks/server-urls";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-overlay-renderer";

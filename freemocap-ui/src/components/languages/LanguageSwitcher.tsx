@@ -19,7 +19,7 @@ import {
   localeChanged,
   selectLocale,
   selectShowTranslationIndicator,
-} from "@/store/slices/settings";
+} from "@/store/slices/locale";
 import {
   SUPPORTED_LOCALES,
   getTranslationSource,

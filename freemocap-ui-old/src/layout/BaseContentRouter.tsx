@@ -14,8 +14,6 @@ export const BaseContentRouter: React.FC = () => {
             <Route path="/videos" element={<VideosPage />} />
             <Route path="/viewport3d" element={<Viewport3dPage />} />
             <Route path="/settings" element={<SettingsPage />} />
-            {/* Legacy route redirect */}
-            <Route path="/setup" element={<Navigate to="/settings" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
     );

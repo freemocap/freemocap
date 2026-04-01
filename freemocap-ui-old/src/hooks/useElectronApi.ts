@@ -1,7 +1,7 @@
 // src/hooks/useElectronAPI.ts
 import {useEffect, useMemo, useState} from 'react';
 import {electronIpcClient, isElectron} from "@/services";
-import {serverUrls} from "@/hooks/server-urls";
+import {serverUrls} from "../../../freemocap-ui/src/hooks/server-urls";
 
 interface UseElectronAPIReturn {
     isElectron: boolean;

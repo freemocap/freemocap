@@ -25,7 +25,7 @@ async def shutdown_server(
     """
     Initiate graceful server shutdown.
 
-    This endpoint triggers a graceful shutdown of the entire SkellyCam system,
+    This endpoint triggers a graceful shutdown of the entire FreeMoCap system,
     including all camera groups and the server itself.
 
     Returns:

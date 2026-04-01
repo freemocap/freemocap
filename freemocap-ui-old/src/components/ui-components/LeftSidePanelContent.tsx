@@ -183,7 +183,7 @@ export const LeftSidePanelContent = () => {
                             color: theme.palette.text.primary,
                         }}
                     >
-                        FreeMoCap 💀📸
+                        FreeMoCap 💀✨
                     </Box>
 
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>

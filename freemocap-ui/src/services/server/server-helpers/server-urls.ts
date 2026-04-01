@@ -63,6 +63,25 @@ class ServerUrls {
             playbackTimestamps: (videoId: string) => `${baseUrl}/freemocap/playback/timestamps/${videoId}`,
             playbackAllTimestamps: `${baseUrl}/freemocap/playback/timestamps`,
 
+            // Pipeline endpoints
+            pipelineConnectOrUpdate: `${baseUrl}/freemocap/pipeline/connect`,
+            pipelineClose: `${baseUrl}/freemocap/pipeline/all/close`,
+            pipelinePauseUnpause: `${baseUrl}/freemocap/pipeline/all/pause_unpause`,
+            pipelineRecordStart: `${baseUrl}/freemocap/pipeline/all/record/start`,
+            pipelineRecordStop: `${baseUrl}/freemocap/pipeline/all/record/stop`,
+
+            // Calibration endpoints
+            calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
+            calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
+            calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
+            updateCalibrationConfig: `${baseUrl}/freemocap/calibration/config/update/all`,
+
+            // Mocap endpoints
+            mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
+            mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
+            processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
+            updateMocapConfig: `${baseUrl}/freemocap/mocap/config/update/all`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

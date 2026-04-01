@@ -1,4 +1,5 @@
 // src/components/framerate-viewer/FramerateStatisticsView.tsx
+import React from "react";
 import {
     Box,
     Divider,
@@ -13,19 +14,23 @@ import {
     Typography,
 } from "@mui/material";
 import {alpha, useTheme} from "@mui/material/styles";
-import {CurrentFramerate} from "@/store/slices/framerate/framerate-slice";
-import {useState} from "react";
+import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
+import {useEffect, useRef, useState} from "react";
+import {frontendColor, backendColor} from "@/components/framerate-viewer/FrameRateViewer";
+import {useTranslation} from "react-i18next";
+import {useServer} from "@/services/server/ServerContextProvider";
+
+const STATS_POLL_INTERVAL_MS = 500;
 
 type FramerateStatisticsViewProps = {
-    frontendFramerate: CurrentFramerate | null;
-    backendFramerate: CurrentFramerate | null;
     compact?: boolean;
 };
 
-// Format number with fixed precision
-const formatNumber = (num: number | null, precision = 3) => {
+const formatNumber = (num: number | null, precision = 3): string => {
     return num !== null ? num.toFixed(precision) : "N/A";
 };
+
+// --- Progressive tooltip (renders once, state is local to tooltip interaction) ---
 
 type ProgressiveTooltipProps = {
     shortInfo: string;
@@ -33,33 +38,24 @@ type ProgressiveTooltipProps = {
     children: React.ReactElement;
 };
 
-// Progressive tooltip component that shows more info on click
 export const ProgressiveTooltip = ({
-                                       shortInfo,
-                                       longInfo,
-                                       children,
-                                   }: ProgressiveTooltipProps) => {
+    shortInfo,
+    longInfo,
+    children,
+}: ProgressiveTooltipProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const theme = useTheme();
-
-    const handleTooltipClick = (e: React.MouseEvent) => {
-        e.preventDefault();
-        setIsExpanded(!isExpanded);
-    };
+    const {t} = useTranslation();
 
     return (
         <Tooltip
             title={
-                <Box onClick={handleTooltipClick} sx={{cursor: "pointer"}}>
+                <Box onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }} sx={{cursor: "pointer"}}>
                     <Typography variant="body2">
                         {isExpanded ? longInfo : shortInfo}
                     </Typography>
-                    <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{display: "block", mt: 1, textAlign: "center"}}
-                    >
-                        {isExpanded ? "Click to show less" : "Click to learn more"}
+                    <Typography variant="caption" color="text.secondary" sx={{display: "block", mt: 1, textAlign: "center"}}>
+                        {isExpanded ? t("clickToShowLess") : t("clickToLearnMore")}
                     </Typography>
                 </Box>
             }
@@ -91,403 +87,188 @@ type HeaderCellWithTooltipProps = {
     align?: "inherit" | "left" | "center" | "right" | "justify";
 };
 
-// Reusable tooltip component for column headers
 export const HeaderCellWithTooltip = ({
-                                          label,
-                                          shortInfo,
-                                          longInfo,
-                                          style = {},
-                                          align = "center",
-                                      }: HeaderCellWithTooltipProps) => {
-    return (
-        <ProgressiveTooltip shortInfo={shortInfo} longInfo={longInfo}>
-            <TableCell align={align} sx={style}>
-                {label}
-            </TableCell>
-        </ProgressiveTooltip>
+    label,
+    shortInfo,
+    longInfo,
+    style = {},
+    align = "center",
+}: HeaderCellWithTooltipProps) => (
+    <ProgressiveTooltip shortInfo={shortInfo} longInfo={longInfo}>
+        <TableCell align={align} sx={style}>
+            {label}
+        </TableCell>
+    </ProgressiveTooltip>
+);
+
+// --- Ref key types ---
+
+const METRIC_KEYS = ["recent", "mean", "median", "stdDev", "max", "min"] as const;
+type MetricKey = typeof METRIC_KEYS[number];
+const ROW_KEYS = ["backend", "frontend"] as const;
+type RowKey = typeof ROW_KEYS[number];
+type RefKey = `${RowKey}-${MetricKey}-${"primary" | "secondary"}` | `${RowKey}-samples`;
+
+// --- Extract display strings from store data ---
+
+function computeCellValues(
+    currentData: DetailedFramerate | null,
+    aggregateData: DetailedFramerate | null,
+): Record<MetricKey, {primary: string; secondary: string}> & {samples: string} {
+    const safeFps = (durationMs: number | null | undefined): number | null =>
+        durationMs !== null && durationMs !== undefined && durationMs > 0 ? 1000 / durationMs : null;
+
+    return {
+        recent: {
+            primary: formatNumber(currentData?.mean_frames_per_second ?? null) + " fps",
+            secondary: formatNumber(currentData?.mean_frame_duration_ms ?? null) + " ms",
+        },
+        mean: {
+            primary: formatNumber(safeFps(aggregateData?.frame_duration_mean)) + " fps",
+            secondary: formatNumber(aggregateData?.frame_duration_mean ?? null) + " ms",
+        },
+        median: {
+            primary: formatNumber(safeFps(aggregateData?.frame_duration_median)) + " fps",
+            secondary: formatNumber(aggregateData?.frame_duration_median ?? null) + " ms",
+        },
+        stdDev: {
+            primary: formatNumber(aggregateData?.frame_duration_stddev ?? null) + " ms",
+            secondary: formatNumber(aggregateData ? aggregateData.frame_duration_coefficient_of_variation * 100 : null) + " CV%",
+        },
+        max: {
+            primary: formatNumber(safeFps(aggregateData?.frame_duration_min)) + " fps",
+            secondary: formatNumber(aggregateData?.frame_duration_min ?? null) + " ms",
+        },
+        min: {
+            primary: formatNumber(safeFps(aggregateData?.frame_duration_max)) + " fps",
+            secondary: formatNumber(aggregateData?.frame_duration_max ?? null) + " ms",
+        },
+        samples: String(aggregateData?.calculation_window_size || 0),
+    };
+}
+
+// --- Main component: renders MUI table once, updates numbers via refs ---
+
+export default function FramerateStatisticsView({
+    compact = false,
+}: FramerateStatisticsViewProps) {
+    const theme = useTheme();
+    const isDarkMode = theme.palette.mode === "dark";
+    const {t} = useTranslation();
+    const {getFramerateStore} = useServer();
+
+    const spanRefs = useRef<Record<string, HTMLSpanElement | null>>({});
+    const setSpanRef = (key: RefKey) => (el: HTMLSpanElement | null) => {
+        spanRefs.current[key] = el;
+    };
+
+    // Poll the store and write to DOM spans — zero React re-renders.
+    useEffect(() => {
+        const tick = () => {
+            const snapshot = getFramerateStore().getSnapshot();
+            const rows: [RowKey, DetailedFramerate | null, DetailedFramerate | null][] = [
+                ["backend", snapshot.currentBackendFramerate, snapshot.aggregateBackendFramerate],
+                ["frontend", snapshot.currentFrontendFramerate, snapshot.aggregateFrontendFramerate],
+            ];
+
+            for (const [rowKey, currentData, aggregateData] of rows) {
+                const vals = computeCellValues(currentData, aggregateData);
+                for (const metric of METRIC_KEYS) {
+                    const pEl = spanRefs.current[`${rowKey}-${metric}-primary`];
+                    if (pEl) pEl.textContent = vals[metric].primary;
+                    const sEl = spanRefs.current[`${rowKey}-${metric}-secondary`];
+                    if (sEl) sEl.textContent = vals[metric].secondary;
+                }
+                const samplesEl = spanRefs.current[`${rowKey}-samples`];
+                if (samplesEl) samplesEl.textContent = `${vals.samples} ${t("samples")}`;
+            }
+        };
+        tick();
+        const id = setInterval(tick, STATS_POLL_INTERVAL_MS);
+        return () => clearInterval(id);
+    }, [getFramerateStore, t]);
+
+    // --- Static styles ---
+
+    const colorMap: Record<string, string> = {
+        recent: isDarkMode ? theme.palette.success.light : theme.palette.success.main,
+        mean: isDarkMode ? theme.palette.warning.light : theme.palette.warning.main,
+        median: isDarkMode ? theme.palette.warning.dark : theme.palette.warning.dark,
+        stdDev: isDarkMode ? theme.palette.primary.light : theme.palette.primary.main,
+        max: isDarkMode ? theme.palette.error.light : theme.palette.error.main,
+        min: isDarkMode ? theme.palette.info.light : theme.palette.info.main,
+    };
+
+    const getCellStyle = (metricType: string) => ({
+        backgroundColor: alpha(colorMap[metricType] || theme.palette.grey[500], isDarkMode ? 0.2 : 0.1),
+        borderBottom: "none",
+        padding: "2px 4px",
+    });
+
+    const headerCellStyle = {fontWeight: "bold", paddingY: 0.5};
+
+    const tooltips = {
+        source: {short: t("statsSourceShort"), long: t("statsSourceLong")},
+        recent: {short: t("statsCurrentShort"), long: t("statsCurrentLong")},
+        mean: {short: t("statsMeanShort"), long: t("statsMeanLong")},
+        median: {short: t("statsMedianShort"), long: t("statsMedianLong")},
+        stdDev: {short: t("statsStdDevShort"), long: t("statsStdDevLong")},
+        max: {short: t("statsMaxShort"), long: t("statsMaxLong")},
+        min: {short: t("statsMinShort"), long: t("statsMinLong")},
+    };
+
+    // --- Render helpers (called once at mount) ---
+
+    const renderMetricCell = (rowKey: RowKey, metric: MetricKey) => (
+        <TableCell key={metric} align="center" sx={getCellStyle(metric)}>
+            <Typography fontWeight="bold" fontFamily="monospace" color={colorMap[metric]} sx={{fontSize: "0.7rem", whiteSpace: "nowrap"}}>
+                <span ref={setSpanRef(`${rowKey}-${metric}-primary`)}>--</span>
+            </Typography>
+            <Typography variant="caption" color={colorMap[metric]} sx={{fontSize: "0.6rem", opacity: 0.9, whiteSpace: "nowrap"}}>
+                <span ref={setSpanRef(`${rowKey}-${metric}-secondary`)}>--</span>
+            </Typography>
+        </TableCell>
     );
-};
 
-type FramerateRowProps = {
-    framerateData: CurrentFramerate | null;
-    colorMap: Record<string, string>;
-    getCellStyle: (metricType: string) => object;
-    isDarkMode: boolean;
-    theme: any;
-    shortTooltip: string;
-    longTooltip: string;
-};
-
-const FramerateRow = ({
-                          framerateData,
-                          colorMap,
-                          getCellStyle,
-                          isDarkMode,
-                          theme,
-                          shortTooltip,
-                          longTooltip,
-                      }: FramerateRowProps) => {
-    const isBackend =
-        framerateData?.framerate_source === "Backend" ||
-        (!framerateData?.framerate_source && framerateData);
-
-    return (
-        <TableRow>
+    const renderRow = (rowKey: RowKey, sourceColor: string, sourceLabel: string, shortTooltip: string, longTooltip: string) => (
+        <TableRow key={rowKey}>
             <ProgressiveTooltip shortInfo={shortTooltip} longInfo={longTooltip}>
-                <TableCell
-                    sx={{
-                        fontWeight: "bold",
-                        borderLeft: `3px solid ${colorMap.current}`,
-                        paddingY: 0.5,
-                        color: isDarkMode
-                            ? isBackend
-                                ? theme.palette.secondary.light
-                                : theme.palette.primary.light
-                            : isBackend
-                                ? theme.palette.secondary.main
-                                : theme.palette.primary.main,
-                        cursor: "help",
-                    }}
-                >
-                    {framerateData?.framerate_source ||
-                        (isBackend ? "Backend" : "Frontend")}
-                    <Typography
-                        variant="caption"
-                        display="block"
-                        color="text.secondary"
-                        sx={{fontSize: "0.6rem"}}
-                    >
-                        {framerateData?.calculation_window_size || 0} samples
+                <TableCell sx={{fontWeight: "bold", borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, paddingY: 0.5, paddingLeft: 1, color: sourceColor, cursor: "help"}}>
+                    {sourceLabel}
+                    <Typography variant="caption" display="block" color="text.secondary" sx={{fontSize: "0.6rem"}}>
+                        <span ref={setSpanRef(`${rowKey}-samples`)}>--</span>
                     </Typography>
                 </TableCell>
             </ProgressiveTooltip>
-
-            <MetricCell
-                label="current"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.mean_frame_duration_ms}
-                primarySuffix="ms"
-                secondaryValue={framerateData?.mean_frames_per_second}
-                secondarySuffix="fps"
-            />
-
-            <MetricCell
-                label="min"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.frame_duration_min}
-                primarySuffix="ms"
-                secondaryValue={
-                    framerateData?.frame_duration_min &&
-                    framerateData.frame_duration_min > 0
-                        ? 1000 / framerateData.frame_duration_min
-                        : null
-                }
-                secondarySuffix="fps"
-            />
-
-            <MetricCell
-                label="max"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.frame_duration_max}
-                primarySuffix="ms"
-                secondaryValue={
-                    framerateData?.frame_duration_max &&
-                    framerateData.frame_duration_max > 0
-                        ? 1000 / framerateData.frame_duration_max
-                        : null
-                }
-                secondarySuffix="fps"
-            />
-
-            <MetricCell
-                label="mean"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.frame_duration_mean}
-                primarySuffix="ms"
-                secondaryValue={framerateData?.frame_duration_mean && framerateData.frame_duration_mean > 0
-                    ? 1000 / framerateData.frame_duration_mean
-                    : null}
-                secondarySuffix="fps"
-            />
-
-            <MetricCell
-                label="median"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.frame_duration_median}
-                primarySuffix="ms"
-                secondaryValue={framerateData?.frame_duration_median && framerateData.frame_duration_median > 0
-                    ? 1000 / framerateData.frame_duration_median
-                    : null}
-                secondarySuffix="fps"
-            />
-
-            <MetricCell
-                label="stdDev"
-                colorMap={colorMap}
-                getCellStyle={getCellStyle}
-                primaryValue={framerateData?.frame_duration_stddev}
-                primarySuffix="ms"
-                secondaryValue={
-                    framerateData
-                        ? framerateData.frame_duration_coefficient_of_variation * 100
-                        : null
-                }
-                secondarySuffix="CV%"
-            />
+            {METRIC_KEYS.map((metric) => renderMetricCell(rowKey, metric))}
         </TableRow>
     );
-};
 
-type MetricCellProps = {
-    label: string;
-    colorMap: Record<string, string>;
-    getCellStyle: (metricType: string) => object;
-    primaryValue: number | null | undefined;
-    primarySuffix?: string;
-    secondaryValue?: number | null | undefined;
-    secondarySuffix?: string;
-};
-
-const MetricCell = ({
-                        label,
-                        colorMap,
-                        getCellStyle,
-                        primaryValue,
-                        primarySuffix = "",
-                        secondaryValue,
-                        secondarySuffix = "",
-                    }: MetricCellProps) => {
-    return (
-        <TableCell align="center" sx={getCellStyle(label)}>
-            <Typography
-                fontWeight="bold"
-                fontFamily="monospace"
-                color={colorMap[label]}
-                sx={{fontSize: "0.7rem", whiteSpace: "nowrap"}}
-            >
-                {formatNumber(primaryValue ?? null)} {primarySuffix}
-            </Typography>
-            {secondaryValue !== undefined && (
-                <Typography
-                    variant="caption"
-                    color={colorMap[label]}
-                    sx={{fontSize: "0.6rem", opacity: 0.9, whiteSpace: "nowrap"}}
-                >
-                    {formatNumber(secondaryValue ?? null)} {secondarySuffix}
-                </Typography>
-            )}
-        </TableCell>
-    );
-};
-
-export default function FramerateStatisticsView({
-                                                    frontendFramerate,
-                                                    backendFramerate,
-                                                    compact = false,
-                                                }: FramerateStatisticsViewProps) {
-    const theme = useTheme();
-    const isDarkMode = theme.palette.mode === "dark";
-
-    // Define color map with high contrast for both light and dark themes
-    const colorMap: Record<string, string> = {
-        current: isDarkMode
-            ? theme.palette.success.light
-            : theme.palette.success.main,
-        min: isDarkMode ? theme.palette.info.light : theme.palette.info.main,
-        max: isDarkMode ? theme.palette.error.light : theme.palette.error.main,
-        mean: isDarkMode ? theme.palette.warning.light : theme.palette.warning.main,
-        median: isDarkMode
-            ? theme.palette.warning.dark
-            : theme.palette.warning.dark,
-        stdDev: isDarkMode
-            ? theme.palette.primary.light
-            : theme.palette.primary.main,
-        cv: isDarkMode
-            ? theme.palette.secondary.light
-            : theme.palette.secondary.main,
-    };
-
-    // Generate cell style based on metric type
-    const getCellStyle = (metricType: string) => {
-        return {
-            backgroundColor: alpha(
-                colorMap[metricType] || theme.palette.grey[500],
-                isDarkMode ? 0.2 : 0.1
-            ),
-            borderBottom: "none",
-            padding: "2px 4px",
-        };
-    };
-
-    // Common header cell styles
-    const headerCellStyle = {
-        fontWeight: "bold",
-        paddingY: 0.5,
-    };
-
-    // Tooltips content - short and long versions
-    const tooltips = {
-        source: {
-            short: "Frontend displays frames, Backend captures frames.",
-            long: "The backend is the true rate at which frames are pulled/recorded from the camera, while the frontend is the rate at which they are received and displayed. Skellycam prioritizes backend performance for recording quality, so that number should stay more stable. If the frontend framerate diverges from the backend, it indicates your system resources are taxed. Consider using fewer cameras or decreasing framerate/resolution.",
-        },
-        current: {
-            short: "Most recent frame time and corresponding FPS.",
-            long: "This shows the most recent measurement of how long it takes to process a single frame (in milliseconds) and the equivalent frames per second (FPS). Lower frame times and higher FPS indicate better performance.",
-        },
-        min: {
-            short: "Fastest frame time (lowest latency) and highest FPS achieved.",
-            long: "This represents the minimum time it took to process a single frame during the sampling window. This corresponds to the maximum FPS your system achieved during optimal conditions.",
-        },
-        max: {
-            short: "Slowest frame time (highest latency) and lowest FPS experienced.",
-            long: "This represents the maximum time it took to process a single frame during the sampling window. This corresponds to the minimum FPS your system achieved during worst-case conditions. Occasional spikes are normal, but consistently high values may indicate performance issues.",
-        },
-        mean: {
-            short: "Average frame time and FPS across all samples.",
-            long: "The arithmetic mean (average) of all frame times measured during the sampling window and the corresponding FPS. This gives a good overall picture of performance but may be skewed by outliers.",
-        },
-        median: {
-            short: "Middle value of all frame times (50th percentile).",
-            long: "The median represents the middle value when all frame times are sorted from fastest to slowest. Unlike the mean, the median is not affected by extreme outliers, making it a more stable indicator of typical performance.",
-        },
-        stdDev: {
-            short: "Measures frame time variability. CV% is relative variability.",
-            long: "Standard deviation measures the amount of variation in frame times. Lower values indicate more consistent performance. The Coefficient of Variation (CV%) expresses this variability as a percentage of the mean, making it easier to compare stability across different frame rates. Lower CV% indicates more stable performance.",
-        },
-    };
+    // --- Static MUI table (rendered once) ---
 
     return (
-        <TableContainer
-            component={Paper}
-            elevation={0}
-            sx={{
-                backgroundColor: "transparent",
-                border: "none",
-                overflowX: "auto",
-            }}
-        >
-            <Table
-                size="small"
-                padding="none"
-                sx={{
-                    "& .MuiTableCell-root": {
-                        fontSize: "0.65rem",
-                        lineHeight: "1.1",
-                        whiteSpace: "nowrap",
-                    },
-                }}
-            >
+        <TableContainer component={Paper} elevation={0} sx={{backgroundColor: "transparent", border: "none", overflowX: "auto"}}>
+            <Table size="small" padding="none" sx={{"& .MuiTableCell-root": {fontSize: "0.65rem", lineHeight: "1.1", whiteSpace: "nowrap"}}}>
                 <TableHead>
                     <TableRow>
-                        <HeaderCellWithTooltip
-                            label="Source"
-                            shortInfo={tooltips.source.short}
-                            longInfo={tooltips.source.long}
-                            style={{
-                                ...headerCellStyle,
-                                width: "12%",
-                                color: theme.palette.text.primary,
-                            }}
-                            align="left"
-                        />
-                        <HeaderCellWithTooltip
-                            label="Current"
-                            shortInfo={tooltips.current.short}
-                            longInfo={tooltips.current.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("current"),
-                            }}
-                        />
-                        <HeaderCellWithTooltip
-                            label="Min"
-                            shortInfo={tooltips.min.short}
-                            longInfo={tooltips.min.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("min"),
-                            }}
-                        />
-                        <HeaderCellWithTooltip
-                            label="Max"
-                            shortInfo={tooltips.max.short}
-                            longInfo={tooltips.max.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("max"),
-                            }}
-                        />
-                        <HeaderCellWithTooltip
-                            label="Mean"
-                            shortInfo={tooltips.mean.short}
-                            longInfo={tooltips.mean.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("mean"),
-                            }}
-                        />
-                        <HeaderCellWithTooltip
-                            label="Median"
-                            shortInfo={tooltips.median.short}
-                            longInfo={tooltips.median.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("median"),
-                            }}
-                        />
-                        <HeaderCellWithTooltip
-                            label="StdDev/CV"
-                            shortInfo={tooltips.stdDev.short}
-                            longInfo={tooltips.stdDev.long}
-                            style={{
-                                ...headerCellStyle,
-                                ...getCellStyle("stdDev"),
-                            }}
-                        />
+                        <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...headerCellStyle, width: "12%", color: theme.palette.text.primary}} align="left" />
+                        <HeaderCellWithTooltip label={t("Recent")} shortInfo={tooltips.recent.short} longInfo={tooltips.recent.long} style={{...headerCellStyle, ...getCellStyle("recent")}} />
+                        <HeaderCellWithTooltip label={t("mean")} shortInfo={tooltips.mean.short} longInfo={tooltips.mean.long} style={{...headerCellStyle, ...getCellStyle("mean")}} />
+                        <HeaderCellWithTooltip label={t("median")} shortInfo={tooltips.median.short} longInfo={tooltips.median.long} style={{...headerCellStyle, ...getCellStyle("median")}} />
+                        <HeaderCellWithTooltip label={t("stdDevCv")} shortInfo={tooltips.stdDev.short} longInfo={tooltips.stdDev.long} style={{...headerCellStyle, ...getCellStyle("stdDev")}} />
+                        <HeaderCellWithTooltip label={t("max")} shortInfo={tooltips.max.short} longInfo={tooltips.max.long} style={{...headerCellStyle, ...getCellStyle("max")}} />
+                        <HeaderCellWithTooltip label={t("min")} shortInfo={tooltips.min.short} longInfo={tooltips.min.long} style={{...headerCellStyle, ...getCellStyle("min")}} />
                     </TableRow>
-                    {/* Add the divider inside TableHead */}
                     <TableRow>
-                        <TableCell colSpan={7} sx={{padding: 0}}>
-                            <Divider sx={{borderColor: theme.palette.divider}}/>
-                        </TableCell>
+                        <TableCell colSpan={7} sx={{padding: 0}}><Divider sx={{borderColor: theme.palette.divider}} /></TableCell>
                     </TableRow>
                 </TableHead>
-
                 <TableBody>
-                    {/* Frontend Row */}
-                    <FramerateRow
-                        framerateData={frontendFramerate}
-                        colorMap={colorMap}
-                        getCellStyle={getCellStyle}
-                        isDarkMode={isDarkMode}
-                        theme={theme}
-                        shortTooltip="Displays received frames."
-                        longTooltip="Frontend represents the UI rendering performance. It shows how quickly your display receives and renders frames. Performance issues here won't affect recording quality but may impact your ability to monitor cameras in real-time."
-                    />
-
-                    {/* Divider between rows - now properly inside TableBody */}
+                    {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
                     <TableRow>
-                        <TableCell colSpan={7} sx={{padding: 0}}>
-                            <Divider sx={{borderColor: theme.palette.divider}}/>
-                        </TableCell>
+                        <TableCell colSpan={7} sx={{padding: 0}}><Divider sx={{borderColor: theme.palette.divider}} /></TableCell>
                     </TableRow>
-
-                    {/* Backend Row */}
-                    <FramerateRow
-                        framerateData={backendFramerate}
-                        colorMap={colorMap}
-                        getCellStyle={getCellStyle}
-                        isDarkMode={isDarkMode}
-                        theme={theme}
-                        shortTooltip="Captures frames from camera."
-                        longTooltip="Backend represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if frontend performance fluctuates."
-                    />
+                    {renderRow("frontend", frontendColor, t("display"), t("rendersReceivedFrames"), t("displayTooltipLong"))}
                 </TableBody>
             </Table>
         </TableContainer>

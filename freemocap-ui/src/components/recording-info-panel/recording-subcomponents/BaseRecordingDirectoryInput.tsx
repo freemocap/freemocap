@@ -1,17 +1,19 @@
 import React from 'react';
-import {IconButton, InputAdornment, TextField} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import { IconButton, InputAdornment, TextField } from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import {useAppDispatch} from '@/store';
-import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
-import {useElectronIPC} from '@/services';
+import { useAppDispatch } from '@/store';
+import { recordingDirectoryChanged } from '@/store/slices/recording/recording-slice';
+import { useElectronIPC } from '@/services';
 
 interface DirectoryInputProps {
-    baseRecordingFolder: string;
+    value: string;
 }
 
-export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ baseRecordingFolder }) => {
+export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ value }) => {
     const dispatch = useAppDispatch();
     const { api, isElectron } = useElectronIPC();
+    const { t } = useTranslation();
 
     const handleSelectDirectory = async (): Promise<void> => {
         // Only try to use electron API if we're in electron environment
@@ -53,8 +55,8 @@ export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ bas
 
     return (
         <TextField
-            label="Recording Directory"
-            value={baseRecordingFolder}
+            label={t("recordingDirectory")}
+            value={value}
             onChange={handleInputChange}
             fullWidth
             size="small"

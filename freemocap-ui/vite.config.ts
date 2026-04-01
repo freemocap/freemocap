@@ -5,8 +5,6 @@ import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron/simple'
 import pkg from './package.json'
 
-const __dirname = import.meta.dirname
-
 // https://vitejs.dev/config/
 export default defineConfig(({command}) => {
     rmSync('dist-electron', {recursive: true, force: true})
@@ -25,6 +23,7 @@ export default defineConfig(({command}) => {
             react(),
             electron({
                 main: {
+                    // Shortcut of `build.lib.entry`
                     entry: 'electron/main/index.ts',
                     onstart(args) {
                         if (process.env.VSCODE_DEBUG) {
@@ -45,10 +44,12 @@ export default defineConfig(({command}) => {
                     },
                 },
                 preload: {
+                    // Shortcut of `build.rollupOptions.input`.
+                    // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
                     input: 'electron/preload/index.ts',
                     vite: {
                         build: {
-                            sourcemap: sourcemap ? 'inline' : undefined,
+                            sourcemap: sourcemap ? 'inline' : undefined, // #332
                             minify: isBuild,
                             outDir: 'dist-electron/preload',
                             rollupOptions: {
@@ -57,20 +58,24 @@ export default defineConfig(({command}) => {
                         },
                     },
                 },
+                // Ployfill the Electron and Node.js API for Renderer process.
+                // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.
+                // See 👉 https://github.com/electron-vite/vite-plugin-electron-renderer
                 renderer: {},
             }),
         ],
-        optimizeDeps: {
-            exclude: ["@ffmpeg/ffmpeg", "@ffmpeg/util"],
-        },
-        server: {
-            host: '127.0.0.1',
-            port: 7877,
-            headers: {
-                "Cross-Origin-Opener-Policy": "same-origin",
-                "Cross-Origin-Embedder-Policy": "require-corp",
-            },
-        },
+        optimizeDeps: {},
+        server: process.env.VSCODE_DEBUG && (() => {
+            const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
+            return {
+                host: url.hostname,
+                port: +url.port,
+                headers: {
+                    "Cross-Origin-Opener-Policy": "same-origin",
+                    "Cross-Origin-Embedder-Policy": "require-corp",
+                },
+            }
+        })(),
         clearScreen: false,
     }
 })

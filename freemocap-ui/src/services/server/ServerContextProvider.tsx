@@ -1,107 +1,111 @@
-import React, {createContext, ReactNode, useCallback, useEffect, useRef, useState} from 'react';
-import {useDispatch} from 'react-redux';
-import {AppDispatch} from '@/store/types';
+// ServerContextProvider.tsx
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 
-import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
-import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
-import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
-import {
-    backendFramerateUpdated,
-    frontendFramerateUpdated,
-    logAdded,
-    serverSettingsCleared,
-    serverSettingsUpdated,
-} from '@/store';
+import { ConnectionState, WebSocketConnection } from "@/services/server/server-helpers/websocket-connection";
+import { FrameProcessor } from "@/services/server/server-helpers/frame-processor/frame-processor";
+import { CanvasManager } from "@/services/server/server-helpers/canvas-manager";
+import { serverUrls } from "@/services";
+import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
+import {LogStore, LogRecord} from "@/services/server/server-helpers/log-store";
 
-import {serverUrls} from "@/hooks/server-urls";
-import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
-import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
-import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-overlay-renderer";
-import {
-    arraysEqual, handleModelInfoUpdate,
-    isCharucoOverlayDataMessage, isFramerateUpdate, isLogRecord, isMediapipeOverlayDataMessage,
-    isSettingsStateMessage
-} from "@/services/server/server-helpers/websocket-message-types";
-import {RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
-
-type FrameSubscriber = (bitmap: ImageBitmap) => void;
-type TrackedPointsSubscriber = (points: Map<string, Point3d>) => void;
-type RigidBodiesSubscriber = (poses: Map<string, RigidBodyPose>) => void;
-
-export interface Point3d {
-    x: number;
-    y: number;
-    z: number;
-}
-
-export interface ServerContextValue {
+interface ServerContextValue {
     isConnected: boolean;
-    connectionState: ConnectionState;
     connect: () => void;
     disconnect: () => void;
     send: (data: string | object) => void;
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
     getFps: (cameraId: string) => number | null;
+    getServerFps: () => number | null;
+    getFramerateStore: () => FramerateStore;
+    getLogStore: () => LogStore;
     connectedCameraIds: string[];
-    subscribeToFrames: (cameraId: string, callback: FrameSubscriber) => () => void;
-    subscribeToTrackedPoints: (callback: TrackedPointsSubscriber) => () => void;
-    getLatestTrackedPoints: () => Map<string, Point3d>;
-    subscribeToRigidBodies: (callback: RigidBodiesSubscriber) => () => void;
+    updateServerConnection: (host: string, port: number) => void;
 }
 
-export const ServerContext = createContext<ServerContextValue | null>(null);
+const ServerContext = createContext<ServerContextValue | null>(null);
 
-export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
-    const dispatch = useDispatch<AppDispatch>();
+// Compare two already-sorted string arrays without allocating
+function sortedArraysEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
 
+// Type guard to check if a message is a log record
+function isLogRecord(data: any): data is LogRecord {
+    return (
+        data &&
+        typeof data === 'object' &&
+        data.message_type === 'log_record' &&
+        typeof data.levelname === 'string' &&
+        typeof data.message === 'string'
+    );
+}
+
+// Type for framerate update message from backend
+interface FramerateUpdateMessage {
+    message_type: 'framerate_update';
+    camera_group_id: string;
+    backend_framerate: DetailedFramerate;
+    frontend_framerate: DetailedFramerate;
+}
+
+// Type guard to check if a message is a framerate update
+function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
+    return (
+        data &&
+        typeof data === 'object' &&
+        data.message_type === 'framerate_update' &&
+        typeof data.camera_group_id === 'string' &&
+        data.backend_framerate &&
+        typeof data.backend_framerate === 'object' &&
+        data.frontend_framerate &&
+        typeof data.frontend_framerate === 'object'
+    );
+}
+
+export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
-    const [connectionState, setConnectionState] = useState<ConnectionState>(ConnectionState.DISCONNECTED);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
-    // Tracks the port so the WebSocket connection is recreated when it changes.
-    // Updated via serverUrls.onPortChange() subscription.
-    const [serverPort, setServerPort] = useState<number>(serverUrls.getPort());
 
+    // Service instances
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
-    const overlayManagerRef = useRef<OverlayManager | null>(null);
-    const frameSubscribersRef = useRef<Map<string, Set<FrameSubscriber>>>(new Map());
-    const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
-    const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
-    const latestTrackedPoints = useRef<Map<string, Point3d>>(new Map());
-    const trackedPointsSubscribersRef = useRef<Set<TrackedPointsSubscriber>>(new Set());
-    const latestRigidBodies = useRef<Map<string, RigidBodyPose>>(new Map());
-    const rigidBodiesSubscribersRef = useRef<Set<RigidBodiesSubscriber>>(new Set());
+    const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
+    const logStoreRef = useRef<LogStore>(new LogStore());
 
-    // Subscribe to port changes from the serverUrls singleton.
-    // When useElectronAPI().pythonServer.start() resolves, it calls serverUrls.setPort(),
-    // which triggers this callback and causes the WebSocket to reconnect on the correct port.
+    // Latest server-side (backend) FPS stored in a ref for non-reactive access
+    const serverFpsRef = useRef<number | null>(null);
+
+    // Holds the latest binary payload received from the WebSocket.
+    // The WebSocket onmessage handler writes here synchronously;
+    // a separate rAF-driven processing loop reads and clears it.
+    // This decouples decoding from the WebSocket message storm,
+    // preventing promise starvation where createImageBitmap microtasks
+    // can never resolve because the browser dispatches onmessage events
+    // back-to-back in a single macrotask without yielding.
+    const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
+    const processingFrameRef = useRef<boolean>(false);
+    const frameLoopRef = useRef<number | null>(null);
+
+    // Cached sorted camera IDs from the last frame — compared by value to avoid
+    // per-frame Array.from().sort() allocations when the camera list hasn't changed.
+    const lastCameraIdsRef = useRef<string[]>([]);
+
+    // Initialize services once
     useEffect(() => {
-        return serverUrls.onPortChange((port: number) => {
-            console.log(`[ServerContext] Port changed to ${port}, will recreate WebSocket connection`);
-            setServerPort(port);
-        });
-    }, []);
-
-    // Create / recreate the WebSocket connection whenever the port changes.
-    useEffect(() => {
-        if (wsConnectionRef.current) {
-            wsConnectionRef.current.disconnect();
-        }
-        canvasManagerRef.current?.terminateAllWorkers();
-        frameProcessorRef.current?.reset();
-
         wsConnectionRef.current = new WebSocketConnection({
             url: serverUrls.getWebSocketUrl(),
             reconnectDelay: 1000,
             maxReconnectAttempts: 5,
-            heartbeatInterval: 30000,
-            autoConnect: true,
-            autoConnectInterval: 3000,
+            heartbeatInterval: 30000
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
-        overlayManagerRef.current = new OverlayManager();
 
         return () => {
             if (wsConnectionRef.current) {
@@ -113,153 +117,132 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
-            latestCharucoRef.current.clear();
-            latestMediapipeRef.current.clear();
-            latestTrackedPoints.current.clear();
-            trackedPointsSubscribersRef.current.clear();
-            latestRigidBodies.current.clear();
-            rigidBodiesSubscribersRef.current.clear();
         };
-    }, [serverPort]);
+    }, []);
 
+    // Set up WebSocket connection and handlers
     useEffect(() => {
         const ws = wsConnectionRef.current;
         if (!ws) return;
 
-        const handleStateChange = (newState: ConnectionState, previousState: ConnectionState): void => {
+        const handleStateChange = (newState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
-            console.log(`[WS] State transition: ${previousState} → ${newState} (connected=${connected})`);
             setIsConnected(connected);
-            setConnectionState(newState);
 
-            if (previousState === ConnectionState.CONNECTED && !connected) {
-                console.log('[WS] Lost connection — clearing state');
+            if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
                 canvasManagerRef.current?.terminateAllWorkers();
                 frameProcessorRef.current?.reset();
-                overlayManagerRef.current?.clearAll();
-                latestCharucoRef.current.clear();
-                latestMediapipeRef.current.clear();
-                latestTrackedPoints.current.clear();
+                serverFpsRef.current = null;
+                processingFrameRef.current = false;
+                pendingPayloadRef.current = null;
+                lastCameraIdsRef.current = [];
+                framerateStoreRef.current.clear();
                 setConnectedCameraIds([]);
-                dispatch(serverSettingsCleared());
-                latestRigidBodies.current.clear();
             }
         };
 
-        const handleMessage = async (event: MessageEvent): Promise<void> => {
-            if (event.data instanceof ArrayBuffer) {
+        // Process a decoded frame result: update camera list, dispatch to workers, send ack.
+        const dispatchFrames = (
+            result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
+        ): void => {
+            if (!result) return;
+
+            const { frames, cameraIds, frameNumbers } = result;
+
+            // Only allocate a new sorted array if the camera set actually changed.
+            // Compare against the cached ref to avoid Array.from().sort() on every frame.
+            const lastIds = lastCameraIdsRef.current;
+            let cameraListChanged = lastIds.length !== cameraIds.size;
+            if (!cameraListChanged) {
+                for (const id of lastIds) {
+                    if (!cameraIds.has(id)) {
+                        cameraListChanged = true;
+                        break;
+                    }
+                }
+            }
+
+            if (cameraListChanged) {
+                const newIds = Array.from(cameraIds).sort();
+                lastCameraIdsRef.current = newIds;
+
+                setConnectedCameraIds(prevIds => {
+                    if (!sortedArraysEqual(prevIds, newIds)) {
+                        const removedCameras = prevIds.filter(id => !cameraIds.has(id));
+                        for (const cameraId of removedCameras) {
+                            canvasManagerRef.current?.terminateWorker(cameraId);
+                        }
+                        return newIds;
+                    }
+                    return prevIds;
+                });
+            }
+
+            for (const frameData of frames) {
+                canvasManagerRef.current!.sendFrameToWorker(
+                    frameData.cameraId,
+                    frameData.bitmap
+                );
+            }
+
+            if (frameNumbers.size > 0) {
+                const maxFrameNumber = Math.max(...Array.from(frameNumbers));
+                ws.send({ type: 'frameAcknowledgment', frameNumber: maxFrameNumber });
+            }
+        };
+
+        // rAF-driven processing loop. Runs on its own macrotask boundary,
+        // so createImageBitmap promises can resolve without being starved
+        // by the WebSocket onmessage dispatch loop.
+        const processFrameLoop = async (): Promise<void> => {
+            if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
+                const payload = pendingPayloadRef.current;
+                pendingPayloadRef.current = null;
+                processingFrameRef.current = true;
                 try {
-                    const result = await frameProcessorRef.current!.processFramePayload(event.data);
-                    if (!result) return;
-
-                    const {frames, cameraIds, frameNumbers} = result;
-
-                    const currentCameraIds = Array.from(cameraIds).sort();
-                    setConnectedCameraIds(prevIds => {
-                        if (!arraysEqual(prevIds, currentCameraIds)) {
-                            console.log(`Camera list updated: ${currentCameraIds.join(', ')}`);
-
-                            const removedCameras = prevIds.filter(id => !cameraIds.has(id));
-                            for (const cameraId of removedCameras) {
-                                console.log(`Removing camera ${cameraId} - not in latest payload`);
-                                canvasManagerRef.current?.terminateWorker(cameraId);
-                                latestCharucoRef.current.delete(cameraId);
-                                latestMediapipeRef.current.delete(cameraId);
-                            }
-
-                            return currentCameraIds;
-                        }
-                        return prevIds;
-                    });
-
-                    // Acknowledge receipt immediately so the backend can prepare
-                    // the next frame without waiting for rendering to complete.
-                    if (frameNumbers.size > 0) {
-                        const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                        ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
-                    }
-
-                    const overlayManager = overlayManagerRef.current!;
-                    for (const frameData of frames) {
-                        const charucoObservation = latestCharucoRef.current.get(frameData.cameraId) ?? null;
-                        const mediapipeObservation = latestMediapipeRef.current.get(frameData.cameraId) ?? null;
-
-                        let compositeBitmap: ImageBitmap;
-                        if (charucoObservation || mediapipeObservation) {
-                            compositeBitmap = await overlayManager.processFrame(
-                                frameData.cameraId,
-                                frameData.bitmap,
-                                charucoObservation,
-                                mediapipeObservation,
-                            );
-                        } else {
-                            compositeBitmap = frameData.bitmap;
-                        }
-
-                        {
-                            const subscribers = frameSubscribersRef.current.get(frameData.cameraId);
-                            if (subscribers && subscribers.size > 0) {
-                                for (const callback of subscribers) {
-                                    const clonedBitmap = await createImageBitmap(compositeBitmap);
-                                    callback(clonedBitmap);
-                                }
-                            }
-                        }
-
-                        canvasManagerRef.current!.sendFrameToWorker(
-                            frameData.cameraId,
-                            compositeBitmap,
-                        );
-                    }
+                    const result = await frameProcessorRef.current!.processFramePayload(payload);
+                    dispatchFrames(result);
                 } catch (error) {
                     console.error('Error processing frame:', error);
-                    throw error;
+                } finally {
+                    processingFrameRef.current = false;
                 }
-            } else if (typeof event.data === 'string') {
-                const text = event.data;
+            }
+            frameLoopRef.current = requestAnimationFrame(processFrameLoop);
+        };
 
-                if (text === 'pong') {
-                    return;
-                }
-                if (text.startsWith('ping')) {
-                    ws.send('pong');
-                    return;
-                }
+        frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
-                const jsonData = JSON.parse(text);
+        const handleMessage = (event: MessageEvent): void => {
+            // Handle binary frame data: just buffer the latest payload.
+            // Older unprocessed payloads are overwritten (frame dropping).
+            if (event.data instanceof ArrayBuffer) {
+                pendingPayloadRef.current = event.data;
+            }
+            // Handle text/JSON messages (logs, framerate updates, etc.)
+            else if (typeof event.data === 'string') {
+                // Skip heartbeat pong responses — they're plain text, not JSON
+                if (event.data === 'pong') return;
 
-                if (isSettingsStateMessage(jsonData)) {
-                    console.log(`[WS] Received settings/state v${jsonData.version}`, jsonData.settings);
-                    dispatch(serverSettingsUpdated(jsonData));
-                } else if (isCharucoOverlayDataMessage(jsonData)) {
-                    for (const [cameraId, observation] of Object.entries(jsonData)) {
-                        latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
+                try {
+                    const jsonData = JSON.parse(event.data);
+
+                    // Handle log records
+                    if (isLogRecord(jsonData)) {
+                        logStoreRef.current.add(jsonData);
                     }
-                } else if (isMediapipeOverlayDataMessage(jsonData)) {
-                    for (const [cameraId, observation] of Object.entries(jsonData)) {
-                        latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
+                    // Handle framerate updates
+                    else if (isFramerateUpdate(jsonData)) {
+                        // Store backend FPS in ref for fast non-reactive access
+                        serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
+                        // Update mutable framerate store (no Redux, no re-renders)
+                        framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
+                        framerateStoreRef.current.updateFrontend(jsonData.frontend_framerate);
                     }
-                } else if ('model_info' in jsonData && jsonData.model_info) {
-                    handleModelInfoUpdate(jsonData.model_info);
-                } else if ('tracked_points3d' in jsonData) {
-                    latestTrackedPoints.current = new Map(Object.entries(jsonData.tracked_points3d));
-                    for (const subscriber of trackedPointsSubscribersRef.current) {
-                        subscriber(latestTrackedPoints.current);
-                    }
-                } else if ('rigid_body_poses' in jsonData) {
-                    latestRigidBodies.current = new Map(
-                        Object.entries(jsonData.rigid_body_poses as Record<string, RigidBodyPose>)
-                    );
-                    for (const subscriber of rigidBodiesSubscribersRef.current) {
-                        subscriber(latestRigidBodies.current);
-                    }
-                } else if (isLogRecord(jsonData)) {
-                    dispatch(logAdded(jsonData));
-                } else if (isFramerateUpdate(jsonData)) {
-                    dispatch(backendFramerateUpdated(jsonData.backend_framerate));
-                    dispatch(frontendFramerateUpdated(jsonData.frontend_framerate));
-                } else {
-                    console.warn('[WS] Unhandled JSON message:', Object.keys(jsonData));
+                    // Handle other message types (silently ignored to avoid
+                    // retaining object references in the DevTools console)
+                } catch (error) {
+                    console.error('Error parsing JSON message:', error);
                 }
             }
         };
@@ -267,15 +250,19 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         ws.on('state-change', handleStateChange);
         ws.on('message', handleMessage);
 
-        // Start in auto-discovery mode — silently poll until the server appears
-        ws.startDiscovery();
+        // Connection is driven by ServerConnectionStatus via the connect() callback.
+        // No auto-connect here — the component's autoConnectWs loop handles it.
 
         return () => {
             ws.off('state-change', handleStateChange);
             ws.off('message', handleMessage);
             ws.disconnect();
+            if (frameLoopRef.current !== null) {
+                cancelAnimationFrame(frameLoopRef.current);
+                frameLoopRef.current = null;
+            }
         };
-    }, [dispatch, serverPort]);
+    }, []);
 
     const connect = useCallback((): void => {
         wsConnectionRef.current?.connect();
@@ -297,65 +284,55 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return frameProcessorRef.current?.getFps(cameraId) ?? null;
     }, []);
 
-    const subscribeToFrames = useCallback((cameraId: string, callback: FrameSubscriber): (() => void) => {
-        if (!frameSubscribersRef.current.has(cameraId)) {
-            frameSubscribersRef.current.set(cameraId, new Set());
+    const getServerFps = useCallback((): number | null => {
+        return serverFpsRef.current;
+    }, []);
+
+    const getFramerateStore = useCallback((): FramerateStore => {
+        return framerateStoreRef.current;
+    }, []);
+
+    const getLogStore = useCallback((): LogStore => {
+        return logStoreRef.current;
+    }, []);
+
+    const updateServerConnection = useCallback((host: string, port: number): void => {
+        // Update the singleton so HTTP endpoints also update
+        serverUrls.setHost(host);
+        serverUrls.setPort(port);
+
+        // Update the WebSocket URL and reconnect
+        const ws = wsConnectionRef.current;
+        if (ws) {
+            ws.disconnect();
+            ws.updateUrl(serverUrls.getWebSocketUrl());
+            // The auto-reconnect loop in ServerConnectionStatus will re-trigger connect()
         }
-        frameSubscribersRef.current.get(cameraId)!.add(callback);
-
-        return () => {
-            const subscribers = frameSubscribersRef.current.get(cameraId);
-            subscribers?.delete(callback);
-            if (subscribers?.size === 0) {
-                frameSubscribersRef.current.delete(cameraId);
-            }
-        };
     }, []);
 
-    const subscribeToTrackedPoints = useCallback((callback: TrackedPointsSubscriber): (() => void) => {
-        trackedPointsSubscribersRef.current.add(callback);
-
-        if (latestTrackedPoints.current.size > 0) {
-            callback(latestTrackedPoints.current);
-        }
-
-        return () => {
-            trackedPointsSubscribersRef.current.delete(callback);
-        };
-    }, []);
-
-    const getLatestTrackedPoints = useCallback((): Map<string, Point3d> => {
-        return latestTrackedPoints.current;
-    }, []);
-
-    const subscribeToRigidBodies = useCallback((callback: RigidBodiesSubscriber): (() => void) => {
-        rigidBodiesSubscribersRef.current.add(callback);
-
-        if (latestRigidBodies.current.size > 0) {
-            callback(latestRigidBodies.current);
-        }
-
-        return () => {
-            rigidBodiesSubscribersRef.current.delete(callback);
-        };
-    }, []);
+    const contextValue = useMemo(() => ({
+        isConnected,
+        connect,
+        disconnect,
+        send,
+        setCanvasForCamera,
+        getFps,
+        getServerFps,
+        getFramerateStore,
+        getLogStore,
+        connectedCameraIds,
+        updateServerConnection,
+    }), [isConnected, connectedCameraIds, connect, disconnect, send, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection]);
 
     return (
-        <ServerContext.Provider value={{
-            isConnected,
-            connectionState,
-            connect,
-            disconnect,
-            send,
-            setCanvasForCamera,
-            getFps,
-            connectedCameraIds,
-            subscribeToFrames,
-            subscribeToTrackedPoints,
-            getLatestTrackedPoints,
-            subscribeToRigidBodies,
-        }}>
+        <ServerContext.Provider value={contextValue}>
             {children}
         </ServerContext.Provider>
     );
+};
+
+export const useServer = (): ServerContextValue => {
+    const context = useContext(ServerContext);
+    if (!context) throw new Error('useServer must be used within ServerContextProvider');
+    return context;
 };

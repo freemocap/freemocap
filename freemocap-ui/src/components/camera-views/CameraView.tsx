@@ -1,6 +1,6 @@
-import React, {memo, useEffect, useRef} from 'react';
-
-import {useServer} from "@/hooks/useServer";
+import React, { useEffect, useRef, useMemo, memo } from 'react';
+import { useServer } from '@/services/server/ServerContextProvider';
+import { frontendColor, backendColor } from '@/components/framerate-viewer/FrameRateViewer';
 
 interface CameraViewProps {
     cameraId: string;
@@ -8,69 +8,59 @@ interface CameraViewProps {
     maxWidth?: boolean;
 }
 
+/** How often (ms) to update the FPS display text. 4Hz is plenty for a number readout. */
+const FPS_UPDATE_INTERVAL_MS = 250;
+
 /**
  * CameraView component - renders a canvas for a single camera feed.
- * The overlay is now composited directly into the frame before rendering.
+ * Wrapped in memo to prevent re-renders when props haven't changed.
+ * FPS display uses direct DOM manipulation via a low-frequency setInterval
+ * instead of a per-component requestAnimationFrame loop.
  */
 export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, maxWidth }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const fpsDisplayRef = useRef<HTMLSpanElement>(null);
+    const displayFpsRef = useRef<HTMLSpanElement>(null);
+    const serverFpsRef = useRef<HTMLSpanElement>(null);
+    const { setCanvasForCamera, getFps, getServerFps } = useServer();
 
-    const { setCanvasForCamera, getFps } = useServer();
-    const animationFrameRef = useRef<number | null>(null);
-
-    // Set up canvas
     useEffect(() => {
         const canvas = canvasRef.current;
+
         if (canvas && cameraId) {
-            console.log(`Setting up canvas for camera: ${cameraId}`);
             setCanvasForCamera(cameraId, canvas);
         }
     }, [cameraId, setCanvasForCamera]);
 
-    // Update FPS display using direct DOM manipulation to avoid React re-renders
+    // Update FPS displays at a low frequency via setInterval
     useEffect(() => {
-        const updateFps = (): void => {
-            const fps = getFps(cameraId);
-            if (fpsDisplayRef.current && fps !== null) {
-                fpsDisplayRef.current.textContent = `Display FPS ${fps.toFixed(1)}`;
+        const updateFps = () => {
+            const displayFps = getFps(cameraId);
+            if (displayFpsRef.current) {
+                displayFpsRef.current.textContent = displayFps !== null
+                    ? `${displayFps.toFixed(1)}`
+                    : '--';
             }
-            animationFrameRef.current = requestAnimationFrame(updateFps);
-        };
-
-        animationFrameRef.current = requestAnimationFrame(updateFps);
-
-        return () => {
-            if (animationFrameRef.current !== null) {
-                cancelAnimationFrame(animationFrameRef.current);
+            const srvFps = getServerFps();
+            if (serverFpsRef.current) {
+                serverFpsRef.current.textContent = srvFps !== null
+                    ? `${srvFps.toFixed(1)}`
+                    : '--';
             }
         };
-    }, [cameraId, getFps]);
 
-    // Calculate canvas styles based on scale and maxWidth settings
-    const getCanvasStyle = (): React.CSSProperties => {
-        const baseStyle: React.CSSProperties = {
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-        };
+        const intervalId = setInterval(updateFps, FPS_UPDATE_INTERVAL_MS);
+        return () => clearInterval(intervalId);
+    }, [cameraId, getFps, getServerFps]);
 
+    const canvasStyle = useMemo((): React.CSSProperties => {
         if (maxWidth) {
-            return baseStyle;
+            return { width: '100%', height: '100%', objectFit: 'contain' };
         }
-
         if (scale !== undefined && scale !== 1.0) {
-            return {
-                ...baseStyle,
-                width: `${scale * 100}%`,
-                height: `${scale * 100}%`,
-            };
+            return { width: `${scale * 100}%`, height: `${scale * 100}%`, objectFit: 'contain' };
         }
-
-        return baseStyle;
-    };
-
-    const canvasStyle = getCanvasStyle();
+        return { width: '100%', height: '100%', objectFit: 'contain' };
+    }, [scale, maxWidth]);
 
     return (
         <div
@@ -83,44 +73,44 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                 justifyContent: 'center',
                 backgroundColor: '#000',
                 position: 'relative',
-                overflow: 'hidden',
+                overflow: 'hidden'
             }}
         >
-            {/* Single canvas with composited image + overlay */}
             <canvas
                 ref={canvasRef}
                 style={canvasStyle}
             />
-
-            {/* Info display */}
             <div
                 style={{
                     position: 'absolute',
                     bottom: 8,
                     left: 8,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.75)',
                     color: '#fff',
                     padding: '4px 8px',
                     borderRadius: 4,
                     fontSize: '12px',
                     fontFamily: 'monospace',
-                    pointerEvents: 'none',
+                    lineHeight: 1.4,
                 }}
             >
                 <div>{cameraId}</div>
-                <div style={{ fontSize: '10px', marginTop: '2px', color: '#0f0' }}>
-                    <span ref={fpsDisplayRef}>-- FPS</span>
+                <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                    <span style={{ color: frontendColor }}>
+                        D:<span ref={displayFpsRef}>--</span>
+                    </span>
+                    <span style={{ color: backendColor }}>
+                        S:<span ref={serverFpsRef}>--</span>
+                    </span>
+                    <span style={{ color: '#aaa' }}>fps</span>
                 </div>
             </div>
         </div>
     );
 }, (prevProps, nextProps) => {
-    // Custom comparison: only re-render if relevant props change
-    return (
-        prevProps.cameraId === nextProps.cameraId &&
+    return prevProps.cameraId === nextProps.cameraId &&
         prevProps.scale === nextProps.scale &&
-        prevProps.maxWidth === nextProps.maxWidth
-    );
+        prevProps.maxWidth === nextProps.maxWidth;
 });
 
 CameraView.displayName = 'CameraView';

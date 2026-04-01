@@ -198,8 +198,6 @@ class FreemocapApplication:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
 
-    def to_app_state(self) -> AppState:
-        return AppState.from_app(self)
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

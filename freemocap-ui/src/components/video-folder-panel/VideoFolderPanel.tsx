@@ -28,11 +28,14 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import VideoFileIcon from '@mui/icons-material/VideoFile';
+import {useAppDispatch, useAppSelector} from "@/store";
 // Updated imports - using the videos thunks and selectors from the store barrel export
-import {loadVideos, openVideoFile, selectVideoLoadFolder, useAppDispatch, useAppSelector} from "@/store";
+import {loadVideos, openVideoFile, selectVideoLoadFolder} from "@/store";
+import { useTranslation } from 'react-i18next';
 
 export const VideoFolderPanel: React.FC = () => {
     const theme = useTheme();
+    const { t } = useTranslation();
     const dispatch = useAppDispatch();
 
     // Updated selectors to match the store structure
@@ -87,7 +90,7 @@ export const VideoFolderPanel: React.FC = () => {
             <Box sx={{
                 display: 'flex',
                 alignItems: 'center',
-                backgroundColor: theme.palette.primary.main,
+                backgroundColor: theme.palette.primary.dark,
                 borderTopLeftRadius: 8,
                 borderTopRightRadius: 8,
             }}>
@@ -150,7 +153,7 @@ export const VideoFolderPanel: React.FC = () => {
                         <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                             <TextField
                                 fullWidth
-                                label="Video Folder Path"
+                                label={t("videoFolderPath")}
                                 variant="outlined"
                                 value={videoFolder}
                                 InputProps={{
@@ -190,7 +193,7 @@ export const VideoFolderPanel: React.FC = () => {
                                     <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                                         <TextField
                                             size="small"
-                                            placeholder="Filter videos..."
+                                            placeholder={t("filterVideos")}
                                             value={filterText}
                                             onChange={(e) => setFilterText(e.target.value)}
                                             sx={{width: '200px'}}
@@ -204,7 +207,7 @@ export const VideoFolderPanel: React.FC = () => {
                                                     disabled={filteredVideos.length === 0}
                                                 />
                                             }
-                                            label="Select All"
+                                            label={t("selectAll")}
                                         />
                                     </Box>
                                 </Box>
@@ -223,7 +226,7 @@ export const VideoFolderPanel: React.FC = () => {
                                                 key={file.path}
                                                 disablePadding
                                                 secondaryAction={
-                                                    <Tooltip title="Open video">
+                                                    <Tooltip title={t("openVideo")}>
                                                         <IconButton
                                                             edge="end"
                                                             size="small"
@@ -280,15 +283,15 @@ export const VideoFolderPanel: React.FC = () => {
                                 <Stack spacing={1} sx={{mt: 1}}>
                                     <FormControlLabel
                                         control={<Checkbox defaultChecked/>}
-                                        label="Automatically synchronize videos"
+                                        label={t("automaticallySynchronizeVideos")}
                                     />
                                     <FormControlLabel
                                         control={<Checkbox/>}
-                                        label="Extract frames on load"
+                                        label={t("extractFramesOnLoad")}
                                     />
                                     <FormControlLabel
                                         control={<Checkbox/>}
-                                        label="Generate thumbnails"
+                                        label={t("generateThumbnails")}
                                     />
                                 </Stack>
                             </Paper>

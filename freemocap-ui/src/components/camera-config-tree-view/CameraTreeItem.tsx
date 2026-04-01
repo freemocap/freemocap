@@ -5,6 +5,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
 import VideocamIcon from "@mui/icons-material/Videocam";
 import SettingsIcon from "@mui/icons-material/Settings";
+import {useTranslation} from "react-i18next";
 
 import {CameraConfigTreeSection} from "./CameraConfigTreeSection";
 import {ROTATION_DEGREE_LABELS, RotationValue, useAppDispatch} from "@/store";
@@ -55,6 +56,13 @@ const getConfigSummary = (config: any): string[] => {
 export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpanded = false}) => {
     const dispatch = useAppDispatch();
     const theme = useTheme();
+    const { t } = useTranslation();
+
+    const statusLabelMap: Record<string, string> = {
+        connected: t('connected'),
+        available: t('available'),
+        error: t('errorsDetected'),
+    };
 
     const handleToggleSelection = (e: React.MouseEvent): void => {
         e.stopPropagation();
@@ -182,7 +190,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpande
 
                     {/* Status chip */}
                     <Chip
-                        label={camera.connectionStatus.toUpperCase()}
+                        label={statusLabelMap[camera.connectionStatus] ?? camera.connectionStatus.toUpperCase()}
                         size="small"
                         sx={{
                             ml: 1,

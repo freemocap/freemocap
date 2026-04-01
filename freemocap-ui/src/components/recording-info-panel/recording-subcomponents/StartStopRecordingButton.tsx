@@ -1,12 +1,14 @@
-import React, {useEffect, useState} from 'react';
-import {Box, Button, CircularProgress, keyframes, Typography} from '@mui/material';
-import {styled} from '@mui/system';
+import React, { useEffect, useState } from 'react';
+import { Button, CircularProgress, keyframes, Typography, Box } from '@mui/material';
+import { styled } from '@mui/system';
+import { useTranslation } from 'react-i18next';
 
 interface StartStopButtonProps {
     isRecording: boolean;
     isPending: boolean;
     countdown: number | null;
     recordingStartTime: number | null;
+    disabled: boolean;
     onClick: () => void;
 }
 
@@ -67,9 +69,11 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
     isPending,
     countdown,
     recordingStartTime,
+    disabled,
     onClick
 }) => {
     const [recordingDuration, setRecordingDuration] = useState<number>(0);
+    const { t } = useTranslation();
 
     // Update recording duration every second
     useEffect(() => {
@@ -99,7 +103,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
             return (
                 <Box display="flex" alignItems="center" gap={1}>
                     <Typography variant="h6">
-                        Starting in {countdown}...
+                        {t('startingIn', { countdown })}
                     </Typography>
                 </Box>
             );
@@ -111,7 +115,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
                 <Box display="flex" alignItems="center" gap={1}>
                     <CircularProgress size={20} color="inherit" />
                     <Typography variant="h6">
-                        {isRecording ? 'Stopping...' : 'Starting...'}
+                        {isRecording ? t('stopping') : t('starting')}
                     </Typography>
                 </Box>
             );
@@ -122,7 +126,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
             return (
                 <Box display="flex" flexDirection="column" alignItems="center">
                     <Typography variant="h6">
-                        🔴 Stop Recording
+                        {t('stopRecordingButton')}
                     </Typography>
                     <Typography variant="caption" sx={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
                         {formatDuration(recordingDuration)}
@@ -134,7 +138,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
         // Default start state
         return (
             <Typography variant="h6">
-                🔴 Start Recording
+                {t('startRecordingButton')}
             </Typography>
         );
     };
@@ -145,7 +149,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
             variant="contained"
             isRecording={isRecording}
             isPending={isPending}
-            disabled={isPending || countdown !== null}
+            disabled={disabled || isPending || countdown !== null}
             fullWidth
         >
             {getButtonContent()}

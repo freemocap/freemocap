@@ -5,6 +5,7 @@ import {CameraConfig} from './cameras-types';
 
 // ========== Basic Selectors ==========
 export const selectCameras = (state: RootState) => state.cameras.cameras;
+export const selectIsPaused = (state: RootState) => state.cameras.isPaused;
 export const selectIsLoading = (state: RootState) => state.cameras.isLoading;
 export const selectError = (state: RootState) => state.cameras.error;
 
@@ -38,7 +39,19 @@ export const selectSelectedCameraConfigs = createSelector(
     }
 );
 
-
+// Get actual configs for all cameras
+export const selectActualCameraConfigs = createSelector(
+    [selectCameras],
+    (cameras): Record<string, CameraConfig> => {
+        return cameras.reduce(
+            (configs, camera) => ({
+                ...configs,
+                [camera.id]: camera.actualConfig,
+            }),
+            {} as Record<string, CameraConfig>
+        );
+    }
+);
 
 // ========== Mismatch Selectors ==========
 export const selectCamerasWithConfigMismatch = createSelector(

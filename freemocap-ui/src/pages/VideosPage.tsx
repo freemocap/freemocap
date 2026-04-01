@@ -4,9 +4,11 @@ import ErrorBoundary from "@/components/common/ErrorBoundary";
 import {Footer} from "@/components/ui-components/Footer";
 import {useTheme} from "@mui/material/styles";
 import {Typography} from '@mui/material';
+import {useTranslation} from "react-i18next";
 
 const VideosPage: React.FC = () => {
     const theme = useTheme();
+    const {t} = useTranslation();
 
     return (
         <React.Fragment>
@@ -34,12 +36,11 @@ const VideosPage: React.FC = () => {
                 }}>
                     <ErrorBoundary>
                         <Typography variant="h4" gutterBottom>
-                            Load Synchronized Videos
+                            {t('loadSynchronizedVideos')}
                         </Typography>
                         <Typography variant="body1">
-                            This page will allow you to load and synchronize pre-recorded videos.
+                            {t('loadSynchronizedVideosDescription')}
                         </Typography>
-                        {/* Add your video loading components here */}
                     </ErrorBoundary>
                 </Box>
                 <Box component="footer" sx={{p: 1}}>

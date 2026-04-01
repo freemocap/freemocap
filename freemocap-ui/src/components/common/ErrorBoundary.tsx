@@ -1,4 +1,5 @@
 import React from "react";
+import i18n from "@/i18n/i18n";
 
 // Define the types for props and state
 interface ErrorBoundaryProps {
@@ -34,7 +35,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             // Render a custom fallback UI with error details
             return (
                 <div>
-                    <h1>Something went wrong :(</h1>
+                    <h1>{i18n.t('somethingWentWrong')}</h1>
                     <details style={{whiteSpace: 'pre-wrap'}}>
                         {this.state.error && this.state.error.toString()}
                         <br/>

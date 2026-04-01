@@ -5,13 +5,19 @@ import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import VideocamIcon from "@mui/icons-material/Videocam";
-import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     StartStopRecordingButton
 } from "@/components/recording-info-panel/recording-subcomponents/StartStopRecordingButton";
-import {useElectronIPC} from "@/services";
+import {
+    MicrophoneSelector
+} from "@/components/recording-info-panel/recording-subcomponents/MicrophoneSelector";
+import {startRecording, stopRecording, recordingInfoUpdated} from "@/store";
 import {RecordingPathTreeItem} from "@/components/recording-info-panel/RecordingPathTreeItem";
-
+import {electronIpc, useElectronIPC} from "@/services/electron-ipc/electron-ipc";
+import {useServer} from "@/services/server/ServerContextProvider";
+import {getTimestampString} from "@/components/recording-info-panel/getTimestampString";
+import {RecordingCompleteDialog} from "@/components/recording-info-panel/RecordingCompleteDialog";
 
 interface RecordingOperation {
     type: 'start' | 'stop';
@@ -42,7 +48,10 @@ export const RecordingInfoPanel: React.FC = () => {
     const [baseName, setBaseName] = useState<string>("recording");
     const [customSubfolderName, setCustomSubfolderName] = useState<string>("");
     const [recordingTag, setRecordingTag] = useState<string>("");
+    const [micDeviceIndex, setMicDeviceIndex] = useState<number>(-1);
     const {isElectron, api} = useElectronIPC();
+    const {connectedCameraIds} = useServer();
+    const noCamerasConnected = connectedCameraIds.length === 0;
 
     // Track when recording state changes to clear pending state
     useEffect(() => {
@@ -88,7 +97,7 @@ export const RecordingInfoPanel: React.FC = () => {
                     const updatedDirectory = recordingInfo.recordingDirectory.replace(
                         "~",
                         homePath
-                    );
+                    ).replace(/\\/g, "/");
                     dispatch(recordingInfoUpdated({recordingDirectory: updatedDirectory}));
                 })
                 .catch((error: unknown) => {
@@ -108,36 +117,6 @@ export const RecordingInfoPanel: React.FC = () => {
             setCountdown(null);
         }
     }, [countdown]);
-
-    const getTimestampString = (): string => {
-        const now = new Date();
-
-        const dateOptions: Intl.DateTimeFormatOptions = {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-            timeZoneName: "shortOffset",
-        };
-
-        const formatter = new Intl.DateTimeFormat("en-US", dateOptions);
-        const parts = formatter.formatToParts(now);
-
-        const partMap: Record<string, string> = {};
-        parts.forEach((part) => {
-            partMap[part.type] = part.value;
-        });
-
-        return `${partMap.year}-${partMap.month}-${partMap.day}_${
-            partMap.hour
-        }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
-            ":",
-            ""
-        )}`;
-    };
 
     const handleRecordingTagChange = (tag: string): void => {
         setRecordingTag(tag);
@@ -185,6 +164,7 @@ export const RecordingInfoPanel: React.FC = () => {
                 startRecording({
                     recordingName,
                     recordingDirectory: recordingPath,
+                    micDeviceIndex,
                 })
             ).unwrap();
         } catch (error) {
@@ -228,7 +208,7 @@ export const RecordingInfoPanel: React.FC = () => {
         <Box
             sx={{
                 color: "text.primary",
-                backgroundColor: theme.palette.primary.main,
+                backgroundColor: theme.palette.primary.dark,
                 borderRadius: 1,
                 mx: 1,
                 my: 0.5,
@@ -268,16 +248,29 @@ export const RecordingInfoPanel: React.FC = () => {
                                 Record
                             </Typography>
 
-                            <StartStopRecordingButton
-                                isRecording={recordingInfo.isRecording}
-                                isPending={pendingOperation !== null}
-                                countdown={countdown}
-                                recordingStartTime={recordingStartTime}
-                                onClick={handleRecordButtonClick}
-                            />
+                            <Box onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} sx={{ flexGrow: 1, ml: 1.5 }}>
+                                <StartStopRecordingButton
+                                    isRecording={recordingInfo.isRecording}
+                                    isPending={pendingOperation !== null}
+                                    countdown={countdown}
+                                    recordingStartTime={recordingStartTime}
+                                    disabled={noCamerasConnected && !recordingInfo.isRecording}
+                                    onClick={handleRecordButtonClick}
+                                />
+                            </Box>
                         </Box>
                     }
-                >
+                >{/* Microphone selector */}
+                    <TreeItem
+                        itemId="recording-mic"
+                        label={
+                            <MicrophoneSelector
+                                selectedMicIndex={micDeviceIndex}
+                                onMicSelected={setMicDeviceIndex}
+                                disabled={recordingInfo.isRecording}
+                            />
+                        }
+                    />
                     <RecordingPathTreeItem
                         recordingDirectory={recordingInfo.recordingDirectory}
                         recordingName={recordingName}
@@ -305,6 +298,7 @@ export const RecordingInfoPanel: React.FC = () => {
                     />
                 </TreeItem>
             </SimpleTreeView>
+            <RecordingCompleteDialog />
         </Box>
     );
 };

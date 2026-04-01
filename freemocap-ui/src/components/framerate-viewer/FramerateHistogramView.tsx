@@ -1,294 +1,266 @@
 // src/components/framerate-viewer/FramerateHistogramView.tsx
-import {useCallback} from "react"
+import {useCallback, useRef} from "react"
 import * as d3 from "d3"
 import {useTheme} from "@mui/material/styles"
-import {applyAxisStyles, createTooltip, renderEmptyChart} from "./d3ChartUtils"
-import {CurrentFramerate} from "@/store/slices/framerate/framerate-slice";
-import BaseD3ChartView from "@/components/framerate-viewer/BaseD3ChartView";
+import {applyAxisStyles} from "./d3ChartUtils"
+import BaseD3ChartView, {ChartScaffolding, ChartLifecycle} from "@/components/framerate-viewer/BaseD3ChartView"
+import {useTranslation} from "react-i18next"
+import {useServer} from "@/services/server/ServerContextProvider"
 
 type FramerateHistogramProps = {
-    frontendFramerate: CurrentFramerate | null
-    backendFramerate: CurrentFramerate | null
-    recentFrontendFrameDurations: number[]
-    recentBackendFrameDurations: number[]
     frontendColor: string
     backendColor: string
     title?: string
 }
 
-export default function FramerateHistogramView({
-                                                   frontendFramerate,
-                                                   backendFramerate,
-                                                   recentFrontendFrameDurations,
-                                                   recentBackendFrameDurations,
-                                                   frontendColor,
-                                                   backendColor,
-                                                   title = "Frame Duration Distribution",
-                                               }: FramerateHistogramProps) {
-    const theme = useTheme()
+type HistogramBin = {x0: number; x1: number; count: number; density: number}
 
-    // Generate histogram data
-    const generateHistogram = (data: number[], binCount = 100) => {
-        if (data.length === 0) return null;
+/**
+ * Build histogram bins with a domain tight to the actual data range.
+ */
+function buildHistogram(fpsValues: number[]): {
+    bins: HistogramBin[]
+    maxDensity: number
+} | null {
+    if (fpsValues.length === 0) return null
 
-        // Calculate bins using d3's histogram generator
-        const histGenerator = d3.histogram()
-            .domain([0, d3.max(data) as number * 1.1]) // Add 10% padding to max
-            .thresholds(binCount);
+    const min = Math.floor(d3.min(fpsValues)!)
+    const max = Math.ceil(d3.max(fpsValues)!)
 
-        const bins = histGenerator(data);
+    const range = max - min
+    const binWidth = range > 40 ? Math.ceil(range / 30) : 1
+    const thresholds: number[] = []
+    for (let v = min; v <= max; v += binWidth) {
+        thresholds.push(v)
+    }
 
-        // Calculate densities (normalized counts)
-        const totalCount = data.length;
-        const binCounts = bins.map(bin => bin.length);
-        const binDensities = binCounts.map(count => count / totalCount);
+    const generator = d3
+        .bin<number, number>()
+        .domain([min, max + binWidth])
+        .thresholds(thresholds)
 
+    const rawBins = generator(fpsValues)
+    const total = fpsValues.length
+    let maxDensity = 0
+
+    const bins = rawBins.map((b) => {
+        const density = b.length / total
+        if (density > maxDensity) maxDensity = density
         return {
-            bin_edges: bins.map(bin => bin.x0 as number),
-            bin_counts: binCounts,
-            bin_densities: binDensities
-        };
-    };
-
-    const renderChart = useCallback(({
-                                         svg,
-                                         chartArea,
-                                         width,
-                                         height,
-                                         margin,
-                                         transform
-                                     }: {
-        svg: d3.Selection<SVGGElement, unknown, null, undefined>;
-        chartArea: d3.Selection<SVGGElement, unknown, null, undefined>;
-        width: number;
-        height: number;
-        margin: { top: number; right: number; bottom: number; left: number };
-        transform: d3.ZoomTransform;
-    }) => {
-        // Prepare the sources with histogram data
-        const sources = [
-            {
-                id: 'frontend',
-                name: frontendFramerate?.framerate_source || 'Frontend',
-                color: frontendColor,
-                histogram: generateHistogram(recentFrontendFrameDurations),
-                totalSamples: recentFrontendFrameDurations.length
-            },
-            {
-                id: 'backend',
-                name: backendFramerate?.framerate_source || 'Backend',
-                color: backendColor,
-                histogram: generateHistogram(recentBackendFrameDurations),
-                totalSamples: recentBackendFrameDurations.length
-            }
-        ];
-
-        // Check if we have valid histogram data
-        if (sources.every(s => !s.histogram)) {
-            renderEmptyChart(svg, width, height, theme);
-            return;
+            x0: b.x0 as number,
+            x1: b.x1 as number,
+            count: b.length,
+            density,
         }
+    })
 
-        // Find domain bounds from all histograms
-        let minX = Infinity;
-        let maxX = -Infinity;
-        let maxDensity = 0;
+    return {bins, maxDensity}
+}
 
-        sources.forEach(source => {
-            if (source.histogram) {
-                const edges = source.histogram.bin_edges;
-                const densities = source.histogram.bin_densities;
+/**
+ * Persistent mutable state shared between initChart and updateChart.
+ */
+type ChartState = {
+    frontendBarGroup: d3.Selection<SVGGElement, unknown, null, undefined>
+    backendBarGroup: d3.Selection<SVGGElement, unknown, null, undefined>
+    xScale: d3.ScaleLinear<number, number>
+    yScale: d3.ScaleLinear<number, number>
+    height: number
+}
 
-                if (edges.length > 0) {
-                    minX = Math.min(minX, edges[0]);
-                    maxX = Math.max(maxX, edges[edges.length - 1]);
-                }
+export default function FramerateHistogramView({
+    frontendColor,
+    backendColor,
+    title = "Framerate Distribution",
+}: FramerateHistogramProps) {
+    const theme = useTheme()
+    const {t} = useTranslation()
+    const stateRef = useRef<ChartState | null>(null)
+    const {getFramerateStore} = useServer()
 
-                if (densities.length > 0) {
-                    maxDensity = Math.max(maxDensity, Math.max(...densities));
-                }
+    // initChart — creates persistent groups
+    const initChart = useCallback(
+        ({svg, chartArea, width, height}: ChartScaffolding): ChartLifecycle => {
+            const xScale = d3.scaleLinear().range([0, width])
+            const yScale = d3.scaleLinear().range([height, 0])
+
+            // Persistent bar groups — one per series, never removed
+            const frontendBarGroup = chartArea.append("g").attr("class", "bars-frontend")
+            const backendBarGroup = chartArea.append("g").attr("class", "bars-backend")
+
+            // Axis labels (appended to svg root group, outside clip-path)
+            svg.append("text")
+                .attr("class", "x-axis-label")
+                .attr("x", width / 2)
+                .attr("y", height + 32)
+                .attr("text-anchor", "middle")
+                .style("font-family", "monospace")
+                .style("font-size", "10px")
+                .style("fill", theme.palette.text.secondary)
+                .text("FPS")
+
+            svg.append("text")
+                .attr("class", "y-axis-label")
+                .attr("transform", "rotate(-90)")
+                .attr("x", -height / 2)
+                .attr("y", -28)
+                .attr("text-anchor", "middle")
+                .style("font-family", "monospace")
+                .style("font-size", "10px")
+                .style("fill", theme.palette.text.secondary)
+                .text("Density")
+
+            // Persistent empty-state text (hidden by default)
+            chartArea.append("text")
+                .attr("class", "empty-text")
+                .attr("x", width / 2)
+                .attr("y", height / 2)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "central")
+                .style("font-family", "monospace")
+                .style("font-size", "12px")
+                .style("fill", theme.palette.text.disabled)
+                .style("display", "none")
+
+            stateRef.current = {
+                frontendBarGroup,
+                backendBarGroup,
+                xScale,
+                yScale,
+                height,
             }
-        });
 
-        // If we couldn't determine bounds, use defaults
-        if (minX === Infinity) minX = 0;
-        if (maxX === -Infinity) maxX = 100;
-        if (maxDensity === 0) maxDensity = 1;
+            return {
+                cleanup: () => {
+                    stateRef.current = null
+                },
+            }
+        },
+        [theme, frontendColor, backendColor]
+    )
 
-        // Add padding to domain
-        const xPadding = (maxX - minX) * 0.1;
-        const xDomain = [Math.max(0, minX - xPadding), maxX + xPadding];
+    // updateChart — uses D3 data join for minimal DOM mutations
+    const updateChart = useCallback(
+        ({svg, chartArea, xAxisG, yAxisG, width, height}: ChartScaffolding) => {
+            const state = stateRef.current
+            if (!state) return
 
-        // Set up scales
-        const xScale = d3.scaleLinear().domain(xDomain).range([0, width]);
-        const yScale = d3.scaleLinear().domain([0, maxDensity * 1.1]).range([height, 0]);
+            // Read fresh data directly from the store — no React state involved.
+            const snapshot = getFramerateStore().getSnapshot()
+            const recentFrontendDurations = snapshot.recentFrontendDurations
+            const recentBackendDurations = snapshot.recentBackendDurations
 
-        // Apply the current zoom transform
-        const xScaleZoomed = d3.scaleLinear()
-            .domain([Math.max(0, transform.rescaleX(xScale).domain()[0]), transform.rescaleX(xScale).domain()[1]])
-            .range([0, width]);
+            const frontendFps = recentFrontendDurations.filter((s) => s.value > 0).map((s) => 1000 / s.value)
+            const backendFps = recentBackendDurations.filter((s) => s.value > 0).map((s) => 1000 / s.value)
 
-        const yScaleZoomed = d3.scaleLinear()
-            .domain([Math.max(0, transform.rescaleY(yScale).domain()[0]), transform.rescaleY(yScale).domain()[1]])
-            .range([height, 0]);
-        // Create axes
-        const xAxis = d3.axisBottom(xScaleZoomed).ticks(10).tickSize(-height);
-        const yAxis = d3.axisLeft(yScaleZoomed).ticks(5).tickSize(-width);
+            const frontendHist = buildHistogram(frontendFps)
+            const backendHist = buildHistogram(backendFps)
 
-        // Add X axis with label
-        const xAxisGroup = svg
-            .append("g")
-            .attr("class", "x-axis")
-            .attr("transform", `translate(0,${height})`)
-            .call(xAxis);
+            state.height = height
 
-        svg
-            .append("text")
-            .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 5})`)
-            .style("text-anchor", "middle")
-            .style("font-family", "monospace")
-            .style("font-size", "10px")
-            .style("fill", theme.palette.text.secondary)
-            .text("Frame Duration (ms)");
+            const emptyText = chartArea.select<SVGTextElement>(".empty-text")
 
-        // Add Y axis with label
-        const yAxisGroup = svg
-            .append("g")
-            .attr("class", "y-axis")
-            .call(yAxis);
+            if (!frontendHist && !backendHist) {
+                // Clear all bars
+                state.frontendBarGroup.selectAll("rect").remove()
+                state.backendBarGroup.selectAll("rect").remove()
+                emptyText.style("display", null).text(t("waitingForData"))
+                return
+            }
 
-        svg
-            .append("text")
-            .attr("transform", "rotate(-90)")
-            .attr("y", 0 - margin.left)
-            .attr("x", 0 - height / 2)
-            .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .style("font-family", "monospace")
-            .style("font-size", "10px")
-            .style("fill", theme.palette.text.secondary)
-            .text("Density");
+            emptyText.style("display", "none")
 
-        // Style axes
-        applyAxisStyles(svg, theme);
+            // Compute domain from all bins
+            let minX = Infinity
+            let maxX = -Infinity
+            let maxDensity = 0
 
-        // Add threshold lines
-        // const thresholds = [
-        //   { value: 16.67, label: "60 FPS", color: theme.palette.success.main },
-        //   { value: 33.33, label: "30 FPS", color: theme.palette.warning.main },
-        // ];
-        //
-        // renderThresholdLines(chartArea, thresholds, xScaleZoomed, yScaleZoomed, width, height, false);
+            for (const hist of [frontendHist, backendHist]) {
+                if (!hist) continue
+                const bins = hist.bins
+                if (bins.length > 0) {
+                    minX = Math.min(minX, bins[0].x0)
+                    maxX = Math.max(maxX, bins[bins.length - 1].x1)
+                }
+                maxDensity = Math.max(maxDensity, hist.maxDensity)
+            }
 
-        // Draw histograms
-        sources.forEach(source => {
-            if (!source.histogram || source.histogram.bin_edges.length === 0) return;
+            if (minX === Infinity) minX = 0
+            if (maxX === -Infinity) maxX = 60
+            if (maxDensity === 0) maxDensity = 1
 
-            const bins = source.histogram.bin_edges.map((edge, i) => ({
-                x0: edge,
-                x1: i < source.histogram!.bin_edges.length - 1 ? source.histogram!.bin_edges[i + 1] : edge + 0.1,
-                density: i < source.histogram!.bin_densities.length ? source.histogram!.bin_densities[i] : 0,
-                count: i < source.histogram!.bin_counts.length ? source.histogram!.bin_counts[i] : 0
-            }));
+            const xPad = Math.max(1, (maxX - minX) * 0.05)
 
-            // Add histogram bars
-            chartArea
-                .selectAll(`.bar-${source.id}`)
-                .data(bins)
-                .enter()
-                .append("rect")
-                .attr("class", `bar-${source.id}`)
-                .attr("x", d => xScaleZoomed(d.x0))
-                .attr("width", d => Math.max(0, xScaleZoomed(d.x1) - xScaleZoomed(d.x0) - 1))
-                .attr("y", d => {
-                    const y = yScaleZoomed(d.density);
-                    // Ensure y is valid and not greater than height
-                    return isNaN(y) ? height : Math.min(height, Math.max(0, y));
-                })
-                .attr("height", d => {
-                    const y = yScaleZoomed(d.density);
-                    // Calculate height ensuring it's always positive
-                    if (isNaN(y)) return 0;
-                    const barHeight = height - Math.min(height, Math.max(0, y));
-                    return Math.max(0, barHeight);
-                })
-                .attr("fill", source.color)
-                .attr("stroke", theme.palette.background.paper)
-                .attr("stroke-width", 0.5)
-                .attr("opacity", 0.7);
-        });
+            state.xScale.domain([minX - xPad, maxX + xPad])
+            state.yScale.domain([0, maxDensity * 1.15])
 
-        // Add legend
-        const legend = svg
-            .append("g")
-            .attr("transform", `translate(${width + 10}, 0)`)
-            .attr("font-family", "monospace")
-            .attr("font-size", "10px");
+            // Update axes in-place
+            const xAxisGen = d3
+                .axisBottom(state.xScale)
+                .ticks(Math.max(2, Math.min(8, Math.floor(width / 50))))
+                .tickSize(-height)
+            const yAxisGen = d3
+                .axisLeft(state.yScale)
+                .ticks(Math.max(2, Math.min(5, Math.floor(height / 30))))
+                .tickSize(-width)
 
-        sources.forEach((source, i) => {
-            if (!source.histogram) return;
+            // Clear old tick elements before redrawing to prevent SVG element accumulation.
+            // The histogram domain shifts as bin ranges change, so unlike the timeseries
+            // (which uses fixed relative-time ticks), we must explicitly remove stale ticks.
+            xAxisG.selectAll("*").remove()
+            xAxisG.call(xAxisGen)
+            yAxisG.selectAll("*").remove()
+            yAxisG.call(yAxisGen)
+            applyAxisStyles(svg, theme)
 
-            const legendItem = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
-            legendItem.append("rect").attr("width", 12).attr("height", 12).attr("fill", source.color);
-            legendItem.append("text")
-                .attr("x", 20)
-                .attr("y", 10)
-                .style("fill", theme.palette.text.primary)
-                .text(`${source.name} (${source.totalSamples})`);
-        });
+            // D3 data join for bars — enter/update/exit pattern
+            const numSources = [frontendHist, backendHist].filter(Boolean).length
+            const barInset = numSources > 1 ? 1 : 0
 
-        // Add tooltip
-        const tooltip = createTooltip(theme);
+            const updateBars = (
+                group: d3.Selection<SVGGElement, unknown, null, undefined>,
+                bins: HistogramBin[],
+                color: string,
+                srcIdx: number,
+            ) => {
+                const bars = group.selectAll<SVGRectElement, HistogramBin>("rect")
+                    .data(bins, (d) => `${d.x0}-${d.x1}`)
 
-        // Add tooltip for histogram bars
-        sources.forEach(source => {
-            if (!source.histogram) return;
+                // EXIT: remove bars for bins that no longer exist
+                bars.exit().remove()
 
-            chartArea
-                .selectAll(`.bar-${source.id}`)
-                .on("mouseover", function (event, d: any) {
-                    d3.select(this).attr("opacity", 1).attr("stroke-width", 1);
+                // ENTER: create new bars
+                const entered = bars.enter()
+                    .append("rect")
+                    .attr("fill", color)
+                    .attr("stroke", theme.palette.background.paper)
+                    .attr("stroke-width", 0.5)
+                    .attr("opacity", 0.7)
 
-                    tooltip
-                        .style("opacity", 1)
-                        .html(`
-              <div style="display: grid; grid-template-columns: auto auto; gap: 4px;">
-                <span style="color: ${theme.palette.text.secondary};">SOURCE:</span>
-                <span style="color: ${source.color};">${source.name}</span>
-                <span style="color: ${theme.palette.text.secondary};">RANGE:</span>
-                <span>${d.x0.toFixed(2)} - ${d.x1.toFixed(2)} ms</span>
-                <span style="color: ${theme.palette.text.secondary};">COUNT:</span>
-                <span>${d.count} samples</span>
-                <span style="color: ${theme.palette.text.secondary};">PERCENTAGE:</span>
-                <span>${(d.density * 100).toFixed(1)}%</span>
-                <span style="color: ${theme.palette.text.secondary};">FPS RANGE:</span>
-                <span>${(1000 / d.x1).toFixed(1)} - ${(1000 / d.x0).toFixed(1)} fps</span>
-              </div>
-            `)
-                        .style("left", event.pageX + 10 + "px")
-                        .style("top", event.pageY - 28 + "px");
-                })
-                .on("mouseout", function () {
-                    d3.select(this).attr("opacity", 0.7).attr("stroke-width", 0.5);
-                    tooltip.style("opacity", 0);
-                });
-        });
+                // UPDATE + ENTER: update positions and sizes for all bars
+                entered.merge(bars)
+                    .attr("x", (d) => state.xScale(d.x0) + srcIdx * barInset)
+                    .attr("width", (d) => {
+                        const w = state.xScale(d.x1) - state.xScale(d.x0) - barInset
+                        return Math.max(1, w)
+                    })
+                    .attr("y", (d) => {
+                        const y = state.yScale(d.density)
+                        return isNaN(y) ? height : Math.min(height, Math.max(0, y))
+                    })
+                    .attr("height", (d) => {
+                        const y = state.yScale(d.density)
+                        if (isNaN(y)) return 0
+                        return Math.max(0, height - Math.min(height, Math.max(0, y)))
+                    })
+            }
 
-        return () => tooltip.remove();
-    }, [
-        frontendFramerate,
-        backendFramerate,
-        recentFrontendFrameDurations,
-        recentBackendFrameDurations,
-        frontendColor,
-        backendColor,
-        theme
-    ]);
+            updateBars(state.frontendBarGroup, frontendHist?.bins ?? [], frontendColor, 0)
+            updateBars(state.backendBarGroup, backendHist?.bins ?? [], backendColor, numSources > 1 ? 1 : 0)
+        },
+        [getFramerateStore, frontendColor, backendColor, theme, t]
+    )
 
-    return (
-        <BaseD3ChartView
-            title={title}
-            renderChart={renderChart}
-        />
-    );
+    return <BaseD3ChartView title={title} initChart={initChart} updateChart={updateChart}
+                            margin={{top: 20, right: 10, bottom: 42, left: 40}} />
 }

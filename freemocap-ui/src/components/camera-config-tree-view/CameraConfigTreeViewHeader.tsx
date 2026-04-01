@@ -148,7 +148,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                             />
                         </Box>
 
-                            
+
                         </IconButton>
                     </span>
                 </Tooltip>

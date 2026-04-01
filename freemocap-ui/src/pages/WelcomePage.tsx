@@ -1,7 +1,7 @@
 import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
     Box, Button, Checkbox, CircularProgress, Container,
-    darken, Divider, Fade, FormControlLabel, Grow, Paper, Stack, Typography
+    darken, Divider, Fade, FormControlLabel, Grow, Paper, Stack, Typography, Link as MuiLink
 } from '@mui/material';
 import {useNavigate} from 'react-router-dom';
 import {useTheme} from '@mui/material/styles';
@@ -144,7 +144,7 @@ const WelcomePage: React.FC = () => {
                     }}/>
 
                     {/* ── HERO SECTION ── */}
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
+                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2}}>
                         <Grow in={true} timeout={1000}>
                             <Box
                                 sx={{
@@ -211,13 +211,13 @@ const WelcomePage: React.FC = () => {
                     </Box>
 
                     {/* ── PRIMARY CTA ── */}
-                    <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mb: 2 }}>
+                    <Box sx={{width: '100%', display: 'flex', justifyContent: 'center', mb: 2}}>
                         <Button
                             variant="contained"
                             size="large"
                             startIcon={isConnecting
-                                ? <CircularProgress size={24} color="inherit" />
-                                : <VideocamIcon sx={{ fontSize: 28 }} />
+                                ? <CircularProgress size={24} color="inherit"/>
+                                : <VideocamIcon sx={{fontSize: 28}}/>
                             }
                             onClick={handleConnectCameras}
                             disabled={isConnecting}
@@ -239,7 +239,7 @@ const WelcomePage: React.FC = () => {
                                 border: `4px solid ${theme.palette.secondary.main}`,
                                 boxShadow: `0 4px 20px rgba(245, 0, 87, 0.25)`,
                                 '&:hover': {
-                                background: theme.palette.info.dark,
+                                    background: theme.palette.info.dark,
                                     boxShadow: `0 6px 28px rgba(245, 0, 87, 0.4)`,
                                     transform: 'translateY(-1px)',
                                     border: `4px solid ${theme.palette.secondary.light}`,
@@ -252,41 +252,10 @@ const WelcomePage: React.FC = () => {
                         </Button>
                     </Box>
 
-                    {/* ── SECONDARY LINKS ── */}
-                    <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-                        <Button
-                            variant="text"
-                            size="small"
-                            color="inherit"
-                            endIcon={<OpenInNewIcon sx={{fontSize: 14}} />}
-                            onClick={() => window.open(EXTERNAL_URLS.DOCS, '_blank')}
-                            sx={{
-                                textTransform: 'none',
-                                color: theme.palette.info.light,
-                                '&:hover': { color: theme.palette.info.main },
-                            }}
-                        >
-                            {t('documentation')}
-                        </Button>
-                        <Button
-                            variant="text"
-                            size="small"
-                            color="inherit"
-                            endIcon={<OpenInNewIcon sx={{fontSize: 14}} />}
-                            onClick={() => window.open(EXTERNAL_URLS.ROADMAP, '_blank')}
-                            sx={{
-                                textTransform: 'none',
-                                color: theme.palette.info.light,
-                                '&:hover': { color: theme.palette.info.main },
-                            }}
-                        >
-                            {t('roadmap')}
-                        </Button>
-                    </Stack>
 
                     {/* ── SETTINGS AREA ── */}
-                    <Divider sx={{ width: '60%', my: 1.5 }} />
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Divider sx={{width: '60%', my: 1.5}}/>
+                    <Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 2}}>
                         <LanguageSwitcher/>
                         {telemetryLoaded && (
                             <Fade in={true} timeout={600}>
@@ -306,15 +275,123 @@ const WelcomePage: React.FC = () => {
                                 />
                             </Fade>
                         )}
-                        <VersionChip variant="compact" />
+                        <VersionChip variant="compact"/>
                     </Box>
 
                     {/* ── FOOTER ── */}
-                    <Box sx={{ textAlign: 'center' }}>
+                    <Box sx={{textAlign: 'center'}}>
                         <Footer/>
                     </Box>
                 </Paper>
             </Fade>
+            {/* ── SECONDARY LINKS ── */}
+            <Stack direction="row" spacing={2} sx={{mb: 2}}>
+                <Button
+                    variant="text"
+                    size="small"
+                    color="inherit"
+                    endIcon={<OpenInNewIcon sx={{fontSize: 14}}/>}
+                    onClick={() => window.open(EXTERNAL_URLS.DOCS, '_blank')}
+                    sx={{
+                        textTransform: 'none',
+                        color: theme.palette.info.light,
+                        '&:hover': {color: theme.palette.info.main},
+                    }}
+                >
+                    {t('documentation')}
+                </Button>
+                <Button
+                    variant="text"
+                    size="small"
+                    color="inherit"
+                    endIcon={<OpenInNewIcon sx={{fontSize: 14}}/>}
+                    onClick={() => window.open(EXTERNAL_URLS.ROADMAP, '_blank')}
+                    sx={{
+                        textTransform: 'none',
+                        color: theme.palette.info.light,
+                        '&:hover': {color: theme.palette.info.main},
+                    }}
+                >
+                    {t('roadmap')}
+                </Button>
+            </Stack>
+
+
+            {/* Research Tool Disclaimer - Outside main clickable area */}
+            <Paper
+                elevation={1}
+                sx={{
+                    p: 2.5,
+                    width: '100%',
+                    backgroundColor: theme.palette.mode === 'dark'
+                        ? 'rgba(255, 255, 255, 0.03)'
+                        : 'rgba(0, 0, 0, 0.02)',
+                    borderRadius: 2,
+                }}
+            >
+                <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                        fontSize: '0.85rem',
+                        lineHeight: 1.8,
+                        '& a': {
+                            color: theme.palette.mode === 'dark'
+                                ? theme.palette.primary.light
+                                : theme.palette.primary.main,
+                            textDecoration: 'none',
+                            fontWeight: 500,
+                            transition: 'all 0.2s',
+                            '&:hover': {
+                                textDecoration: 'underline',
+                                color: theme.palette.mode === 'dark'
+                                    ? theme.palette.primary.main
+                                    : theme.palette.primary.dark
+                            }
+                        }
+                    }}
+                >
+                    FreeMoCap is currently a research and educational tool, not cleared by the FDA for clinical use.
+                    Motion capture devices are regulated under{' '}
+                    <MuiLink
+                        href="https://www.ecfr.gov/current/title-21/chapter-I/subchapter-H/part-890"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                        21 CFR Part 890 (Physical Medicine Devices)
+                    </MuiLink>
+                    {' '}and require{' '}
+                    <MuiLink
+                        href="https://www.fda.gov/medical-devices/premarket-submissions-selecting-and-preparing-correct-submission/premarket-notification-510k"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                        510(k) clearance
+                    </MuiLink>
+                    {' '}for clinical applications.
+                    <br/>
+                    <br/>
+                    <MuiLink
+                        href="https://aaroncherian.github.io/freemocap_validation/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                        - View our validation studies
+                    </MuiLink>
+                    <br/>
+                    <MuiLink
+                        href="https://github.com/freemocap/freemocap_foundation/issues/32"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
+                        - Join our journey towards FDA certification
+                    </MuiLink>
+                </Typography>
+            </Paper>
         </Container>
     );
 };

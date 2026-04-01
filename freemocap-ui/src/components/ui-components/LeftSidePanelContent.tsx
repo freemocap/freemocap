@@ -30,13 +30,15 @@ import { ProcessingPipelinePanel } from '@/components/processing-pipeline-panel/
 import { CameraConfigTreeView } from '@/components/camera-config-tree-view/CameraConfigTreeView';
 import { CalibrationControlPanel } from '@/components/calibration-control-panel/CalibrationControlPanel';
 import { MocapTaskTreeItem } from '@/components/mocap-control-panel/MocapTaskTreeItem';
+import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
 const DEFAULT_SECTION_ORDER = [
     'connection',
-    'pipeline',
     'cameras',
+    'recording',
+    'pipeline',
     'calibration',
     'mocap',
 ] as const;
@@ -47,6 +49,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     connection: ServerConnectionStatus,
     pipeline: ProcessingPipelinePanel,
     cameras: CameraConfigTreeView,
+    recording: RecordingInfoPanel,
     calibration: CalibrationControlPanel,
     mocap: MocapTaskTreeItem,
 };

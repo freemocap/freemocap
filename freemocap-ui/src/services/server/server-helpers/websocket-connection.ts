@@ -18,7 +18,7 @@ type EventCallback = (...args: any[]) => void;
 export class WebSocketConnection {
     private ws: WebSocket | null = null;
     private config: Required<WebSocketConfig>;
-    private reconnectAttempts: number = 0;
+    private reconnectAttempts: number = 1;
     private reconnectTimer: number | null = null;
     private heartbeatTimer: number | null = null;
     private state: ConnectionState = ConnectionState.DISCONNECTED;

@@ -77,9 +77,14 @@ export const CameraConfigTreeView: React.FC = () => {
     return (
         <CollapsibleSidebarSection
             icon={<VideoCameraFrontIcon sx={{transform: "", color: "inherit"}}/>}
-            title="Cameras"
+            title="" //Cameras - need update header def
             summaryContent={<PipelineSummary/>}
-            primaryControl={<PipelineConnectionToggle/>}
+            primaryControl={                            <CameraConfigTreeViewHeader
+                                cameraCount={cameras.length}
+                                isLoading={isLoading}
+                                isPaused={isPaused}
+                                hasSelectedCameras={hasSelectedCameras}
+                            />}
             defaultExpanded={false}
         >
             <Paper

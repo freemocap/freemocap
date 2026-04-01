@@ -70,6 +70,7 @@ const initialState: RecordingInfo = {
     recordingName: null,
     startedAt: null,
     duration: 0,
+    completionData: null,
     config: {
         useDelayStart: false,
         delaySeconds: 3,
@@ -159,6 +160,9 @@ export const recordingSlice = createSlice({
         pathRecomputed: (state) => {
             state.computed = computeRecordingPath(state.recordingDirectory, state.config);
         },
+        recordingCompletionDismissed: (state) => {
+            state.completionData = null;
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -194,4 +198,5 @@ export const {
     createSubfolderToggled,
     customSubfolderNameChanged,
     pathRecomputed,
+    recordingCompletionDismissed
 } = recordingSlice.actions;

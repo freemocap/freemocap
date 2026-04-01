@@ -80,7 +80,7 @@ const DEFAULT_LABELS: MenuLabels = {
     menuDocumentation: 'Documentation',
     menuGitHubRepository: 'GitHub Repository',
     menuReportIssue: 'Report an Issue…',
-    menuAbout: 'About SkellyCam',
+    menuAbout: 'About FreeMoCap',
     menuCheckForUpdates: 'Check for Updates…',
     menuPlayback: 'Playback',
     home: 'Home',

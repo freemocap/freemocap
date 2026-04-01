@@ -1,7 +1,7 @@
 // src/hooks/useKeyboardShortcuts.ts
 import { useEffect } from "react";
 import { useAppDispatch } from "@/store";
-import { localeToggled } from "@/store/slices/settings";
+// import { localeToggled } from "@/store/slices/settings";
 import { pauseUnpauseCameras } from "@/store/slices/cameras";
 
 /**
@@ -26,7 +26,7 @@ export function useKeyboardShortcuts(): void {
       // Ctrl+Shift+L (or Cmd+Shift+L on macOS) — toggle language
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "l") {
         e.preventDefault();
-        dispatch(localeToggled());
+        // dispatch(localeToggled());
         return;
       }
 

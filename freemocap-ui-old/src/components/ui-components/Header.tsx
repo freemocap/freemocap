@@ -21,7 +21,7 @@ export const Header = function () {
         >
             <Toolbar>
                 <Typography variant="h6" color="inherit" sx={{flexGrow: 1}}>
-                    FreeMoCap 💀📸
+                    FreeMoCap 💀✨
                 </Typography>
                 <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
                     <ThemeToggle/>

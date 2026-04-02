@@ -8,20 +8,25 @@ import {useDragHandle} from "@/components/common/DragHandleContext";
 interface CollapsibleSidebarSectionProps {
     icon: ReactNode;
     title: string;
-    primaryControl: ReactNode;
-    summaryContent: ReactNode;
+    /** Compact summary shown in collapsed header (e.g., "3 connected", "00:01:23") */
+    summaryContent?: ReactNode;
+    /** Primary action button shown in header (e.g., record button, connect button) */
+    primaryControl?: ReactNode;
+    /** Additional action buttons shown in header (e.g., refresh, pause, close) */
+    secondaryControls?: ReactNode;
     children: ReactNode;
-    defaultExpanded: boolean;
+    defaultExpanded?: boolean;
 }
 
 export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps> = ({
-                                                                                        icon,
-                                                                                        title,
-                                                                                        primaryControl,
-                                                                                        summaryContent,
-                                                                                        children,
-                                                                                        defaultExpanded,
-                                                                                    }) => {
+    icon,
+    title,
+    summaryContent,
+    primaryControl,
+    secondaryControls,
+    children,
+    defaultExpanded = false,
+}) => {
     const theme = useTheme();
     const [expanded, setExpanded] = useState(defaultExpanded);
     const dragHandle = useDragHandle();
@@ -30,7 +35,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
         setExpanded((prev) => !prev);
     }, []);
 
-    const handlePrimaryControlClick = useCallback((e: React.MouseEvent) => {
+    const handleControlClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
     }, []);
 
@@ -42,7 +47,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                 overflow: "hidden",
             }}
         >
-            {/* Header row — always visible, identical whether expanded or collapsed */}
+            {/* Header row — always visible */}
             <Box
                 onClick={handleToggle}
                 sx={{
@@ -131,31 +136,51 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                 </Typography>
 
                 {/* Summary — fills remaining horizontal space */}
-                <Box
-                    sx={{
-                        flexGrow: 1,
-                        mx: 1.5,
-                        overflow: "hidden",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "flex-end",
-                    }}
-                >
-                    {summaryContent}
-                </Box>
+                {summaryContent && (
+                    <Box
+                        sx={{
+                            flexGrow: 1,
+                            mx: 1.5,
+                            overflow: "hidden",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "flex-end",
+                        }}
+                    >
+                        {summaryContent}
+                    </Box>
+                )}
+
+                {/* Secondary controls — always visible */}
+                {secondaryControls && (
+                    <Box
+                        onClick={handleControlClick}
+                        sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            flexShrink: 0,
+                            mr: primaryControl ? 0.5 : 0,
+                        }}
+                    >
+                        {secondaryControls}
+                    </Box>
+                )}
 
                 {/* Primary control — click is isolated from expand/collapse */}
-                <Box
-                    onClick={handlePrimaryControlClick}
-                    sx={{
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "center",
-                        pr: 0.5,
-                    }}
-                >
-                    {primaryControl}
-                </Box>
+                {primaryControl && (
+                    <Box
+                        onClick={handleControlClick}
+                        sx={{
+                            flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            pr: 0.5,
+                        }}
+                    >
+                        {primaryControl}
+                    </Box>
+                )}
             </Box>
 
             {/* Detail panel — only visible when expanded */}

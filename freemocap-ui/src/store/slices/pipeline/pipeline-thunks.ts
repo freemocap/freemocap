@@ -12,7 +12,7 @@ export const connectRealtimePipeline = createAsyncThunk<
         const state = getState();
 
         const cameraConfigs = selectSelectedCameraConfigs(state);
-        const response = await fetch(useAppUrls.getHttpEndpointUrls.pipelineConnectOrUpdate, {
+        const response = await fetch(serverUrls.endpoints.pipelineConnectOrUpdate, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ camera_configs: cameraConfigs, ...request }),
@@ -29,7 +29,7 @@ export const connectRealtimePipeline = createAsyncThunk<
 export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
     'pipeline/close',
     async () => {
-        const response = await fetch(useAppUrls.getHttpEndpointUrls.pipelineClose, {
+        const response = await fetch(serverUrls.endpoints.pipelineClose, {
             method: 'DELETE',
         });
 
@@ -45,7 +45,7 @@ export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
 export const pauseUnpausePipeline = createAsyncThunk<void, void, { state: RootState }>(
     'cameras/pause',
     async () => {
-        const response = await fetch(useAppUrls.getHttpEndpointUrls.pipelinePauseUnpause, {
+        const response = await fetch(serverUrls.endpoints.pipelinePauseUnpause, {
             method: 'GET',
         });
 

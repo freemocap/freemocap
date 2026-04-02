@@ -1,20 +1,18 @@
-// electron/main/services/window-manager.ts
 import { BrowserWindow, shell } from 'electron';
 import { LifecycleLogger } from './logger';
 import { APP_ENVIRONMENT } from '../index';
-import {APP_PATHS} from "../app-paths";
+import { APP_PATHS } from '../app-paths';
 
 export class WindowManager {
     private static mainWindow: BrowserWindow | null = null;
 
     static createMainWindow(): BrowserWindow {
-        // Return existing window if already created
         if (this.mainWindow && !this.mainWindow.isDestroyed()) {
             return this.mainWindow;
         }
 
         const window = new BrowserWindow({
-            title: 'FreeMoCap 💀✨',
+            title: 'FreeMoCap 💀📸',
             icon: APP_PATHS.FREEMOCAP_ICON_PATH,
             width: 1280,
             height: 720,
@@ -26,14 +24,13 @@ export class WindowManager {
                 nodeIntegration: false,
                 sandbox: true,
             },
-            show: false, // Don't show until ready
+            show: false,
         });
 
         this.mainWindow = window;
         this.configureWindowHandlers(window);
         this.loadContent(window);
 
-        // Show window when ready
         window.once('ready-to-show', () => {
             window.show();
             LifecycleLogger.logWindowCreation(window);
@@ -55,21 +52,16 @@ export class WindowManager {
             window.webContents.send('app-ready', Date.now());
         });
 
-        // Handle external links
         window.webContents.setWindowOpenHandler(({ url }) => {
             if (url.startsWith('http:') || url.startsWith('https:')) {
                 shell.openExternal(url).catch(err =>
-                    console.error('Failed to open external link:', err)
+                    console.error('Failed to open external link:', err),
                 );
             }
             return { action: 'deny' };
         });
 
-        // Intercept navigation to external links
         window.webContents.on('will-navigate', (event, url) => {
-            const currentURL = window.webContents.getURL();
-
-            // Allow navigation within the app
             if (APP_ENVIRONMENT.IS_DEV && url.startsWith(APP_ENVIRONMENT.VITE_DEV_SERVER_URL!)) {
                 return;
             }
@@ -78,16 +70,14 @@ export class WindowManager {
                 return;
             }
 
-            // Prevent navigation to external URLs
             if (url.startsWith('http:') || url.startsWith('https:')) {
                 event.preventDefault();
                 shell.openExternal(url).catch(err =>
-                    console.error('Failed to open external link via navigation:', err)
+                    console.error('Failed to open external link via navigation:', err),
                 );
             }
         });
 
-        // Handle crashes
         window.webContents.on('render-process-gone', (event, details) => {
             console.error('Renderer process gone:', details);
             if (details.reason === 'crashed') {

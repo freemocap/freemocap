@@ -223,7 +223,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
         setIsLoadingList(true);
         setError(null);
         try {
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.playbackRecordings);
+            const response = await fetch(serverUrls.endpoints.playbackRecordings);
             if (!response.ok) {
                 throw new Error(`Failed to fetch recordings: ${response.statusText}`);
             }
@@ -266,7 +266,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
             setError(null);
 
             try {
-                const response = await fetch(useAppUrls.getHttpEndpointUrls.playbackLoad, {
+                const response = await fetch(serverUrls.endpoints.playbackLoad, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ recording_path: recordingPath }),

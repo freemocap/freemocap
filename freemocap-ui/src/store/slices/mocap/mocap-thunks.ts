@@ -1,8 +1,8 @@
 import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState} from "@/store";
-import {serverUrls} from "@/hooks/server-urls";
 import {selectMocapRecordingPath} from "./mocap-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
+import {serverUrls} from "@/services";
 
 export const startMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; mocapRecordingPath?: string },
@@ -25,7 +25,7 @@ export const startMocapRecording = createAsyncThunk<
                 mocapTaskConfig,
             });
 
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.mocapStartRecording, {
+            const response = await fetch(serverUrls.endpoints.mocapStartRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -65,7 +65,7 @@ export const stopMocapRecording = createAsyncThunk<
             console.log(`🎬 Stoping mocap recording and starting mocap with: ${JSON.stringify(mocapTaskConfig, null, 2)}`);
 
 
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.mocapStopRecording, {
+            const response = await fetch(serverUrls.endpoints.mocapStopRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({mocapTaskConfig}),
@@ -108,7 +108,7 @@ export const processMocapRecording = createAsyncThunk<
                 mocapTaskConfig,
             });
 
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.processMocapRecording, {
+            const response = await fetch(serverUrls.endpoints.processMocapRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -146,7 +146,7 @@ export const updateMocapConfigOnServer = createAsyncThunk<
 
             console.log('⚙️ Updating mocap config on server:', config);
 
-            const response = await fetch(useAppUrls.getHttpEndpointUrls.updateMocapConfig, {
+            const response = await fetch(serverUrls.endpoints.updateMocapConfig, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ config }),

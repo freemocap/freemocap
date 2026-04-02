@@ -27,10 +27,10 @@ interface CameraConfigTreeViewHeaderProps {
 }
 
 export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProps> = ({
-                                                                                          cameraCount,
-                                                                                          isLoading,
-                                                                                          isPaused,
-                                                                                      }) => {
+                                                                                           cameraCount,
+                                                                                           isLoading,
+                                                                                           isPaused,
+                                                                                       }) => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
@@ -124,10 +124,19 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                         <IconButton
                             size="small"
                             onClick={handleConnectOrApply}
-                            sx={{color: "inherit"}}
+                            sx={{ 
+                                color: "inherit",
+                                border: `2px solid ${theme.palette.secondary.main}`,
+                                borderRadius: '8px',
+                                padding: '4px',
+                                '&:hover': {
+                                    border: `2px solid ${theme.palette.secondary.light}`,
+                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                                }
+                            }}
                         >
 
-                        <Box sx={{position: 'relative', display: 'inline-flex', width: 24, height: 24}}>
+                        <Box sx={{position: 'relative', display: 'inline-flex', width: 28, height: 28}}>
                             <VideocamIcon
                                 sx={{
                                     color: theme.palette.secondary.main,
@@ -137,13 +146,15 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                             <ArrowDownwardIcon
                                 sx={{
                                     position: 'absolute',
-                                    top: -4,
+                                    top: -6,
                                     left: '50%',
                                     transform: 'translateX(-50%)',
-                                    fontSize: 10,
-                                    color: theme.palette.secondary.main,
-                                    strokeWidth: 2,
-                                    stroke: theme.palette.secondary.main,
+                                    fontSize: 14,
+                                    color: theme.palette.secondary.light,
+                                    fontWeight: 'bold',
+                                    strokeWidth: 3,
+                                    stroke: theme.palette.secondary.dark,
+                                    filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
                                 }}
                             />
                         </Box>

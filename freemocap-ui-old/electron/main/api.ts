@@ -1,54 +1,70 @@
-
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
 import superjson from 'superjson';
 
 // Services
 import { PythonServer } from './services/python-server';
+import { SystemScanner } from './services/system-scanner';
+import { DependencyManager } from './services/dependency-manager';
+import { AppSettings } from './services/app-settings';
 import { dialog, shell, app } from 'electron';
-import pkg from 'electron-updater';
-const { autoUpdater } = pkg;
 import path from 'node:path';
 import fs from 'node:fs';
-import os from 'node:os';
 import { APP_PATHS } from './app-paths';
-
-// Configure auto-updater (user triggers download manually)
-autoUpdater.autoDownload = false;
-autoUpdater.allowDowngrade = false;
 
 // Initialize tRPC
 const t = initTRPC.create({
-    transformer: superjson, // Handles Date/undefined/etc serialization
+    transformer: superjson,
 });
 
-// Telemetry config lives in ~/freemocap_data/telemetry_config.json
-const TELEMETRY_CONFIG_PATH = path.join(os.homedir(), 'freemocap_data', 'telemetry_config.json');
+// Helper function to check if a directory contains video files
+function hasVideoFiles(dirPath: string): boolean {
+    if (!fs.existsSync(dirPath)) {
+        return false;
+    }
 
-interface TelemetryConfig {
-    telemetry_enabled: boolean;
-}
-
-function readTelemetryConfig(): TelemetryConfig {
     try {
-        if (fs.existsSync(TELEMETRY_CONFIG_PATH)) {
-            const raw = fs.readFileSync(TELEMETRY_CONFIG_PATH, 'utf-8');
-            const parsed = JSON.parse(raw);
-            return { telemetry_enabled: Boolean(parsed.telemetry_enabled) };
-        }
-    } catch (err) {
-        console.error('Failed to read telemetry config:', err);
+        const entries = fs.readdirSync(dirPath);
+        const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
+
+        return entries.some(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isFile()) {
+                const ext = path.extname(entry).toLowerCase();
+                return videoExtensions.includes(ext);
+            }
+            return false;
+        });
+    } catch (error) {
+        console.error('Error checking for video files:', error);
+        return false;
     }
-    // Default: enabled
-    return { telemetry_enabled: true };
 }
 
-function writeTelemetryConfig(config: TelemetryConfig): void {
-    const dir = path.dirname(TELEMETRY_CONFIG_PATH);
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+// Helper function to find camera calibration TOML file
+function findCameraCalibrationToml(dirPath: string): string | null {
+    if (!fs.existsSync(dirPath)) {
+        return null;
     }
-    fs.writeFileSync(TELEMETRY_CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
+
+    try {
+        const entries = fs.readdirSync(dirPath);
+
+        const calibrationFile = entries.find(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            return stats.isFile() &&
+                entry.endsWith('_camera_calibration.toml');
+        });
+
+        return calibrationFile ? path.join(dirPath, calibrationFile) : null;
+    } catch (error) {
+        console.error('Error finding calibration TOML:', error);
+        return null;
+    }
 }
 
 // Create the main API router
@@ -76,6 +92,54 @@ export const api = t.router({
 
         getProcessInfo: t.procedure
             .query(() => PythonServer.getProcessInfo()),
+
+        getPort: t.procedure
+            .query(() => PythonServer.getPort()),
+    }),
+
+    // System Scanner
+    system: t.router({
+        scan: t.procedure
+            .query(() => SystemScanner.scan()),
+    }),
+
+    // Dependency Management
+    dependencies: t.router({
+        detectAll: t.procedure
+            .query(() => DependencyManager.detectAll()),
+
+        detect: t.procedure
+            .input(z.object({ dependencyId: z.string() }))
+            .query(({ input }) => DependencyManager.detect(input.dependencyId)),
+
+        install: t.procedure
+            .input(z.object({ dependencyId: z.string() }))
+            .mutation(({ input }) => DependencyManager.install(input.dependencyId)),
+    }),
+
+    // Persistent Settings (file-backed at ~/.freemocap/settings.json)
+    settings: t.router({
+        get: t.procedure
+            .input(z.object({ key: z.string() }))
+            .query(({ input }) => AppSettings.get(input.key)),
+
+        set: t.procedure
+            .input(z.object({ key: z.string(), value: z.unknown() }))
+            .mutation(({ input }) => {
+                AppSettings.set(input.key, input.value);
+            }),
+
+        delete: t.procedure
+            .input(z.object({ key: z.string() }))
+            .mutation(({ input }) => {
+                AppSettings.delete(input.key);
+            }),
+
+        getAll: t.procedure
+            .query(() => AppSettings.getAll()),
+
+        getConfigDir: t.procedure
+            .query(() => AppSettings.getConfigDir()),
     }),
 
     // File System Operations
@@ -131,60 +195,118 @@ export const api = t.router({
                 });
                 return result.canceled ? null : result.filePaths[0];
             }),
-    }),
 
-    // Telemetry Settings
-    telemetry: t.router({
-        getEnabled: t.procedure
-            .query((): boolean => {
-                return readTelemetryConfig().telemetry_enabled;
-            }),
+        validateCalibrationDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canCalibrate: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
 
-        setEnabled: t.procedure
-            .input(z.object({ enabled: z.boolean() }))
-            .mutation(({ input }): boolean => {
-                writeTelemetryConfig({ telemetry_enabled: input.enabled });
-                return input.enabled;
-            }),
-    }),
-
-    // App Info & Updates
-    app: t.router({
-        getVersion: t.procedure
-            .query((): string => {
-                return app.getVersion();
-            }),
-
-        checkForUpdate: t.procedure
-            .mutation(async () => {
-                if (!app.isPackaged) {
-                    return { available: false, reason: 'dev-mode' };
-                }
                 try {
-                    const result = await autoUpdater.checkForUpdates();
-                    if (result && result.updateInfo) {
-                        return {
-                            available: result.updateInfo.version !== app.getVersion(),
-                            version: result.updateInfo.version,
-                            currentVersion: app.getVersion(),
-                        };
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        result.canRecord = true;
+                        result.canCalibrate = false;
+                        return result;
                     }
-                    return { available: false };
+
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord = entries.length === 0 || !result.hasVideos;
+
+                    result.canCalibrate = result.hasVideos;
+
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    return result;
+
                 } catch (error) {
-                    console.error('[AutoUpdater] Check failed:', error);
-                    return { available: false, error: String(error) };
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
                 }
             }),
 
-        downloadUpdate: t.procedure
-            .mutation(async () => {
-                await autoUpdater.downloadUpdate();
-                return true;
-            }),
+        validateMocapDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canProcess: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
 
-        installUpdate: t.procedure
-            .mutation(() => {
-                autoUpdater.quitAndInstall(false, true);
+                try {
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        result.canRecord = true;
+                        result.canProcess = false;
+                        return result;
+                    }
+
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord = !result.hasVideos;
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath !== null;
+
+                    return result;
+
+                } catch (error) {
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
+                }
             }),
     }),
 
@@ -195,11 +317,10 @@ export const api = t.router({
                 try {
                     let logoPath: string | null = null;
 
-                    // Check for logo in order of preference
-                    if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH)) {
-                        logoPath = APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH;
-                    } else if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH)) {
-                        logoPath = APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH;
+                    if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {
+                        logoPath = APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH;
+                    } else if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH)) {
+                        logoPath = APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH;
                     }
 
                     if (!logoPath) {
@@ -207,12 +328,10 @@ export const api = t.router({
                         return null;
                     }
 
-                    // Read the file and convert to base64
                     const imageBuffer = fs.readFileSync(logoPath);
                     const base64String = imageBuffer.toString('base64');
-                    const mimeType = 'image/png'; // Since we know it's a PNG
+                    const mimeType = 'image/png';
 
-                    // Return as a data URL that can be used directly in img src
                     return `data:${mimeType};base64,${base64String}`;
                 } catch (error) {
                     console.error('Failed to load logo as base64:', error);
@@ -222,10 +341,10 @@ export const api = t.router({
 
         getLogoPngPath: t.procedure
             .query(() => {
-                if (fs.existsSync(APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH)) {
-                    return APP_PATHS.SKELLYCAM_LOGO_PNG_SHARED_PATH;
+                if (fs.existsSync(APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH)) {
+                    return APP_PATHS.FREEMOCAP_LOGO_PNG_SHARED_PATH;
                 }
-                return APP_PATHS.SKELLYCAM_LOGO_PNG_RESOURCES_PATH;
+                return APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH;
             }),
     }),
 });

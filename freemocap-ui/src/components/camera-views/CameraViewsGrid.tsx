@@ -26,8 +26,25 @@ interface Tiling {
 }
 
 /**
- * Try every possible column count for N cameras within the given container
- * dimensions and return the one that maximizes total pixel area used.
+ * Get the preferred number of columns based on camera count.
+ * This uses the "old version" heuristic for determining a good initial layout.
+ * - 1 camera → 1 column
+ * - 2-4 cameras → 2 columns
+ * - 5-9 cameras → 3 columns
+ * - 10+ cameras → 4 columns
+ */
+function getPreferredColumns(n: number): number {
+    if (n <= 1) return 1;
+    if (n <= 4) return 2;
+    if (n <= 9) return 3;
+    return 4;
+}
+
+/**
+ * Compute optimal tiling combining the best of both approaches:
+ * 1. Uses the old heuristic to determine ideal column count bounds
+ * 2. Within those bounds, maximizes area and prefers square-ish cells
+ * 3. Respects container dimensions
  */
 function computeOptimalTiling(
     n: number,
@@ -37,19 +54,49 @@ function computeOptimalTiling(
     if (n === 0) return { cols: 1, rows: 1 };
     if (n === 1) return { cols: 1, rows: 1 };
 
-    let bestCols = 1;
-    let bestArea = 0;
+    // Get the heuristic-preferred columns (from old version logic)
+    const preferredCols = getPreferredColumns(n);
+    
+    // Also compute the "ideal" square-ish layout
+    const sqrtN = Math.sqrt(n);
+    const idealCols = Math.round(sqrtN);
+    
+    // Allow some flexibility around the preferred columns
+    // We'll search within a range: minCols to maxCols
+    const minCols = Math.max(1, Math.floor(sqrtN) - 1);
+    const maxCols = Math.min(n, Math.ceil(sqrtN) + 2, preferredCols + 1);
+    
+    let bestCols = preferredCols;
+    let bestScore = -Infinity;
 
-    for (let cols = 1; cols <= n; cols++) {
+    for (let cols = minCols; cols <= maxCols; cols++) {
         const rows = Math.ceil(n / cols);
         const cellW = (containerWidth - MARGIN[0] * (cols - 1)) / cols;
         const cellH = (containerHeight - MARGIN[1] * (rows - 1)) / rows;
 
         if (cellW < 80 || cellH < 60) continue;
 
+        // Calculate area
         const totalArea = n * cellW * cellH;
-        if (totalArea > bestArea) {
-            bestArea = totalArea;
+        
+        // Calculate aspect ratio penalty (prefer cells closer to square)
+        const aspectRatio = cellW / cellH;
+        const aspectPenalty = Math.abs(Math.log(aspectRatio)) * 0.3;
+        
+        // Calculate balance penalty (prefer more even distribution across rows)
+        const itemsInLastRow = n % cols || cols;
+        const balancePenalty = (cols - itemsInLastRow) / cols * 0.5;
+        
+        // Combined score: maximize area, minimize penalties
+        const score = totalArea * (1 - aspectPenalty - balancePenalty);
+        
+        // Bonus for matching the preferred column count
+        const preferredBonus = cols === preferredCols ? totalArea * 0.1 : 0;
+        
+        const finalScore = score + preferredBonus;
+        
+        if (finalScore > bestScore) {
+            bestScore = finalScore;
             bestCols = cols;
         }
     }

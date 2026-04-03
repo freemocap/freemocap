@@ -21,6 +21,55 @@ autoUpdater.allowDowngrade = false;
 const t = initTRPC.create({
     transformer: superjson, // Handles Date/undefined/etc serialization
 });
+// Helper function to check if a directory contains video files
+function hasVideoFiles(dirPath: string): boolean {
+    if (!fs.existsSync(dirPath)) {
+        return false;
+    }
+
+    try {
+        const entries = fs.readdirSync(dirPath);
+        const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
+
+        return entries.some(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            if (stats.isFile()) {
+                const ext = path.extname(entry).toLowerCase();
+                return videoExtensions.includes(ext);
+            }
+            return false;
+        });
+    } catch (error) {
+        console.error('Error checking for video files:', error);
+        return false;
+    }
+}
+
+// Helper function to find camera calibration TOML file
+function findCameraCalibrationToml(dirPath: string): string | null {
+    if (!fs.existsSync(dirPath)) {
+        return null;
+    }
+
+    try {
+        const entries = fs.readdirSync(dirPath);
+
+        const calibrationFile = entries.find(entry => {
+            const fullPath = path.join(dirPath, entry);
+            const stats = fs.statSync(fullPath);
+
+            return stats.isFile() &&
+                entry.endsWith('_camera_calibration.toml');
+        });
+
+        return calibrationFile ? path.join(dirPath, calibrationFile) : null;
+    } catch (error) {
+        console.error('Error finding calibration TOML:', error);
+        return null;
+    }
+}
 
 // Telemetry config lives in ~/freemocap_data/telemetry_config.json
 const TELEMETRY_CONFIG_PATH = path.join(os.homedir(), 'freemocap_data', 'telemetry_config.json');
@@ -130,6 +179,120 @@ export const api = t.router({
                     ],
                 });
                 return result.canceled ? null : result.filePaths[0];
+            }),
+
+
+        validateCalibrationDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canCalibrate: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
+
+                try {
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        result.canRecord = true;
+                        result.canCalibrate = false;
+                        return result;
+                    }
+
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord = entries.length === 0 || !result.hasVideos;
+
+                    result.canCalibrate = result.hasVideos;
+
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    return result;
+
+                } catch (error) {
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
+                }
+            }),
+
+        validateMocapDirectory: t.procedure
+            .input(z.object({ directoryPath: z.string() }))
+            .query(({ input }) => {
+                const result = {
+                    exists: false,
+                    canRecord: false,
+                    canProcess: false,
+                    cameraCalibrationTomlPath: null as string | null,
+                    hasSynchronizedVideos: false,
+                    hasVideos: false,
+                    errorMessage: null as string | null,
+                };
+
+                try {
+                    result.exists = fs.existsSync(input.directoryPath);
+
+                    if (!result.exists) {
+                        result.canRecord = true;
+                        result.canProcess = false;
+                        return result;
+                    }
+
+                    const stats = fs.statSync(input.directoryPath);
+
+                    if (!stats.isDirectory()) {
+                        result.errorMessage = 'Path exists but is not a directory';
+                        return result;
+                    }
+
+                    const synchronizedVideosPath = path.join(input.directoryPath, 'synchronized_videos');
+                    result.hasSynchronizedVideos = fs.existsSync(synchronizedVideosPath) &&
+                        fs.statSync(synchronizedVideosPath).isDirectory();
+
+                    if (result.hasSynchronizedVideos) {
+                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                    }
+
+                    if (!result.hasVideos) {
+                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    }
+
+                    const entries = fs.readdirSync(input.directoryPath);
+                    result.canRecord = !result.hasVideos;
+                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+
+                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath !== null;
+
+                    return result;
+
+                } catch (error) {
+                    console.error('Error validating calibration directory:', error);
+                    result.errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+                    return result;
+                }
             }),
     }),
 

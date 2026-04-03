@@ -16,9 +16,10 @@ from pathlib import Path
 
 import cv2
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
 
 from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_configs import DetectorSpec, create_detector_from_spec, create_annotator_from_spec
+from freemocap.core.pipeline.pipeline_configs import  create_detector_from_spec, create_annotator_from_spec
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -40,7 +41,7 @@ class VideoNode(BaseNode):
         *,
         video_id: VideoIdString,
         video_path: Path,
-        detector_spec: DetectorSpec,
+        detector_spec: BaseDetectorConfig,
         worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
@@ -112,7 +113,7 @@ class VideoNode(BaseNode):
         *,
         video_id: VideoIdString,
         video_path: Path,
-        detector_spec: DetectorSpec,
+        detector_spec: BaseDetectorConfig,
         ipc: PipelineIPC,
         video_output_pub: TopicPublicationQueue,
         shutdown_self_flag: multiprocessing.Value,

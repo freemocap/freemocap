@@ -67,7 +67,7 @@ class PosthocPipeline:
         *,
         recording_info: RecordingInfo,
         detector_spec: DetectorSpec,
-        task_fn: PosthocAggregationNodeTaskFn,
+        aggregation_task_fn: PosthocAggregationNodeTaskFn,
         worker_registry: WorkerRegistry,
         global_kill_flag: multiprocessing.Value,
         save_annotated_video: bool = True,
@@ -78,7 +78,7 @@ class PosthocPipeline:
         Args:
             recording_info: Where to find the recorded videos.
             detector_spec: Which detector to run on each video frame.
-            task_fn: The processing function (with task_config pre-bound via
+            aggregation_task_fn: The processing function (with task_config pre-bound via
                      functools.partial) to call after all frames are collected.
             worker_registry: For creating managed processes.
             global_kill_flag: Shared app-wide kill flag.
@@ -117,7 +117,7 @@ class PosthocPipeline:
             )
 
         aggregation_node = PosthocAggregationNode.create(
-            aggregation_task_fn=task_fn,
+            aggregation_task_fn=aggregation_task_fn,
             video_metadata=video_group.video_metadata_by_id,
             pipeline_id=pipeline_id,
             recording_info=recording_info,

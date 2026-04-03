@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
 from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.body.mediapipe_pose_config import MediapipePoseConfig
 from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
@@ -22,10 +23,9 @@ from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import Rea
 # Detector spec: the picklable union that video nodes use to create detectors
 # ---------------------------------------------------------------------------
 
-DetectorSpec = CharucoDetectorConfig | MediapipeDetectorConfig
 
 
-def create_detector_from_spec(spec: DetectorSpec):
+def create_detector_from_spec(spec: BaseDetectorConfig):
     """
     Create a detector instance from a picklable spec.
     Called inside child processes — detector class imports are deferred
@@ -43,7 +43,7 @@ def create_detector_from_spec(spec: DetectorSpec):
             raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")
 
 
-def create_annotator_from_spec(spec: DetectorSpec):
+def create_annotator_from_spec(spec: BaseDetectorConfig):
     """
     Create an image annotator matching the given detector spec.
     Called inside child processes for drawing detection results onto frames.

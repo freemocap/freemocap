@@ -27,7 +27,7 @@ from freemocap.core.calibration.shared.calibration_models import CharucoBoardDef
     CornerObservation, CalibrationResult
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.calibration.shared.calibration_save import save_calibration_copies
-from freemocap.core.calibration.shared.toml_mixin import numpy_to_python
+from freemocap.utilities.toml_mixin import numpy_to_python
 from freemocap.core.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
 from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig, CalibrationSolverMethod
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata

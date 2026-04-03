@@ -167,7 +167,6 @@ class VideoHelper(BaseModel):
         """
         Read the next frame in sequence. If the last read frame is -1, reads frame 0. If the last read frame is the last frame, returns None.
 
-
         Returns:
             Frame as numpy array
         """
@@ -175,6 +174,7 @@ class VideoHelper(BaseModel):
         if next_frame_number >= self.metadata.frame_count:
             return None
         return self.read_frame_number(next_frame_number)
+
     def read_frame_number(self, frame_number: int) -> np.ndarray:
         """
         Read a specific frame with caching and access pattern optimization.
@@ -260,24 +260,24 @@ class VideoHelper(BaseModel):
         results = {}
         frames_to_read = []
 
-        for fn in frame_numbers:
-            cached = self.cache.get(fn)
+        for frame_number in frame_numbers:
+            cached = self.cache.get(frame_number)
             if cached is not None:
-                results[fn] = cached
+                results[frame_number] = cached
             else:
-                frames_to_read.append(fn)
+                frames_to_read.append(frame_number)
 
         if frames_to_read:
             # Sort for optimal reading
             frames_to_read.sort()
 
             # Read missing frames
-            for fn in frames_to_read:
-                frame = self.read_frame_number(fn)
-                results[fn] = frame
+            for frame_number in frames_to_read:
+                frame = self.read_frame_number(frame_number)
+                results[frame_number] = frame
 
         # Return in original order
-        return [results[fn] for fn in frame_numbers]
+        return [results[frame_number] for frame_number in frame_numbers]
 
     def get_frame_timestamp(self, frame_number: int) -> float:
         """Get timestamp in seconds for a given frame number."""

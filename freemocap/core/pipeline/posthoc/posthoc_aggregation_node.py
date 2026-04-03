@@ -113,7 +113,7 @@ class PosthocAggregationNode(BaseNode):
             frame_number: {vid: None for vid in video_ids}
             for frame_number in frame_numbers
         }
-        got_all_by_frame: dict[FrameNumberInt, bool] = {fn: False for fn in frame_numbers}
+        got_all_by_frame: dict[FrameNumberInt, bool] = {frame_number: False for frame_number in frame_numbers}
         received_count: int = 0
 
         try:
@@ -148,7 +148,7 @@ class PosthocAggregationNode(BaseNode):
                 if all(got_all_by_frame.values()):
                     break
 
-            missing_frames = [fn for fn, complete in got_all_by_frame.items() if not complete]
+            missing_frames = [frame_number for frame_number, complete in got_all_by_frame.items() if not complete]
             if missing_frames:
                 raise RuntimeError(
                     f"Pipeline {pipeline_id} ended with {len(missing_frames)} missing frames out of {total_expected}, "

@@ -31,7 +31,6 @@ import {
 } from '@/store/slices/mocap';
 import {calibrationConfigUpdated, updateCalibrationConfigOnServer } from '@/store/slices/calibration';
 import { ThemeMode } from '@/store/slices/theme/theme-types';
-import { useServer } from '@/hooks/useServer';
 import {
     serialize,
     deserialize,
@@ -41,6 +40,7 @@ import {
     FORMAT_MIME_TYPES,
     FORMAT_MONACO_LANGUAGES,
 } from './format-converters';
+import {useServer} from "@/services";
 
 // ── Aggregated settings shape (config-only, no runtime state) ──
 

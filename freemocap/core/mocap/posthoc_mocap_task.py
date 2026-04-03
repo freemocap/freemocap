@@ -25,7 +25,7 @@ from freemocap.core.types.type_overloads import VideoIdString
 logger = logging.getLogger(__name__)
 
 
-def run_mocap_task(
+def run_post_mocap_aggregation_task(
     *,
     frame_observations: list[dict[VideoIdString, BaseObservation]],
     recording_info: RecordingInfo,

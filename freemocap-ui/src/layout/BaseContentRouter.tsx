@@ -3,7 +3,7 @@ import {Navigate, Route, Routes} from 'react-router-dom';
 import {CamerasPage} from "@/pages/CamerasPage";
 import PlaybackPage from "@/pages/PlaybackPage";
 import WelcomePage from "@/pages/WelcomePage";
-import SettingsPage from "@/pages/SettingsPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 import {Viewport3dPage} from "@/pages/Viewport3dPage";
 
 export const BaseContentRouter: React.FC = () => {

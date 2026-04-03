@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from scipy.spatial.transform import Rotation
 
-from freemocap.core.calibration.shared.toml_mixin import TomlMixin, numpy_to_python
+from freemocap.utilities.toml_mixin import TomlMixin, numpy_to_python
 
 
 # =============================================================================

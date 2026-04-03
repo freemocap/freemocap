@@ -80,7 +80,7 @@ def get_triangulated_data(
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             image_2d_data=image_data_numCams_numFrames_numTrackedPts_XYZ[:, :, :, :2],
-            use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+            use_triangulate_ransac=False,
             use_triangulate_outlier_rejection=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection,
             minimum_cameras_for_triangulation=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_for_triangulation,
             maximum_cameras_to_drop=processing_parameters.anipose_triangulate_3d_parameters_model.maximum_cameras_to_drop,

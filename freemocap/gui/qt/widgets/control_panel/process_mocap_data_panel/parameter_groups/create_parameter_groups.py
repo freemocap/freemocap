@@ -18,8 +18,6 @@ POST_PROCESSING_FRAME_RATE = "Framerate"
 
 BUTTERWORTH_FILTER_TREE_NAME = "Butterworth Filter"
 
-USE_RANSAC_METHOD = "Use RANSAC Method"
-
 OUTLIER_REJECTION_TREE_NAME = "Outlier Rejection"
 
 USE_OUTLIER_REJECTION_METHOD = "Use Outlier Rejection Method?"
@@ -162,13 +160,6 @@ def create_3d_triangulation_parameter_group(
         type="group",
         children=[
             dict(
-                name=USE_RANSAC_METHOD,
-                type="bool",
-                value=parameter_model.use_triangulate_ransac_method,
-                tip="If true, use `anipose`'s `triangulate_ransac` method instead of the default `triangulate_simple` method. "
-                    "NOTE - Much slower than the 'simple' method, but might be more accurate and better at rejecting bad camera views. Needs more testing and evaluation to see if it's worth it. ",
-            ),
-            dict(
                 name=FLATTEN_SINGLE_CAMERA_DATA,
                 type="bool",
                 value=parameter_model.flatten_single_camera_data,
@@ -272,7 +263,6 @@ def extract_parameter_model_from_parameter_tree(
             bounding_box_buffer_percentage=parameter_values_dictionary[BOUNDING_BOX_BUFFER_PERCENTAGE],
         ),
         anipose_triangulate_3d_parameters_model=AniposeTriangulate3DParametersModel(
-            use_triangulate_ransac_method=parameter_values_dictionary[USE_RANSAC_METHOD],
             flatten_single_camera_data=parameter_values_dictionary[FLATTEN_SINGLE_CAMERA_DATA],
             use_triangulate_outlier_rejection=parameter_values_dictionary[USE_OUTLIER_REJECTION_METHOD],
             minimum_cameras_for_triangulation=parameter_values_dictionary[OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION],

@@ -47,10 +47,7 @@ def triangulate_3d_data(
     )
 
     used_cameras_mask = None
-    if use_triangulate_ransac:
-        logger.info("Using `triangulate_ransac` method")
-        data3d_flat = anipose_calibration_object.triangulate_ransac(data2d_flat, progress=True, kill_event=kill_event)
-    elif use_triangulate_outlier_rejection:
+    if use_triangulate_outlier_rejection:
         logger.info("Using `triangulate_using_outlier_rejection` method")
         data3d_flat, used_cameras_mask_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
             data2d_flat, 
@@ -118,12 +115,6 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--use_triangulate_ransac",
-        type=bool,
-        help="use triangulate ransac anipose method ",
-        required=False,
-    )
-    parser.add_argument(
         "--use_triangulate_outlier_rejection",
         type=bool,
         help="use triangulate using outlier rejection anipose method ",
@@ -163,9 +154,6 @@ if __name__ == "__main__":
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
 
-    if args.use_triangulate_ransac is None:
-        args.use_triangulate_ransac = True
-
     if args.use_triangulate_outlier_rejection is None:
         args.use_triangulate_outlier_rejection = False
 
@@ -196,7 +184,7 @@ if __name__ == "__main__":
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         image_2d_data=data_2d,
-        use_triangulate_ransac=args.use_triangulate_ransac,
+        use_triangulate_ransac=False,
         use_triangulate_outlier_rejection=args.use_triangulate_outlier_rejection,
         minimum_cameras_for_triangulation=args.minimum_cameras_for_triangulation,
         maximum_cameras_to_drop=args.maximum_cameras_to_drop,

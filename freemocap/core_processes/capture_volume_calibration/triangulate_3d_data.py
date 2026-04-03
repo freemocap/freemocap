@@ -47,10 +47,7 @@ def triangulate_3d_data(
     )
 
     normalized_camera_weights = None
-    if use_triangulate_ransac:
-        logger.info("Using `triangulate_ransac` method")
-        data3d_flat = anipose_calibration_object.triangulate_ransac(data2d_flat, progress=True, kill_event=kill_event)
-    elif use_triangulate_outlier_rejection:
+    if use_triangulate_outlier_rejection:
         logger.info("Using `triangulate_using_outlier_rejection` method")
         data3d_flat, normalized_camera_weights_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
             data2d_flat, 
@@ -118,12 +115,6 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--use_triangulate_ransac",
-        type=bool,
-        help="use triangulate ransac anipose method ",
-        required=False,
-    )
-    parser.add_argument(
         "--use_triangulate_outlier_rejection",
         type=bool,
         help="use triangulate using outlier rejection anipose method ",
@@ -163,9 +154,6 @@ if __name__ == "__main__":
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
 
-    if args.use_triangulate_ransac is None:
-        args.use_triangulate_ransac = True
-
     if args.use_triangulate_outlier_rejection is None:
         args.use_triangulate_outlier_rejection = False
 
@@ -196,7 +184,7 @@ if __name__ == "__main__":
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         image_2d_data=data_2d,
-        use_triangulate_ransac=args.use_triangulate_ransac,
+        use_triangulate_ransac=False,
         use_triangulate_outlier_rejection=args.use_triangulate_outlier_rejection,
         minimum_cameras_for_triangulation=args.minimum_cameras_for_triangulation,
         maximum_cameras_to_drop=args.maximum_cameras_to_drop,
@@ -207,6 +195,5 @@ if __name__ == "__main__":
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=args.output_data_folder_path,
-        processing_level="raw",
         file_prefix=args.file_prefix,
     )

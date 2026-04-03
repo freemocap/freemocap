@@ -22,7 +22,6 @@ from freemocap.system.paths_and_filenames.file_and_folder_names import (
     RAW_DATA_FOLDER_NAME,
     REPROJECTION_ERROR_NPY_FILE_NAME,
     FULL_REPROJECTION_ERROR_NPY_FILE_NAME,
-    REPROJECTION_FILTERED_PREFIX,
 )
 from freemocap.system.paths_and_filenames.path_getters import (
     get_output_data_folder_path,
@@ -161,33 +160,16 @@ class DataLoader:
     def _load_reprojection_error_data(self):
         """
         Load reprojection error averaged across cameras and by camera.
-        Defaults to using reprojection filtered values if they exist.
         """
-        filtered_average_error_path = (
-            self._raw_data_folder_path
-            / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
-        )
-        filtered_by_camera_path = (
-            self._raw_data_folder_path
-            / f"{REPROJECTION_FILTERED_PREFIX}{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
-        )
 
         raw_average_error_path = self._raw_data_folder_path / f"{self._file_prefix}{REPROJECTION_ERROR_NPY_FILE_NAME}"
         raw_by_camera_path = self._raw_data_folder_path / f"{self._file_prefix}{FULL_REPROJECTION_ERROR_NPY_FILE_NAME}"
 
         try:
-            if filtered_average_error_path.exists():
-                logger.debug(f"Loading filtered average reprojection error from {filtered_average_error_path}")
-                self.reprojection_error_frame_name_value = np.load(filtered_average_error_path)
-            else:
-                logger.debug(f"Loading unfiltered average reprojection error from {raw_average_error_path}")
-                self.reprojection_error_frame_name_value = np.load(raw_average_error_path)
-            if filtered_by_camera_path.exists():
-                logger.debug(f"Loading filtered by camera reprojection error from {filtered_by_camera_path}")
-                self.reprojection_error_camera_frame_name_value = np.load(filtered_by_camera_path)
-            else:
-                logger.debug(f"Loading unfiltered by camera reprojection error from {raw_by_camera_path}")
-                self.reprojection_error_camera_frame_name_value = np.load(raw_by_camera_path)
+            logger.debug(f"Loading average reprojection error from {raw_average_error_path}")
+            self.reprojection_error_frame_name_value = np.load(raw_average_error_path)
+            logger.debug(f"Loading by camera reprojection error from {raw_by_camera_path}")
+            self.reprojection_error_camera_frame_name_value = np.load(raw_by_camera_path)
         except FileNotFoundError:
             logger.warning("unable to load reprojection error data from file.")
             self.reprojection_error_frame_name_value = None

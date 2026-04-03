@@ -37,7 +37,6 @@ def process_single_camera_skeleton_data(
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=raw_data_folder_path,
-        processing_level="raw",
         file_prefix=file_prefix,
     )
     rotated_raw_skel3d_frame_marker_xyz = rotate_by_90_degrees_around_x_axis(raw_skel3d_frame_marker_xyz)

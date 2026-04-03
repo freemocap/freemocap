@@ -53,7 +53,7 @@ def run_reprojection_error_filtering(
         raw_skel3d_frame_marker_xyz=raw_skel3d_frame_marker_xyz,
         anipose_calibration_object=anipose_calibration_object,
         num_tracked_points=num_tracked_points,
-        use_triangulate_ransac=processing_parameters.anipose_triangulate_3d_parameters_model.use_triangulate_ransac_method,
+        use_triangulate_ransac=False,
         minimum_cameras_to_reproject=processing_parameters.anipose_triangulate_3d_parameters_model.minimum_cameras_to_reproject,
     )
     save_3d_data_to_npy(
@@ -129,7 +129,7 @@ def filter_by_reprojection_error(
         ) = triangulate_3d_data(
             anipose_calibration_object=anipose_calibration_object,
             image_2d_data=data_to_reproject_camera_frame_marker_xy,
-            use_triangulate_ransac=use_triangulate_ransac,
+            use_triangulate_ransac=False,
         )
 
         num_cameras_to_remove += 1

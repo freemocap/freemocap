@@ -1,0 +1,528 @@
+name: Build installers (Pyinstaller + Electron)
+
+on:
+  push:
+    branches:
+      - development
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ═══════════════════════════════════════════════════════
+  # BUILD — runs on all 5 platform/arch combos
+  # ═══════════════════════════════════════════════════════
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            label: windows-x64
+            server-binary: freemocap_server.exe
+            electron-arch: x64
+
+          - os: macos-15-intel
+            platform: macos
+            arch: x64
+            label: macos-x64-intel
+            server-binary: freemocap_server
+            electron-arch: x64
+
+          - os: macos-latest
+            platform: macos
+            arch: arm64
+            label: macos-arm64-apple-silicon
+            server-binary: freemocap_server
+            electron-arch: arm64
+
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            label: linux-x64
+            server-binary: freemocap_server
+            electron-arch: x64
+
+          - os: ubuntu-22.04-arm
+            platform: linux
+            arch: arm64
+            label: linux-arm64
+            server-binary: freemocap_server
+            electron-arch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # ── Windows code-signing prereqs ──
+      - name: Validate code signing prerequisites
+        if: matrix.platform == 'windows'
+        run: |
+          $missingSecrets = @()
+
+          if (-not "${{ secrets.AZURE_TENANT_ID }}") { $missingSecrets += "AZURE_TENANT_ID" }
+          if (-not "${{ secrets.AZURE_CLIENT_ID }}") { $missingSecrets += "AZURE_CLIENT_ID" }
+          if (-not "${{ secrets.AZURE_CLIENT_SECRET }}") { $missingSecrets += "AZURE_CLIENT_SECRET" }
+          if (-not "${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}") { $missingSecrets += "TRUSTED_SIGNING_ACCOUNT_NAME" }
+          if (-not "${{ secrets.CERTIFICATE_PROFILE_NAME }}") { $missingSecrets += "CERTIFICATE_PROFILE_NAME" }
+
+          if ($missingSecrets.Count -gt 0) {
+            Write-Error "Missing required secrets for code signing: $($missingSecrets -join ', ')"
+            exit 1
+          }
+
+          Write-Output "All required code signing secrets are available"
+        shell: pwsh
+
+      # ── macOS code-signing prereqs ──
+      - name: Validate macOS code signing prerequisites
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          MISSING=()
+          [ -z "${{ secrets.MAC_CERTIFICATE_P12 }}" ] && MISSING+=("MAC_CERTIFICATE_P12")
+          [ -z "${{ secrets.MAC_CERTIFICATE_PASSWORD }}" ] && MISSING+=("MAC_CERTIFICATE_PASSWORD")
+          [ -z "${{ secrets.APPLE_ID }}" ] && MISSING+=("APPLE_ID")
+          [ -z "${{ secrets.APPLE_ID_PASSWORD }}" ] && MISSING+=("APPLE_ID_PASSWORD")
+          [ -z "${{ secrets.APPLE_TEAM_ID }}" ] && MISSING+=("APPLE_TEAM_ID")
+          if [ ${#MISSING[@]} -gt 0 ]; then
+            echo "::error::Missing required secrets for macOS code signing: ${MISSING[*]}"
+            exit 1
+          fi
+          echo "All required macOS code signing secrets are available"
+
+      # ── macOS certificate installation ──
+      - name: Install macOS signing certificate
+        if: matrix.platform == 'macos'
+        shell: bash
+        env:
+          MAC_CERTIFICATE_P12: ${{ secrets.MAC_CERTIFICATE_P12 }}
+          MAC_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -base64 32)"
+
+          # Create and configure a temporary keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the .p12 certificate
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$MAC_CERTIFICATE_P12" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -k "$KEYCHAIN_PATH" \
+            -P "$MAC_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          rm -f "$CERT_PATH"
+
+          # Allow codesign to access the keychain without UI prompt
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Add the temporary keychain to the search list (prepend it)
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+          # Verify the identity is available
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+          echo "macOS signing certificate installed successfully"
+
+      # ── Linux system dependencies ──
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-glx \
+            libglib2.0-0 \
+            libsm6 \
+            libxext6 \
+            libxrender1 \
+            libv4l-dev \
+            libfuse2 \
+            upx-ucl
+
+      # ── macOS UPX for binary compression ──
+      - name: Install UPX (macOS)
+        if: matrix.platform == 'macos'
+        run: brew install upx
+
+      # ── Common setup ──
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: ".python-version"
+
+      - name: Install uv and enable cache
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+
+      - name: Create venv
+        run: uv venv
+
+      - name: Install the project dependencies
+        run: uv sync
+
+      - name: Verify installation 1/3
+        run: uv pip show freemocap
+      - name: Verify installation 2/3
+        run: uv pip show pyinstaller
+      - name: Verify installation 3/3
+        run: uv pip show opencv-contrib-python
+
+      # ── Write build metadata and secrets into the Python package ──
+      - name: Write build info
+        shell: bash
+        run: |
+          SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-8)
+          TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          cat > freemocap/build_info.py << EOF
+          """Build metadata and secrets populated by CI."""
+          BUILD_GIT_SHA: str = "${{ github.sha }}"
+          BUILD_GIT_SHA_SHORT: str = "${SHA_SHORT}"
+          BUILD_NUMBER: str = "${{ github.run_number }}"
+          BUILD_TIMESTAMP: str = "${TIMESTAMP}"
+          BUILD_TAG: str = "${{ github.ref_name }}"
+          SKELLYPINGS_SERVER_URL: str = "https://skellypings-401698866387.northamerica-northeast1.run.app"
+          SKELLYPINGS_SECRET: str = "${{ secrets.SKELLYPINGS_SECRET }}"
+          EOF
+
+          echo "--- build_info.py (secret redacted) ---"
+          sed 's/SKELLYPINGS_SECRET:.*/SKELLYPINGS_SECRET: str = "***"/' freemocap/build_info.py
+
+      # ── PyInstaller build ──
+      - name: Build with PyInstaller
+        run: |
+          uv pip install pyinstaller
+          uv run pyinstaller ./freemocap.spec --clean
+
+      # ── Move server binary into freemocap-ui/ ──
+      - name: Move server binary into freemocap-ui (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          Move-Item -Path ".\dist\${{ matrix.server-binary }}" -Destination ".\freemocap-ui\${{ matrix.server-binary }}"
+
+      - name: Move server binary into freemocap-ui (macOS/Linux)
+        if: matrix.platform != 'windows'
+        run: |
+          mv "./dist/${{ matrix.server-binary }}" "./freemocap-ui/${{ matrix.server-binary }}"
+          chmod +x "./freemocap-ui/${{ matrix.server-binary }}"
+
+      # ── Windows code signing (server binary) ──
+      - name: Sign freemocap_server.exe with Trusted Signing
+        if: matrix.platform == 'windows'
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
+          files: ${{ github.workspace }}\freemocap-ui\freemocap_server.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+
+      # ── macOS code signing (server binary) ──
+      - name: Sign freemocap_server with codesign
+        if: matrix.platform == 'macos'
+        run: |
+          codesign --force --options runtime --sign "Developer ID Application" \
+            --timestamp \
+            "./freemocap-ui/${{ matrix.server-binary }}"
+          codesign --verify --verbose "./freemocap-ui/${{ matrix.server-binary }}"
+          echo "Server binary signed and verified successfully"
+      # ── Upload server-only artifact ──
+      - name: Upload server binary artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-${{ matrix.label }}
+          path: |
+            freemocap-ui/${{ matrix.server-binary }}
+          include-hidden-files: true
+
+      # ── Electron build ──
+      - name: Install UI dependencies
+        run: |
+          cd freemocap-ui
+          npm install
+
+      - name: Build UI (Windows)
+        if: matrix.platform == 'windows'
+        run: |
+          cd freemocap-ui
+          npm run build -- --publish never
+
+      - name: Build UI (macOS)
+        if: matrix.platform == 'macos'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          cd freemocap-ui
+          for attempt in 1 2 3; do
+            echo "=== Build + notarize attempt $attempt of 3 ==="
+            npm run build -- --${{ matrix.electron-arch }} --publish never && break
+            if [ "$attempt" -eq 3 ]; then
+              echo "All 3 attempts failed"
+              exit 1
+            fi
+            echo "Build/notarize failed on attempt $attempt. Retrying in 30s..."
+            sleep 30
+          done
+
+      - name: Build UI (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cd freemocap-ui
+          npm run build -- --${{ matrix.electron-arch }} --publish never
+
+      # ── Windows installer signing ──
+      - name: Sign Electron installer with Trusted Signing
+        if: matrix.platform == 'windows'
+        uses: azure/trusted-signing-action@v0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: https://eus.codesigning.azure.net/
+          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}\freemocap-ui\release
+          files-folder-filter: "*.exe"
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # ── Upload final installer artifacts (uses label for human-readable names) ──
+      - name: Upload installer artifacts (Windows)
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/*/*.exe
+          include-hidden-files: true
+
+      - name: Upload installer artifacts (macOS)
+        if: matrix.platform == 'macos'
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/*/*.dmg
+            freemocap-ui/release/*/*.zip
+          include-hidden-files: true
+
+      - name: Upload installer artifacts (Linux)
+        if: matrix.platform == 'linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: installer-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/*/*.AppImage
+            freemocap-ui/release/*/*.deb
+          include-hidden-files: true
+
+      # ── Upload auto-update metadata (latest*.yml) ──
+      - name: Upload auto-update metadata (Windows)
+        if: matrix.platform == 'windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-metadata-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/**/latest.yml
+          include-hidden-files: true
+
+      - name: Upload auto-update metadata (macOS)
+        if: matrix.platform == 'macos' && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-metadata-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/**/latest-mac.yml
+          include-hidden-files: true
+
+      - name: Upload auto-update metadata (macOS ARM)
+        if: matrix.platform == 'macos' && matrix.arch == 'arm64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-metadata-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/**/latest-mac.yml
+          include-hidden-files: true
+
+      - name: Upload auto-update metadata (Linux)
+        if: matrix.platform == 'linux' && matrix.arch == 'x64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-metadata-${{ matrix.label }}
+          path: |
+            freemocap-ui/release/**/latest-linux.yml
+          include-hidden-files: true
+
+
+      # ── macOS keychain cleanup ──
+      - name: Clean up macOS keychain
+        if: matrix.platform == 'macos' && always()
+        shell: bash
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain-db"
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH"
+          fi
+  # ═══════════════════════════════════════════════════════
+  # RELEASE — only runs on tag pushes (e.g. v2.0.0)
+  #
+  # Downloads all build artifacts and renames them with
+  # human-readable platform/arch labels for the GitHub
+  # Release page.
+  # ═══════════════════════════════════════════════════════
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: List downloaded artifacts
+        run: find artifacts -type f | sort
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+
+          # Extract version from tag (e.g. refs/tags/v2.0.0 → 2.0.0)
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          echo "VERSION=$VERSION"
+
+          # ── Server binaries ──
+          # Artifact directories are named server-<label>, e.g.:
+          #   server-windows-x64, server-macos-x64-intel,
+          #   server-macos-arm64-apple-silicon, server-linux-x64, server-linux-arm64
+          # Strip the "server-" prefix to get the human-readable suffix.
+          for dir in artifacts/server-*; do
+            label=$(basename "$dir" | sed 's/^server-//')
+
+            if [ -f "$dir/freemocap_server.exe" ]; then
+              cp "$dir/freemocap_server.exe" "release-assets/freemocap_server_${VERSION}_${label}.exe"
+            elif [ -f "$dir/freemocap_server" ]; then
+              cp "$dir/freemocap_server" "release-assets/freemocap_server_${VERSION}_${label}"
+            else
+              echo "::error::No server binary found in $dir"
+              exit 1
+            fi
+          done
+
+          # ── App installers ──
+          # Artifact directories are named installer-<label>, e.g.:
+          #   installer-windows-x64, installer-macos-x64-intel, etc.
+          # Electron-builder names only contain the arch (x64/arm64),
+          # so we rename each file to: freemocap_<VERSION>_<label>.<ext>
+          for dir in artifacts/installer-*; do
+            label=$(basename "$dir" | sed 's/^installer-//')
+
+            find "$dir" -type f \( \
+              -name '*.exe' -o \
+              -name '*.dmg' -o \
+              -name '*.zip' -o \
+              -name '*.AppImage' -o \
+              -name '*.deb' \
+            \) | while read -r file; do
+              ext="${file##*.}"
+              cp "$file" "release-assets/freemocap_${VERSION}_${label}.${ext}"
+            done
+          done
+
+          echo "=== Release assets ==="
+          ls -lh release-assets/
+
+      - name: Prepare auto-update metadata
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+
+          # Copy latest.yml files from update-metadata artifacts and patch
+          # the file references to match the renamed release asset names.
+
+          # Windows: latest.yml
+          if [ -d "artifacts/update-metadata-windows-x64" ]; then
+            YML=$(find artifacts/update-metadata-windows-x64 -name 'latest.yml' | head -1)
+            if [ -n "$YML" ]; then
+              # Replace the original artifact filename with the renamed one
+              sed -i "s|freemocap_.*_installer\.exe|freemocap_${VERSION}_windows-x64.exe|g" "$YML"
+              cp "$YML" "release-assets/latest.yml"
+              echo "Copied latest.yml for Windows"
+            fi
+          fi
+
+          # macOS: latest-mac.yml (combine x64 and arm64 entries)
+          # electron-updater picks the right arch from a single latest-mac.yml
+          MAC_YML=""
+          for dir in artifacts/update-metadata-macos-*; do
+            found=$(find "$dir" -name 'latest-mac.yml' 2>/dev/null | head -1)
+            if [ -n "$found" ] && [ -z "$MAC_YML" ]; then
+              MAC_YML="$found"
+            fi
+          done
+          if [ -n "$MAC_YML" ]; then
+            # Patch filenames to match renamed assets
+            sed -i "s|freemocap_.*_installer\.zip|freemocap_${VERSION}_macos-x64-intel.zip|g" "$MAC_YML"
+            cp "$MAC_YML" "release-assets/latest-mac.yml"
+            echo "Copied latest-mac.yml for macOS"
+          fi
+
+          # Linux: latest-linux.yml
+          if [ -d "artifacts/update-metadata-linux-x64" ]; then
+            YML=$(find artifacts/update-metadata-linux-x64 -name 'latest-linux.yml' | head -1)
+            if [ -n "$YML" ]; then
+              sed -i "s|freemocap_.*\.AppImage|freemocap_${VERSION}_linux-x64.AppImage|g" "$YML"
+              cp "$YML" "release-assets/latest-linux.yml"
+              echo "Copied latest-linux.yml for Linux"
+            fi
+          fi
+
+          echo "=== Final release assets ==="
+          ls -lh release-assets/
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" &>/dev/null; then
+            echo "Release $TAG already exists — uploading new assets only"
+            gh release upload "$TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --clobber
+          else
+            echo "Creating new draft release for $TAG"
+            gh release create "$TAG" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --draft \
+              --generate-notes \
+              --title "$TAG"
+          fi

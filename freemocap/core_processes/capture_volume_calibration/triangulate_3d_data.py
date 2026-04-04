@@ -53,7 +53,6 @@ def triangulate_3d_data(
             data2d_flat, 
             progress=True, 
             kill_event=kill_event, 
-            number_of_tracked_points=number_of_tracked_points,
             minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
             maximum_cameras_to_drop=maximum_cameras_to_drop,
             target_reprojection_error=target_reprojection_error,

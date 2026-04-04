@@ -4,12 +4,9 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.get_numpy_path import get_numpy_path
-from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.install_addon.install_blender_addon import \
-    install_freemocap_blender_addon
 from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap_blender_addon.main import ajc27_run_as_main_function
+import freemocap_blender_addon
 
 logger = logging.getLogger(__name__)
 
@@ -36,17 +33,9 @@ OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy
 OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 
 
-def run_subprocess(command_list: List[str], append_to_python_path: List[str] = None):
+def run_subprocess(command_list: List[str]):
     logger.debug(f"Running subprocess with command list: {command_list}")
-    # modified_env = os.environ.copy()
-    # if append_to_python_path is not None:
-    #     logger.debug(f"Appending to PYTHONPATH: {append_to_python_path}")
-    #     for addon_root_directory in append_to_python_path:
-    #         if not Path(addon_root_directory).exists():
-    #             raise FileNotFoundError(f"Could not find addon root directory at {addon_root_directory}")
-    #         modified_env["PYTHONPATH"] += f";{addon_root_directory}"
     process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    # env=modified_env)
     return process
 
 
@@ -62,22 +51,15 @@ def run_blender_addon_subprocess(
         logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
         raise e
 
-    ajc_addon_main_file_path = inspect.getfile(ajc27_run_as_main_function)
-    logger.debug(f"Running freemocap_blender_addon as a subprocess using script at : {ajc_addon_main_file_path}")
+    # Resolve the site-packages directory containing freemocap_blender_addon
+    # so we can inject it into Blender's sys.path (no addon installation needed)
+    addon_package_path = Path(inspect.getfile(freemocap_blender_addon))
+    site_packages_path = str(addon_package_path.parent.parent)
+    logger.debug(f"Will inject site-packages path into Blender's sys.path: {site_packages_path}")
 
-    addon_root_directory = str(Path(ajc_addon_main_file_path).parent.parent)
-
-    # path_to_blenders_numpy = get_blenders_numpy(blender_exe_path=blender_exe_path)
-    # blender_numpy_root = str(Path(path_to_blenders_numpy).parent.parent)
-
-    install_freemocap_blender_addon(blender_exe_path=blender_exe_path, ajc_addon_main_file_path=ajc_addon_main_file_path)
-    try:
-        blender_exe_path = Path(blender_exe_path)
-        if not blender_exe_path.exists():
-            raise FileNotFoundError(f"Could not find the blender executable at {blender_exe_path}")
-    except Exception as e:
-        logger.error(e)
-        raise e
+    blender_exe_path = Path(blender_exe_path)
+    if not blender_exe_path.exists():
+        raise FileNotFoundError(f"Could not find the blender executable at {blender_exe_path}")
 
     simple_run_script = inspect.getfile(run_simple)
 
@@ -87,15 +69,14 @@ def run_blender_addon_subprocess(
         "--python",
         simple_run_script,
         "--",
+        site_packages_path,
         str(recording_folder_path),
         str(blender_file_path),
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
 
-    blender_process = run_subprocess(
-        command_list=command_list, append_to_python_path=[addon_root_directory]
-    )  # , blender_numpy_root])
+    blender_process = run_subprocess(command_list=command_list)
 
     while True:
         output = blender_process.stdout.readline()
@@ -108,30 +89,6 @@ def run_blender_addon_subprocess(
         logging.error(blender_process.stderr.read().decode())
     logger.debug("Done with blender add on")
     blender_process.terminate()  # manually terminate the process
-
-
-def get_blenders_numpy(blender_exe_path: Union[str, Path]) -> str:
-    import subprocess
-
-    get_numpy_script_path = inspect.getfile(get_numpy_path)
-
-    command = [
-        str(blender_exe_path),
-        "--background",
-        "--python",
-        get_numpy_script_path,
-    ]
-    subprocess_result = subprocess.run(command, capture_output=True, text=True)
-    all_output = subprocess_result.stdout
-    numpy_path = None
-    for line in all_output.split("\n"):
-        if "numpy" in line:
-            numpy_path = line
-            break
-    if not Path(numpy_path).exists():
-        raise FileNotFoundError(f"Could not find Blender's numpy at {numpy_path}")
-    logger.info(f"Got Blender's numpy path: {numpy_path}")
-    return numpy_path
 
 
 def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):

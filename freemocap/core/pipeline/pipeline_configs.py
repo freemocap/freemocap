@@ -87,8 +87,8 @@ class CalibrationPipelineConfig(BaseModel):
     calibration_recording_folder: str | None = Field(
         default=None, alias="calibrationRecordingFolder",
     )
-    charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
-    charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
+    charuco_board_x_squares: int = Field(gt=0, default=7, alias="charucoBoardXSquares")
+    charuco_board_y_squares: int = Field(gt=0, default=5, alias="charucoBoardYSquares")
     charuco_square_length: float = Field(gt=0, default=58, alias="charucoSquareLength")
 
     solver_method: CalibrationSolverMethod = Field(

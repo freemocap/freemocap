@@ -522,6 +522,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aniposelib" },
+    { name = "freemocap-blender-addon" },
     { name = "libsass" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
@@ -554,6 +555,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "aniposelib", specifier = ">=0.7.0" },
+    { name = "freemocap-blender-addon", git = "https://github.com/freemocap/freemocap_blender_addon?branch=development" },
     { name = "libsass", specifier = ">=0.23.0" },
     { name = "numpydantic", specifier = ">=1.6.7" },
     { name = "opencv-contrib-python", specifier = "==4.10.*" },
@@ -582,6 +584,11 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.0.0" },
     { name = "ruff", specifier = ">=0.9.0" },
 ]
+
+[[package]]
+name = "freemocap-blender-addon"
+version = "2025.11.1038"
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#2135986b4b9940d66cf6b8ceb80e681e2edb25a0" }
 
 [[package]]
 name = "h11"

@@ -16,18 +16,21 @@ dependencies = [
     "pyceres>=2.5",
     "tomli-w>=1.2.0",
 
-#    "ajc27_freemocap_blender_addon==v2024.12.1032",
+    "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
     "skellytracker[mediapipe]",
     "skellylogs",
-    "skellypings"
+    "skellypings",
+
 ]
 
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development" }
+freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development" }
+
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }
 

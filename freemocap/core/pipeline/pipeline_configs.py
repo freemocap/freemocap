@@ -89,7 +89,7 @@ class CalibrationPipelineConfig(BaseModel):
     )
     charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
-    charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
+    charuco_square_length: float = Field(gt=0, default=58, alias="charucoSquareLength")
 
     solver_method: CalibrationSolverMethod = Field(
         default=CalibrationSolverMethod.ANIPOSE,

@@ -26,8 +26,11 @@ class DetectBlenderResponse(BaseModel):
 
 
 class InstallAddonRequest(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-    blender_exe_path: str|None = Field(alias="blenderExePath", default=None)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={"example": {"blenderExePath": None}},
+    )
+    blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
 
 
 class InstallAddonResponse(BaseModel):
@@ -36,9 +39,17 @@ class InstallAddonResponse(BaseModel):
 
 
 class ExportToBlenderRequest(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "recordingFolderPath": FREEMOCAP_TEST_DATA_PATH,
+                "blenderExePath": None,
+            }
+        },
+    )
     recording_folder_path: str = Field(alias="recordingFolderPath", default=FREEMOCAP_TEST_DATA_PATH)
-    blender_exe_path: str | None = Field(alias="blenderExePath")
+    blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
 
     @property
     def blender_file_path(self):

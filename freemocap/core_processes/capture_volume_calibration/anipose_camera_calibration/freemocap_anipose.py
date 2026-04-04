@@ -144,87 +144,88 @@ def triangulate_with_outlier_rejection(
     default_mean_error = np.mean(default_errors)
 
     # If the error is lower than the target return the default
-    # triangulation, if not then start the N-X camera combination loop
+    # triangulation and all camera weights as 1
     if default_mean_error < target_reprojection_error:
         normalized_camera_weights[:] = 1.0
         return default_p3d, normalized_camera_weights
-    else:
-        # Set the final_p3d and best_error from the total camera triangulation 
-        best_p3d = default_p3d
-        best_error = default_mean_error
+
+    # As the error is higher than the target, start the N-X camera combination loop
+    # Set the final_p3d and best_error from the total camera triangulation 
+    best_p3d = default_p3d
+    best_error = default_mean_error
+    
+    # Initialize variables for weighted average of combinations (including the default one)
+    default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
+    weighted_p3d_sum = default_weight * default_p3d
+    total_weight = default_weight
+    
+    normalized_camera_weights[:] += default_weight
+
+    # Make the N-X camera combination loop
+    for camera_drop_count in range(1, maximum_cameras_to_drop + 1):
+        selected_camera_count = total_valid_cams - camera_drop_count
+
+        if selected_camera_count < minimum_cameras_for_triangulation:
+            break
+
+        # Generate all combinations using LOCAL indices
+        combinations = list(itertools.combinations(local_indices, selected_camera_count))        
+
+        for combo in combinations:
+
+            # combo contains LOCAL indices (0, 1, 2, ...)
+            kept_local_indices = list(combo)
+            kept_cameras = [local_indices[i] for i in kept_local_indices]
         
-        # Initialize variables for weighted average of combinations (including the default one)
-        default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
-        weighted_p3d_sum = default_weight * default_p3d
-        total_weight = default_weight
-        
-        normalized_camera_weights[:] += default_weight
+            candidate_pts = subp[kept_local_indices]
+            candidate_cams = cam_mats[kept_local_indices]
 
-        # Make the N-X camera combination loop
-        for camera_drop_count in range(1, maximum_cameras_to_drop + 1):
-            selected_camera_count = total_valid_cams - camera_drop_count
+            candidate_p3d = triangulate_simple(candidate_pts, candidate_cams)
 
-            if selected_camera_count < minimum_cameras_for_triangulation:
-                break
+            candidate_proj = np.array([
+                project_point_to_cam(candidate_p3d, M) for M in candidate_cams
+            ])
 
-            # Generate all combinations using LOCAL indices
-            combinations = list(itertools.combinations(local_indices, selected_camera_count))        
+            candidate_errors = np.linalg.norm(candidate_proj - candidate_pts, axis=1)
+            candidate_mean_error = np.mean(candidate_errors)
 
-            for combo in combinations:
-
-                # combo contains LOCAL indices (0, 1, 2, ...)
-                kept_local_indices = list(combo)
-                kept_cameras = [local_indices[i] for i in kept_local_indices]
+            # Calculate exponential weight for this combination
+            # (Lower error = higher weight)
+            weight = np.exp(-5.0 * candidate_mean_error / target_reprojection_error)
+            weighted_p3d_sum += weight * candidate_p3d
+            total_weight += weight
+            normalized_camera_weights[kept_local_indices] += weight
             
-                candidate_pts = subp[kept_local_indices]
-                candidate_cams = cam_mats[kept_local_indices]
+            # Update best solution if current candidate has lower reprojection error
+            if candidate_mean_error < best_error:
+                best_error = candidate_mean_error
+                best_p3d = candidate_p3d
+                best_camera_combo = kept_cameras
 
-                candidate_p3d = triangulate_simple(candidate_pts, candidate_cams)
+        # If we met the target accuracy at this current level (N-1, N-2, etc.)
+        # we can stop here and avoid dropping even more cameras.
+        if best_error < target_reprojection_error:
+            break
 
-                candidate_proj = np.array([
-                    project_point_to_cam(candidate_p3d, M) for M in candidate_cams
-                ])
-
-                candidate_errors = np.linalg.norm(candidate_proj - candidate_pts, axis=1)
-                candidate_mean_error = np.mean(candidate_errors)
-
-                # Calculate exponential weight for this combination
-                # (Lower error = higher weight)
-                weight = np.exp(-5.0 * candidate_mean_error / target_reprojection_error)
-                weighted_p3d_sum += weight * candidate_p3d
-                total_weight += weight
-                normalized_camera_weights[kept_local_indices] += weight
-                
-                # Update best solution if current candidate has lower reprojection error
-                if candidate_mean_error < best_error:
-                    best_error = candidate_mean_error
-                    best_p3d = candidate_p3d
-                    best_camera_combo = kept_cameras
-
-            # If we met the target accuracy at this current level (N-1, N-2, etc.)
-            # we can stop here and avoid dropping even more cameras.
-            if best_error < target_reprojection_error:
-                break
-
-        # Calculate the final weighted 3D point from all tested combinations
-        if total_weight > 1e-12:
-            weighted_p3d = weighted_p3d_sum / total_weight
-            normalized_camera_weights /= total_weight
-        else:
-            # Fallback for numerical underflow from extremely large errors
-            weighted_p3d = best_p3d
-            normalized_camera_weights[:] = 0.0
-            if 'best_camera_combo' in locals():
-                normalized_camera_weights[best_camera_combo] = 1.0
-            else:
-                normalized_camera_weights[:] = 1.0
-
-        # Return the weighted_p3d if the error was improved by at least one combination
-        if best_error < default_mean_error:
-            return weighted_p3d, normalized_camera_weights
+    # Calculate the final weighted 3D point from all tested combinations
+    if total_weight > 1e-12:
+        weighted_p3d = weighted_p3d_sum / total_weight
+        normalized_camera_weights /= total_weight
+    else:
+        # Fallback for numerical underflow from extremely large errors
+        weighted_p3d = best_p3d
+        normalized_camera_weights[:] = 0.0
+        if 'best_camera_combo' in locals():
+            normalized_camera_weights[best_camera_combo] = 1.0
         else:
             normalized_camera_weights[:] = 1.0
-            return default_p3d, normalized_camera_weights
+
+    # Return the weighted_p3d if the error was improved by at least one combination
+    if best_error < default_mean_error:
+        return weighted_p3d, normalized_camera_weights
+    else:
+        normalized_camera_weights[:] = 1.0
+        return default_p3d, normalized_camera_weights
             
 
 def get_error_dict(errors_full, min_points=10):

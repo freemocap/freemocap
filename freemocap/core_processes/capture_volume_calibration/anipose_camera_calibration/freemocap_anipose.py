@@ -94,7 +94,6 @@ def triangulate_with_outlier_rejection(
     target_reprojection_error: float = 0.01,
     marker_index = None,
     number_of_tracked_points = None,
-    enable_debug: bool = False,
 ):
     """
     Triangulates 3D points with progressive outlier rejection.
@@ -111,52 +110,27 @@ def triangulate_with_outlier_rejection(
         target_reprojection_error: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
         marker_index: Flattened index for tracking specific markers
         number_of_tracked_points: Total points per frame for index calculation
-        enable_debug: Enable debug logging for specific markers/frames
-    
     Returns:
         tuple[np.ndarray, np.ndarray]: (3D point coordinates, normalized camera weights)
     """
-    # --- DEBUG LOGIC ---
-    # Compute true frame + marker from flattened index
-    if marker_index is not None and number_of_tracked_points is not None:
-        real_marker_index = marker_index % number_of_tracked_points
-        real_frame_index  = marker_index // number_of_tracked_points
-    else:
-        real_marker_index = None
-        real_frame_index = None
-
-    # TEMPORAL DEBUG for checking the 2D coordinates of the valid cameras.
-    # Note that the valid cameras not always match the annotated markers in the videos.
-    # A marker could not be drawn in a video because it has visibility < 0.5 or presence < 0.5.
-    # But it could still have 2D coordinates that participate in the triangulation.
-    # This debug shows the 2D coordinates of the valid cameras for a specific marker and frame.
-    # if real_marker_index == 28 and real_frame_index is not None and 215 <= real_frame_index <= 265:
-    #     print(f"----- TEMPORAL DEBUG -----")
-    #     print(f"Frame: {real_frame_index}, Marker: {real_marker_index}")
-    #     print(f"Valid camera indices: {valid_camera_indices}")
-    #     print(f"2D coordinates:\n{subp}")
-
-    # Enable debug only for specific markers and frames
-    if enable_debug and real_marker_index is not None:
-        enable_debug = (((real_marker_index == 28) 
-            and (real_frame_index in range(260, 269)))
-            )
-    # ---
 
     # Get the total number of valid cameras (those with 2D points)
     total_valid_cams = len(cam_mats)
+
     # Create local indices (0, 1, 2, ... for the valid cameras)
     local_indices = list(range(total_valid_cams))
 
     # Initialize normalized camera weights for the valid cameras
     normalized_camera_weights = np.zeros(total_valid_cams)
 
-    if enable_debug:
-        print(
-            "----- DEBUG TRIANGULATION -----\n"
-            f"Frame: {real_frame_index} "
-            f"Marker: {real_marker_index}\n"
-        )
+    # Get the total number of valid cameras (those with 2D points)
+    total_valid_cams = len(cam_mats)
+
+    # Create local indices (0, 1, 2, ... for the valid cameras)
+    local_indices = list(range(total_valid_cams))
+
+    # Initialize normalized camera weights for the valid cameras
+    normalized_camera_weights = np.zeros(total_valid_cams)
 
     # Calculate default triangulation with all the valid cameras
     default_p3d = triangulate_simple(subp, cam_mats)
@@ -169,23 +143,12 @@ def triangulate_with_outlier_rejection(
     default_errors = np.linalg.norm(default_proj - subp, axis=1)
     default_mean_error = np.mean(default_errors)
 
-    if enable_debug:
-        print(
-            f"Kept cameras: {local_indices} "
-            f"Default Mean error: {default_mean_error:.4f} (norm units) "
-            f"Default p3d:  {default_p3d}\n"
-        )
-
     # If the error is lower than the target return the default
     # triangulation, if not then start the N-X camera combination loop
     if default_mean_error < target_reprojection_error:
         normalized_camera_weights[:] = 1.0
         return default_p3d, normalized_camera_weights
     else:
-        if enable_debug:
-            print("Default triangulation error above threshold."
-                  " Starting N-X camera combination loop...")
-
         # Set the final_p3d and best_error from the total camera triangulation 
         best_p3d = default_p3d
         best_error = default_mean_error
@@ -206,9 +169,6 @@ def triangulate_with_outlier_rejection(
 
             # Generate all combinations using LOCAL indices
             combinations = list(itertools.combinations(local_indices, selected_camera_count))        
-
-            if enable_debug:
-                print(f"N-{camera_drop_count}: Keeping {selected_camera_count} cameras")
 
             for combo in combinations:
 
@@ -235,14 +195,6 @@ def triangulate_with_outlier_rejection(
                 total_weight += weight
                 normalized_camera_weights[kept_local_indices] += weight
                 
-                if enable_debug:
-                    print(
-                        f"Camera combination: {kept_cameras} "
-                        f"Candidate Mean error: {candidate_mean_error:.4f} (norm units) "
-                        f"Weight: {weight:.4f} "
-                        f"Candidate p3d: {candidate_p3d}"
-                    )
-
                 # Update best solution if current candidate has lower reprojection error
                 if candidate_mean_error < best_error:
                     best_error = candidate_mean_error
@@ -252,8 +204,6 @@ def triangulate_with_outlier_rejection(
             # If we met the target accuracy at this current level (N-1, N-2, etc.)
             # we can stop here and avoid dropping even more cameras.
             if best_error < target_reprojection_error:
-                if enable_debug:
-                    print(f"Target accuracy met at N-{camera_drop_count}. Breaking search.")
                 break
 
         # Calculate the final weighted 3D point from all tested combinations
@@ -268,13 +218,6 @@ def triangulate_with_outlier_rejection(
                 normalized_camera_weights[best_camera_combo] = 1.0
             else:
                 normalized_camera_weights[:] = 1.0
-
-        if enable_debug:
-            print(
-                f"Best camera combo: {best_camera_combo} "
-                f"Best Mean error: {best_error:.4f} (norm units) "
-                f"Weighted p3d: {weighted_p3d}\n"
-            )
 
         # Return the weighted_p3d if the error was improved by at least one combination
         if best_error < default_mean_error:

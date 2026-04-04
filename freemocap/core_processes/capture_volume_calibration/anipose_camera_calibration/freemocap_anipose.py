@@ -123,15 +123,6 @@ def triangulate_with_outlier_rejection(
     # Initialize normalized camera weights for the valid cameras
     normalized_camera_weights = np.zeros(total_valid_cams)
 
-    # Get the total number of valid cameras (those with 2D points)
-    total_valid_cams = len(cam_mats)
-
-    # Create local indices (0, 1, 2, ... for the valid cameras)
-    local_indices = list(range(total_valid_cams))
-
-    # Initialize normalized camera weights for the valid cameras
-    normalized_camera_weights = np.zeros(total_valid_cams)
-
     # Calculate default triangulation with all the valid cameras
     default_p3d = triangulate_simple(subp, cam_mats)
 
@@ -153,6 +144,8 @@ def triangulate_with_outlier_rejection(
     # Set the final_p3d and best_error from the total camera triangulation 
     best_p3d = default_p3d
     best_error = default_mean_error
+    # Initialize best_camera_combo as the full set of valid cameras
+    best_camera_combo = local_indices
     
     # Initialize variables for weighted average of combinations (including the default one)
     default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
@@ -215,10 +208,7 @@ def triangulate_with_outlier_rejection(
         # Fallback for numerical underflow from extremely large errors
         weighted_p3d = best_p3d
         normalized_camera_weights[:] = 0.0
-        if 'best_camera_combo' in locals():
-            normalized_camera_weights[best_camera_combo] = 1.0
-        else:
-            normalized_camera_weights[:] = 1.0
+        normalized_camera_weights[best_camera_combo] = 1.0
 
     # Return the weighted_p3d if the error was improved by at least one combination
     if best_error < default_mean_error:

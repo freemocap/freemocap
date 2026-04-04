@@ -181,7 +181,8 @@ def run_both_and_compare(
     pyceres_result = CalibrationResult.load_anipose_toml(path=pyceres_toml)
 
     # Load saved observations for board reconstruction accuracy test
-    observations_json_path = recording_path / "charuco_observations.json"
+    observations_json_path = recording_path / "output_data"/"charuco_observations.json"
+    observations_json_path.parent.mkdir(parents=True, exist_ok=True)
     all_observations: list[CharucoCornersObservation] | None = None
     if observations_json_path.is_file():
         raw_list = json.loads(observations_json_path.read_text())

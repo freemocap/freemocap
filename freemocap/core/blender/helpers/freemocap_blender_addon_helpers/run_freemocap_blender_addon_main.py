@@ -4,12 +4,11 @@ import subprocess
 from pathlib import Path
 from typing import Union, List
 
-from freemocap.core.blender.export_to_blender.methods.freemocap_blender_addon_helpers.get_numpy_path import \
-    get_numpy_path
-from freemocap.core.blender.export_to_blender.methods.freemocap_blender_addon_helpers.install_addon.install_ajc_addon import \
+from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.get_numpy_path import get_numpy_path
+from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.install_addon.install_blender_addon import \
     install_freemocap_blender_addon
-from freemocap.core.blender.export_to_blender.methods.freemocap_blender_addon_helpers.run_simple import run_simple
-from freemocap.core.blender.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
+from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap_blender_addon.main import ajc27_run_as_main_function
 
 logger = logging.getLogger(__name__)

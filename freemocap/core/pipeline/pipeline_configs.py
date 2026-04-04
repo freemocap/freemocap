@@ -1,63 +1,68 @@
 """
 Pipeline configuration types.
 
-All detector/task configs live here. DetectorSpec is the picklable union
+All detector/task configs live here.
 used to tell child processes which detector to instantiate.
 """
 from enum import Enum
+from typing import Annotated, Any, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetectorConfig
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
+from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_annotator import LegacyMediapipeAnnotatorConfig
 from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
+from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector_config import LegacyMediapipeDetectorConfig
 from skellytracker.trackers.mediapipe_tracker.body.mediapipe_pose_config import MediapipePoseConfig
-from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
 
+from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
 
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
 
-# ---------------------------------------------------------------------------
-# Detector spec: the picklable union that video nodes use to create detectors
-# ---------------------------------------------------------------------------
-
-
-
-def create_detector_from_spec(spec: BaseDetectorConfig):
+# TODO - This should live in skellytracker
+def create_detector_from_config(detector_config: BaseDetectorConfig):
     """
-    Create a detector instance from a picklable spec.
+    Create a detector instance from a picklable config.
     Called inside child processes — detector class imports are deferred
     to avoid pulling in mediapipe/cv2.aruco during module import.
     """
 
-    match spec:
+    match detector_config:
         case CharucoDetectorConfig():
             from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
-            return CharucoDetector.create(config=spec)
+            return CharucoDetector.create(config=detector_config)
         case MediapipeDetectorConfig():
             from skellytracker.trackers.mediapipe_tracker import MediapipeDetector
-            return MediapipeDetector.create(config=spec)
+            return MediapipeDetector.create(config=detector_config)
+        case LegacyMediapipeDetectorConfig():
+            from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
+            return LegacyMediapipeDetector.create(config=detector_config)
         case _:
-            raise TypeError(f"Unknown detector spec type: {type(spec).__name__}")
+            raise TypeError(f"Unknown detector config type: {type(detector_config).__name__}")
 
 
-def create_annotator_from_spec(spec: BaseDetectorConfig):
+def create_annotator_from_config(config: BaseDetectorConfig):
     """
-    Create an image annotator matching the given detector spec.
+    Create an image annotator matching the given detector config.
     Called inside child processes for drawing detection results onto frames.
     """
-    from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, CharucoAnnotatorConfig
-    from skellytracker.trackers.mediapipe_tracker import MediapipeAnnotator, MediapipeAnnotatorConfig
 
-    match spec:
+    match config:
         case CharucoDetectorConfig():
+            from skellytracker.trackers.charuco_tracker.charuco_annotator import CharucoImageAnnotator, \
+                CharucoAnnotatorConfig
             return CharucoImageAnnotator.create(config=CharucoAnnotatorConfig())
         case MediapipeDetectorConfig():
+            from skellytracker.trackers.mediapipe_tracker import MediapipeAnnotator, MediapipeAnnotatorConfig
             return MediapipeAnnotator.create(config=MediapipeAnnotatorConfig())
+        case LegacyMediapipeDetectorConfig():
+            from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_annotator import LegacyMediapipeImageAnnotator, LegacyMediapipeAnnotatorConfig
+            return LegacyMediapipeImageAnnotator.create(config=LegacyMediapipeAnnotatorConfig())
         case _:
-            raise TypeError(f"Unknown detector spec type for annotator: {type(spec).__name__}")
+            raise TypeError(f"Unknown detector config type for annotator: {type(config).__name__}")
 
 
 # ---------------------------------------------------------------------------
@@ -112,26 +117,47 @@ class CalibrationPipelineConfig(BaseModel):
             square_length=self.charuco_square_length,
         )
 
-    @property
-    def detector_spec(self) -> DetectorSpec:
-        return self.detector_config
+
+
+def _detect_detector_config_type(data: Any) -> str:
+    """Inspect raw data to determine which detector config subclass to use."""
+    if isinstance(data, BaseDetectorConfig):
+        if isinstance(data, CharucoDetectorConfig):
+            return "charuco"
+        if isinstance(data, MediapipeDetectorConfig):
+            return "mediapipe"
+        return "legacy_mediapipe"
+    if isinstance(data, dict):
+        if "squares_x" in data or "aruco_dictionary_name" in data:
+            return "charuco"
+        if "pose_config" in data or "hand_config" in data or "face_config" in data:
+            return "mediapipe"
+    return "legacy_mediapipe"
+
+# TODO - move this to skellytracker
+DetectorConfig = Annotated[
+    Union[
+        Annotated[LegacyMediapipeDetectorConfig, Tag("legacy_mediapipe")],
+        Annotated[MediapipeDetectorConfig, Tag("mediapipe")],
+        Annotated[CharucoDetectorConfig, Tag("charuco")],
+    ],
+    Discriminator(_detect_detector_config_type),
+]
 
 
 class MocapPipelineConfig(BaseModel):
-    detector: MediapipeDetectorConfig
-    skeleton_filter: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
+    detector_config: DetectorConfig = Field(default_factory=LegacyMediapipeDetectorConfig)
+    realtime_filter_config: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
 
     @classmethod
     def default_realtime(cls) -> "MocapPipelineConfig":
-        return cls(detector=MediapipeDetectorConfig(
+        return cls(detector_config=MediapipeDetectorConfig(
             pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.LITE)
         ))
 
     @classmethod
     def default_posthoc(cls) -> "MocapPipelineConfig":
-        return cls(detector=MediapipeDetectorConfig(
-            pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.HEAVY)
-        ))
+        return cls(detector_config=LegacyMediapipeDetectorConfig())
 
 
 

@@ -1,7 +1,7 @@
 """
 VideoNode: reads frames from a video file, runs a detector, publishes observations.
 
-Generic video processing node parameterized by DetectorSpec — the same node
+Generic video processing node parameterized by BaseDetectorConfig — the same node
 handles charuco detection, mediapipe detection, or any future detector type.
 
 Optionally saves annotated video output. If an existing annotated video is found
@@ -19,7 +19,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
 
 from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_configs import  create_detector_from_spec, create_annotator_from_spec
+from freemocap.core.pipeline.pipeline_configs import  create_detector_from_config, create_annotator_from_config
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -41,7 +41,7 @@ class VideoNode(BaseNode):
         *,
         video_id: VideoIdString,
         video_path: Path,
-        detector_spec: BaseDetectorConfig,
+        detector_config: BaseDetectorConfig,
         worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
@@ -56,7 +56,7 @@ class VideoNode(BaseNode):
             kwargs=dict(
                 video_id=video_id,
                 video_path=video_path,
-                detector_spec=detector_spec,
+                detector_config=detector_config,
                 ipc=ipc,
                 video_output_pub=pubsub.get_publication_queue(
                     VideoNodeOutputTopic,
@@ -113,14 +113,14 @@ class VideoNode(BaseNode):
         *,
         video_id: VideoIdString,
         video_path: Path,
-        detector_spec: BaseDetectorConfig,
+        detector_config: BaseDetectorConfig,
         ipc: PipelineIPC,
         video_output_pub: TopicPublicationQueue,
         shutdown_self_flag: multiprocessing.Value,
         recording_path: Path,
         save_annotated_video: bool,
     ) -> None:
-        detector = create_detector_from_spec(detector_spec)
+        detector = create_detector_from_config(detector_config)
         video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
         if not video_reader.isOpened():
             raise RuntimeError(f"Failed to open video file: {video_path}")
@@ -132,7 +132,7 @@ class VideoNode(BaseNode):
         prev_annotated_path: Path | None = None
 
         if save_annotated_video:
-            annotator = create_annotator_from_spec(detector_spec)
+            annotator = create_annotator_from_config(detector_config)
             annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
                 recording_path=recording_path,
                 video_path=video_path,

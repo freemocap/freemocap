@@ -67,6 +67,7 @@ dev = [
     "pip-tools",
     "pytest>=8.4.0",
     "pytest-asyncio>=1.0.0",
+    "pytest-timeout>=2.0.0",
     "httpx>=0.28.0",
 #    "nuitka>=2.7.7",
     "pyinstaller>=6.15.0",
@@ -99,7 +100,7 @@ dev = [
 # at runtime (e.g. passed to a registry, used in a TypeAdapter, or checked
 # in a way ruff can't see), suppress it with a noqa comment on the import:
 #
-#   from freemocap.core.pipeline.pipeline_configs import DetectorSpec  # noqa: TC001
+#   from freemocap.core.pipeline.pipeline_configs import BaseDetectorConfig  # noqa: TC001
 #
 # The rule codes are:
 #   TC001 — stdlib import (e.g. pathlib.Path used in isinstance)
@@ -131,6 +132,7 @@ test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v
 test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
 test-e2e      = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
 test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
+test-calibration = { cmd = "pytest freemocap/tests/calibration/ -v -s --timeout=600", help = "Run calibration integration tests (requires --test-data-path or FREEMOCAP_TEST_DATA_PATH)" }
 test-all      = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
 [tool.poe.tasks.test-ui]

@@ -36,6 +36,7 @@ def get_default_freemocap_base_folder_path() -> str:
 def get_default_freemocap_recordings_path() -> str:
     return str(Path(get_default_freemocap_base_folder_path()) / "recordings")
 
+FREEMOCAP_TEST_DATA_PATH = str(Path(get_default_freemocap_recordings_path()) / "freemocap_test_data")
 
 def get_default_recording_folder_path(tag: str = "") -> str:
     return str(Path(get_default_freemocap_base_folder_path()) / "recordings" / default_recording_name(string_tag=tag))

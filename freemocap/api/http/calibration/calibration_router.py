@@ -8,6 +8,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig
+from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class CalibrationConfigResponse(BaseModel):
 
 
 class StartCalibrationRecordingRequest(BaseModel):
-    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
+    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory", default=FREEMOCAP_TEST_DATA_PATH)
     calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
@@ -47,8 +48,8 @@ class StopCalibrationRecordingRequest(BaseModel):
 
 
 class CalibrateRecordingRequest(BaseModel):
-    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
-    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
+    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory", default=FREEMOCAP_TEST_DATA_PATH) # TODO - this is redundant, should use the def in the task config (retaining 'use most recent calibration' as default/none)
+    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig", default=CalibrationPipelineConfig)
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.calibration_recording_directory).expanduser()
@@ -138,6 +139,13 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
     """Process and calibrate a previously recorded session."""
     app = get_freemocap_app()
     try:
+        if request.calibration_recording_directory is not None:
+            if request.calibration_config.calibration_recording_folder is not None:
+                if not Path(request.calibration_recording_directory) == Path(request.calibration_config.calibration_recording_folder):
+                    raise RuntimeError(f"Request recording folder does not match config:\n request.calibration_recording_directory: {request.calibration_recording_directory}, \n request.calibration_config.calibration_recording_folder: {request.calibration_config.calibration_recording_folder}")
+            else:
+                request.calibration_config.calibration_recording_directory = request.calibration_config.calibration_recording_folder
+                logger.info(f'Calibrating recording directory: {request.calibration_config.calibration_recording_directory}')
         recording_info = request.to_recording_info()
         await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,

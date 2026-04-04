@@ -220,7 +220,7 @@ class RealtimeAggregationNode(BaseNode):
             )
 
         # Initialize skeleton filter for 3D smoothing + bone length constraint
-        filter_config = config.mocap_config.skeleton_filter
+        filter_config = config.mocap_config.realtime_filter_config
         skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
 
         # Initialize velocity gate for rejecting teleportation spikes
@@ -245,7 +245,7 @@ class RealtimeAggregationNode(BaseNode):
                 while not pipeline_config_sub.empty():
                     msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
                     config = msg.pipeline_config
-                    filter_config = config.mocap_config.skeleton_filter
+                    filter_config = config.mocap_config.realtime_filter_config
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )

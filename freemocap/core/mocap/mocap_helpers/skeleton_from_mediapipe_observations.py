@@ -61,10 +61,6 @@ def skeleton_from_mediapipe_observation_recorders(
     # Triangulate
     raw_3d = triangulator.triangulate_dict(points_2d_by_camera=data2d_by_camera)
 
-    # Apply 180-degree rotation about X axis (freemocap convention: Y-down to Y-up)
-    rotation_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
-    raw_3d = raw_3d @ rotation_matrix.T
-
     n_frames = raw_3d.shape[0]
     raw_trajectory_3d = Trajectory3d(
         start_frame=0,

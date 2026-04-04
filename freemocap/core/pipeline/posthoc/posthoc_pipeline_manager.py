@@ -17,7 +17,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.calibration.calibration_task import run_calibration_task
-from freemocap.core.mocap.mocap_task import run_post_mocap_aggregation_task
+from freemocap.core.mocap.posthoc_mocap_task import run_post_mocap_aggregation_task
 from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig, MocapPipelineConfig
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.types.type_overloads import PipelineIdString
@@ -89,7 +89,7 @@ class PosthocPipelineManager:
         )
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
-            detector_spec=calibration_config.detector_spec,
+            detector_config=calibration_config.detector_config,
             aggregation_task_fn=calibration_aggregation_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
@@ -109,6 +109,7 @@ class PosthocPipelineManager:
         *,
         recording_info: RecordingInfo,
         mocap_config: MocapPipelineConfig,
+        start_pipeline: bool = True,
     ) -> PosthocPipeline:
         mocap_task_fn = functools.partial(
             run_post_mocap_aggregation_task,
@@ -116,12 +117,13 @@ class PosthocPipelineManager:
         )
         pipeline = PosthocPipeline.create(
             recording_info=recording_info,
-            detector_spec=mocap_config.detector,
+            detector_config=mocap_config.detector_config,
             aggregation_task_fn=mocap_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
         )
-        pipeline.start()
+        if start_pipeline:
+            pipeline.start()
         with self.lock:
             self._evict_dead()
             self.pipelines[pipeline.id] = pipeline

@@ -20,8 +20,7 @@ from typing import ClassVar
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-
-from freemocap.core.pipeline.pipeline_configs import DetectorSpec
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.posthoc_aggregation_node import PosthocAggregationNode, \
     PosthocAggregationNodeTaskFn
@@ -66,7 +65,7 @@ class PosthocPipeline:
         cls,
         *,
         recording_info: RecordingInfo,
-        detector_spec: DetectorSpec,
+        detector_config: BaseDetectorConfig,
         aggregation_task_fn: PosthocAggregationNodeTaskFn,
         worker_registry: WorkerRegistry,
         global_kill_flag: multiprocessing.Value,
@@ -77,7 +76,7 @@ class PosthocPipeline:
 
         Args:
             recording_info: Where to find the recorded videos.
-            detector_spec: Which detector to run on each video frame.
+            detector_config: Which detector to run on each video frame.
             aggregation_task_fn: The processing function (with task_config pre-bound via
                      functools.partial) to call after all frames are collected.
             worker_registry: For creating managed processes.
@@ -108,7 +107,7 @@ class PosthocPipeline:
             video_nodes[video_id] = VideoNode.create(
                 video_id=video_id,
                 video_path=video_helper.video_path,
-                detector_spec=detector_spec,
+                detector_config=detector_config,
                 worker_registry=worker_registry,
                 ipc=ipc,
                 pubsub=pubsub,

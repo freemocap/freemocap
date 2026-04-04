@@ -260,7 +260,7 @@ class TestMocapConfigUpdateEndpoint:
             test_client.post("/mocap/config/update/all", json={"config": payload})
 
         settings = mock_app.settings_manager.settings
-        assert settings.mocap.config.skeleton_filter.beta == 0.99
+        assert settings.mocap.config.realtime_filter_config.beta == 0.99
 
     def test_syncs_to_pipelines(
         self,

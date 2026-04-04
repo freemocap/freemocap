@@ -109,7 +109,7 @@ class RealtimeCameraNode(BaseNode):
             )
         if config.mocap_detection_enabled:
             mediapipe_detector = MediapipeDetector.create(
-                config=config.mocap_config.detector ,
+                config=config.mocap_config.detector_config ,
             )
 
         frame_rec_array: np.recarray | None = None
@@ -134,7 +134,7 @@ class RealtimeCameraNode(BaseNode):
 
                     if new_config.mocap_detection_enabled and mediapipe_detector is None:
                         mediapipe_detector = MediapipeDetector.create(
-                            config=new_config.mocap_config.detector,
+                            config=new_config.mocap_config.detector_config,
                         )
                     elif not new_config.mocap_detection_enabled:
                         mediapipe_detector = None

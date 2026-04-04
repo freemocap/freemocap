@@ -13,6 +13,8 @@ from pathlib import Path
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
+from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observation import LegacyMediapipeObservations, \
+    LegacyMediapipeObservation
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
@@ -30,8 +32,9 @@ def run_post_mocap_aggregation_task(
     frame_observations: list[dict[VideoIdString, BaseObservation]],
     recording_info: RecordingInfo,
     video_metadata: dict[VideoIdString, VideoMetadata],
-    report_progress: Callable[[str, float], None],
     task_config: MocapPipelineConfig,
+        report_progress: Callable[[str, float], None]|None =None,
+
 ) -> None:
     """
     Run posthoc motion capture on collected mediapipe observations.
@@ -46,7 +49,8 @@ def run_post_mocap_aggregation_task(
     video_ids = list(video_metadata.keys())
 
     # ---- Build observation recorders ----
-    report_progress("Building observation recorders", 0.1)
+    if report_progress is not None:
+        report_progress("Building observation recorders", 0.1)
 
     observation_recorders: dict[VideoIdString, BaseRecorder] = {
         vid_id: BaseRecorder() for vid_id in video_ids
@@ -54,7 +58,7 @@ def run_post_mocap_aggregation_task(
 
     for frame_idx, frame_obs in enumerate(frame_observations):
         for vid_id, obs in frame_obs.items():
-            if not isinstance(obs, MediapipeObservation):
+            if not isinstance(obs, MediapipeObservation) and not  isinstance(obs, LegacyMediapipeObservation):
                 raise TypeError(
                     f"Expected MediapipeObservation for video {vid_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"
@@ -70,7 +74,8 @@ def run_post_mocap_aggregation_task(
         )
 
     # ---- Run skeleton triangulation ----
-    report_progress("Triangulating skeleton", 0.3)
+    if report_progress is not None:
+        report_progress("Triangulating skeleton", 0.3)
     logger.info("Starting skeleton triangulation...")
 
     output_folder = Path(recording_info.full_recording_path) / "output_data"
@@ -80,8 +85,8 @@ def run_post_mocap_aggregation_task(
         path_to_calibration_toml=calibration_toml_path,
         path_to_output_data_folder=output_folder,
     )
-
-    report_progress("Mocap complete", 1.0)
+    if report_progress is not None:
+        report_progress("Mocap complete", 1.0)
     logger.info(
         f"Posthoc mocap complete! Output saved to {output_folder}"
     )

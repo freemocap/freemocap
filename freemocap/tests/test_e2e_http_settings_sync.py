@@ -172,7 +172,7 @@ class TestMocapConfigFullRoute:
                 "/freemocap/mocap/config/update/all",
                 json={"config": config},
             )
-        assert mock_app.settings_manager.settings.mocap.config.skeleton_filter.beta == 0.99
+        assert mock_app.settings_manager.settings.mocap.config.realtime_filter_config.beta == 0.99
 
 
 # ---------------------------------------------------------------------------

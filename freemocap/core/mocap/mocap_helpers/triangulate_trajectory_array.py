@@ -55,7 +55,7 @@ def triangulate_array(
         data2d_flat,
         mean=False,
     )
-    reprojection_error_flat = np.mean(reprojection_error_by_camera, axis=0)
+    reprojection_error_flat = np.mean(np.linalg.norm(reprojection_error_by_camera, axis=2), axis=0)
     reprojection_error = reprojection_error_flat.reshape(
         number_of_frames, number_of_tracked_points
     )

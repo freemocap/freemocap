@@ -8,6 +8,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.pipeline_configs import MocapPipelineConfig
+from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +48,8 @@ class StopMocapRecordingRequest(BaseModel):
 
 
 class ProcessMocapRecordingRequest(BaseModel):
-    mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
+    mocap_recording_directory: str = Field( default=FREEMOCAP_TEST_DATA_PATH)
+    mocap_config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig)
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.mocap_recording_directory).expanduser()

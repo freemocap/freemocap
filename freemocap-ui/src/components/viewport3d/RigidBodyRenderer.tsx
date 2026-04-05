@@ -5,6 +5,7 @@ import {
     CylinderGeometry,
     Object3D,
     Vector3,
+    Color,
 } from "three";
 import { useFrame } from "@react-three/fiber";
 import { useServer } from "@/services";

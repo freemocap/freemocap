@@ -54,6 +54,9 @@ class WebsocketServer:
         self.last_sent_frame_number: int = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
+        # Serializes all WebSocket send operations to prevent concurrent-send
+        # race conditions in the websockets legacy protocol (AssertionError in _drain_helper).
+        self._send_lock = asyncio.Lock()
 
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
@@ -66,7 +69,11 @@ class WebsocketServer:
         logger.debug("WebsocketRunner context manager exiting...")
         self._websocket_should_continue = False
         if self.websocket.client_state == WebSocketState.CONNECTED:
-            await self.websocket.close()
+            try:
+                await self.websocket.close()
+            except RuntimeError:
+                # Socket already closed by the client or a relay task
+                pass
         for task in self.ws_tasks:
             if not task.done():
                 task.cancel()
@@ -100,6 +107,7 @@ class WebsocketServer:
                     websocket=self.websocket,
                     settings_manager=self._settings_manager,
                     should_continue=lambda: self.should_continue,
+                    send_lock=self._send_lock,
                 ),
                 name="WebsocketSettingsStateRelay",
             ),
@@ -159,33 +167,38 @@ class WebsocketServer:
                                         f"Invalid payload bytes on frame {frame_number} - "
                                         f"got type {type(payload_bytes).__name__}"
                                     )
-                                await self.websocket.send_bytes(payload_bytes)
+                                async with self._send_lock:
+                                    await self.websocket.send_bytes(payload_bytes)
 
                             if frontend_payload and frontend_payload.charuco_overlays:
-                                await self.websocket.send_json({
-                                    camera_id: overlay_data.model_dump()
-                                    for camera_id, overlay_data in frontend_payload.charuco_overlays.items()
-                                })
+                                async with self._send_lock:
+                                    await self.websocket.send_json({
+                                        camera_id: overlay_data.model_dump()
+                                        for camera_id, overlay_data in frontend_payload.charuco_overlays.items()
+                                    })
 
                             if frontend_payload and frontend_payload.mediapipe_overlays:
-                                await self.websocket.send_json({
-                                    camera_id: overlay_data.model_dump()
-                                    for camera_id, overlay_data in frontend_payload.mediapipe_overlays.items()
-                                })
+                                async with self._send_lock:
+                                    await self.websocket.send_json({
+                                        camera_id: overlay_data.model_dump()
+                                        for camera_id, overlay_data in frontend_payload.mediapipe_overlays.items()
+                                    })
 
                             if frontend_payload and frontend_payload.tracked_points3d:
                                 points3d_dict = {
                                     point_name: tracked_point.model_dump()
                                     for point_name, tracked_point in frontend_payload.tracked_points3d.items()
                                 }
-                                await self.websocket.send_json({"tracked_points3d": points3d_dict})
+                                async with self._send_lock:
+                                    await self.websocket.send_json({"tracked_points3d": points3d_dict})
 
                             if frontend_payload and frontend_payload.rigid_body_poses:
                                 rigid_body_dict = {
                                     bone_key: pose.model_dump()
                                     for bone_key, pose in frontend_payload.rigid_body_poses.items()
                                 }
-                                await self.websocket.send_json({"rigid_body_poses": rigid_body_dict})
+                                async with self._send_lock:
+                                    await self.websocket.send_json({"rigid_body_poses": rigid_body_dict})
 
                             if frame_number is not None:
                                 self.last_sent_frame_number = frame_number
@@ -230,7 +243,8 @@ class WebsocketServer:
                         continue
                     if log_entry.get("levelno", 0) < ws_log_level:
                         continue
-                    await self.websocket.send_json(log_entry)
+                    async with self._send_lock:
+                        await self.websocket.send_json(log_entry)
                 else:
                     await await_10ms()
         except asyncio.CancelledError:
@@ -238,7 +252,10 @@ class WebsocketServer:
         except WebSocketDisconnect:
             logger.info("Client disconnected, ending log relay task...")
         except Exception as e:
-            logger.exception(f"Error in websocket log relay: {e.__class__}: {e}")
+            logger.exception(
+                f"Error in websocket log relay: {e.__class__.__name__}: {e or '(no message)'} "
+                f"— ws state: {self.websocket.client_state}"
+            )
             self._websocket_should_continue = False
             raise
 
@@ -281,7 +298,8 @@ class WebsocketServer:
                                 raise ValueError(f"Failed to decode JSON message: {e}") from e
                         else:
                             if text_content.startswith("ping"):
-                                await self.websocket.send_text("pong")
+                                async with self._send_lock:
+                                    await self.websocket.send_text("pong")
                             elif text_content.startswith("pong"):
                                 pass
                             else:

@@ -26,30 +26,11 @@ class CalibrationConfigResponse(BaseModel):
     success: bool
     message: str | None = None
 
-
-class StartCalibrationRecordingRequest(BaseModel):
-    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory", default=FREEMOCAP_TEST_DATA_PATH)
-    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
-
-    def to_recording_info(self) -> RecordingInfo:
-        recording_dir = Path(self.calibration_recording_directory).expanduser()
-        recording_name = recording_dir.stem
-        if not recording_name.endswith("_calibration"):
-            recording_name += "_calibration"
-        return RecordingInfo(
-            recording_directory=str(recording_dir.parent),
-            recording_name=recording_name,
-            mic_device_index=-1,
-        )
-
-
-class StopCalibrationRecordingRequest(BaseModel):
-    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
-
-
 class CalibrateRecordingRequest(BaseModel):
-    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory", default=FREEMOCAP_TEST_DATA_PATH) # TODO - this is redundant, should use the def in the task config (retaining 'use most recent calibration' as default/none)
-    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig", default=CalibrationPipelineConfig)
+    calibration_recording_directory: str = Field(alias="calibrationRecordingDirectory")
+    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig",
+                                                          default=CalibrationPipelineConfig)
+
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.calibration_recording_directory).expanduser()
@@ -58,6 +39,17 @@ class CalibrateRecordingRequest(BaseModel):
             recording_name=recording_dir.stem,
             mic_device_index=-1,
         )
+
+class StartCalibrationRecordingRequest(CalibrateRecordingRequest):
+    # StartCalibrationRecording needs same info as CalibrateRecording. Duplicating request for pattern
+    pass
+
+
+class StopCalibrationRecordingRequest(BaseModel):
+    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
+
+
+
 
 
 class StartCalibrationRecordingResponse(BaseModel):
@@ -139,13 +131,7 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
     """Process and calibrate a previously recorded session."""
     app = get_freemocap_app()
     try:
-        if request.calibration_recording_directory is not None:
-            if request.calibration_config.calibration_recording_folder is not None:
-                if not Path(request.calibration_recording_directory) == Path(request.calibration_config.calibration_recording_folder):
-                    raise RuntimeError(f"Request recording folder does not match config:\n request.calibration_recording_directory: {request.calibration_recording_directory}, \n request.calibration_config.calibration_recording_folder: {request.calibration_config.calibration_recording_folder}")
-            else:
-                request.calibration_config.calibration_recording_directory = request.calibration_config.calibration_recording_folder
-                logger.info(f'Calibrating recording directory: {request.calibration_config.calibration_recording_directory}')
+
         recording_info = request.to_recording_info()
         await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,

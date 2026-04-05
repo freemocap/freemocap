@@ -151,7 +151,7 @@ class FreemocapApplication:
             raise NotImplementedError(
                 "Stopping multiple recordings at once is not supported yet."
             )
-        return recording_infos[0]
+        return recording_infos[0][0]
 
     # ------------------------------------------------------------------
     # Frontend payloads

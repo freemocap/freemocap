@@ -7,7 +7,7 @@ import signal
 logger = logging.getLogger(__name__)
 
 
-async def main() -> None:
+async def main(force_preferred_port:bool=True) -> None:
     # Heavy imports are here (not at module level) so that multiprocessing
     # child processes don't re-import the entire app tree on Windows.
     # Windows uses the `spawn` start method, which re-executes this file
@@ -22,12 +22,17 @@ async def main() -> None:
     from freemocap.api.server_constants import (
         HOSTNAME,
         find_available_port,
+        PREFERRED_PORT,
         format_port_sentinel,
     )
     from freemocap.app.app import create_fastapi_app
 
-    port = find_available_port()
 
+    if force_preferred_port:
+        port = PREFERRED_PORT
+        kill_process_on_port(port=port)
+    else:
+        port = find_available_port()
     # Print the port sentinel to stdout so the Electron main process can discover it.
     # flush=True ensures it arrives immediately even when stdout is buffered.
     print(format_port_sentinel(port=port), flush=True)

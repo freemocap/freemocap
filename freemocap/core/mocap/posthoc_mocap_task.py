@@ -1,7 +1,6 @@
 """
 run_mocap_task: posthoc motion capture processing.
 
-Extracted from the old PosthocMocapAggregationNode._run().
 Receives collected mediapipe observations, builds skeleton via triangulation.
 
 Called by PosthocAggregationNode after all frames are collected.
@@ -17,6 +16,8 @@ from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observatio
     LegacyMediapipeObservation
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
+from freemocap.core.blender.export_to_blender import export_to_blender
+from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
@@ -28,12 +29,13 @@ logger = logging.getLogger(__name__)
 
 
 def run_post_mocap_aggregation_task(
-    *,
-    frame_observations: list[dict[VideoIdString, BaseObservation]],
-    recording_info: RecordingInfo,
-    video_metadata: dict[VideoIdString, VideoMetadata],
-    task_config: MocapPipelineConfig,
-        report_progress: Callable[[str, float], None]|None =None,
+        *,
+        frame_observations: list[dict[VideoIdString, BaseObservation]],
+        recording_info: RecordingInfo,
+        video_metadata: dict[VideoIdString, VideoMetadata],
+        task_config: MocapPipelineConfig,
+        create_blender_output: bool=True, #TODO - Add this to the mocap config, after we split the RT and PH pipeline
+        report_progress: Callable[[str, float], None] | None = None,
 
 ) -> None:
     """
@@ -58,7 +60,7 @@ def run_post_mocap_aggregation_task(
 
     for frame_idx, frame_obs in enumerate(frame_observations):
         for vid_id, obs in frame_obs.items():
-            if not isinstance(obs, MediapipeObservation) and not  isinstance(obs, LegacyMediapipeObservation):
+            if not isinstance(obs, MediapipeObservation) and not isinstance(obs, LegacyMediapipeObservation):
                 raise TypeError(
                     f"Expected MediapipeObservation for video {vid_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"
@@ -85,6 +87,11 @@ def run_post_mocap_aggregation_task(
         path_to_calibration_toml=calibration_toml_path,
         path_to_output_data_folder=output_folder,
     )
+    if create_blender_output:
+
+        export_to_blender(
+            recording_folder_path=str(recording_info.full_recording_path),
+        )
     if report_progress is not None:
         report_progress("Mocap complete", 1.0)
     logger.info(

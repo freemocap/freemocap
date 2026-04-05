@@ -7,6 +7,7 @@ import { CanvasManager } from "@/services/server/server-helpers/canvas-manager";
 import { serverUrls } from "@/services";
 import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore, LogRecord} from "@/services/server/server-helpers/log-store";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -20,6 +21,9 @@ interface ServerContextValue {
     getLogStore: () => LogStore;
     connectedCameraIds: string[];
     updateServerConnection: (host: string, port: number) => void;
+    subscribeToTrackedPoints: (cb: (points: Map<string, Point3d>) => void) => () => void;
+    subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
+    getLatestTrackedPoints: () => Map<string, Point3d>;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
@@ -81,6 +85,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
 
+    // 3D data refs and subscriber sets
+    const trackedPointsRef = useRef<Map<string, Point3d>>(new Map());
+    const rigidBodiesRef = useRef<Map<string, RigidBodyPose>>(new Map());
+    const trackedPointsSubscribersRef = useRef<Set<(points: Map<string, Point3d>) => void>>(new Set());
+    const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
+
     // Holds the latest binary payload received from the WebSocket.
     // The WebSocket onmessage handler writes here synchronously;
     // a separate rAF-driven processing loop reads and clears it.
@@ -137,6 +147,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 pendingPayloadRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
+                trackedPointsRef.current = new Map();
+                rigidBodiesRef.current = new Map();
                 setConnectedCameraIds([]);
             }
         };
@@ -239,6 +251,29 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
                         framerateStoreRef.current.updateFrontend(jsonData.frontend_framerate);
                     }
+                    // Handle tracked 3D points
+                    else if (jsonData.tracked_points3d && typeof jsonData.tracked_points3d === 'object') {
+                        const pointsMap = new Map<string, Point3d>();
+                        for (const [name, pt] of Object.entries(jsonData.tracked_points3d)) {
+                            const p = pt as { x: number; y: number; z: number };
+                            pointsMap.set(name, { x: p.x, y: p.y, z: p.z });
+                        }
+                        trackedPointsRef.current = pointsMap;
+                        for (const cb of trackedPointsSubscribersRef.current) {
+                            cb(pointsMap);
+                        }
+                    }
+                    // Handle rigid body poses
+                    else if (jsonData.rigid_body_poses && typeof jsonData.rigid_body_poses === 'object') {
+                        const posesMap = new Map<string, RigidBodyPose>();
+                        for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
+                            posesMap.set(key, pose as RigidBodyPose);
+                        }
+                        rigidBodiesRef.current = posesMap;
+                        for (const cb of rigidBodiesSubscribersRef.current) {
+                            cb(posesMap);
+                        }
+                    }
                     // Handle other message types (silently ignored to avoid
                     // retaining object references in the DevTools console)
                 } catch (error) {
@@ -296,6 +331,20 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         return logStoreRef.current;
     }, []);
 
+    const subscribeToTrackedPoints = useCallback((cb: (points: Map<string, Point3d>) => void): () => void => {
+        trackedPointsSubscribersRef.current.add(cb);
+        return () => { trackedPointsSubscribersRef.current.delete(cb); };
+    }, []);
+
+    const subscribeToRigidBodies = useCallback((cb: (poses: Map<string, RigidBodyPose>) => void): () => void => {
+        rigidBodiesSubscribersRef.current.add(cb);
+        return () => { rigidBodiesSubscribersRef.current.delete(cb); };
+    }, []);
+
+    const getLatestTrackedPoints = useCallback((): Map<string, Point3d> => {
+        return trackedPointsRef.current;
+    }, []);
+
     const updateServerConnection = useCallback((host: string, port: number): void => {
         // Update the singleton so HTTP endpoints also update
         serverUrls.setHost(host);
@@ -322,7 +371,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         getLogStore,
         connectedCameraIds,
         updateServerConnection,
-    }), [isConnected, connectedCameraIds, connect, disconnect, send, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection]);
+        subscribeToTrackedPoints,
+        subscribeToRigidBodies,
+        getLatestTrackedPoints,
+    }), [isConnected, connectedCameraIds, connect, disconnect, send, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToTrackedPoints, subscribeToRigidBodies, getLatestTrackedPoints]);
 
     return (
         <ServerContext.Provider value={contextValue}>

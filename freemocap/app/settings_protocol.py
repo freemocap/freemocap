@@ -22,6 +22,7 @@ async def settings_state_relay(
     websocket: WebSocket,
     settings_manager: SettingsManager,
     should_continue: Callable[[], bool],
+    send_lock: asyncio.Lock | None = None,
 ) -> None:
     """
     Push `settings/state` to the frontend whenever settings change.
@@ -31,9 +32,16 @@ async def settings_state_relay(
     """
     try:
         # Push initial state on connection
+        async def _send_json(msg: dict) -> None:
+            if send_lock is not None:
+                async with send_lock:
+                    await websocket.send_json(msg)
+            else:
+                await websocket.send_json(msg)
+
         if websocket.client_state == WebSocketState.CONNECTED:
             state_msg = settings_manager.get_state_message()
-            await websocket.send_json(state_msg)
+            await _send_json(state_msg)
             logger.info("Sent initial settings/state")
 
         # Push on every subsequent change
@@ -42,7 +50,7 @@ async def settings_state_relay(
             if websocket.client_state != WebSocketState.CONNECTED:
                 break
             state_msg = settings_manager.get_state_message()
-            await websocket.send_json(state_msg)
+            await _send_json(state_msg)
             logger.debug("Pushed settings/state")
 
     except asyncio.CancelledError:

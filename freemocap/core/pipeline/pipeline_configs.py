@@ -89,7 +89,7 @@ class CalibrationPipelineConfig(BaseModel):
     )
     charuco_board_x_squares: int = Field(gt=0, default=7, alias="charucoBoardXSquares")
     charuco_board_y_squares: int = Field(gt=0, default=5, alias="charucoBoardYSquares")
-    charuco_square_length: float = Field(gt=0, default=58, alias="charucoSquareLength")
+    # charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
 
     solver_method: CalibrationSolverMethod = Field(
         default=CalibrationSolverMethod.ANIPOSE,
@@ -114,7 +114,7 @@ class CalibrationPipelineConfig(BaseModel):
         return CharucoDetectorConfig(
             squares_x=self.charuco_board_x_squares,
             squares_y=self.charuco_board_y_squares,
-            square_length=self.charuco_square_length,
+            # square_length=self.charuco_square_length,
         )
 
 
@@ -146,8 +146,15 @@ DetectorConfig = Annotated[
 
 
 class MocapPipelineConfig(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     detector_config: DetectorConfig = Field(default_factory=LegacyMediapipeDetectorConfig)
     realtime_filter_config: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
+    calibration_toml_path: str | None = Field(
+        default=None,
+        alias="calibrationTomlPath",
+        description="Optional override for calibration TOML file. If None, uses the most recent successful calibration.",
+    )
 
     @classmethod
     def default_realtime(cls) -> "MocapPipelineConfig":

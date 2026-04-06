@@ -50,8 +50,8 @@ def _create_board(task_config: CalibrationPipelineConfig) -> CharucoBoardDefinit
     return CharucoBoardDefinition(
         squares_x=task_config.charuco_board_x_squares,
         squares_y=task_config.charuco_board_y_squares,
-        square_length_mm=task_config.charuco_square_length,
-        marker_length_mm=task_config.charuco_square_length * 0.8,
+        square_length_mm=task_config.detector_config.square_length,
+        marker_length_mm=task_config.detector_config.marker_length,
     )
 
 

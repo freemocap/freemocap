@@ -20,9 +20,15 @@ export const startMocapRecording = createAsyncThunk<
                 return rejectWithValue('Recording directory is not set');
             }
 
+            const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const configWithCalibration = {
+                ...mocapTaskConfig,
+                calibrationTomlPath: calibrationTomlPath,
+            };
+
             console.log('🎬 Starting mocap recording with:', {
                 mocapRecordingDirectory,
-                mocapTaskConfig,
+                mocapTaskConfig: configWithCalibration,
             });
 
             const response = await fetch(serverUrls.endpoints.mocapStartRecording, {
@@ -30,7 +36,7 @@ export const startMocapRecording = createAsyncThunk<
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     mocapRecordingDirectory,
-                    mocapTaskConfig,
+                    mocapTaskConfig: configWithCalibration,
                 }),
             });
 
@@ -62,13 +68,18 @@ export const stopMocapRecording = createAsyncThunk<
             const mocapTaskConfig = state.mocap.config;
 
 
-            console.log(`🎬 Stoping mocap recording and starting mocap with: ${JSON.stringify(mocapTaskConfig, null, 2)}`);
+            const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const configWithCalibration = {
+                ...mocapTaskConfig,
+                calibrationTomlPath: calibrationTomlPath,
+            };
 
+            console.log(`🎬 Stopping mocap recording and starting mocap with: ${JSON.stringify(configWithCalibration, null, 2)}`);
 
             const response = await fetch(serverUrls.endpoints.mocapStopRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({mocapTaskConfig}),
+                body: JSON.stringify({mocapTaskConfig: configWithCalibration}),
             });
 
             if (!response.ok) {
@@ -108,12 +119,18 @@ export const processMocapRecording = createAsyncThunk<
                 mocapTaskConfig,
             });
 
+            const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const configWithCalibration = {
+                ...mocapTaskConfig,
+                calibrationTomlPath: calibrationTomlPath,
+            };
+
             const response = await fetch(serverUrls.endpoints.processMocapRecording, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     mocapRecordingDirectory,
-                    mocapTaskConfig,
+                    mocapTaskConfig: configWithCalibration,
                 }),
             });
 

@@ -68,12 +68,21 @@ def run_post_mocap_aggregation_task(
             observation_recorders[vid_id].add_observation(observation=obs)
 
     # ---- Get calibration path ----
-    calibration_toml_path = get_last_successful_calibration_toml_path()
-    if calibration_toml_path is None:
-        raise RuntimeError(
-            "No calibration file found — cannot run mocap without calibration. "
-            "Run a calibration pipeline first."
-        )
+    if task_config.calibration_toml_path:
+        calibration_toml_path = Path(task_config.calibration_toml_path)
+        if not calibration_toml_path.exists():
+            raise RuntimeError(
+                f"Specified calibration TOML not found: {calibration_toml_path}"
+            )
+        logger.info(f"Using user-specified calibration TOML: {calibration_toml_path}")
+    else:
+        calibration_toml_path = get_last_successful_calibration_toml_path()
+        if calibration_toml_path is None:
+            raise RuntimeError(
+                "No calibration file found — cannot run mocap without calibration. "
+                "Run a calibration pipeline first."
+            )
+        logger.info(f"Using most recent calibration TOML: {calibration_toml_path}")
 
     # ---- Run skeleton triangulation ----
     if report_progress is not None:

@@ -5,6 +5,7 @@ import {
     Button,
     Checkbox,
     Chip,
+    CircularProgress,
     FormControl,
     FormControlLabel,
     IconButton,
@@ -24,10 +25,12 @@ import StopIcon from "@mui/icons-material/Stop";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import ClearIcon from "@mui/icons-material/Clear";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import InfoIcon from "@mui/icons-material/Info";
-import CloseIcon from "@mui/icons-material/Close";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CancelIcon from "@mui/icons-material/Cancel";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/calibration-control-panel/CalibrationSolverSection";
@@ -47,6 +50,7 @@ const BOARD_PRESETS: Record<Exclude<BoardPreset, "custom">, BoardPresetConfig> =
 export const CalibrationControlPanel: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const {api} = useElectronIPC();
 
     const {
@@ -166,6 +170,18 @@ export const CalibrationControlPanel: React.FC = () => {
         clearManualRecordingPath();
     }, [clearManualRecordingPath]);
 
+    /** Re-scan the calibration folder on demand */
+    const handleRefresh = useCallback(async (): Promise<void> => {
+        if (!calibrationRecordingPath) return;
+        setIsRefreshing(true);
+        try {
+            await validateDirectory(calibrationRecordingPath);
+        } finally {
+            // Give a brief visual pulse so it feels snappy even if validate is instant
+            setTimeout(() => setIsRefreshing(false), 400);
+        }
+    }, [calibrationRecordingPath, validateDirectory]);
+
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const pathHelperText = useMemo(() => {
@@ -173,7 +189,81 @@ export const CalibrationControlPanel: React.FC = () => {
         return "Using default recording directory";
     }, [isUsingManualPath]);
 
-    // Derive status for collapsed summary
+    // ─── Header status icon logic ──────────────────────────────────────────────
+    //   cyan  ✓  → TOML found / calibration loaded
+    //   yellow ⚠ → no path set, or directoryInfo not yet available
+    //   red    ✗ → path is set but no valid calibration TOML found there
+    const calibStatus: "ok" | "none" | "bad" = useMemo(() => {
+        if (directoryInfo?.cameraCalibrationTomlPath) return "ok";
+        if (!calibrationRecordingPath || !directoryInfo) return "none";
+        return "bad";
+    }, [directoryInfo, calibrationRecordingPath]);
+
+    const calibStatusIcon = useMemo(() => {
+        if (calibStatus === "ok") {
+            return (
+                <Tooltip title="Calibration file found ✓">
+                    <CheckCircleIcon
+                        fontSize="small"
+                        sx={{color: "#00e5ff" /* cyan */}}
+                    />
+                </Tooltip>
+            );
+        }
+        if (calibStatus === "bad") {
+            return (
+                <Tooltip title="No valid calibration file at this path">
+                    <CancelIcon
+                        fontSize="small"
+                        sx={{color: theme.palette.error.main}}
+                    />
+                </Tooltip>
+            );
+        }
+        return (
+            <Tooltip title="No calibration selected">
+                <WarningAmberIcon
+                    fontSize="small"
+                    sx={{color: theme.palette.warning.main}}
+                />
+            </Tooltip>
+        );
+    }, [calibStatus, theme]);
+
+    /** Refresh button — lives in the header row */
+    const refreshButton = (
+        <Tooltip title={calibrationRecordingPath ? "Re-check calibration folder" : "No path set"}>
+            <span>
+                <IconButton
+                    size="small"
+                    onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleRefresh();
+                    }}
+                    disabled={!calibrationRecordingPath || isLoading || isRefreshing}
+                    sx={{
+                        p: 0.5,
+                        color: "inherit",
+                        border: "1.5px solid rgba(255,255,255,0.25)",
+                        borderRadius: 1,
+                        "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
+                        "&.Mui-disabled": {
+                            color: "rgba(255,255,255,0.3)",
+                            borderColor: "rgba(255,255,255,0.1)",
+                        },
+                    }}
+                >
+                    {isRefreshing ? (
+                        <CircularProgress size={16} color="inherit" />
+                    ) : (
+                        <RefreshIcon fontSize="small" />
+                    )}
+                </IconButton>
+            </span>
+        </Tooltip>
+    );
+
+    // Derive status for collapsed summary chip
     const statusLabel = isRecording
         ? `Recording ${recordingProgress.toFixed(0)}%`
         : isLoading
@@ -190,53 +280,64 @@ export const CalibrationControlPanel: React.FC = () => {
                 ? theme.palette.success.main
                 : theme.palette.grey[600];
 
-    // Primary control: compact start/stop recording toggle in the header
-    const headerRecordButton = isRecording ? (
-        <Tooltip title="Stop calibration recording">
-            <IconButton
-                size="small"
-                onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    dispatchStopCalibrationRecording();
-                }}
-                disabled={isLoading}
-                sx={{
-                    color: theme.palette.error.light,
-                    border: `1.5px solid ${theme.palette.error.light}`,
-                    borderRadius: 1,
-                    p: 0.5,
-                    "&:hover": {backgroundColor: "rgba(244,67,54,0.15)"},
-                }}
-            >
-                <StopIcon fontSize="small" />
-            </IconButton>
-        </Tooltip>
-    ) : (
-        <Tooltip title={canStartRecording ? "Start calibration recording" : "Cannot record yet"}>
-            <span>
-                <IconButton
-                    size="small"
-                    onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        dispatchStartCalibrationRecording();
-                    }}
-                    disabled={!canStartRecording || isLoading}
-                    sx={{
-                        color: "inherit",
-                        border: "1.5px solid rgba(255,255,255,0.25)",
-                        borderRadius: 1,
-                        p: 0.5,
-                        "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
-                        "&.Mui-disabled": {
-                            color: "rgba(255,255,255,0.3)",
-                            borderColor: "rgba(255,255,255,0.1)",
-                        },
-                    }}
-                >
-                    <FiberManualRecordIcon fontSize="small" />
-                </IconButton>
-            </span>
-        </Tooltip>
+    // Primary control: compact start/stop recording toggle + refresh in the header
+    const headerControls = (
+        <Box sx={{display: "flex", alignItems: "center", gap: 0.75}}>
+            {/* calibration status icon — always visible */}
+            {calibStatusIcon}
+
+            {/* refresh */}
+            {refreshButton}
+
+            {/* record start/stop */}
+            {isRecording ? (
+                <Tooltip title="Stop calibration recording">
+                    <IconButton
+                        size="small"
+                        onClick={(e: React.MouseEvent) => {
+                            e.stopPropagation();
+                            dispatchStopCalibrationRecording();
+                        }}
+                        disabled={isLoading}
+                        sx={{
+                            color: theme.palette.error.light,
+                            border: `1.5px solid ${theme.palette.error.light}`,
+                            borderRadius: 1,
+                            p: 0.5,
+                            "&:hover": {backgroundColor: "rgba(244,67,54,0.15)"},
+                        }}
+                    >
+                        <StopIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            ) : (
+                <Tooltip title={canStartRecording ? "Start calibration recording" : "Cannot record yet"}>
+                    <span>
+                        <IconButton
+                            size="small"
+                            onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                dispatchStartCalibrationRecording();
+                            }}
+                            disabled={!canStartRecording || isLoading}
+                            sx={{
+                                color: "inherit",
+                                border: "1.5px solid rgba(255,255,255,0.25)",
+                                borderRadius: 1,
+                                p: 0.5,
+                                "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
+                                "&.Mui-disabled": {
+                                    color: "rgba(255,255,255,0.3)",
+                                    borderColor: "rgba(255,255,255,0.1)",
+                                },
+                            }}
+                        >
+                            <FiberManualRecordIcon fontSize="small" />
+                        </IconButton>
+                    </span>
+                </Tooltip>
+            )}
+        </Box>
     );
 
     return (
@@ -256,7 +357,7 @@ export const CalibrationControlPanel: React.FC = () => {
                     }}
                 />
             }
-            primaryControl={headerRecordButton}
+            primaryControl={headerControls}
             defaultExpanded={false}
         >
             <Box sx={{p: 2, bgcolor: "background.paper"}}>
@@ -337,6 +438,21 @@ export const CalibrationControlPanel: React.FC = () => {
                                             </IconButton>
                                         </Tooltip>
                                     )}
+                                    <Tooltip title="Re-check calibration folder">
+                                        <span>
+                                            <IconButton
+                                                onClick={handleRefresh}
+                                                edge="end"
+                                                size="small"
+                                                disabled={!calibrationRecordingPath || isLoading || isRefreshing}
+                                            >
+                                                {isRefreshing
+                                                    ? <CircularProgress size={18} color="inherit" />
+                                                    : <RefreshIcon fontSize="small" />
+                                                }
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
                                     <Tooltip title="Select directory">
                                         <IconButton
                                             onClick={handleSelectDirectory}
@@ -351,170 +467,18 @@ export const CalibrationControlPanel: React.FC = () => {
                     />
 
                     {/* Directory Status Info */}
-                    {directoryInfo && (
-                        <Box
-                            sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: `2px solid ${theme.palette.divider}`,
-                            }}
-                        >
-                            <Stack spacing={1}>
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
-                                    }}
-                                >
-                                    <InfoIcon fontSize="small" color="info" />
-                                    <Typography variant="caption" fontWeight="medium">
-                                        Calibration Folder Status
-                                    </Typography>
-                                </Box>
-
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        gap: 1,
-                                        flexWrap: "wrap",
-                                    }}
-                                >
-                                    <Chip
-                                        label={
-                                            directoryInfo.exists
-                                                ? "Directory exists"
-                                                : "Directory will be created"
-                                        }
-                                        size="small"
-                                        color={directoryInfo.exists ? "success" : "default"}
-                                        icon={
-                                            directoryInfo.exists ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={directoryInfo.exists ? "filled" : "outlined"}
-                                        sx={
-                                            !directoryInfo.exists
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has videos"
-                                        size="small"
-                                        color={directoryInfo.hasVideos ? "success" : "default"}
-                                        icon={
-                                            directoryInfo.hasVideos ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={directoryInfo.hasVideos ? "filled" : "outlined"}
-                                        sx={
-                                            !directoryInfo.hasVideos
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has synchronized_videos"
-                                        size="small"
-                                        color={
-                                            directoryInfo.hasSynchronizedVideos
-                                                ? "success"
-                                                : "default"
-                                        }
-                                        icon={
-                                            directoryInfo.hasSynchronizedVideos ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={
-                                            directoryInfo.hasSynchronizedVideos
-                                                ? "filled"
-                                                : "outlined"
-                                        }
-                                        sx={
-                                            !directoryInfo.hasSynchronizedVideos
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has calibration TOML"
-                                        size="small"
-                                        color={
-                                            directoryInfo.cameraCalibrationTomlPath
-                                                ? "success"
-                                                : "default"
-                                        }
-                                        icon={
-                                            directoryInfo.cameraCalibrationTomlPath ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={
-                                            directoryInfo.cameraCalibrationTomlPath
-                                                ? "filled"
-                                                : "outlined"
-                                        }
-                                        sx={
-                                            !directoryInfo.cameraCalibrationTomlPath
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                </Box>
-
-                                {directoryInfo.cameraCalibrationTomlPath && (
-                                    <Box sx={{mt: 1}}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Found calibration file:
-                                        </Typography>
-                                        <Typography
-                                            variant="caption"
-                                            sx={{
-                                                fontFamily: "monospace",
-                                                display: "block",
-                                                color: "success.main",
-                                                wordBreak: "break-all",
-                                            }}
-                                        >
-                                            {directoryInfo.cameraCalibrationTomlPath}
-                                        </Typography>
-                                    </Box>
-                                )}
-                            </Stack>
-                        </Box>
-                    )}
+                    <DirectoryStatusPanel
+                        title="Calibration Folder Status"
+                        tomlLabel="Has calibration TOML"
+                        directoryInfo={directoryInfo ? {
+                            ...directoryInfo,
+                            tomlPath: directoryInfo.cameraCalibrationTomlPath,
+                        } : null}
+                        status={calibStatus}
+                        onRefresh={handleRefresh}
+                        refreshDisabled={!calibrationRecordingPath || isLoading || isRefreshing}
+                        isRefreshing={isRefreshing}
+                    />
 
                     {/* Board Size Configuration */}
                     <Stack direction="row" spacing={2}>

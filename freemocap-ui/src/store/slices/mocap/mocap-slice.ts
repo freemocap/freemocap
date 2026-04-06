@@ -142,6 +142,8 @@ export interface MocapState {
     lastMocapRecordingPath: string | null;
     manualMocapRecordingPath: string | null;
     directoryInfo: MocapDirectoryInfo | null;
+    /** User-specified calibration TOML path override. null = use most recent (default). */
+    calibrationTomlPath: string | null;
 }
 
 // ==================== Initial State ====================
@@ -158,6 +160,7 @@ const initialState: MocapState = {
     lastMocapRecordingPath: null,
     manualMocapRecordingPath: null,
     directoryInfo: null,
+    calibrationTomlPath: null,
 };
 
 // ==================== Slice ====================
@@ -204,6 +207,14 @@ export const mocapSlice = createSlice({
 
         mocapDirectoryInfoUpdated: (state, action: PayloadAction<MocapDirectoryInfo>) => {
             state.directoryInfo = action.payload;
+        },
+
+        calibrationTomlPathChanged: (state, action: PayloadAction<string>) => {
+            state.calibrationTomlPath = action.payload;
+        },
+
+        calibrationTomlPathCleared: (state) => {
+            state.calibrationTomlPath = null;
         },
 
         resetMocapState: () => initialState,
@@ -274,6 +285,7 @@ export const selectMocapIsRecording = (state: RootState) => state.mocap.isRecord
 export const selectMocapProgress = (state: RootState) => state.mocap.recordingProgress;
 export const selectMocapError = (state: RootState) => state.mocap.error;
 export const selectMocapDirectoryInfo = (state: RootState) => state.mocap.directoryInfo;
+export const selectCalibrationTomlPath = (state: RootState) => state.mocap.calibrationTomlPath;
 
 export const selectMocapRecordingPath = createSelector(
     [
@@ -331,6 +343,8 @@ export const {
     manualMocapRecordingPathChanged,
     manualMocapRecordingPathCleared,
     mocapDirectoryInfoUpdated,
+    calibrationTomlPathChanged,
+    calibrationTomlPathCleared,
     resetMocapState
 } = mocapSlice.actions;
 

@@ -181,6 +181,18 @@ export const api = t.router({
                 return result.canceled ? null : result.filePaths[0];
             }),
 
+        selectTomlFile: t.procedure
+            .mutation(async () => {
+                const result = await dialog.showOpenDialog({
+                    properties: ['openFile'],
+                    filters: [
+                        { name: 'TOML Files', extensions: ['toml'] },
+                        { name: 'All Files', extensions: ['*'] },
+                    ],
+                });
+                return result.canceled ? null : result.filePaths[0];
+            }),
+
 
         validateCalibrationDirectory: t.procedure
             .input(z.object({ directoryPath: z.string() }))
@@ -245,8 +257,8 @@ export const api = t.router({
                 const result = {
                     exists: false,
                     canRecord: false,
-                    canProcess: false,
-                    cameraCalibrationTomlPath: null as string | null,
+                    canCalibrate: false,
+                    cameraMocapTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
                     errorMessage: null as string | null,
@@ -282,9 +294,9 @@ export const api = t.router({
 
                     const entries = fs.readdirSync(input.directoryPath);
                     result.canRecord = !result.hasVideos;
-                    result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+                    result.cameraMocapTomlPath = findCameraCalibrationToml(input.directoryPath);
 
-                    result.canProcess = result.hasVideos && result.cameraCalibrationTomlPath !== null;
+                    result.canCalibrate = result.hasVideos && result.cameraMocapTomlPath !== null;
 
                     return result;
 

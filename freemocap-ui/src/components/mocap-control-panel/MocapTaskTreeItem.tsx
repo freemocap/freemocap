@@ -1,9 +1,10 @@
-import React, {useCallback, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {
     Alert,
     Box,
     Button,
     Chip,
+    CircularProgress,
     IconButton,
     InputAdornment,
     Stack,
@@ -17,19 +18,24 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import ClearIcon from "@mui/icons-material/Clear";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import InfoIcon from "@mui/icons-material/Info";
-import CloseIcon from "@mui/icons-material/Close";
 import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import CancelIcon from "@mui/icons-material/Cancel";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useElectronIPC} from "@/services";
 import {MediapipeConfigPanel} from "@/components/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/mocap-control-panel/SkeletonFilterConfigPanel";
+import {useCalibration} from "@/hooks/useCalibration";
 
 export const MocapTaskTreeItem: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const {api, isElectron} = useElectronIPC();
 
     const {
@@ -47,8 +53,25 @@ export const MocapTaskTreeItem: React.FC = () => {
         setManualRecordingPath,
         clearManualRecordingPath,
         dispatchProcessMocapRecording,
+        validateDirectory,
+        calibrationTomlPath,
+        setCalibrationTomlPath,
+        clearCalibrationTomlPath,
         clearError,
     } = useMocap();
+
+    
+    // Get the most recent calibration recording path from calibration state
+    const {
+        calibrationRecordingPath: mostRecentCalibrationPath,
+        directoryInfo: calibrationDirectoryInfo,
+    } = useCalibration();
+
+    useEffect(() => {
+        if (mocapRecordingPath) {
+            validateDirectory(mocapRecordingPath);
+        }
+    }, [mocapRecordingPath, validateDirectory]);
 
     const handleClearError = useCallback((): void => {
         clearError();
@@ -96,6 +119,32 @@ export const MocapTaskTreeItem: React.FC = () => {
         clearManualRecordingPath();
     }, [clearManualRecordingPath]);
 
+    const handleRefresh = useCallback(async (): Promise<void> => {
+        if (!mocapRecordingPath) return;
+        setIsRefreshing(true);
+        try {
+            await validateDirectory(mocapRecordingPath);
+        } finally {
+            setTimeout(() => setIsRefreshing(false), 400);
+        }
+    }, [mocapRecordingPath, validateDirectory]);
+
+    const handleSelectCalibrationToml = async (): Promise<void> => {
+        if (!isElectron || !api) {
+            console.warn("Electron API not available");
+            return;
+        }
+        try {
+            const result: string | null = await api.fileSystem.selectTomlFile.mutate();
+            if (result) {
+                setCalibrationTomlPath(result);
+            }
+        } catch (err) {
+            console.error("Failed to select TOML file:", err);
+            setLocalError("Failed to select TOML file");
+        }
+    };
+
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const pathHelperText = useMemo(() => {
@@ -103,21 +152,98 @@ export const MocapTaskTreeItem: React.FC = () => {
         return "Using default recording directory";
     }, [isUsingManualPath]);
 
+    // ─── Effective calibration path (considers all sources) ────────────────────
+    const effectiveCalibrationTomlPath = useMemo(() => {
+        if (calibrationTomlPath) return calibrationTomlPath;
+        if (directoryInfo?.cameraMocapTomlPath) return directoryInfo.cameraMocapTomlPath;
+        if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return calibrationDirectoryInfo.cameraCalibrationTomlPath;
+        return null;
+    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath]);
+
+    // ─── Mocap status derivation ──────────────────────────────────────────────
+    const mocapStatus: "ok" | "none" | "bad" = useMemo(() => {
+        if (effectiveCalibrationTomlPath) return "ok";
+        if (!mocapRecordingPath || !directoryInfo) return "none";
+        return "bad";
+    }, [effectiveCalibrationTomlPath, mocapRecordingPath, directoryInfo]);
+
+    const mocapStatusIcon = useMemo(() => {
+        if (mocapStatus === "ok") {
+            return (
+                <Tooltip title="Calibration file found — ready to process">
+                    <CheckCircleIcon fontSize="small" sx={{color: "#00e5ff"}} />
+                </Tooltip>
+            );
+        }
+        if (mocapStatus === "bad") {
+            return (
+                <Tooltip title="No calibration file found at this path">
+                    <CancelIcon fontSize="small" sx={{color: theme.palette.error.main}} />
+                </Tooltip>
+            );
+        }
+        return (
+            <Tooltip title="No mocap directory selected">
+                <WarningAmberIcon fontSize="small" sx={{color: theme.palette.warning.main}} />
+            </Tooltip>
+        );
+    }, [mocapStatus, theme]);
+
+    const refreshButton = (
+        <Tooltip title={mocapRecordingPath ? "Re-check mocap folder" : "No path set"}>
+            <span>
+                <IconButton
+                    size="small"
+                    onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        handleRefresh();
+                    }}
+                    disabled={!mocapRecordingPath || isLoading || isRefreshing}
+                    sx={{
+                        p: 0.5,
+                        color: "inherit",
+                        border: "1.5px solid rgba(255,255,255,0.25)",
+                        borderRadius: 1,
+                        "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
+                        "&.Mui-disabled": {
+                            color: "rgba(255,255,255,0.3)",
+                            borderColor: "rgba(255,255,255,0.1)",
+                        },
+                    }}
+                >
+                    {isRefreshing ? (
+                        <CircularProgress size={16} color="inherit" />
+                    ) : (
+                        <RefreshIcon fontSize="small" />
+                    )}
+                </IconButton>
+            </span>
+        </Tooltip>
+    );
+
     // Derive status for collapsed summary
     const statusLabel = isRecording
         ? `Recording ${recordingProgress.toFixed(0)}%`
         : isLoading
             ? "Processing..."
-            : "Idle";
+            : effectiveCalibrationTomlPath
+                ? "Ready"
+                : "Idle";
 
     const statusColor = isRecording
         ? theme.palette.error.main
         : isLoading
             ? theme.palette.warning.main
-            : theme.palette.grey[600];
+            : effectiveCalibrationTomlPath
+                ? theme.palette.success.main
+                : theme.palette.grey[600];
 
-    // Primary control: compact start/stop recording toggle in the header
-    const headerRecordButton = isRecording ? (
+    // Primary controls: status icon + refresh + record start/stop
+    const headerControls = (
+        <Box sx={{display: "flex", alignItems: "center", gap: 0.75}}>
+            {mocapStatusIcon}
+            {refreshButton}
+            {isRecording ? (
         <Tooltip title="Stop mocap recording">
             <IconButton
                 size="small"
@@ -163,6 +289,8 @@ export const MocapTaskTreeItem: React.FC = () => {
                 </IconButton>
             </span>
         </Tooltip>
+    )}
+        </Box>
     );
 
     return (
@@ -182,7 +310,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                     }}
                 />
             }
-            primaryControl={headerRecordButton}
+            primaryControl={headerControls}
             defaultExpanded={false}
         >
             <Box sx={{p: 2, bgcolor: "background.paper"}}>
@@ -257,170 +385,71 @@ export const MocapTaskTreeItem: React.FC = () => {
                     />
 
                     {/* Directory Status Info */}
-                    {directoryInfo && (
-                        <Box
-                            sx={{
-                                p: 1.5,
-                                borderRadius: 1,
-                                border: `2px solid ${theme.palette.divider}`,
-                            }}
-                        >
-                            <Stack spacing={1}>
-                                <Box
+                    <DirectoryStatusPanel
+                        title="Mocap Folder Status"
+                        tomlLabel="Has calibration TOML"
+                        directoryInfo={directoryInfo ? {
+                            ...directoryInfo,
+                            tomlPath: directoryInfo.cameraMocapTomlPath,
+                        } : null}
+                        status={mocapStatus}
+                        onRefresh={handleRefresh}
+                        refreshDisabled={!mocapRecordingPath || isLoading || isRefreshing}
+                        isRefreshing={isRefreshing}
+                    />
+
+                    {/* Calibration TOML Override */}
+                    <Box sx={{p: 1.5, borderRadius: 1, border: `1px solid ${theme.palette.divider}`}}>
+                        <Stack spacing={1}>
+                            <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
+                                <InsertDriveFileIcon fontSize="small" color="info" />
+                                <Typography variant="caption" fontWeight="medium">
+                                    Calibration TOML
+                                </Typography>
+                            </Box>
+                            <Typography variant="caption" color="text.secondary">
+                                {calibrationTomlPath
+                                    ? "Using specified calibration file"
+                                    : effectiveCalibrationTomlPath
+                                        ? "Using auto-detected calibration"
+                                        : "No calibration file found"}
+                            </Typography>
+                            {effectiveCalibrationTomlPath && (
+                                <Typography
+                                    variant="caption"
                                     sx={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 1,
+                                        fontFamily: "monospace",
+                                        display: "block",
+                                        color: "success.main",
+                                        wordBreak: "break-all",
                                     }}
                                 >
-                                    <InfoIcon fontSize="small" color="info" />
-                                    <Typography variant="caption" fontWeight="medium">
-                                        Mocap Folder Status
-                                    </Typography>
-                                </Box>
-
-                                <Box
-                                    sx={{
-                                        display: "flex",
-                                        gap: 1,
-                                        flexWrap: "wrap",
-                                    }}
+                                    {effectiveCalibrationTomlPath}
+                                </Typography>
+                            )}
+                            <Stack direction="row" spacing={1}>
+                                <Button
+                                    variant={calibrationTomlPath ? "outlined" : "contained"}
+                                    size="small"
+                                    onClick={clearCalibrationTomlPath}
+                                    disabled={!calibrationTomlPath}
+                                    sx={{flex: 1}}
                                 >
-                                    <Chip
-                                        label={
-                                            directoryInfo.exists
-                                                ? "Directory exists"
-                                                : "Directory will be created"
-                                        }
-                                        size="small"
-                                        color={directoryInfo.exists ? "success" : "default"}
-                                        icon={
-                                            directoryInfo.exists ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={directoryInfo.exists ? "filled" : "outlined"}
-                                        sx={
-                                            !directoryInfo.exists
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has videos"
-                                        size="small"
-                                        color={directoryInfo.hasVideos ? "success" : "default"}
-                                        icon={
-                                            directoryInfo.hasVideos ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={directoryInfo.hasVideos ? "filled" : "outlined"}
-                                        sx={
-                                            !directoryInfo.hasVideos
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has synchronized_videos"
-                                        size="small"
-                                        color={
-                                            directoryInfo.hasSynchronizedVideos
-                                                ? "success"
-                                                : "default"
-                                        }
-                                        icon={
-                                            directoryInfo.hasSynchronizedVideos ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={
-                                            directoryInfo.hasSynchronizedVideos
-                                                ? "filled"
-                                                : "outlined"
-                                        }
-                                        sx={
-                                            !directoryInfo.hasSynchronizedVideos
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                    <Chip
-                                        label="Has calibration TOML"
-                                        size="small"
-                                        color={
-                                            directoryInfo.cameraMocapTomlPath
-                                                ? "success"
-                                                : "default"
-                                        }
-                                        icon={
-                                            directoryInfo.cameraMocapTomlPath ? (
-                                                <CheckCircleIcon />
-                                            ) : (
-                                                <CloseIcon />
-                                            )
-                                        }
-                                        variant={
-                                            directoryInfo.cameraMocapTomlPath
-                                                ? "filled"
-                                                : "outlined"
-                                        }
-                                        sx={
-                                            !directoryInfo.cameraMocapTomlPath
-                                                ? {
-                                                    borderColor: theme.palette.grey[400],
-                                                    "& .MuiChip-icon": {
-                                                        color: theme.palette.grey[600],
-                                                    },
-                                                }
-                                                : {}
-                                        }
-                                    />
-                                </Box>
-
-                                {directoryInfo.cameraMocapTomlPath && (
-                                    <Box sx={{mt: 1}}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Found calibration file:
-                                        </Typography>
-                                        <Typography
-                                            variant="caption"
-                                            sx={{
-                                                fontFamily: "monospace",
-                                                display: "block",
-                                                color: "success.main",
-                                                wordBreak: "break-all",
-                                            }}
-                                        >
-                                            {directoryInfo.cameraMocapTomlPath}
-                                        </Typography>
-                                    </Box>
-                                )}
+                                    Use Most Recent
+                                </Button>
+                                <Button
+                                    variant={calibrationTomlPath ? "contained" : "outlined"}
+                                    size="small"
+                                    startIcon={<InsertDriveFileIcon />}
+                                    onClick={handleSelectCalibrationToml}
+                                    disabled={!isElectron}
+                                    sx={{flex: 1}}
+                                >
+                                    Select TOML
+                                </Button>
                             </Stack>
-                        </Box>
-                    )}
+                        </Stack>
+                    </Box>
 
                     {/* Recording Progress */}
                     {isRecording && (

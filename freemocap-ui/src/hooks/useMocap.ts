@@ -12,6 +12,8 @@ import {
     mocapErrorCleared,
     manualMocapRecordingPathChanged,
     manualMocapRecordingPathCleared,
+    calibrationTomlPathChanged,
+    calibrationTomlPathCleared,
     selectMocap,
     selectMocapDetectorConfig,
     selectSkeletonFilterConfig,
@@ -20,6 +22,7 @@ import {
     selectCanProcessMocapRecording,
     selectCanStartMocapRecording,
     selectIsUsingManualMocapPath,
+    selectCalibrationTomlPath,
     startMocapRecording,
     stopMocapRecording,
     processMocapRecording,
@@ -37,6 +40,7 @@ export function useMocap() {
     const mocapRecordingPath = useAppSelector(selectMocapRecordingPath);
     const directoryInfo = useAppSelector(selectMocapDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualMocapPath);
+    const calibrationTomlPath = useAppSelector(selectCalibrationTomlPath);
 
     const updateDetectorConfig = useCallback(
         (updates: Partial<MediapipeDetectorConfig>) => {
@@ -111,6 +115,17 @@ export function useMocap() {
         dispatch(processMocapRecording());
     }, [dispatch]);
 
+    const setCalibrationTomlPath = useCallback(
+        (path: string) => {
+            dispatch(calibrationTomlPathChanged(path));
+        },
+        [dispatch]
+    );
+
+    const clearCalibrationTomlPath = useCallback(() => {
+        dispatch(calibrationTomlPathCleared());
+    }, [dispatch]);
+
     const clearError = useCallback(() => {
         dispatch(mocapErrorCleared());
     }, [dispatch]);
@@ -129,6 +144,7 @@ export function useMocap() {
         isUsingManualPath,
         canStartRecording,
         canProcessMocapRecording,
+        calibrationTomlPath,
         // Actions
         updateDetectorConfig,
         replaceDetectorConfig,
@@ -139,6 +155,9 @@ export function useMocap() {
         dispatchStartMocapRecording,
         dispatchStopMocapRecording,
         dispatchProcessMocapRecording,
+        validateDirectory,
+        setCalibrationTomlPath,
+        clearCalibrationTomlPath,
         clearError,
     };
 }

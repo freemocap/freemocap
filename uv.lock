@@ -588,7 +588,7 @@ dev = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2025.11.1038"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#2135986b4b9940d66cf6b8ceb80e681e2edb25a0" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#4429743282d867ee44e0ebb936041963dbf8a1de" }
 
 [[package]]
 name = "h11"
@@ -2109,7 +2109,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a1"
-source = { git = "https://github.com/freemocap/skellycam?branch=development#e9c8549f04f2ec169fa0cf60cf8550a0bfe01e9c" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development#a85ec9a048ed54eeac8cd5e46ad24ccf91f5c65f" }
 dependencies = [
     { name = "av" },
     { name = "cv2-enumerate-cameras" },
@@ -2137,7 +2137,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development#ceba100d3af8cae6279eeca1ebd8c382873cd3c3" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development#9ebbe890d69674b1ed54d92928d7bc3d3509de80" }
 dependencies = [
     { name = "numpy" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14'" },

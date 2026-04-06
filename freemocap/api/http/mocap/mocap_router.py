@@ -3,11 +3,11 @@ from copy import deepcopy
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.pipeline_configs import MocapPipelineConfig
+from freemocap.core.pipeline.pipeline_configs import CalibrationSource, MocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -47,9 +47,23 @@ class StopMocapRecordingRequest(BaseModel):
     mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
 
 
+def _process_mocap_request_schema_extra(schema: dict) -> None:
+    schema["examples"] = [ProcessMocapRecordingRequest.create_test_data_request().model_dump()]
+
+
 class ProcessMocapRecordingRequest(BaseModel):
-    mocap_recording_directory: str = Field( default=FREEMOCAP_TEST_DATA_PATH)
+    model_config = ConfigDict(json_schema_extra=_process_mocap_request_schema_extra)
+    mocap_recording_directory: str = Field(default=FREEMOCAP_TEST_DATA_PATH)
     mocap_config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig)
+
+    @classmethod
+    def create_test_data_request(cls) -> "ProcessMocapRecordingRequest":
+        config = MocapPipelineConfig()
+        config.calibration_source = CalibrationSource.MOST_RECENT
+        return cls(
+            mocap_recording_directory=FREEMOCAP_TEST_DATA_PATH,
+            mocap_config=config,
+        )
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.mocap_recording_directory).expanduser()

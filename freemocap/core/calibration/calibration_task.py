@@ -25,6 +25,7 @@ from freemocap.core.calibration.anipose_calibration.run_anipose_calibration impo
 from freemocap.core.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
 from freemocap.core.calibration.shared.calibration_models import CharucoBoardDefinition, CharucoCornersObservation, \
     CornerObservation, CalibrationResult
+from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.calibration.shared.calibration_save import save_calibration_copies
 from freemocap.utilities.toml_mixin import numpy_to_python
@@ -122,12 +123,15 @@ def _save_result(
     result: CalibrationResult,
     recording_info: RecordingInfo,
     solver_method: str,
+    ground_plane: GroundPlaneResult | None = None,
 ) -> Path:
     """Save CalibrationResult to all standard locations via anipose-compatible TOML."""
-    metadata = {
+    metadata: dict = {
         "solver_method": solver_method,
         "recording_info": recording_info.model_dump(),
     }
+    if ground_plane is not None:
+        metadata.update(groundplane_metadata(ground_plane, recording_info.recording_name))
 
     recording_toml = save_calibration_copies(
         save_fn=lambda path: result.dump_anipose_toml(path=path, metadata=metadata),
@@ -149,7 +153,7 @@ def _run_pyceres_path(
     board: CharucoBoardDefinition,
     task_config: CalibrationPipelineConfig,
     video_metadata: dict[VideoIdString, VideoMetadata],
-) -> CalibrationResult:
+) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the pyceres bundle adjustment solver."""
     if len(all_observations) == 0:
         raise ValueError("No valid charuco observations found")
@@ -160,7 +164,7 @@ def _run_pyceres_path(
         for vid_id, vm in video_metadata.items()
     }
 
-    result = run_pyceres_calibration(
+    result, ground_plane = run_pyceres_calibration(
         board=board,
         all_observations=all_observations,
         image_sizes=image_sizes,
@@ -174,7 +178,7 @@ def _run_pyceres_path(
         f"reprojection error: {result.reprojection_error_px:.4f}px, "
         f"time: {result.time_seconds:.2f}s"
     )
-    return result
+    return result, ground_plane
 
 
 # =============================================================================
@@ -189,23 +193,24 @@ def _run_anipose_path(
     task_config: CalibrationPipelineConfig,
     recording_info: RecordingInfo,
     video_metadata: dict[VideoIdString, VideoMetadata],
-) -> CalibrationResult:
+) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the legacy anipose solver."""
     logger.info("Starting anipose calibration...")
 
-    result = run_anipose_calibration(
+    result, ground_plane = run_anipose_calibration(
         charuco_observations_by_frame=charuco_observations_by_frame,
         board=board,
         calibration_pipeline_config=task_config,
         recording_info=recording_info,
         video_metadata=video_metadata,
+        use_charuco_as_groundplane=task_config.use_groundplane,
     )
 
     logger.info(
         f"Anipose calibration complete — "
         f"reprojection error: {result.reprojection_error_px:.4f}px"
     )
-    return result
+    return result, ground_plane
 
 
 # =============================================================================
@@ -261,9 +266,10 @@ def run_calibration_task(
     # ---- Route to solver ----
     logger.info(f"Using calibration solver: {task_config.solver_method.value}")
 
+    ground_plane: GroundPlaneResult | None = None
     match task_config.solver_method:
         case CalibrationSolverMethod.ANIPOSE:
-            result = _run_anipose_path(
+            result, ground_plane = _run_anipose_path(
                 charuco_observations_by_frame=charuco_observations_by_frame,
                 board=board,
                 task_config=task_config,
@@ -271,7 +277,7 @@ def run_calibration_task(
                 video_metadata=video_metadata,
             )
         case CalibrationSolverMethod.PYCERES:
-            result = _run_pyceres_path(
+            result, ground_plane = _run_pyceres_path(
                 all_observations=all_observations,
                 board=board,
                 task_config=task_config,
@@ -285,6 +291,7 @@ def run_calibration_task(
         result=result,
         recording_info=recording_info,
         solver_method=task_config.solver_method.value,
+        ground_plane=ground_plane,
     )
 
     # ---- Log calibration health (including board reconstruction accuracy) ----

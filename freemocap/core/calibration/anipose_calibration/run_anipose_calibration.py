@@ -19,6 +19,7 @@ from freemocap.core.calibration.anipose_calibration.helpers.calibration_helpers 
     set_charuco_board_as_groundplane, get_real_world_matrices
 from freemocap.core.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCamera, AniposeCameraGroup
 from freemocap.core.calibration.shared.calibration_models import CharucoBoardDefinition, CalibrationResult
+from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.calibration.shared.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
@@ -39,7 +40,7 @@ def run_anipose_calibration(
     init_intrinsics: bool = True,
     init_extrinsics: bool = True,
     verbose: bool = True,
-) -> CalibrationResult:
+) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run anipose calibration from charuco observations.
 
     Returns a CalibrationResult with optimized camera models.
@@ -98,6 +99,7 @@ def run_anipose_calibration(
         logger.info("Pinned camera 0 to origin")
 
     # Ground plane correction
+    ground_plane_result: GroundPlaneResult | None = None
     if use_charuco_as_groundplane:
         observation_recorders_by_video: dict[VideoIdString, BaseRecorder] = {
             video_id: BaseRecorder() for video_id in charuco_observations_by_frame[0].keys()
@@ -112,7 +114,7 @@ def run_anipose_calibration(
             for video_id, recorder in observation_recorders_by_video.items():
                 recorder.add_observation(observation=charuco_observations_by_camera[video_id])
 
-        anipose_camera_group, groundplane_success = set_charuco_board_as_groundplane(
+        anipose_camera_group, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane(
             observation_recorders=observation_recorders_by_video,
             anipose_camera_group=anipose_camera_group,
             anipose_charuco_board=anipose_charuco_board,
@@ -132,7 +134,7 @@ def run_anipose_calibration(
 
     elapsed = time.monotonic() - t_start
 
-    return CalibrationResult(
+    result = CalibrationResult(
         cameras=camera_models,
         board=board,
         reprojection_error_px=float(error),
@@ -143,3 +145,4 @@ def run_anipose_calibration(
         n_observations_used=len(charuco_frame_numbers) * len(camera_models),
         n_observations_rejected=0,
     )
+    return result, ground_plane_result

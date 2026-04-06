@@ -12,6 +12,7 @@ from scipy.spatial.transform import Rotation
 
 from freemocap.core.calibration.shared.calibration_models import CameraModel, CameraExtrinsics, \
     CharucoCornersObservation, CharucoBoardDefinition
+from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult, apply_groundplane_to_cameras
 from freemocap.core.calibration.shared.groundplane_math import find_still_charuco_frame, compute_board_basis_vectors
 
 logger = logging.getLogger(__name__)
@@ -156,12 +157,68 @@ def _triangulate_charuco_corners(
     return result
 
 
+def estimate_charuco_groundplane(
+    *,
+    cameras: list[CameraModel],
+    board: CharucoBoardDefinition,
+    all_observations: list[CharucoCornersObservation],
+) -> GroundPlaneResult:
+    """Estimate the ground plane from charuco board observations.
+
+    Triangulates charuco corners, finds a stationary frame, and computes
+    orthonormal basis vectors from the board corners.
+
+    Args:
+        cameras: Calibrated camera models.
+        board: Board definition.
+        all_observations: All frame observations for triangulation.
+
+    Returns:
+        GroundPlaneResult with origin at board corner 0 and basis from board edges.
+    """
+    logger.info("Estimating ground plane from charuco board...")
+
+    charuco_3d = _triangulate_charuco_corners(
+        cameras=cameras,
+        all_observations=all_observations,
+        board=board,
+    )
+
+    still_frame_idx = find_still_charuco_frame(
+        charuco_3d=charuco_3d,
+        squares_x=board.squares_x,
+        squares_y=board.squares_y,
+    )
+    logger.info(f"Using frame {still_frame_idx} for ground plane alignment")
+
+    frame_corners = charuco_3d[still_frame_idx]
+
+    origin = frame_corners[0]
+    if np.isnan(origin).any():
+        raise RuntimeError(
+            "Origin charuco corner contains NaN in the selected frame. "
+            "Cannot establish ground plane."
+        )
+
+    x_hat, y_hat, z_hat = compute_board_basis_vectors(
+        charuco_frame=frame_corners,
+        squares_x=board.squares_x,
+        squares_y=board.squares_y,
+    )
+
+    return GroundPlaneResult(
+        origin=origin,
+        rotation_matrix=np.column_stack([x_hat, y_hat, z_hat]),
+        method="charuco",
+    )
+
+
 def align_to_charuco_groundplane(
     *,
     cameras: list[CameraModel],
     board: CharucoBoardDefinition,
     all_observations: list[CharucoCornersObservation],
-) -> list[CameraModel]:
+) -> tuple[list[CameraModel], GroundPlaneResult]:
     """Transform the world frame so the charuco board defines the ground plane.
 
     The charuco board's origin corner becomes the world origin, its X edge
@@ -173,75 +230,11 @@ def align_to_charuco_groundplane(
         all_observations: All frame observations for triangulation.
 
     Returns:
-        Camera models with extrinsics adjusted to the new world frame.
+        Tuple of (camera models with adjusted extrinsics, ground plane result).
     """
-    logger.info("Aligning world frame to charuco ground plane...")
-
-    # Triangulate all charuco corners
-    charuco_3d = _triangulate_charuco_corners(
+    ground_plane = estimate_charuco_groundplane(
         cameras=cameras,
-        all_observations=all_observations,
         board=board,
+        all_observations=all_observations,
     )
-
-    # Find a stationary frame
-    still_frame_idx = find_still_charuco_frame(
-        charuco_3d=charuco_3d,
-        squares_x=board.squares_x,
-        squares_y=board.squares_y,
-    )
-    logger.info(f"Using frame {still_frame_idx} for ground plane alignment")
-
-    frame_corners = charuco_3d[still_frame_idx]
-
-    # Validate key corners are visible
-    origin = frame_corners[0]
-    if np.isnan(origin).any():
-        raise RuntimeError(
-            "Origin charuco corner contains NaN in the selected frame. "
-            "Cannot establish ground plane."
-        )
-
-    # Compute orthonormal basis from the board corners
-    x_hat, y_hat, z_hat = compute_board_basis_vectors(
-        charuco_frame=frame_corners,
-        squares_x=board.squares_x,
-        squares_y=board.squares_y,
-    )
-
-    # Rotation from charuco frame to current world frame
-    R_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat])
-
-    # Transform all cameras: new extrinsics map from "charuco world" to camera
-    result: list[CameraModel] = []
-    for cam in cameras:
-        R_cam = cam.extrinsics.rotation_matrix
-        t_cam = cam.extrinsics.translation
-
-        # Shift origin, then rotate
-        t_delta = R_cam @ origin
-        t_new = t_cam + t_delta
-
-        # Compose with charuco-to-world rotation
-        R_new = R_cam @ R_charuco_to_world
-
-        quat_xyzw = Rotation.from_matrix(R_new).as_quat()
-        quat_wxyz = np.array(
-            [quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]],
-            dtype=np.float64,
-        )
-
-        result.append(
-            CameraModel(
-                name=cam.name,
-                image_size=cam.image_size,
-                intrinsics=cam.intrinsics,
-                extrinsics=CameraExtrinsics(
-                    quaternion_wxyz=quat_wxyz,
-                    translation=t_new,
-                ),
-            )
-        )
-
-    logger.info("Ground plane alignment complete")
-    return result
+    return apply_groundplane_to_cameras(cameras, ground_plane), ground_plane

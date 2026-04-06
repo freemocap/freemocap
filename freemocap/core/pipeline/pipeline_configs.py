@@ -76,6 +76,13 @@ class CalibrationSolverMethod(str, Enum):
     PYCERES = "pyceres"
 
 
+class CalibrationSource(str, Enum):
+    """How to select the calibration TOML for a mocap pipeline run."""
+    MOST_RECENT = "most_recent"
+    SPECIFIED = "specified"
+    # FROM_ACTIVE_RECORDING = "from_active_recording"  # NotImplemented
+
+
 # ---------------------------------------------------------------------------
 # Task configs
 # ---------------------------------------------------------------------------
@@ -87,9 +94,9 @@ class CalibrationPipelineConfig(BaseModel):
     calibration_recording_folder: str | None = Field(
         default=None, alias="calibrationRecordingFolder",
     )
-    charuco_board_x_squares: int = Field(gt=0, default=7, alias="charucoBoardXSquares")
-    charuco_board_y_squares: int = Field(gt=0, default=5, alias="charucoBoardYSquares")
-    # charuco_square_length: float = Field(gt=0, default=1, alias="charucoSquareLength")
+    charuco_board_x_squares: int = Field(gt=0, default=5, alias="charucoBoardXSquares")
+    charuco_board_y_squares: int = Field(gt=0, default=3, alias="charucoBoardYSquares")
+    charuco_square_length: float = Field(gt=0, default=54, alias="charucoSquareLength", description="Length of one side of a black square on teh charuco board, default unit: mm")
 
     solver_method: CalibrationSolverMethod = Field(
         default=CalibrationSolverMethod.ANIPOSE,
@@ -150,10 +157,25 @@ class MocapPipelineConfig(BaseModel):
 
     detector_config: DetectorConfig = Field(default_factory=LegacyMediapipeDetectorConfig)
     realtime_filter_config: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
+    calibration_source: CalibrationSource = Field(
+        default=CalibrationSource.MOST_RECENT,
+        alias="calibrationSource",
+        description="How to select the calibration: 'most_recent' uses the latest successful calibration, 'specified' uses calibration_toml_path.",
+    )
     calibration_toml_path: str | None = Field(
         default=None,
         alias="calibrationTomlPath",
-        description="Optional override for calibration TOML file. If None, uses the most recent successful calibration.",
+        description="Path to calibration TOML. Only used when calibration_source is 'specified'.",
+    )
+    update_camera_positions_from_feet: bool = Field(
+        default=True,
+        alias="updateCameraPositionsFromFeet",
+        description="If no groundplane was applied during calibration, estimate ground plane from foot markers and update camera extrinsics in the calibration TOML.",
+    )
+    force_reestimate_groundplane: bool = Field(
+        default=False,
+        alias="forceReestimateGroundplane",
+        description="Re-estimate groundplane even if one was already applied during calibration.",
     )
 
     @classmethod

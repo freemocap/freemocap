@@ -100,6 +100,8 @@ class VideoNode(BaseNode):
             existing_base_path = output_path.with_suffix(
                 f".prev{output_path.suffix}"
             )
+            if existing_base_path.exists():
+                existing_base_path.unlink()
             output_path.rename(existing_base_path)
             logger.info(
                 f"Found existing annotated video for {video_path.stem}, "
@@ -142,9 +144,11 @@ class VideoNode(BaseNode):
             if prev_annotated_path is not None:
                 base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
                 if not base_reader.isOpened():
-                    raise RuntimeError(
-                        f"Failed to open previous annotated video: {prev_annotated_path}"
+                    logger.warning(
+                        f"Failed to open previous annotated video for {video_path.stem} — "
+                        f"will annotate from source frames instead"
                     )
+                    base_reader = None
 
             # Create video writer matching source video properties
             fps = video_reader.get(cv2.CAP_PROP_FPS)
@@ -185,11 +189,15 @@ class VideoNode(BaseNode):
                     if base_reader is not None:
                         base_ok, base_frame = base_reader.read()
                         if not base_ok or base_frame is None:
-                            raise RuntimeError(
+                            logger.warning(
                                 f"Previous annotated video ran out of frames at frame {frame_number} "
-                                f"for {video_path.stem} — frame count mismatch with source video"
+                                f"for {video_path.stem} — falling back to source frames"
                             )
-                        annotation_base = base_frame
+                            base_reader.release()
+                            base_reader = None
+                            annotation_base = image
+                        else:
+                            annotation_base = base_frame
                     else:
                         annotation_base = image
 

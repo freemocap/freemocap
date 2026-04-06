@@ -16,6 +16,7 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCameraGroup, \
     AniposeCharucoBoard
+from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.calibration.shared.groundplane_math import find_still_charuco_frame, CharucoVisibilityError, \
     CharucoVelocityError, compute_board_basis_vectors
 from freemocap.core.types.type_overloads import VideoIdString
@@ -110,7 +111,7 @@ def set_charuco_board_as_groundplane(
     anipose_camera_group: AniposeCameraGroup,
     anipose_charuco_board: AniposeCharucoBoard,
     recording_folder_path: "Path | None" = None,
-) -> tuple[AniposeCameraGroup, GroundPlaneSuccess]:
+) -> tuple[AniposeCameraGroup, GroundPlaneSuccess, GroundPlaneResult | None]:
     """Set the charuco board plane as the world groundplane."""
     logger.info("Getting 2D Charuco data")
     data2d_by_video: dict[VideoIdString, np.ndarray] = {}
@@ -147,10 +148,10 @@ def set_charuco_board_as_groundplane(
         )
     except CharucoVisibilityError as e:
         logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e))
+        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e)), None
     except CharucoVelocityError as e:
         logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e))
+        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e)), None
 
     charuco_frame = charuco_3d_xyz_interpolated[charuco_still_frame_idx]
 
@@ -162,6 +163,12 @@ def set_charuco_board_as_groundplane(
 
     charuco_origin_in_world = charuco_frame[0]
     rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat])
+
+    ground_plane_result = GroundPlaneResult(
+        origin=charuco_origin_in_world,
+        rotation_matrix=rmat_charuco_to_world,
+        method="charuco",
+    )
 
     rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco(
         camera_group=anipose_camera_group,
@@ -185,7 +192,7 @@ def set_charuco_board_as_groundplane(
         np.save(charuco_save_path, charuco_3d_xyz_interpolated)
         logger.info(f"Charuco 3d data saved to {charuco_save_path}")
 
-    return anipose_camera_group, GroundPlaneSuccess(success=True)
+    return anipose_camera_group, GroundPlaneSuccess(success=True), ground_plane_result
 
 
 def _adjust_world_reference_frame_to_charuco(

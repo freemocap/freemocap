@@ -17,6 +17,7 @@ from freemocap.core.calibration.pyceres_calibration.helpers.initialization impor
 from freemocap.core.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
 from freemocap.core.calibration.pyceres_calibration.helpers.postprocessing import pin_camera_to_origin, \
     align_to_charuco_groundplane
+from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.calibration.pyceres_calibration.helpers.solver import run_pyceres_bundle_adjustment
 from freemocap.core.calibration.shared.calibration_models import CharucoBoardDefinition, CharucoCornersObservation, \
     CalibrationResult, CameraModel
@@ -32,7 +33,7 @@ def run_pyceres_calibration(
     camera_names: list[str],
     config: PyceresCalibrationSolverConfig,
     use_groundplane: bool = False,
-) -> CalibrationResult:
+) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run the complete camera calibration pipeline.
 
     Args:
@@ -164,9 +165,10 @@ def run_pyceres_calibration(
             camera_index=0,
         )
 
+    ground_plane_result: GroundPlaneResult | None = None
     if use_groundplane:
         try:
-            final_cameras = align_to_charuco_groundplane(
+            final_cameras, ground_plane_result = align_to_charuco_groundplane(
                 cameras=final_cameras,
                 board=board,
                 all_observations=all_observations,
@@ -205,4 +207,4 @@ def run_pyceres_calibration(
             f"fx={cam.intrinsics.fx:.1f}, fy={cam.intrinsics.fy:.1f}"
         )
 
-    return result
+    return result, ground_plane_result

@@ -54,6 +54,7 @@
   "devDependencies": {
     "@playwright/test": "^1.42.1",
     "@types/d3": "^7.4.3",
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.3",

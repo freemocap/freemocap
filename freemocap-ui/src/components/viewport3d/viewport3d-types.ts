@@ -1,6 +1,11 @@
 import { Color } from "three";
 
-export type { Point3d } from "@/services/server/ServerContextProvider";
+/** 3D point with x, y, z coordinates */
+export interface Point3d {
+    x: number;
+    y: number;
+    z: number;
+}
 
 export interface PointStyle {
     color: Color;

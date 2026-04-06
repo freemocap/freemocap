@@ -7,7 +7,7 @@ import { CanvasManager } from "@/services/server/server-helpers/canvas-manager";
 import { serverUrls } from "@/services";
 import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore, LogRecord} from "@/services/server/server-helpers/log-store";
-import {Point3d, RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
+import { Point3d, RigidBodyPose } from "@/components/viewport3d/viewport3d-types";
 
 interface ServerContextValue {
     isConnected: boolean;

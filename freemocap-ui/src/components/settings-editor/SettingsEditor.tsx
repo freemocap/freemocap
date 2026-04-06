@@ -193,19 +193,19 @@ function useApplySettings() {
             dispatch(updateMocapConfigOnServer());
         }
 
-        // VMC (patched via WebSocket)
-        if (settings.vmc && isConnected) {
-            send({
-                message_type: 'settings/patch',
-                patch: {
-                    vmc: {
-                        enabled: settings.vmc.enabled,
-                        host: settings.vmc.host,
-                        port: settings.vmc.port,
-                    },
-                },
-            });
-        }
+        // VMC (patched via WebSocket) - currently disabled
+        // if (settings.vmc && isConnected) {
+        //     send({
+        //         message_type: 'settings/patch',
+        //         patch: {
+        //             vmc: {
+        //                 enabled: settings.vmc.enabled,
+        //                 host: settings.vmc.host,
+        //                 port: settings.vmc.port,
+        //             },
+        //         },
+        //     });
+        // }
     }, [dispatch, send, isConnected]);
 }
 
@@ -537,4 +537,4 @@ export const SettingsEditor: React.FC = () => {
             </Snackbar>
         </Box>
     );
-};
+};

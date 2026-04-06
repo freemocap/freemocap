@@ -1,4 +1,3 @@
-
 import { initTRPC } from '@trpc/server';
 import { z } from 'zod';
 import superjson from 'superjson';
@@ -258,6 +257,7 @@ export const api = t.router({
                     exists: false,
                     canRecord: false,
                     canCalibrate: false,
+                    canProcess: false,
                     cameraMocapTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
@@ -297,6 +297,8 @@ export const api = t.router({
                     result.cameraMocapTomlPath = findCameraCalibrationToml(input.directoryPath);
 
                     result.canCalibrate = result.hasVideos && result.cameraMocapTomlPath !== null;
+
+                    result.canProcess = result.hasVideos && result.cameraMocapTomlPath !== null;
 
                     return result;
 

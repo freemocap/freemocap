@@ -224,21 +224,21 @@ export const LeftSidePanelContent = () => {
                             <VideocamIcon sx={{ fontSize: 18 }} />
                         </IconButton>
 
-                        <Tooltip title="Settings">
-                            <IconButton
-                                size="small"
-                                onClick={() => navigate('/settings')}
-                                sx={{
-                                    padding: '4px',
-                                    color:
-                                        location.pathname === '/settings'
-                                            ? theme.palette.success.main
-                                            : theme.palette.text.secondary,
-                                }}
-                            >
-                                <TuneIcon sx={{ fontSize: 18 }} />
-                            </IconButton>
-                        </Tooltip>
+                        {/*<Tooltip title="Settings">*/}
+                        {/*    <IconButton*/}
+                        {/*        size="small"*/}
+                        {/*        onClick={() => navigate('/settings')}*/}
+                        {/*        sx={{*/}
+                        {/*            padding: '4px',*/}
+                        {/*            color:*/}
+                        {/*                location.pathname === '/settings'*/}
+                        {/*                    ? theme.palette.success.main*/}
+                        {/*                    : theme.palette.text.secondary,*/}
+                        {/*        }}*/}
+                        {/*    >*/}
+                        {/*        <TuneIcon sx={{ fontSize: 18 }} />*/}
+                        {/*    </IconButton>*/}
+                        {/*</Tooltip>*/}
 
                         <ThemeToggle />
                     </Box>

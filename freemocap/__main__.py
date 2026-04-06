@@ -3,6 +3,14 @@ import logging
 import multiprocessing
 import os
 import signal
+import sys
+
+# Ensure sys.stdout/sys.stderr are valid — PyInstaller frozen subprocesses
+# may set them to None, which breaks libraries like tqdm that write to stderr.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +106,7 @@ async def main(force_preferred_port:bool=True) -> None:
 
 
 if __name__ == "__main__":
+    multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows
     try:
         asyncio.run(main())
     except Exception as e:

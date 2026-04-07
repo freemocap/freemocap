@@ -2,25 +2,13 @@ import logging
 from copy import deepcopy
 from pathlib import Path
 
-import numpy as np
-import toml
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field, ValidationError, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.calibration.shared.calibration_models import CalibrationResult
-from freemocap.core.calibration.shared.feet_groundplane import (
-    estimate_groundplane_from_feet,
-    build_mediapipe_body_marker_name_to_index,
-)
-from freemocap.core.calibration.shared.groundplane_alignment import (
-    apply_groundplane_to_cameras,
-    groundplane_metadata,
-)
 from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
-from freemocap.utilities.toml_mixin import numpy_to_python
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +39,14 @@ class CalibrateRecordingRequest(BaseModel):
         alias="calibrationTaskConfig",
         default_factory=CalibrationPipelineConfig,
     )
+    calibration_recording_directory: str | None = Field(
+        alias="calibrationRecordingDirectory",
+        description="Optional directory for calibration recording.")
 
     def to_recording_info(self) -> RecordingInfo:
-        if self.calibration_config.calibration_recording_folder is None:
-            raise ValidationError("CalibrationConfig.calibration_recording_folder not set")
-        recording_dir = Path(self.calibration_config.calibration_recording_folder).expanduser()
+        if self.calibration_recording_directory is None:
+            raise RuntimeError("CalibrationConfig.calibration_recording_directory not set")
+        recording_dir = Path(self.calibration_recording_directory).expanduser()
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
             recording_name=recording_dir.stem,
@@ -65,11 +56,12 @@ class CalibrateRecordingRequest(BaseModel):
     @classmethod
     def create_test_data_request(cls) -> "CalibrateRecordingRequest":
         config = CalibrationPipelineConfig()
-        config.calibration_recording_folder = FREEMOCAP_TEST_DATA_PATH
+
         config.charuco_board_x_squares = 7
         config.charuco_board_y_squares = 5
         config.charuco_square_length = 54
-        return cls(calibration_config=config)
+        return cls(calibration_config=config,
+                   calibration_recording_directory = FREEMOCAP_TEST_DATA_PATH)
 
 
 

@@ -24,9 +24,6 @@ interface PipelineConfigTreeProps {
     onFilterToggle: (checked: boolean) => void;
     rigidBodyEnabled: boolean;
     onRigidBodyToggle: (checked: boolean) => void;
-    // Disable all controls (e.g. pipeline not connected)
-    disabled?: boolean;
-    disabledReason?: string;
 }
 
 export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
@@ -41,8 +38,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     onFilterToggle,
     rigidBodyEnabled,
     onRigidBodyToggle,
-    disabled = false,
-    disabledReason,
 }) => {
     const theme = useTheme();
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -79,8 +74,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 label="2D Tracking"
                 checked={tracking2dEnabled}
                 onToggle={handleToggle2dTracking}
-                disabled={disabled}
-                disabledReason={disabledReason}
                 isExpanded={isExpanded("2d-tracking")}
                 summaryWhenCollapsed={
                     [charucoEnabled && "Charuco", skeletonEnabled && "Skeleton"]
@@ -94,8 +87,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Charuco"
                     checked={charucoEnabled}
                     onToggle={onCharucoToggle}
-                    disabled={disabled}
-                    disabledReason={disabledReason}
                     isExpanded={isExpanded("2d-charuco")}
                 >
                     <Box sx={{p: 1, pl: 2}}>
@@ -111,8 +102,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
-                    disabled={disabled}
-                    disabledReason={disabledReason}
                     isExpanded={isExpanded("2d-skeleton")}
                     summaryWhenCollapsed={context === "realtime" ? "Realtime preset" : "Posthoc preset"}
                 >
@@ -128,8 +117,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 label="3D Reconstruction"
                 checked={reconstruction3dEnabled}
                 onToggle={handleToggle3dReconstruction}
-                disabled={disabled}
-                disabledReason={disabledReason}
                 isExpanded={isExpanded("3d-reconstruction")}
                 summaryWhenCollapsed={
                     [triangulateEnabled && "Triangulate", filterEnabled && "Filter", rigidBodyEnabled && "Skeleton"]
@@ -143,8 +130,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Triangulate"
                     checked={triangulateEnabled}
                     onToggle={onTriangulateToggle}
-                    disabled={disabled}
-                    disabledReason={disabledReason}
                     isExpanded={isExpanded("3d-triangulate")}
                 >
                     <Box sx={{p: 1, pl: 2}}>
@@ -160,8 +145,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Filter"
                     checked={filterEnabled}
                     onToggle={onFilterToggle}
-                    disabled={disabled}
-                    disabledReason={disabledReason}
                     isExpanded={isExpanded("3d-filter")}
                     summaryWhenCollapsed="One Euro, FABRIK"
                 >
@@ -176,8 +159,6 @@ export const PipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={rigidBodyEnabled}
                     onToggle={onRigidBodyToggle}
-                    disabled={disabled}
-                    disabledReason={disabledReason}
                     isExpanded={isExpanded("3d-skeleton")}
                 >
                     <Box sx={{p: 1, pl: 2}}>

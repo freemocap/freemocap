@@ -8,6 +8,13 @@ import { serverUrls } from "@/services";
 import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore, LogRecord} from "@/services/server/server-helpers/log-store";
 import { Point3d, RigidBodyPose } from "@/components/viewport3d/viewport3d-types";
+import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
+import { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
+import { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import {
+    isCharucoOverlayDataMessage,
+    isMediapipeOverlayDataMessage
+} from "@/services/server/server-helpers/websocket-message-types";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -81,6 +88,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
+    const overlayManagerRef = useRef<OverlayManager | null>(null);
+
+    // Overlay data refs - NO REACT STATE to avoid re-renders!
+    const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
+    const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
@@ -116,6 +128,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
+        overlayManagerRef.current = new OverlayManager();
 
         return () => {
             if (wsConnectionRef.current) {
@@ -127,6 +140,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
+            overlayManagerRef.current?.clearAll();
         };
     }, []);
 
@@ -149,20 +163,22 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 framerateStoreRef.current.clear();
                 trackedPointsRef.current = new Map();
                 rigidBodiesRef.current = new Map();
+                latestCharucoRef.current.clear();
+                latestMediapipeRef.current.clear();
+                overlayManagerRef.current?.clearAll();
                 setConnectedCameraIds([]);
             }
         };
 
         // Process a decoded frame result: update camera list, dispatch to workers, send ack.
-        const dispatchFrames = (
+        const dispatchFrames = async (
             result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
-        ): void => {
+        ): Promise<void> => {
             if (!result) return;
 
             const { frames, cameraIds, frameNumbers } = result;
 
             // Only allocate a new sorted array if the camera set actually changed.
-            // Compare against the cached ref to avoid Array.from().sort() on every frame.
             const lastIds = lastCameraIdsRef.current;
             let cameraListChanged = lastIds.length !== cameraIds.size;
             if (!cameraListChanged) {
@@ -183,6 +199,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                         const removedCameras = prevIds.filter(id => !cameraIds.has(id));
                         for (const cameraId of removedCameras) {
                             canvasManagerRef.current?.terminateWorker(cameraId);
+                            latestCharucoRef.current.delete(cameraId);
+                            latestMediapipeRef.current.delete(cameraId);
                         }
                         return newIds;
                     }
@@ -190,10 +208,27 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 });
             }
 
+            // Composite overlays onto frames BEFORE sending to canvas workers
+            const overlayManager = overlayManagerRef.current!;
             for (const frameData of frames) {
+                const charucoObs = latestCharucoRef.current.get(frameData.cameraId) ?? null;
+                const mediapipeObs = latestMediapipeRef.current.get(frameData.cameraId) ?? null;
+
+                let compositeBitmap: ImageBitmap;
+                if (charucoObs || mediapipeObs) {
+                    compositeBitmap = await overlayManager.processFrame(
+                        frameData.cameraId,
+                        frameData.bitmap,
+                        charucoObs,
+                        mediapipeObs,
+                    );
+                } else {
+                    compositeBitmap = frameData.bitmap;
+                }
+
                 canvasManagerRef.current!.sendFrameToWorker(
                     frameData.cameraId,
-                    frameData.bitmap
+                    compositeBitmap,
                 );
             }
 
@@ -213,7 +248,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 processingFrameRef.current = true;
                 try {
                     const result = await frameProcessorRef.current!.processFramePayload(payload);
-                    dispatchFrames(result);
+                    await dispatchFrames(result);
                 } catch (error) {
                     console.error('Error processing frame:', error);
                 } finally {
@@ -250,6 +285,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                         // Update mutable framerate store (no Redux, no re-renders)
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
                         framerateStoreRef.current.updateFrontend(jsonData.frontend_framerate);
+                    }
+                    // Handle charuco overlay data
+                    else if (isCharucoOverlayDataMessage(jsonData)) {
+                        for (const [cameraId, observation] of Object.entries(jsonData)) {
+                            latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
+                        }
+                    }
+                    // Handle mediapipe overlay data
+                    else if (isMediapipeOverlayDataMessage(jsonData)) {
+                        for (const [cameraId, observation] of Object.entries(jsonData)) {
+                            latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
+                        }
                     }
                     // Handle tracked 3D points
                     else if (jsonData.tracked_points3d && typeof jsonData.tracked_points3d === 'object') {

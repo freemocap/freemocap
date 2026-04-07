@@ -189,6 +189,10 @@ class WebsocketServer:
                                     point_name: tracked_point.model_dump()
                                     for point_name, tracked_point in frontend_payload.tracked_points3d.items()
                                 }
+                                for point_name, point in points3d_dict.items():
+                                    point['x'] *= 0.001
+                                    point['y'] *= 0.001
+                                    point['z'] *= 0.001
                                 async with self._send_lock:
                                     await self.websocket.send_json({"tracked_points3d": points3d_dict})
 

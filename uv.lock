@@ -588,7 +588,7 @@ dev = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2025.11.1038"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#e64d80125d5816b50f87006e54fe98c6f6415713" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#e5aab4908f9d4caae7067aa31e8e685a6201b036" }
 
 [[package]]
 name = "h11"
@@ -1354,15 +1354,15 @@ wheels = [
 
 [[package]]
 name = "poethepoet"
-version = "0.43.0"
+version = "0.44.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pastel" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/91/4a/3cdfd054e4e81913028d8c399d04e51a8c2431110d5797e302206d350ffa/poethepoet-0.43.0.tar.gz", hash = "sha256:62b058ef92ca76fc758dd6362918f5054b9f519fa5328e2eeaa00c72bdc90e85", size = 95454, upload-time = "2026-04-03T10:56:26.299Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a1/a4/e487662f12a5ecd2ac4d77f7697e4bda481953bb80032b158e5ab55173d4/poethepoet-0.44.0.tar.gz", hash = "sha256:c2667b513621788fb46482e371cdf81c0b04344e0e0bcb7aa8af45f84c2fce7b", size = 96040, upload-time = "2026-04-06T19:40:58.908Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/6f/23f86e5abfb3308ef1fa749571ba06d86e437d355862356ff8e3dfd66b05/poethepoet-0.43.0-py3-none-any.whl", hash = "sha256:c12f8be41dbecee8abac4266bda4b04060b7129d2868edf50823e6509c249431", size = 122290, upload-time = "2026-04-03T10:56:24.645Z" },
+    { url = "https://files.pythonhosted.org/packages/80/b7/503b7d3a51b0de9a329f1323048d166e309a97bb31bdc60e6acd11d2c71f/poethepoet-0.44.0-py3-none-any.whl", hash = "sha256:36d3d834708ed069ac1e4f8ed77915c55265b7b6e01aeb2fe617c9fe9cfd524a", size = 122873, upload-time = "2026-04-06T19:40:57.369Z" },
 ]
 
 [[package]]

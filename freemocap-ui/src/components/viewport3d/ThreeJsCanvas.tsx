@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
-import { Box, IconButton, Tooltip } from "@mui/material";
+import { Box, IconButton, Tooltip, Typography } from "@mui/material";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import HomeIcon from "@mui/icons-material/Home";
 import type CameraControlsImpl from "camera-controls";
 import { ThreeJsScene } from "@/components/viewport3d/ThreeJsScene";
 import { fitCameraToSkeleton } from "@/components/viewport3d/fit-camera";
@@ -45,27 +46,55 @@ export function ThreeJsCanvas() {
         >
             <Canvas
                 shadows
-                camera={{ position: [5, 5, 5], fov: 75 }}
+                camera={{ position: [5, 5, 5], fov: 75, near: 0.1, far: 10000 }}
+                gl={{ antialias: true, logarithmicDepthBuffer: true }}
             >
                 <ThreeJsScene cameraControlsRef={cameraControlsRef} />
             </Canvas>
 
-            <Tooltip title="Fit camera to skeleton (F)" placement="left">
-                <IconButton
-                    onClick={handleFitToSkeleton}
-                    size="small"
-                    sx={{
-                        position: 'absolute',
-                        bottom: 16,
-                        right: 16,
-                        bgcolor: 'background.paper',
-                        boxShadow: 2,
-                        '&:hover': { bgcolor: 'action.hover' },
-                    }}
-                >
-                    <CenterFocusStrongIcon fontSize="small" />
-                </IconButton>
-            </Tooltip>
+            <Box sx={{ position: 'absolute', left: 16, bottom: 16, bgcolor: 'background.paper', p: 1, borderRadius: 1, boxShadow: 1 }}>
+                <Typography variant="caption" color="text.secondary">
+                    Rotate: drag • Zoom: scroll • Pan: right-drag or two-finger
+                </Typography>
+            </Box>
+
+            <Box sx={{ position: 'absolute', bottom: 16, right: 16, display: 'flex', gap: 1 }}>
+                <Tooltip title="Fit camera to skeleton (F)">
+                    <IconButton
+                        onClick={handleFitToSkeleton}
+                        size="small"
+                        sx={{
+                            bgcolor: 'background.paper',
+                            boxShadow: 2,
+                            '&:hover': { bgcolor: 'action.hover' },
+                        }}
+                    >
+                        <CenterFocusStrongIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Reset view">
+                    <IconButton
+                        onClick={() => {
+                            const cam = cameraControlsRef.current?.camera;
+                            if (cam) {
+                                cam.position.set(5, 5, 5);
+                                cam.lookAt(0, 0, 0);
+                                cam.updateProjectionMatrix();
+                            }
+                            cameraControlsRef.current?.reset(true);
+                        }}
+                        size="small"
+                        sx={{
+                            bgcolor: 'background.paper',
+                            boxShadow: 2,
+                            '&:hover': { bgcolor: 'action.hover' },
+                        }}
+                    >
+                        <HomeIcon fontSize="small" />
+                    </IconButton>
+                </Tooltip>
+            </Box>
         </Box>
     );
 }

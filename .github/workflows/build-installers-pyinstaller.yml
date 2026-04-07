@@ -257,6 +257,27 @@ jobs:
           include-hidden-files: true
 
       # ── Electron build ──
+
+      # ── Validate server binary exists and is executable ──
+      - name: Validate server binary present and executable
+        run: |
+          echo "Checking for server binary at ./freemocap-ui/${{ matrix.server-binary }}"
+          if [ ! -f "./freemocap-ui/${{ matrix.server-binary }}" ]; then
+            echo "::error::Server binary not found: ./freemocap-ui/${{ matrix.server-binary }}"
+            ls -la ./freemocap-ui || true
+            exit 1
+          fi
+          echo "Found server binary:"
+          ls -la "./freemocap-ui/${{ matrix.server-binary }}"
+          # On Unix-like, ensure executable bit is set
+          if [ "${{ matrix.platform }}" != "windows" ]; then
+            if [ ! -x "./freemocap-ui/${{ matrix.server-binary }}" ]; then
+              echo "Server binary is not executable, setting +x"
+              chmod +x "./freemocap-ui/${{ matrix.server-binary }}" || true
+            fi
+          fi
+
+
       - name: Install UI dependencies
         run: |
           cd freemocap-ui

@@ -7,7 +7,7 @@
   "files": [
     "dist-electron",
     "dist",
-    "../dist/freemocap_server*",
+    "freemocap_server*",
     "../shared/freemocap-logo/freemocap-favicon.ico",
     "../shared/freemocap-logo/freemocap-logo.png"
   ],

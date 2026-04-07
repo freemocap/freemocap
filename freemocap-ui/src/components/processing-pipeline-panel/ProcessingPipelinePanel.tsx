@@ -50,7 +50,6 @@ export const ProcessingPipelinePanel: React.FC = () => {
                     onFilterToggle={setFilterEnabled}
                     rigidBodyEnabled={rigidBodyEnabled}
                     onRigidBodyToggle={setRigidBodyEnabled}
-                    disabledReason="Connect a pipeline to enable detection toggles"
                 />
             </Box>
         </CollapsibleSidebarSection>

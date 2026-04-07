@@ -13,6 +13,7 @@ import { useElectronIPC } from '@/services';
 import { serverUrls } from '@/services/server/server-helpers/server-urls';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
+import type { CameraSettings } from '@/pages/CamerasPage';
 
 // Module-level cache so playback state survives tab switches
 let cachedPlaybackState: {
@@ -96,8 +97,10 @@ const PlaybackPage: React.FC = () => {
         }
     }, [recordingPath, api]);
 
-    const handleSettingsChange = useCallback((settings: { columns: number | null }) => {
-        setManualColumns(settings.columns);
+    const handleSettingsChange = useCallback((partial: Partial<CameraSettings>) => {
+        if (partial.columns !== undefined) {
+            setManualColumns(partial.columns);
+        }
     }, []);
 
     const handleResetLayout = useCallback(() => {
@@ -136,6 +139,7 @@ const PlaybackPage: React.FC = () => {
                         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
                             {/* Settings overlay for grid columns */}
                             <CamerasViewSettingsOverlay
+                                settings={{ columns: manualColumns, show3dView: false, layoutDirection: 'horizontal' }}
                                 onSettingsChange={handleSettingsChange}
                                 onResetLayout={handleResetLayout}
                             />

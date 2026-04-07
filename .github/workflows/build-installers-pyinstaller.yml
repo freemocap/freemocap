@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
+        uses: actions/checkout@v4
 
       # ── Windows code-signing prereqs ──
       - name: Validate code signing prerequisites

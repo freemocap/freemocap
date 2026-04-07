@@ -14,8 +14,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
     const backendPipeline = useAppSelector(selectBackendPipeline);
 
     const pipelineConfig = backendPipeline?.config;
-    const isPipelineConnected = backendPipeline?.is_connected ?? false;
-    const canToggle = isConnected && isPipelineConnected;
+
 
     // 3D Reconstruction toggles — local state until backend support is added
     const [triangulateEnabled, setTriangulateEnabled] = useState(false);
@@ -38,11 +37,7 @@ export const ProcessingPipelinePanel: React.FC = () => {
             defaultExpanded={false}
         >
             <Box sx={{p: 2}}>
-                {!isPipelineConnected && (
-                    <Typography variant="caption" color="text.secondary" sx={{fontStyle: "italic", mb: 1, display: "block"}}>
-                        Connect a pipeline to enable detection toggles.
-                    </Typography>
-                )}
+
                 <PipelineConfigTree
                     context="realtime"
                     charucoEnabled={pipelineConfig?.calibration_detection_enabled ?? true}
@@ -55,7 +50,6 @@ export const ProcessingPipelinePanel: React.FC = () => {
                     onFilterToggle={setFilterEnabled}
                     rigidBodyEnabled={rigidBodyEnabled}
                     onRigidBodyToggle={setRigidBodyEnabled}
-                    disabled={!canToggle}
                     disabledReason="Connect a pipeline to enable detection toggles"
                 />
             </Box>

@@ -58,7 +58,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
 
       # ── Windows code-signing prereqs ──
       - name: Validate code signing prerequisites
@@ -224,7 +224,7 @@ jobs:
       # ── Windows code signing (server binary) ──
       - name: Sign freemocap_server.exe with Trusted Signing
         if: matrix.platform == 'windows'
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}

@@ -28,8 +28,7 @@ import { SortableSectionWrapper } from '@/components/common/SortableSectionWrapp
 import { ServerConnectionStatus } from '@/components/ServerConnectionStatus';
 import { ProcessingPipelinePanel } from '@/components/processing-pipeline-panel/ProcessingPipelinePanel';
 import { CameraConfigTreeView } from '@/components/camera-config-tree-view/CameraConfigTreeView';
-import { CalibrationControlPanel } from '@/components/calibration-control-panel/CalibrationControlPanel';
-import { MocapTaskTreeItem } from '@/components/mocap-control-panel/MocapTaskTreeItem';
+import { PostProcessingPanel } from '@/components/post-processing-panel/PostProcessingPanel';
 import {RecordingInfoPanel} from "@/components/recording-info-panel/RecordingInfoPanel";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
@@ -39,8 +38,7 @@ const DEFAULT_SECTION_ORDER = [
     'cameras',
     'recording',
     'pipeline',
-    'calibration',
-    'mocap',
+    'postprocessing',
 ] as const;
 
 type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
@@ -50,8 +48,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     pipeline: ProcessingPipelinePanel,
     cameras: CameraConfigTreeView,
     recording: RecordingInfoPanel,
-    calibration: CalibrationControlPanel,
-    mocap: MocapTaskTreeItem,
+    postprocessing: PostProcessingPanel,
 };
 
 function loadSectionOrder(): SectionId[] {

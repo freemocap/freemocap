@@ -35,10 +35,9 @@ const FAR_AWAY = new Vector3(10000, 10000, 10000);
  */
 export function SkeletonRenderer() {
     const { subscribeToTrackedPoints } = useServer();
+    // Mutable refs for frame-loop access without triggering React re-renders
     const instancedMeshRef = useRef<InstancedMesh>(null);
     const lineSegmentsRef = useRef<LineSegments>(null);
-
-    // Mutable refs for frame-loop access without triggering React re-renders
     const trackedPointsRef = useRef<Map<string, Point3d>>(new Map());
     const pointNameToIndexRef = useRef<Map<string, number>>(new Map());
     const indexToPointNameRef = useRef<Map<number, string>>(new Map());

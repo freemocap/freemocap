@@ -165,7 +165,7 @@ jobs:
           python-version-file: ".python-version"
 
       - name: Install uv and enable cache
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
         with:
           enable-cache: false
 
@@ -297,7 +297,7 @@ jobs:
       # ── Windows installer signing ──
       - name: Sign Electron installer with Trusted Signing
         if: matrix.platform == 'windows'
-        uses: azure/trusted-signing-action@v0
+        uses: azure/trusted-signing-action@b443cf8ea4124818d2ea9f043cba29fc3ec47b16
         with:
           azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}

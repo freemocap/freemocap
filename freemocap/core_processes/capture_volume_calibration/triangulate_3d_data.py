@@ -14,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
-        anipose_calibration_object: CameraGroup,
-        image_2d_data: np.ndarray,
-        use_triangulate_ransac: bool = False,
-        use_triangulate_outlier_rejection: bool = False,
-        minimum_cameras_for_triangulation: int = 2,
-        maximum_cameras_to_drop: int = 1,
-        target_reprojection_error: float = 0.01,
-        kill_event: multiprocessing.Event = None,
+    anipose_calibration_object: CameraGroup,
+    image_2d_data: np.ndarray,
+    use_triangulate_ransac: bool = False,
+    use_triangulate_outlier_rejection: bool = False,
+    minimum_cameras_for_triangulation: int = 2,
+    maximum_cameras_to_drop: int = 1,
+    target_reprojection_error: float = 0.01,
+    kill_event: multiprocessing.Event = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]:
     number_of_cameras = image_2d_data.shape[0]
     number_of_frames = image_2d_data.shape[1]
@@ -50,14 +50,16 @@ def triangulate_3d_data(
     if use_triangulate_outlier_rejection:
         logger.info("Using `triangulate_using_outlier_rejection` method")
         data3d_flat, normalized_camera_weights_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
-            data2d_flat, 
-            progress=True, 
-            kill_event=kill_event, 
+            data2d_flat,
+            progress=True,
+            kill_event=kill_event,
             minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
             maximum_cameras_to_drop=maximum_cameras_to_drop,
             target_reprojection_error=target_reprojection_error,
         )
-        normalized_camera_weights = normalized_camera_weights_flat.reshape(number_of_frames, number_of_tracked_points, number_of_cameras)
+        normalized_camera_weights = normalized_camera_weights_flat.reshape(
+            number_of_frames, number_of_tracked_points, number_of_cameras
+        )
     else:
         logger.info("Using simple `triangulate` method ")
         data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)

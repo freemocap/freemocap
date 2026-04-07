@@ -69,8 +69,8 @@ jobs:
           if (-not "${{ secrets.AZURE_TENANT_ID }}") { $missingSecrets += "AZURE_TENANT_ID" }
           if (-not "${{ secrets.AZURE_CLIENT_ID }}") { $missingSecrets += "AZURE_CLIENT_ID" }
           if (-not "${{ secrets.AZURE_CLIENT_SECRET }}") { $missingSecrets += "AZURE_CLIENT_SECRET" }
-          if (-not "${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}") { $missingSecrets += "TRUSTED_SIGNING_ACCOUNT_NAME" }
-          if (-not "${{ secrets.CERTIFICATE_PROFILE_NAME }}") { $missingSecrets += "CERTIFICATE_PROFILE_NAME" }
+          if (-not "freemocap") { $missingSecrets += "TRUSTED_SIGNING_ACCOUNT_NAME" }
+          if (-nfreemocap
 
           if ($missingSecrets.Count -gt 0) {
             Write-Error "Missing required secrets for code signing: $($missingSecrets -join ', ')"
@@ -230,8 +230,8 @@ jobs:
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           endpoint: https://eus.codesigning.azure.net/
-          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
+          trusted-signing-account-name: freemocap
+          certificate-profile-name: freemocap
           files: ${{ github.workspace }}\freemocap-ui\freemocap_server.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
@@ -303,8 +303,8 @@ jobs:
           azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
           azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
           endpoint: https://eus.codesigning.azure.net/
-          trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT_NAME }}
-          certificate-profile-name: ${{ secrets.CERTIFICATE_PROFILE_NAME }}
+          trusted-signing-account-name: freemocap
+          certificate-profile-name: freemocap
           files-folder: ${{ github.workspace }}\freemocap-ui\release
           files-folder-filter: "*.exe"
           files-folder-recurse: true

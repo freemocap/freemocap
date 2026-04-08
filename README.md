@@ -31,7 +31,7 @@ system and platform for decentralized scientific research, education, and traini
     </a>
 
 <a href="https://discord.gg/SgdnzbHDTG">
-    <img src="https://img.shields.io/badge/join_us-on_discord-5865F2?logo=discord&logoColor=white" alt="Discord server" />
+    <img src="https://img.shields.io/badge/join_us-on_discord-5865F2?logo=discord&logoColor=white" alt="Discord server"/>
   </a>
 
 

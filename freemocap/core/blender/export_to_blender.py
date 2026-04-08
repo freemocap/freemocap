@@ -1,12 +1,15 @@
 import inspect
 import logging
 import subprocess
+import sys
 from pathlib import Path
 from typing import Union, List
 
 from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 import freemocap_blender_addon
+
+from freemocap.utilities.open_file import open_file
 
 logger = logging.getLogger(__name__)
 
@@ -41,11 +44,12 @@ def run_subprocess(command_list: List[str]):
 
 def export_to_blender(
         recording_folder_path: str|Path,
-        blender_file_path: str|Path|None=None,
+        blend_file_path: str|Path|None=None,
         blender_exe_path: str|Path|None=None,
+        open_file_on_completion:bool=True,
 ):
     try:
-        ajc_blender_addon_validator(recording_folder_path=recording_folder_path)
+        freemocap_blender_addon_validator(recording_folder_path=recording_folder_path)
     except FileNotFoundError as e:
         logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
         raise e
@@ -54,8 +58,8 @@ def export_to_blender(
         blender_exe_path:Path = Path(get_best_guess_of_blender_path())
         if not blender_exe_path.is_file():
             raise RuntimeError(f"Blender executable not found at: {blender_exe_path}")
-    if blender_file_path is None:
-        blender_file_path = Path(recording_folder_path)/f"{Path(recording_folder_path).stem}.blend"
+    if blend_file_path is None:
+        blend_file_path = Path(recording_folder_path)/f"{Path(recording_folder_path).stem}.blend"
 
     # Resolve the site-packages directory containing freemocap_blender_addon
     # so we can inject it into Blender's sys.path (no addon installation needed)
@@ -73,7 +77,7 @@ def export_to_blender(
         "--",
         site_packages_path,
         str(recording_folder_path),
-        str(blender_file_path),
+        str(blend_file_path),
     ]
 
     logger.info(f"Starting `blender` sub-process with this command: \n {command_list}")
@@ -89,11 +93,23 @@ def export_to_blender(
 
     if blender_process.returncode != 0:
         logging.error(blender_process.stderr.read().decode())
+    if not Path(blend_file_path).is_file():
+        raise RuntimeError(f"Blender executable not found at: {blend_file_path}")
+    elif Path(blend_file_path).stat().st_size == 0:
+        raise RuntimeError(f"Blender file was created but is empty at: {blend_file_path}")
+
+    if open_file_on_completion:
+        logger.info(f"Opening {blend_file_path} with {blender_exe_path}")
+        open_file(blend_file_path,)
+
+
     logger.debug("Done with blender add on")
     blender_process.terminate()  # manually terminate the process
 
 
-def ajc_blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):
+
+
+def freemocap_blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):
     """
     Check if the required files exist in the recording folder
     """
@@ -155,11 +171,11 @@ if __name__ == "__main__":
 
 
     recording_path_in = r"C:\Users\jonma\freemocap_data\recording_sessions\steen_pantsOn_gait"
-    blender_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem) + ".blend"))
+    blend_file_path_in = str(Path(recording_path_in) / (str(Path(recording_path_in).stem) + ".blend"))
     blender_exe_path_in = get_best_guess_of_blender_path()
 
     export_to_blender(
         recording_folder_path=recording_path_in,
-        blender_file_path=blender_file_path_in,
+        blend_file_path=blend_file_path_in,
         blender_exe_path=blender_exe_path_in,
     )

@@ -159,7 +159,7 @@ const LogEntryRow = React.memo(({ log, style }: { log: LogRecord; style: React.C
                 fontFamily: "monospace",
                 fontSize: "0.85em",
                 lineHeight: `${LINE_HEIGHT}px`,
-                overflow: "hidden",
+                overflow: expanded ? "visible" : "hidden",
                 position: "relative",
             }}
             onClick={() => setExpanded((prev) => !prev)}

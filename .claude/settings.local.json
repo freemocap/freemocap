@@ -7,7 +7,15 @@
       "Bash(.venv/Scripts/python -m pytest freemocap/tests/test_http_config_endpoints.py --timeout=30 -x)",
       "Bash(git stash:*)",
       "Bash(.venv/Scripts/python -m pytest freemocap/tests/ -m \"not e2e\" --timeout=30 --ignore=freemocap/tests/test_e2e_pipeline.py -q)",
-      "Bash(.venv/Scripts/python -m pytest freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_schema_contract.py -q --timeout=30)"
+      "Bash(.venv/Scripts/python -m pytest freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_schema_contract.py -q --timeout=30)",
+      "Bash(__NEW_LINE_6841038b284b2773__ git:*)",
+      "Bash(__NEW_LINE_a0cc91ae49b2097e__ git:*)",
+      "Bash(git grep:*)",
+      "Bash(git status:*)",
+      "Bash(grep -RIn \"connected\" freemocap)",
+      "Bash(grep -RIn \"RecordingInfoModel\" -n freemocap)",
+      "Bash(grep -RIn \"websocket\\\\|ws://\\\\|WebSocket\" freemocap)",
+      "Bash(grep -RIn \"freemocap/api/http/blender\\\\|api/http/blender\\\\|blender.*export\" -n)"
     ]
   }
 }

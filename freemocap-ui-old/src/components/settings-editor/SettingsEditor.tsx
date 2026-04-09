@@ -1,45 +1,36 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import {
-    Box,
-    Button,
-    ButtonGroup,
-    Alert,
-    Snackbar,
-    Tooltip,
-    Divider,
-    CircularProgress,
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import Editor, { OnMount } from '@monaco-editor/react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Alert, Box, Button, ButtonGroup, CircularProgress, Divider, Snackbar, Tooltip,} from '@mui/material';
+import {useTheme} from '@mui/material/styles';
+import Editor, {OnMount} from '@monaco-editor/react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckIcon from '@mui/icons-material/Check';
 import RestoreIcon from '@mui/icons-material/Restore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
+    configUpdated,
+    recordingDirectoryChanged,
+    selectServerSettings,
+    themeModeSet,
     useAppDispatch,
     useAppSelector,
-    themeModeSet,
-    recordingDirectoryChanged,
-    configUpdated,
-    selectServerSettings,
 } from '@/store';
 import {
     mocapDetectorConfigReplaced,
     skeletonFilterConfigReplaced,
     updateMocapConfigOnServer,
 } from '@/store/slices/mocap';
-import {calibrationConfigUpdated, updateCalibrationConfigOnServer } from '@/store/slices/calibration';
-import { ThemeMode } from '@/store/slices/theme/theme-types';
-import { useServer } from '@/hooks/useServer';
+import {calibrationConfigUpdated, updateCalibrationConfigOnServer} from '@/store/slices/calibration';
+import {ThemeMode} from '@/store/slices/theme/theme-types';
+import {useServer} from '@/hooks/useServer';
 import {
-    serialize,
-    deserialize,
     convertFormat,
-    SerializationFormat,
+    deserialize,
     FORMAT_EXTENSIONS,
     FORMAT_MIME_TYPES,
     FORMAT_MONACO_LANGUAGES,
+    SerializationFormat,
+    serialize,
 } from './format-converters';
 
 // ── Aggregated settings shape (config-only, no runtime state) ──

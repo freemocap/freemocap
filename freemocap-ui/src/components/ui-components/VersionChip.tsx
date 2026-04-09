@@ -1,13 +1,13 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Box, Chip, CircularProgress, IconButton, Snackbar, Tooltip } from '@mui/material';
-import type { AlertColor } from '@mui/material';
+import React, {useEffect, useRef, useState} from 'react';
+import type {AlertColor} from '@mui/material';
+import {Alert, Box, Chip, CircularProgress, IconButton, Snackbar, Tooltip} from '@mui/material';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import UpdateIcon from '@mui/icons-material/Update';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useTranslation } from 'react-i18next';
-import { useAppVersion } from '@/hooks/useAppVersion';
-import { useAutoUpdate } from '@/hooks/useAutoUpdate';
-import { EXTERNAL_URLS } from '@/constants/external-urls';
+import {useTranslation} from 'react-i18next';
+import {useAppVersion} from '@/hooks/useAppVersion';
+import {useAutoUpdate} from '@/hooks/useAutoUpdate';
+import {EXTERNAL_URLS} from '@/constants/external-urls';
 
 interface VersionChipProps {
     /** compact = small inline style for footers; full = larger for settings */

@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { useSetupWizardRequired } from '@/components/setup-wizard/SetupWizard';
+import React, {useEffect} from 'react';
+import {useLocation, useNavigate} from 'react-router-dom';
+import {useSetupWizardRequired} from '@/components/setup-wizard/SetupWizard';
 
 /**
  * Invisible component that redirects to /setup on first launch.

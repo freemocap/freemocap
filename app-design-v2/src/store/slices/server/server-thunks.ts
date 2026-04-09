@@ -1,7 +1,7 @@
 // store/slices/server/server-thunks.ts
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import type { RootState } from '../../types';
-import { selectServerEndpoints } from './server-selectors';
+import {createAsyncThunk} from '@reduxjs/toolkit';
+import type {RootState} from '../../types';
+import {selectServerEndpoints} from './server-selectors';
 
 /**
  * Check server health status

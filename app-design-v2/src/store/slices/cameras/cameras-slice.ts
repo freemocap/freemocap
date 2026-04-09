@@ -1,16 +1,7 @@
-import {
-    createSlice,
-    type PayloadAction,
-    type EntityState,
-} from '@reduxjs/toolkit';
-import type {CameraDevice, CameraConfig} from './cameras-types';
-import { cameraAdapter } from './cameras-adapter';
-import {
-    detectCameras,
-    connectToCameras,
-    updateCameraConfigs,
-    closeCameras,
-} from './cameras-thunks';
+import {createSlice, type EntityState, type PayloadAction,} from '@reduxjs/toolkit';
+import type {CameraConfig, CameraDevice} from './cameras-types';
+import {cameraAdapter} from './cameras-adapter';
+import {closeCameras, connectToCameras, detectCameras, updateCameraConfigs,} from './cameras-thunks';
 
 interface CameraState extends EntityState<CameraDevice, string> {
     isLoading: boolean;

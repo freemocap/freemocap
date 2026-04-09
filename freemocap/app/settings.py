@@ -11,12 +11,12 @@ import logging
 from enum import Enum
 
 from pydantic import BaseModel, Field
-from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
+from skellycam.core.camera.config.camera_config import CameraConfig
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
-from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ class PipelineSettings(BaseModel):
 
 class CalibrationSettings(BaseModel):
     """Calibration config + runtime status."""
-    config: CalibrationPipelineConfig = Field(default_factory=CalibrationPipelineConfig)
+    config: PosthocCalibrationPipelineConfig = Field(default_factory=PosthocCalibrationPipelineConfig)
     is_recording: bool = False
     recording_progress: float = 0.0
     last_recording_path: str | None = None
@@ -58,17 +58,11 @@ class CalibrationSettings(BaseModel):
 
 class MocapSettings(BaseModel):
     """Motion capture config + runtime status."""
-    config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig.default_realtime)
+    config: PosthocMocapPipelineConfig = Field(default_factory=PosthocMocapPipelineConfig.default_realtime)
     is_recording: bool = False
     recording_progress: float = 0.0
     last_recording_path: str | None = None
 
-
-class VMCSettings(BaseModel):
-    """VMC (Virtual Motion Capture) protocol output settings."""
-    enabled: bool = False
-    host: str = "127.0.0.1"
-    port: int = 39539
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +81,6 @@ class FreeMoCapSettings(BaseModel):
     pipeline: PipelineSettings = Field(default_factory=PipelineSettings)
     calibration: CalibrationSettings = Field(default_factory=CalibrationSettings)
     mocap: MocapSettings = Field(default_factory=MocapSettings)
-    vmc: VMCSettings = Field(default_factory=VMCSettings)
 
 
 # ---------------------------------------------------------------------------
@@ -157,6 +150,7 @@ class SettingsManager:
         Validates the result via Pydantic. If validation fails,
         the settings are left unchanged and the error is raised.
         """
+        #TODO - Replace this raw dict intput with a Pydantic model
         current = self._settings.model_dump()
         merged = _deep_merge(base=current, patch=patch)
         # Pydantic validates on construction — if this raises, settings are unchanged
@@ -216,7 +210,6 @@ class SettingsManager:
             pipeline=pipeline,
             calibration=calibration,
             mocap=mocap,
-            vmc=self._settings.vmc,
         )
         self.notify_changed()
 

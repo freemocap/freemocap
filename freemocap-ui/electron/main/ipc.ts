@@ -1,9 +1,9 @@
 // electron/main/ipc.ts
-import { ipcMain } from 'electron';
-import { api } from './api';
+import {ipcMain} from 'electron';
+import {api} from './api';
 import superjson from 'superjson';
-import { buildApplicationMenu } from './services/menu-builder';
-import type { MenuBuildParams } from './services/menu-builder';
+import type {MenuBuildParams} from './services/menu-builder';
+import {buildApplicationMenu} from './services/menu-builder';
 
 export function setupIPC(): void {
   ipcMain.handle('trpc', async (_event, { path, input }) => {

@@ -1,18 +1,9 @@
-import React, { useCallback } from "react";
-import {
-    Box,
-    IconButton,
-    Stack,
-    Switch,
-    TextField,
-    Tooltip,
-    Typography,
-    useTheme,
-} from "@mui/material";
+import React, {useCallback} from "react";
+import {Box, Stack, Switch, TextField, Tooltip, Typography, useTheme,} from "@mui/material";
 import CastConnectedIcon from "@mui/icons-material/CastConnected";
-import { useAppSelector } from "@/store/hooks";
-import { selectServerSettings } from "@/store/slices/settings/settings-selectors";
-import { useServer } from "@/services";
+import {useAppSelector} from "@/store/hooks";
+import {selectServerSettings} from "@/store/slices/settings/settings-selectors";
+import {useServer} from "@/services";
 
 /**
  * Compact VMC output controls. Shows a toggle to enable/disable VMC

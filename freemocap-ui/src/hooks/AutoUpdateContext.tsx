@@ -1,5 +1,5 @@
-import React, { createContext, useCallback, useEffect, useState } from 'react';
-import { useElectronIPC } from '@/services';
+import React, {createContext, useCallback, useEffect, useState} from 'react';
+import {useElectronIPC} from '@/services';
 
 export type UpdateStatus =
     | 'idle'

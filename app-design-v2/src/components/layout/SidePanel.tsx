@@ -1,6 +1,6 @@
-import { type FC, type ReactElement, useState, useEffect } from "react";
-import { ButtonSm } from "@/components/primitives/Buttons/ButtonSm.tsx";
-import { ToggleComponent } from "@/components/primitives/Toggles/ToggleComponent.tsx";
+import {type FC, type ReactElement, useEffect, useState} from "react";
+import {ButtonSm} from "@/components/primitives/Buttons/ButtonSm.tsx";
+import {ToggleComponent} from "@/components/primitives/Toggles/ToggleComponent.tsx";
 
 export interface SidePanelSettings {
     skipCalibration: boolean;

@@ -1,5 +1,5 @@
-import { type FC, type ReactElement, type SetStateAction, useState } from "react";
-import { SegmentedControl } from "@/components/primitives/Controls/SegmentedControlComponent.tsx";
+import {type FC, type ReactElement, type SetStateAction, useState} from "react";
+import {SegmentedControl} from "@/components/primitives/Controls/SegmentedControlComponent.tsx";
 import {ConnectionToggleButton} from "@/components/features/ConnectionDropdown/ConnectionToggleButton.tsx";
 
 export interface MainContentPanelProps {

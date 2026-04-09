@@ -16,18 +16,19 @@ from dataclasses import dataclass, field
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
-from freemocap.core.calibration.calibration_task import run_calibration_task
-from freemocap.core.mocap.posthoc_mocap_task import run_post_mocap_aggregation_task
-from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
-from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
+from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task
 from freemocap.core.types.type_overloads import PipelineIdString
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class PosthocPipelineManager:
+class PosthocPipelineManager(PipelineManagerABC):
     """
     Manages fire-and-forget posthoc pipelines.
 
@@ -82,10 +83,10 @@ class PosthocPipelineManager:
         self,
         *,
         recording_info: RecordingInfo,
-        calibration_config: CalibrationPipelineConfig,
+        calibration_config: PosthocCalibrationPipelineConfig,
     ) -> PosthocPipeline:
         calibration_aggregation_task_fn = functools.partial(
-            run_calibration_task,
+            run_posthoc_calibration_task,
             task_config=calibration_config,
         )
         pipeline = PosthocPipeline.create(
@@ -109,11 +110,11 @@ class PosthocPipelineManager:
         self,
         *,
         recording_info: RecordingInfo,
-        mocap_config: MocapPipelineConfig,
+        mocap_config: PosthocMocapPipelineConfig,
         start_pipeline: bool = True,
     ) -> PosthocPipeline:
         mocap_task_fn = functools.partial(
-            run_post_mocap_aggregation_task,
+            run_posthoc_mocap_aggregator_task,
             task_config=mocap_config,
         )
         pipeline = PosthocPipeline.create(

@@ -10,7 +10,7 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-from freemocap.core.calibration.shared.camera_to_video_identity_matcher import camera_ids_from_video_paths
+from freemocap.core.tasks.calibration.shared.camera_to_video_identity_matcher import camera_ids_from_video_paths
 from freemocap.core.types.type_overloads import VideoIdString
 
 # Module level constants

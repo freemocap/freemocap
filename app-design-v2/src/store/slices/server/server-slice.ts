@@ -1,13 +1,7 @@
 // store/slices/server/server-slice.ts
-import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import type {
-    ServerConfig, ServerState,
-    ServerStatus,
-} from './server-types';
-import {
-    checkServerHealth,
-    shutdownServer,
-} from './server-thunks';
+import {createSlice, type PayloadAction} from '@reduxjs/toolkit';
+import type {ServerConfig, ServerState, ServerStatus,} from './server-types';
+import {checkServerHealth, shutdownServer,} from './server-thunks';
 
 // Helper to load config from localStorage
 const loadConfigFromStorage = (): ServerConfig => ({

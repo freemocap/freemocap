@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, {useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
 
 /**
  * Invisible component that listens for navigation events from the

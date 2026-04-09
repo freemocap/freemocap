@@ -18,8 +18,6 @@ import multiprocessing
 import time
 from pathlib import Path
 
-from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
@@ -27,6 +25,8 @@ from freemocap.core.pipeline.pipeline_configs import (
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
+from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 
 logger = logging.getLogger(__name__)
 

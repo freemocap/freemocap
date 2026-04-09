@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert, Box, Button, LinearProgress, Typography } from '@mui/material';
-import { useTranslation } from 'react-i18next';
-import { useAutoUpdate } from '@/hooks/useAutoUpdate';
+import {Alert, Box, Button, LinearProgress, Typography} from '@mui/material';
+import {useTranslation} from 'react-i18next';
+import {useAutoUpdate} from '@/hooks/useAutoUpdate';
 
 export const UpdateBanner: React.FC = () => {
     const { t } = useTranslation();

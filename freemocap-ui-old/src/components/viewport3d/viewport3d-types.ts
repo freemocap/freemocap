@@ -1,4 +1,4 @@
-import { Color } from "three";
+import {Color} from "three";
 
 export type { Point3d } from "@/services/server/ServerContextProvider";
 

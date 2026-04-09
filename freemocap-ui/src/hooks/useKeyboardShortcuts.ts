@@ -1,8 +1,8 @@
 // src/hooks/useKeyboardShortcuts.ts
-import { useEffect } from "react";
-import { useAppDispatch } from "@/store";
+import {useEffect} from "react";
+import {useAppDispatch} from "@/store";
 // import { localeToggled } from "@/store/slices/settings";
-import { pauseUnpauseCameras } from "@/store/slices/cameras";
+import {pauseUnpauseCameras} from "@/store/slices/cameras";
 
 /**
  * Registers global keyboard shortcuts that should be active app-wide.

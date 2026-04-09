@@ -1,16 +1,16 @@
-import { initTRPC } from '@trpc/server';
-import { z } from 'zod';
+import {initTRPC} from '@trpc/server';
+import {z} from 'zod';
 import superjson from 'superjson';
 
 // Services
-import { PythonServer } from './services/python-server';
-import { SystemScanner } from './services/system-scanner';
-import { DependencyManager } from './services/dependency-manager';
-import { AppSettings } from './services/app-settings';
-import { dialog, shell, app } from 'electron';
+import {PythonServer} from './services/python-server';
+import {SystemScanner} from './services/system-scanner';
+import {DependencyManager} from './services/dependency-manager';
+import {AppSettings} from './services/app-settings';
+import {app, dialog, shell} from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { APP_PATHS } from './app-paths';
+import {APP_PATHS} from './app-paths';
 
 // Initialize tRPC
 const t = initTRPC.create({

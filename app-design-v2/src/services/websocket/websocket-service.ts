@@ -1,23 +1,19 @@
 // services/websocket/websocket-service.ts
-import { store } from '@/store';
 import {
-    websocketConnected,
-    websocketDisconnected,
-    websocketError,
-    websocketReconnecting,
     backendFramerateUpdated,
     frontendFramerateUpdated,
     logAdded,
-    selectServerConfig,
+    type LogRecord,
     selectIsServerAlive,
-    type LogRecord
+    selectServerConfig,
+    store,
+    websocketConnected,
+    websocketDisconnected,
+    websocketError,
+    websocketReconnecting
 } from '@/store';
-import { frameRouter } from '../frames/frame-router.ts';
-import type {
-    WebSocketMessage,
-    FramerateUpdateMessage,
-    LogRecordMessage
-} from './websocket-types.ts';
+import {frameRouter} from '../frames/frame-router.ts';
+import type {FramerateUpdateMessage, LogRecordMessage, WebSocketMessage} from './websocket-types.ts';
 
 export type MessageHandler = (data: WebSocketMessage) => void;
 export type BinaryHandler = (data: ArrayBuffer) => void;

@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
-import { Box, IconButton, Tooltip, Typography } from "@mui/material";
+import {useCallback, useEffect, useRef} from "react";
+import {Canvas} from "@react-three/fiber";
+import {Box, IconButton, Tooltip, Typography} from "@mui/material";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import HomeIcon from "@mui/icons-material/Home";
 import type CameraControlsImpl from "camera-controls";
-import { ThreeJsScene } from "@/components/viewport3d/ThreeJsScene";
-import { fitCameraToSkeleton } from "@/components/viewport3d/fit-camera";
-import { useServer } from "@/services";
+import {ThreeJsScene} from "@/components/viewport3d/ThreeJsScene";
+import {fitCameraToSkeleton} from "@/components/viewport3d/fit-camera";
+import {useServer} from "@/services";
 
 export function ThreeJsCanvas() {
     const cameraControlsRef = useRef<CameraControlsImpl>(null!);

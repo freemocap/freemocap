@@ -1,28 +1,19 @@
 // LogTerminal.tsx
+import {alpha, Box, IconButton, TextField, ToggleButton, ToggleButtonGroup, Tooltip, useTheme,} from "@mui/material";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {useServer} from "@/services/server/ServerContextProvider";
+import {LogRecord, LogSnapshot} from "@/services/server/server-helpers/log-store";
 import {
-    alpha,
-    Box,
-    IconButton,
-    TextField,
-    ToggleButton,
-    ToggleButtonGroup,
-    Tooltip,
-    useTheme,
-} from "@mui/material";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useServer } from "@/services/server/ServerContextProvider";
-import { LogRecord, LogSnapshot } from "@/services/server/server-helpers/log-store";
-import {
+    ContentCopy as ContentCopyIcon,
     DeleteSweep as DeleteSweepIcon,
     Pause as PauseIcon,
     PlayArrow as PlayArrowIcon,
-    Search as SearchIcon,
-    Warning as WarningIcon,
-    ContentCopy as ContentCopyIcon,
     Save as SaveIcon,
     SaveAlt as ScrollToBottomIcon,
+    Search as SearchIcon,
+    Warning as WarningIcon,
 } from "@mui/icons-material";
-import { useTranslation } from "react-i18next";
+import {useTranslation} from "react-i18next";
 
 const LOG_POLL_INTERVAL_MS = 500;
 

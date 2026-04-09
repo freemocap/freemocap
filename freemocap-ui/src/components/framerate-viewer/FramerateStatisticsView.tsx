@@ -1,5 +1,5 @@
 // src/components/framerate-viewer/FramerateStatisticsView.tsx
-import React from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {
     Box,
     Divider,
@@ -15,8 +15,7 @@ import {
 } from "@mui/material";
 import {alpha, useTheme} from "@mui/material/styles";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
-import {useEffect, useRef, useState} from "react";
-import {frontendColor, backendColor} from "@/components/framerate-viewer/FrameRateViewer";
+import {backendColor, frontendColor} from "@/components/framerate-viewer/FrameRateViewer";
 import {useTranslation} from "react-i18next";
 import {useServer} from "@/services/server/ServerContextProvider";
 

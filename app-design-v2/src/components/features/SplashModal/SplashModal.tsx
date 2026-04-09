@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, {useState} from "react";
 import {ButtonSm} from "@/components/primitives/Buttons/ButtonSm.tsx";
 import {ButtonCard} from "@/components/primitives/Buttons/ButtonCard.tsx";
 import {Checkbox} from "@/components/primitives/Toggles/Checkbox.tsx";

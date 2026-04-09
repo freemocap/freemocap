@@ -1,6 +1,6 @@
 // src/services/server/server-helpers/log-store.ts
 
-import { z } from 'zod';
+import {z} from 'zod';
 
 export const LogRecordSchema = z.object({
     name: z.string(),

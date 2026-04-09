@@ -11,6 +11,7 @@ calibration) is NOT here — it belongs in the PipelineManager or route handlers
 import logging
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
@@ -18,12 +19,12 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.realtime.realtime_aggregation_node import RealtimeAggregationNode
-from freemocap.core.pipeline.realtime.realtime_camera_node import RealtimeCameraNode
-from freemocap.core.viz.frontend_payload import FrontendPayload
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.realtime.camera_node import CameraNode
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
+from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputTopic,
@@ -49,8 +50,8 @@ class RealtimePipeline:
     id: PipelineIdString
     camera_group: CameraGroup
     config: RealtimePipelineConfig
-    camera_nodes: dict[CameraIdString, RealtimeCameraNode]
-    aggregation_node: RealtimeAggregationNode
+    camera_nodes: dict[CameraIdString, CameraNode]
+    aggregation_node: RealtimeAggregatorNode
     aggregation_output_subscription: TopicSubscriptionQueue
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
@@ -96,18 +97,18 @@ class RealtimePipeline:
         )
 
         camera_nodes = {
-            camera_id: RealtimeCameraNode.create(
+            camera_id: CameraNode.create(
                 camera_id=camera_id,
                 worker_registry=worker_registry,
                 camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
-                config=pipeline_config,
+                config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
             )
             for camera_id in camera_group.configs.keys()
         }
 
-        aggregation_node = RealtimeAggregationNode.create(
+        aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
             worker_registry=worker_registry,
             camera_group_shm_dto=camera_group.shm.to_dto(),
@@ -187,7 +188,7 @@ class RealtimePipeline:
     def get_latest_frontend_payload(
         self,
         if_newer_than: FrameNumberInt,
-    ) -> tuple[bytes, FrontendPayload | None] | None:
+    ) -> None | tuple[Any, None] | tuple[bytes | None, FrontendPayload]:
         """
         Drain the aggregation output queue and return the latest payload.
         Returns None if no new data is available.

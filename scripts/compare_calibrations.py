@@ -11,7 +11,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
-from freemocap.core.calibration.shared.calibration_models import CharucoBoardDefinition, CameraModel, \
+from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CameraModel, \
     CharucoCornersObservation, CalibrationResult
 
 logger = logging.getLogger(__name__)

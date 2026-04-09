@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
 
 
 class CalibrationConfigRequest(BaseModel):
-    config: CalibrationPipelineConfig
+    config: PosthocCalibrationPipelineConfig
 
 
 class CalibrationConfigResponse(BaseModel):
@@ -35,9 +35,9 @@ class CalibrateRecordingRequest(BaseModel):
         populate_by_name=True,
         json_schema_extra=_calibrate_request_schema_extra,
     )
-    calibration_config: CalibrationPipelineConfig = Field(
+    calibration_config: PosthocCalibrationPipelineConfig = Field(
         alias="calibrationTaskConfig",
-        default_factory=CalibrationPipelineConfig,
+        default_factory=PosthocCalibrationPipelineConfig,
     )
     calibration_recording_directory: str | None = Field(
         alias="calibrationRecordingDirectory",
@@ -55,7 +55,7 @@ class CalibrateRecordingRequest(BaseModel):
 
     @classmethod
     def create_test_data_request(cls) -> "CalibrateRecordingRequest":
-        config = CalibrationPipelineConfig()
+        config = PosthocCalibrationPipelineConfig()
 
         config.charuco_board_x_squares = 7
         config.charuco_board_y_squares = 5
@@ -67,7 +67,7 @@ class CalibrateRecordingRequest(BaseModel):
 
 
 class StopCalibrationRecordingRequest(BaseModel):
-    calibration_config: CalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
+    calibration_config: PosthocCalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
 
 
 

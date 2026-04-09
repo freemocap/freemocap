@@ -1,11 +1,7 @@
 import React from "react";
 import {Chip, Typography, useTheme} from "@mui/material";
 import {useAppSelector} from "@/store/hooks";
-import {
-    selectIsPipelineConnected,
-    selectPipelineError,
-    selectPipelineId,
-} from "@/store/slices/pipeline";
+import {selectIsPipelineConnected, selectPipelineError, selectPipelineId,} from "@/store/slices/pipeline";
 
 export const PipelineSummary: React.FC = () => {
     const theme = useTheme();

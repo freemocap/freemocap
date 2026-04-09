@@ -1,5 +1,16 @@
 import React, {useState} from 'react';
-import {Box, Button, Checkbox, FormControlLabel, IconButton, Paper, TextField, ToggleButton, ToggleButtonGroup, Tooltip} from '@mui/material';
+import {
+    Box,
+    Button,
+    Checkbox,
+    FormControlLabel,
+    IconButton,
+    Paper,
+    TextField,
+    ToggleButton,
+    ToggleButtonGroup,
+    Tooltip
+} from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import CloseIcon from '@mui/icons-material/Close';
 import GridViewIcon from '@mui/icons-material/GridView';

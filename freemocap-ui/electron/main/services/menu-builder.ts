@@ -1,5 +1,5 @@
 // electron/main/services/menu-builder.ts
-import { app, BrowserWindow, Menu, MenuItemConstructorOptions, shell } from 'electron';
+import {app, BrowserWindow, Menu, MenuItemConstructorOptions, shell} from 'electron';
 
 // Channel name for menu-triggered actions sent to the renderer
 const MENU_CHANNEL = 'menu-action';

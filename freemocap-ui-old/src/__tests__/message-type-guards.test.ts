@@ -1,8 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {
-    isSettingsStateMessage,
-    isLogRecord,
     isFramerateUpdate,
+    isLogRecord,
+    isSettingsStateMessage,
 } from '@/services/server/server-helpers/websocket-message-types';
 
 // ---------------------------------------------------------------------------

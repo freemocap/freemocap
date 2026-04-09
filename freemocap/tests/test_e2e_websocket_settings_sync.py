@@ -13,7 +13,6 @@ What these catch that unit tests don't:
 """
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 
 from freemocap.tests.conftest import MockFreemocapApp

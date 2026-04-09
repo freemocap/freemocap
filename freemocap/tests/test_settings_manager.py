@@ -8,9 +8,7 @@ import copy
 import pytest
 
 from freemocap.app.settings import (
-    CalibrationSettings,
     FreeMoCapSettings,
-    MocapSettings,
     SettingsManager,
     _deep_merge,
 )

@@ -1,4 +1,4 @@
-import { Color } from "three";
+import {Color} from "three";
 
 export const SKELETON_COLORS = {
     left:       new Color('#4488FF'),

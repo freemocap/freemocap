@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useMemo, memo } from 'react';
-import { useServer } from '@/services/server/ServerContextProvider';
-import { frontendColor, backendColor } from '@/components/framerate-viewer/FrameRateViewer';
+import React, {memo, useEffect, useMemo, useRef} from 'react';
+import {useServer} from '@/services/server/ServerContextProvider';
+import {backendColor, frontendColor} from '@/components/framerate-viewer/FrameRateViewer';
 
 interface CameraViewProps {
     cameraId: string;

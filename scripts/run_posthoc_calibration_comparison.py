@@ -16,14 +16,6 @@ import shutil
 import time
 from pathlib import Path
 
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration_models import CalibrationResult, \
-    CharucoCornersObservation
-from freemocap.core.pipeline.posthoc.posthoc_calibration_task.shared.calibration_paths import (
-    create_camera_calibration_file_name,
-)
-
-from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
@@ -31,6 +23,13 @@ from freemocap.core.pipeline.pipeline_configs import (
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
+from freemocap.core.pipeline.posthoc import CalibrationResult, \
+    CharucoCornersObservation
+from freemocap.core.pipeline.posthoc import (
+    create_camera_calibration_file_name,
+)
+from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from scripts.compare_calibrations import CalibrationComparisonResult, compare_calibration_results
 
 logger = logging.getLogger(__name__)

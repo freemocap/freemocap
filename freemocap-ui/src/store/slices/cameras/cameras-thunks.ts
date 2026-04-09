@@ -1,21 +1,21 @@
 // cameras-thunks.ts
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
-import { serverUrls } from '@/services';
+import {createAsyncThunk} from '@reduxjs/toolkit';
+import {RootState} from '../../types';
+import {serverUrls} from '@/services';
 import {
     Camera,
     CameraConfig,
-    DetectCamerasRequest,
-    DetectCamerasResponse,
     CamerasConnectOrUpdateRequest,
     ConnectCamerasResponse,
     createDefaultCameraConfig,
+    DetectCamerasRequest,
+    DetectCamerasResponse,
 } from './cameras-types';
-import { selectSelectedCameraConfigs } from './cameras-selectors';
+import {selectSelectedCameraConfigs} from './cameras-selectors';
 import {
     loadPersistedCameraSettings,
-    savePersistedCameraSettings,
     PersistedCameraSettingsMap,
+    savePersistedCameraSettings,
 } from './camera-settings-storage';
 
 export const detectCameras = createAsyncThunk<

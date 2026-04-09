@@ -1,7 +1,6 @@
 """
 Consolidated FastAPI app factory with proper lifecycle management.
 """
-import asyncio
 import logging
 import multiprocessing
 from contextlib import asynccontextmanager
@@ -16,16 +15,12 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from starlette.responses import FileResponse
 
 import freemocap
-from freemocap.api.http.app.health import health_router
-from freemocap.api.http.app.shutdown import shutdown_router
-from freemocap.api.http.app.state import state_router
 from freemocap.api.middleware.add_middleware import add_middleware
 from freemocap.api.middleware.cors import cors
 from freemocap.api.routers import SKELLYCAM_ROUTERS, FREEMOCAP_ROUTERS, APP_ROUTERS
 from freemocap.api.server_constants import PROTOCOL, HOSTNAME
-from freemocap.api.udp.vmc_relay import vmc_relay_task
 from freemocap.api.websocket.websocket_connect import websocket_router
-from freemocap.app.freemocap_application import create_freemocap_app, get_freemocap_app
+from freemocap.app.freemocap_application import create_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )

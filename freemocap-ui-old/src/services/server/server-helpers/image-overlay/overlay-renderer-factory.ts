@@ -1,6 +1,6 @@
 // overlay-renderer-factory.ts
-import { CharucoOverlayRenderer } from './charuco-overlay-renderer';
-import { MediapipeOverlayRenderer, MediapipeObservation } from './mediapipe-overlay-renderer';
+import {CharucoOverlayRenderer} from './charuco-overlay-renderer';
+import {MediapipeObservation, MediapipeOverlayRenderer} from './mediapipe-overlay-renderer';
 import {BaseOverlayRenderer, ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 

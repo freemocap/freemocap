@@ -7,8 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationSource
-from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ mocap_router = APIRouter(prefix="/mocap", tags=["Mocap"])
 
 
 class MocapConfigRequest(BaseModel):
-    config: MocapPipelineConfig
+    config: PosthocMocapPipelineConfig
 
 
 class MocapConfigResponse(BaseModel):
@@ -30,7 +30,7 @@ class MocapConfigResponse(BaseModel):
 
 class StartMocapRecordingRequest(BaseModel):
     mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
-    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
+    mocap_config: PosthocMocapPipelineConfig = Field(alias="mocapTaskConfig")
 
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.mocap_recording_directory).expanduser()
@@ -45,7 +45,7 @@ class StartMocapRecordingRequest(BaseModel):
 
 
 class StopMocapRecordingRequest(BaseModel):
-    mocap_config: MocapPipelineConfig = Field(alias="mocapTaskConfig")
+    mocap_config: PosthocMocapPipelineConfig = Field(alias="mocapTaskConfig")
 
 
 def _process_mocap_request_schema_extra(schema: dict) -> None:
@@ -55,11 +55,11 @@ def _process_mocap_request_schema_extra(schema: dict) -> None:
 class ProcessMocapRecordingRequest(BaseModel):
     model_config = ConfigDict(json_schema_extra=_process_mocap_request_schema_extra)
     mocap_recording_directory: str = Field(default=FREEMOCAP_TEST_DATA_PATH)
-    mocap_config: MocapPipelineConfig = Field(default_factory=MocapPipelineConfig)
+    mocap_config: PosthocMocapPipelineConfig = Field(default_factory=PosthocMocapPipelineConfig)
 
     @classmethod
     def create_test_data_request(cls) -> "ProcessMocapRecordingRequest":
-        config = MocapPipelineConfig()
+        config = PosthocMocapPipelineConfig()
         config.calibration_source = CalibrationSource.MOST_RECENT
         return cls(
             mocap_recording_directory=FREEMOCAP_TEST_DATA_PATH,

@@ -1,5 +1,5 @@
-import { app, BrowserWindow } from 'electron';
-import { exec } from 'child_process';
+import {app, BrowserWindow} from 'electron';
+import {exec} from 'child_process';
 
 export class LifecycleLogger {
     static logProcessInfo() {

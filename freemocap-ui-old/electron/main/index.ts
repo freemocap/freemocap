@@ -1,9 +1,9 @@
-import { app, BrowserWindow } from 'electron';
-import { setupIPC } from './ipc';
-import { WindowManager } from './services/window-manager';
-import { PythonServer } from './services/python-server';
-import { buildAppMenu } from './services/app-menu';
-import { LifecycleLogger } from './services/logger';
+import {app, BrowserWindow} from 'electron';
+import {setupIPC} from './ipc';
+import {WindowManager} from './services/window-manager';
+import {PythonServer} from './services/python-server';
+import {buildAppMenu} from './services/app-menu';
+import {LifecycleLogger} from './services/logger';
 
 export const APP_ENVIRONMENT = {
     IS_DEV: process.env.NODE_ENV === 'development',

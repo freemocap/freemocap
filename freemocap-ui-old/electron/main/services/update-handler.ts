@@ -1,6 +1,5 @@
-
-import { app, ipcMain, BrowserWindow } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import {app, BrowserWindow, ipcMain} from 'electron';
+import {autoUpdater} from 'electron-updater';
 
 export class UpdateHandler {
     private mainWindow: BrowserWindow;

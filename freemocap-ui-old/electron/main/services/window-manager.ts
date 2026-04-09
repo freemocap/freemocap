@@ -1,7 +1,7 @@
-import { BrowserWindow, shell } from 'electron';
-import { LifecycleLogger } from './logger';
-import { APP_ENVIRONMENT } from '../index';
-import { APP_PATHS } from '../app-paths';
+import {BrowserWindow, shell} from 'electron';
+import {LifecycleLogger} from './logger';
+import {APP_ENVIRONMENT} from '../index';
+import {APP_PATHS} from '../app-paths';
 
 export class WindowManager {
     private static mainWindow: BrowserWindow | null = null;

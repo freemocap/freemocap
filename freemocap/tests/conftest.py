@@ -15,7 +15,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi import APIRouter, FastAPI, WebSocket
 from fastapi.testclient import TestClient
-from starlette.websockets import WebSocketState
+from freemocap.core.pipeline.pipeline_configs import (
+    CalibrationPipelineConfig,
+    MocapPipelineConfig,
+)
 
 from freemocap.api.http.calibration.calibration_router import calibration_router
 from freemocap.api.http.mocap.mocap_router import mocap_router
@@ -23,10 +26,6 @@ from freemocap.app.settings import SettingsManager
 from freemocap.app.settings_protocol import (
     handle_settings_message,
     settings_state_relay,
-)
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
 )
 
 

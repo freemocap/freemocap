@@ -1,7 +1,7 @@
 /* --- Connection Toggle Button Component --- */
 import clsx from "clsx";
-import { useAppDispatch, useAppSelector } from "@/store";
-import { checkServerHealth } from "@/store/slices/server";
+import {useAppDispatch, useAppSelector} from "@/store";
+import {checkServerHealth} from "@/store/slices/server";
 
 interface ConnectionToggleButtonProps {
     textColor?: string;

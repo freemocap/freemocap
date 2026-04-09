@@ -1,6 +1,6 @@
-import { Color } from "three";
-import { PointStyle } from "@/components/viewport3d/viewport3d-types";
-import { buildFaceContourSegments, buildFaceContourColors } from "@/components/viewport3d/face-contours";
+import {Color} from "three";
+import {PointStyle} from "@/components/viewport3d/viewport3d-types";
+import {buildFaceContourColors, buildFaceContourSegments} from "@/components/viewport3d/face-contours";
 import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 
 // Maximum tracked points the instanced mesh can hold

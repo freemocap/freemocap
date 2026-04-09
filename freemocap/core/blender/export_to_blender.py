@@ -1,14 +1,13 @@
 import inspect
 import logging
 import subprocess
-import sys
 from pathlib import Path
 from typing import Union, List
 
-from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
-from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 import freemocap_blender_addon
 
+from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
+from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.utilities.open_file import open_file
 
 logger = logging.getLogger(__name__)

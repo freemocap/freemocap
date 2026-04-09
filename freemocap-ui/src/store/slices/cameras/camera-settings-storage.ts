@@ -1,4 +1,4 @@
-import { CameraConfig, extractConfigSettings } from './cameras-types';
+import {CameraConfig, extractConfigSettings} from './cameras-types';
 
 const STORAGE_KEY = 'freemocap-camera-settings';
 

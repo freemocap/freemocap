@@ -14,7 +14,8 @@ import {
     detectCameras,
     selectCameras,
     selectConnectedCameras,
-    selectIsLoading, selectSelectedCameras,
+    selectIsLoading,
+    selectSelectedCameras,
     useAppDispatch,
     useAppSelector,
 } from "@/store";

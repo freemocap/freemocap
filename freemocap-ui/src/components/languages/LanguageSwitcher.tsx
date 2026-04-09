@@ -1,30 +1,14 @@
-import React, { useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import {
-  Box,
-  Chip,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Tooltip,
-  Typography,
-} from "@mui/material";
-import type { SelectChangeEvent } from "@mui/material/Select";
+import React, {useCallback} from "react";
+import {useTranslation} from "react-i18next";
+import {Box, Chip, FormControl, InputLabel, MenuItem, Select, Tooltip, Typography,} from "@mui/material";
+import type {SelectChangeEvent} from "@mui/material/Select";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import VerifiedIcon from "@mui/icons-material/Verified";
 import {EXTERNAL_URLS} from "@/constants/external-urls";
-import { useAppDispatch, useAppSelector } from "@/store";
-import {
-  localeChanged,
-  selectLocale,
-  selectShowTranslationIndicator,
-} from "@/store/slices/locale";
-import {
-  SUPPORTED_LOCALES,
-  getTranslationSource,
-} from "@/i18n";
-import type { SupportedLocale } from "@/i18n";
+import {useAppDispatch, useAppSelector} from "@/store";
+import {localeChanged, selectLocale, selectShowTranslationIndicator,} from "@/store/slices/locale";
+import type {SupportedLocale} from "@/i18n";
+import {getTranslationSource, SUPPORTED_LOCALES,} from "@/i18n";
 import * as Flags from "country-flag-icons/react/3x2";
 import {CherokeeFlag} from "@/components/languages/custom-flag-icons/CherokeeFlag";
 import {YiddishFlag} from "@/components/languages/custom-flag-icons/YiddishFlag";

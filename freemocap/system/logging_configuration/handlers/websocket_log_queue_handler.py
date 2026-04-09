@@ -7,10 +7,10 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from ..log_levels import LogLevels
 from ..filters.delta_time import DeltaTimeFilter
 from ..formatters.custom_formatter import CustomFormatter
 from ..log_format_string import LOG_FORMAT_STRING
+from ..log_levels import LogLevels
 
 MIN_LOG_LEVEL_FOR_WEBSOCKET = LogLevels.TRACE.value
 

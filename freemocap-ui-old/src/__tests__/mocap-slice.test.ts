@@ -1,17 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {
-    mocapSlice,
-    mocapDetectorConfigReplaced,
-    mocapDetectorConfigUpdated,
-    skeletonFilterConfigReplaced,
-    skeletonFilterConfigUpdated,
-    mocapErrorCleared,
-    resetMocapState,
-    MEDIAPIPE_REALTIME_PRESET,
-    MEDIAPIPE_POSTHOC_PRESET,
     DEFAULT_ESTIMATOR_CONFIG,
     DEFAULT_REALTIME_FILTER_CONFIG,
+    MEDIAPIPE_POSTHOC_PRESET,
+    MEDIAPIPE_REALTIME_PRESET,
+    mocapDetectorConfigReplaced,
+    mocapDetectorConfigUpdated,
+    mocapErrorCleared,
+    mocapSlice,
     MocapState,
+    resetMocapState,
+    skeletonFilterConfigReplaced,
+    skeletonFilterConfigUpdated,
 } from '@/store/slices/mocap/mocap-slice';
 
 const reducer = mocapSlice.reducer;

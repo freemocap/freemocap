@@ -1,6 +1,6 @@
 // electron/main/ipc.ts
-import { ipcMain } from 'electron';
-import { api } from './api';
+import {ipcMain} from 'electron';
+import {api} from './api';
 import superjson from 'superjson';
 
 export function setupIPC(): void {

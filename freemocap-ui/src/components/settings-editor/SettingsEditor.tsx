@@ -1,44 +1,35 @@
-import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import {
-    Box,
-    Button,
-    ButtonGroup,
-    Alert,
-    Snackbar,
-    Tooltip,
-    Divider,
-    CircularProgress,
-} from '@mui/material';
-import { useTheme } from '@mui/material/styles';
-import Editor, { OnMount } from '@monaco-editor/react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Alert, Box, Button, ButtonGroup, CircularProgress, Divider, Snackbar, Tooltip,} from '@mui/material';
+import {useTheme} from '@mui/material/styles';
+import Editor, {OnMount} from '@monaco-editor/react';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import CheckIcon from '@mui/icons-material/Check';
 import RestoreIcon from '@mui/icons-material/Restore';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
+    configUpdated,
+    recordingDirectoryChanged,
+    selectServerSettings,
+    themeModeSet,
     useAppDispatch,
     useAppSelector,
-    themeModeSet,
-    recordingDirectoryChanged,
-    configUpdated,
-    selectServerSettings,
 } from '@/store';
 import {
     mocapDetectorConfigReplaced,
     skeletonFilterConfigReplaced,
     updateMocapConfigOnServer,
 } from '@/store/slices/mocap';
-import {calibrationConfigUpdated, updateCalibrationConfigOnServer } from '@/store/slices/calibration';
-import { ThemeMode } from '@/store/slices/theme/theme-types';
+import {calibrationConfigUpdated, updateCalibrationConfigOnServer} from '@/store/slices/calibration';
+import {ThemeMode} from '@/store/slices/theme/theme-types';
 import {
-    serialize,
-    deserialize,
     convertFormat,
-    SerializationFormat,
+    deserialize,
     FORMAT_EXTENSIONS,
     FORMAT_MIME_TYPES,
     FORMAT_MONACO_LANGUAGES,
+    SerializationFormat,
+    serialize,
 } from './format-converters';
 import {useServer} from "@/services";
 
@@ -61,7 +52,6 @@ interface AggregatedSettings {
         custom_subfolder_name: string;
     };
     calibration: {
-        live_track_charuco: boolean;
         charuco_board_x_squares: number;
         charuco_board_y_squares: number;
         charuco_square_length: number;
@@ -74,11 +64,7 @@ interface AggregatedSettings {
         detector: Record<string, unknown>;
         skeleton_filter: Record<string, unknown>;
     };
-    // vmc: {
-    //     enabled: boolean;
-    //     host: string;
-    //     port: number;
-    // };
+
 }
 
 // ── Hook: gather current settings into a flat config object ──
@@ -107,7 +93,6 @@ function useAggregatedSettings(): AggregatedSettings {
             custom_subfolder_name: recording.config.customSubfolderName,
         },
         calibration: {
-            live_track_charuco: calibration.liveTrackCharuco,
             charuco_board_x_squares: calibration.charucoBoardXSquares,
             charuco_board_y_squares: calibration.charucoBoardYSquares,
             charuco_square_length: calibration.charucoSquareLength,
@@ -132,7 +117,7 @@ function useAggregatedSettings(): AggregatedSettings {
 
 function useApplySettings() {
     const dispatch = useAppDispatch();
-    const { send, isConnected } = useServer();
+    const { sendWebsocketMessage, isConnected } = useServer();
 
     return useCallback((parsed: Record<string, unknown>) => {
         const settings = parsed as unknown as Partial<AggregatedSettings>;
@@ -170,7 +155,6 @@ function useApplySettings() {
         if (settings.calibration) {
             const cal = settings.calibration;
             dispatch(calibrationConfigUpdated({
-                liveTrackCharuco: cal.live_track_charuco,
                 charucoBoardXSquares: cal.charuco_board_x_squares,
                 charucoBoardYSquares: cal.charuco_board_y_squares,
                 charucoSquareLength: cal.charuco_square_length,
@@ -206,7 +190,7 @@ function useApplySettings() {
         //         },
         //     });
         // }
-    }, [dispatch, send, isConnected]);
+    }, [dispatch, sendWebsocketMessage, isConnected]);
 }
 
 // ── Format toggle button ──
@@ -537,4 +521,4 @@ export const SettingsEditor: React.FC = () => {
             </Snackbar>
         </Box>
     );
-};
+};

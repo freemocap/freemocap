@@ -1,16 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {
-    calibrationSlice,
     calibrationConfigUpdated,
-    calibrationProgressUpdated,
+    CalibrationDirectoryInfo,
+    calibrationDirectoryInfoUpdated,
     calibrationErrorCleared,
+    calibrationProgressUpdated,
+    calibrationSlice,
+    CalibrationState,
     manualCalibrationRecordingPathChanged,
     manualCalibrationRecordingPathCleared,
-    calibrationDirectoryInfoUpdated,
     resetCalibrationState,
-    CalibrationConfig,
-    CalibrationState,
-    CalibrationDirectoryInfo,
 } from '@/store/slices/calibration/calibration-slice';
 
 const reducer = calibrationSlice.reducer;

@@ -29,6 +29,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
 logger = logging.getLogger(__name__)
 
+# TODO - Double check if the below is true, might be nonsense
 # On Windows, multiprocessing.spawn causes each child process to
 # re-import the full module tree. Spawning many children simultaneously
 # creates a file-locking race (PermissionError) because Windows holds

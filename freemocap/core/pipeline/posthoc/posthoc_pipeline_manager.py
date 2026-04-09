@@ -18,7 +18,8 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.calibration.calibration_task import run_calibration_task
 from freemocap.core.mocap.posthoc_mocap_task import run_post_mocap_aggregation_task
-from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig, MocapPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.types.type_overloads import PipelineIdString
 

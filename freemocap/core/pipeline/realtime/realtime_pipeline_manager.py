@@ -19,7 +19,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendPayload

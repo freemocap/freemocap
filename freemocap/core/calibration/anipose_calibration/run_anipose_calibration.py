@@ -21,7 +21,7 @@ from freemocap.core.calibration.anipose_calibration.helpers.freemocap_anipose im
 from freemocap.core.calibration.shared.calibration_models import CharucoBoardDefinition, CalibrationResult
 from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.calibration.shared.charuco_observation_aggregator import CharucoObservationAggregator
-from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
 
@@ -32,7 +32,6 @@ def run_anipose_calibration(
     *,
     charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]],
     board: CharucoBoardDefinition,
-    calibration_pipeline_config: CalibrationPipelineConfig,
     video_metadata: dict[VideoIdString, VideoMetadata],
     recording_info: RecordingInfo,
     pin_camera_0_to_origin: bool = True,

@@ -15,11 +15,16 @@ dependencies = [
     "scikit-learn>=1.7.2",
     "pyceres>=2.5",
     "tomli-w>=1.2.0",
+#    "rtmlib==0.0.14",
+#    "onnxruntime-gpu",
 
+    #sub-skellies
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
     "skellytracker[mediapipe]",
+
+    #skelly utils
     "skellylogs",
     "skellypings",
 

@@ -18,7 +18,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_aggregation_node import RealtimeAggregationNode
 from freemocap.core.pipeline.realtime.realtime_camera_node import RealtimeCameraNode

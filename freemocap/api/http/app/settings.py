@@ -17,8 +17,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
-    RealtimePipelineConfig,
 )
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 
 logger = logging.getLogger(__name__)
 

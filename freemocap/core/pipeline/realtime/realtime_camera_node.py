@@ -16,7 +16,7 @@ from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptio
 from skellycam.utilities.wait_functions import wait_1ms
 
 from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager

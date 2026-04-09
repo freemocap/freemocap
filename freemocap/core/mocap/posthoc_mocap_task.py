@@ -16,6 +16,9 @@ from typing import TYPE_CHECKING
 
 import toml
 
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationSource
+from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
+
 if TYPE_CHECKING:
     from skellyforge.skellymodels.managers.human import Human
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -38,7 +41,6 @@ from freemocap.core.calibration.shared.groundplane_alignment import (
 )
 from freemocap.core.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
-from freemocap.core.pipeline.pipeline_configs import MocapPipelineConfig
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.utilities.toml_mixin import numpy_to_python
@@ -86,7 +88,6 @@ def run_post_mocap_aggregation_task(
             observation_recorders[vid_id].add_observation(observation=obs)
 
     # ---- Get calibration path ----
-    from freemocap.core.pipeline.pipeline_configs import CalibrationSource
     if task_config.calibration_source == CalibrationSource.SPECIFIED:
         if not task_config.calibration_toml_path:
             raise RuntimeError("calibration_source is 'specified' but calibration_toml_path is not set.")

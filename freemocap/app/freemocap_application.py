@@ -14,17 +14,15 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.app.settings import SettingsManager
 from freemocap.core.viz.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
-    RealtimePipelineConfig,
-)
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 
 logger = logging.getLogger(__name__)

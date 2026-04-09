@@ -28,9 +28,10 @@ from freemocap.core.calibration.shared.calibration_models import CharucoBoardDef
 from freemocap.core.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
 from freemocap.core.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.calibration.shared.calibration_save import save_calibration_copies
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig, \
+    CalibrationSolverMethod
 from freemocap.utilities.toml_mixin import numpy_to_python
 from freemocap.core.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
-from freemocap.core.pipeline.pipeline_configs import CalibrationPipelineConfig, CalibrationSolverMethod
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
 from scripts.compare_calibrations import compute_calibration_health
@@ -200,7 +201,6 @@ def _run_anipose_path(
     result, ground_plane = run_anipose_calibration(
         charuco_observations_by_frame=charuco_observations_by_frame,
         board=board,
-        calibration_pipeline_config=task_config,
         recording_info=recording_info,
         video_metadata=video_metadata,
         use_charuco_as_groundplane=task_config.use_groundplane,

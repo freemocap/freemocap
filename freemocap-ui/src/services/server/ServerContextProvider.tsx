@@ -238,7 +238,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
             }
         };
 
-        // rAF-driven processing loop. Runs on its own macrotask boundary,
+        // requestAnimationFrame(rAF)-driven processing loop. Runs on its own macrotask boundary,
         // so createImageBitmap promises can resolve without being starved
         // by the WebSocket onmessage dispatch loop.
         const processFrameLoop = async (): Promise<void> => {

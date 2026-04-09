@@ -17,9 +17,9 @@ from pathlib import Path
 import cv2
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
+from skellytracker.trackers.base_tracker.helpers import create_detector_from_config, create_annotator_from_config
 
 from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_configs import  create_detector_from_config, create_annotator_from_config
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager

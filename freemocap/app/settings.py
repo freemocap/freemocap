@@ -14,11 +14,9 @@ from pydantic import BaseModel, Field
 from skellycam.core.camera.config.camera_config import CameraConfig, CameraConfigs
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
-    RealtimePipelineConfig,
-)
+from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 
 logger = logging.getLogger(__name__)
 

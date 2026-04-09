@@ -21,8 +21,8 @@ from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     CalibrationSolverMethod,
     MocapPipelineConfig,
-    RealtimePipelineConfig,
 )
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import EstimatorConfig
 

@@ -41,7 +41,7 @@ from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import Rea
     RealtimeSkeletonFilter, FilterResult
 
 from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -237,6 +237,7 @@ class RealtimeAggregationNode(BaseNode):
         last_calibration_poll: float = time.monotonic()
 
         try:
+            previous_tik = time.perf_counter()
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
@@ -305,7 +306,7 @@ class RealtimeAggregationNode(BaseNode):
                     if isinstance(msg, CameraNodeOutputMessage)
                 ]
                 if len(set(frame_numbers)) > 1:
-                    raise ValueError(
+                    logger.warning(
                         f"Frame number mismatch across cameras: {frame_numbers} "
                         f"(expected {latest_requested_frame})"
                     )
@@ -379,6 +380,10 @@ class RealtimeAggregationNode(BaseNode):
 
                 # Convert to Point3d once at the end for the output message
                 tracked_points3d: dict[str, Point3d] = _arrays_to_point3d(point_arrays)
+                now = time.perf_counter()
+                loop_time = now - previous_tik
+                previous_tik = now
+                logger.trace(f"RealtimeAggregationNode [{camera_group_id}] loop time: {loop_time*1e3:.3f} ms")
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

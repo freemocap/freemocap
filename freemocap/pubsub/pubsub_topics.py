@@ -12,7 +12,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
-from freemocap.core.pipeline.pipeline_configs import RealtimePipelineConfig
+from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,

@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from "react";
 
 
-
 interface SegmentedControlProps {
     /**
      * Array of options to display.

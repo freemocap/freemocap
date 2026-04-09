@@ -1,19 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Box, Chip, IconButton, Tooltip, Typography, useTheme } from '@mui/material';
+import React, {useCallback, useEffect, useState} from 'react';
+import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import { Footer } from '@/components/ui-components/Footer';
+import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import { RecordingBrowser, LoadedVideo } from '@/components/playback/RecordingBrowser';
-import { SyncedVideoPlayer } from '@/components/playback/SyncedVideoPlayer';
-import { CamerasViewSettingsOverlay } from '@/components/camera-view-settings-overlay/CamerasViewSettingsOverlay';
-import { useElectronIPC } from '@/services';
-import { serverUrls } from '@/services/server/server-helpers/server-urls';
-import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
-import type { CameraSettings } from '@/pages/CamerasPage';
+import {LoadedVideo, RecordingBrowser} from '@/components/playback/RecordingBrowser';
+import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
+import {useElectronIPC} from '@/services';
+import {serverUrls} from '@/services/server/server-helpers/server-urls';
+import {useTranslation} from 'react-i18next';
+import {useLocation} from 'react-router-dom';
+import type {CameraSettings} from '@/pages/ViewportPage';
+import {
+    CamerasViewSettingsOverlay
+} from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
 
 // Module-level cache so playback state survives tab switches
 let cachedPlaybackState: {

@@ -1,4 +1,4 @@
-import { RootState } from "../../types";
+import {RootState} from "../../types";
 
 export const selectLocale = (state: RootState) => state.locale.locale;
 export const selectPreviousLocale = (state: RootState) =>

@@ -1,4 +1,4 @@
-import { Grid } from "@react-three/drei";
+import {Grid} from "@react-three/drei";
 
 /** Static scene environment: lighting, ground grid, and axes indicator. */
 export function SceneEnvironment() {

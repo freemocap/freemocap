@@ -1,9 +1,9 @@
-import { RefObject } from "react";
-import { CameraControls } from "@react-three/drei";
+import {RefObject} from "react";
+import {CameraControls} from "@react-three/drei";
 import type CameraControlsImpl from "camera-controls";
-import { SceneEnvironment } from "@/components/viewport3d/SceneEnvironment";
-import { SkeletonRenderer } from "@/components/viewport3d/SkeletonRenderer";
-import { RigidBodyRenderer } from "@/components/viewport3d/RigidBodyRenderer";
+import {SceneEnvironment} from "@/components/viewport3d/SceneEnvironment";
+import {SkeletonRenderer} from "@/components/viewport3d/SkeletonRenderer";
+import {RigidBodyRenderer} from "@/components/viewport3d/RigidBodyRenderer";
 
 interface ThreeJsSceneProps {
     cameraControlsRef: RefObject<CameraControlsImpl>;

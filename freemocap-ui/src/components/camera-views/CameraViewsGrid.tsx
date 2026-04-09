@@ -1,14 +1,14 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { Box, keyframes } from "@mui/material";
-import ReactGridLayout, { noCompactor } from "react-grid-layout";
-import type { Layout, LayoutItem } from "react-grid-layout";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {Box, keyframes} from "@mui/material";
+import type {Layout, LayoutItem} from "react-grid-layout";
+import ReactGridLayout, {noCompactor} from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import { CameraView } from "./CameraView";
-import { useServer } from "@/services/server/ServerContextProvider";
-import { useTranslation } from "react-i18next";
-import { useAppSelector } from "@/store/hooks";
-import { selectConnectedCameras } from "@/store/slices/cameras/cameras-selectors";
+import {CameraView} from "./CameraView";
+import {useServer} from "@/services/server/ServerContextProvider";
+import {useTranslation} from "react-i18next";
+import {useAppSelector} from "@/store/hooks";
+import {selectConnectedCameras} from "@/store/slices/cameras/cameras-selectors";
 
 const recordingBorderPulse = keyframes`
     0% { border-color: #ff2020; box-shadow: 0 0 4px rgba(255, 32, 32, 0.4); }

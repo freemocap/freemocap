@@ -1,5 +1,5 @@
 /* --- Dropdown wrapper with connection controls --- */
-import { useAppSelector, type ServerStatus } from "@/store";
+import {type ServerStatus, useAppSelector} from "@/store";
 
 import DropdownButton from "@/components/composites/DropdownButton.tsx";
 import {ConnectionToggleButton} from "@/components/features/ConnectionDropdown/ConnectionToggleButton.tsx";

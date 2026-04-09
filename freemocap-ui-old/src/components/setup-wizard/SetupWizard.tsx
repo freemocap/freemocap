@@ -1,20 +1,20 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
-    Box,
-    Typography,
-    Button,
-    LinearProgress,
-    CircularProgress,
-    Chip,
-    Tooltip,
     Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    IconButton,
+    LinearProgress,
     Paper,
-    Stepper,
     Step,
     StepLabel,
-    IconButton,
+    Stepper,
+    Tooltip,
+    Typography,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import {useTheme} from '@mui/material/styles';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import WarningIcon from '@mui/icons-material/Warning';
@@ -28,7 +28,7 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CloseIcon from '@mui/icons-material/Close';
-import { useElectronIPC } from '@/services';
+import {useElectronIPC} from '@/services';
 
 // ── Types (mirrors electron-side types) ──
 

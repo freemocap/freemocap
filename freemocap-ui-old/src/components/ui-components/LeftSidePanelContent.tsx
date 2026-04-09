@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {useCallback, useMemo, useState} from 'react';
 import Box from '@mui/material/Box';
-import { IconButton, List, ListItem, Tooltip, useTheme } from '@mui/material';
+import {IconButton, List, ListItem, Tooltip, useTheme} from '@mui/material';
 import {
     closestCenter,
     DndContext,
@@ -10,26 +10,21 @@ import {
     useSensor,
     useSensors,
 } from '@dnd-kit/core';
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import {arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,} from '@dnd-kit/sortable';
+import {restrictToParentElement, restrictToVerticalAxis} from '@dnd-kit/modifiers';
 import ThemeToggle from '@/components/ui-components/ThemeToggle';
 import HomeIcon from '@mui/icons-material/Home';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import TuneIcon from '@mui/icons-material/Tune';
-import { VideoFolderPanel } from '@/components/video-folder-panel/VideoFolderPanel';
-import { SortableSectionWrapper } from '@/components/common/SortableSectionWrapper';
-import { ServerConnectionStatus } from '@/components/ServerConnectionStatus';
-import { ProcessingPipelinePanel } from '@/components/processing-pipeline-panel/ProcessingPipelinePanel';
-import { CameraConfigTreeView } from '@/components/camera-config-tree-view/CameraConfigTreeView';
-import { CalibrationControlPanel } from '@/components/calibration-control-panel/CalibrationControlPanel';
-import { MocapTaskTreeItem } from '@/components/mocap-control-panel/MocapTaskTreeItem';
+import {VideoFolderPanel} from '@/components/video-folder-panel/VideoFolderPanel';
+import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper';
+import {ServerConnectionStatus} from '@/components/ServerConnectionStatus';
+import {ProcessingPipelinePanel} from '@/components/processing-pipeline-panel/ProcessingPipelinePanel';
+import {CameraConfigTreeView} from '@/components/camera-config-tree-view/CameraConfigTreeView';
+import {CalibrationControlPanel} from '@/components/calibration-control-panel/CalibrationControlPanel';
+import {MocapTaskTreeItem} from '@/components/mocap-control-panel/MocapTaskTreeItem';
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
@@ -45,7 +40,7 @@ type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     connection: ServerConnectionStatus,
-    pipeline: ProcessingPipelinePanel,
+    realtime: ProcessingPipelinePanel,
     cameras: CameraConfigTreeView,
     calibration: CalibrationControlPanel,
     mocap: MocapTaskTreeItem,

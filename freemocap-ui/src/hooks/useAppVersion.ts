@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useElectronIPC } from '@/services';
+import {useEffect, useState} from 'react';
+import {useElectronIPC} from '@/services';
 
 export function useAppVersion(): string | null {
     const [version, setVersion] = useState<string | null>(null);

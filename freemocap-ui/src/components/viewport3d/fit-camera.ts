@@ -1,7 +1,7 @@
-import { Box3, Vector3 } from "three";
+import {Box3, Vector3} from "three";
 import type CameraControlsImpl from "camera-controls";
-import { Z_OFFSET } from "@/components/viewport3d/skeleton-config";
-import { Point3d } from "./viewport3d-types";
+import {Z_OFFSET} from "@/components/viewport3d/skeleton-config";
+import {Point3d} from "./viewport3d-types";
 
 const PADDING = 0.5;
 

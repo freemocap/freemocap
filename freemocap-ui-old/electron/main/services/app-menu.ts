@@ -1,4 +1,4 @@
-import { Menu, BrowserWindow, shell, app } from 'electron';
+import {app, BrowserWindow, Menu, shell} from 'electron';
 import path from 'node:path';
 import os from 'node:os';
 

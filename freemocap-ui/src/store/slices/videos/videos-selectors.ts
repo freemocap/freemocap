@@ -1,5 +1,5 @@
-import { createSelector } from '@reduxjs/toolkit';
-import { RootState } from '../../types';
+import {createSelector} from '@reduxjs/toolkit';
+import {RootState} from '../../types';
 
 export const selectVideoFolder = (state: RootState) => state.videos.folder;
 export const selectVideoFiles = (state: RootState) => state.videos.files;

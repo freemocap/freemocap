@@ -18,8 +18,12 @@ import {CharucoObservation} from "@/services/server/server-helpers/image-overlay
 import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-overlay-renderer";
 import {
-    arraysEqual, handleModelInfoUpdate,
-    isCharucoOverlayDataMessage, isFramerateUpdate, isLogRecord, isMediapipeOverlayDataMessage,
+    arraysEqual,
+    handleModelInfoUpdate,
+    isCharucoOverlayDataMessage,
+    isFramerateUpdate,
+    isLogRecord,
+    isMediapipeOverlayDataMessage,
     isSettingsStateMessage
 } from "@/services/server/server-helpers/websocket-message-types";
 import {RigidBodyPose} from "@/components/viewport3d/viewport3d-types";

@@ -1,8 +1,8 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import { z } from 'zod';
-import { RootState } from '@/store/types';
+import {createAsyncThunk} from '@reduxjs/toolkit';
+import {z} from 'zod';
+import {RootState} from '@/store/types';
 import {serverUrls} from "@/services";
-import { RecordingCompletionData, StopRecordingResponseSchema } from './recording-types';
+import {RecordingCompletionData, StopRecordingResponseSchema} from './recording-types';
 
 const RecordStartRequestSchema = z.object({
     recording_name: z.string(),

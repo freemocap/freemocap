@@ -1,6 +1,6 @@
 // store/slices/server/server-selectors.ts
-import { createSelector } from '@reduxjs/toolkit';
-import type { RootState } from "../../types.ts";
+import {createSelector} from '@reduxjs/toolkit';
+import type {RootState} from "../../types.ts";
 
 // Base selectors
 export const selectServerConfig = (state: RootState) => state.server.config;
@@ -60,4 +60,3 @@ export const selectServerEndpoints = createSelector(
             '/skellycam/websocket/connect',
     })
 );
-

@@ -1,4 +1,4 @@
-import { Color } from "three";
+import {Color} from "three";
 
 /** 3D point with x, y, z coordinates */
 export interface Point3d {

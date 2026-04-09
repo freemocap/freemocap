@@ -1,5 +1,11 @@
-import {CharucoObservation, CharucoOverlayDataMessage} from "@/services/server/server-helpers/image-overlay/charuco-types";
-import {MediapipeObservation, MediapipeOverlayDataMessage} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import {
+    CharucoObservation,
+    CharucoOverlayDataMessage
+} from "@/services/server/server-helpers/image-overlay/charuco-types";
+import {
+    MediapipeObservation,
+    MediapipeOverlayDataMessage
+} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 
 // Union type for all observation data messages
 export type ObservationDataMessage = CharucoOverlayDataMessage | MediapipeOverlayDataMessage;

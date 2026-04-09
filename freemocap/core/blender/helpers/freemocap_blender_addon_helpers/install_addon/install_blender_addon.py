@@ -3,11 +3,11 @@ import subprocess
 from importlib.metadata import distribution
 from pathlib import Path
 
+from freemocap_blender_addon.main import ajc27_run_as_main_function
+
 from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.install_addon.bpy_install_addon import \
     INSTALL_ADDON_SCRIPT_PATH
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap_blender_addon.main import ajc27_run_as_main_function
-
 
 FREEMOCAP_BLENDER_ADDON_PACKAGE_NAME = "freemocap_blender_addon"
 

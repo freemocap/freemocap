@@ -3,13 +3,17 @@ WebSocket settings protocol tests: verify handle_settings_message routing,
 patch application, pipeline sync, and the settings_state_relay push loop.
 """
 import asyncio
-import json
 import threading
 from copy import deepcopy
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
+from freemocap.core.pipeline.pipeline_configs import (
+    CalibrationPipelineConfig,
+    MocapPipelineConfig,
+)
+from starlette.websockets import WebSocketState
 
 from freemocap.app.settings import SettingsManager
 from freemocap.app.settings_protocol import (
@@ -17,13 +21,6 @@ from freemocap.app.settings_protocol import (
     handle_settings_message,
     settings_state_relay,
 )
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
-)
-
-
-from starlette.websockets import WebSocketState
 
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { ThemeMode } from './theme-types';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {ThemeMode} from './theme-types';
 
 const getInitialTheme = (): ThemeMode => {
     if (typeof window !== 'undefined') {

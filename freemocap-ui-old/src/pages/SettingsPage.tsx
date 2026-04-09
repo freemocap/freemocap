@@ -1,30 +1,28 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
+    Alert,
     Box,
-    Typography,
-    Switch,
-    FormControlLabel,
-    TextField,
-    Slider,
-    Select,
-    MenuItem,
+    Button,
+    Chip,
+    CircularProgress,
+    Divider,
     FormControl,
-    InputLabel,
-    Paper,
+    IconButton,
+    LinearProgress,
     List,
     ListItemButton,
     ListItemIcon,
     ListItemText,
-    Divider,
-    Chip,
-    Button,
-    CircularProgress,
-    Alert,
+    MenuItem,
+    Paper,
+    Select,
+    Slider,
+    Switch,
+    TextField,
     Tooltip,
-    LinearProgress,
-    IconButton,
+    Typography,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import {useTheme} from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
 import DnsIcon from '@mui/icons-material/Dns';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
@@ -43,35 +41,35 @@ import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CodeIcon from '@mui/icons-material/Code';
-import { useNavigate } from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {
-    useAppDispatch,
-    useAppSelector,
-    themeModeSet,
-    themeModeToggled,
-    recordingDirectoryChanged,
-    useDelayStartToggled,
-    delaySecondsChanged,
-    useTimestampToggled,
-    useIncrementToggled,
     baseNameChanged,
-    recordingTagChanged,
     createSubfolderToggled,
     customSubfolderNameChanged,
+    delaySecondsChanged,
+    recordingDirectoryChanged,
+    recordingTagChanged,
     selectServerSettings,
+    themeModeSet,
+    themeModeToggled,
+    useAppDispatch,
+    useAppSelector,
+    useDelayStartToggled,
+    useIncrementToggled,
+    useTimestampToggled,
 } from '@/store';
-import { ThemeMode } from '@/store/slices/theme/theme-types';
-import { useCalibration } from '@/hooks/useCalibration';
-import { useMocap } from '@/hooks/useMocap';
-import { useServer } from '@/hooks/useServer';
-import { useElectronIPC } from '@/services';
+import {ThemeMode} from '@/store/slices/theme/theme-types';
+import {useCalibration} from '@/hooks/useCalibration';
+import {useMocap} from '@/hooks/useMocap';
+import {useServer} from '@/hooks/useServer';
+import {useElectronIPC} from '@/services';
 import {
-    MediapipeModelComplexity,
-    MEDIAPIPE_REALTIME_PRESET,
-    MEDIAPIPE_POSTHOC_PRESET,
     DEFAULT_REALTIME_FILTER_CONFIG,
+    MEDIAPIPE_POSTHOC_PRESET,
+    MEDIAPIPE_REALTIME_PRESET,
+    MediapipeModelComplexity,
 } from '@/store/slices/mocap';
-import { SettingsEditor } from '@/components/settings-editor/SettingsEditor';
+import {SettingsEditor} from '@/components/settings-editor/SettingsEditor';
 
 // ── Section IDs ──
 

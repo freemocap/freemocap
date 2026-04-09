@@ -1,5 +1,5 @@
 // src/components/framerate-viewer/BaseD3ChartView.tsx
-import {useEffect, useRef, useState, useCallback, memo} from "react"
+import {memo, useCallback, useEffect, useRef, useState} from "react"
 import * as d3 from "d3"
 import {Box, Fade, IconButton, Tooltip, Typography} from "@mui/material"
 import {RestartAlt, ZoomIn, ZoomOut} from "@mui/icons-material"

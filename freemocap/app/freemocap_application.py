@@ -7,39 +7,24 @@ import multiprocessing
 from dataclasses import dataclass, field
 
 from fastapi import FastAPI
-from pydantic import BaseModel, ConfigDict
-from skellycam.core.camera_group.camera_group import CameraGroupState
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString
 
-from freemocap.core.pipeline.pipeline_configs.calibration_task_config import CalibrationPipelineConfig
-from freemocap.core.pipeline.pipeline_configs.mocap_task_config import MocapPipelineConfig
+from freemocap.app.settings import SettingsManager
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
-from freemocap.app.settings import SettingsManager
-from freemocap.core.viz.frontend_payload import FrontendPayload
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
+from freemocap.core.viz.frontend_payload import FrontendPayload
 
 logger = logging.getLogger(__name__)
 
-
-class WorkerState(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    pid: int
-    name: str
-    alive: bool
-    error: str | None = None
-
-
-class AppState(BaseModel):
-    model_config = ConfigDict(frozen=True)
-    camera_groups: dict[CameraGroupIdString, CameraGroupState]
-    workers: dict[str, WorkerState]
 
 
 @dataclass
@@ -108,7 +93,7 @@ class FreemocapApplication:
     async def create_posthoc_calibration_pipeline(
         self,
         recording_info: RecordingInfo,
-        calibration_config: CalibrationPipelineConfig,
+        calibration_config: PosthocCalibrationPipelineConfig,
     ) -> PosthocPipeline:
         pipeline = self.posthoc_pipeline_manager.create_calibration_pipeline(
             recording_info=recording_info,
@@ -120,7 +105,7 @@ class FreemocapApplication:
     async def create_posthoc_mocap_pipeline(
         self,
         recording_info: RecordingInfo,
-        mocap_config: MocapPipelineConfig,
+        mocap_config: PosthocMocapPipelineConfig,
     ) -> PosthocPipeline:
         pipeline = self.posthoc_pipeline_manager.create_mocap_pipeline(
             recording_info=recording_info,
@@ -158,7 +143,7 @@ class FreemocapApplication:
     def get_latest_frontend_payloads(
         self,
         if_newer_than: FrameNumberInt,
-    ) -> dict[PipelineIdString | CameraGroupIdString, tuple[bytes, FrontendPayload | FrameNumberInt]]:
+    ) -> dict[str, tuple[bytes, int]] | dict[str, tuple[bytes | None, FrontendPayload | None]]:
         # Clean up completed posthoc pipelines (releases relay threads + queues)
         self.posthoc_pipeline_manager.evict_completed()
 

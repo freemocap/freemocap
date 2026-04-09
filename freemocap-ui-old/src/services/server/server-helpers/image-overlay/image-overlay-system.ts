@@ -1,5 +1,4 @@
 // base-overlay-renderer.ts
-import { z } from 'zod';
 
 // Generic types for any observation
 export interface Point2D {

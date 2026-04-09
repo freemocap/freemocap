@@ -9,9 +9,9 @@ Changes from original:
 import asyncio
 import json
 import logging
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
-from skellycam.core.types.type_overloads import CameraIdString
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
@@ -25,7 +25,6 @@ from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler
     MIN_LOG_LEVEL_FOR_WEBSOCKET,
 )
 from freemocap.utilities.wait_functions import await_10ms
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from freemocap.app.settings import SettingsManager
@@ -283,6 +282,7 @@ class WebsocketServer:
                                 # Route settings messages to the settings protocol
                                 data_message_type = data.get("message_type", "")
                                 if data_message_type.startswith("settings/"):
+                                    logger.trace(f"Received settings message: {json.dumps(data, indent=2)}")
                                     handle_settings_message(
                                         data=data,
                                         settings_manager=self._settings_manager,

@@ -1,14 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import {describe, expect, it} from 'vitest';
 import {
-    settingsSlice,
-    serverSettingsUpdated,
     serverSettingsCleared,
     ServerSettingsState,
+    serverSettingsUpdated,
+    settingsSlice,
 } from '@/store/slices/settings/settings-slice';
-import type {
-    FreeMoCapSettings,
-    SettingsStateMessage,
-} from '@/store/slices/settings/settings-types';
+import type {FreeMoCapSettings, SettingsStateMessage,} from '@/store/slices/settings/settings-types';
 
 const reducer = settingsSlice.reducer;
 
@@ -19,7 +16,7 @@ const reducer = settingsSlice.reducer;
 function makeSettings(overrides?: Partial<FreeMoCapSettings>): FreeMoCapSettings {
     return {
         cameras: {},
-        pipeline: {
+        realtime: {
             config: null,
             is_connected: false,
             pipeline_id: null,

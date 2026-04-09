@@ -1,16 +1,16 @@
 // ServerContextProvider.tsx
-import React, { createContext, ReactNode, useContext, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import React, {createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
 
-import { ConnectionState, WebSocketConnection } from "@/services/server/server-helpers/websocket-connection";
-import { FrameProcessor } from "@/services/server/server-helpers/frame-processor/frame-processor";
-import { CanvasManager } from "@/services/server/server-helpers/canvas-manager";
-import { serverUrls } from "@/services";
+import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
+import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
+import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
+import {serverUrls} from "@/services";
 import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
-import {LogStore, LogRecord} from "@/services/server/server-helpers/log-store";
-import { Point3d, RigidBodyPose } from "@/components/viewport3d/viewport3d-types";
-import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
-import { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
-import { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import {LogRecord, LogStore} from "@/services/server/server-helpers/log-store";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
+import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
+import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
+import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 import {
     isCharucoOverlayDataMessage,
     isMediapipeOverlayDataMessage
@@ -20,7 +20,7 @@ interface ServerContextValue {
     isConnected: boolean;
     connect: () => void;
     disconnect: () => void;
-    send: (data: string | object) => void;
+    sendWebsocketMessage: (data: string | object) => void;
     setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
     getFps: (cameraId: string) => number | null;
     getServerFps: () => number | null;
@@ -354,7 +354,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         wsConnectionRef.current?.disconnect();
     }, []);
 
-    const send = useCallback((data: string | object): void => {
+    const sendWebsocketMessage = useCallback((data: string | object): void => {
         wsConnectionRef.current?.send(data);
     }, []);
 
@@ -410,7 +410,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         isConnected,
         connect,
         disconnect,
-        send,
+        sendWebsocketMessage,
         setCanvasForCamera,
         getFps,
         getServerFps,
@@ -421,7 +421,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         subscribeToTrackedPoints,
         subscribeToRigidBodies,
         getLatestTrackedPoints,
-    }), [isConnected, connectedCameraIds, connect, disconnect, send, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToTrackedPoints, subscribeToRigidBodies, getLatestTrackedPoints]);
+    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToTrackedPoints, subscribeToRigidBodies, getLatestTrackedPoints]);
 
     return (
         <ServerContext.Provider value={contextValue}>

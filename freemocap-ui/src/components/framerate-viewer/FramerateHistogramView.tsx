@@ -3,7 +3,7 @@ import {useCallback, useRef} from "react"
 import * as d3 from "d3"
 import {useTheme} from "@mui/material/styles"
 import {applyAxisStyles} from "./d3ChartUtils"
-import BaseD3ChartView, {ChartScaffolding, ChartLifecycle} from "@/components/framerate-viewer/BaseD3ChartView"
+import BaseD3ChartView, {ChartLifecycle, ChartScaffolding} from "@/components/framerate-viewer/BaseD3ChartView"
 import {useTranslation} from "react-i18next"
 import {useServer} from "@/services/server/ServerContextProvider"
 

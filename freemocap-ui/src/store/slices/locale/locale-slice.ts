@@ -1,7 +1,7 @@
- import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import type { LocaleState } from "./locale-types";
-import type { SupportedLocale } from "@/i18n";
-import { FALLBACK_LOCALE, getLocaleDirection } from "@/i18n";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import type {LocaleState} from "./locale-types";
+import type {SupportedLocale} from "@/i18n";
+import {FALLBACK_LOCALE, getLocaleDirection} from "@/i18n";
 import i18n from "@/i18n/i18n";
 
 const STORAGE_KEYS = {

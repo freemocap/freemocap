@@ -3,7 +3,7 @@ import {cameraSlice} from "@/store/slices/cameras";
 import {recordingSlice} from "@/store/slices/recording";
 import {themeSlice} from "@/store/slices/theme";
 import {videosSlice} from "@/store/slices/videos";
-import {pipelineSlice} from "@/store/slices/pipeline";
+import {realtimeSlice} from "@/store/slices/realtime";
 import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
 import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 import {settingsSlice} from "@/store/slices/settings/settings-slice";
@@ -15,7 +15,7 @@ export const store = configureStore({
         recording: recordingSlice.reducer,
         theme: themeSlice.reducer,
         videos: videosSlice.reducer,
-        pipeline: pipelineSlice.reducer,
+        realtime: realtimeSlice.reducer,
         calibration: calibrationSlice.reducer,
         mocap: mocapSlice.reducer,
         settings: settingsSlice.reducer,

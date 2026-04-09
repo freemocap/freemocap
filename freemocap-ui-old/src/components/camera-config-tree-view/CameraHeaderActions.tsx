@@ -5,13 +5,7 @@ import VideocamOffIcon from "@mui/icons-material/VideocamOff";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
-import {
-    camerasConnectOrUpdate,
-    closeCameras,
-    pauseUnpauseCameras,
-    useAppDispatch,
-    useAppSelector,
-} from "@/store";
+import {camerasConnectOrUpdate, closeCameras, pauseUnpauseCameras, useAppDispatch, useAppSelector,} from "@/store";
 import {selectSelectedCameras} from "@/store/slices/cameras/cameras-selectors";
 import {detectCameras} from "@/store/slices/cameras/cameras-thunks";
 

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, {useMemo, useState} from 'react';
 import {
     Box,
     Checkbox,
@@ -15,7 +15,7 @@ import {
     Typography,
     useTheme,
 } from '@mui/material';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import {createTheme, ThemeProvider} from '@mui/material/styles';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
@@ -25,8 +25,8 @@ import LastPageIcon from '@mui/icons-material/LastPage';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import RepeatIcon from '@mui/icons-material/Repeat';
 import SettingsIcon from '@mui/icons-material/Settings';
-import type { PlaybackSettings } from './SyncedVideoPlayer';
-import { useTranslation } from 'react-i18next';
+import type {PlaybackSettings} from './SyncedVideoPlayer';
+import {useTranslation} from 'react-i18next';
 
 interface PlaybackControlsProps {
     isPlaying: boolean;

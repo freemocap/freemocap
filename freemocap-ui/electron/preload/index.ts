@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import {contextBridge, ipcRenderer} from 'electron';
 
 // Expose a simple tRPC bridge + menu action listener + menu label updater
 contextBridge.exposeInMainWorld('electronAPI', {

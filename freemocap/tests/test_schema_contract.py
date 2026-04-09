@@ -5,7 +5,12 @@ the frontend TypeScript types expect.
 These catch field name drift, missing fields, and default value mismatches
 between the Python backend and the React frontend.
 """
-import pytest
+
+from freemocap.core.pipeline.pipeline_configs import (
+    CalibrationPipelineConfig,
+    CalibrationSolverMethod,
+    MocapPipelineConfig,
+)
 
 from freemocap.app.settings import (
     CalibrationSettings,
@@ -17,14 +22,8 @@ from freemocap.app.settings import (
     SettingsManager,
     VMCSettings,
 )
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    CalibrationSolverMethod,
-    MocapPipelineConfig,
-)
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
-from freemocap.core.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
-from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import EstimatorConfig
+from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import EstimatorConfig
+from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
 
 
 # ---------------------------------------------------------------------------

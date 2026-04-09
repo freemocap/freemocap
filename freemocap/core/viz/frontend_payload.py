@@ -4,10 +4,10 @@ from pydantic import BaseModel, ConfigDict
 from skellycam.core.types.type_overloads import CameraIdString
 from skellyforge.data_models.trajectory_3d import Point3d
 
+from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
+from freemocap.core.types.type_overloads import TrackedPointNameString
 from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
-from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
-from freemocap.core.types.type_overloads import TrackedPointNameString
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,7 @@ class FrontendPayload(BaseModel):
             frame_number=aggregation_output.frame_number,
             charuco_overlays=aggregation_output.charuco_overlay_data,
             mediapipe_overlays=aggregation_output.mediapipe_overlay_data,
-            tracked_points3d=aggregation_output.tracked_points3d,
+            tracked_points3d=aggregation_output.raw_keypoints,
             rigid_body_poses=aggregation_output.rigid_body_poses,
         )
 

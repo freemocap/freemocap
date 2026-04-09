@@ -1,5 +1,5 @@
-import { useContext } from 'react';
-import { AutoUpdateContext } from './AutoUpdateContext';
+import {useContext} from 'react';
+import {AutoUpdateContext} from './AutoUpdateContext';
 
 export function useAutoUpdate() {
     const ctx = useContext(AutoUpdateContext);

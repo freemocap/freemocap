@@ -1,12 +1,12 @@
 // binary-frame-parser.ts
 import {
-    MESSAGE_TYPE,
-    PAYLOAD_HEADER_FIELDS,
-    PAYLOAD_HEADER_SIZE,
     FRAME_HEADER_FIELDS,
     FRAME_HEADER_SIZE,
+    MESSAGE_TYPE,
     PAYLOAD_FOOTER_FIELDS,
     PAYLOAD_FOOTER_SIZE,
+    PAYLOAD_HEADER_FIELDS,
+    PAYLOAD_HEADER_SIZE,
 } from './binary-protocol';
 
 export interface ParsedFrame {

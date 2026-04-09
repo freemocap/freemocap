@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Box } from '@mui/material';
-import { CameraView } from './CameraView';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {Box} from '@mui/material';
+import {CameraView} from './CameraView';
 
 interface ResizableCameraViewProps {
     cameraId: string;

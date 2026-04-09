@@ -1,27 +1,27 @@
-import { useEffect, useMemo, useRef } from "react";
+import {useEffect, useMemo, useRef} from "react";
 import {
-    InstancedMesh,
-    MeshStandardMaterial,
-    SphereGeometry,
-    Object3D,
-    Vector3,
-    BufferGeometry,
     BufferAttribute,
+    BufferGeometry,
+    InstancedMesh,
     LineBasicMaterial,
     LineSegments,
+    MeshStandardMaterial,
+    Object3D,
+    SphereGeometry,
+    Vector3,
 } from "three";
-import { useFrame } from "@react-three/fiber";
-import { useServer } from "@/services";
-import { Point3d, PointStyle } from "@/components/viewport3d/viewport3d-types";
+import {useFrame} from "@react-three/fiber";
+import {useServer} from "@/services";
+import {Point3d, PointStyle} from "@/components/viewport3d/viewport3d-types";
 import {
+    getPointStyle,
     MAX_POINTS,
     MAX_SEGMENTS,
-    Z_OFFSET,
-    SEGMENT_DEFINITIONS,
     SEGMENT_COLORS,
-    getPointStyle,
+    SEGMENT_DEFINITIONS,
+    Z_OFFSET,
 } from "@/components/viewport3d/skeleton-config";
-import { resolvePoint } from "@/components/viewport3d/virtual-points";
+import {resolvePoint} from "@/components/viewport3d/virtual-points";
 import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 
 const DUMMY = new Object3D();

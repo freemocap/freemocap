@@ -1,10 +1,10 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { CamerasPage } from '@/pages/CamerasPage';
+import {Navigate, Route, Routes} from 'react-router-dom';
+import {CamerasPage} from '@/pages/CamerasPage';
 import VideosPage from '@/pages/VideosPage';
 import WelcomePage from '@/pages/WelcomePage';
-import { Viewport3dPage } from '@/pages/Viewport3dPage';
-import { SettingsPage } from "@/pages/SettingsPage";
+import {Viewport3dPage} from '@/pages/Viewport3dPage';
+import {SettingsPage} from "@/pages/SettingsPage";
 
 export const BaseContentRouter: React.FC = () => {
     return (

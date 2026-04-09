@@ -1,18 +1,16 @@
 // src/hooks/useMenuActions.ts
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useAppDispatch, useAppSelector } from '@/store';
-import { themeModeToggled } from '@/store/slices/theme';
-import { detectCameras, camerasConnectOrUpdate, closeCameras, pauseUnpauseCameras } from '@/store/slices/cameras';
-import { stopRecording } from '@/store/slices/recording';
-import { selectVideoLoadFolder } from '@/store/slices/videos';
+import {useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import {useAppDispatch, useAppSelector} from '@/store';
+import {themeModeToggled} from '@/store/slices/theme';
+import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras} from '@/store/slices/cameras';
+import {stopRecording} from '@/store/slices/recording';
+import {selectVideoLoadFolder} from '@/store/slices/videos';
 // import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
-import { isElectron } from '@/services/electron-ipc/electron-ipc';
-import { SUPPORTED_LOCALES } from '@/i18n';
-
-import type { SupportedLocale } from '@/i18n';
-import type { MenuAction } from '../../electron/main/services/menu-builder';
+import {isElectron} from '@/services/electron-ipc/electron-ipc';
+import {SUPPORTED_LOCALES} from '@/i18n';
+import type {MenuAction} from '../../electron/main/services/menu-builder';
 
 // i18n keys that the menu builder needs for translated labels
 const MENU_LABEL_KEYS = [

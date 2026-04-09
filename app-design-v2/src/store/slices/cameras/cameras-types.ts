@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import {z} from 'zod';
 
 // Constants
 export const PixelFormats = ['RGB', 'BGR', 'GRAY'] as const;

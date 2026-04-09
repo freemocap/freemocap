@@ -26,15 +26,14 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import TopicSubscriptionQueue
 
-from freemocap.core.pipeline.base_node import BaseNode
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, VideoIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     VideoNodeOutputMessage,
     VideoNodeOutputTopic,
-    PosthocProgressTopic,
 )
 from freemocap.utilities.wait_functions import wait_1ms
 
@@ -44,7 +43,7 @@ PosthocAggregationNodeTaskFn = Callable[..., None]
 
 
 @dataclass
-class PosthocAggregationNode(BaseNode):
+class PosthocAggregationNode(AggregatorNode):
 
     @classmethod
     def create(

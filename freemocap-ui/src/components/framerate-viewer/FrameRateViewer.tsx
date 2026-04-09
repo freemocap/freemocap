@@ -6,7 +6,7 @@ import {alpha, useTheme} from "@mui/material/styles"
 import FramerateTimeseriesView from "./FramerateTimeseriesView"
 import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
-import { useTranslation } from "react-i18next";
+import {useTranslation} from "react-i18next";
 
 export const frontendColor: string = "#1976D2"
 export const backendColor: string = "#ff4d00"

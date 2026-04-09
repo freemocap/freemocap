@@ -12,8 +12,8 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
-from freemocap.core.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -75,10 +75,11 @@ class VideoNodeOutputMessage(TopicMessageABC):
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = Field(ge=0)
     pipeline_id: PipelineIdString
-    camera_group_id: CameraGroupIdString
     pipeline_config: RealtimePipelineConfig
+    camera_group_id: CameraGroupIdString
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
-    tracked_points3d: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
+    raw_keypoints: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
+    filtered_keypoints: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
     rigid_body_poses: dict[str, RigidBodyPose] = Field(default_factory=dict)
 
     @model_validator(mode='after')

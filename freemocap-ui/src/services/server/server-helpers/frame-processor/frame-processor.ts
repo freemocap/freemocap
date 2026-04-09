@@ -4,7 +4,7 @@
 // dedicated Web Worker so that all Blob allocations and createImageBitmap
 // async work happen off the main thread.
 
-import { frameDecodeWorkerCode } from "@/services/server/server-helpers/frame-processor/frame-decode.worker";
+import {frameDecodeWorkerCode} from "@/services/server/server-helpers/frame-processor/frame-decode.worker";
 
 export interface FrameData {
     cameraId: string;

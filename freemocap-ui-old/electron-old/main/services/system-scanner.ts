@@ -1,9 +1,9 @@
 import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
-import { execFile, exec } from 'node:child_process';
-import { promisify } from 'node:util';
-import { app } from 'electron';
+import {exec, execFile} from 'node:child_process';
+import {promisify} from 'node:util';
+import {app} from 'electron';
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);

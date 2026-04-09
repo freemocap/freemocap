@@ -1,6 +1,6 @@
 // hooks/use-frame-metadata.ts
-import { useState, useEffect } from 'react';
-import { frameRouter, type FrameMetadata } from '@/services/frames/frame-router';
+import {useEffect, useState} from 'react';
+import {type FrameMetadata, frameRouter} from '@/services/frames/frame-router';
 
 /**
  * Hook to subscribe to frame metadata for all cameras

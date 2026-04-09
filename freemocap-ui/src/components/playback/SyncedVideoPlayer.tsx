@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Box, Tooltip, Typography, useTheme } from '@mui/material';
-import ReactGridLayout, { noCompactor } from 'react-grid-layout';
-import type { Layout, LayoutItem } from 'react-grid-layout';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {Box, Tooltip, Typography, useTheme} from '@mui/material';
+import type {Layout, LayoutItem} from 'react-grid-layout';
+import ReactGridLayout, {noCompactor} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { PlaybackControls } from './PlaybackControls';
-import { useTranslation } from 'react-i18next';
+import {PlaybackControls} from './PlaybackControls';
+import {useTranslation} from 'react-i18next';
 
 interface VideoEntry {
     videoId: string;

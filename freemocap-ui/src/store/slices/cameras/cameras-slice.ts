@@ -1,20 +1,18 @@
 // cameras-slice.ts
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {
+    areConfigsEqual,
+    CameraConfig,
     CamerasState,
-    CameraConfig, extractConfigSettings, areConfigsEqual, createDefaultCameraConfig,
+    createDefaultCameraConfig,
+    extractConfigSettings,
 } from './cameras-types';
+import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras,} from './cameras-thunks';
 import {
-    detectCameras,
-    camerasConnectOrUpdate,
-    closeCameras,
-    pauseUnpauseCameras,
-} from './cameras-thunks';
-import {
-    savePersistedCameraSettings,
-    clearPersistedCameraSettings,
     buildPersistedEntry,
+    clearPersistedCameraSettings,
     PersistedCameraSettingsMap,
+    savePersistedCameraSettings,
 } from './camera-settings-storage';
 
 // Persist all current camera desired configs + selection to localStorage

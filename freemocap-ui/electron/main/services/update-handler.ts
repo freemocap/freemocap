@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow } from 'electron';
+import {app, BrowserWindow, ipcMain} from 'electron';
 import * as electronUpdater from 'electron-updater';
 
 // Access autoUpdater from the namespace import (ESM/CJS interop)

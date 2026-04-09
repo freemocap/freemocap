@@ -12,7 +12,6 @@ import {
 export type CalibrationSolverMethod = 'anipose' | 'pyceres';
 
 export interface CalibrationConfig {
-    liveTrackCharuco: boolean;
     charucoBoardXSquares: number;
     charucoBoardYSquares: number;
     charucoSquareLength: number;
@@ -47,7 +46,6 @@ export interface CalibrationState {
 
 const initialState: CalibrationState = {
     config: {
-        liveTrackCharuco: true,
         charucoBoardXSquares: 5,
         charucoBoardYSquares: 3,
         charucoSquareLength: 54,

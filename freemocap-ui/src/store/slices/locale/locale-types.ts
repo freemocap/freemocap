@@ -1,4 +1,4 @@
-import type { SupportedLocale } from "@/i18n";
+import type {SupportedLocale} from "@/i18n";
 
 export interface LocaleState {
   locale: SupportedLocale;

@@ -7,21 +7,20 @@ Uses FastAPI TestClient with a mocked FreemocapApplication.
 """
 import threading
 from copy import deepcopy
-from dataclasses import dataclass, field
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-
-from freemocap.api.http.calibration.calibration_router import calibration_router
-from freemocap.api.http.mocap.mocap_router import mocap_router
-from freemocap.app.settings import SettingsManager
 from freemocap.core.pipeline.pipeline_configs import (
     CalibrationPipelineConfig,
     MocapPipelineConfig,
 )
+
+from freemocap.api.http.calibration.calibration_router import calibration_router
+from freemocap.api.http.mocap.mocap_router import mocap_router
+from freemocap.app.settings import SettingsManager
 
 
 # ---------------------------------------------------------------------------

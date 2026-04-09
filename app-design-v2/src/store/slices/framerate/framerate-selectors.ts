@@ -1,5 +1,5 @@
 // framerate-selectors.ts
-import { createSelector } from '@reduxjs/toolkit';
+import {createSelector} from '@reduxjs/toolkit';
 import type {RootState} from '../../types';
 
 // Basic selectors for current framerates

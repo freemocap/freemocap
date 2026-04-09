@@ -19,7 +19,8 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.pipeline.pipeline_configs.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendPayload
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class RealtimePipelineManager:
+class RealtimePipelineManager(PipelineManagerABC):
     """
     Manages the lifecycle of realtime (camera-bound) pipelines.
 

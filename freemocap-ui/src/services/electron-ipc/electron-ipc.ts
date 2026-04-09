@@ -1,6 +1,7 @@
-
 // Check if running in Electron
 import {electronIpcClient} from "@/services/electron-ipc/electron-ipc-client";
+// Type-safe wrapper hook for React components
+import {useMemo} from 'react';
 
 export const isElectron = (): boolean => {
     return typeof window !== 'undefined' && !!window.electronAPI;
@@ -8,9 +9,6 @@ export const isElectron = (): boolean => {
 
 // Export the API client or null if not in Electron
 export const electronIpc = isElectron() ? electronIpcClient : null;
-
-// Type-safe wrapper hook for React components
-import { useMemo } from 'react';
 
 export function useElectronIPC() {
     const api = useMemo(() => {

@@ -1,4 +1,4 @@
-import { Color } from "three";
+import {Color} from "three";
 import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 
 /**

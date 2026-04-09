@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
     Box,
-    Typography,
-    IconButton,
     Button,
-    Collapse,
-    Tooltip,
-    CircularProgress,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
     Chip,
-    Switch,
+    CircularProgress,
+    Collapse,
+    FormControl,
     FormControlLabel,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Select,
+    Switch,
     TextField,
+    Tooltip,
+    Typography,
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import {useTheme} from '@mui/material/styles';
 import WifiIcon from '@mui/icons-material/Wifi';
 import WifiOffIcon from '@mui/icons-material/WifiOff';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -26,10 +26,10 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import { useServer } from '@/services/server/ServerContextProvider';
-import { useTranslation } from "react-i18next";
-import { useElectronIPC } from '@/services';
-import { DEFAULT_HOST, DEFAULT_PORT } from '@/services/server/server-helpers/server-urls';
+import {useServer} from '@/services/server/ServerContextProvider';
+import {useTranslation} from "react-i18next";
+import {useElectronIPC} from '@/services';
+import {DEFAULT_HOST, DEFAULT_PORT} from '@/services/server/server-helpers/server-urls';
 
 interface ExecutableCandidate {
     name: string;

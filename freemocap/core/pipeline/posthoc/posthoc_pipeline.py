@@ -11,17 +11,16 @@ naturally when their work is done.
 """
 import logging
 import multiprocessing
-import sys
-import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
-from freemocap.core.pipeline.pipeline_ipc import PipelineIPC
+
+from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
+from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.posthoc.posthoc_aggregation_node import PosthocAggregationNode, \
     PosthocAggregationNodeTaskFn
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
@@ -33,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class PosthocPipeline:
+class PosthocPipeline(PipelineABC):
     """
     Generic posthoc pipeline: video nodes → aggregation node → task function.
 

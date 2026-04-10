@@ -15,12 +15,6 @@ from fastapi import FastAPI
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.app.settings_protocol import (
-    handle_settings_message,
-    settings_state_relay,
-)
-from freemocap.core.viz import image_overlay
-from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import (
     get_websocket_log_queue,
     MIN_LOG_LEVEL_FOR_WEBSOCKET,
@@ -28,7 +22,6 @@ from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler
 from freemocap.utilities.wait_functions import await_10ms
 
 if TYPE_CHECKING:
-    from freemocap.app.settings import SettingsManager
     from skellycam.core.types.type_overloads import CameraGroupIdString
     from skellycam.core.recorders.framerate_tracker import FramerateTracker
 
@@ -46,7 +39,6 @@ class WebsocketServer:
             )
         self._global_kill_flag = fastapi_app.state.global_kill_flag
         self._app: FreemocapApplication = get_freemocap_app()
-        self._settings_manager: SettingsManager = self._app.settings_manager
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
@@ -61,8 +53,6 @@ class WebsocketServer:
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
         self._websocket_should_continue = True
-        # Sync settings from app state on connection
-        self._settings_manager.update_from_app(self._app)
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -101,15 +91,6 @@ class WebsocketServer:
             asyncio.create_task(
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
-            ),
-            asyncio.create_task(
-                settings_state_relay(
-                    websocket=self.websocket,
-                    settings_manager=self._settings_manager,
-                    should_continue=lambda: self.should_continue,
-                    send_lock=self._send_lock,
-                ),
-                name="WebsocketSettingsStateRelay",
             ),
         ]
 
@@ -228,14 +209,8 @@ class WebsocketServer:
 
                                 # Route settings messages to the settings protocol
                                 data_message_type = data.get("message_type", "")
-                                if data_message_type.startswith("settings/"):
-                                    logger.trace(f"Received settings message: {json.dumps(data, indent=2)}")
-                                    handle_settings_message(
-                                        data=data,
-                                        settings_manager=self._settings_manager,
-                                        app=self._app,
-                                    )
-                                elif "frameNumber" in data:
+
+                                if "frameNumber" in data:
                                     # Existing frame acknowledgment handling
                                     self.last_received_frontend_confirmation = data["frameNumber"]
                                     self._display_image_sizes = data.get("displayImageSizes", None)

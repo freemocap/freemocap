@@ -6,7 +6,6 @@ import {videosSlice} from "@/store/slices/videos";
 import {realtimeSlice} from "@/store/slices/realtime";
 import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
 import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
-import {settingsSlice} from "@/store/slices/settings/settings-slice";
 import {localeSlice} from "@/store/slices/locale";
 
 export const store = configureStore({
@@ -18,7 +17,6 @@ export const store = configureStore({
         realtime: realtimeSlice.reducer,
         calibration: calibrationSlice.reducer,
         mocap: mocapSlice.reducer,
-        settings: settingsSlice.reducer,
         locale: localeSlice.reducer
     },
 });

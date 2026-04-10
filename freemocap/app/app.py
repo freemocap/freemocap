@@ -116,7 +116,7 @@ def _register_routes(app: FastAPI) -> None:
             logger.api(
                 f"\tRegistering route: `/{freemocap.__package_name__}{route.path}` with methods: [{', '.join(route.methods)}]")
 
-    logger.api("\nRegistering FreeMoCap endpoints:")
+    logger.api("\nRegistering SkellyCam endpoints:")
     for router in SKELLYCAM_ROUTERS:
         for route in router.routes:
             logger.api(

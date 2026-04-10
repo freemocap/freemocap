@@ -55,20 +55,9 @@ class ServerUrls {
             startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
             stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
-            // Playback endpoints
-            playbackRecordings: `${baseUrl}/skellycam/playback/recordings`,
-            playbackLoad: `${baseUrl}/skellycam/playback/load`,
-            playbackVideos: `${baseUrl}/skellycam/playback/videos`,
-            playbackVideoStream: (videoId: string) => `${baseUrl}/skellycam/playback/video/${videoId}`,
-            playbackTimestamps: (videoId: string) => `${baseUrl}/skellycam/playback/timestamps/${videoId}`,
-            playbackAllTimestamps: `${baseUrl}/skellycam/playback/timestamps`,
-
-            // Pipeline endpoints
-            pipelineConnectOrUpdate: `${baseUrl}/freemocap/pipeline/connect`,
-            pipelineClose: `${baseUrl}/freemocap/pipeline/all/close`,
-            pipelinePauseUnpause: `${baseUrl}/freemocap/pipeline/all/pause_unpause`,
-            pipelineRecordStart: `${baseUrl}/freemocap/pipeline/all/record/start`,
-            pipelineRecordStop: `${baseUrl}/freemocap/pipeline/all/record/stop`,
+            // Realtime pipeline endpoints
+            realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
+            realtimeClose: `${baseUrl}/freemocap/realtime/all/close`,
 
             // Calibration endpoints
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,

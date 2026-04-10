@@ -1,44 +1,55 @@
-import {z} from 'zod';
-import {CameraConfig} from "@/store";
+export type CalibrationSource = 'most_recent' | 'specified';
 
-// ==================== API Request/Response Types ====================
-export interface PipelineConnectRequest {
-    camera_configs?: string[];
+export interface CameraNodeConfig {
+    charuco_tracking_enabled: boolean;
+    skeleton_tracking_enabled: boolean;
 }
 
-export interface PipelineConnectResponse {
+export interface RealtimeAggregatorNodeConfig {
+    calibration_toml_source: CalibrationSource;
+    calibration_toml_path: string | null;
+    triangulation_enabled: boolean;
+    filter_enabled: boolean;
+    skeleton_enabled: boolean;
+}
+
+export interface RealtimePipelineConfig {
+    camera_node_config: CameraNodeConfig;
+    aggregator_config: RealtimeAggregatorNodeConfig;
+}
+
+export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
+    camera_node_config: {
+        charuco_tracking_enabled: true,
+        skeleton_tracking_enabled: true,
+    },
+    aggregator_config: {
+        calibration_toml_source: 'most_recent',
+        calibration_toml_path: null,
+        triangulation_enabled: true,
+        filter_enabled: false,
+        skeleton_enabled: true,
+    },
+};
+
+// ==================== API Request/Response ====================
+
+export interface PipelineApplyRequest {
+    realtime_config: RealtimePipelineConfig;
+}
+
+export interface PipelineApplyResponse {
     camera_group_id: string;
     pipeline_id: string;
-    camera_configs: Record<string, CameraConfig>;
 }
 
-// ==================== Pipeline State ====================
+// ==================== Redux State ====================
+
 export interface PipelineState {
+    pipelineConfig: RealtimePipelineConfig;
     cameraGroupId: string | null;
     pipelineId: string | null;
     isConnected: boolean;
     isLoading: boolean;
-    error: string | null;
-}
-
-
-const RealtimePipelineConfigSchema = z.object({
-    pipeline_id: z.string(),
-    parameters: z.record(z.string(), z.any()),
-})
-
-
-export type RealtimePipelineConfig = z.infer<typeof RealtimePipelineConfigSchema>;
-export interface ProcessingPipeline {
-    id: string;
-    name: string;
-    isActive: boolean;
-    config: RealtimePipelineConfig
-}
-
-export interface ProcessingPipelineState {
-    pipelines: ProcessingPipeline[];
-    isLoading: boolean;
-    isActive: boolean;
     error: string | null;
 }

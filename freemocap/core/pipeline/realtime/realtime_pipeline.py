@@ -110,6 +110,7 @@ class RealtimePipeline:
 
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
+            camera_ids=camera_group.camera_ids,
             worker_registry=worker_registry,
             camera_group_shm_dto=camera_group.shm.to_dto(),
             config=pipeline_config,
@@ -212,19 +213,4 @@ class RealtimePipeline:
             image_bytes=frames_bytes,
             frame_number=aggregation_output.frame_number,
             frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
-        )
-        aggregation_output: AggregationNodeOutputMessage | None = None
-        while not self.aggregation_output_subscription.empty():
-            aggregation_output = self.aggregation_output_subscription.get()
-
-        if aggregation_output is None:
-            return None, None
-
-        frames_bytes = self.camera_group.get_frontend_payload_by_frame_number(
-            frame_number=aggregation_output.frame_number,
-        )
-
-        return (
-            frames_bytes,
-            FrontendPayload.from_aggregation_output(aggregation_output=aggregation_output),
         )

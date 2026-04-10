@@ -84,13 +84,6 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @model_validator(mode='after')
     def validate(self) -> 'AggregationNodeOutputMessage':
-        expected_camera_ids = set(self.pipeline_config.camera_configs.keys())
-        actual_camera_ids = set(self.camera_node_outputs.keys())
-        if sorted(expected_camera_ids) != sorted(actual_camera_ids):
-            raise ValueError(
-                f"Camera IDs in camera_node_outputs {actual_camera_ids} "
-                f"do not match expected camera IDs from pipeline_config {expected_camera_ids}"
-            )
         for cam_output in self.camera_node_outputs.values():
             if cam_output.frame_number != self.frame_number:
                 raise ValueError(

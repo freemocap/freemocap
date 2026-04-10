@@ -3,12 +3,13 @@ import {CircularProgress, IconButton, Tooltip, useTheme} from "@mui/material";
 import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {
+    applyRealtimePipeline,
     closePipeline,
-    connectRealtimePipeline,
     selectCanConnectPipeline,
     selectCanDisconnectPipeline,
     selectIsPipelineConnected,
     selectIsPipelineLoading,
+    selectPipelineConfig,
 } from "@/store/slices/realtime";
 
 export const RealtimePipelineConnectionToggle: React.FC = () => {
@@ -19,6 +20,7 @@ export const RealtimePipelineConnectionToggle: React.FC = () => {
     const isLoading = useAppSelector(selectIsPipelineLoading);
     const canConnect = useAppSelector(selectCanConnectPipeline);
     const canDisconnect = useAppSelector(selectCanDisconnectPipeline);
+    const pipelineConfig = useAppSelector(selectPipelineConfig);
 
     const isClickable = canConnect || canDisconnect;
 
@@ -29,7 +31,7 @@ export const RealtimePipelineConnectionToggle: React.FC = () => {
         if (isConnected) {
             await dispatch(closePipeline());
         } else {
-            await dispatch(connectRealtimePipeline(undefined));
+            await dispatch(applyRealtimePipeline(pipelineConfig));
         }
     };
 

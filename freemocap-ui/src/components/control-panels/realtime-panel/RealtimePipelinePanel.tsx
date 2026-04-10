@@ -1,60 +1,66 @@
-import React, {useState} from "react";
+import React from "react";
 import {Box} from "@mui/material";
 import LanIcon from "@mui/icons-material/Lan";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {useAppSelector} from "@/store/hooks";
-import {selectBackendPipeline} from "@/store/slices/settings";
-import {useServer} from "@/services";
+import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {RealtimePipelineSummary} from "@/components/control-panels/realtime-panel/RealtimePipelineSummary";
-import {
-    RealtimePipelineConnectionToggle
-} from "@/components/control-panels/realtime-panel/RealtimePipelineConnectionToggle";
+import {RealtimePipelineConnectionToggle} from "@/components/control-panels/realtime-panel/RealtimePipelineConnectionToggle";
 import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-panel/RealtimePipelineConfigTree";
+import {
+    applyRealtimePipeline,
+    pipelineConfigUpdated,
+    selectAggregatorConfig,
+    selectCameraNodeConfig,
+    selectIsPipelineConnected,
+    selectPipelineConfig,
+} from "@/store/slices/realtime";
+import {RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
 
 export const RealtimePipelinePanel: React.FC = () => {
-    const {sendWebsocketMessage, isConnected: serverConnected} = useServer();
-    const backendPipeline = useAppSelector(selectBackendPipeline);
-    const pipelineConfig = backendPipeline?.config;
+    const dispatch = useAppDispatch();
 
-    // ── 2D Tracking: optimistic local state ───────────────────────────────────
-    // Local state is the source of truth for the UI. When the backend is
-    // connected and echoes a value back via Redux, we sync local state to it.
-    // When the backend is disconnected, clicks still work — send() is just a
-    // no-op side effect.
-    const [charucoEnabled, setCharucoEnabled] = useState(false);
-    const [skeletonEnabled, setSkeletonEnabled] = useState(false);
+    const isConnected = useAppSelector(selectIsPipelineConnected);
+    const pipelineConfig = useAppSelector(selectPipelineConfig);
+    const cameraNodeConfig = useAppSelector(selectCameraNodeConfig);
+    const aggregatorConfig = useAppSelector(selectAggregatorConfig);
 
-    // Sync from backend when it comes online (or when config changes)
-    React.useEffect(() => {
-        if (pipelineConfig == null) return;
-        setCharucoEnabled(pipelineConfig.calibration_detection_enabled ?? false);
-        setSkeletonEnabled(pipelineConfig.mocap_detection_enabled ?? false);
-    }, [pipelineConfig]);
-
-    const handleCharucoToggle = (newValue: boolean) => {
-        setCharucoEnabled(newValue); // update UI immediately
-        if (serverConnected) {
-            sendWebsocketMessage({
-                message_type: "settings/patch",
-                patch: {pipeline: {config: {calibration_detection_enabled: newValue}}},
-            });
+    const handleConfigChange = (newConfig: RealtimePipelineConfig) => {
+        if (isConnected) {
+            dispatch(applyRealtimePipeline(newConfig));
+        } else {
+            dispatch(pipelineConfigUpdated(newConfig));
         }
     };
 
-    const handleSkeletonToggle = (newValue: boolean) => {
-        setSkeletonEnabled(newValue); // update UI immediately
-        if (serverConnected) {
-            sendWebsocketMessage({
-                message_type: "settings/patch",
-                patch: {pipeline: {config: {mocap_detection_enabled: newValue}}},
-            });
-        }
-    };
+    const handleCharucoToggle = (value: boolean) =>
+        handleConfigChange({
+            ...pipelineConfig,
+            camera_node_config: {...cameraNodeConfig, charuco_tracking_enabled: value},
+        });
 
-    // ── 3D Reconstruction: local state (backend doesn't have these yet) ───────
-    const [triangulateEnabled, setTriangulateEnabled] = useState(false);
-    const [filterEnabled, setFilterEnabled] = useState(false);
-    const [rigidBodyEnabled, setRigidBodyEnabled] = useState(false);
+    const handleSkeletonToggle = (value: boolean) =>
+        handleConfigChange({
+            ...pipelineConfig,
+            camera_node_config: {...cameraNodeConfig, skeleton_tracking_enabled: value},
+        });
+
+    const handleTriangulateToggle = (value: boolean) =>
+        handleConfigChange({
+            ...pipelineConfig,
+            aggregator_config: {...aggregatorConfig, triangulation_enabled: value},
+        });
+
+    const handleFilterToggle = (value: boolean) =>
+        handleConfigChange({
+            ...pipelineConfig,
+            aggregator_config: {...aggregatorConfig, filter_enabled: value},
+        });
+
+    const handleRigidBodyToggle = (value: boolean) =>
+        handleConfigChange({
+            ...pipelineConfig,
+            aggregator_config: {...aggregatorConfig, skeleton_enabled: value},
+        });
 
     return (
         <CollapsibleSidebarSection
@@ -67,16 +73,16 @@ export const RealtimePipelinePanel: React.FC = () => {
             <Box sx={{p: 2}}>
                 <RealtimePipelineConfigTree
                     context="realtime"
-                    charucoEnabled={charucoEnabled}
+                    charucoEnabled={cameraNodeConfig.charuco_tracking_enabled}
                     onCharucoToggle={handleCharucoToggle}
-                    skeletonEnabled={skeletonEnabled}
+                    skeletonEnabled={cameraNodeConfig.skeleton_tracking_enabled}
                     onSkeletonToggle={handleSkeletonToggle}
-                    triangulateEnabled={triangulateEnabled}
-                    onTriangulateToggle={setTriangulateEnabled}
-                    filterEnabled={filterEnabled}
-                    onFilterToggle={setFilterEnabled}
-                    rigidBodyEnabled={rigidBodyEnabled}
-                    onRigidBodyToggle={setRigidBodyEnabled}
+                    triangulateEnabled={aggregatorConfig.triangulation_enabled}
+                    onTriangulateToggle={handleTriangulateToggle}
+                    filterEnabled={aggregatorConfig.filter_enabled}
+                    onFilterToggle={handleFilterToggle}
+                    rigidBodyEnabled={aggregatorConfig.skeleton_enabled}
+                    onRigidBodyToggle={handleRigidBodyToggle}
                 />
             </Box>
         </CollapsibleSidebarSection>

@@ -12,6 +12,7 @@ import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
+import { getPointStyle } from "../helpers/skeleton-config";
 
 const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
@@ -25,9 +26,10 @@ interface KeypointLayerProps {
     color: Color;
     radius: number;
     statsKey: "keypointsRaw" | "keypointsFiltered";
+    colorMode?: "uniform" | "byBodyPart";
 }
 
-function KeypointLayer({ subscribeKey, color, radius, statsKey }: KeypointLayerProps) {
+function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform" }: KeypointLayerProps) {
     const server = useServer();
     const { statsRef } = useViewportState();
     const meshRef = useRef<InstancedMesh>(null);
@@ -48,8 +50,8 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey }: KeypointLayerP
         return subscribeFn((pts: Record<string, Point3d>) => {
             pointsRef.current = pts;
             dirtyRef.current = true;
-            for (const name of Object.keys(pts)) {                  // was: pts.keys()
-                if (!nameToIdx.current.has(name) && nextIdx.current < MAX_POINTS) {
+            for (const name of Object.keys(pts)) {
+                if (!nameToIdx.current.has(name) && nextIdx.current < MAX_POINTS && !name.includes("face")) {
                     nameToIdx.current.set(name, nextIdx.current++);
                 }
             }
@@ -78,11 +80,12 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey }: KeypointLayerP
         let count = 0;
 
         for (const [name, idx] of nameToIdx.current) {
-            const pt = pts[name];                                    // was: pts.get(name)
+            const pt = pts[name];
             if (pt) {
+                const style = colorMode === "byBodyPart" ? getPointStyle(name) : null;
                 DUMMY.position.set(pt.x, pt.y, pt.z);
-                DUMMY.scale.setScalar(radius);
-                mesh.setColorAt(idx, color);
+                DUMMY.scale.setScalar(style ? style.scale : radius);
+                mesh.setColorAt(idx, style ? style.color : color);
                 count++;
             } else {
                 // Not in this packet — hide it
@@ -124,6 +127,7 @@ export function KeypointsRenderer() {
                     color={COLORS.filtered}
                     radius={FILTERED_RADIUS}
                     statsKey="keypointsFiltered"
+                    colorMode="byBodyPart"
                 />
             )}
         </>

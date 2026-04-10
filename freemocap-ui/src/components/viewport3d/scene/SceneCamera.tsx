@@ -19,11 +19,11 @@ export function SceneCamera({ controlsRef }: SceneCameraProps) {
 /** Fit camera to bounding box of all keypoints. */
 export function fitCameraToPoints(
     controls: CameraControlsImpl | null,
-    points: Map<string, Point3d>,
+    points: Record<string, Point3d>,
 ): void {
-    if (!controls || points.size === 0) return;
+    if (!controls || Object.keys(points).length === 0) return;
     const box = new Box3();
-    for (const pt of points.values()) {
+    for (const pt of Object.values(points)) {
         box.expandByPoint(new Vector3(pt.x, pt.y, pt.z));
     }
     box.expandByScalar(PADDING);

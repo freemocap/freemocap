@@ -241,10 +241,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.monotonic()
-        raw_keypoints: dict[str, np.ndarray] = {}
-        filtered_keypoints: dict[str, np.ndarray] = {}
-        skeleton_keypoints: dict[str, np.ndarray] = {}
-        rigid_body_poses: dict[str, RigidBodyPose] = {}
+
 
         try:
             previous_tik = time.perf_counter()
@@ -327,7 +324,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # ---- Triangulate and process if calibration is valid ----
                 # All processing stays in dict[str, ndarray] until final
                 # conversion to Point3d for the output message.
-
+                raw_keypoints: dict[str, np.ndarray] = {}
+                filtered_keypoints: dict[str, np.ndarray] = {}
+                skeleton_keypoints: dict[str, np.ndarray] = {}
+                rigid_body_poses: dict[str, RigidBodyPose] = {}
                 if calibration.is_valid and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     mediapipe_observations_by_camera = {

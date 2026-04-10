@@ -17,6 +17,7 @@ export function ViewportStateProvider({ children }: { children: React.ReactNode 
         keypointsFiltered: 0,
         rigidBodies: 0,
         facePoints: 0,
+        connections: 0,
     });
 
     const value = useMemo(() => ({ visibility, setVisibility, statsRef }), [visibility]);

@@ -23,7 +23,7 @@ interface ViewportOverlayProps {
 
 export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayProps) {
     const { visibility, setVisibility, statsRef } = useViewportState();
-    const [stats, setStats] = useState<ViewportStats>({ keypointsRaw: 0, keypointsFiltered: 0, rigidBodies: 0, facePoints: 0 });
+    const [stats, setStats] = useState<ViewportStats>({ keypointsRaw: 0, keypointsFiltered: 0, rigidBodies: 0, facePoints: 0, connections: 0 });
     const [expanded, setExpanded] = useState(false);
 
     // Poll stats from the mutable ref at ~4 Hz (no re-render coupling to the frame loop)
@@ -59,6 +59,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 <VisToggle label={`Filtered (${stats.keypointsFiltered})`} checked={visibility.keypointsFiltered} onChange={() => toggle("keypointsFiltered")} />
                 <VisToggle label={`Rigid bodies (${stats.rigidBodies})`} checked={visibility.rigidBodies} onChange={() => toggle("rigidBodies")} />
                 <VisToggle label={`Face (${stats.facePoints})`} checked={visibility.face} onChange={() => toggle("face")} />
+                <VisToggle label={`Connections (${stats.connections})`} checked={visibility.connections} onChange={() => toggle("connections")} />
 
                 <Collapse in={expanded}>
                     <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#888" }}>

@@ -157,6 +157,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             *,
             config: RealtimePipelineConfig,
             camera_group_id: CameraGroupIdString,
+            camera_ids: list[CameraGroupIdString],
             worker_registry: WorkerRegistry,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
             ipc: PipelineIPC,
@@ -170,6 +171,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             kwargs=dict(
                 pipeline_config=config,
                 camera_group_id=camera_group_id,
+                camera_ids=camera_ids,
                 ipc=ipc,
                 camera_group_shm_dto=camera_group_shm_dto,
                 camera_node_sub=pubsub.get_subscription(
@@ -196,6 +198,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             *,
             pipeline_config: RealtimePipelineConfig,
             camera_group_id: CameraGroupIdString,
+            camera_ids: list[CameraGroupIdString],
             ipc: PipelineIPC,
             shutdown_self_flag: multiprocessing.Value,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
@@ -205,7 +208,6 @@ class RealtimeAggregatorNode(AggregatorNode):
             aggregation_output_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
-        camera_ids = pipeline_config.camera_ids
         aggregator_config = pipeline_config.aggregator_config
         camera_group_shm = CameraGroupSharedMemory.recreate(
             shm_dto=camera_group_shm_dto,
@@ -410,7 +412,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     ),
                 )
 
-                camera_node_outputs = {cam_id: None for cam_id in pipeline_config.camera_configs.keys()}
+                camera_node_outputs = {cam_id: None for cam_id in camera_ids}
 
         except Exception as e:
             logger.error(

@@ -136,7 +136,7 @@ class CameraNode(SourceNode):
                         mediapipe_detector = LegacyMediapipeDetector.create(
                             config=new_config.skeleton_detector_config,
                         )
-                    elif not new_config.mocap_detection_enabled:
+                    elif not new_config.skeleton_tracking_enabled:
                         mediapipe_detector = None
 
                     config = new_config
@@ -187,8 +187,7 @@ class CameraNode(SourceNode):
                         frame_number=actual_frame_number,
                         image=image,
                     )
-                if mediapipe_detector is None and charuco_detector is None:
-                    continue
+
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
                         camera_id=actual_camera_id,

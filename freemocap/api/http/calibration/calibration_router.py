@@ -12,7 +12,7 @@ from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
 
-calibration_router = APIRouter(prefix="/calibration", tags=["Calibration"])
+calibration_router = APIRouter(prefix="/calibration", tags=["Capture Volume Calibration"])
 
 
 # ==================== Request/Response Models ====================
@@ -25,6 +25,7 @@ class CalibrationConfigRequest(BaseModel):
 class CalibrationConfigResponse(BaseModel):
     success: bool
     message: str | None = None
+
 
 def _calibrate_request_schema_extra(schema: dict) -> None:
     schema["examples"] = [CalibrateRecordingRequest.create_test_data_request().model_dump(by_alias=True)]
@@ -41,7 +42,7 @@ class CalibrateRecordingRequest(BaseModel):
     )
     calibration_recording_directory: str | None = Field(
         alias="calibrationRecordingDirectory",
-        description="Optional directory for calibration recording.")
+        description="Optional directory for calibration recording, if None/null use most recent successful recording", )
 
     def to_recording_info(self) -> RecordingInfo:
         if self.calibration_recording_directory is None:
@@ -57,20 +58,15 @@ class CalibrateRecordingRequest(BaseModel):
     def create_test_data_request(cls) -> "CalibrateRecordingRequest":
         config = PosthocCalibrationPipelineConfig()
 
-        config.charuco_board_x_squares = 7
-        config.charuco_board_y_squares = 5
-        config.charuco_square_length = 54
+        config.charuco_board.squares_x = 7
+        config.charuco_board.squares_y = 5
+        config.charuco_board.square_length_mm = 54
         return cls(calibration_config=config,
-                   calibration_recording_directory = FREEMOCAP_TEST_DATA_PATH)
-
-
+                   calibration_recording_directory=FREEMOCAP_TEST_DATA_PATH)
 
 
 class StopCalibrationRecordingRequest(BaseModel):
     calibration_config: PosthocCalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
-
-
-
 
 
 class StartCalibrationRecordingResponse(BaseModel):
@@ -113,7 +109,7 @@ def update_all_calibration_config(request: CalibrationConfigRequest) -> Calibrat
 
 @calibration_router.post("/recording/start")
 async def start_calibration_recording(
-    request: CalibrateRecordingRequest,
+        request: CalibrateRecordingRequest,
 ) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
     try:
@@ -128,7 +124,7 @@ async def start_calibration_recording(
 
 @calibration_router.post("/recording/stop")
 async def stop_calibration_recording(
-    request: StopCalibrationRecordingRequest,
+        request: StopCalibrationRecordingRequest,
 ) -> dict[str, bool]:
     """Stop current calibration recording and launch posthoc calibration pipeline."""
     app = get_freemocap_app()
@@ -183,7 +179,6 @@ class ApplyFeetGroundplaneResponse(BaseModel):
     success: bool
     message: str | None = None
     method: str | None = None
-
 
 # @calibration_router.post("/apply-feet-groundplane")
 # def apply_feet_groundplane(

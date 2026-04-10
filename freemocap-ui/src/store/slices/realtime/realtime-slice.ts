@@ -1,47 +1,46 @@
-import {createSlice} from "@reduxjs/toolkit";
-import {PipelineState} from "@/store/slices/realtime/realtime-types";
-import {closePipeline, connectRealtimePipeline} from "@/store/slices/realtime/realtime-thunks";
-import {serverSettingsCleared, serverSettingsUpdated} from "@/store/slices/settings/settings-slice";
+import {createSlice, PayloadAction} from "@reduxjs/toolkit";
+import {defaultRealtimePipelineConfig, PipelineState, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
+import {applyRealtimePipeline, closePipeline} from "@/store/slices/realtime/realtime-thunks";
 
 const initialState: PipelineState = {
+    pipelineConfig: defaultRealtimePipelineConfig,
     cameraGroupId: null,
     pipelineId: null,
     isConnected: false,
     isLoading: false,
     error: null,
-}
+};
 
 export const realtimeSlice = createSlice({
     name: 'pipeline',
     initialState,
     reducers: {
-        pipelineStateReset: (state) => {
-            state.cameraGroupId = null;
-            state.pipelineId = null;
-            state.isConnected = false;
-            state.isLoading = false;
-            state.error = null;
-        }
+        pipelineStateReset: () => initialState,
+
+        pipelineConfigUpdated: (state, action: PayloadAction<RealtimePipelineConfig>) => {
+            state.pipelineConfig = action.payload;
+        },
     },
     extraReducers: (builder) => {
         builder
-            // ========== Connect Pipeline (HTTP) ==========
-            .addCase(connectRealtimePipeline.pending, (state) => {
+            // ========== Apply Pipeline (POST /realtime/apply) ==========
+            .addCase(applyRealtimePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(connectRealtimePipeline.fulfilled, (state, action) => {
+            .addCase(applyRealtimePipeline.fulfilled, (state, action) => {
                 state.cameraGroupId = action.payload.camera_group_id;
                 state.pipelineId = action.payload.pipeline_id;
+                state.pipelineConfig = action.meta.arg;
                 state.isConnected = true;
                 state.isLoading = false;
             })
-            .addCase(connectRealtimePipeline.rejected, (state, action) => {
+            .addCase(applyRealtimePipeline.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.error.message || 'Failed to connect pipeline';
+                state.error = action.error.message || 'Failed to apply pipeline';
             })
 
-            // ========== Close Pipeline (HTTP) ==========
+            // ========== Close Pipeline (DELETE /realtime/all/close) ==========
             .addCase(closePipeline.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -54,29 +53,9 @@ export const realtimeSlice = createSlice({
             })
             .addCase(closePipeline.rejected, (state, action) => {
                 state.isLoading = false;
-                state.error = action.error.message || 'Failed to disconnect pipeline';
-            })
-
-            // ========== WebSocket settings/state — sync pipeline status ==========
-            .addCase(serverSettingsUpdated, (state, action) => {
-                const backendPipeline = action.payload.settings.pipeline;
-                // Only overwrite if not mid-HTTP-request (isLoading guards against races)
-                if (!state.isLoading) {
-                    state.isConnected = backendPipeline.is_connected;
-                    state.pipelineId = backendPipeline.pipeline_id;
-                    state.cameraGroupId = backendPipeline.camera_group_id;
-                }
-            })
-
-            // ========== WebSocket disconnected — clear pipeline state ==========
-            .addCase(serverSettingsCleared, (state) => {
-                state.cameraGroupId = null;
-                state.pipelineId = null;
-                state.isConnected = false;
-                state.isLoading = false;
-                state.error = null;
+                state.error = action.error.message || 'Failed to close pipeline';
             });
     },
 });
 
-export const {pipelineStateReset} = realtimeSlice.actions;
+export const {pipelineStateReset, pipelineConfigUpdated} = realtimeSlice.actions;

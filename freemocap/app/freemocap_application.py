@@ -7,12 +7,11 @@ import multiprocessing
 from dataclasses import dataclass, field
 
 from fastapi import FastAPI
+from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraGroupIdString
 
-from freemocap.app.settings import SettingsManager
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
@@ -20,8 +19,8 @@ from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
+from freemocap.core.types.type_overloads import FrameNumberInt
+from freemocap.core.viz.frontend_payload import FrontendImagePacket
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ class FreemocapApplication:
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
-    settings_manager: SettingsManager = field(default_factory=SettingsManager)
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -51,7 +49,6 @@ class FreemocapApplication:
                 worker_registry=worker_registry,
             ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
-            settings_manager=SettingsManager(),
         )
 
     @property
@@ -64,24 +61,21 @@ class FreemocapApplication:
 
     async def create_or_update_realtime_pipeline(
             self,
+            camera_configs:CameraConfigs,
             pipeline_config: RealtimePipelineConfig,
     ) -> RealtimePipeline:
-        existing = self.realtime_pipeline_manager.get_pipeline_by_camera_ids(
-            camera_ids=pipeline_config.camera_ids,
-        )
-        if existing is not None:
-            existing.update_config(new_config=pipeline_config)
-            self.settings_manager.update_from_app(self)
-            return existing
+
+        for pipeline in self.realtime_pipeline_manager.pipelines.values():
+            pipeline.update_config(new_config=pipeline_config)
+            return pipeline
 
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
-            camera_configs=pipeline_config.camera_configs,
+            camera_configs=camera_configs,
         )
         pipeline = self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
         )
-        self.settings_manager.update_from_app(self)
         return pipeline
 
     # ------------------------------------------------------------------
@@ -97,7 +91,6 @@ class FreemocapApplication:
             recording_info=recording_info,
             calibration_config=calibration_config,
         )
-        self.settings_manager.update_from_app(self)
         return pipeline
 
     async def create_posthoc_mocap_pipeline(
@@ -109,7 +102,6 @@ class FreemocapApplication:
             recording_info=recording_info,
             mocap_config=mocap_config,
         )
-        self.settings_manager.update_from_app(self)
         return pipeline
 
     # ------------------------------------------------------------------
@@ -120,11 +112,9 @@ class FreemocapApplication:
         await self.camera_group_manager.start_recording_all_groups(
             recording_info=recording_info,
         )
-        self.settings_manager.update_from_app(self)
 
     async def stop_recording_all(self) -> RecordingInfo | None:
         recording_infos = await self.camera_group_manager.stop_recording_all_groups()
-        self.settings_manager.update_from_app(self)
         if len(recording_infos) == 0:
             logger.warning("No recordings were stopped.")
             return None
@@ -173,11 +163,9 @@ class FreemocapApplication:
     def close_pipelines(self) -> None:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
-        self.settings_manager.update_from_app(self)
 
     def pause_unpause_pipelines(self) -> None:
         self.realtime_pipeline_manager.pause_unpause_all()
-        self.settings_manager.update_from_app(self)
 
     def close(self) -> None:
         self.global_kill_flag.value = True

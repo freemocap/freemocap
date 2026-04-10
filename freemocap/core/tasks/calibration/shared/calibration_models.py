@@ -29,7 +29,7 @@ class CharucoBoardDefinition(BaseModel, TomlMixin):
     construct their solver-specific board representations from this.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="forbid")
 
     squares_x: int
     squares_y: int

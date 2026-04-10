@@ -8,8 +8,7 @@ import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 
-import {useAppDispatch, useAppSelector} from "@/store";
-import {selectSelectedCameras} from "@/store/slices/cameras/cameras-selectors";
+import {useAppDispatch} from "@/store";
 import {
     camerasConnectOrUpdate,
     closeCameras,
@@ -22,18 +21,15 @@ import {useTranslation} from 'react-i18next';
 interface CameraHeaderActionsProps {
     isLoading: boolean;
     isPaused: boolean;
-    isConnected: boolean;
 }
 
 export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
     isLoading,
     isPaused,
-    isConnected,
 }) => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
     const theme = useTheme();
-    const selectedCameras = useAppSelector(selectSelectedCameras);
 
     const [isActionInProgress, setIsActionInProgress] = useState(false);
 
@@ -119,8 +115,7 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
                                     fontSize: 24,
                                 }}
                             />
-                            {!isConnected && (
-                                <ArrowDownwardIcon
+                            <ArrowDownwardIcon
                                     sx={{
                                         position: 'absolute',
                                         top: -6,
@@ -134,7 +129,6 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
                                         filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
                                     }}
                                 />
-                            )}
                         </Box>
                     </IconButton>
                 </span>
@@ -146,11 +140,9 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
                     <IconButton
                         size="small"
                         onClick={handlePauseUnpause}
-                        disabled={!isConnected}
                         sx={{
                             color: "inherit",
                             padding: "4px",
-                            opacity: isConnected ? 1 : 0.4,
                         }}
                     >
                         {isPaused ? <PlayArrowIcon sx={{ fontSize: 24 }} /> : <PauseIcon sx={{ fontSize: 24 }} />}
@@ -164,11 +156,9 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
                     <IconButton
                         size="small"
                         onClick={handleCloseCameras}
-                        disabled={!isConnected}
                         sx={{
                             color: "inherit",
                             padding: "4px",
-                            opacity: isConnected ? 1 : 0.4,
                         }}
                     >
                         <VideocamOffIcon sx={{ fontSize: 24 }} />

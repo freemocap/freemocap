@@ -8,8 +8,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 
-import {useAppDispatch, useAppSelector} from "@/store";
-import {selectSelectedCameras} from "@/store/slices/cameras/cameras-selectors";
+import {useAppDispatch} from "@/store";
 import {
     camerasConnectOrUpdate,
     closeCameras,
@@ -23,7 +22,6 @@ interface CameraConfigTreeViewHeaderProps {
     cameraCount: number;
     isLoading: boolean;
     isPaused: boolean;
-    hasSelectedCameras: boolean;
 }
 
 export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProps> = ({
@@ -34,9 +32,6 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
     const theme = useTheme();
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
-    const selectedCameras = useAppSelector(selectSelectedCameras);
-    const hasSelected = selectedCameras.length > 0;
-
     const [isActionInProgress, setIsActionInProgress] = React.useState(false);
 
     const handleRefreshCameras = async (e: React.MouseEvent): Promise<void> => {
@@ -124,7 +119,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                         <IconButton
                             size="small"
                             onClick={handleConnectOrApply}
-                            sx={{ 
+                            sx={{
                                 color: "inherit",
                                 border: `2px solid ${theme.palette.secondary.main}`,
                                 borderRadius: '8px',
@@ -164,7 +159,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                     </span>
                 </Tooltip>
 
-                {/* Pause/Play Button - Always visible, disabled when not connected */}
+                {/* Pause/Play Button */}
                 <Tooltip title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}>
                     <span>
                         <IconButton
@@ -179,7 +174,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                     </span>
                 </Tooltip>
 
-                {/* Close Button - Always visible, disabled when not connected */}
+                {/* Close Button */}
                 <Tooltip title={t("closeAllCameras")}>
                     <span>
                         <IconButton

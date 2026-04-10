@@ -46,7 +46,7 @@ export function ThreeJsCanvas() {
         >
             <Canvas
                 shadows
-                camera={{ position: [5, 5, 5], fov: 75, near: 0.1, far: 10000 }}
+                camera={{ position: [1e3, 1e3, 1e3], fov: 75, near: 0.1, far: 10000 }}
                 gl={{ antialias: true, logarithmicDepthBuffer: true }}
             >
                 <ThreeJsScene cameraControlsRef={cameraControlsRef} />
@@ -78,7 +78,7 @@ export function ThreeJsCanvas() {
                         onClick={() => {
                             const cam = cameraControlsRef.current?.camera;
                             if (cam) {
-                                cam.position.set(5, 5, 5);
+                                cam.position.set(1e3, 1e3, 1e3);
                                 cam.lookAt(0, 0, 0);
                                 cam.updateProjectionMatrix();
                             }

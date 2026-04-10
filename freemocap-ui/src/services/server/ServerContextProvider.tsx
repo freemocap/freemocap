@@ -12,8 +12,9 @@ import {OverlayManager} from "@/services/server/server-helpers/image-overlay/ove
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 import {
-    isCharucoOverlayDataMessage,
-    isMediapipeOverlayDataMessage
+    isFramerateUpdate,
+    isFrontendPayload,
+    isLogRecord
 } from "@/services/server/server-helpers/websocket-message-types";
 
 interface ServerContextValue {
@@ -44,40 +45,7 @@ function sortedArraysEqual(a: string[], b: string[]): boolean {
     return true;
 }
 
-// Type guard to check if a message is a log record
-function isLogRecord(data: any): data is LogRecord {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'log_record' &&
-        typeof data.levelname === 'string' &&
-        typeof data.message === 'string'
-    );
-}
-
-// Type for framerate update message from backend
-interface FramerateUpdateMessage {
-    message_type: 'framerate_update';
-    camera_group_id: string;
-    backend_framerate: DetailedFramerate;
-    frontend_framerate: DetailedFramerate;
-}
-
-// Type guard to check if a message is a framerate update
-function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'framerate_update' &&
-        typeof data.camera_group_id === 'string' &&
-        data.backend_framerate &&
-        typeof data.backend_framerate === 'object' &&
-        data.frontend_framerate &&
-        typeof data.frontend_framerate === 'object'
-    );
-}
-
-export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
@@ -103,6 +71,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     const trackedPointsSubscribersRef = useRef<Set<(points: Map<string, Point3d>) => void>>(new Set());
     const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
 
+
     // Holds the latest binary payload received from the WebSocket.
     // The WebSocket onmessage handler writes here synchronously;
     // a separate rAF-driven processing loop reads and clears it.
@@ -110,6 +79,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
     // preventing promise starvation where createImageBitmap microtasks
     // can never resolve because the browser dispatches onmessage events
     // back-to-back in a single macrotask without yielding.
+    // TODO - Check if this is nonsense
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const frameLoopRef = useRef<number | null>(null);
@@ -176,7 +146,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
         ): Promise<void> => {
             if (!result) return;
 
-            const { frames, cameraIds, frameNumbers } = result;
+            const {frames, cameraIds, frameNumbers} = result;
 
             // Only allocate a new sorted array if the camera set actually changed.
             const lastIds = lastCameraIdsRef.current;
@@ -208,7 +178,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                 });
             }
 
-            // Composite overlays onto frames BEFORE sending to canvas workers
+            // Composite overlays onto frames before sending to canvas workers
             const overlayManager = overlayManagerRef.current!;
             for (const frameData of frames) {
                 const charucoObs = latestCharucoRef.current.get(frameData.cameraId) ?? null;
@@ -234,13 +204,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
 
             if (frameNumbers.size > 0) {
                 const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                ws.send({ type: 'frameAcknowledgment', frameNumber: maxFrameNumber });
+                ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
             }
         };
 
         // requestAnimationFrame(rAF)-driven processing loop. Runs on its own macrotask boundary,
         // so createImageBitmap promises can resolve without being starved
         // by the WebSocket onmessage dispatch loop.
+        //TODO - check if this is nonsense
         const processFrameLoop = async (): Promise<void> => {
             if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
                 const payload = pendingPayloadRef.current;
@@ -266,14 +237,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
             if (event.data instanceof ArrayBuffer) {
                 pendingPayloadRef.current = event.data;
             }
-            // Handle text/JSON messages (logs, framerate updates, etc.)
+            // Handle text/JSON messages (logs, framerate updates, frontend payloads,  etc.)
             else if (typeof event.data === 'string') {
                 // Skip heartbeat pong responses — they're plain text, not JSON
                 if (event.data === 'pong') return;
 
                 try {
                     const jsonData = JSON.parse(event.data);
-
+                    console.log(JSON.stringify(jsonData, null, 2));
                     // Handle log records
                     if (isLogRecord(jsonData)) {
                         logStoreRef.current.add(jsonData);
@@ -287,40 +258,55 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
                         framerateStoreRef.current.updateFrontend(jsonData.frontend_framerate);
                     }
                     // Handle charuco overlay data
-                    else if (isCharucoOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestCharucoRef.current.set(cameraId, observation as CharucoObservation);
+                    else if (isFrontendPayload(jsonData)) {
+                        if (jsonData.charuco_overlays) {
+                            for (const [cameraId, charuco] of Object.entries(jsonData.charuco_overlays)) {
+                                latestCharucoRef.current.set(cameraId, charuco as CharucoObservation);
+                            }
                         }
+                        if (jsonData.skeleton_overlays) {
+                            for (const [cameraId, skeleton] of Object.entries(jsonData.skeleton_overlays)) {
+                                latestMediapipeRef.current.set(cameraId, skeleton as MediapipeObservation);
+                            }
+                        }
+
+                        if (jsonData.keypoints_raw) {
+                            const pointsMap = new Map<string, Point3d>();
+                            for (const [name, pt] of Object.entries(jsonData.keypoints_raw)) {
+                                const p = pt as { x: number; y: number; z: number };
+                                pointsMap.set(name, {x: p.x, y: p.y, z: p.z});
+                            }
+                            trackedPointsRef.current = pointsMap;
+                            for (const cb of trackedPointsSubscribersRef.current) {
+                                cb(pointsMap);
+                            }
+                        }
+
                     }
-                    // Handle mediapipe overlay data
-                    else if (isMediapipeOverlayDataMessage(jsonData)) {
-                        for (const [cameraId, observation] of Object.entries(jsonData)) {
-                            latestMediapipeRef.current.set(cameraId, observation as MediapipeObservation);
-                        }
-                    }
-                    // Handle tracked 3D points
-                    else if (jsonData.tracked_points3d && typeof jsonData.tracked_points3d === 'object') {
-                        const pointsMap = new Map<string, Point3d>();
-                        for (const [name, pt] of Object.entries(jsonData.tracked_points3d)) {
-                            const p = pt as { x: number; y: number; z: number };
-                            pointsMap.set(name, { x: p.x, y: p.y, z: p.z });
-                        }
-                        trackedPointsRef.current = pointsMap;
-                        for (const cb of trackedPointsSubscribersRef.current) {
-                            cb(pointsMap);
-                        }
-                    }
-                    // Handle rigid body poses
-                    else if (jsonData.rigid_body_poses && typeof jsonData.rigid_body_poses === 'object') {
-                        const posesMap = new Map<string, RigidBodyPose>();
-                        for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
-                            posesMap.set(key, pose as RigidBodyPose);
-                        }
-                        rigidBodiesRef.current = posesMap;
-                        for (const cb of rigidBodiesSubscribersRef.current) {
-                            cb(posesMap);
-                        }
-                    }
+
+                    // // Handle tracked 3D points
+                    // else if (jsonData.tracked_points3d && typeof jsonData.tracked_points3d === 'object') {
+                    //     const pointsMap = new Map<string, Point3d>();
+                    //     for (const [name, pt] of Object.entries(jsonData.tracked_points3d)) {
+                    //         const p = pt as { x: number; y: number; z: number };
+                    //         pointsMap.set(name, {x: p.x, y: p.y, z: p.z});
+                    //     }
+                    //     trackedPointsRef.current = pointsMap;
+                    //     for (const cb of trackedPointsSubscribersRef.current) {
+                    //         cb(pointsMap);
+                    //     }
+                    // }
+                    // // Handle rigid body poses
+                    // else if (jsonData.rigid_body_poses && typeof jsonData.rigid_body_poses === 'object') {
+                    //     const posesMap = new Map<string, RigidBodyPose>();
+                    //     for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
+                    //         posesMap.set(key, pose as RigidBodyPose);
+                    //     }
+                    //     rigidBodiesRef.current = posesMap;
+                    //     for (const cb of rigidBodiesSubscribersRef.current) {
+                    //         cb(posesMap);
+                    //     }
+                    // }
                     // Handle other message types (silently ignored to avoid
                     // retaining object references in the DevTools console)
                 } catch (error) {
@@ -380,12 +366,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({ child
 
     const subscribeToTrackedPoints = useCallback((cb: (points: Map<string, Point3d>) => void): () => void => {
         trackedPointsSubscribersRef.current.add(cb);
-        return () => { trackedPointsSubscribersRef.current.delete(cb); };
+        return () => {
+            trackedPointsSubscribersRef.current.delete(cb);
+        };
     }, []);
 
     const subscribeToRigidBodies = useCallback((cb: (poses: Map<string, RigidBodyPose>) => void): () => void => {
         rigidBodiesSubscribersRef.current.add(cb);
-        return () => { rigidBodiesSubscribersRef.current.delete(cb); };
+        return () => {
+            rigidBodiesSubscribersRef.current.delete(cb);
+        };
     }, []);
 
     const getLatestTrackedPoints = useCallback((): Map<string, Point3d> => {

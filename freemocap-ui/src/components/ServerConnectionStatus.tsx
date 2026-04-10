@@ -29,7 +29,7 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from "react-i18next";
 import {useElectronIPC} from '@/services';
-import {DEFAULT_HOST, DEFAULT_PORT} from '@/services/server/server-helpers/server-urls';
+import {DEFAULT_HOST, DEFAULT_PORT} from '@/constants/server-urls';
 
 interface ExecutableCandidate {
     name: string;

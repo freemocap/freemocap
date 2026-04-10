@@ -9,7 +9,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {LoadedVideo, RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
 import {useElectronIPC} from '@/services';
-import {serverUrls} from '@/services/server/server-helpers/server-urls';
+import {serverUrls} from '@/constants/server-urls';
 import {useTranslation} from 'react-i18next';
 import {useLocation} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/ViewportPage';

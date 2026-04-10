@@ -19,6 +19,7 @@ from freemocap.app.settings_protocol import (
     handle_settings_message,
     settings_state_relay,
 )
+from freemocap.core.viz import image_overlay
 from freemocap.core.viz.frontend_payload import FrontendPayload
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import (
     get_websocket_log_queue,
@@ -149,9 +150,9 @@ class WebsocketServer:
                             self.last_sent_frame_number = -1
                             continue
 
-                        for pipeline_id, (payload_bytes, frontend_payload) in frontend_payloads.items():
+                        for pipeline_id, (image_payload_bytes, frontend_payload) in frontend_payloads.items():
                             frame_number = None
-                            if not payload_bytes and not frontend_payload:
+                            if not image_payload_bytes and not frontend_payload:
                                 continue
                             if frontend_payload:
                                 if not isinstance(frontend_payload, FrontendPayload):
@@ -159,46 +160,18 @@ class WebsocketServer:
                                     frontend_payload = None
                                 else:
                                     frame_number = frontend_payload.frame_number
+                                    async with self._send_lock:
+                                        await self.websocket.send_json(frontend_payload.model_dump())
 
-                            if payload_bytes:
-                                if not isinstance(payload_bytes, (bytes, bytearray)):
+                            if image_payload_bytes:
+                                if not isinstance(image_payload_bytes, (bytes, bytearray)):
                                     raise TypeError(
                                         f"Invalid payload bytes on frame {frame_number} - "
-                                        f"got type {type(payload_bytes).__name__}"
+                                        f"got type {type(image_payload_bytes).__name__}"
                                     )
                                 async with self._send_lock:
-                                    await self.websocket.send_bytes(payload_bytes)
+                                    await self.websocket.send_bytes(image_payload_bytes)
 
-                            if frontend_payload and frontend_payload.charuco_overlays:
-                                async with self._send_lock:
-                                    await self.websocket.send_json({
-                                        camera_id: overlay_data.model_dump()
-                                        for camera_id, overlay_data in frontend_payload.charuco_overlays.items()
-                                    })
-
-                            if frontend_payload and frontend_payload.mediapipe_overlays:
-                                async with self._send_lock:
-                                    await self.websocket.send_json({
-                                        camera_id: overlay_data.model_dump()
-                                        for camera_id, overlay_data in frontend_payload.mediapipe_overlays.items()
-                                    })
-
-                            if frontend_payload and frontend_payload.tracked_points3d:
-                                points3d_dict = {
-                                    point_name: tracked_point.model_dump()
-                                    for point_name, tracked_point in frontend_payload.tracked_points3d.items()
-                                }
-
-                                async with self._send_lock:
-                                    await self.websocket.send_json({"tracked_points3d": points3d_dict})
-
-                            if frontend_payload and frontend_payload.rigid_body_poses:
-                                rigid_body_dict = {
-                                    bone_key: pose.model_dump()
-                                    for bone_key, pose in frontend_payload.rigid_body_poses.items()
-                                }
-                                async with self._send_lock:
-                                    await self.websocket.send_json({"rigid_body_poses": rigid_body_dict})
 
                             if frame_number is not None:
                                 self.last_sent_frame_number = frame_number

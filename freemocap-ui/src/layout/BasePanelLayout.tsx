@@ -1,8 +1,8 @@
 // freemocap-ui/src/layout/BasePanelLayout.tsx
 import React, {useCallback, useRef, useState} from "react";
 import {ImperativePanelHandle, Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
-import {SidePanelContent} from "@/components/ui-components/SidePanelContent";
-import BottomPanelContent from "@/components/ui-components/BottomPanelContent";
+import {SidePanelContent} from "@/layout/SidePanelContent";
+import BottomPanelContent from "@/layout/BottomPanelContent";
 import {useTheme} from "@mui/material/styles";
 import {Box} from "@mui/material";
 import {useMenuActions} from "@/hooks/useMenuActions";

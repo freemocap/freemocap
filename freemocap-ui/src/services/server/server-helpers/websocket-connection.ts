@@ -113,10 +113,6 @@ export class WebSocketConnection {
         return this.ws?.readyState === WebSocket.OPEN;
     }
 
-    public getUrl(): string {
-        return this.config.url;
-    }
-
     public updateUrl(url: string): void {
         this.config.url = url;
     }

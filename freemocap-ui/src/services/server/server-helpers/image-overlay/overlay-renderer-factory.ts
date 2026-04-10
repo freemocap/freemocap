@@ -15,35 +15,6 @@ export class OverlayRendererFactory {
     private static modelInfoCache: Map<string, ModelInfo> = new Map();
 
     /**
-     * Get or create a renderer for the specified observation type
-     */
-    public static getRenderer(type: ObservationType): BaseOverlayRenderer {
-        // Check cache first
-        let renderer = this.rendererCache.get(type);
-        if (renderer) {
-            return renderer;
-        }
-
-        // Create new renderer based on type
-        switch (type) {
-            case 'charuco_overlay':
-                renderer = new CharucoOverlayRenderer();
-                break;
-            case 'mediapipe_overlay':
-                renderer = new MediapipeOverlayRenderer();
-                break;
-            case 'rtmpose_overlay':
-                // Future: implement RTMPoseOverlayRenderer
-                throw new Error('RTMPose overlay not yet implemented');
-            default:
-                throw new Error(`Unknown observation type: ${type}`);
-        }
-
-        this.rendererCache.set(type, renderer);
-        return renderer;
-    }
-
-    /**
      * Set model info for a specific tracker type
      */
     public static setModelInfo(trackerName: string, modelInfo: ModelInfo): void {
@@ -57,16 +28,6 @@ export class OverlayRendererFactory {
         }
     }
 
-    /**
-     * Clear all cached renderers
-     */
-    public static clearCache(): void {
-        for (const renderer of this.rendererCache.values()) {
-            renderer.destroy();
-        }
-        this.rendererCache.clear();
-        this.modelInfoCache.clear();
-    }
 
     /**
      * Determine if a renderer type should use a specific model info

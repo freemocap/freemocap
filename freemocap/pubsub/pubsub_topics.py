@@ -78,8 +78,8 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig
     camera_group_id: CameraGroupIdString
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
-    raw_keypoints: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
-    filtered_keypoints: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
+    keypoints_raw: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
+    keypoints_filtered: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
     rigid_body_poses: dict[str, RigidBodyPose] = Field(default_factory=dict)
 
     @model_validator(mode='after')
@@ -116,12 +116,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @property
     def mediapipe_overlay_data(self) -> dict:
-        from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
+        from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
         from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 
         overlay_data: dict[CameraIdString, MediapipeOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, MediapipeObservation):
+            if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
                 overlay_data[camera_id] = MediapipeOverlayData.from_mediapipe_observation(
                     camera_id=camera_id,
                     observation=cam_output.mediapipe_observation,

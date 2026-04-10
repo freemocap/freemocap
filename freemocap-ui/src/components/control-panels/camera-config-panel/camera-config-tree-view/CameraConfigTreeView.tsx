@@ -16,7 +16,6 @@ import {
     selectConnectedCameras,
     selectIsLoading,
     selectIsPaused,
-    selectSelectedCameras,
     useAppDispatch,
     useAppSelector
 } from "@/store";
@@ -30,12 +29,11 @@ export const CameraConfigTreeView: React.FC = () => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
     const {isConnected} = useServer();
-    
+
     // Redux state
     const cameras = useAppSelector(selectCameras);
     const isLoading = useAppSelector(selectIsLoading);
     const connectedCameras = useAppSelector(selectConnectedCameras);
-    const selectedCameras = useAppSelector(selectSelectedCameras);
 
     // Local state
     const [expandedItems, setExpandedItems] = useState<string[]>([
@@ -50,7 +48,6 @@ export const CameraConfigTreeView: React.FC = () => {
     // Group cameras by status
     const availableCameras = cameras.filter((cam: Camera) => cam.connectionStatus !== "connected");
     const isConnectedToCameras = connectedCameras.length > 0;
-    const hasSelectedCameras = selectedCameras.length > 0;
 
     // Initial camera detection
     useEffect(() => {
@@ -72,7 +69,7 @@ export const CameraConfigTreeView: React.FC = () => {
             icon={<VideoCameraFrontIcon sx={{color: "inherit"}}/>}
             title={t('cameras')}
             summaryContent={
-                <CameraSummary 
+                <CameraSummary
                     cameraCount={cameras.length}
                     connectedCount={connectedCameras.length}
                 />
@@ -81,7 +78,6 @@ export const CameraConfigTreeView: React.FC = () => {
                 <CameraHeaderActions
                     isLoading={isLoading}
                     isPaused={isPaused}
-                    isConnected={isConnectedToCameras}
                 />
             }
             defaultExpanded={false}

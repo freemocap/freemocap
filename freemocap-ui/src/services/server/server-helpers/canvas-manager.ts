@@ -179,15 +179,4 @@ export class CanvasManager {
         }
     }
 
-    public getWorkerStatus(cameraId: string): {
-        hasWorker: boolean;
-        errorCount: number;
-        hasPendingCanvas: boolean;
-    } {
-        return {
-            hasWorker: this.workers.has(cameraId),
-            errorCount: this.workerErrors.get(cameraId) ?? 0,
-            hasPendingCanvas: this.pendingCanvases.has(cameraId)
-        };
-    }
 }

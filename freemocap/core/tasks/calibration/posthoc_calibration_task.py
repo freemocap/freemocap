@@ -46,15 +46,11 @@ logger = logging.getLogger(__name__)
 
 
 def _create_board(task_config: PosthocCalibrationPipelineConfig) -> CharucoBoardDefinition:
-    """Create the shared charuco board definition from pipeline config.
-
-    Single source of truth — both solver paths use this exact board.
-    """
+    """Create the shared charuco board definition from pipeline config. """
     return CharucoBoardDefinition(
-        squares_x=task_config.charuco_board_x_squares,
-        squares_y=task_config.charuco_board_y_squares,
-        square_length_mm=task_config.detector_config.square_length,
-        aruco_marker_length_mm=task_config.detector_config.marker_length,
+        squares_x=task_config.charuco_board.squares_x,
+        squares_y=task_config.charuco_board.squares_y,
+        square_length_mm=task_config.charuco_board.square_length_mm,
     )
 
 

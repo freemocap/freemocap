@@ -23,11 +23,12 @@ class FrontendPayload(BaseModel):
         arbitrary_types_allowed=True,
         validate_assignment=False
     )
-
+    message_type: str = "frontend_payload"
     frame_number: int
     charuco_overlays: dict[CameraIdString, CharucoOverlayData]
-    mediapipe_overlays: dict[CameraIdString, MediapipeOverlayData]
-    tracked_points3d: dict[TrackedPointNameString, Point3d]
+    skeleton_overlays: dict[CameraIdString, MediapipeOverlayData]
+    keypoints_raw: dict[TrackedPointNameString, Point3d]
+    keypoints_filtered: dict[TrackedPointNameString, Point3d]
     rigid_body_poses: dict[str, RigidBodyPose]
 
     @classmethod
@@ -39,29 +40,8 @@ class FrontendPayload(BaseModel):
         return cls(
             frame_number=aggregation_output.frame_number,
             charuco_overlays=aggregation_output.charuco_overlay_data,
-            mediapipe_overlays=aggregation_output.mediapipe_overlay_data,
-            tracked_points3d=aggregation_output.raw_keypoints,
+            skeleton_overlays=aggregation_output.mediapipe_overlay_data,
+            keypoints_raw=aggregation_output.keypoints_raw,
+            keypoints_filtered=aggregation_output.keypoints_filtered,
             rigid_body_poses=aggregation_output.rigid_body_poses,
         )
-
-    def to_websocket_dict(self) -> dict:
-        """Convert to dictionary suitable for JSON serialization over websocket."""
-        return {
-            "frame_number": self.frame_number,
-            "charuco_overlays": {
-                camera_id: overlay.model_dump()
-                for camera_id, overlay in self.charuco_overlays.items()
-            },
-            "mediapipe_overlays": {
-                camera_id: overlay.model_dump()
-                for camera_id, overlay in self.mediapipe_overlays.items()
-            },
-            "tracked_points3d": {
-                name: point.model_dump()
-                for name, point in self.tracked_points3d.items()
-            },
-            "rigid_body_poses": {
-                bone_key: pose.model_dump()
-                for bone_key, pose in self.rigid_body_poses.items()
-            },
-        }

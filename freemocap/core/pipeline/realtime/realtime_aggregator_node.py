@@ -404,8 +404,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=camera_node_outputs,
-                        raw_keypoints=_arrays_to_point3d(raw_keypoints),
-                        filtered_keypoints=_arrays_to_point3d(filtered_keypoints),
+                        keypoints_raw=_arrays_to_point3d(raw_keypoints),
+                        keypoints_filtered=_arrays_to_point3d(filtered_keypoints),
                         # rigid_body_poses=rigid_body_poses,
                     ),
                 )

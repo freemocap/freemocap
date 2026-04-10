@@ -24,7 +24,6 @@ export const CharucoMetadataSchema = z.object({
 
 // Schema for a single camera's charuco observation
 export const CharucoOverlaySchema = z.object({
-    message_type: z.literal("charuco_overlay"),
     camera_id: z.string(),
     frame_number: z.number(),
     charuco_corners: z.array(CharucoPointSchema),

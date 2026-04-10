@@ -16,7 +16,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <CameraControls ref={cameraControlsRef} makeDefault />
             <SceneEnvironment />
             <SkeletonRenderer />
-            <RigidBodyRenderer />
+            {/*<RigidBodyRenderer />*/}
         </>
     );
 }

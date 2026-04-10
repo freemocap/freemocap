@@ -95,11 +95,6 @@ def update_all_mocap_config(request: MocapConfigRequest) -> MocapConfigResponse:
     try:
         app = get_freemocap_app()
 
-        # Update settings manager (source of truth), which notifies WebSocket clients
-        app.settings_manager.apply_patch({
-            "mocap": {"config": request.config.model_dump()},
-        })
-
         # Sync to running pipelines
         with app.realtime_pipeline_manager.lock:
             for pipeline in app.realtime_pipeline_manager.pipelines.values():

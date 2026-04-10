@@ -15,7 +15,7 @@ import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
-import { FACE_SEGMENTS } from "../helpers/face-contours";
+import {FACE_CONTOUR_GROUPS} from "@/components/viewport3d/helpers/face-contours";
 
 const MAX_FACE_POINTS = 512;
 const DOT_RADIUS = 0.015;
@@ -49,16 +49,16 @@ export function FaceRenderer() {
 
     const lineGeo = useMemo(() => {
         const g = new BufferGeometry();
-        const n = FACE_SEGMENTS.length * 2;
+        const n = FACE_CONTOUR_GROUPS.reduce((acc, g) => acc + g.connections.length, 0);
         const pos = new Float32Array(n * 3).fill(1e5);
         g.setAttribute("position", new BufferAttribute(pos, 3));
         return g;
     }, []);
 
     useEffect(() => {
-        return subscribeToKeypointsRaw((allPts: Map<string, Point3d>) => {
+        return subscribeToKeypointsRaw((allPts: Record<string, Point3d>) => {
             const face = new Map<string, Point3d>();
-            for (const [name, pt] of allPts) {
+            for (const [name, pt] of Object.entries(allPts)) {
                 if (name.startsWith("face.")) face.set(name, pt);
             }
             pointsRef.current = face;
@@ -109,16 +109,19 @@ export function FaceRenderer() {
 
         // Update line segments
         const positions = lineGeo.attributes.position.array as Float32Array;
-        for (let i = 0; i < FACE_SEGMENTS.length; i++) {
-            const seg = FACE_SEGMENTS[i];
-            const a = pts.get(seg.from);
-            const b = pts.get(seg.to);
-            const base = i * 6;
-            if (a && b) {
-                positions[base] = a.x; positions[base+1] = a.y; positions[base+2] = a.z;
-                positions[base+3] = b.x; positions[base+4] = b.y; positions[base+5] = b.z;
-            } else {
-                for (let j = 0; j < 6; j++) positions[base + j] = 1e5;
+        let i = 0;
+        for (const group of FACE_CONTOUR_GROUPS) {
+            for (const [ai, bi] of group.connections) {
+                const a = pts.get(`${group.prefix}_${ai}`);
+                const b = pts.get(`${group.prefix}_${bi}`);
+                const base = i * 6;
+                if (a && b) {
+                    positions[base] = a.x; positions[base+1] = a.y; positions[base+2] = a.z;
+                    positions[base+3] = b.x; positions[base+4] = b.y; positions[base+5] = b.z;
+                } else {
+                    for (let j = 0; j < 6; j++) positions[base + j] = 1e5;
+                }
+                i++;
             }
         }
         lineGeo.attributes.position.needsUpdate = true;

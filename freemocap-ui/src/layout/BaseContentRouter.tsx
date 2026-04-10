@@ -10,7 +10,6 @@ export const BaseContentRouter: React.FC = () => {
             <Route path="/" element={<WelcomePage />} />
             <Route path="/playback" element={<PlaybackPage/>}/>
             <Route path="/viewport" element={<ViewportPage />} />
-            {/*<Route path="/settings" element={<SettingsPage/>}/>*/}
             <Route path="*" element={<Navigate to="/" replace/>}/>
         </Routes>
     );

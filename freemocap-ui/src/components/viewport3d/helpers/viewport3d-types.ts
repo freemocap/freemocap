@@ -22,6 +22,7 @@ export interface ViewportVisibility {
     keypointsFiltered: boolean;
     rigidBodies: boolean;
     face: boolean;
+    connections: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -30,6 +31,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     keypointsFiltered: true,
     rigidBodies: true,
     face: true,
+    connections: true,
 };
 
 /** Live stats from each renderer. */
@@ -38,4 +40,5 @@ export interface ViewportStats {
     keypointsFiltered: number;
     rigidBodies: number;
     facePoints: number;
+    connections: number;
 }

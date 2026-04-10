@@ -1,4 +1,4 @@
-import {Point3d} from "@/components/viewport3d/viewport3d-types";
+import {Point3d} from "@/components/viewport3d/helpers/viewport3d-types";
 
 /**
  * Resolve a point name to a 3D position. Handles both raw landmark names

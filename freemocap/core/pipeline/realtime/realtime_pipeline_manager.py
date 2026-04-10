@@ -23,7 +23,7 @@ from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload
+from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 
 logger = logging.getLogger(__name__)
 
@@ -104,15 +104,15 @@ class RealtimePipelineManager(PipelineManagerABC):
     # ------------------------------------------------------------------
 
     def get_latest_frontend_payloads(
-        self,
-        if_newer_than: FrameNumberInt,
-    ) -> dict[PipelineIdString, tuple[bytes | None, FrontendPayload | None]]:
-        latest: dict[PipelineIdString, tuple[bytes | None, FrontendPayload | None]] = {}
+            self,
+            if_newer_than: FrameNumberInt,
+    ) -> dict[PipelineIdString, FrontendImagePacket]:
+        latest: dict[PipelineIdString, FrontendImagePacket] = {}
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
-                output = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
-                if output is not None:
-                    latest[pipeline_id] = output
+                packet = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                if packet is not None:
+                    latest[pipeline_id] = packet
         return latest
 
     # ------------------------------------------------------------------

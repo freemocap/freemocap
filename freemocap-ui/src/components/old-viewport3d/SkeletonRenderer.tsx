@@ -12,7 +12,7 @@ import {
 } from "three";
 import {useFrame} from "@react-three/fiber";
 import {useServer} from "@/services";
-import {Point3d, PointStyle} from "@/components/viewport3d/viewport3d-types";
+import {Point3d, PointStyle} from "@/components/viewport3d/helpers/viewport3d-types";
 import {
     getPointStyle,
     MAX_POINTS,

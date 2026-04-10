@@ -12,6 +12,11 @@ from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
+# freemocap/core/viz/frontend_image_packet.py
+from dataclasses import dataclass
+
+
+
 
 class FrontendPayload(BaseModel):
     """Complete payload for frontend visualization.
@@ -19,17 +24,14 @@ class FrontendPayload(BaseModel):
     Carries both charuco and mediapipe overlay data separately so both
     can be active simultaneously per camera.
     """
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        validate_assignment=False
-    )
-    message_type: str = "frontend_payload"
+
     frame_number: int
     charuco_overlays: dict[CameraIdString, CharucoOverlayData]
     skeleton_overlays: dict[CameraIdString, MediapipeOverlayData]
     keypoints_raw: dict[TrackedPointNameString, Point3d]
     keypoints_filtered: dict[TrackedPointNameString, Point3d]
     rigid_body_poses: dict[str, RigidBodyPose]
+    message_type: str = "frontend_payload"
 
     @classmethod
     def from_aggregation_output(
@@ -45,3 +47,16 @@ class FrontendPayload(BaseModel):
             keypoints_filtered=aggregation_output.keypoints_filtered,
             rigid_body_poses=aggregation_output.rigid_body_poses,
         )
+
+@dataclass(slots=True, frozen=True)
+class FrontendImagePacket:
+    """
+    Unified output type for all frontend image relay paths.
+
+    `frontend_payload` is None in camera-only mode (no active pipeline).
+    `frame_number` is always populated so the relay can track acknowledgment
+    without any isinstance checks.
+    """
+    image_bytes: bytes | None
+    frame_number: int
+    frontend_payload: FrontendPayload | None  # None = camera-only mode

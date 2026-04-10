@@ -12,7 +12,7 @@ import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-ov
 import {OverlayRendererFactory} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
-import {Point3d, RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 
 // Type guard to check if a message is a log record
 export function isLogRecord(data: any): data is LogRecord {

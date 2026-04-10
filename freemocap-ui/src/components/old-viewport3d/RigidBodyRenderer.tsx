@@ -2,7 +2,7 @@ import {useEffect, useMemo, useRef} from "react";
 import {Color, CylinderGeometry, InstancedMesh, MeshStandardMaterial, Object3D, Vector3,} from "three";
 import {useFrame} from "@react-three/fiber";
 import {useServer} from "@/services";
-import {RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
+import {RigidBodyPose} from "@/components/viewport3d/helpers/viewport3d-types";
 import {Z_OFFSET} from "@/components/viewport3d/skeleton-config";
 import {SKELETON_COLORS} from "@/components/viewport3d/skeleton-colors";
 

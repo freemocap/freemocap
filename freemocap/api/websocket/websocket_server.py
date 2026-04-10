@@ -128,65 +128,39 @@ class WebsocketServer:
         return self.last_received_frontend_confirmation >= self.last_sent_frame_number
 
     async def _frontend_image_relay(self) -> None:
-        """Relay image payloads from shared memory to the frontend via WebSocket."""
         logger.info("Starting frontend image payload relay...")
         try:
             skipped_previous = False
             while self.should_continue:
                 await await_10ms()
-                if self.check_frame_acknowledgment_status():
-                    if skipped_previous:
-                        skipped_previous = False
-                    else:
-                        try:
-                            frontend_payloads = self._app.get_latest_frontend_payloads(
-                                if_newer_than=self.last_sent_frame_number
-                            )
-                        except IndexError:
-                            logger.warning(
-                                f"Ring buffer overwrite detected (last_sent_frame_number={self.last_sent_frame_number}). "
-                                f"Resetting to latest frame."
-                            )
-                            self.last_sent_frame_number = -1
-                            continue
-
-                        for pipeline_id, (image_payload_bytes, frontend_payload) in frontend_payloads.items():
-                            frame_number = None
-                            if not image_payload_bytes and not frontend_payload:
-                                continue
-                            if frontend_payload:
-                                if not isinstance(frontend_payload, FrontendPayload):
-                                    frame_number = frontend_payload
-                                    frontend_payload = None
-                                else:
-                                    frame_number = frontend_payload.frame_number
-                                    async with self._send_lock:
-                                        await self.websocket.send_json(frontend_payload.model_dump())
-
-                            if image_payload_bytes:
-                                if not isinstance(image_payload_bytes, (bytes, bytearray)):
-                                    raise TypeError(
-                                        f"Invalid payload bytes on frame {frame_number} - "
-                                        f"got type {type(image_payload_bytes).__name__}"
-                                    )
-                                async with self._send_lock:
-                                    await self.websocket.send_bytes(image_payload_bytes)
-
-
-                            if frame_number is not None:
-                                self.last_sent_frame_number = frame_number
-                else:
+                if not self.check_frame_acknowledgment_status():
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
-                    if (
-                            backpressure > BACKPRESSURE_WARNING_THRESHOLD
-                            and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0
-                    ):
-                        logger.trace(
-                            f"Backpressure detected: {backpressure} frames not acknowledged by frontend! "
-                            f"Last sent frame: {self.last_sent_frame_number}, "
-                            f"last received confirmation: {self.last_received_frontend_confirmation}"
-                        )
+                    if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
+                        logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
+                    continue
+
+                if skipped_previous:
+                    skipped_previous = False
+                    continue
+
+                try:
+                    packets = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
+                except IndexError:
+                    logger.warning("Ring buffer overwrite — resetting to latest frame")
+                    self.last_sent_frame_number = -1
+                    continue
+
+                for packet in packets.values():
+                    if packet.frontend_payload is not None:
+                        async with self._send_lock:
+                            await self.websocket.send_json(packet.frontend_payload.model_dump())
+
+                    if packet.image_bytes is not None:
+                        async with self._send_lock:
+                            await self.websocket.send_bytes(packet.image_bytes)
+
+                    self.last_sent_frame_number = packet.frame_number
 
         except WebSocketDisconnect:
             logger.api("Client disconnected, ending Frontend Image relay task...")

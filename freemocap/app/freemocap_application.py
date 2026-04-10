@@ -21,15 +21,13 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimeP
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload
+from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 
 logger = logging.getLogger(__name__)
 
 
-
 @dataclass
 class FreemocapApplication:
-
     global_kill_flag: multiprocessing.Value
     worker_registry: WorkerRegistry
     realtime_pipeline_manager: RealtimePipelineManager
@@ -65,8 +63,8 @@ class FreemocapApplication:
     # ------------------------------------------------------------------
 
     async def create_or_update_realtime_pipeline(
-        self,
-        pipeline_config: RealtimePipelineConfig,
+            self,
+            pipeline_config: RealtimePipelineConfig,
     ) -> RealtimePipeline:
         existing = self.realtime_pipeline_manager.get_pipeline_by_camera_ids(
             camera_ids=pipeline_config.camera_ids,
@@ -91,9 +89,9 @@ class FreemocapApplication:
     # ------------------------------------------------------------------
 
     async def create_posthoc_calibration_pipeline(
-        self,
-        recording_info: RecordingInfo,
-        calibration_config: PosthocCalibrationPipelineConfig,
+            self,
+            recording_info: RecordingInfo,
+            calibration_config: PosthocCalibrationPipelineConfig,
     ) -> PosthocPipeline:
         pipeline = self.posthoc_pipeline_manager.create_calibration_pipeline(
             recording_info=recording_info,
@@ -103,9 +101,9 @@ class FreemocapApplication:
         return pipeline
 
     async def create_posthoc_mocap_pipeline(
-        self,
-        recording_info: RecordingInfo,
-        mocap_config: PosthocMocapPipelineConfig,
+            self,
+            recording_info: RecordingInfo,
+            mocap_config: PosthocMocapPipelineConfig,
     ) -> PosthocPipeline:
         pipeline = self.posthoc_pipeline_manager.create_mocap_pipeline(
             recording_info=recording_info,
@@ -141,26 +139,31 @@ class FreemocapApplication:
     # ------------------------------------------------------------------
 
     def get_latest_frontend_payloads(
-        self,
-        if_newer_than: FrameNumberInt,
-    ) -> dict[str, tuple[bytes, int]] | dict[str, tuple[bytes | None, FrontendPayload | None]]:
-        # Clean up completed posthoc pipelines (releases relay threads + queues)
+            self,
+            if_newer_than: FrameNumberInt,
+    ) -> dict[str, FrontendImagePacket]:
         self.posthoc_pipeline_manager.evict_completed()
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
-        if len(realtime_pipelines) == 0 or all(
-            not p.alive for p in realtime_pipelines.values()
-        ):
-            cg_payloads = self.camera_group_manager.get_latest_frontend_payloads(
-                if_newer_than=if_newer_than,
-            )
-            return {
-                camera_group_id: (payload[-1], payload[0])
-                for camera_group_id, payload in cg_payloads.items()
-            }
+        active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
 
+        if not active_pipelines:
+            # Camera-only path
+            result = {}
+            for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
+                    if_newer_than=if_newer_than
+            ).items():
+                frame_number, _timestamp, image_bytes = payload  # unpack the known tuple shape
+                result[cg_id] = FrontendImagePacket(
+                    image_bytes=image_bytes,
+                    frame_number=frame_number,
+                    frontend_payload=None,
+                )
+            return result
+
+        # Pipeline path — delegate to manager, which also returns FrontendImagePacket
         return self.realtime_pipeline_manager.get_latest_frontend_payloads(
-            if_newer_than=if_newer_than,
+            if_newer_than=if_newer_than
         )
 
     # ------------------------------------------------------------------
@@ -180,7 +183,6 @@ class FreemocapApplication:
         self.global_kill_flag.value = True
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
-
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

@@ -1,22 +1,23 @@
 import {RefObject} from "react";
-import {CameraControls} from "@react-three/drei";
 import type CameraControlsImpl from "camera-controls";
-import {SceneEnvironment} from "@/components/viewport3d/SceneEnvironment";
-import {SkeletonRenderer} from "@/components/viewport3d/SkeletonRenderer";
-import {RigidBodyRenderer} from "@/components/viewport3d/RigidBodyRenderer";
+import {SceneCamera} from "./scene/SceneCamera";
+import {SceneEnvironment} from "./scene/SceneEnvironment";
+import {KeypointsRenderer} from "./renderers/KeypointsRenderer";
 
 interface ThreeJsSceneProps {
     cameraControlsRef: RefObject<CameraControlsImpl>;
 }
 
-/** Top-level scene graph: camera controls, environment, and skeleton visualization. */
 export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
+    // const { visibility } = useViewportState();
+
     return (
         <>
-            <CameraControls ref={cameraControlsRef} makeDefault />
+            <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
-            <SkeletonRenderer />
-            {/*<RigidBodyRenderer />*/}
+            <KeypointsRenderer />
+            {/*{visibility.rigidBodies && <RigidBodyRenderer />}*/}
+            {/*{visibility.face && <FaceRenderer />}*/}
         </>
     );
 }

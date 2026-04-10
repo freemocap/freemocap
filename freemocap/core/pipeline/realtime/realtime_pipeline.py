@@ -24,7 +24,7 @@ from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload
+from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputTopic,
@@ -62,8 +62,8 @@ class RealtimePipeline:
         if not self.started:
             return False
         return (
-            all(node.is_alive for node in self.camera_nodes.values())
-            and self.aggregation_node.is_alive
+                all(node.is_alive for node in self.camera_nodes.values())
+                and self.aggregation_node.is_alive
         )
 
     @property
@@ -80,11 +80,11 @@ class RealtimePipeline:
 
     @classmethod
     def create(
-        cls,
-        *,
-        camera_group: CameraGroup,
-        worker_registry: WorkerRegistry,
-        pipeline_config: RealtimePipelineConfig,
+            cls,
+            *,
+            camera_group: CameraGroup,
+            worker_registry: WorkerRegistry,
+            pipeline_config: RealtimePipelineConfig,
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
 
@@ -185,21 +185,17 @@ class RealtimePipeline:
             requested_configs=camera_configs,
         )
 
-    def get_latest_frontend_payload(
-        self,
-        if_newer_than: FrameNumberInt,
-    ) -> None | tuple[Any, None] | tuple[bytes | None, FrontendPayload]:
-        """
-        Drain the aggregation output queue and return the latest payload.
-        Returns None if no new data is available.
-        """
+    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt, ) -> FrontendImagePacket | None:
         if not self.alive:
             if self.camera_group.alive:
-                _, _, frames_bytearray = self.camera_group.get_latest_frontend_payload(
-                    if_newer_than=if_newer_than,
-                )
-                if frames_bytearray is not None:
-                    return (frames_bytearray, None)
+                result = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                if result is not None:
+                    frame_number, _ts, frames_bytes = result
+                    return FrontendImagePacket(
+                        image_bytes=frames_bytes,
+                        frame_number=frame_number,
+                        frontend_payload=None,
+                    )
             return None
 
         aggregation_output: AggregationNodeOutputMessage | None = None
@@ -209,11 +205,26 @@ class RealtimePipeline:
         if aggregation_output is None:
             return None
 
-        frames_bytearray = self.camera_group.get_frontend_payload_by_frame_number(
+        frames_bytes = self.camera_group.get_frontend_payload_by_frame_number(
+            frame_number=aggregation_output.frame_number,
+        )
+        return FrontendImagePacket(
+            image_bytes=frames_bytes,
+            frame_number=aggregation_output.frame_number,
+            frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
+        )
+        aggregation_output: AggregationNodeOutputMessage | None = None
+        while not self.aggregation_output_subscription.empty():
+            aggregation_output = self.aggregation_output_subscription.get()
+
+        if aggregation_output is None:
+            return None, None
+
+        frames_bytes = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
         )
 
         return (
-            frames_bytearray,
+            frames_bytes,
             FrontendPayload.from_aggregation_output(aggregation_output=aggregation_output),
         )

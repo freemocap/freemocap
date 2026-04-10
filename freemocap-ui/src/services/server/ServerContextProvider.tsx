@@ -5,9 +5,8 @@ import {ConnectionState, WebSocketConnection} from "@/services/server/server-hel
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
-import {DetailedFramerate, FramerateStore} from "@/services/server/server-helpers/framerate-store";
-import {LogRecord, LogStore} from "@/services/server/server-helpers/log-store";
-import {Point3d, RigidBodyPose} from "@/components/viewport3d/viewport3d-types";
+import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
+import {LogStore} from "@/services/server/server-helpers/log-store";
 import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
@@ -16,6 +15,7 @@ import {
     isFrontendPayload,
     isLogRecord
 } from "@/services/server/server-helpers/websocket-message-types";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -29,9 +29,10 @@ interface ServerContextValue {
     getLogStore: () => LogStore;
     connectedCameraIds: string[];
     updateServerConnection: (host: string, port: number) => void;
-    subscribeToTrackedPoints: (cb: (points: Map<string, Point3d>) => void) => () => void;
+    subscribeToKeypointsRaw: (cb: (points: Record<string, Point3d>) => void) => () => void;
+    subscribeToKeypointsFiltered: (cb: (points: Record<string, Point3d>) => void) => () => void;
     subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
-    getLatestTrackedPoints: () => Map<string, Point3d>;
+    getLatestKeypointsRaw: () => Record<string, Point3d>;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
@@ -66,10 +67,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const serverFpsRef = useRef<number | null>(null);
 
     // 3D data refs and subscriber sets
-    const trackedPointsRef = useRef<Map<string, Point3d>>(new Map());
+    // Plain Record — matches JSON.parse output directly, no remapping needed.
+    const trackedPointsRef = useRef<Record<string, Point3d>>({});
     const rigidBodiesRef = useRef<Map<string, RigidBodyPose>>(new Map());
-    const trackedPointsSubscribersRef = useRef<Set<(points: Map<string, Point3d>) => void>>(new Set());
+    const trackedPointsSubscribersRef = useRef<Set<(points: Record<string, Point3d>) => void>>(new Set());
     const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
+    const keypointsFilteredRef = useRef<Record<string, Point3d>>({});
+    const keypointsFilteredSubscribersRef = useRef<Set<(points: Record<string, Point3d>) => void>>(new Set());
 
 
     // Holds the latest binary payload received from the WebSocket.
@@ -131,8 +135,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingPayloadRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
-                trackedPointsRef.current = new Map();
+                trackedPointsRef.current = {};
                 rigidBodiesRef.current = new Map();
+                keypointsFilteredRef.current = {};
                 latestCharucoRef.current.clear();
                 latestMediapipeRef.current.clear();
                 overlayManagerRef.current?.clearAll();
@@ -237,14 +242,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (event.data instanceof ArrayBuffer) {
                 pendingPayloadRef.current = event.data;
             }
-            // Handle text/JSON messages (logs, framerate updates, frontend payloads,  etc.)
+            // Handle text/JSON messages (logs, framerate updates, frontend payloads, etc.)
             else if (typeof event.data === 'string') {
                 // Skip heartbeat pong responses — they're plain text, not JSON
                 if (event.data === 'pong') return;
 
                 try {
                     const jsonData = JSON.parse(event.data);
-                    console.log(JSON.stringify(jsonData, null, 2));
+
                     // Handle log records
                     if (isLogRecord(jsonData)) {
                         logStoreRef.current.add(jsonData);
@@ -270,45 +275,30 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             }
                         }
 
+                        // Keypoints arrive as plain JSON objects — assign directly, no remapping.
                         if (jsonData.keypoints_raw) {
-                            const pointsMap = new Map<string, Point3d>();
-                            for (const [name, pt] of Object.entries(jsonData.keypoints_raw)) {
-                                const p = pt as { x: number; y: number; z: number };
-                                pointsMap.set(name, {x: p.x, y: p.y, z: p.z});
-                            }
-                            trackedPointsRef.current = pointsMap;
+                            trackedPointsRef.current = jsonData.keypoints_raw as Record<string, Point3d>;
                             for (const cb of trackedPointsSubscribersRef.current) {
-                                cb(pointsMap);
+                                cb(trackedPointsRef.current);
                             }
                         }
 
-                    }
+                        if (jsonData.keypoints_filtered) {
+                            keypointsFilteredRef.current = jsonData.keypoints_filtered as Record<string, Point3d>;
+                            for (const cb of keypointsFilteredSubscribersRef.current) {
+                                cb(keypointsFilteredRef.current);
+                            }
+                        }
 
-                    // // Handle tracked 3D points
-                    // else if (jsonData.tracked_points3d && typeof jsonData.tracked_points3d === 'object') {
-                    //     const pointsMap = new Map<string, Point3d>();
-                    //     for (const [name, pt] of Object.entries(jsonData.tracked_points3d)) {
-                    //         const p = pt as { x: number; y: number; z: number };
-                    //         pointsMap.set(name, {x: p.x, y: p.y, z: p.z});
-                    //     }
-                    //     trackedPointsRef.current = pointsMap;
-                    //     for (const cb of trackedPointsSubscribersRef.current) {
-                    //         cb(pointsMap);
-                    //     }
-                    // }
-                    // // Handle rigid body poses
-                    // else if (jsonData.rigid_body_poses && typeof jsonData.rigid_body_poses === 'object') {
-                    //     const posesMap = new Map<string, RigidBodyPose>();
-                    //     for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
-                    //         posesMap.set(key, pose as RigidBodyPose);
-                    //     }
-                    //     rigidBodiesRef.current = posesMap;
-                    //     for (const cb of rigidBodiesSubscribersRef.current) {
-                    //         cb(posesMap);
-                    //     }
-                    // }
-                    // Handle other message types (silently ignored to avoid
-                    // retaining object references in the DevTools console)
+                        if (jsonData.rigid_body_poses) {
+                            const posesMap = new Map<string, RigidBodyPose>();
+                            for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
+                                posesMap.set(key, pose as RigidBodyPose);
+                            }
+                            rigidBodiesRef.current = posesMap;
+                            for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
+                        }
+                    }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);
                 }
@@ -364,11 +354,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return logStoreRef.current;
     }, []);
 
-    const subscribeToTrackedPoints = useCallback((cb: (points: Map<string, Point3d>) => void): () => void => {
+    const subscribeToKeypointsRaw = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
         trackedPointsSubscribersRef.current.add(cb);
-        return () => {
-            trackedPointsSubscribersRef.current.delete(cb);
-        };
+        return () => { trackedPointsSubscribersRef.current.delete(cb); };
+    }, []);
+
+    const subscribeToKeypointsFiltered = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
+        keypointsFilteredSubscribersRef.current.add(cb);
+        return () => { keypointsFilteredSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToRigidBodies = useCallback((cb: (poses: Map<string, RigidBodyPose>) => void): () => void => {
@@ -378,7 +371,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
-    const getLatestTrackedPoints = useCallback((): Map<string, Point3d> => {
+    const getLatestKeypointsRaw = useCallback((): Record<string, Point3d> => {
         return trackedPointsRef.current;
     }, []);
 
@@ -408,10 +401,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getLogStore,
         connectedCameraIds,
         updateServerConnection,
-        subscribeToTrackedPoints,
+        subscribeToKeypointsRaw,
+        subscribeToKeypointsFiltered,
         subscribeToRigidBodies,
-        getLatestTrackedPoints,
-    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToTrackedPoints, subscribeToRigidBodies, getLatestTrackedPoints]);
+        getLatestKeypointsRaw,
+    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw]);
 
     return (
         <ServerContext.Provider value={contextValue}>

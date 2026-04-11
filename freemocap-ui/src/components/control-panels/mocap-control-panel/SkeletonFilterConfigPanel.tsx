@@ -1,7 +1,7 @@
 import React, {useCallback} from "react";
 import {Box, Button, Divider, Slider, Stack, TextField, Tooltip, Typography, useTheme,} from "@mui/material";
 import {useMocap} from "@/hooks/useMocap";
-import {DEFAULT_REALTIME_FILTER_CONFIG} from "@/store/slices/mocap";
+import {DEFAULT_REALTIME_FILTER_CONFIG, RealtimeFilterConfig} from "@/store/slices/mocap";
 
 /** Warm amber for section headings — visible on dark backgrounds. */
 const SECTION_COLOR = "#ffb74d";
@@ -19,10 +19,25 @@ const useSliderSx = () => {
     } as const;
 };
 
-export const SkeletonFilterConfigPanel: React.FC = () => {
+interface SkeletonFilterConfigPanelProps {
+    updateSkeletonFilterConfig?: (updates: Partial<RealtimeFilterConfig>) => void;
+    replaceSkeletonFilterConfig?: (config: RealtimeFilterConfig) => void;
+}
+
+export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps> = ({
+    updateSkeletonFilterConfig: updateSkeletonFilterConfigProp,
+    replaceSkeletonFilterConfig: replaceSkeletonFilterConfigProp,
+}) => {
     const theme = useTheme();
     const sliderSx = useSliderSx();
-    const {skeletonFilterConfig, updateSkeletonFilterConfig, replaceSkeletonFilterConfig, isLoading} = useMocap();
+    const {
+        skeletonFilterConfig,
+        updateSkeletonFilterConfig: updateSkeletonFilterConfigHook,
+        replaceSkeletonFilterConfig: replaceSkeletonFilterConfigHook,
+        isLoading,
+    } = useMocap();
+    const updateSkeletonFilterConfig = updateSkeletonFilterConfigProp ?? updateSkeletonFilterConfigHook;
+    const replaceSkeletonFilterConfig = replaceSkeletonFilterConfigProp ?? replaceSkeletonFilterConfigHook;
 
     const handleResetDefaults = useCallback(() => {
         replaceSkeletonFilterConfig({...DEFAULT_REALTIME_FILTER_CONFIG});

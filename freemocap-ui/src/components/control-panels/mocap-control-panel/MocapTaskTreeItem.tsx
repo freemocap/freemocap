@@ -28,8 +28,8 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useElectronIPC} from "@/services";
-import {MediapipeConfigPanel} from "@/components/mocap-control-panel/MediapipeConfigPanel";
-import {SkeletonFilterConfigPanel} from "@/components/mocap-control-panel/SkeletonFilterConfigPanel";
+import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
+import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useCalibration} from "@/hooks/useCalibration";
 
 export const MocapTaskTreeItem: React.FC = () => {

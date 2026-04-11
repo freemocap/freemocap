@@ -35,6 +35,7 @@ class ServerUrls {
     getWebSocketUrl(): string {
         return `ws://${this.host}:${this.port}${WS_PATH}`;
     }
+
     get endpoints() {
         const baseUrl = this.getHttpUrl();
 
@@ -50,6 +51,16 @@ class ServerUrls {
             updateConfigs: `${baseUrl}/skellycam/camera/update`,
             pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
             detectMicrophones: `${baseUrl}/skellycam/camera/microphone/detect`,
+            // Playback endpoints
+            playbackRecordings: `${baseUrl}/skellycam/playback/recordings`,
+            playbackVideos: (recordingId: string) =>
+                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos`,
+            playbackVideoStream: (recordingId: string, videoId: string) =>
+                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}`,
+            playbackAllTimestamps: (recordingId: string) =>
+                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/timestamps`,
+            playbackVideoTimestamps: (recordingId: string, videoId: string) =>
+                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
 
             // Recording endpoints
             startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
@@ -63,13 +74,11 @@ class ServerUrls {
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
             calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
             calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
-            updateCalibrationConfig: `${baseUrl}/freemocap/calibration/config/update/all`,
 
             // Mocap endpoints
             mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
-            updateMocapConfig: `${baseUrl}/freemocap/mocap/config/update/all`,
 
             // WebSocket
             websocket: this.getWebSocketUrl(),

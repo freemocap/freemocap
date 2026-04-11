@@ -89,25 +89,6 @@ class MocapRecordingResponse(BaseModel):
 # ==================== Endpoints ====================
 
 
-@mocap_router.post("/config/update/all")
-def update_all_mocap_config(request: MocapConfigRequest) -> MocapConfigResponse:
-    """Update mocap configuration on all active realtime pipelines via SettingsManager."""
-    try:
-        app = get_freemocap_app()
-
-        # Sync to running pipelines
-        with app.realtime_pipeline_manager.lock:
-            for pipeline in app.realtime_pipeline_manager.pipelines.values():
-                new_config = deepcopy(pipeline.config)
-                new_config.mocap_config = request.config
-                pipeline.update_config(new_config=new_config)
-
-        return MocapConfigResponse(success=True, message="Mocap configuration updated")
-    except Exception as e:
-        logger.exception(f"Error updating mocap config: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @mocap_router.post("/recording/start")
 async def start_mocap_recording(
     request: StartMocapRecordingRequest,

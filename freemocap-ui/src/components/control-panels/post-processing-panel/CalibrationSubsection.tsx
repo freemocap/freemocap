@@ -198,18 +198,18 @@ export const CalibrationSubsection: React.FC = () => {
                         </Alert>
                     )}
 
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={config.liveTrackCharuco}
-                                onChange={(e) =>
-                                    updateCalibrationConfig({liveTrackCharuco: e.target.checked})
-                                }
-                                disabled={isLoading}
-                            />
-                        }
-                        label="Live Track Charuco Board"
-                    />
+                    {/*<FormControlLabel*/}
+                    {/*    control={*/}
+                    {/*        <Checkbox*/}
+                    {/*            checked={config.liveTrackCharuco}*/}
+                    {/*            onChange={(e) =>*/}
+                    {/*                updateCalibrationConfig({liveTrackCharuco: e.target.checked})*/}
+                    {/*            }*/}
+                    {/*            disabled={isLoading}*/}
+                    {/*        />*/}
+                    {/*    }*/}
+                    {/*    label="Live Track Charuco Board"*/}
+                    {/*/>*/}
 
                     {/* Recording Controls */}
                     <Stack direction="row" spacing={2}>
@@ -276,7 +276,15 @@ export const CalibrationSubsection: React.FC = () => {
                             ),
                         }}
                     />
-
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={calibrateSelectedRecording}
+                        disabled={!canCalibrate || isLoading}
+                        fullWidth
+                    >
+                        Calibrate Selected Recording
+                    </Button>
                     {/* Directory Status (auto-refreshing via useDirectoryWatcher) */}
                     <DirectoryStatusPanel
                         title="Calibration Folder Status"
@@ -376,15 +384,7 @@ export const CalibrationSubsection: React.FC = () => {
                         </Box>
                     )}
 
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={calibrateSelectedRecording}
-                        disabled={!canCalibrate || isLoading}
-                        fullWidth
-                    >
-                        Calibrate Selected Recording
-                    </Button>
+
                 </Stack>
             </AccordionDetails>
         </Accordion>

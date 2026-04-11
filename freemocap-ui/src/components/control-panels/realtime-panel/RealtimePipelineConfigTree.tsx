@@ -1,4 +1,4 @@
-import React, {useState} from "react";
+import React, {useCallback, useState} from "react";
 import {Box, Typography, useTheme} from "@mui/material";
 import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
 import ExpandMore from "@mui/icons-material/ExpandMore";
@@ -7,6 +7,10 @@ import ChevronRight from "@mui/icons-material/ChevronRight";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
+import {useAppDispatch, useAppSelector} from "@/store/hooks";
+import {applyRealtimePipeline, selectIsPipelineConnected, selectPipelineConfig} from "@/store/slices/realtime";
+import {useMocap} from "@/hooks/useMocap";
+import {MediapipeDetectorConfig, RealtimeFilterConfig} from "@/store/slices/mocap";
 
 export type PipelineContext = "realtime" | "posthoc";
 
@@ -40,7 +44,54 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                                                                   onRigidBodyToggle,
                                                                               }) => {
     const theme = useTheme();
+    const dispatch = useAppDispatch();
+    const isConnected = useAppSelector(selectIsPipelineConnected);
+    const pipelineConfig = useAppSelector(selectPipelineConfig);
+    const {
+        updateDetectorConfigLocalOnly,
+        replaceDetectorConfigLocalOnly,
+        updateSkeletonFilterConfigLocalOnly,
+        replaceSkeletonFilterConfigLocalOnly,
+    } = useMocap();
     const [expandedItems, setExpandedItems] = useState<string[]>([]);
+
+    const triggerRealtimeApply = useCallback(() => {
+        if (isConnected) {
+            dispatch(applyRealtimePipeline(pipelineConfig));
+        }
+    }, [dispatch, isConnected, pipelineConfig]);
+
+    const handleUpdateDetectorConfig = useCallback(
+        (updates: Partial<MediapipeDetectorConfig>) => {
+            updateDetectorConfigLocalOnly(updates);
+            if (context === "realtime") triggerRealtimeApply();
+        },
+        [updateDetectorConfigLocalOnly, context, triggerRealtimeApply]
+    );
+
+    const handleReplaceDetectorConfig = useCallback(
+        (config: MediapipeDetectorConfig) => {
+            replaceDetectorConfigLocalOnly(config);
+            if (context === "realtime") triggerRealtimeApply();
+        },
+        [replaceDetectorConfigLocalOnly, context, triggerRealtimeApply]
+    );
+
+    const handleUpdateSkeletonFilterConfig = useCallback(
+        (updates: Partial<RealtimeFilterConfig>) => {
+            updateSkeletonFilterConfigLocalOnly(updates);
+            if (context === "realtime") triggerRealtimeApply();
+        },
+        [updateSkeletonFilterConfigLocalOnly, context, triggerRealtimeApply]
+    );
+
+    const handleReplaceSkeletonFilterConfig = useCallback(
+        (config: RealtimeFilterConfig) => {
+            replaceSkeletonFilterConfigLocalOnly(config);
+            if (context === "realtime") triggerRealtimeApply();
+        },
+        [replaceSkeletonFilterConfigLocalOnly, context, triggerRealtimeApply]
+    );
 
     const isExpanded = (id: string) => expandedItems.includes(id);
 
@@ -74,6 +125,8 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         <SimpleTreeView
             expandedItems={expandedItems}
             onExpandedItemsChange={(_, items) => setExpandedItems(items)}
+            disableSelection
+            expansionTrigger="iconContainer"
             slots={{
                 collapseIcon: ExpandMore,
                 expandIcon: ChevronRight,
@@ -118,7 +171,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     summaryWhenCollapsed={context === "realtime" ? "Realtime preset" : "Posthoc preset"}
                 >
                     <Box sx={{p: 1, pl: 2, borderLeft: `2px solid ${theme.palette.divider}`}}>
-                        <MediapipeConfigPanel/>
+                        <MediapipeConfigPanel
+                            updateDetectorConfig={handleUpdateDetectorConfig}
+                            replaceDetectorConfig={handleReplaceDetectorConfig}
+                        />
                     </Box>
                 </RealtimePipelineStageTreeItem>
             </RealtimePipelineStageTreeItem>
@@ -162,7 +218,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     summaryWhenCollapsed="One Euro, FABRIK"
                 >
                     <Box sx={{p: 1, pl: 2, borderLeft: `2px solid ${theme.palette.divider}`}}>
-                        <SkeletonFilterConfigPanel/>
+                        <SkeletonFilterConfigPanel
+                            updateSkeletonFilterConfig={handleUpdateSkeletonFilterConfig}
+                            replaceSkeletonFilterConfig={handleReplaceSkeletonFilterConfig}
+                        />
                     </Box>
                 </RealtimePipelineStageTreeItem>
 

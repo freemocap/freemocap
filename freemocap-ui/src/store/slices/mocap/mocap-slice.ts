@@ -4,7 +4,6 @@ import {
     processMocapRecording,
     startMocapRecording,
     stopMocapRecording,
-    updateMocapConfigOnServer,
 } from "@/store/slices/mocap/mocap-thunks";
 
 // ==================== Types ====================
@@ -128,6 +127,7 @@ export interface MocapDirectoryInfo {
     canRecord: boolean;
     canCalibrate: boolean;
     cameraMocapTomlPath: string | null;
+    lastSuccessfulCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
     errorMessage: string | null;
@@ -267,10 +267,6 @@ export const mocapSlice = createSlice({
                 state.error = action.payload || 'Failed to process recording';
             });
 
-        builder
-            .addCase(updateMocapConfigOnServer.rejected, (state, action) => {
-                state.error = action.payload || 'Failed to sync config to server';
-            });
     },
 });
 

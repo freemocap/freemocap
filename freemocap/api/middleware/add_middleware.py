@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 import traceback
@@ -12,12 +13,12 @@ def add_middleware(app: FastAPI) -> None:
 
     @app.middleware("http")
     async def log_requests(request: Request, call_next) -> Response:
-        logger.api(f"Received request: {request.method} {request.url}")
-        start_time = time.time()
+        start_time = time.perf_counter()
+        logger.api(f"Received request: {request.method} {request.url}")#"
 
         try:
             response: Response = await call_next(request)
-            process_time = time.time() - start_time
+            process_time = time.perf_counter() - start_time
 
             # For error responses, consume the body to log it
             if response.status_code >= 400:

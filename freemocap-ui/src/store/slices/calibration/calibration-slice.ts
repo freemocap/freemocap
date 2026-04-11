@@ -4,7 +4,6 @@ import {
     calibrateRecording,
     startCalibrationRecording,
     stopCalibrationRecording,
-    updateCalibrationConfigOnServer,
 } from "@/store/slices/calibration/calibration-thunks";
 
 // ==================== Types ====================
@@ -26,6 +25,7 @@ export interface CalibrationDirectoryInfo {
     canRecord: boolean;
     canCalibrate: boolean;
     cameraCalibrationTomlPath: string | null;
+    lastSuccessfulCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
     errorMessage: string | null;
@@ -143,10 +143,7 @@ export const calibrationSlice = createSlice({
                 state.error = action.payload || 'Failed to calibrate recording';
             });
 
-        builder
-            .addCase(updateCalibrationConfigOnServer.rejected, (state, action) => {
-                state.error = action.payload || 'Failed to sync config to server';
-            });
+
     },
 });
 

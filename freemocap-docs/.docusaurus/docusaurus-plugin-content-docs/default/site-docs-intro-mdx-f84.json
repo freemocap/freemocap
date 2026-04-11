@@ -1,0 +1,24 @@
+{
+  "id": "intro",
+  "title": "Introduction",
+  "description": "This documentation site is built with Docusaurus and the @freemocap/skellydocs theme.",
+  "source": "@site/docs/intro.mdx",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/freemocap/docs/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/freemocap/freemocap/tree/main/freemocap-docs/docs/intro.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1,
+    "title": "Introduction"
+  },
+  "sidebar": "docsSidebar",
+  "next": {
+    "title": "API Notes",
+    "permalink": "/freemocap/docs/notes/api-notes"
+  }
+}

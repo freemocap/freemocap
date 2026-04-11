@@ -160,3 +160,5 @@ pyapp-*/
 pyapp.zip
 .vite
 *.zip
+
+.docusaurus/

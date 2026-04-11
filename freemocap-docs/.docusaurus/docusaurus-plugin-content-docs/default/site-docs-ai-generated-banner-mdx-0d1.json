@@ -1,0 +1,24 @@
+{
+  "id": "ai-generated-banner",
+  "title": "AI Generated Banner",
+  "description": "The AiGeneratedBanner component provides transparent content provenance for documentation pages. It tells readers how a page was created — whether by AI, by a human, or some combination — and gives them a path to report issues.",
+  "source": "@site/docs/ai-generated-banner.mdx",
+  "sourceDirName": ".",
+  "slug": "/ai-generated-banner",
+  "permalink": "/freemocap/docs/ai-generated-banner",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/freemocap/freemocap/tree/main/freemocap-docs/docs/ai-generated-banner.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "sidebar_position": 4,
+    "title": "AI Generated Banner"
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Introduction",
+    "permalink": "/freemocap/docs/intro"
+  }
+}

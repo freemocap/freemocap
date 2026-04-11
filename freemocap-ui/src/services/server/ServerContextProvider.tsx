@@ -33,6 +33,7 @@ interface ServerContextValue {
     subscribeToKeypointsFiltered: (cb: (points: Record<string, Point3d>) => void) => () => void;
     subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
     getLatestKeypointsRaw: () => Record<string, Point3d>;
+    setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
@@ -62,6 +63,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // Overlay data refs - NO REACT STATE to avoid re-renders!
     const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
     const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
+
+    // Overlay visibility flags - toggled by UI, applied in dispatchFrames
+    const charucoEnabledRef = useRef<boolean>(true);
+    const skeletonEnabledRef = useRef<boolean>(true);
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
@@ -186,8 +191,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             // Composite overlays onto frames before sending to canvas workers
             const overlayManager = overlayManagerRef.current!;
             for (const frameData of frames) {
-                const charucoObs = latestCharucoRef.current.get(frameData.cameraId) ?? null;
-                const mediapipeObs = latestMediapipeRef.current.get(frameData.cameraId) ?? null;
+                const charucoObs = charucoEnabledRef.current
+                    ? latestCharucoRef.current.get(frameData.cameraId) ?? null
+                    : null;
+                const mediapipeObs = skeletonEnabledRef.current
+                    ? latestMediapipeRef.current.get(frameData.cameraId) ?? null
+                    : null;
 
                 let compositeBitmap: ImageBitmap;
                 if (charucoObs || mediapipeObs) {
@@ -375,6 +384,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return trackedPointsRef.current;
     }, []);
 
+    const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
+        charucoEnabledRef.current = charuco;
+        skeletonEnabledRef.current = skeleton;
+        if (!charuco) latestCharucoRef.current.clear();
+        if (!skeleton) latestMediapipeRef.current.clear();
+    }, []);
+
     const updateServerConnection = useCallback((host: string, port: number): void => {
         // Update the singleton so HTTP endpoints also update
         serverUrls.setHost(host);
@@ -405,7 +421,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToKeypointsFiltered,
         subscribeToRigidBodies,
         getLatestKeypointsRaw,
-    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw]);
+        setOverlayVisibility,
+    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility]);
 
     return (
         <ServerContext.Provider value={contextValue}>

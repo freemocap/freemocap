@@ -7,8 +7,8 @@ import {CameraViewsGrid} from "@/components/camera-views/CameraViewsGrid";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {
-    CamerasViewSettingsOverlay
-} from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
+    SettingsOverlay
+} from "@/components/ui-components/SettingsOverlay";
 
 export type LayoutDirection = 'vertical' | 'horizontal';
 
@@ -53,7 +53,7 @@ export const ViewportPage = () => {
                 overflow: "hidden",
                 position: 'relative',
             }}>
-                <CamerasViewSettingsOverlay
+                <SettingsOverlay
                     settings={settings}
                     onSettingsChange={handleSettingsChange}
                     onResetLayout={handleResetLayout}

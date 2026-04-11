@@ -1,0 +1,24 @@
+{
+  "id": "notes/api-notes",
+  "title": "API Notes",
+  "description": "",
+  "source": "@site/docs/notes/api-notes.mdx",
+  "sourceDirName": "notes",
+  "slug": "/notes/api-notes",
+  "permalink": "/freemocap/docs/notes/api-notes",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/freemocap/freemocap/tree/main/freemocap-docs/docs/notes/api-notes.mdx",
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "sidebar_position": 2,
+    "title": "API Notes"
+  },
+  "sidebar": "docsSidebar",
+  "previous": {
+    "title": "Introduction",
+    "permalink": "/freemocap/docs/intro"
+  }
+}

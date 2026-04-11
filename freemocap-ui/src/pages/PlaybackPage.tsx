@@ -14,8 +14,8 @@ import {useTranslation} from 'react-i18next';
 import {useLocation} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/ViewportPage';
 import {
-    CamerasViewSettingsOverlay
-} from "@/components/camera-views/camera-view-settings-overlay/CamerasViewSettingsOverlay";
+    SettingsOverlay
+} from "@/components/ui-components/SettingsOverlay";
 
 // Module-level cache so playback state survives tab switches
 let cachedPlaybackState: {
@@ -34,8 +34,8 @@ let cachedPlaybackState: {
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
-    const { t } = useTranslation();
-    const { api } = useElectronIPC();
+    const {t} = useTranslation();
+    const {api} = useElectronIPC();
     const location = useLocation();
     const isDark = theme.palette.mode === 'dark';
     const locationState = location.state as { loadRecordingPath?: string } | null;
@@ -43,7 +43,13 @@ const PlaybackPage: React.FC = () => {
 
     // If navigating here with a new recording path, clear cached state so RecordingBrowser shows and auto-loads
     const initState = (initialLoadPath && initialLoadPath !== cachedPlaybackState.recordingPath)
-        ? { loadedVideos: [] as LoadedVideo[], recordingPath: null, recordingFps: undefined, frameTimestamps: null, currentFrame: 0 }
+        ? {
+            loadedVideos: [] as LoadedVideo[],
+            recordingPath: null,
+            recordingFps: undefined,
+            frameTimestamps: null,
+            currentFrame: 0
+        }
         : cachedPlaybackState;
 
     const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>(initState.loadedVideos);
@@ -58,7 +64,13 @@ const PlaybackPage: React.FC = () => {
         setRecordingPath(path);
         setRecordingFps(fps);
         setFrameTimestamps(null);
-        cachedPlaybackState = { loadedVideos: videos, recordingPath: path, recordingFps: fps, frameTimestamps: null, currentFrame: 0 };
+        cachedPlaybackState = {
+            loadedVideos: videos,
+            recordingPath: path,
+            recordingFps: fps,
+            frameTimestamps: null,
+            currentFrame: 0
+        };
     }, []);
 
     // After a recording is loaded, fetch real timestamps from the server
@@ -67,12 +79,14 @@ const PlaybackPage: React.FC = () => {
 
         const fetchTimestamps = async () => {
             try {
-                const response = await fetch(serverUrls.endpoints.playbackAllTimestamps);
-                if (!response.ok) return;
-                const data = await response.json();
-                if (data.timestamps && Object.keys(data.timestamps).length > 0) {
-                    setFrameTimestamps(data.timestamps);
-                    cachedPlaybackState.frameTimestamps = data.timestamps;
+                if (recordingPath) {
+                    const response = await fetch(serverUrls.endpoints.playbackAllTimestamps(recordingPath!));
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    if (data.timestamps && Object.keys(data.timestamps).length > 0) {
+                        setFrameTimestamps(data.timestamps);
+                        cachedPlaybackState.frameTimestamps = data.timestamps;
+                    }
                 }
             } catch {
                 // Timestamps not available — SyncedVideoPlayer will use approximation
@@ -86,13 +100,19 @@ const PlaybackPage: React.FC = () => {
         setRecordingPath(null);
         setRecordingFps(undefined);
         setFrameTimestamps(null);
-        cachedPlaybackState = { loadedVideos: [], recordingPath: null, recordingFps: undefined, frameTimestamps: null, currentFrame: 0 };
+        cachedPlaybackState = {
+            loadedVideos: [],
+            recordingPath: null,
+            recordingFps: undefined,
+            frameTimestamps: null,
+            currentFrame: 0
+        };
     }, []);
 
     const handleOpenFolder = useCallback(async () => {
         if (!recordingPath) return;
         try {
-            await api?.fileSystem.openFolder.mutate({ path: recordingPath });
+            await api?.fileSystem.openFolder.mutate({path: recordingPath});
         } catch (err) {
             console.error('Failed to open recording folder:', err);
             throw err;
@@ -135,13 +155,13 @@ const PlaybackPage: React.FC = () => {
                 borderColor: theme.palette.divider,
             }}
         >
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Box sx={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
                 <ErrorBoundary>
                     {hasVideos ? (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
+                        <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', position: 'relative'}}>
                             {/* Settings overlay for grid columns */}
-                            <CamerasViewSettingsOverlay
-                                settings={{ columns: manualColumns, show3dView: false, layoutDirection: 'horizontal' }}
+                            <SettingsOverlay
+                                settings={{columns: manualColumns, show3dView: false, layoutDirection: 'horizontal'}}
                                 onSettingsChange={handleSettingsChange}
                                 onResetLayout={handleResetLayout}
                             />
@@ -162,8 +182,8 @@ const PlaybackPage: React.FC = () => {
                             >
                                 <Tooltip title={t('backToRecordings')}>
                                     <IconButton size="small" onClick={handleBack}
-                                        sx={{ color: isDark ? '#b3b9c6' : undefined }}>
-                                        <ArrowBackIcon fontSize="small" />
+                                                sx={{color: isDark ? '#b3b9c6' : undefined}}>
+                                        <ArrowBackIcon fontSize="small"/>
                                     </IconButton>
                                 </Tooltip>
 
@@ -200,18 +220,18 @@ const PlaybackPage: React.FC = () => {
                                             },
                                         }}
                                     >
-                                        <FolderOpenIcon sx={{ fontSize: 16 }} />
+                                        <FolderOpenIcon sx={{fontSize: 16}}/>
                                     </IconButton>
                                 </Tooltip>
 
                                 {/* Spacer */}
-                                <Box sx={{ flex: 1 }} />
+                                <Box sx={{flex: 1}}/>
 
                                 {/* Stats chips */}
                                 <Tooltip title={t('cameraStreams')}>
                                     <Chip
-                                        icon={<VideocamIcon sx={{ fontSize: '14px !important' }} />}
-                                        label={t('cameraCount', { count: loadedVideos.length })}
+                                        icon={<VideocamIcon sx={{fontSize: '14px !important'}}/>}
+                                        label={t('cameraCount', {count: loadedVideos.length})}
                                         size="small"
                                         variant="outlined"
                                         sx={{
@@ -220,7 +240,7 @@ const PlaybackPage: React.FC = () => {
                                             height: 24,
                                             borderColor: isDark ? 'rgba(41,182,246,0.3)' : undefined,
                                             color: isDark ? '#29b6f6' : theme.palette.info.main,
-                                            '& .MuiChip-icon': { color: 'inherit' },
+                                            '& .MuiChip-icon': {color: 'inherit'},
                                         }}
                                     />
                                 </Tooltip>
@@ -228,7 +248,7 @@ const PlaybackPage: React.FC = () => {
                                 {totalSize > 0 && (
                                     <Tooltip title={t('totalRecordingSize')}>
                                         <Chip
-                                            icon={<StorageIcon sx={{ fontSize: '14px !important' }} />}
+                                            icon={<StorageIcon sx={{fontSize: '14px !important'}}/>}
                                             label={formatBytes(totalSize)}
                                             size="small"
                                             variant="outlined"
@@ -238,7 +258,7 @@ const PlaybackPage: React.FC = () => {
                                                 height: 24,
                                                 borderColor: isDark ? 'rgba(255,255,255,0.15)' : undefined,
                                                 color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                                                '& .MuiChip-icon': { color: 'inherit' },
+                                                '& .MuiChip-icon': {color: 'inherit'},
                                             }}
                                         />
                                     </Tooltip>
@@ -263,7 +283,7 @@ const PlaybackPage: React.FC = () => {
                             </Box>
 
                             {/* Player */}
-                            <Box sx={{ flex: 1, minHeight: 0 }}>
+                            <Box sx={{flex: 1, minHeight: 0}}>
                                 <SyncedVideoPlayer
                                     videos={loadedVideos.map((v) => ({
                                         videoId: v.videoId,
@@ -280,13 +300,13 @@ const PlaybackPage: React.FC = () => {
                             </Box>
                         </Box>
                     ) : (
-                        <RecordingBrowser onRecordingLoaded={handleRecordingLoaded} initialLoadPath={initialLoadPath} />
+                        <RecordingBrowser onRecordingLoaded={handleRecordingLoaded} initialLoadPath={initialLoadPath}/>
                     )}
                 </ErrorBoundary>
             </Box>
 
-            <Box component="footer" sx={{ p: 0.5 }}>
-                <Footer />
+            <Box component="footer" sx={{p: 0.5}}>
+                <Footer/>
             </Box>
         </Box>
     );

@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import {
     Accordion,
     AccordionDetails,
@@ -29,9 +29,11 @@ import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
 import {useElectronIPC} from "@/services";
 import {CalibrationTomlPicker} from "@/components/common/CalibrationTomlPicker";
 import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-panel/RealtimePipelineConfigTree";
+import {useServer} from "@/services/server/ServerContextProvider";
 
 export const MocapSubsection: React.FC = () => {
     const theme = useTheme();
+    const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
     const {api, isElectron} = useElectronIPC();
 
@@ -71,6 +73,10 @@ export const MocapSubsection: React.FC = () => {
     // Pipeline stage toggles (local state — posthoc pipeline stages)
     const [charucoEnabled, setCharucoEnabled] = useState(false);
     const [skeletonEnabled, setSkeletonEnabled] = useState(true);
+
+    useEffect(() => {
+        setOverlayVisibility(charucoEnabled, skeletonEnabled);
+    }, [charucoEnabled, skeletonEnabled, setOverlayVisibility]);
     const [triangulateEnabled, setTriangulateEnabled] = useState(true);
     const [filterEnabled, setFilterEnabled] = useState(true);
     const [rigidBodyEnabled, setRigidBodyEnabled] = useState(true);
@@ -127,15 +133,17 @@ export const MocapSubsection: React.FC = () => {
         if (calibrationTomlPath) return calibrationTomlPath;
         if (directoryInfo?.cameraMocapTomlPath) return directoryInfo.cameraMocapTomlPath;
         if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return calibrationDirectoryInfo.cameraCalibrationTomlPath;
+        if (directoryInfo?.lastSuccessfulCalibrationTomlPath) return directoryInfo.lastSuccessfulCalibrationTomlPath;
         return null;
-    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath]);
+    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath, directoryInfo?.lastSuccessfulCalibrationTomlPath]);
 
     const tomlSource = useMemo(() => {
         if (calibrationTomlPath) return "manual" as const;
         if (directoryInfo?.cameraMocapTomlPath) return "auto" as const;
         if (calibrationDirectoryInfo?.cameraCalibrationTomlPath) return "calibration-panel" as const;
+        if (directoryInfo?.lastSuccessfulCalibrationTomlPath) return "last-successful" as const;
         return "auto" as const;
-    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath]);
+    }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath, directoryInfo?.lastSuccessfulCalibrationTomlPath]);
 
     const mocapStatus: "ok" | "none" | "bad" = useMemo(() => {
         if (effectiveCalibrationTomlPath) return "ok";

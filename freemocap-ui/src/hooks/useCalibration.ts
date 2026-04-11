@@ -19,7 +19,6 @@ import {
     selectIsUsingManualCalibrationPath,
     startCalibrationRecording,
     stopCalibrationRecording,
-    updateCalibrationConfigOnServer
 } from "@/store/slices/calibration";
 
 export function useCalibration() {
@@ -36,8 +35,6 @@ export function useCalibration() {
         (updates: Partial<CalibrationConfig>) => {
             // Update local state first
             dispatch(calibrationConfigUpdated(updates));
-            // Then sync to server - this reads from the updated state
-            dispatch(updateCalibrationConfigOnServer());
         },
         [dispatch]
     );

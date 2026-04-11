@@ -14,7 +14,12 @@ import {
     useTheme,
 } from "@mui/material";
 import {useMocap} from "@/hooks/useMocap";
-import {MEDIAPIPE_POSTHOC_PRESET, MEDIAPIPE_REALTIME_PRESET, MediapipeModelComplexity,} from "@/store/slices/mocap";
+import {
+    MEDIAPIPE_POSTHOC_PRESET,
+    MEDIAPIPE_REALTIME_PRESET,
+    MediapipeDetectorConfig,
+    MediapipeModelComplexity,
+} from "@/store/slices/mocap";
 
 const MODEL_COMPLEXITY_LABELS: Record<MediapipeModelComplexity, string> = {
     0: "Lite (fastest)",
@@ -53,10 +58,25 @@ const useSliderSx = () => {
     } as const;
 };
 
-export const MediapipeConfigPanel: React.FC = () => {
+interface MediapipeConfigPanelProps {
+    updateDetectorConfig?: (updates: Partial<MediapipeDetectorConfig>) => void;
+    replaceDetectorConfig?: (config: MediapipeDetectorConfig) => void;
+}
+
+export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
+    updateDetectorConfig: updateDetectorConfigProp,
+    replaceDetectorConfig: replaceDetectorConfigProp,
+}) => {
     const theme = useTheme();
     const sliderSx = useSliderSx();
-    const {detectorConfig, updateDetectorConfig, replaceDetectorConfig, isLoading} = useMocap();
+    const {
+        detectorConfig,
+        updateDetectorConfig: updateDetectorConfigHook,
+        replaceDetectorConfig: replaceDetectorConfigHook,
+        isLoading,
+    } = useMocap();
+    const updateDetectorConfig = updateDetectorConfigProp ?? updateDetectorConfigHook;
+    const replaceDetectorConfig = replaceDetectorConfigProp ?? replaceDetectorConfigHook;
 
     const currentPreset = detectPreset(detectorConfig);
 

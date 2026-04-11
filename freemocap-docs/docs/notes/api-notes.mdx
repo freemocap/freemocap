@@ -1,0 +1,102 @@
+---
+sidebar_position: 2
+title: API Notes
+---
+
+
+# API notes
+
+
+# Current API structure
+```
+WebSocket
+    /websocket/connect
+
+App
+    GET     /health
+    GET     /shutdown
+
+FreeMoCap
+    POST    /freemocap/realtime/apply
+    DELETE  /freemocap/realtime/all/close
+
+    POST    /freemocap/calibration/recording/start
+    POST    /freemocap/calibration/recording/stop
+    POST    /freemocap/calibration/recording/calibrate
+
+    POST    /freemocap/mocap/recording/start
+    POST    /freemocap/mocap/recording/stop
+    POST    /freemocap/mocap/recording/process
+
+    GET     /freemocap/blender/detect
+    POST    /freemocap/blender/addon/install
+    POST    /freemocap/blender/export
+
+SkellyCam
+    POST    /skellycam/camera/detect
+    GET     /skellycam/camera/microphone/detect
+    POST    /skellycam/camera/group/apply
+    POST    /skellycam/camera/group/all/record/start
+    GET     /skellycam/camera/group/all/record/stop
+    DELETE  /skellycam/camera/group/close/all
+    GET     /skellycam/camera/group/all/pause_unpause
+
+    GET     /skellycam/playback/recordings
+    GET     /skellycam/playback/{recording_id}/videos
+    GET     /skellycam/playback/{recording_id}/videos/{video_id}
+    GET     /skellycam/playback/{recording_id}/timestamps
+    GET     /skellycam/playback/{recording_id}/videos/{video_id}/timestamps
+```
+
+
+# Planned
+
+```
+WebSocket
+    /websocket/connect #Eventually split this up into multiple ws/ routes, but leave in cloaca mode for now
+
+App
+    GET     /health
+    GET     /shutdown
+    # maybe add more, e.g. state/settings/etc
+
+Real-time
+    POST    /freemocap/realtime/apply   # Create or update realtime pipeline
+    DELETE  /freemocap/realtime/close # close realtime pippeline
+
+Cameras
+    POST    /skellycam/camera/detect
+    GET     /skellycam/camera/microphone/detect
+    POST    /skellycam/camera/group/apply # Create or update camera group with camera configs
+    DELETE  /skellycam/camera/group/close/all
+    GET     /skellycam/camera/group/all/pause_unpause
+    POST    /skellycam/camera/group/all/record/start # TODO - replace with recording_id-centric control (defined below)
+    GET     /skellycam/camera/group/all/record/stop # TODO - replace with recording_id-centric control (defined below)
+
+Recordings
+
+    GET     /freemocap/recordings/ #add top-level recording routes for things like recording count, etc,
+
+    GET     /freemocap/recordings/{recording_id}/ #return status, stats, info, available data types, etc
+    POST    /freemocap/recordings/{recording_id}/record/start?(recording_type = calibration, mocap, etc)             #record into this recording id (optionally tag as calibration or mocap recording
+    GET     /freemocap/recordings/{recording_id}/record/stop?(recording_type = calibration, mocap, etc)             #record into this recording id (optionally tag as calibration or mocap recording
+
+
+    GET     /freemocap/recordings/{recording_id}/calibration/         # return recording's calibration data, if any (preparation for processing, calibration output (via toml), stats, etc)
+    POST    /freemocap/recordings/{recording_id}/calibration/         # Set calibration data for this recording (i.e. inject calibration toml from other recording)
+    POST    /freemocap/recordings/{recording_id}/calibration/process         # Process recording with posthoc calibration pipeline, streams progress updates
+
+    GET      /freemocap/recordings/{recording_id}/mocap      # high level info about this reocrdings mocap data, if any
+    POST     /freemocap/recordings/{recording_id}/mocap/process      # Process recording with posthoc calibration pipeline, streams progress updates
+
+    GET      /freemocap/recordings/{recording_id}/blender      # high level info about this reocrdings blender scene output (presence and ability to process)
+    POST     /freemocap/recordings/{recording_id}/blender/process      # Process recording with blender export pipeline, streams progress updates
+
+
+    GET     /freemocap/recordings/{recording_id}/{data_type}/   # High level info about a particular data type (videos, timestamps, 2d data, 3d data, etc)
+    GET     /freemocap/recordings/{recording_id}/{data_type}/all # Get all relevant data from this datatype, if appropriate
+    GET     /freemocap/recordings/{recording_id}/{data_type}/{frame_number}
+    GET     /freemocap/recordings/{recording_id}/{data_type}/{frame_range}
+
+
+```

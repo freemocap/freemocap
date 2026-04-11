@@ -71,6 +71,18 @@ function findCameraCalibrationToml(dirPath: string): string | null {
     }
 }
 
+const LAST_SUCCESSFUL_CALIBRATION_PATH = path.join(
+    os.homedir(), 'freemocap_data', 'calibrations', 'last_successful_camera_calibration.toml'
+);
+
+function findLastSuccessfulCalibrationToml(): string | null {
+    try {
+        return fs.existsSync(LAST_SUCCESSFUL_CALIBRATION_PATH) ? LAST_SUCCESSFUL_CALIBRATION_PATH : null;
+    } catch {
+        return null;
+    }
+}
+
 // Telemetry config lives in ~/freemocap_data/telemetry_config.json
 const TELEMETRY_CONFIG_PATH = path.join(os.homedir(), 'freemocap_data', 'telemetry_config.json');
 
@@ -202,6 +214,7 @@ export const api = t.router({
                     canRecord: false,
                     canCalibrate: false,
                     cameraCalibrationTomlPath: null as string | null,
+                    lastSuccessfulCalibrationTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
                     errorMessage: null as string | null,
@@ -213,6 +226,7 @@ export const api = t.router({
                     if (!result.exists) {
                         result.canRecord = true;
                         result.canCalibrate = false;
+                        result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
                         return result;
                     }
 
@@ -241,6 +255,7 @@ export const api = t.router({
                     result.canCalibrate = result.hasVideos;
 
                     result.cameraCalibrationTomlPath = findCameraCalibrationToml(input.directoryPath);
+                    result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
 
                     return result;
 
@@ -260,6 +275,7 @@ export const api = t.router({
                     canCalibrate: false,
                     canProcess: false,
                     cameraMocapTomlPath: null as string | null,
+                    lastSuccessfulCalibrationTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
                     errorMessage: null as string | null,
@@ -271,6 +287,7 @@ export const api = t.router({
                     if (!result.exists) {
                         result.canRecord = true;
                         result.canProcess = false;
+                        result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
                         return result;
                     }
 
@@ -296,6 +313,7 @@ export const api = t.router({
                     const entries = fs.readdirSync(input.directoryPath);
                     result.canRecord = !result.hasVideos;
                     result.cameraMocapTomlPath = findCameraCalibrationToml(input.directoryPath);
+                    result.lastSuccessfulCalibrationTomlPath = findLastSuccessfulCalibrationToml();
 
                     result.canCalibrate = result.hasVideos && result.cameraMocapTomlPath !== null;
 

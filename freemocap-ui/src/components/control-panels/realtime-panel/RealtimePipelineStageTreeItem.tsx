@@ -32,8 +32,8 @@ export const RealtimePipelineStageTreeItem: React.FC<PipelineStageTreeItemProps>
     const handleCheckboxClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!disabled) {
-            // When indeterminate, clicking should turn everything ON (not toggle)
-            onToggle(indeterminate ? true : !checked);
+            // If any children are on (checked or indeterminate), turn all off; otherwise turn all on
+            onToggle(!(checked || indeterminate));
         }
     };
 
@@ -43,6 +43,7 @@ export const RealtimePipelineStageTreeItem: React.FC<PipelineStageTreeItemProps>
             checked={checked}
             indeterminate={indeterminate}
             disabled={disabled}
+            onMouseDown={e => e.stopPropagation()}
             onClick={handleCheckboxClick}
             sx={{p: 0.5, flexShrink: 0}}
         />

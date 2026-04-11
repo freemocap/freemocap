@@ -149,38 +149,3 @@ export const processMocapRecording = createAsyncThunk<
         }
     }
 );
-
-export const updateMocapConfigOnServer = createAsyncThunk<
-    { success: boolean; message?: string },
-    void,
-    { state: RootState; rejectValue: string }
->(
-    'mocap/updateConfig',
-    async (_, { getState, rejectWithValue }) => {
-        try {
-            const state = getState();
-            const config = state.mocap.config;
-
-            console.log('⚙️ Updating mocap config on server:', config);
-
-            const response = await fetch(serverUrls.endpoints.updateMocapConfig, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config }),
-            });
-
-            if (!response.ok) {
-                const errorMessage = await getDetailedErrorMessage(response);
-                return rejectWithValue(errorMessage);
-            }
-
-            const result = await response.json();
-            console.log('✅ Config updated on server:', result);
-            return result;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error('❌ Failed to update config on server:', errorMessage);
-            return rejectWithValue(errorMessage);
-        }
-    }
-);

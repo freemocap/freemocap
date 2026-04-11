@@ -1,0 +1,28 @@
+{
+  "permalink": "/freemocap/blog/welcome",
+  "editUrl": "https://github.com/freemocap/freemocap/tree/main/freemocap-docs/blog/2026-04-11_welcome.mdx",
+  "source": "@site/blog/2026-04-11_welcome.mdx",
+  "title": "Welcome to freemocap",
+  "description": "Welcome to the freemocap blog!",
+  "date": "2026-04-11T00:00:00.000Z",
+  "tags": [
+    {
+      "inline": true,
+      "label": "welcome",
+      "permalink": "/freemocap/blog/tags/welcome"
+    }
+  ],
+  "readingTime": 0.21,
+  "hasTruncateMarker": true,
+  "authors": [],
+  "frontMatter": {
+    "slug": "welcome",
+    "title": "Welcome to freemocap",
+    "authors": [],
+    "tags": [
+      "welcome"
+    ],
+    "date": "2026-04-11T00:00:00.000Z"
+  },
+  "unlisted": false
+}

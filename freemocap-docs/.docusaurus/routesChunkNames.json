@@ -1,0 +1,132 @@
+{
+  "/freemocap/__docusaurus/debug-c73": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/__docusaurus/debug/config-b8e": {
+    "__comp": "__comp---theme-debug-config-23-a-2ff",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/__docusaurus/debug/content-f01": {
+    "__comp": "__comp---theme-debug-contentba-8-ce7",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    },
+    "__props": "__props---freemocap-docusaurus-debug-content-773-239"
+  },
+  "/freemocap/__docusaurus/debug/globalData-307": {
+    "__comp": "__comp---theme-debug-global-dataede-0fa",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/__docusaurus/debug/metadata-0dd": {
+    "__comp": "__comp---theme-debug-site-metadata-68-e-3d4",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/__docusaurus/debug/registry-e3d": {
+    "__comp": "__comp---theme-debug-registry-679-501",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/__docusaurus/debug/routes-f43": {
+    "__comp": "__comp---theme-debug-routes-946-699",
+    "__context": {
+      "plugin": "plugin---freemocap-docusaurus-debugb-38-df0"
+    }
+  },
+  "/freemocap/blog-8b3": {
+    "__comp": "__comp---theme-blog-list-pagea-6-a-7ba",
+    "__context": {
+      "plugin": "plugin---freemocap-blog-369-865"
+    },
+    "sidebar": "sidebar---freemocap-blog-814-28c",
+    "items": [
+      {
+        "content": "content---freemocap-blog-462-197"
+      }
+    ],
+    "__props": "__props---freemocap-blog-520-069"
+  },
+  "/freemocap/blog/archive-16b": {
+    "__comp": "__comp---theme-blog-archive-page-9-e-4-1d8",
+    "__context": {
+      "plugin": "plugin---freemocap-blog-369-865"
+    },
+    "__props": "__props---freemocap-blog-archive-7-bc-2a0"
+  },
+  "/freemocap/blog/tags-edc": {
+    "__comp": "__comp---theme-blog-tags-list-page-01-a-d0b",
+    "__context": {
+      "plugin": "plugin---freemocap-blog-369-865"
+    },
+    "sidebar": "sidebar---freemocap-blog-814-28c",
+    "__props": "__props---freemocap-blog-tags-458-06d"
+  },
+  "/freemocap/blog/tags/welcome-a56": {
+    "__comp": "__comp---theme-blog-tags-posts-page-687-b6c",
+    "__context": {
+      "plugin": "plugin---freemocap-blog-369-865"
+    },
+    "sidebar": "sidebar---freemocap-blog-814-28c",
+    "items": [
+      {
+        "content": "content---freemocap-blog-462-197"
+      }
+    ],
+    "__props": "__props---freemocap-blog-tags-welcome-62-f-adb"
+  },
+  "/freemocap/blog/welcome-ff2": {
+    "__comp": "__comp---theme-blog-post-pageccc-cab",
+    "__context": {
+      "data": {
+        "blogMetadata": "blogMetadata---freemocap-blog-welcomeace-6ce"
+      },
+      "plugin": "plugin---freemocap-blog-369-865"
+    },
+    "sidebar": "sidebar---freemocap-blog-814-28c",
+    "content": "content---freemocap-blog-welcomeeec-6c5"
+  },
+  "/freemocap/roadmap-208": {
+    "__comp": "__comp---site-src-pages-roadmap-tsx-24-e-7ab",
+    "__context": {
+      "plugin": "plugin---freemocap-roadmapa-74-d9e"
+    },
+    "config": "config---freemocap-roadmap-5-e-9-fb7"
+  },
+  "/freemocap/docs-3cf": {
+    "__comp": "__comp---theme-docs-root-5-e-9-0b6",
+    "__context": {
+      "plugin": "plugin---freemocap-docsaba-7b7"
+    }
+  },
+  "/freemocap/docs-458": {
+    "__comp": "__comp---theme-doc-version-roota-7-b-5de",
+    "__props": "__props---freemocap-docs-755-037"
+  },
+  "/freemocap/docs-177": {
+    "__comp": "__comp---theme-doc-roota-94-67a"
+  },
+  "/freemocap/docs/intro-1bb": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---freemocap-docs-introf-84-6c7"
+  },
+  "/freemocap/docs/notes/api-notes-2f4": {
+    "__comp": "__comp---theme-doc-item-178-a40",
+    "content": "content---freemocap-docs-notes-api-notes-71-c-64e"
+  },
+  "/freemocap/-8aa": {
+    "__comp": "__comp---site-src-pages-index-tsx-1-df-d3e",
+    "__context": {
+      "plugin": "plugin---freemocap-roadmapa-74-d9e"
+    },
+    "config": "config---freemocap-roadmap-5-e-9-fb7"
+  }
+}

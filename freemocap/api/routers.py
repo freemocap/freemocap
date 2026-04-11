@@ -1,4 +1,5 @@
 from skellycam.api.http.cameras.camera_router import camera_router
+from skellycam.api.http.playback.playback_router import playback_router
 
 from freemocap.api.http.app.health import health_router
 from freemocap.api.http.app.shutdown import shutdown_router
@@ -12,6 +13,7 @@ APP_ROUTERS = [health_router,
 
 SKELLYCAM_ROUTERS = [
     camera_router,
+    playback_router
 ]
 
 FREEMOCAP_ROUTERS = [realtime_router,

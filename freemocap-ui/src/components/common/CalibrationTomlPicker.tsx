@@ -5,7 +5,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
 import AutorenewIcon from "@mui/icons-material/Autorenew";
 
-export type CalibrationTomlSource = "auto" | "calibration-panel" | "manual";
+export type CalibrationTomlSource = "auto" | "calibration-panel" | "manual" | "last-successful";
 
 interface CalibrationTomlPickerProps {
     tomlPath: string | null;
@@ -19,6 +19,7 @@ const SOURCE_LABELS: Record<CalibrationTomlSource, string> = {
     auto: "Auto-detected",
     "calibration-panel": "From calibration panel",
     manual: "Manually selected",
+    "last-successful": "Last successful calibration",
 };
 
 export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({

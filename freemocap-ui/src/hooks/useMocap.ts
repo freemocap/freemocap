@@ -26,7 +26,6 @@ import {
     skeletonFilterConfigUpdated,
     startMocapRecording,
     stopMocapRecording,
-    updateMocapConfigOnServer,
 } from "@/store/slices/mocap";
 
 export function useMocap() {
@@ -45,7 +44,6 @@ export function useMocap() {
     const updateDetectorConfig = useCallback(
         (updates: Partial<MediapipeDetectorConfig>) => {
             dispatch(mocapDetectorConfigUpdated(updates));
-            dispatch(updateMocapConfigOnServer());
         },
         [dispatch]
     );
@@ -53,7 +51,6 @@ export function useMocap() {
     const replaceDetectorConfig = useCallback(
         (config: MediapipeDetectorConfig) => {
             dispatch(mocapDetectorConfigReplaced(config));
-            dispatch(updateMocapConfigOnServer());
         },
         [dispatch]
     );
@@ -61,7 +58,6 @@ export function useMocap() {
     const updateSkeletonFilterConfig = useCallback(
         (updates: Partial<RealtimeFilterConfig>) => {
             dispatch(skeletonFilterConfigUpdated(updates));
-            dispatch(updateMocapConfigOnServer());
         },
         [dispatch]
     );
@@ -69,7 +65,36 @@ export function useMocap() {
     const replaceSkeletonFilterConfig = useCallback(
         (config: RealtimeFilterConfig) => {
             dispatch(skeletonFilterConfigReplaced(config));
-            dispatch(updateMocapConfigOnServer());
+        },
+        [dispatch]
+    );
+
+    // Local-only variants — update Redux state without triggering a server call.
+    // Used when the caller (e.g. RealtimePipelineConfigTree) manages server sync itself.
+    const updateDetectorConfigLocalOnly = useCallback(
+        (updates: Partial<MediapipeDetectorConfig>) => {
+            dispatch(mocapDetectorConfigUpdated(updates));
+        },
+        [dispatch]
+    );
+
+    const replaceDetectorConfigLocalOnly = useCallback(
+        (config: MediapipeDetectorConfig) => {
+            dispatch(mocapDetectorConfigReplaced(config));
+        },
+        [dispatch]
+    );
+
+    const updateSkeletonFilterConfigLocalOnly = useCallback(
+        (updates: Partial<RealtimeFilterConfig>) => {
+            dispatch(skeletonFilterConfigUpdated(updates));
+        },
+        [dispatch]
+    );
+
+    const replaceSkeletonFilterConfigLocalOnly = useCallback(
+        (config: RealtimeFilterConfig) => {
+            dispatch(skeletonFilterConfigReplaced(config));
         },
         [dispatch]
     );
@@ -150,6 +175,10 @@ export function useMocap() {
         replaceDetectorConfig,
         updateSkeletonFilterConfig,
         replaceSkeletonFilterConfig,
+        updateDetectorConfigLocalOnly,
+        replaceDetectorConfigLocalOnly,
+        updateSkeletonFilterConfigLocalOnly,
+        replaceSkeletonFilterConfigLocalOnly,
         setManualRecordingPath,
         clearManualRecordingPath,
         dispatchStartMocapRecording,

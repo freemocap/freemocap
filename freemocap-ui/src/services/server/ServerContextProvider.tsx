@@ -13,9 +13,12 @@ import {MediapipeObservation} from "@/services/server/server-helpers/image-overl
 import {
     isFramerateUpdate,
     isFrontendPayload,
-    isLogRecord
+    isLogRecord,
+    isPosthocProgress,
 } from "@/services/server/server-helpers/websocket-message-types";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
+import {store} from "@/store";
+import {posthocProgressReceived} from "@/store/slices/mocap";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -307,6 +310,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             rigidBodiesRef.current = posesMap;
                             for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
                         }
+                    }
+                    else if (isPosthocProgress(jsonData)) {
+                        store.dispatch(posthocProgressReceived({
+                            phase: jsonData.phase,
+                            progress_fraction: jsonData.progress_fraction,
+                            detail: jsonData.detail,
+                        }));
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);

@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from freemocap.core.blender.export_to_blender import export_to_blender
-from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.install_addon.install_blender_addon import \
+from freemocap.core.blender.helpers.install_blender_addon import \
     install_freemocap_blender_addon
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH

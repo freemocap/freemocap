@@ -1,36 +1,24 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
+import CloseIcon from '@mui/icons-material/Close';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
-import {LoadedVideo, RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
+import {PlaybackControls} from '@/components/playback/PlaybackControls';
+import {usePlaybackController} from '@/components/playback/usePlaybackController';
+import {usePlaybackContext} from '@/components/playback/PlaybackContext';
+import {RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {useElectronIPC} from '@/services';
-import {serverUrls} from '@/constants/server-urls';
 import {useTranslation} from 'react-i18next';
 import {useLocation} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/ViewportPage';
-import {
-    SettingsOverlay
-} from "@/components/ui-components/SettingsOverlay";
-
-// Module-level cache so playback state survives tab switches
-let cachedPlaybackState: {
-    loadedVideos: LoadedVideo[];
-    recordingPath: string | null;
-    recordingFps: number | undefined;
-    frameTimestamps: Record<string, number[]> | null;
-    currentFrame: number;
-} = {
-    loadedVideos: [],
-    recordingPath: null,
-    recordingFps: undefined,
-    frameTimestamps: null,
-    currentFrame: 0,
-};
+import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
+import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
+import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
@@ -39,75 +27,37 @@ const PlaybackPage: React.FC = () => {
     const location = useLocation();
     const isDark = theme.palette.mode === 'dark';
     const locationState = location.state as { loadRecordingPath?: string } | null;
-    const initialLoadPath = locationState?.loadRecordingPath ?? null;
 
-    // If navigating here with a new recording path, clear cached state so RecordingBrowser shows and auto-loads
-    const initState = (initialLoadPath && initialLoadPath !== cachedPlaybackState.recordingPath)
-        ? {
-            loadedVideos: [] as LoadedVideo[],
-            recordingPath: null,
-            recordingFps: undefined,
-            frameTimestamps: null,
-            currentFrame: 0
-        }
-        : cachedPlaybackState;
+    const ctx = usePlaybackContext();
 
-    const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>(initState.loadedVideos);
-    const [recordingPath, setRecordingPath] = useState<string | null>(initState.recordingPath);
-    const [recordingFps, setRecordingFps] = useState<number | undefined>(initState.recordingFps);
-    const [frameTimestamps, setFrameTimestamps] = useState<Record<string, number[]> | null>(initState.frameTimestamps);
-    const [manualColumns, setManualColumns] = useState<number | null>(null);
+    // Pass initialLoadPath from route state to the context
+    useEffect(() => {
+        const path = locationState?.loadRecordingPath ?? null;
+        if (path) ctx?.setInitialLoadPath(path);
+    }, [locationState?.loadRecordingPath]);
+
+    const [settings, setSettings] = useState<CameraSettings>({
+        columns: null,
+        show3dView: true,
+        layoutDirection: 'horizontal',
+    });
     const [resetKey, setResetKey] = useState<number>(0);
 
-    const handleRecordingLoaded = useCallback((videos: LoadedVideo[], path: string, fps?: number) => {
-        setLoadedVideos(videos);
-        setRecordingPath(path);
-        setRecordingFps(fps);
-        setFrameTimestamps(null);
-        cachedPlaybackState = {
-            loadedVideos: videos,
-            recordingPath: path,
-            recordingFps: fps,
-            frameTimestamps: null,
-            currentFrame: 0
-        };
-    }, []);
+    const [isBrowsing, setIsBrowsing] = useState<boolean>(!ctx?.recordingPath);
 
-    // After a recording is loaded, fetch real timestamps from the server
     useEffect(() => {
-        if (loadedVideos.length === 0) return;
+        if (!ctx?.recordingPath) {
+            setIsBrowsing(true);
+        }
+    }, [ctx?.recordingPath]);
 
-        const fetchTimestamps = async () => {
-            try {
-                if (recordingPath) {
-                    const response = await fetch(serverUrls.endpoints.playbackAllTimestamps(recordingPath!));
-                    if (!response.ok) return;
-                    const data = await response.json();
-                    if (data.timestamps && Object.keys(data.timestamps).length > 0) {
-                        setFrameTimestamps(data.timestamps);
-                        cachedPlaybackState.frameTimestamps = data.timestamps;
-                    }
-                }
-            } catch {
-                // Timestamps not available — SyncedVideoPlayer will use approximation
-            }
-        };
-        fetchTimestamps();
-    }, [loadedVideos]);
+    const isHorizontal = settings.layoutDirection === 'horizontal';
 
-    const handleBack = useCallback(() => {
-        setLoadedVideos([]);
-        setRecordingPath(null);
-        setRecordingFps(undefined);
-        setFrameTimestamps(null);
-        cachedPlaybackState = {
-            loadedVideos: [],
-            recordingPath: null,
-            recordingFps: undefined,
-            frameTimestamps: null,
-            currentFrame: 0
-        };
-    }, []);
+    const loadedVideos = ctx?.loadedVideos ?? [];
+    const recordingPath = ctx?.recordingPath ?? null;
+    const recordingFps = ctx?.recordingFps;
+    const frameTimestamps = ctx?.frameTimestamps ?? null;
+    const onFrameChange = ctx?.onFrameChange;
 
     const handleOpenFolder = useCallback(async () => {
         if (!recordingPath) return;
@@ -115,30 +65,35 @@ const PlaybackPage: React.FC = () => {
             await api?.fileSystem.openFolder.mutate({path: recordingPath});
         } catch (err) {
             console.error('Failed to open recording folder:', err);
-            throw err;
         }
     }, [recordingPath, api]);
 
     const handleSettingsChange = useCallback((partial: Partial<CameraSettings>) => {
-        if (partial.columns !== undefined) {
-            setManualColumns(partial.columns);
-        }
+        setSettings((prev) => ({...prev, ...partial}));
     }, []);
 
     const handleResetLayout = useCallback(() => {
         setResetKey((v) => v + 1);
     }, []);
 
-    const handleFrameChange = useCallback((frame: number) => {
-        cachedPlaybackState.currentFrame = frame;
-    }, []);
-
-    const hasVideos = loadedVideos.length > 0;
     const totalSize = loadedVideos.reduce((sum, v) => sum + v.sizeBytes, 0);
     const monoFont = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
+    const recordingName = recordingPath ? recordingPath.split(/[\\/]/).pop() || recordingPath : t('noVideosLoaded');
 
-    // Extract recording name from path
-    const recordingName = recordingPath ? recordingPath.split(/[\\/]/).pop() || recordingPath : '';
+    const videoEntries = loadedVideos.map((v) => ({
+        videoId: v.videoId,
+        filename: v.filename,
+        streamUrl: v.streamUrl,
+    }));
+
+    // Playback controller — owns all playback state/logic
+    const controller = usePlaybackController({
+        videos: videoEntries,
+        recordingFps,
+        frameTimestamps,
+        initialFrame: ctx?.cachedCurrentFrame ?? 0,
+        onFrameChange,
+    });
 
     return (
         <Box
@@ -157,151 +112,253 @@ const PlaybackPage: React.FC = () => {
         >
             <Box sx={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
                 <ErrorBoundary>
-                    {hasVideos ? (
-                        <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', position: 'relative'}}>
-                            {/* Settings overlay for grid columns */}
-                            <SettingsOverlay
-                                settings={{columns: manualColumns, show3dView: false, layoutDirection: 'horizontal'}}
-                                onSettingsChange={handleSettingsChange}
-                                onResetLayout={handleResetLayout}
-                            />
+                    <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', position: 'relative'}}>
+                        {/* Settings overlay for grid columns */}
+                        <SettingsOverlay
+                            settings={settings}
+                            onSettingsChange={handleSettingsChange}
+                            onResetLayout={handleResetLayout}
+                        />
 
-                            {/* Recording header bar */}
-                            <Box
+                        {/* Recording header bar */}
+                        <Box
+                            sx={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1.5,
+                                px: 1.5,
+                                py: 0.75,
+                                borderBottom: `1px solid ${theme.palette.divider}`,
+                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                minHeight: 40,
+                                flexWrap: 'wrap',
+                            }}
+                        >
+                            {/* Recording name */}
+                            <Typography
+                                variant="body2"
                                 sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 1.5,
-                                    px: 1.5,
-                                    py: 0.75,
-                                    borderBottom: `1px solid ${theme.palette.divider}`,
-                                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                    minHeight: 40,
-                                    flexWrap: 'wrap',
+                                    fontFamily: monoFont,
+                                    fontWeight: 600,
+                                    color: theme.palette.text.primary,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
                                 }}
                             >
-                                <Tooltip title={t('backToRecordings')}>
-                                    <IconButton size="small" onClick={handleBack}
-                                                sx={{color: isDark ? '#b3b9c6' : undefined}}>
-                                        <ArrowBackIcon fontSize="small"/>
-                                    </IconButton>
-                                </Tooltip>
+                                {recordingName}
+                            </Typography>
 
-                                {/* Recording name */}
-                                <Typography
-                                    variant="body2"
+                            {/* Browse Recordings button */}
+                            <Tooltip title={isBrowsing ? "Close browser" : "Browse recordings"}>
+                                <IconButton
+                                    size="small"
+                                    onClick={() => setIsBrowsing(!isBrowsing)}
                                     sx={{
+                                        color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
+                                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : theme.palette.divider}`,
+                                        borderRadius: '6px',
+                                        px: 1,
+                                        gap: 0.5,
+                                        fontSize: '0.75rem',
                                         fontFamily: monoFont,
-                                        fontWeight: 600,
-                                        color: theme.palette.text.primary,
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
+                                        '&:hover': {
+                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                                        },
                                     }}
                                 >
-                                    {recordingName}
-                                </Typography>
+                                    {isBrowsing ? <CloseIcon sx={{fontSize: 16}}/> : <VideoLibraryIcon sx={{fontSize: 16}}/>}
+                                    {isBrowsing ? 'Close' : 'Browse'}
+                                </IconButton>
+                            </Tooltip>
 
-                                {/* Open Folder button */}
-                                <Tooltip title={t('openFolder')}>
-                                    <IconButton
-                                        size="small"
-                                        onClick={handleOpenFolder}
-                                        sx={{
-                                            color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                                            border: `1px solid ${isDark ? 'rgba(255,204,128,0.3)' : theme.palette.warning.light}`,
-                                            borderRadius: '6px',
-                                            px: 1,
-                                            gap: 0.5,
-                                            fontSize: '0.75rem',
-                                            fontFamily: monoFont,
-                                            '&:hover': {
-                                                backgroundColor: isDark ? 'rgba(255,204,128,0.1)' : 'rgba(255,152,0,0.08)',
-                                            },
-                                        }}
-                                    >
-                                        <FolderOpenIcon sx={{fontSize: 16}}/>
-                                    </IconButton>
-                                </Tooltip>
+                            {/* Open Folder button */}
+                            <Tooltip title={t('openFolder')}>
+                                <IconButton
+                                    size="small"
+                                    onClick={handleOpenFolder}
+                                    sx={{
+                                        color: isDark ? '#ffcc80' : theme.palette.warning.dark,
+                                        border: `1px solid ${isDark ? 'rgba(255,204,128,0.3)' : theme.palette.warning.light}`,
+                                        borderRadius: '6px',
+                                        px: 1,
+                                        gap: 0.5,
+                                        fontSize: '0.75rem',
+                                        fontFamily: monoFont,
+                                        '&:hover': {
+                                            backgroundColor: isDark ? 'rgba(255,204,128,0.1)' : 'rgba(255,152,0,0.08)',
+                                        },
+                                    }}
+                                >
+                                    <FolderOpenIcon sx={{fontSize: 16}}/>
+                                </IconButton>
+                            </Tooltip>
 
-                                {/* Spacer */}
-                                <Box sx={{flex: 1}}/>
+                            {/* Spacer */}
+                            <Box sx={{flex: 1}}/>
 
-                                {/* Stats chips */}
-                                <Tooltip title={t('cameraStreams')}>
+                            {/* Stats chips */}
+                            <Tooltip title={t('cameraStreams')}>
+                                <Chip
+                                    icon={<VideocamIcon sx={{fontSize: '14px !important'}}/>}
+                                    label={t('cameraCount', {count: loadedVideos.length})}
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{
+                                        fontFamily: monoFont,
+                                        fontSize: '0.75rem',
+                                        height: 24,
+                                        borderColor: isDark ? 'rgba(41,182,246,0.3)' : undefined,
+                                        color: isDark ? '#29b6f6' : theme.palette.info.main,
+                                        '& .MuiChip-icon': {color: 'inherit'},
+                                    }}
+                                />
+                            </Tooltip>
+
+                            {totalSize > 0 && (
+                                <Tooltip title={t('totalRecordingSize')}>
                                     <Chip
-                                        icon={<VideocamIcon sx={{fontSize: '14px !important'}}/>}
-                                        label={t('cameraCount', {count: loadedVideos.length})}
+                                        icon={<StorageIcon sx={{fontSize: '14px !important'}}/>}
+                                        label={formatBytes(totalSize)}
                                         size="small"
                                         variant="outlined"
                                         sx={{
                                             fontFamily: monoFont,
                                             fontSize: '0.75rem',
                                             height: 24,
-                                            borderColor: isDark ? 'rgba(41,182,246,0.3)' : undefined,
-                                            color: isDark ? '#29b6f6' : theme.palette.info.main,
+                                            borderColor: isDark ? 'rgba(255,255,255,0.15)' : undefined,
+                                            color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
                                             '& .MuiChip-icon': {color: 'inherit'},
                                         }}
                                     />
                                 </Tooltip>
+                            )}
 
-                                {totalSize > 0 && (
-                                    <Tooltip title={t('totalRecordingSize')}>
-                                        <Chip
-                                            icon={<StorageIcon sx={{fontSize: '14px !important'}}/>}
-                                            label={formatBytes(totalSize)}
-                                            size="small"
-                                            variant="outlined"
+                            {recordingFps != null && recordingFps > 0 && (
+                                <Tooltip title={t('recordingCaptureFps')}>
+                                    <Chip
+                                        label={`rec: ${recordingFps} fps`}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{
+                                            fontFamily: monoFont,
+                                            fontSize: '0.75rem',
+                                            height: 24,
+                                            borderColor: isDark ? 'rgba(255,204,128,0.3)' : undefined,
+                                            color: isDark ? '#ffcc80' : theme.palette.warning.dark,
+                                        }}
+                                    />
+                                </Tooltip>
+                            )}
+                        </Box>
+
+                        {/* Video + 3D viewport area */}
+                        <Box sx={{ flex: 1, minHeight: 0, display: isBrowsing ? 'none' : 'flex', flexDirection: 'column' }}>
+                            {settings.show3dView ? (
+                                <PanelGroup
+                                    key={`main-panels-${resetKey}-${settings.layoutDirection}`}
+                                    direction={settings.layoutDirection}
+                                >
+                                    <Panel defaultSize={60} minSize={20}>
+                                        <Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+                                            <SyncedVideoPlayer
+                                                videos={videoEntries}
+                                                manualColumns={settings.columns}
+                                                resetKey={resetKey}
+                                                controller={controller}
+                                            />
+                                        </Box>
+                                    </Panel>
+
+                                    <PanelResizeHandle>
+                                        <Box
                                             sx={{
-                                                fontFamily: monoFont,
-                                                fontSize: '0.75rem',
-                                                height: 24,
-                                                borderColor: isDark ? 'rgba(255,255,255,0.15)' : undefined,
-                                                color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                                                '& .MuiChip-icon': {color: 'inherit'},
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: theme.palette.divider,
+                                                transition: 'background-color 0.15s ease',
+                                                cursor: isHorizontal ? 'col-resize' : 'row-resize',
+                                                ...(isHorizontal
+                                                    ? {width: '6px', height: '100%', flexDirection: 'column'}
+                                                    : {height: '6px', width: '100%', flexDirection: 'row'}
+                                                ),
+                                                '&:hover': {
+                                                    backgroundColor: theme.palette.primary.main,
+                                                },
+                                                '&:active': {
+                                                    backgroundColor: theme.palette.primary.dark,
+                                                },
                                             }}
-                                        />
-                                    </Tooltip>
-                                )}
+                                        >
+                                            {[0, 1, 2].map((i) => (
+                                                <Box
+                                                    key={i}
+                                                    sx={{
+                                                        width: 4,
+                                                        height: 4,
+                                                        borderRadius: '50%',
+                                                        backgroundColor: theme.palette.text.disabled,
+                                                        m: isHorizontal ? '2px 0' : '0 2px',
+                                                        flexShrink: 0,
+                                                    }}
+                                                />
+                                            ))}
+                                        </Box>
+                                    </PanelResizeHandle>
 
-                                {recordingFps != null && recordingFps > 0 && (
-                                    <Tooltip title={t('recordingCaptureFps')}>
-                                        <Chip
-                                            label={`rec: ${recordingFps} fps`}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{
-                                                fontFamily: monoFont,
-                                                fontSize: '0.75rem',
-                                                height: 24,
-                                                borderColor: isDark ? 'rgba(255,204,128,0.3)' : undefined,
-                                                color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                                            }}
-                                        />
-                                    </Tooltip>
-                                )}
-                            </Box>
-
-                            {/* Player */}
-                            <Box sx={{flex: 1, minHeight: 0}}>
+                                    <Panel defaultSize={40} minSize={10}>
+                                        <Box sx={{height: '100%'}}>
+                                            <ThreeJsCanvas/>
+                                        </Box>
+                                    </Panel>
+                                </PanelGroup>
+                            ) : (
                                 <SyncedVideoPlayer
-                                    videos={loadedVideos.map((v) => ({
-                                        videoId: v.videoId,
-                                        filename: v.filename,
-                                        streamUrl: v.streamUrl,
-                                    }))}
-                                    recordingFps={recordingFps}
-                                    frameTimestamps={frameTimestamps}
-                                    manualColumns={manualColumns}
+                                    videos={videoEntries}
+                                    manualColumns={settings.columns}
                                     resetKey={resetKey}
-                                    initialFrame={initState.currentFrame}
-                                    onFrameChange={handleFrameChange}
+                                    controller={controller}
+                                />
+                            )}
+                        </Box>
+                        
+                        {/* Recording Browser Area */}
+                        {isBrowsing && (
+                            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                                <RecordingBrowser 
+                                    onRecordingLoaded={(videos, recPath, recFps) => {
+                                        ctx?.onRecordingLoaded(videos, recPath, recFps);
+                                        setIsBrowsing(false);
+                                    }} 
+                                    initialLoadPath={ctx?.initialLoadPath} 
                                 />
                             </Box>
-                        </Box>
-                    ) : (
-                        <RecordingBrowser onRecordingLoaded={handleRecordingLoaded} initialLoadPath={initialLoadPath}/>
-                    )}
+                        )}
+
+                        {/* Playback controls — full width below video + 3D area */}
+                        <PlaybackControls
+                            isPlaying={controller.isPlaying}
+                            currentTime={controller.currentTime}
+                            duration={controller.duration}
+                            playbackRate={controller.playbackRate}
+                            currentFrame={controller.currentFrame}
+                            totalFrames={controller.totalFrames}
+                            fps={controller.fps}
+                            recordingFps={recordingFps}
+                            settings={controller.settings}
+                            onSettingsChange={controller.setSettings}
+                            onPlayPause={controller.handlePlayPause}
+                            onSeekDrag={controller.handleSeekDrag}
+                            onSeekCommit={controller.handleSeekCommit}
+                            onFrameStep={controller.handleFrameStep}
+                            onPlaybackRateChange={controller.handlePlaybackRateChange}
+                            onSeekToStart={controller.handleSeekToStart}
+                            onSeekToEnd={controller.handleSeekToEnd}
+                            isLooping={controller.isLooping}
+                            onToggleLoop={controller.handleToggleLoop}
+                        />
+                    </Box>
                 </ErrorBoundary>
             </Box>
 

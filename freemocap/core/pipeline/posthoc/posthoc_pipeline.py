@@ -14,6 +14,7 @@ import multiprocessing
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -69,6 +70,7 @@ class PosthocPipeline(PipelineABC):
         worker_registry: WorkerRegistry,
         global_kill_flag: multiprocessing.Value,
         save_annotated_video: bool = True,
+        progress_pub: Optional[multiprocessing.Queue] = None,
     ) -> "PosthocPipeline":
         """
         Create a posthoc pipeline.
@@ -103,6 +105,8 @@ class PosthocPipeline(PipelineABC):
 
         video_nodes: dict[VideoIdString, VideoNode] = {}
         for video_id, video_helper in video_group.videos.items():
+            vm = video_group.video_metadata_by_id[video_id]
+            total_frame_count = vm.end_frame - vm.start_frame
             video_nodes[video_id] = VideoNode.create(
                 video_id=video_id,
                 video_path=video_helper.video_path,
@@ -112,6 +116,9 @@ class PosthocPipeline(PipelineABC):
                 pubsub=pubsub,
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
+                pipeline_id=pipeline_id,
+                total_frame_count=total_frame_count,
+                progress_pub=progress_pub,
             )
 
         aggregation_node = PosthocAggregationNode.create(
@@ -122,6 +129,7 @@ class PosthocPipeline(PipelineABC):
             worker_registry=worker_registry,
             ipc=ipc,
             pubsub=pubsub,
+            progress_pub=progress_pub,
         )
 
         video_group.close()

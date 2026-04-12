@@ -42,6 +42,8 @@ export const MocapSubsection: React.FC = () => {
         isLoading,
         isRecording,
         recordingProgress,
+        processingProgress,
+        processingPhase,
         canStartRecording,
         canProcessMocapRecording,
         mocapRecordingPath,
@@ -71,7 +73,7 @@ export const MocapSubsection: React.FC = () => {
     );
 
     // Pipeline stage toggles (local state — posthoc pipeline stages)
-    const [charucoEnabled, setCharucoEnabled] = useState(false);
+    const [charucoEnabled, setCharucoEnabled] = useState(true);
     const [skeletonEnabled, setSkeletonEnabled] = useState(true);
 
     useEffect(() => {
@@ -160,10 +162,22 @@ export const MocapSubsection: React.FC = () => {
         return parts[parts.length - 1] || null;
     }, [mocapRecordingPath]);
 
+    const formatPhase = (phase: string): string => {
+        const labels: Record<string, string> = {
+            detecting_frames: "Detecting",
+            collecting_frames: "Collecting",
+            all_frames_collected: "Collected",
+            running_task: "Processing",
+            complete: "Done",
+            failed: "Failed",
+        };
+        return labels[phase] ?? "Processing";
+    };
+
     const statusLabel = isRecording
         ? `Recording ${recordingProgress.toFixed(0)}%`
         : isLoading
-            ? "Processing..."
+            ? `${formatPhase(processingPhase)} ${processingProgress}%`
             : effectiveCalibrationTomlPath
                 ? "Ready"
                 : "Idle";
@@ -349,6 +363,33 @@ export const MocapSubsection: React.FC = () => {
                                         height: "100%",
                                         bgcolor: theme.palette.primary.main,
                                         transition: "width 0.3s",
+                                    }}
+                                />
+                            </Box>
+                        </Box>
+                    )}
+
+                    {/* Processing Progress */}
+                    {isLoading && !isRecording && processingProgress > 0 && (
+                        <Box sx={{width: "100%"}}>
+                            <Typography variant="caption" color="text.secondary" gutterBottom>
+                                {formatPhase(processingPhase)}: {processingProgress}%
+                            </Typography>
+                            <Box
+                                sx={{
+                                    width: "100%",
+                                    height: 8,
+                                    bgcolor: "grey.300",
+                                    borderRadius: 1,
+                                    overflow: "hidden",
+                                }}
+                            >
+                                <Box
+                                    sx={{
+                                        width: `${processingProgress}%`,
+                                        height: "100%",
+                                        bgcolor: theme.palette.warning.main,
+                                        transition: "width 0.4s",
                                     }}
                                 />
                             </Box>

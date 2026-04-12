@@ -266,11 +266,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
             setError(null);
 
             try {
-                const response = await fetch(serverUrls.endpoints.playbackLoad, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ recording_path: recordingPath }),
-                });
+                // Determine recording ID (name)
+                const rec = recordings.find((r) => r.path === recordingPath);
+                const recName = rec ? rec.name : recordingPath.split(/[\\/]/).pop() || recordingPath;
+
+                const response = await fetch(serverUrls.endpoints.playbackVideos(recName));
 
                 if (!response.ok) {
                     const detail = await response
@@ -282,7 +282,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                 const data = await response.json();
                 const baseUrl = serverUrls.getHttpUrl();
 
-                const videos: LoadedVideo[] = data.videos.map(
+                const videos: LoadedVideo[] = data.map(
                     (v: {
                         video_id: string;
                         filename: string;
@@ -296,11 +296,10 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                     }),
                 );
 
-                // Look up recording fps from our cached list
-                const rec = recordings.find((r) => r.path === recordingPath);
                 const recFps = rec?.fps ?? undefined;
 
-                onRecordingLoaded(videos, data.recording_path, recFps);
+                // Send recName as the recording path to identify it successfully in playbackpage
+                onRecordingLoaded(videos, recName, recFps);
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Failed to load recording');
             } finally {

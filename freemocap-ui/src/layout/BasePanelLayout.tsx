@@ -7,6 +7,7 @@ import {useTheme} from "@mui/material/styles";
 import {Box} from "@mui/material";
 import {useMenuActions} from "@/hooks/useMenuActions";
 import {useKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";
+import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 
 export const BasePanelLayout = ({children}: { children: React.ReactNode }) => {
     const theme = useTheme();
@@ -73,6 +74,7 @@ export const BasePanelLayout = ({children}: { children: React.ReactNode }) => {
                         {/* Main/Central Content Panel */}
                         <Panel defaultSize={76} minSize={10}>
                             {children}
+                            <RecordingCompleteDialog />
                         </Panel>
                     </PanelGroup>
                 </Panel>

@@ -237,6 +237,7 @@ export const SidePanelContent = () => {
             </List>
             <ServerConnectionStatus/>
             <PageTabButtons/>
+
             {/* Sidebar Sections — drag-reorderable */}
             <DndContext
                 sensors={sensors}

@@ -44,27 +44,28 @@ class ServerUrls {
             health: `${baseUrl}/health`,
             shutdown: `${baseUrl}/shutdown`,
 
-            // Camera endpoints
+            // Camera endpoints (SkellyCam)
             detectCameras: `${baseUrl}/skellycam/camera/detect`,
             camerasConnectOrUpdate: `${baseUrl}/skellycam/camera/group/apply`,
             closeAll: `${baseUrl}/skellycam/camera/group/close/all`,
             updateConfigs: `${baseUrl}/skellycam/camera/update`,
             pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
             detectMicrophones: `${baseUrl}/skellycam/camera/microphone/detect`,
+
             // Playback endpoints
-            playbackRecordings: `${baseUrl}/skellycam/playback/recordings`,
+            playbackRecordings: `${baseUrl}/freemocap/playback/recordings`,
             playbackVideos: (recordingId: string) =>
-                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos`,
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos`,
             playbackVideoStream: (recordingId: string, videoId: string) =>
-                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}`,
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}`,
             playbackAllTimestamps: (recordingId: string) =>
-                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/timestamps`,
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/timestamps`,
             playbackVideoTimestamps: (recordingId: string, videoId: string) =>
-                `${baseUrl}/skellycam/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
 
             // Recording endpoints
-            startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
-            stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
+            startRecording: `${baseUrl}/freemocap/camera/group/all/record/start`,
+            stopRecording: `${baseUrl}/freemocap/camera/group/all/record/stop`,
 
             // Realtime pipeline endpoints
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,

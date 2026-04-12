@@ -1,7 +1,7 @@
 import sys
 
 
-def run_simple(site_packages_path: str, recording_path_input: str, blender_file_save_path_input: str):
+def run_blender_export(site_packages_path: str, recording_path_input: str, blender_file_save_path_input: str):
     # Inject the freemocap venv's site-packages so freemocap_blender_addon is importable
     # without needing to install the addon into Blender
     if site_packages_path not in sys.path:
@@ -21,8 +21,8 @@ if __name__ == "__main__":
     site_packages_path_input = str(argv[0])
     recording_path_input = str(argv[1])
     blender_file_save_path_input = str(argv[2])
-    run_simple(site_packages_path=site_packages_path_input,
-               recording_path_input=recording_path_input,
-               blender_file_save_path_input=blender_file_save_path_input)
+    run_blender_export(site_packages_path=site_packages_path_input,
+                       recording_path_input=recording_path_input,
+                       blender_file_save_path_input=blender_file_save_path_input)
 
     print("\nDone!\n")

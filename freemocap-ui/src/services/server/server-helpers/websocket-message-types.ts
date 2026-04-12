@@ -65,3 +65,19 @@ export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
         data.frame_number && typeof data.frame_number === 'number'
     );
 }
+
+export interface PosthocProgressMessage {
+    message_type: 'posthoc_progress';
+    pipeline_id: string;
+    phase: string;
+    progress_fraction: number;
+    detail: string;
+}
+
+export function isPosthocProgress(data: unknown): data is PosthocProgressMessage {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        (data as PosthocProgressMessage).message_type === 'posthoc_progress'
+    );
+}

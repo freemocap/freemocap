@@ -164,6 +164,8 @@ export function useMocap() {
         isLoading: mocapState.isLoading,
         isRecording: mocapState.isRecording,
         recordingProgress: mocapState.recordingProgress,
+        processingProgress: mocapState.processingProgress,
+        processingPhase: mocapState.processingPhase,
         mocapRecordingPath,
         directoryInfo,
         isUsingManualPath,

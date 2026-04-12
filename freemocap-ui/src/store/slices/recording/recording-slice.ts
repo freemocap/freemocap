@@ -173,11 +173,12 @@ export const recordingSlice = createSlice({
                 state.startedAt = new Date().toISOString();
                 state.duration = 0;
             })
-            .addCase(stopRecording.fulfilled, (state) => {
+            .addCase(stopRecording.fulfilled, (state, action) => {
                 state.isRecording = false;
                 state.recordingName = null;
                 state.startedAt = null;
                 state.duration = 0;
+                state.completionData = action.payload;
             });
     },
 });

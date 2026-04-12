@@ -41,6 +41,7 @@ class PosthocPipelineManager(PipelineManagerABC):
     worker_registry: WorkerRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
+    shared_progress_queue: multiprocessing.Queue = field(default_factory=multiprocessing.Queue)
 
     # ------------------------------------------------------------------
     # Lazy cleanup
@@ -95,6 +96,7 @@ class PosthocPipelineManager(PipelineManagerABC):
             aggregation_task_fn=calibration_aggregation_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
+            progress_pub=self.shared_progress_queue,
         )
         pipeline.start()
         with self.lock:
@@ -123,6 +125,7 @@ class PosthocPipelineManager(PipelineManagerABC):
             aggregation_task_fn=mocap_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
+            progress_pub=self.shared_progress_queue,
         )
         if start_pipeline:
             pipeline.start()

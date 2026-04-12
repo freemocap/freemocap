@@ -21,6 +21,7 @@ import logging
 import multiprocessing
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Optional
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -34,6 +35,7 @@ from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     VideoNodeOutputMessage,
     VideoNodeOutputTopic,
+    PosthocProgressMessage,
 )
 from freemocap.utilities.wait_functions import wait_1ms
 
@@ -56,6 +58,7 @@ class PosthocAggregationNode(AggregatorNode):
         worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
+        progress_pub: Optional[multiprocessing.Queue] = None,
     ) -> "PosthocAggregationNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -71,6 +74,7 @@ class PosthocAggregationNode(AggregatorNode):
                 video_node_output_subscription=pubsub.get_subscription(
                     VideoNodeOutputTopic,
                 ),
+                progress_pub=progress_pub,
             ),
         )
         return cls(
@@ -88,7 +92,16 @@ class PosthocAggregationNode(AggregatorNode):
         ipc: PipelineIPC,
         shutdown_self_flag: multiprocessing.Value,
         video_node_output_subscription: TopicSubscriptionQueue,
+        progress_pub: Optional[multiprocessing.Queue] = None,
     ) -> None:
+        def _emit_progress(phase: str, progress_fraction: float, detail: str = "") -> None:
+            if progress_pub is not None:
+                progress_pub.put(PosthocProgressMessage(
+                    pipeline_id=pipeline_id,
+                    phase=phase,
+                    progress_fraction=progress_fraction,
+                    detail=detail,
+                ))
         start_frames = set(vm.start_frame for vm in video_metadata.values())
         end_frames = set(vm.end_frame for vm in video_metadata.values())
         if len(start_frames) != 1 or len(end_frames) != 1:
@@ -107,6 +120,7 @@ class PosthocAggregationNode(AggregatorNode):
             f"expecting {len(frame_numbers)} frames × {len(video_ids)} videos "
             f"= {total_expected} outputs"
         )
+        _emit_progress("collecting_frames", 0.0, f"Collecting {total_expected} observations from {len(video_ids)} videos")
 
         video_outputs_by_frame: dict[FrameNumberInt, dict[VideoIdString, VideoNodeOutputMessage | None]] = {
             frame_number: {vid: None for vid in video_ids}
@@ -156,7 +170,7 @@ class PosthocAggregationNode(AggregatorNode):
                 )
 
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — all frames collected")
-
+            _emit_progress("all_frames_collected", 1.0, f"All {total_expected} observations collected")
 
             observations_by_frame: list[dict[VideoIdString, object]] = []
             for frame_number in frame_numbers:
@@ -174,15 +188,18 @@ class PosthocAggregationNode(AggregatorNode):
                 frame_observations=observations_by_frame,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
+                report_progress=_emit_progress,
             )
 
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — task completed")
+            _emit_progress("complete", 1.0, "Pipeline complete")
 
         except Exception as e:
             logger.error(
                 f"Exception in PosthocAggregationNode [{pipeline_id}]: {e}",
                 exc_info=True,
             )
+            _emit_progress("failed", 0.0, str(e))
             ipc.shutdown_pipeline()
             raise
         finally:

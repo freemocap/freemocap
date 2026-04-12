@@ -13,6 +13,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import cv2
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -21,9 +22,9 @@ from skellytracker.trackers.base_tracker.helpers import create_detector_from_con
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
-from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
+from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue, PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
-from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
+from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage, PosthocProgressMessage
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,9 @@ class VideoNode(SourceNode):
         pubsub: PubSubTopicManager,
         recording_path: Path,
         save_annotated_video: bool = True,
+        pipeline_id: PipelineIdString | None = None,
+        total_frame_count: int = 0,
+        progress_pub: Optional[multiprocessing.Queue] = None,
     ) -> "VideoNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -63,6 +67,9 @@ class VideoNode(SourceNode):
                 ),
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
+                pipeline_id=pipeline_id,
+                total_frame_count=total_frame_count,
+                progress_pub=progress_pub,
             ),
         )
         return cls(
@@ -121,6 +128,9 @@ class VideoNode(SourceNode):
         shutdown_self_flag: multiprocessing.Value,
         recording_path: Path,
         save_annotated_video: bool,
+        pipeline_id: PipelineIdString | None = None,
+        total_frame_count: int = 0,
+        progress_pub: Optional[multiprocessing.Queue] = None,
     ) -> None:
         detector = create_detector_from_config(detector_config)
         video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
@@ -168,6 +178,8 @@ class VideoNode(SourceNode):
             f"{' (with annotation)' if save_annotated_video else ''}"
         )
         frame_number: int = 0
+        _PROGRESS_THRESHOLD = 0.05
+        last_reported_fraction: float = -1.0
         try:
             success, image = video_reader.read()
             while success and not shutdown_self_flag.value and ipc.should_continue:
@@ -182,6 +194,17 @@ class VideoNode(SourceNode):
                         observation=observation,
                     ),
                 )
+
+                if progress_pub is not None and pipeline_id is not None and total_frame_count > 0:
+                    fraction = frame_number / total_frame_count
+                    if fraction - last_reported_fraction >= _PROGRESS_THRESHOLD:
+                        progress_pub.put(PosthocProgressMessage(
+                            pipeline_id=pipeline_id,
+                            phase="detecting_frames",
+                            progress_fraction=min(fraction, 1.0),
+                            detail=f"{video_path.stem}: frame {frame_number}/{total_frame_count}",
+                        ))
+                        last_reported_fraction = fraction
 
                 # Annotate and write frame if enabled
                 if annotator is not None and video_writer is not None:

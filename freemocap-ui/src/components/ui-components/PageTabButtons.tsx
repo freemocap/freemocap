@@ -50,7 +50,7 @@ export const PageTabButtons = () => {
                     }),
                 }}
             >
-                {t('cameras')}
+                Streaming
             </Button>
             <Button
                 variant={location.pathname === '/playback' ? 'contained' : 'outlined'}

@@ -89,6 +89,10 @@ class WebsocketServer:
                 name="WebsocketLogsRelay",
             ),
             asyncio.create_task(
+                self._posthoc_progress_relay(),
+                name="WebsocketPosthocProgressRelay",
+            ),
+            asyncio.create_task(
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
             ),
@@ -183,6 +187,38 @@ class WebsocketServer:
             logger.exception(
                 f"Error in websocket log relay: {e.__class__.__name__}: {e or '(no message)'} "
                 f"— ws state: {self.websocket.client_state}"
+            )
+            self._websocket_should_continue = False
+            raise
+
+    async def _posthoc_progress_relay(self) -> None:
+        logger.info("Starting posthoc progress relay...")
+        progress_queue = self._app.posthoc_pipeline_manager.shared_progress_queue
+        try:
+            while self.should_continue:
+                if not progress_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
+                    try:
+                        msg = progress_queue.get_nowait()
+                    except Exception:
+                        continue
+                    payload = {
+                        "message_type": "posthoc_progress",
+                        "pipeline_id": msg.pipeline_id,
+                        "phase": msg.phase,
+                        "progress_fraction": msg.progress_fraction,
+                        "detail": msg.detail,
+                    }
+                    async with self._send_lock:
+                        await self.websocket.send_json(payload)
+                else:
+                    await await_10ms()
+        except asyncio.CancelledError:
+            logger.debug("Posthoc progress relay task cancelled")
+        except WebSocketDisconnect:
+            logger.info("Client disconnected, ending posthoc progress relay task...")
+        except Exception as e:
+            logger.exception(
+                f"Error in posthoc progress relay: {e.__class__.__name__}: {e}"
             )
             self._websocket_should_continue = False
             raise

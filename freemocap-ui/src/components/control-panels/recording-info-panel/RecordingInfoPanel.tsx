@@ -12,7 +12,6 @@ import {RecordingPathTreeItem} from "@/components/control-panels/recording-info-
 import {useElectronIPC} from "@/services/electron-ipc/electron-ipc";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {getTimestampString} from "@/components/control-panels/recording-info-panel/getTimestampString";
-import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {RecordingSummary} from "./RecordingSummary";
 import {RecordingHeaderButton} from "./RecordingHeaderButton";
@@ -317,7 +316,6 @@ export const RecordingInfoPanel: React.FC = () => {
                         onCustomSubfolderNameChange={setCustomSubfolderName}
                     />
                 </SimpleTreeView>
-                <RecordingCompleteDialog/>
             </Box>
         </CollapsibleSidebarSection>
     );

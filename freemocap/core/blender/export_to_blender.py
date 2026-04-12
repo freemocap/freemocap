@@ -6,7 +6,7 @@ from typing import Union, List
 
 import freemocap_blender_addon
 
-from freemocap.core.blender.helpers.freemocap_blender_addon_helpers.run_simple import run_simple
+from freemocap.core.blender.helpers.run_blender_export import run_blender_export
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.utilities.open_file import open_file
 
@@ -66,7 +66,7 @@ def export_to_blender(
     site_packages_path = str(addon_package_path.parent.parent)
     logger.debug(f"Will inject site-packages path into Blender's sys.path: {site_packages_path}")
 
-    simple_run_script = inspect.getfile(run_simple)
+    simple_run_script = inspect.getfile(run_blender_export)
 
     command_list = [
         str(blender_exe_path),

@@ -14,6 +14,7 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 
 import json
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -221,6 +222,7 @@ def run_posthoc_calibration_task(
     recording_info: RecordingInfo,
     video_metadata: dict[VideoIdString, VideoMetadata],
     task_config: PosthocCalibrationPipelineConfig,
+    report_progress: Callable[[str, float], None] | None = None,
 ) -> None:
     """Run posthoc calibration on collected charuco observations.
 

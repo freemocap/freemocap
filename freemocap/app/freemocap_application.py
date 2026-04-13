@@ -20,7 +20,7 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimeP
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendImagePacket
+from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 
 logger = logging.getLogger(__name__)
 
@@ -143,11 +143,11 @@ class FreemocapApplication:
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
                     if_newer_than=if_newer_than
             ).items():
-                frame_number, _timestamp, image_bytes = payload  # unpack the known tuple shape
+                frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
                 result[cg_id] = FrontendImagePacket(
                     image_bytes=image_bytes,
-                    frame_number=frame_number,
-                    frontend_payload=None,
+                    multiframe_timestamp=mf_timestamp,
+                    frontend_payload=FrontendPayload(camera_group_id=cg_id,frame_number=frame_number),
                 )
             return result
 

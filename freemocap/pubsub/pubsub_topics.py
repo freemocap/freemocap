@@ -8,7 +8,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from pydantic import Field, model_validator
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 

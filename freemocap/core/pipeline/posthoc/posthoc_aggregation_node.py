@@ -188,7 +188,7 @@ class PosthocAggregationNode(AggregatorNode):
                 frame_observations=observations_by_frame,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
-                report_progress=_emit_progress,
+                report_progress=lambda detail, fraction: _emit_progress("processing", fraction, detail),
             )
 
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — task completed")

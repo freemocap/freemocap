@@ -5,9 +5,9 @@ Each Message + Topic pair defines a typed channel. Topics auto-register
 via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, ConfigDict
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
@@ -130,12 +130,40 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # Posthoc progress reporting
 # ---------------------------------------------------------------------------
 
-class PosthocProgressMessage(TopicMessageABC):
-    """Progress report from a posthoc pipeline."""
+class PipelineProgressMessage(TopicMessageABC):
     pipeline_id: PipelineIdString
-    phase: str  # "collecting_frames", "processing", "complete", "failed"
-    progress_fraction: float = Field(ge=0.0, le=1.0)
-    detail: str = ""
+    frame_count: int = Field(ge=0)
+    last_processed: FrameNumberInt = Field(ge=-1, default=-1)
+    working: bool = False
+    complete: bool = False
+    error:bool = False
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        frozen=False
+    )
+
+    def increment(self) -> Self:
+        if not self.working:
+            self.working = True
+        if self.last_processed + 1 >= self.frame_count:
+            self.complete = True
+            self.working = False
+        if self.last_processed > self.frame_count:
+            raise ValueError(
+                f"Cannot increment last_processed beyond frame_count: "
+                f"{self.last_processed} + 1 > {self.frame_count}"
+            )
+        self.last_processed += 1
+        return self
+
+
+
+class VideoNodeProgressMessage(PipelineProgressMessage):
+    video_id: VideoIdString
+
+
+class AggregatorNodeProgressMessage(PipelineProgressMessage):
+    running_aggregation_task: bool = Field(default=False)
 
 
 # ---------------------------------------------------------------------------
@@ -147,4 +175,5 @@ PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
-PosthocProgressTopic = create_topic(PosthocProgressMessage)
+VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)
+AggregatorNodeProgressTopic = create_topic(AggregatorNodeProgressMessage)

@@ -23,9 +23,10 @@ import {
     CameraConfigTreeView
 } from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
-import {PostProcessingPanel} from "@/components/control-panels/post-processing-panel/PostProcessingPanel";
 import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
 import {PageTabButtons} from "@/components/ui-components/PageTabButtons";
+import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
+import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
@@ -33,7 +34,8 @@ const DEFAULT_SECTION_ORDER = [
     'cameras',
     'recording',
     'realtime',
-    'postprocessing',
+    'calibration',
+    'mocap',
 ] as const;
 
 type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
@@ -42,7 +44,8 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     realtime: RealtimePipelinePanel,
     cameras: CameraConfigTreeView,
     recording: RecordingInfoPanel,
-    postprocessing: PostProcessingPanel
+    calibration: CalibrationPanel,
+    mocap: MocapPanel,
 };
 
 function loadSectionOrder(): SectionId[] {
@@ -236,7 +239,6 @@ export const SidePanelContent = () => {
                 </ListItem>
             </List>
             <ServerConnectionStatus/>
-            <PageTabButtons/>
 
             {/* Sidebar Sections — drag-reorderable */}
             <DndContext

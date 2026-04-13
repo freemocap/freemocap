@@ -5,12 +5,8 @@ import {
     Button,
     Chip,
     CircularProgress,
-    FormControl,
     IconButton,
     InputAdornment,
-    InputLabel,
-    MenuItem,
-    Select,
     Stack,
     TextField,
     Tooltip,
@@ -32,18 +28,8 @@ import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
+import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 
-type BoardPreset = "5x3" | "7x5" | "custom";
-
-interface BoardPresetConfig {
-    xSquares: number;
-    ySquares: number;
-}
-
-const BOARD_PRESETS: Record<Exclude<BoardPreset, "custom">, BoardPresetConfig> = {
-    "5x3": {xSquares: 5, ySquares: 3},
-    "7x5": {xSquares: 7, ySquares: 5},
-};
 
 export const CalibrationControlPanel: React.FC = () => {
     const theme = useTheme();
@@ -52,7 +38,6 @@ export const CalibrationControlPanel: React.FC = () => {
     const {api} = useElectronIPC();
 
     const {
-        config,
         error,
         isLoading,
         isRecording,
@@ -62,7 +47,6 @@ export const CalibrationControlPanel: React.FC = () => {
         calibrationRecordingPath,
         directoryInfo,
         isUsingManualPath,
-        updateCalibrationConfig,
         dispatchStopCalibrationRecording,
         dispatchStartCalibrationRecording,
         setManualRecordingPath,
@@ -78,54 +62,10 @@ export const CalibrationControlPanel: React.FC = () => {
         }
     }, [calibrationRecordingPath, validateDirectory]);
 
-    const currentPreset = useMemo<BoardPreset>(() => {
-        for (const [preset, presetConfig] of Object.entries(BOARD_PRESETS)) {
-            if (
-                presetConfig.xSquares === config.charucoBoardXSquares &&
-                presetConfig.ySquares === config.charucoBoardYSquares
-            ) {
-                return preset as BoardPreset;
-            }
-        }
-        return "custom";
-    }, [config.charucoBoardXSquares, config.charucoBoardYSquares]);
-
     const handleClearError = useCallback((): void => {
         clearError();
         setLocalError(null);
     }, [clearError]);
-
-    const handlePresetChange = useCallback(
-        (preset: BoardPreset): void => {
-            if (preset === "custom") return;
-            const presetConfig = BOARD_PRESETS[preset];
-            updateCalibrationConfig({
-                charucoBoardXSquares: presetConfig.xSquares,
-                charucoBoardYSquares: presetConfig.ySquares,
-            });
-        },
-        [updateCalibrationConfig]
-    );
-
-    const handleXSquaresChange = useCallback(
-        (value: string): void => {
-            const numValue = parseInt(value, 10);
-            if (!isNaN(numValue) && numValue > 0) {
-                updateCalibrationConfig({charucoBoardXSquares: numValue});
-            }
-        },
-        [updateCalibrationConfig]
-    );
-
-    const handleYSquaresChange = useCallback(
-        (value: string): void => {
-            const numValue = parseInt(value, 10);
-            if (!isNaN(numValue) && numValue > 0) {
-                updateCalibrationConfig({charucoBoardYSquares: numValue});
-            }
-        },
-        [updateCalibrationConfig]
-    );
 
     const handleSelectDirectory = async (): Promise<void> => {
         if (!api) {
@@ -459,62 +399,8 @@ export const CalibrationControlPanel: React.FC = () => {
                         isRefreshing={isRefreshing}
                     />
 
-                    {/* Board Size Configuration */}
-                    <Stack direction="row" spacing={2}>
-                        <FormControl size="small" sx={{minWidth: 140}}>
-                            <InputLabel id="board-preset-label">Preset</InputLabel>
-                            <Select
-                                labelId="board-preset-label"
-                                value={currentPreset}
-                                label="Preset"
-                                onChange={(e) =>
-                                    handlePresetChange(e.target.value as BoardPreset)
-                                }
-                                disabled={isLoading}
-                                sx={{color: theme.palette.text.primary}}
-                            >
-                                <MenuItem value="5x3">5×3</MenuItem>
-                                <MenuItem value="7x5">7×5</MenuItem>
-                                <MenuItem value="custom">Custom</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <TextField
-                            label="X Squares"
-                            type="number"
-                            value={config.charucoBoardXSquares}
-                            onChange={(e) => handleXSquaresChange(e.target.value)}
-                            disabled={isLoading}
-                            size="small"
-                            sx={{flex: 1}}
-                            inputProps={{min: 2, max: 20}}
-                        />
-                        <TextField
-                            label="Y Squares"
-                            type="number"
-                            value={config.charucoBoardYSquares}
-                            onChange={(e) => handleYSquaresChange(e.target.value)}
-                            disabled={isLoading}
-                            size="small"
-                            sx={{flex: 1}}
-                            inputProps={{min: 2, max: 20}}
-                        />
-                    </Stack>
-
-                    {/* Square Length */}
-                    <TextField
-                        label="Square Length (mm)"
-                        type="number"
-                        value={config.charucoSquareLength}
-                        onChange={(e) =>
-                            updateCalibrationConfig({
-                                charucoSquareLength: parseFloat(e.target.value) || 0,
-                            })
-                        }
-                        disabled={isLoading}
-                        size="small"
-                        fullWidth
-                        inputProps={{min: 1, step: 0.1}}
-                    />
+                    {/* Charuco Board Configuration */}
+                    <CharucoBoardConfigSection />
 
                     {/* Solver Method & Groundplane */}
                     <CalibrationSolverSection />

@@ -20,7 +20,7 @@ import SplitscreenIcon from '@mui/icons-material/Splitscreen';
 import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
-import type {CameraSettings, LayoutDirection} from '@/pages/ViewportPage';
+import type {CameraSettings, LayoutDirection} from '@/pages/StreamingViewPage';
 
 interface SettingsOverlayProps {
     settings: CameraSettings;

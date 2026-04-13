@@ -145,13 +145,13 @@ class WebsocketServer:
                     continue
 
                 try:
-                    packets = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
+                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
                 except IndexError:
                     logger.warning("Ring buffer overwrite — resetting to latest frame")
                     self.last_sent_frame_number = -1
                     continue
 
-                for packet in packets.values():
+                for packet in packets:
                     if packet.frontend_payload is not None:
                         async with self._send_lock:
                             await self.websocket.send_json(packet.frontend_payload.model_dump())
@@ -180,6 +180,12 @@ class WebsocketServer:
                         self._display_framerate_trackers[packet.camera_group_id] = FramerateTracker.create(
                             framerate_source="Display")
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
+
+
+                # Send posthoc pipeline progress updates
+                for update_message in progress_updates:
+                    logger.trace(update_message.model_dump_json(indent=2))
+                    await self.websocket.send_json(update_message.model_dump())
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
                 now = time.monotonic()

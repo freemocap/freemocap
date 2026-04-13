@@ -18,7 +18,7 @@ export interface CameraSettings {
     layoutDirection: LayoutDirection;
 }
 
-export const ViewportPage = () => {
+export const StreamingViewPage = () => {
     const theme = useTheme();
     const [resetKey, setResetKey] = useState<number>(0);
     const [settings, setSettings] = useState<CameraSettings>({

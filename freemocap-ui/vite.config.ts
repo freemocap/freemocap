@@ -65,17 +65,19 @@ export default defineConfig(({command}) => {
             }),
         ],
         optimizeDeps: {},
-        server: process.env.VSCODE_DEBUG && (() => {
-            const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
-            return {
-                host: url.hostname,
-                port: +url.port,
-                headers: {
-                    "Cross-Origin-Opener-Policy": "same-origin",
-                    "Cross-Origin-Embedder-Policy": "require-corp",
-                },
-            }
-        })(),
+        server: process.env.VSCODE_DEBUG
+            ? (() => {
+                const url = new URL(pkg.debug.env.VITE_DEV_SERVER_URL)
+                return {
+                    host: url.hostname,
+                    port: +url.port,
+                    headers: {
+                        "Cross-Origin-Opener-Policy": "same-origin",
+                        "Cross-Origin-Embedder-Policy": "require-corp",
+                    },
+                }
+            })()
+            : { host: '0.0.0.0' },
         clearScreen: false,
     }
 })

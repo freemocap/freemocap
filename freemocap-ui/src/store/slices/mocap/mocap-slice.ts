@@ -209,6 +209,10 @@ export const mocapSlice = createSlice({
             state.manualMocapRecordingPath = null;
         },
 
+        lastMocapRecordingPathCleared: (state) => {
+            state.lastMocapRecordingPath = null;
+        },
+
         mocapDirectoryInfoUpdated: (state, action: PayloadAction<MocapDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
@@ -316,8 +320,11 @@ export const selectMocapRecordingPath = createSelector(
 );
 
 export const selectIsUsingManualMocapPath = createSelector(
-    [(state: RootState) => state.mocap.manualMocapRecordingPath],
-    (manualPath) => manualPath !== null
+    [
+        (state: RootState) => state.mocap.manualMocapRecordingPath,
+        (state: RootState) => state.mocap.lastMocapRecordingPath,
+    ],
+    (manualPath, lastPath) => manualPath !== null || lastPath !== null
 );
 
 export const selectCanStartMocapRecording = createSelector(
@@ -355,6 +362,7 @@ export const {
     mocapErrorCleared,
     manualMocapRecordingPathChanged,
     manualMocapRecordingPathCleared,
+    lastMocapRecordingPathCleared,
     mocapDirectoryInfoUpdated,
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,

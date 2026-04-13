@@ -9,9 +9,12 @@ Changes from original:
 import asyncio
 import json
 import logging
-from typing import TYPE_CHECKING
+import time
+from typing import TYPE_CHECKING, Literal
 
 from fastapi import FastAPI
+from pydantic import BaseModel
+from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
@@ -20,14 +23,18 @@ from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler
     MIN_LOG_LEVEL_FOR_WEBSOCKET,
 )
 from freemocap.utilities.wait_functions import await_10ms
-
-if TYPE_CHECKING:
-    from skellycam.core.types.type_overloads import CameraGroupIdString
-    from skellycam.core.recorders.framerate_tracker import FramerateTracker
+from skellycam.core.types.type_overloads import CameraGroupIdString
+from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 
 logger = logging.getLogger(__name__)
 
 BACKPRESSURE_WARNING_THRESHOLD: int = 100
+
+class FramerateMessage(BaseModel):
+        camera_group_id: CameraGroupIdString
+        backend_framerate: CurrentFramerate
+        frontend_framerate: CurrentFramerate
+        message_type: Literal["framerate_update"] = "framerate_update"
 
 
 class WebsocketServer:
@@ -46,8 +53,16 @@ class WebsocketServer:
         self.last_sent_frame_number: int = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
-        # Serializes all WebSocket send operations to prevent concurrent-send
-        # race conditions in the websockets legacy protocol (AssertionError in _drain_helper).
+
+        self._server_framerate_calculators: dict[CameraGroupIdString, ServerFramerateCalculator] = {}
+        self._display_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
+        self._last_framerate_send_time: float = 0.0
+
+        # Serialize all websocket sends — the `websockets` library does not
+        # support concurrent writes on the same connection. Without this lock,
+        # two tasks calling send_json/send_bytes at the same time hit an
+        # internal `assert waiter is None or waiter.cancelled()` in the
+        # protocol drain logic.
         self._send_lock = asyncio.Lock()
 
     async def __aenter__(self):
@@ -107,7 +122,7 @@ class WebsocketServer:
                     task.cancel()
             raise
 
-    def check_frame_acknowledgment_status(self) -> bool:
+    def last_frame_acknowledged(self) -> bool:
         if self.last_sent_frame_number == -1:
             return True
         return self.last_received_frontend_confirmation >= self.last_sent_frame_number
@@ -118,7 +133,7 @@ class WebsocketServer:
             skipped_previous = False
             while self.should_continue:
                 await await_10ms()
-                if not self.check_frame_acknowledgment_status():
+                if not self.last_frame_acknowledged():
                     skipped_previous = True
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
@@ -147,6 +162,45 @@ class WebsocketServer:
 
                     self.last_sent_frame_number = packet.frame_number
 
+                    # Server framerate: computed from frame_number + capture timestamp.
+                    # frame_number increments by 1 per actual camera capture,
+                    # multiframe_timestamp is perf_counter_ns at the camera grab.
+                    # This gives the true capture rate even when frames are
+                    # skipped in the websocket relay due to backpressure.
+                    if packet.camera_group_id not in self._server_framerate_calculators:
+                        self._server_framerate_calculators[packet.camera_group_id] = ServerFramerateCalculator(
+                            source_name="Server")
+                    self._server_framerate_calculators[packet.camera_group_id].update(
+                        frame_number=packet.frame_number,
+                        capture_timestamp_ns=float(packet.multiframe_timestamp),
+                    )
+
+                    # Display framerate: websocket send rate (what the UI actually receives)
+                    if packet.camera_group_id not in self._display_framerate_trackers:
+                        self._display_framerate_trackers[packet.camera_group_id] = FramerateTracker.create(
+                            framerate_source="Display")
+                    self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
+
+                # Send framerate updates from our local trackers (throttled to ~4Hz)
+                now = time.monotonic()
+                if now - self._last_framerate_send_time >= 0.25:
+                    for camera_group_id, server_calc in self._server_framerate_calculators.items():
+                        if camera_group_id not in self._display_framerate_trackers:
+                            continue
+                        server_framerate = server_calc.current_framerate
+                        display_tracker = self._display_framerate_trackers[camera_group_id]
+                        if server_framerate and display_tracker.has_data:
+                            framerate_message = FramerateMessage(
+                                camera_group_id= camera_group_id,
+                                backend_framerate= server_framerate,
+                                frontend_framerate= display_tracker.current_framerate
+                            )
+                            await self.websocket.send_json(framerate_message.model_dump())
+                            # Reset both trackers so the next report reflects only
+                            # the interval since this report.
+                            server_calc.clear()
+                            display_tracker.clear()
+                    self._last_framerate_send_time = now
         except WebSocketDisconnect:
             logger.api("Client disconnected, ending Frontend Image relay task...")
         except asyncio.CancelledError:

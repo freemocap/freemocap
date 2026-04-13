@@ -246,14 +246,20 @@ def run_posthoc_calibration_task(
         charuco_observations_by_frame.append(frame_charuco)
     views_per_camera = {vid_id: len(charuco_observations_by_frame) for vid_id in video_ids}
     logger.debug(f"Received (video id: charuco observation count): {views_per_camera}")
+    if report_progress is not None:
+        report_progress("Validating observations", 0.05)
 
     # ---- Create shared board definition ----
     board = _create_board(task_config=task_config)
+    if report_progress is not None:
+        report_progress("Board created", 0.10)
 
     # ---- Convert to shared observation format (used by pyceres and health check) ----
     all_observations = _convert_all_observations(
         charuco_observations_by_frame=charuco_observations_by_frame,
     )
+    if report_progress is not None:
+        report_progress("Observations converted", 0.20)
 
     # Save observations so comparison tools can run board reconstruction tests
     observations_json_path = Path(recording_info.full_recording_path) / "output_data"/"charuco_observations.json"
@@ -265,6 +271,8 @@ def run_posthoc_calibration_task(
 
     # ---- Route to solver ----
     logger.info(f"Using calibration solver: {task_config.solver_method.value}")
+    if report_progress is not None:
+        report_progress(f"Running solver: {task_config.solver_method.value}", 0.25)
 
     ground_plane: GroundPlaneResult | None = None
     match task_config.solver_method:
@@ -286,6 +294,9 @@ def run_posthoc_calibration_task(
         case _:
             raise ValueError(f"Unknown solver method: {task_config.solver_method}")
 
+    if report_progress is not None:
+        report_progress("Solver complete", 0.80)
+
     # ---- Save calibration result (unified for both paths) ----
     _save_result(
         result=result,
@@ -293,6 +304,8 @@ def run_posthoc_calibration_task(
         solver_method=task_config.solver_method.value,
         ground_plane=ground_plane,
     )
+    if report_progress is not None:
+        report_progress("Calibration saved", 0.90)
 
     # ---- Log calibration health (including board reconstruction accuracy) ----
     health = compute_calibration_health(
@@ -301,6 +314,8 @@ def run_posthoc_calibration_task(
         all_observations=all_observations,
     )
     logger.info(f"\n{health.summary}")
+    if report_progress is not None:
+        report_progress("Health check complete", 0.95)
 
     # ---- Build charuco board model from observations ----
     observation_recorders_by_video: dict[VideoIdString, BaseRecorder] = {
@@ -316,6 +331,8 @@ def run_posthoc_calibration_task(
         output_data_folder=Path(recording_info.full_recording_path) / "output_data",
     )
 
+    if report_progress is not None:
+        report_progress("Calibration complete", 1.0)
     logger.info(
         f"Posthoc calibration complete! Output saved to {recording_info.full_recording_path}"
     )

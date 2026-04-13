@@ -7,6 +7,7 @@ import {realtimeSlice} from "@/store/slices/realtime";
 import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
 import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 import {localeSlice} from "@/store/slices/locale";
+import {pipelinesSlice} from "@/store/slices/pipelines/pipelines-slice";
 
 export const store = configureStore({
     reducer: {
@@ -17,6 +18,7 @@ export const store = configureStore({
         realtime: realtimeSlice.reducer,
         calibration: calibrationSlice.reducer,
         mocap: mocapSlice.reducer,
-        locale: localeSlice.reducer
+        locale: localeSlice.reducer,
+        pipelines: pipelinesSlice.reducer,
     },
 });

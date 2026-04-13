@@ -4,7 +4,7 @@ import Box from '@mui/material/Box';
 import {LogTerminal} from "@/components/LogTerminal";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {useTheme} from "@mui/material/styles";
-import FramerateViewerPanel from "@/components/framerate-viewer/FrameRateViewer";
+import TabbedBottomLeftPanel from "@/components/tabbed-bottom-panel/TabbedBottomLeftPanel";
 
 export default function BottomPanelContent() {
     const theme = useTheme();
@@ -15,7 +15,7 @@ export default function BottomPanelContent() {
                 {/* Framerate Viewer Panel */}
                 <Panel defaultSize={30} minSize={20}>
                     <Box sx={{height: '100%', overflow: 'auto'}}>
-                        <FramerateViewerPanel/>
+                        <TabbedBottomLeftPanel/>
                     </Box>
                 </Panel>
 

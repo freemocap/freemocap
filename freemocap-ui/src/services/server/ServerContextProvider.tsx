@@ -19,6 +19,7 @@ import {
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {store} from "@/store";
 import {posthocProgressReceived} from "@/store/slices/mocap";
+import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 
 interface ServerContextValue {
     isConnected: boolean;
@@ -312,6 +313,23 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         }
                     }
                     else if (isPosthocProgress(jsonData)) {
+                        const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+                            collecting_frames: PipelinePhase.SETTING_UP,
+                            detecting_frames: PipelinePhase.PROCESSING_VIDEOS,
+                            all_frames_collected: PipelinePhase.AGGREGATING,
+                            processing: PipelinePhase.AGGREGATING,
+                            running_task: PipelinePhase.AGGREGATING,
+                            complete: PipelinePhase.COMPLETE,
+                            failed: PipelinePhase.FAILED,
+                        };
+                        store.dispatch(pipelineProgressUpdated({
+                            pipelineId: jsonData.pipeline_id,
+                            pipelineType: PipelineType.MOCAP, // TODO: backend should send type
+                            phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+                            progress: Math.round(jsonData.progress_fraction * 100),
+                            detail: jsonData.detail,
+                        }));
+                        // Backward compat with MocapSubsection
                         store.dispatch(posthocProgressReceived({
                             phase: jsonData.phase,
                             progress_fraction: jsonData.progress_fraction,

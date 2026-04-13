@@ -4,6 +4,7 @@ import {useElectronIPC} from '@/services';
 import {
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,
+    lastMocapRecordingPathCleared,
     manualMocapRecordingPathChanged,
     manualMocapRecordingPathCleared,
     MediapipeDetectorConfig,
@@ -126,6 +127,7 @@ export function useMocap() {
 
     const clearManualRecordingPath = useCallback(() => {
         dispatch(manualMocapRecordingPathCleared());
+        dispatch(lastMocapRecordingPathCleared());
     }, [dispatch]);
 
     const dispatchStartMocapRecording = useCallback(() => {

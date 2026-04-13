@@ -9,6 +9,7 @@ import {
     calibrationConfigUpdated,
     calibrationDirectoryInfoUpdated,
     calibrationErrorCleared,
+    lastCalibrationRecordingPathCleared,
     manualCalibrationRecordingPathChanged,
     manualCalibrationRecordingPathCleared,
     selectCalibration,
@@ -68,6 +69,7 @@ export function useCalibration() {
 
     const clearManualRecordingPath = useCallback(() => {
         dispatch(manualCalibrationRecordingPathCleared());
+        dispatch(lastCalibrationRecordingPathCleared());
     }, [dispatch]);
 
     const dispatchStartCalibrationRecording = useCallback(() => {

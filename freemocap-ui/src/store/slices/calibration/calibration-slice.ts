@@ -89,6 +89,10 @@ export const calibrationSlice = createSlice({
             state.manualCalibrationRecordingPath = null;
         },
 
+        lastCalibrationRecordingPathCleared: (state) => {
+            state.lastCalibrationRecordingPath = null;
+        },
+
         calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
@@ -173,8 +177,11 @@ export const selectCalibrationRecordingPath = createSelector(
 );
 
 export const selectIsUsingManualCalibrationPath = createSelector(
-    [(state: RootState) => state.calibration.manualCalibrationRecordingPath],
-    (manualPath) => manualPath !== null
+    [
+        (state: RootState) => state.calibration.manualCalibrationRecordingPath,
+        (state: RootState) => state.calibration.lastCalibrationRecordingPath,
+    ],
+    (manualPath, lastPath) => manualPath !== null || lastPath !== null
 );
 
 export const selectCanStartCalibrationRecording = createSelector(
@@ -209,6 +216,7 @@ export const {
     calibrationErrorCleared,
     manualCalibrationRecordingPathChanged,
     manualCalibrationRecordingPathCleared,
+    lastCalibrationRecordingPathCleared,
     calibrationDirectoryInfoUpdated,
     resetCalibrationState
 } = calibrationSlice.actions;

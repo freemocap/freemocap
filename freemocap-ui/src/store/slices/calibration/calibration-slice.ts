@@ -10,10 +10,14 @@ import {
 
 export type CalibrationSolverMethod = 'anipose' | 'pyceres';
 
+export interface CharucoBoardConfig {
+    squares_x: number;
+    squares_y: number;
+    square_length_mm: number;
+}
+
 export interface CalibrationConfig {
-    charucoBoardXSquares: number;
-    charucoBoardYSquares: number;
-    charucoSquareLength: number;
+    charucoBoard: CharucoBoardConfig;
     minSharedViewsPerCamera: number;
     autoStopOnMinViewCount: boolean;
     solverMethod: CalibrationSolverMethod;
@@ -46,9 +50,7 @@ export interface CalibrationState {
 
 const initialState: CalibrationState = {
     config: {
-        charucoBoardXSquares: 5,
-        charucoBoardYSquares: 3,
-        charucoSquareLength: 54,
+        charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
         minSharedViewsPerCamera: 200,
         autoStopOnMinViewCount: true,
         solverMethod: 'anipose',

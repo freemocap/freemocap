@@ -21,6 +21,7 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
+from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,25 @@ class FreemocapApplication:
     @property
     def should_continue(self) -> bool:
         return not self.global_kill_flag.value
+    # ------------------------------------------------------------------
+    # Recording orchestration
+    # ------------------------------------------------------------------
+
+    async def start_recording_all(self, recording_info: RecordingInfo) -> None:
+        await self.camera_group_manager.start_recording_all_groups(
+            recording_info=recording_info,
+        )
+
+    async def stop_recording_all(self) -> RecordingInfo | None:
+        recording_infos = await self.camera_group_manager.stop_recording_all_groups()
+        if len(recording_infos) == 0:
+            logger.warning("No recordings were stopped.")
+            return None
+        if len(recording_infos) > 1:
+            raise NotImplementedError(
+                "Stopping multiple recordings at once is not supported yet."
+            )
+        return recording_infos[0][0]
 
     # ------------------------------------------------------------------
     # Realtime pipeline operations
@@ -104,25 +124,6 @@ class FreemocapApplication:
         )
         return pipeline
 
-    # ------------------------------------------------------------------
-    # Recording orchestration
-    # ------------------------------------------------------------------
-
-    async def start_recording_all(self, recording_info: RecordingInfo) -> None:
-        await self.camera_group_manager.start_recording_all_groups(
-            recording_info=recording_info,
-        )
-
-    async def stop_recording_all(self) -> RecordingInfo | None:
-        recording_infos = await self.camera_group_manager.stop_recording_all_groups()
-        if len(recording_infos) == 0:
-            logger.warning("No recordings were stopped.")
-            return None
-        if len(recording_infos) > 1:
-            raise NotImplementedError(
-                "Stopping multiple recordings at once is not supported yet."
-            )
-        return recording_infos[0][0]
 
     # ------------------------------------------------------------------
     # Frontend payloads
@@ -131,7 +132,7 @@ class FreemocapApplication:
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
-    ) -> dict[str, FrontendImagePacket]:
+    ) ->tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
         self.posthoc_pipeline_manager.evict_completed()
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
@@ -139,22 +140,26 @@ class FreemocapApplication:
 
         if not active_pipelines:
             # Camera-only path
-            result = {}
+            results: list[FrontendImagePacket] = []
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
                     if_newer_than=if_newer_than
             ).items():
                 frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
-                result[cg_id] = FrontendImagePacket(
+                results.append(FrontendImagePacket(
                     image_bytes=image_bytes,
                     multiframe_timestamp=mf_timestamp,
                     frontend_payload=FrontendPayload(camera_group_id=cg_id,frame_number=frame_number),
-                )
-            return result
+                ))
+            return results, []
 
         # Pipeline path — delegate to manager, which also returns FrontendImagePacket
-        return self.realtime_pipeline_manager.get_latest_frontend_payloads(
+        realtime_pipeline_packets =  self.realtime_pipeline_manager.get_latest_frontend_payloads(
             if_newer_than=if_newer_than
         )
+
+        posthoc_pipeline_progress_messages = self.posthoc_pipeline_manager.get_progress_updates()
+
+        return realtime_pipeline_packets, posthoc_pipeline_progress_messages
 
     # ------------------------------------------------------------------
     # Lifecycle

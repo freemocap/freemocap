@@ -106,13 +106,13 @@ class RealtimePipelineManager(PipelineManagerABC):
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
-    ) -> dict[PipelineIdString, FrontendImagePacket]:
-        latest: dict[PipelineIdString, FrontendImagePacket] = {}
+    ) -> list[FrontendImagePacket]:
+        latest: list[FrontendImagePacket] = []
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
                 packet = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if packet is not None:
-                    latest[pipeline_id] = packet
+                    latest.append(packet)
         return latest
 
     # ------------------------------------------------------------------

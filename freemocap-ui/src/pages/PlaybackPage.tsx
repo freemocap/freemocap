@@ -15,7 +15,7 @@ import {RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import {useLocation} from 'react-router-dom';
-import type {CameraSettings} from '@/pages/ViewportPage';
+import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";

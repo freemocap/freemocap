@@ -30,8 +30,10 @@ import {useElectronIPC} from "@/services";
 import {CalibrationTomlPicker} from "@/components/common/CalibrationTomlPicker";
 import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-panel/RealtimePipelineConfigTree";
 import {useServer} from "@/services/server/ServerContextProvider";
+import SquareFootIcon from "@mui/icons-material/SquareFoot";
+import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 
-export const MocapSubsection: React.FC = () => {
+export const MocapPanel: React.FC = () => {
     const theme = useTheme();
     const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
@@ -191,34 +193,25 @@ export const MocapSubsection: React.FC = () => {
                 : theme.palette.grey[600];
 
     return (
-        <Accordion defaultExpanded={false} disableGutters>
-            <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
+        <CollapsibleSidebarSection
+            icon={<DirectionsRunIcon sx={{color: "inherit"}}/>}
+            title="Motion Capture"
+            summaryContent={<Chip
+                label={statusLabel}
+                size="small"
                 sx={{
-                    minHeight: 40,
-                    "& .MuiAccordionSummary-content": {
-                        alignItems: "center",
-                        gap: 1,
-                        my: 0.5,
-                    },
+                    ml: "auto",
+                    height: 20,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    backgroundColor: statusColor,
+                    color: theme.palette.getContrastText(statusColor),
                 }}
-            >
-                <DirectionsRunIcon fontSize="small" sx={{color: theme.palette.text.secondary}} />
-                <Typography variant="subtitle2">Motion Capture</Typography>
-                <Chip
-                    label={statusLabel}
-                    size="small"
-                    sx={{
-                        ml: "auto",
-                        height: 20,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        backgroundColor: statusColor,
-                        color: theme.palette.getContrastText(statusColor),
-                    }}
-                />
-            </AccordionSummary>
-            <AccordionDetails sx={{p: 2}}>
+            />}
+            defaultExpanded={false}
+        >
+
+            <Box sx={{p: 2}}>
                 <Stack spacing={2}>
                     {/* Process button at TOP per requirements */}
                     <Button
@@ -411,7 +404,7 @@ export const MocapSubsection: React.FC = () => {
                         onRigidBodyToggle={setRigidBodyEnabled}
                     />
                 </Stack>
-            </AccordionDetails>
-        </Accordion>
+            </Box>
+        </CollapsibleSidebarSection>
     );
 };

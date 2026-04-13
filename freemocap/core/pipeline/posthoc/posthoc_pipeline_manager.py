@@ -23,6 +23,7 @@ from freemocap.core.tasks.calibration.posthoc_calibration_task import run_postho
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task
 from freemocap.core.types.type_overloads import PipelineIdString
+from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,6 @@ class PosthocPipelineManager(PipelineManagerABC):
     worker_registry: WorkerRegistry
     lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
-    shared_progress_queue: multiprocessing.Queue = field(default_factory=multiprocessing.Queue)
 
     # ------------------------------------------------------------------
     # Lazy cleanup
@@ -96,7 +96,6 @@ class PosthocPipelineManager(PipelineManagerABC):
             aggregation_task_fn=calibration_aggregation_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
-            progress_pub=self.shared_progress_queue,
         )
         pipeline.start()
         with self.lock:
@@ -125,7 +124,6 @@ class PosthocPipelineManager(PipelineManagerABC):
             aggregation_task_fn=mocap_task_fn,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
-            progress_pub=self.shared_progress_queue,
         )
         if start_pipeline:
             pipeline.start()
@@ -154,3 +152,11 @@ class PosthocPipelineManager(PipelineManagerABC):
                 pipeline.shutdown()
             self.pipelines.clear()
         logger.info("PosthocPipelineManager: all pipelines shut down")
+
+    def get_progress_updates(self) -> list[PipelineProgressMessage]:
+        progress_messages: list[PipelineProgressMessage] = []
+
+        for pipeline in self.pipelines.values():
+            progress_messages.extend(pipeline.get_progress_messages())
+
+        return progress_messages

@@ -67,6 +67,128 @@ def triangulate_simple(points, camera_mats):
     return p3d
 
 
+def project_point_to_cam(p3d, P):
+    """
+    Project 3D world point to 2D image coordinates.
+    
+    Args:
+        p3d: (3,) array, 3D point [X, Y, Z]
+        P: (3,4) array, camera projection matrix
+        
+    Returns:
+        (2,) array, normalized image coordinates [u, v]
+        
+    Note: Performs homogeneous projection: [u, v] = (P @ [X, Y, Z, 1])[:2] / (P @ [X, Y, Z, 1])[2]
+    """
+    hom = np.array([p3d[0], p3d[1], p3d[2], 1.0])
+    x = P @ hom
+    return x[:2] / x[2]
+
+
+def triangulate_with_outlier_rejection(
+    subp: np.ndarray,
+    cam_mats: np.ndarray,
+    minimum_cameras_for_triangulation: int = 2,
+    maximum_cameras_to_drop: int = 1,
+    target_reprojection_error: float = 0.01,
+):
+    """
+    Triangulates 3D points with progressive outlier rejection.
+    
+    Performs triangulation using all valid cameras, and if reprojection error
+    exceeds threshold, iteratively tests camera combinations to find optimal subset.
+    
+    Args:
+        subp: (N,2) array of 2D detections from N valid cameras
+        cam_mats: (N,3,4) array of camera matrices for valid cameras
+        minimum_cameras_for_triangulation: Minimum number of cameras required for triangulation
+        maximum_cameras_to_drop: Maximum number of cameras to drop
+        target_reprojection_error: Maximum acceptable mean reprojection error (normalized coordinates, range ~[-1,1])
+    Returns:
+        tuple[np.ndarray, np.ndarray]: (3D point coordinates, normalized camera weights)
+    """
+
+    # Initialize camera indices and weights
+    total_valid_cams = len(cam_mats)
+    local_indices = list(range(total_valid_cams))
+    normalized_camera_weights = np.zeros(total_valid_cams)
+
+    # Compute baseline triangulation and reprojection error
+    default_p3d = triangulate_simple(subp, cam_mats)
+    default_proj = np.array([project_point_to_cam(default_p3d, M) for M in cam_mats])
+    default_errors = np.linalg.norm(default_proj - subp, axis=1)
+    default_mean_error = np.mean(default_errors)
+
+    # Return immediately if baseline accuracy meets the target
+    if default_mean_error < target_reprojection_error:
+        normalized_camera_weights[:] = 1.0
+        return default_p3d, normalized_camera_weights
+
+    # Initialize best result trackers and combination variables
+    best_p3d, best_error = default_p3d, default_mean_error
+    best_camera_combo = local_indices
+    
+    # Set up weighted average sums starting with the baseline triangulation
+    default_weight = np.exp(-5.0 * default_mean_error / target_reprojection_error)
+    weighted_p3d_sum = default_weight * default_p3d
+    total_weight = default_weight
+    normalized_camera_weights[:] += default_weight
+
+    # Iterate through camera combinations by dropping N cameras sequentially
+    for camera_drop_count in range(1, maximum_cameras_to_drop + 1):
+
+        selected_camera_count = total_valid_cams - camera_drop_count
+        if selected_camera_count < minimum_cameras_for_triangulation:
+            break
+
+        combinations = list(itertools.combinations(local_indices, selected_camera_count))        
+        for combo in combinations:
+            kept_local_indices = list(combo)
+            candidate_pts = subp[kept_local_indices]
+            candidate_cams = cam_mats[kept_local_indices]
+
+            # Solve triangulation and compute reprojection error for the subset
+            candidate_p3d = triangulate_simple(candidate_pts, candidate_cams)
+            candidate_proj = np.array([
+                project_point_to_cam(candidate_p3d, M) for M in candidate_cams
+            ])
+            candidate_errors = np.linalg.norm(candidate_proj - candidate_pts, axis=1)
+            candidate_mean_error = np.mean(candidate_errors)
+
+            # Accumulate weighted 3D points and per-camera confidence
+            weight = np.exp(-5.0 * candidate_mean_error / target_reprojection_error)
+            weighted_p3d_sum += weight * candidate_p3d
+            total_weight += weight
+            normalized_camera_weights[kept_local_indices] += weight
+            
+            # Track the single best-performing combination
+            if candidate_mean_error < best_error:
+                best_error = candidate_mean_error
+                best_p3d = candidate_p3d
+                best_camera_combo = kept_local_indices
+
+        # Stop dropping cameras if target accuracy is achieved at this level
+        if best_error < target_reprojection_error:
+            break
+
+    # Calculate the final weighted 3D point from all tested combinations
+    if total_weight > 1e-12:
+        weighted_p3d = weighted_p3d_sum / total_weight
+        normalized_camera_weights /= total_weight
+    else:
+        # Fallback for numerical underflow from extremely large errors
+        weighted_p3d = best_p3d
+        normalized_camera_weights[:] = 0.0
+        normalized_camera_weights[best_camera_combo] = 1.0
+
+    # Return the weighted_p3d if the error was improved by at least one combination
+    if best_error < default_mean_error:
+        return weighted_p3d, normalized_camera_weights
+    else:
+        normalized_camera_weights[:] = 1.0
+        return default_p3d, normalized_camera_weights
+            
+
 def get_error_dict(errors_full, min_points=10):
     n_cams = errors_full.shape[0]
     errors_norm = np.linalg.norm(errors_full, axis=2)
@@ -772,6 +894,76 @@ class CameraGroup:
             out = out[0]
 
         return out
+
+    def triangulate_using_outlier_rejection(
+        self,
+        points,
+        undistort=True,
+        progress=False,
+        kill_event: multiprocessing.Event = None,
+        minimum_cameras_for_triangulation: int = 2,
+        maximum_cameras_to_drop: int = 1,
+        target_reprojection_error: float = 0.01,
+    ):
+        """Given an CxNx2 array, this returns an Nx3 array of points,
+        where N is the number of points and C is the number of cameras"""
+
+        assert points.shape[0] == len(
+            self.cameras
+        ), "Invalid points shape, first dim should be equal to" " number of cameras ({}), but shape is {}".format(
+            len(self.cameras), points.shape
+        )
+
+        one_point = False
+        if len(points.shape) == 2:
+            points = points.reshape(-1, 1, 2)
+            one_point = True
+
+        if undistort:
+            new_points = np.empty(points.shape)
+            for cnum, cam in enumerate(self.cameras):
+                # must copy in order to satisfy opencv underneath
+                sub = np.copy(points[cnum])
+                new_points[cnum] = cam.undistort_points(sub)
+            points = new_points
+
+        n_cams, n_points, _ = points.shape
+
+        out = np.empty((n_points, 3))
+        out[:] = np.nan
+        
+        normalized_camera_weights = np.zeros((n_points, n_cams), dtype=float)
+
+        cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
+
+        if progress:
+            iterator = trange(n_points, ncols=70)
+        else:
+            iterator = range(n_points)
+
+        for ip in iterator:
+            subp = points[:, ip, :]
+            good = ~np.isnan(subp[:, 0])
+            if np.sum(good) >= 2:
+                valid_camera_indices = np.where(good)[0]
+                p3d, weights = triangulate_with_outlier_rejection(
+                    subp[good],
+                    cam_mats[good],
+                    minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+                    maximum_cameras_to_drop=maximum_cameras_to_drop,
+                    target_reprojection_error=target_reprojection_error,
+                )
+                out[ip] = p3d
+                normalized_camera_weights[ip, valid_camera_indices] = weights
+
+            if kill_event is not None and kill_event.is_set():
+                return None, None
+
+        if one_point:
+            out = out[0]
+            normalized_camera_weights = normalized_camera_weights[0]
+
+        return out, normalized_camera_weights
 
     def triangulate_possible(
             self,

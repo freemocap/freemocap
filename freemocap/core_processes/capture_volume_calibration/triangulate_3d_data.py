@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+from typing import Optional
 from pathlib import Path
 
 import numpy as np
@@ -13,11 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 def triangulate_3d_data(
-        anipose_calibration_object: CameraGroup,
-        image_2d_data: np.ndarray,
-        use_triangulate_ransac: bool = False,
-        kill_event: multiprocessing.Event = None,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    anipose_calibration_object: CameraGroup,
+    image_2d_data: np.ndarray,
+    use_triangulate_ransac: bool = False,
+    use_triangulate_outlier_rejection: bool = False,
+    minimum_cameras_for_triangulation: int = 2,
+    maximum_cameras_to_drop: int = 1,
+    target_reprojection_error: float = 0.01,
+    kill_event: multiprocessing.Event = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, Optional[np.ndarray]]:
     number_of_cameras = image_2d_data.shape[0]
     number_of_frames = image_2d_data.shape[1]
     number_of_tracked_points = image_2d_data.shape[2]
@@ -41,9 +46,20 @@ def triangulate_3d_data(
         f"number_of_spatial_dimensions: {number_of_spatial_dimensions}"
     )
 
-    if use_triangulate_ransac:
-        logger.info("Using `triangulate_ransac` method")
-        data3d_flat = anipose_calibration_object.triangulate_ransac(data2d_flat, progress=True, kill_event=kill_event)
+    normalized_camera_weights = None
+    if use_triangulate_outlier_rejection:
+        logger.info("Using `triangulate_using_outlier_rejection` method")
+        data3d_flat, normalized_camera_weights_flat = anipose_calibration_object.triangulate_using_outlier_rejection(
+            data2d_flat,
+            progress=True,
+            kill_event=kill_event,
+            minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+            maximum_cameras_to_drop=maximum_cameras_to_drop,
+            target_reprojection_error=target_reprojection_error,
+        )
+        normalized_camera_weights = normalized_camera_weights_flat.reshape(
+            number_of_frames, number_of_tracked_points, number_of_cameras
+        )
     else:
         logger.info("Using simple `triangulate` method ")
         data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)
@@ -64,6 +80,7 @@ def triangulate_3d_data(
         spatial_data3d_numFrames_numTrackedPoints_XYZ,
         reprojection_error_data3d_numFrames_numTrackedPoints,
         reprojectionError_cam_frame_marker,
+        normalized_camera_weights,
     )
 
 
@@ -99,9 +116,27 @@ if __name__ == "__main__":
         required=False,
     )
     parser.add_argument(
-        "--use_triangulate_ransac",
+        "--use_triangulate_outlier_rejection",
         type=bool,
-        help="use triangulate ransac anipose method ",
+        help="use triangulate using outlier rejection anipose method ",
+        required=False,
+    )
+    parser.add_argument(
+        "--minimum_cameras_for_triangulation",
+        type=int,
+        help="minimum number of cameras required for triangulation",
+        required=False,
+    )
+    parser.add_argument(
+        "--maximum_cameras_to_drop",
+        type=int,
+        help="maximum amount of cameras permitted to drop",
+        required=False,
+    )
+    parser.add_argument(
+        "--target_reprojection_error",
+        type=float,
+        help="maximum acceptable mean reprojection error",
         required=False,
     )
     parser.add_argument(
@@ -120,8 +155,17 @@ if __name__ == "__main__":
     if args.save_data_as_csv is None:
         args.save_data_as_csv = True  # default
 
-    if args.use_triangulate_ransac is None:
-        args.use_triangulate_ransac = True
+    if args.use_triangulate_outlier_rejection is None:
+        args.use_triangulate_outlier_rejection = False
+
+    if args.minimum_cameras_for_triangulation is None:
+        args.minimum_cameras_for_triangulation = 2
+
+    if args.maximum_cameras_to_drop is None:
+        args.maximum_cameras_to_drop = 1
+
+    if args.target_reprojection_error is None:
+        args.target_reprojection_error = 0.01
 
     if args.file_prefix is None:
         args.file_prefix = ""
@@ -137,16 +181,20 @@ if __name__ == "__main__":
         skel3d_frame_marker_xyz,
         skeleton_reprojection_error_fr_mar,
         skeleton_reprojection_error_cam_fr_mar,
+        normalized_camera_weights,
     ) = triangulate_3d_data(
         anipose_calibration_object=anipose_calibration_object,
         image_2d_data=data_2d,
-        use_triangulate_ransac=args.use_triangulate_ransac,
+        use_triangulate_ransac=False,
+        use_triangulate_outlier_rejection=args.use_triangulate_outlier_rejection,
+        minimum_cameras_for_triangulation=args.minimum_cameras_for_triangulation,
+        maximum_cameras_to_drop=args.maximum_cameras_to_drop,
+        target_reprojection_error=args.target_reprojection_error,
     )
     save_3d_data_to_npy(
         data3d_numFrames_numTrackedPoints_XYZ=skel3d_frame_marker_xyz,
         data3d_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_fr_mar,
         data3d_numCams_numFrames_numTrackedPoints_reprojectionError=skeleton_reprojection_error_cam_fr_mar,
         path_to_folder_where_data_will_be_saved=args.output_data_folder_path,
-        processing_level="raw",
         file_prefix=args.file_prefix,
     )

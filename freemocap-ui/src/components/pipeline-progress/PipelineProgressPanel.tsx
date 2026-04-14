@@ -1,63 +1,68 @@
-import {useEffect, useRef} from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import TextField from '@mui/material/TextField';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Checkbox from '@mui/material/Checkbox';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
-import {selectActivePipelines, pipelineRemoved, PipelinePhase} from '@/store/slices/pipelines';
+import {
+    selectFilteredPipelines,
+    selectHasCompletedPipelines,
+    selectShowCompleted,
+    selectFilterText,
+    toggleShowCompleted,
+    filterTextChanged,
+} from '@/store/slices/pipelines';
 import PipelineProgressBar from './PipelineProgressBar';
 
-const REMOVAL_DELAY_MS = 3000;
-
 export default function PipelineProgressPanel() {
-    const pipelines = useAppSelector(selectActivePipelines);
+    const pipelines = useAppSelector(selectFilteredPipelines);
+    const hasCompleted = useAppSelector(selectHasCompletedPipelines);
+    const showCompleted = useAppSelector(selectShowCompleted);
+    const filterText = useAppSelector(selectFilterText);
     const dispatch = useAppDispatch();
-    const removalTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-    const entries = Object.values(pipelines);
-
-    // Auto-remove completed/failed pipelines after delay
-    useEffect(() => {
-        for (const p of entries) {
-            const isTerminal = p.phase === PipelinePhase.COMPLETE || p.phase === PipelinePhase.FAILED;
-            if (isTerminal && !removalTimers.current[p.pipelineId]) {
-                removalTimers.current[p.pipelineId] = setTimeout(() => {
-                    dispatch(pipelineRemoved(p.pipelineId));
-                    delete removalTimers.current[p.pipelineId];
-                }, REMOVAL_DELAY_MS);
-            }
-        }
-        // Clean up timers for pipelines no longer in state
-        for (const id of Object.keys(removalTimers.current)) {
-            if (!pipelines[id]) {
-                clearTimeout(removalTimers.current[id]);
-                delete removalTimers.current[id];
-            }
-        }
-    }, [pipelines, dispatch, entries]);
-
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            for (const timer of Object.values(removalTimers.current)) {
-                clearTimeout(timer);
-            }
-        };
-    }, []);
-
-    if (entries.length === 0) {
-        return (
-            <Box sx={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                <Typography variant="caption" color="text.secondary">
-                    No active pipelines
-                </Typography>
-            </Box>
-        );
-    }
 
     return (
-        <Box sx={{height: '100%', overflow: 'auto', py: 0.5}}>
-            {entries.map((p) => (
-                <PipelineProgressBar key={p.pipelineId} pipeline={p}/>
-            ))}
+        <Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, flexShrink: 0}}>
+                <TextField
+                    size="small"
+                    placeholder="Filter..."
+                    value={filterText}
+                    onChange={(e) => dispatch(filterTextChanged(e.target.value))}
+                    sx={{
+                        flex: 1,
+                        '& .MuiInputBase-root': {height: 28, fontSize: '0.75rem'},
+                    }}
+                />
+                {hasCompleted && (
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                size="small"
+                                checked={showCompleted}
+                                onChange={() => dispatch(toggleShowCompleted())}
+                                sx={{p: 0.25}}
+                            />
+                        }
+                        label={<Typography variant="caption">Show completed</Typography>}
+                        sx={{mr: 0, ml: 0}}
+                    />
+                )}
+            </Box>
+
+            <Box sx={{flex: 1, overflow: 'auto'}}>
+                {pipelines.length === 0 ? (
+                    <Box sx={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                        <Typography variant="caption" color="text.secondary">
+                            No active pipelines
+                        </Typography>
+                    </Box>
+                ) : (
+                    pipelines.map((p) => (
+                        <PipelineProgressBar key={p.pipelineId} pipeline={p}/>
+                    ))
+                )}
+            </Box>
         </Box>
     );
 }

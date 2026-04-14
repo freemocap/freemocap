@@ -21,6 +21,7 @@ import {
     startCalibrationRecording,
     stopCalibrationRecording,
 } from "@/store/slices/calibration";
+import {pathRecomputed} from "@/store/slices/recording";
 
 export function useCalibration() {
     const dispatch = useAppDispatch();
@@ -70,6 +71,7 @@ export function useCalibration() {
     const clearManualRecordingPath = useCallback(() => {
         dispatch(manualCalibrationRecordingPathCleared());
         dispatch(lastCalibrationRecordingPathCleared());
+        dispatch(pathRecomputed());
     }, [dispatch]);
 
     const dispatchStartCalibrationRecording = useCallback(() => {

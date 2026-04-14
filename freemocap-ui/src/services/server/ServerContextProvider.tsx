@@ -18,7 +18,6 @@ import {
 } from "@/services/server/server-helpers/websocket-message-types";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {store} from "@/store";
-import {posthocProgressReceived} from "@/store/slices/mocap";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 
 interface ServerContextValue {
@@ -327,12 +326,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                             pipelineType: PipelineType.MOCAP, // TODO: backend should send type
                             phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
                             progress: Math.round(jsonData.progress_fraction * 100),
-                            detail: jsonData.detail,
-                        }));
-                        // Backward compat with MocapSubsection
-                        store.dispatch(posthocProgressReceived({
-                            phase: jsonData.phase,
-                            progress_fraction: jsonData.progress_fraction,
                             detail: jsonData.detail,
                         }));
                     }

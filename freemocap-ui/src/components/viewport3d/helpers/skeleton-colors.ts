@@ -8,4 +8,5 @@ export const SKELETON_COLORS = {
     rightHand:  new Color('#FF00FF'),
     face:       new Color('#FFD700'),
     hidden:     new Color('#000000'),
+    charuco:    new Color('#00FF00'),
 } as const;

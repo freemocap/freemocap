@@ -181,11 +181,13 @@ class WebsocketServer:
                             framerate_source="Display")
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
 
-
-                # Send posthoc pipeline progress updates
-                for update_message in progress_updates:
-                    logger.trace(update_message.model_dump_json(indent=2))
-                    await self.websocket.send_json(update_message.model_dump())
+                if len(progress_updates) > 0:
+                    # Send posthoc pipeline progress updates
+                    for update_messages in progress_updates:
+                        if len(update_messages) > 0:
+                            for update_message in update_messages:
+                                logger.trace(f"Sending {len(progress_updates)} updates through the websocket ")
+                                await self.websocket.send_json(update_message.model_dump())
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
                 now = time.monotonic()

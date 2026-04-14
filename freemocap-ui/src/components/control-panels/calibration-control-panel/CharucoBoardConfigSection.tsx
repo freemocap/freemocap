@@ -1,15 +1,12 @@
 import React, {useCallback, useMemo} from "react";
 import {
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
     Stack,
     TextField,
     Typography,
     useTheme,
 } from "@mui/material";
 import {useCalibration} from "@/hooks/useCalibration";
+import {PresetPicker} from "@/components/common/PresetPicker";
 
 type BoardPreset = "5x3" | "7x5" | "custom";
 
@@ -55,20 +52,18 @@ export const CharucoBoardConfigSection: React.FC = () => {
             </Typography>
 
             {/* Preset */}
-            <FormControl size="small" sx={{minWidth: 140}}>
-                <InputLabel id="board-preset-label">Preset</InputLabel>
-                <Select
-                    labelId="board-preset-label"
-                    value={currentPreset}
-                    label="Preset"
-                    onChange={(e) => handlePresetChange(e.target.value as BoardPreset)}
-                    disabled={isLoading}
-                >
-                    <MenuItem value="5x3">5×3</MenuItem>
-                    <MenuItem value="7x5">7×5</MenuItem>
-                    <MenuItem value="custom">Custom</MenuItem>
-                </Select>
-            </FormControl>
+            <PresetPicker
+                label="Preset"
+                value={currentPreset}
+                options={[
+                    {value: "5x3" as BoardPreset, label: "5×3"},
+                    {value: "7x5" as BoardPreset, label: "7×5"},
+                    {value: "custom" as BoardPreset, label: "Custom"},
+                ]}
+                onChange={handlePresetChange}
+                disabled={isLoading}
+                minWidth={140}
+            />
 
             {/* X / Y Squares */}
             <Stack direction="row" spacing={2}>

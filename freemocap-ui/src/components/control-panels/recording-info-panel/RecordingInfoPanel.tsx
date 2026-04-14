@@ -5,6 +5,13 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
+import {pathRecomputed} from "@/store/slices/recording/recording-slice";
+import {manualCalibrationRecordingPathChanged} from "@/store/slices/calibration/calibration-slice";
+import {calibrateRecording} from "@/store/slices/calibration/calibration-thunks";
+import {manualMocapRecordingPathChanged} from "@/store/slices/mocap/mocap-slice";
+import {processMocapRecording} from "@/store/slices/mocap/mocap-thunks";
+import {PresetPicker} from "@/components/common/PresetPicker";
+import {RecordingTypePreset, RECORDING_TYPE_OPTIONS} from "./recording-type-preset";
 import {
     MicrophoneSelector
 } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
@@ -46,12 +53,20 @@ export const RecordingInfoPanel: React.FC = () => {
     const [customSubfolderName, setCustomSubfolderName] = useState<string>("");
     const [recordingTag, setRecordingTag] = useState<string>("");
     const [micDeviceIndex, setMicDeviceIndex] = useState<number>(-1);
+    const [recordingTypePreset, setRecordingTypePreset] = useState<RecordingTypePreset>("none");
     const {isElectron, api} = useElectronIPC();
     const {connectedCameraIds} = useServer();
     const noCamerasConnected = connectedCameraIds.length === 0;
 
     // Recording duration for summary
     const [recordingDuration, setRecordingDuration] = useState<string>("");
+
+    // Keep the computed recording path timestamp ticking with the wall clock
+    useEffect(() => {
+        if (recordingInfo.isRecording) return;
+        const id = setInterval(() => dispatch(pathRecomputed()), 1000);
+        return () => clearInterval(id);
+    }, [dispatch, recordingInfo.isRecording]);
 
     // Track when recording state changes to clear pending state
     useEffect(() => {
@@ -160,6 +175,10 @@ export const RecordingInfoPanel: React.FC = () => {
             parts.push(baseName);
         }
 
+        if (recordingTypePreset !== "none") {
+            parts.push(recordingTypePreset);
+        }
+
         if (recordingTag) {
             parts.push(recordingTag);
         }
@@ -214,7 +233,15 @@ export const RecordingInfoPanel: React.FC = () => {
             setPendingOperation({type: 'stop', timestamp: Date.now()});
 
             try {
-                await dispatch(stopRecording()).unwrap();
+                const result = await dispatch(stopRecording()).unwrap();
+                // Auto-launch pipeline based on recording type preset
+                if (result && recordingTypePreset === "calibration") {
+                    dispatch(manualCalibrationRecordingPathChanged(result.recording_path));
+                    dispatch(calibrateRecording());
+                } else if (result && recordingTypePreset === "mocap") {
+                    dispatch(manualMocapRecordingPathChanged(result.recording_path));
+                    dispatch(processMocapRecording());
+                }
             } catch (error) {
                 console.error("Failed to stop recording:", error);
                 setPendingOperation(null);
@@ -237,6 +264,21 @@ export const RecordingInfoPanel: React.FC = () => {
         <CollapsibleSidebarSection
             icon={<FiberManualRecordIcon sx={{color: "inherit"}}/>}
             title={"Recording"}
+            secondaryControls={
+                <PresetPicker
+                    value={recordingTypePreset}
+                    options={RECORDING_TYPE_OPTIONS}
+                    onChange={setRecordingTypePreset}
+                    disabled={recordingInfo.isRecording}
+                    size="small"
+                    minWidth={80}
+                    sx={{
+                        '& .MuiSelect-select': {py: 0.25, fontSize: 12, color: 'inherit'},
+                        '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
+                        '& .MuiSvgIcon-root': {color: 'inherit'},
+                    }}
+                />
+            }
             summaryContent={
                 <RecordingSummary
                     isRecording={recordingInfo.isRecording}

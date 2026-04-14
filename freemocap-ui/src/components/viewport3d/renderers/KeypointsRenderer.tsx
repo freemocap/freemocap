@@ -40,9 +40,9 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
 
     const geo = useMemo(() => new SphereGeometry(100, 8, 6), []);
     const mat = useMemo(() => new MeshStandardMaterial({
-        color: "#ffffff",
-        roughness: 0.4,
-        metalness: 0.3,
+        color: "#00ff00",
+        // roughness: 0.4,
+        // metalness: 0.3,
     }), []);
 
     useEffect(() => {

@@ -28,6 +28,7 @@ import {
     startMocapRecording,
     stopMocapRecording,
 } from "@/store/slices/mocap";
+import {pathRecomputed} from "@/store/slices/recording";
 
 export function useMocap() {
     const dispatch = useAppDispatch();
@@ -128,6 +129,7 @@ export function useMocap() {
     const clearManualRecordingPath = useCallback(() => {
         dispatch(manualMocapRecordingPathCleared());
         dispatch(lastMocapRecordingPathCleared());
+        dispatch(pathRecomputed());
     }, [dispatch]);
 
     const dispatchStartMocapRecording = useCallback(() => {

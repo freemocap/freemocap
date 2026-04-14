@@ -162,7 +162,8 @@ export const SEGMENT_DEFINITIONS: Record<string, { proximal: string; distal: str
     ...FACE_SEGMENTS,
 };
 
-export const MAX_SEGMENTS = Object.keys(SEGMENT_DEFINITIONS).length;
+// Extra capacity for dynamically-generated charuco grid connections
+export const MAX_SEGMENTS = Object.keys(SEGMENT_DEFINITIONS).length + 800;
 
 // Colors in matching order: body+hand first, then face contours
 export const SEGMENT_COLORS: Color[] = [...BODY_HAND_COLORS, ...FACE_COLORS];

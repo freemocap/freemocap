@@ -8,7 +8,7 @@ import {Box} from "@mui/material";
 import {useMenuActions} from "@/hooks/useMenuActions";
 import {useKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";
 import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
-import {PageTabButtons} from "@/components/ui-components/PageTabButtons";
+import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
 
 
 export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
@@ -75,7 +75,7 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
 
                         {/* Main/Central Content Panel */}
                         <Panel defaultSize={76} minSize={10}>
-                            <PageTabButtons/>
+                            <MainNavTabs/>
                             {children}
                             <RecordingCompleteDialog />
                         </Panel>

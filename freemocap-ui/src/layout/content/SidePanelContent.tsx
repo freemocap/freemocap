@@ -24,7 +24,6 @@ import {
 } from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
 import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
-import {PageTabButtons} from "@/components/ui-components/PageTabButtons";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 

@@ -15,6 +15,9 @@ import {
     MAX_SEGMENTS,
 } from "../helpers/skeleton-config";
 import { resolvePoint } from "../helpers/virtual-points";
+import { useAppSelector } from "@/store";
+import { selectCalibrationConfig } from "@/store/slices/calibration/calibration-slice";
+import { SKELETON_COLORS } from "../helpers/skeleton-colors";
 
 const SEGMENT_KEYS = Object.keys(SEGMENT_DEFINITIONS);
 
@@ -27,6 +30,7 @@ const SEGMENT_KEYS = Object.keys(SEGMENT_DEFINITIONS);
 export function ConnectionRenderer() {
     const { subscribeToKeypointsRaw } = useServer();
     const { statsRef } = useViewportState();
+    const calibrationConfig = useAppSelector(selectCalibrationConfig);
 
     const linesRef = useRef<LineSegments>(null);
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
@@ -81,6 +85,55 @@ export function ConnectionRenderer() {
             } else {
                 for (let j = 0; j < 6; j++) positions[base + j] = 1e5;
                 for (let j = 0; j < 6; j++) colors[base + j] = 0;
+            }
+        }
+
+        // Charuco grid connections
+        const cols = calibrationConfig.charucoBoard.squares_x - 1;
+        const rows = calibrationConfig.charucoBoard.squares_y - 1;
+        let segIdx = SEGMENT_KEYS.length;
+        const cr = SKELETON_COLORS.charuco.r;
+        const cg = SKELETON_COLORS.charuco.g;
+        const cb = SKELETON_COLORS.charuco.b;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const id = r * cols + c;
+                const pt = pts.get(`CharucoCorner-${id}`);
+
+                // Horizontal connection (to right neighbor)
+                if (c < cols - 1) {
+                    const right = pts.get(`CharucoCorner-${id + 1}`);
+                    const base = segIdx * 6;
+                    if (pt && right) {
+                        positions[base]     = pt.x;    positions[base + 1] = pt.y;    positions[base + 2] = pt.z;
+                        positions[base + 3] = right.x; positions[base + 4] = right.y; positions[base + 5] = right.z;
+                        colors[base] = cr; colors[base + 1] = cg; colors[base + 2] = cb;
+                        colors[base + 3] = cr; colors[base + 4] = cg; colors[base + 5] = cb;
+                        visibleCount++;
+                    } else {
+                        for (let j = 0; j < 6; j++) positions[base + j] = 1e5;
+                        for (let j = 0; j < 6; j++) colors[base + j] = 0;
+                    }
+                    segIdx++;
+                }
+
+                // Vertical connection (to bottom neighbor)
+                if (r < rows - 1) {
+                    const below = pts.get(`CharucoCorner-${id + cols}`);
+                    const base = segIdx * 6;
+                    if (pt && below) {
+                        positions[base]     = pt.x;    positions[base + 1] = pt.y;    positions[base + 2] = pt.z;
+                        positions[base + 3] = below.x; positions[base + 4] = below.y; positions[base + 5] = below.z;
+                        colors[base] = cr; colors[base + 1] = cg; colors[base + 2] = cb;
+                        colors[base + 3] = cr; colors[base + 4] = cg; colors[base + 5] = cb;
+                        visibleCount++;
+                    } else {
+                        for (let j = 0; j < 6; j++) positions[base + j] = 1e5;
+                        for (let j = 0; j < 6; j++) colors[base + j] = 0;
+                    }
+                    segIdx++;
+                }
             }
         }
 

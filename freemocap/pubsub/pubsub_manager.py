@@ -11,6 +11,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass, field
 from multiprocessing import parent_process
+from multiprocessing.sharedctypes import Synchronized
 
 from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_abcs import PubSubTopicABC, MessageType
@@ -36,7 +37,7 @@ class PubSubTopicManager:
     _relay: PubSubRelay | None = None
 
     @classmethod
-    def create(cls, global_kill_flag: multiprocessing.Value) -> "PubSubTopicManager":
+    def create(cls, global_kill_flag: Synchronized) -> "PubSubTopicManager":
         """
         Factory: creates manager, instantiates all registered topics,
         and starts the relay thread.

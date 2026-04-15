@@ -1,4 +1,5 @@
 import multiprocessing
+import multiprocessing.queues
 
 import msgspec
 
@@ -7,8 +8,8 @@ PipelineIdString = str
 TrackedPointNameString = str
 VideoIdString = str
 
-TopicPublicationQueue = multiprocessing.Queue
-TopicSubscriptionQueue = multiprocessing.Queue
+TopicPublicationQueue = multiprocessing.queues.Queue
+TopicSubscriptionQueue = multiprocessing.queues.Queue
 
 TrackerTypeString = str  # TODO - move this to `skellytracker.types` or something
 

@@ -11,21 +11,24 @@ PubSub is NOT on this object. Pipelines own pubsub separately and pass
 bare queue handles to children as explicit kwargs.
 """
 import multiprocessing
+import multiprocessing.queues
 import uuid
 from dataclasses import dataclass, field
+from multiprocessing.sharedctypes import Synchronized
+
+from skellylogs import get_websocket_log_queue
 
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import get_websocket_log_queue
 from freemocap.utilities.check_main_processs_heartbeat import check_main_process_heartbeat
 
 
 @dataclass
 class PipelineIPC:
     pipeline_id: PipelineIdString
-    ws_queue: multiprocessing.Queue
-    global_kill_flag: multiprocessing.Value
-    heartbeat_timestamp: multiprocessing.Value
-    pipeline_shutdown_flag: multiprocessing.Value = field(
+    ws_queue: multiprocessing.queues.Queue
+    global_kill_flag: Synchronized
+    heartbeat_timestamp: Synchronized
+    pipeline_shutdown_flag: Synchronized = field(
         default_factory=lambda: multiprocessing.Value('b', False),
     )
 
@@ -33,8 +36,8 @@ class PipelineIPC:
     def create(
         cls,
         *,
-        global_kill_flag: multiprocessing.Value,
-        heartbeat_timestamp: multiprocessing.Value,
+        global_kill_flag: Synchronized,
+        heartbeat_timestamp: Synchronized,
         pipeline_id: PipelineIdString | None = None,
     ) -> "PipelineIPC":
         if pipeline_id is None:

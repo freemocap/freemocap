@@ -18,12 +18,12 @@ Error escalation policy (enforced by subclasses, not the base):
 """
 import logging
 import multiprocessing
+import multiprocessing.queues
 import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Optional, ClassVar
-
+from multiprocessing.sharedctypes import Synchronized
 from skellycam.core.ipc.process_management.managed_worker import ManagedWorker
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 
@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 # brief exclusive locks during file reads, and antivirus real-time
 # scanning amplifies the contention. Staggering spawns lets each child
 # finish its import phase before the next one starts.
-_SPAWN_STAGGER_SECONDS: ClassVar[float] = 0.25 if sys.platform == "win32" else 0.0
+_SPAWN_STAGGER_SECONDS: float = 0.25 if sys.platform == "win32" else 0.0
 
 @dataclass
 class BaseNode:
@@ -48,7 +48,7 @@ class BaseNode:
     so subclasses only need to define `create()` and `_run()`.
     """
 
-    shutdown_self_flag: multiprocessing.Value = field(repr=False)
+    shutdown_self_flag: Synchronized = field(repr=False)
     worker: ManagedWorker = field(repr=False)
 
     @property
@@ -89,9 +89,9 @@ class BaseNode:
         target: Callable[..., None],
         name: str,
         worker_registry: WorkerRegistry,
-        log_queue: Optional[multiprocessing.Queue],
+        log_queue: multiprocessing.queues.Queue | None,
         kwargs: dict,
-    ) -> tuple[multiprocessing.Value, ManagedWorker]:
+    ) -> tuple[Synchronized, ManagedWorker]:
         """
         Convenience helper for subclass `create()` methods.
 
@@ -102,7 +102,7 @@ class BaseNode:
         Returns:
             (shutdown_self_flag, worker) tuple for passing to the dataclass constructor.
         """
-        shutdown_self_flag: multiprocessing.Value = multiprocessing.Value('b', False)
+        shutdown_self_flag: Synchronized = multiprocessing.Value('b', False)
         kwargs["shutdown_self_flag"] = shutdown_self_flag
         worker = worker_registry.create_worker(
             target=target,

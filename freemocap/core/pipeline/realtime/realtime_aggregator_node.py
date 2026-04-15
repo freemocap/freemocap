@@ -21,6 +21,7 @@ import logging
 import multiprocessing
 import time
 from dataclasses import dataclass
+from multiprocessing.sharedctypes import Synchronized
 from typing import Iterable
 
 import numpy as np
@@ -200,7 +201,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             camera_group_id: CameraGroupIdString,
             camera_ids: list[CameraGroupIdString],
             ipc: PipelineIPC,
-            shutdown_self_flag: multiprocessing.Value,
+            shutdown_self_flag: Synchronized,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
             camera_node_sub: TopicSubscriptionQueue,
             pipeline_config_sub: TopicSubscriptionQueue,

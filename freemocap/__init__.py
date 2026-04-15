@@ -14,9 +14,7 @@ beartype_this_package()
 
 import time
 tik = time.perf_counter()
-from freemocap.system.logging_configuration.configure_logging import configure_logging
-from freemocap.system.logging_configuration.log_levels import LogLevels
+from skellylogs import configure_logging, LogLevels
 
 LOG_LEVEL = LogLevels.TRACE
 configure_logging(LOG_LEVEL)
-

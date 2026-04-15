@@ -8,6 +8,7 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 import logging
 import multiprocessing
 from dataclasses import dataclass
+from multiprocessing.sharedctypes import Synchronized
 from typing import TYPE_CHECKING
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -88,7 +89,7 @@ class CameraNode(SourceNode):
         process_frame_number_sub: TopicSubscriptionQueue,
         pipeline_config_sub: TopicSubscriptionQueue,
         camera_output_pub: TopicPublicationQueue,
-        shutdown_self_flag: multiprocessing.Value,
+        shutdown_self_flag: Synchronized,
         camera_shm_dto: SharedMemoryRingBufferDTO,
     ) -> None:
         import cv2

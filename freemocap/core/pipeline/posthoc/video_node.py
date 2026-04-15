@@ -12,6 +12,7 @@ are drawn on the source video frames.
 import logging
 import multiprocessing
 from dataclasses import dataclass
+from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import cv2
@@ -128,7 +129,7 @@ class VideoNode(SourceNode):
         ipc: PipelineIPC,
         video_output_pub: TopicPublicationQueue,
         video_progress_pub: TopicPublicationQueue,
-        shutdown_self_flag: multiprocessing.Value,
+        shutdown_self_flag: Synchronized,
         recording_path: Path,
         save_annotated_video: bool,
         pipeline_id: PipelineIdString,

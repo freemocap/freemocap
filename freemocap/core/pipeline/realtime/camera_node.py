@@ -32,8 +32,7 @@ from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
 )
 
-if TYPE_CHECKING:
-    import numpy as np
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,7 @@ class CameraNode(SourceNode):
                 config=config.skeleton_detector_config ,
             )
 
-        frame_rec_array: np.recarray | None = None
+        frame_recarray: np.recarray | None = None
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -155,22 +154,24 @@ class CameraNode(SourceNode):
                     continue
 
                 frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get()
-                frame_rec_array = camera_shm.get_data_by_index(
+                frame_recarray = camera_shm.get_data_by_index(
                     index=frame_msg.frame_number,
-                    rec_array=frame_rec_array,
+                    rec_array=frame_recarray,
                 )
 
-                if frame_rec_array.frame_metadata.camera_config.rotation != -1:
+                if frame_recarray.frame_metadata.camera_info.rotation != -1:
                     image = cv2.rotate(
-                        src=frame_rec_array.image[0],
-                        rotateCode=frame_rec_array.frame_metadata.camera_config.rotation[0],
+                        src=frame_recarray.image[0],
+                        rotateCode=frame_recarray.frame_metadata.camera_info.rotation[0]
+
                     )
                 else:
-                    image = frame_rec_array.image[0]
+                    image = frame_recarray.image[0]
 
-                actual_frame_number: int = frame_rec_array.frame_metadata.frame_number[0]
-                actual_camera_id: CameraIdString = frame_rec_array.frame_metadata.camera_config.camera_id[0]
-
+                actual_frame_number:int = int(frame_recarray.frame_metadata.frame_number[0])
+                actual_camera_id: CameraIdString = frame_recarray.frame_metadata.camera_info.camera_id[0]
+                if actual_camera_id != camera_id:
+                    raise RuntimeError(f"RealtimeCameraNode [{camera_id}]: expected camera ID {camera_id} but got frame with camera ID {actual_camera_id}")
                 if actual_frame_number != frame_msg.frame_number:
                     logger.warning(
                         f"RealtimeCameraNode [{camera_id}]: requested frame {frame_msg.frame_number} "

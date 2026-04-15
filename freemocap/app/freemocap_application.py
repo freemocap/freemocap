@@ -147,7 +147,7 @@ class FreemocapApplication:
             ).items():
                 frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
                 results.append(FrontendImagePacket(
-                    image_bytes=image_bytes,
+                    images_bytearray=image_bytes,
                     multiframe_timestamp=mf_timestamp,
                     frontend_payload=FrontendPayload(camera_group_id=cg_id,frame_number=frame_number),
                 ))

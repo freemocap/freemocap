@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 from dataclasses import dataclass, field
 from queue import Empty
 from typing import TypeVar, Generic, ClassVar
@@ -30,7 +31,7 @@ class PubSubTopicABC(Generic[MessageType]):
     topic_registry: ClassVar[set[type['PubSubTopicABC']]] = set()
 
     message_type: type[TopicMessageABC] = TopicMessageABC
-    publication: TopicPublicationQueue = field(default_factory=TopicPublicationQueue)
+    publication: TopicPublicationQueue = field(default_factory=multiprocessing.Queue)
     subscriptions: list[TopicSubscriptionQueue] = field(default_factory=list)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -44,7 +45,7 @@ class PubSubTopicABC(Generic[MessageType]):
 
     def get_subscription(self) -> TopicSubscriptionQueue:
         """Create and register a new subscription queue."""
-        sub = TopicSubscriptionQueue()
+        sub = multiprocessing.Queue()
         self.subscriptions.append(sub)
         return sub
 

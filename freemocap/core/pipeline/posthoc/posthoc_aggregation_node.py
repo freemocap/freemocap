@@ -21,7 +21,7 @@ import logging
 import multiprocessing
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional
+from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -96,7 +96,7 @@ class PosthocAggregationNode(AggregatorNode):
             recording_info: RecordingInfo,
             video_metadata: dict[VideoIdString, VideoMetadata],
             ipc: PipelineIPC,
-            shutdown_self_flag: multiprocessing.Value,
+            shutdown_self_flag: Synchronized,
             video_node_output_subscription: TopicSubscriptionQueue,
             aggregator_progress_pub: TopicPublicationQueue,
     ) -> None:

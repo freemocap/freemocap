@@ -4,6 +4,7 @@ Consolidated FastAPI app factory with proper lifecycle management.
 import logging
 import multiprocessing
 from contextlib import asynccontextmanager
+from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 from typing import AsyncGenerator
 
@@ -63,7 +64,7 @@ async def app_lifespan(
 
 def create_fastapi_app(
         *,
-        global_kill_flag: multiprocessing.Value,
+        global_kill_flag: Synchronized,
         worker_registry: WorkerRegistry,
         port: int,
 ) -> FastAPI:

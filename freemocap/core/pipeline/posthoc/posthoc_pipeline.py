@@ -14,7 +14,7 @@ import multiprocessing
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -69,7 +69,7 @@ class PosthocPipeline(PipelineABC):
         detector_config: BaseDetectorConfig,
         aggregation_task_fn: PosthocAggregationNodeTaskFn,
         worker_registry: WorkerRegistry,
-        global_kill_flag: multiprocessing.Value,
+        global_kill_flag: Synchronized,
         save_annotated_video: bool = True,
     ) -> "PosthocPipeline":
         """

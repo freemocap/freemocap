@@ -53,12 +53,12 @@ class FrontendPayload(msgspec.Struct):
 
 @dataclass(slots=True, frozen=True)
 class FrontendImagePacket:
-    image_bytes: bytes
+    image_bytes: bytearray
     multiframe_timestamp: MultiframeTimestampFloat
     frontend_payload: FrontendPayload
 
     @property
-    def frame_number(self) -> int:
+    def frame_number(self) -> FrameNumberInt:
         return self.frontend_payload.frame_number
 
     @property

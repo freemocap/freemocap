@@ -11,7 +11,9 @@ Dead pipelines are cleaned up lazily whenever the manager is accessed.
 import functools
 import logging
 import multiprocessing
+import multiprocessing.synchronize
 from dataclasses import dataclass, field
+from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
@@ -38,9 +40,9 @@ class PosthocPipelineManager(PipelineManagerABC):
     lazily on access.
     """
 
-    global_kill_flag: multiprocessing.Value
+    global_kill_flag: Synchronized
     worker_registry: WorkerRegistry
-    lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
+    lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
 
     # ------------------------------------------------------------------

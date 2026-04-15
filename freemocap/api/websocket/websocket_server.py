@@ -2,24 +2,25 @@
 WebSocket server with settings sync integration.
 """
 import asyncio
+import dataclasses
 import json
 import logging
 import time
 from typing import TYPE_CHECKING
 
 import msgspec
+import numpy as np
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
+from skellylogs import get_websocket_log_queue
+from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import (
-    get_websocket_log_queue,
-    MIN_LOG_LEVEL_FOR_WEBSOCKET,
-)
+
 from freemocap.utilities.wait_functions import await_10ms
-from skellycam.core.types.type_overloads import CameraGroupIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 
 logger = logging.getLogger(__name__)
@@ -30,17 +31,21 @@ BACKPRESSURE_WARNING_THRESHOLD: int = 100
 def _msgspec_enc_hook(obj: object) -> object:
     """Fallback encoder for types msgspec doesn't natively handle.
 
-    Handles Pydantic BaseModel instances (e.g. skellyforge's Point3d)
-    and dataclass instances by converting them to dicts.
+    Handles Pydantic BaseModel instances (e.g. skellyforge's Point3d),
+    dataclass instances, and numpy scalar types by converting them to
+    their Python-native equivalents.
     """
     if hasattr(obj, "model_dump"):
         return obj.model_dump()
     if hasattr(obj, "__dataclass_fields__"):
-        import dataclasses
         return dataclasses.asdict(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
     raise TypeError(f"Cannot encode object of type {type(obj).__name__}")
-
-
 # Reusable msgspec JSON encoder for all websocket JSON messages
 _ws_json_encoder = msgspec.json.Encoder(enc_hook=_msgspec_enc_hook)
 
@@ -64,8 +69,8 @@ class WebsocketServer:
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
-        self.last_received_frontend_confirmation: int = -1
-        self.last_sent_frame_number: int = -1
+        self.last_received_frontend_confirmation: FrameNumberInt = -1
+        self.last_sent_frame_number: FrameNumberInt = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
 

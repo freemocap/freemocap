@@ -4,10 +4,10 @@
 
 import logging
 import multiprocessing
+import multiprocessing.synchronize
 from collections import defaultdict
 from copy import copy
 from pathlib import Path
-from typing import Optional
 
 import cv2
 import numpy as np
@@ -525,7 +525,7 @@ class AniposeCameraGroup:
         points: np.ndarray,
         undistort: bool = True,
         progress: bool = False,
-        kill_event: Optional[multiprocessing.Event ] = None,
+        kill_event: multiprocessing.synchronize.Event | None = None,
     ) -> np.ndarray | None:
         """Given CxNx2 points, returns Nx3 triangulated 3D points."""
         assert points.shape[0] == len(self.cameras), (

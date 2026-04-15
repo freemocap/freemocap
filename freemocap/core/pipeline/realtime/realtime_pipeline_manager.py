@@ -13,6 +13,7 @@ Responsibilities:
 """
 import logging
 import multiprocessing
+import multiprocessing.synchronize
 from dataclasses import dataclass, field
 
 from skellycam.core.camera_group.camera_group import CameraGroup
@@ -39,7 +40,7 @@ class RealtimePipelineManager(PipelineManagerABC):
     """
 
     worker_registry: WorkerRegistry
-    lock: multiprocessing.Lock = field(default_factory=multiprocessing.Lock)
+    lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, RealtimePipeline] = field(default_factory=dict)
 
     # ------------------------------------------------------------------

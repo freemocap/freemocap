@@ -5,6 +5,7 @@ FreemocapApplication with SettingsManager integration.
 import logging
 import multiprocessing
 from dataclasses import dataclass, field
+from multiprocessing.sharedctypes import Synchronized
 
 from fastapi import FastAPI
 from skellycam.core.camera.config.camera_config import CameraConfigs
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class FreemocapApplication:
-    global_kill_flag: multiprocessing.Value
+    global_kill_flag: Synchronized
     worker_registry: WorkerRegistry
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager

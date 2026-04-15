@@ -13,11 +13,13 @@ The relay owns the subscriptions lock, coordinating between the main thread
 If the relay thread dies from an unhandled exception, it sets the global_kill_flag
 to bring down all processes.
 """
+import _thread
 import logging
 import multiprocessing
 import threading
 import time
 from dataclasses import dataclass, field
+from multiprocessing.sharedctypes import Synchronized
 
 from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_abcs import PubSubTopicABC
@@ -46,8 +48,8 @@ class PubSubRelay:
     bring down all processes.
     """
     topics: dict[type[PubSubTopicABC], PubSubTopicABC]
-    global_kill_flag: multiprocessing.Value
-    _subscriptions_lock: threading.Lock = field(default_factory=threading.Lock)
+    global_kill_flag: Synchronized
+    _subscriptions_lock: _thread.LockType = field(default_factory=threading.Lock)
     _stop_event: threading.Event = field(default_factory=threading.Event)
     _thread: threading.Thread | None = field(default=None, init=False)
     _fatal_error: BaseException | None = field(default=None, init=False)

@@ -3,14 +3,15 @@ import multiprocessing
 import os
 import signal
 import time
+from multiprocessing.sharedctypes import Synchronized
 from typing import Final
 
 logger = logging.getLogger(__name__)
 HEARTBEAT_INTERVAL_SECONDS: Final[float] = 1.0
 HEARTBEAT_TIMEOUT_SECONDS: Final[float] = 300.0
 def check_main_process_heartbeat(*,
-                                 heartbeat_timestamp: multiprocessing.Value,
-                                 global_kill_flag: multiprocessing.Value) -> bool:
+                                 heartbeat_timestamp: Synchronized,
+                                 global_kill_flag: Synchronized) -> bool:
     """Check if main process is still alive based on heartbeat."""
     current_time: float = time.perf_counter()
     last_heartbeat: float = heartbeat_timestamp.value

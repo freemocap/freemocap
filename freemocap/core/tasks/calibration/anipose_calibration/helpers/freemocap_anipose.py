@@ -122,7 +122,7 @@ def resample_points(
 
     final_ixs = sorted(include)
     newp = imgp[:, final_ixs]
-    extra = subset_extra(extra, final_ixs)
+    extra = subset_extra(extra, np.asarray(final_ixs))
     return newp, extra
 
 
@@ -160,7 +160,7 @@ def remap_ids(ids: np.ndarray) -> np.ndarray:
 
 def get_connections(
     xs: np.ndarray,
-    cam_names: list | None = None,
+    cam_names: list|np.ndarray | None = None,
     both: bool = True,
 ) -> dict[tuple, int]:
     """Count shared observation pairs between cameras."""
@@ -168,21 +168,21 @@ def get_connections(
     n_points = xs.shape[1]
 
     if cam_names is None:
+        # TODO - This is wrong!! we should use camera ID in the dict, NOT the INDEX!
         cam_names = [str(i) for i in range(n_cams)]
 
-    connections: dict[tuple, int] = defaultdict(int)
+    connections = {}
 
     for rnum in range(n_points):
         ixs = np.where(~np.isnan(xs[:, rnum, 0]))[0]
-        keys = [cam_names[ix] for ix in ixs]
+        keys = [int(cam_names[ix]) for ix in ixs]
         for i in range(len(keys)):
             for j in range(i + 1, len(keys)):
                 a = keys[i]
                 b = keys[j]
-                connections[(a, b)] += 1
+                connections[(a, b)] = connections.get((a, b), 0) + 1
                 if both:
-                    connections[(b, a)] += 1
-
+                    connections[(b, a)] = connections.get((b, a), 0) + 1
     return connections
 
 

@@ -582,7 +582,7 @@ requires-dist = [
     { name = "pyinstaller", specifier = ">=6.11.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
-    { name = "scipy-stubs", specifier = "~=1.16.3" },
+    { name = "scipy-stubs", specifier = "~=1.17.1" },
     { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=development" },
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
@@ -1237,14 +1237,14 @@ wheels = [
 
 [[package]]
 name = "optype"
-version = "0.15.0"
+version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/93/6b9e43138ce36fbad134bd1a50460a7bbda61105b5a964e4cf773fe4d845/optype-0.15.0.tar.gz", hash = "sha256:457d6ca9e7da19967ec16d42bdf94e240b33b5d70a56fbbf5b427e5ea39cf41e", size = 99978, upload-time = "2025-12-08T12:32:41.422Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/9f/3b13bab05debf685678b8af004e46b8c67c6f98ffa08eaf5d33bcf162c16/optype-0.17.0.tar.gz", hash = "sha256:31351a1e64d9eba7bf67e14deefb286e85c66458db63c67dd5e26dd72e4664e5", size = 53484, upload-time = "2026-03-08T23:03:12.594Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/07/8b/93f6c496fc5da062fd7e7c4745b5a8dd09b7b576c626075844fe97951a7d/optype-0.15.0-py3-none-any.whl", hash = "sha256:caba40ece9ea39b499fa76c036a82e0d452a432dd4dd3e8e0d30892be2e8c76c", size = 88716, upload-time = "2025-12-08T12:32:39.669Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/44/dca78187415947d1bb90b2ee2a58e47d9573528331e8dc6196996b53612a/optype-0.17.0-py3-none-any.whl", hash = "sha256:8c2d88ff13149454bcf6eb47502f80d288bc542e7238fcc412ac4d222c439397", size = 65854, upload-time = "2026-03-08T23:03:11.425Z" },
 ]
 
 [package.optional-dependencies]
@@ -2164,14 +2164,14 @@ wheels = [
 
 [[package]]
 name = "scipy-stubs"
-version = "1.16.3.3"
+version = "1.17.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "optype", extra = ["numpy"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/08/91/1700d2a1a9f64f19bb019a547e510b99a6af1fef49641a0bce86bc85fb8e/scipy_stubs-1.16.3.3.tar.gz", hash = "sha256:af47578875d5557567225a16ec1b9b38a48c4c4377d92396413ebd65406c44ee", size = 361468, upload-time = "2025-12-08T13:45:38.37Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/75/d944a11fca64aa84fbb4bfcf613b758319c6103cb30a304a0e9727009d62/scipy_stubs-1.17.1.4.tar.gz", hash = "sha256:cae00c5207aa62ceb4bcadea202d9fbbf002e958f9e4de981720436b8d5c1802", size = 396980, upload-time = "2026-04-13T11:46:54.528Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7c/e2/3b8826f281f59301e3284989b19cfc56fdccf799134c1befedd38482a23a/scipy_stubs-1.16.3.3-py3-none-any.whl", hash = "sha256:f6316b36cd0fb272c994ae5b10c4a73c644a7e156ed8d32bcd9c35303d0e1b7e", size = 561750, upload-time = "2025-12-08T13:45:36.568Z" },
+    { url = "https://files.pythonhosted.org/packages/92/f8/334aa5a7a482ea89cb14d92f6a4d9ffa1e193e733144d4d14c7ffcb33583/scipy_stubs-1.17.1.4-py3-none-any.whl", hash = "sha256:e6e5c390fb864745bc3d5f591de81f5cb4f84403857d4f660acb5b6339956f5b", size = 604752, upload-time = "2026-04-13T11:46:53.135Z" },
 ]
 
 [[package]]
@@ -2256,7 +2256,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development#b8a327295dc3f3fa37b01049e6558a29186de0d3" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development#15de25f52a7873666ccf070ebe7ce84d5d8fa95a" }
 dependencies = [
     { name = "numpy" },
     { name = "pandas" },

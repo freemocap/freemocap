@@ -21,12 +21,12 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
-#    "skellytracker[all]",
+    #    "skellytracker[all]",
     "skellytracker[mediapipe]",
     #skelly utils
     "skellylogs",
     "skellypings",
-    "scipy-stubs~=1.16.3",
+    "scipy-stubs~=1.17.1",
     "beartype>=0.19",
     "msgspec>=0.19",
 ]

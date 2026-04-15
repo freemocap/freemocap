@@ -1,6 +1,7 @@
 import msgspec
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
+from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 
@@ -39,7 +40,7 @@ class MediapipeOverlayData(msgspec.Struct):
             cls,
             *,
             camera_id: CameraIdString,
-            observation: MediapipeObservation,
+            observation: LegacyMediapipeObservation | MediapipeObservation,
             scale: float = .5,
             include_face: bool = True,
             face_type: str = "contour",

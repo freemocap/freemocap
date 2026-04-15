@@ -85,8 +85,15 @@ def _merge_triangulated_arrays(
         into[point_name] = coords
 
 
-def _arrays_to_point3d(arrays: dict[str, np.ndarray]) -> dict[str, Point3d]:
+def _arrays_to_point3d(arrays: dict[str, np.ndarray], swap_y_z:bool=False) -> dict[str, Point3d]:
     """Convert dict of {name: ndarray(3,)} to dict of {name: Point3d}. Done once at the end."""
+    if swap_y_z:
+        #hacky swap to make UI look right.
+        return {
+            name: Point3d(x=float(arr[0]), y=float(arr[2]), z=float(arr[1]))
+            for name, arr in arrays.items()
+        }
+
     return {
         name: Point3d(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
         for name, arr in arrays.items()
@@ -407,8 +414,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=camera_node_outputs,
-                        keypoints_raw=_arrays_to_point3d(raw_keypoints),
-                        keypoints_filtered=_arrays_to_point3d(filtered_keypoints),
+                        keypoints_raw=_arrays_to_point3d(raw_keypoints, swap_y_z=True),
+                        keypoints_filtered=_arrays_to_point3d(filtered_keypoints, swap_y_z=True),
                         # rigid_body_poses=rigid_body_poses,
                     ),
                 )

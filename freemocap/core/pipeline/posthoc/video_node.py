@@ -79,7 +79,7 @@ class VideoNode(SourceNode):
             video_path=video_path,
             shutdown_self_flag=shutdown_self_flag,
             worker=worker,
-            progress_subscription=pubsub.get_publication_queue(VideoNodeOutputTopic)
+            progress_subscription=pubsub.get_subscription(VideoNodeProgressTopic)
         )
 
     @staticmethod

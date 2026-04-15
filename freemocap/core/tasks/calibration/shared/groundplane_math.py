@@ -39,8 +39,8 @@ def get_charuco_key_corner_indices(
     """
     num_cols = squares_x - 1
     num_rows = squares_y - 1
-    idx_x = num_cols * (num_rows - 1)
-    idx_y = num_cols - 1
+    idx_y = num_cols * (num_rows - 1)
+    idx_x = num_cols - 1
     return idx_x, idx_y
 
 
@@ -137,4 +137,4 @@ def find_still_charuco_frame(
     # +1 because np.diff shifts indices by 1
     best_frame_idx = np.where(visible)[0][best_visible_idx] + 1 + start
 
-    return best_frame_idx
+    return int(best_frame_idx)

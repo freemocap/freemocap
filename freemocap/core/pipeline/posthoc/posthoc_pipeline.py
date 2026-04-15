@@ -174,6 +174,6 @@ class PosthocPipeline(PipelineABC):
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
         progress_messages: list[PipelineProgressMessage] = []
         for node in list(self.video_nodes.values()):
-            progress_messages.append(node.get_progress_messages())
-        progress_messages.append(self.aggregation_node.get_progress_messages())
+            progress_messages.extend(node.get_progress_messages())
+        progress_messages.extend(self.aggregation_node.get_progress_messages())
         return progress_messages

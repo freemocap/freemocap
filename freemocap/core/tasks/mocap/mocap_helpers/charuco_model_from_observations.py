@@ -22,9 +22,9 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anip
 from freemocap.core.tasks.mocap.mocap_helpers.triangulate_trajectory_array import TriangulationConfig, triangulate_dict
 from freemocap.core.types.type_overloads import VideoIdString
 
-if TYPE_CHECKING:
-    from skellyforge.data_models.trajectory_3d import Trajectory3d
-    import numpy as np
+
+from skellyforge.data_models.trajectory_3d import Trajectory3d
+import numpy as np
 
 logger = logging.getLogger(__name__)
 

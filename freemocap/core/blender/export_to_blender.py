@@ -99,7 +99,7 @@ def export_to_blender(
 
     if open_file_on_completion:
         logger.info(f"Opening {blend_file_path} with {blender_exe_path}")
-        open_file(blend_file_path,)
+        open_file(str(blend_file_path),)
 
 
     logger.debug("Done with blender add on")

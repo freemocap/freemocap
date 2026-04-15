@@ -206,12 +206,8 @@ class WebsocketServer:
                             framerate_source="Display")
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
 
-                if len(progress_updates) > 0:
-                    for update_messages in progress_updates:
-                        if len(update_messages) > 0:
-                            for update_message in update_messages:
-                                logger.trace(f"Sending {len(progress_updates)} updates through the websocket ")
-                                await self._send_msgspec_json(update_message)
+                for update_message in progress_updates:
+                    await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
                 now = time.monotonic()

@@ -83,8 +83,10 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
             const pt = pts[name];
             if (pt) {
                 const style = colorMode === "byBodyPart" ? getPointStyle(name) : null;
+                let scale = style ? style.scale : radius;
+                if (name.includes("hand")) scale *= 0.5; // smaller radius for hand keypoints
                 DUMMY.position.set(pt.x, pt.y, pt.z);
-                DUMMY.scale.setScalar(style ? style.scale : radius);
+                DUMMY.scale.setScalar(scale);
                 mesh.setColorAt(idx, style ? style.color : color);
                 count++;
             } else {

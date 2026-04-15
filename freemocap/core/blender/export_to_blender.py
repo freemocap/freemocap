@@ -93,7 +93,7 @@ def export_to_blender(
     if blender_process.returncode != 0:
         logging.error(blender_process.stderr.read().decode())
     if not Path(blend_file_path).is_file():
-        raise RuntimeError(f"Blender executable not found at: {blend_file_path}")
+        raise RuntimeError(f"Blender output file not found at: {blend_file_path}")
     elif Path(blend_file_path).stat().st_size == 0:
         raise RuntimeError(f"Blender file was created but is empty at: {blend_file_path}")
 

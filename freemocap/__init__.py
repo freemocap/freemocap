@@ -9,6 +9,9 @@ __package_name__ = "freemocap"
 __repo_url__ = f"https://github.com/freemocap/{__package_name__}/"
 __repo_issues_url__ = f"{__repo_url__}issues"
 
+from beartype.claw import beartype_this_package
+beartype_this_package()
+
 import time
 tik = time.perf_counter()
 from freemocap.system.logging_configuration.configure_logging import configure_logging

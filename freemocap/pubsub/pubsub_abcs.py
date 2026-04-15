@@ -1,26 +1,24 @@
 import logging
+from dataclasses import dataclass, field
 from queue import Empty
 from typing import TypeVar, Generic, ClassVar
-
-from pydantic import BaseModel, Field, ConfigDict, create_model
 
 from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 
 logger = logging.getLogger(__name__)
 
 
-class TopicMessageABC(BaseModel):
+@dataclass
+class TopicMessageABC:
     """Base for all message data models."""
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        frozen=True
-    )
+    pass
 
 
 MessageType = TypeVar('MessageType', bound=TopicMessageABC)
 
 
-class PubSubTopicABC(BaseModel, Generic[MessageType]):
+@dataclass(eq=False)
+class PubSubTopicABC(Generic[MessageType]):
     """
     Base pub/sub topic. Main-process only.
 
@@ -31,11 +29,9 @@ class PubSubTopicABC(BaseModel, Generic[MessageType]):
     """
     topic_registry: ClassVar[set[type['PubSubTopicABC']]] = set()
 
-    message_type: type[TopicMessageABC]
-    publication: TopicPublicationQueue = Field(default_factory=TopicPublicationQueue)
-    subscriptions: list[TopicSubscriptionQueue] = Field(default_factory=list)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    message_type: type[TopicMessageABC] = TopicMessageABC
+    publication: TopicPublicationQueue = field(default_factory=TopicPublicationQueue)
+    subscriptions: list[TopicSubscriptionQueue] = field(default_factory=list)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Auto-register when subclassed."""
@@ -100,20 +96,14 @@ def create_topic(
     """
     Factory that creates a topic class for a message type.
 
-    Uses Pydantic's create_model() to properly create the class.
-    Returns a class (not instance) so it auto-registers via __init_subclass__.
+    Uses type() to dynamically create a subclass — triggers auto-registration
+    via __init_subclass__.
     """
     topic_name = message_type.__name__.replace('Message', 'Topic')
 
-    field_definitions: dict[str, object] = {
-        'message_type': (type[MessageType], message_type),
-    }
-
-    topic_class = create_model(
-        topic_name,
-        __base__=PubSubTopicABC,
-        __module__=message_type.__module__,
-        **field_definitions
-    )
+    topic_class = type(topic_name, (PubSubTopicABC,), {
+        'message_type': message_type,
+        '__module__': message_type.__module__,
+    })
 
     return topic_class

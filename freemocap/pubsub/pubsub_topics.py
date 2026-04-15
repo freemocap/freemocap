@@ -5,9 +5,9 @@ Each Message + Topic pair defines a typed channel. Topics auto-register
 via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 import logging
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Self
 
-from pydantic import Field, model_validator, ConfigDict
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
@@ -35,55 +35,73 @@ logger = logging.getLogger(__name__)
 # Frame processing
 # ---------------------------------------------------------------------------
 
+@dataclass
 class ProcessFrameNumberMessage(TopicMessageABC):
-    frame_number: int = Field(ge=0, description="Frame number to process")
+    frame_number: int = 0
+
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
 
 
 # ---------------------------------------------------------------------------
 # Config updates
 # ---------------------------------------------------------------------------
 
+@dataclass
 class PipelineConfigUpdateMessage(TopicMessageABC):
-    pipeline_config: RealtimePipelineConfig
+    pipeline_config: RealtimePipelineConfig = None
 
 
 # ---------------------------------------------------------------------------
 # Realtime node outputs
 # ---------------------------------------------------------------------------
 
+@dataclass
 class CameraNodeOutputMessage(TopicMessageABC):
-    camera_id: CameraIdString
-    frame_number: FrameNumberInt = Field(ge=0)
-    charuco_observation: BaseObservation | None
-    mediapipe_observation: BaseObservation | None
+    camera_id: CameraIdString = ""
+    frame_number: FrameNumberInt = 0
+    charuco_observation: BaseObservation | None = None
+    mediapipe_observation: BaseObservation | None = None
+
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
 
 
 # ---------------------------------------------------------------------------
 # Video (posthoc) node outputs
 # ---------------------------------------------------------------------------
 
+@dataclass
 class VideoNodeOutputMessage(TopicMessageABC):
-    video_id: VideoIdString
-    frame_number: FrameNumberInt = Field(ge=0)
-    observation: BaseObservation
+    video_id: VideoIdString = ""
+    frame_number: FrameNumberInt = 0
+    observation: BaseObservation = None
+
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
 
 
 # ---------------------------------------------------------------------------
 # Aggregation output (realtime)
 # ---------------------------------------------------------------------------
 
+@dataclass
 class AggregationNodeOutputMessage(TopicMessageABC):
-    frame_number: FrameNumberInt = Field(ge=0)
-    pipeline_id: PipelineIdString
-    pipeline_config: RealtimePipelineConfig
-    camera_group_id: CameraGroupIdString
-    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage]
-    keypoints_raw: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
-    keypoints_filtered: dict[TrackedPointNameString, Point3d] = Field(default_factory=dict)
-    rigid_body_poses: dict[str, RigidBodyPose] = Field(default_factory=dict)
+    frame_number: FrameNumberInt = 0
+    pipeline_id: PipelineIdString = ""
+    pipeline_config: RealtimePipelineConfig = None
+    camera_group_id: CameraGroupIdString = ""
+    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
+    keypoints_raw: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
+    keypoints_filtered: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
+    rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def validate(self) -> 'AggregationNodeOutputMessage':
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
         for cam_output in self.camera_node_outputs.values():
             if cam_output.frame_number != self.frame_number:
                 raise ValueError(
@@ -91,7 +109,6 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                     f"has frame number {cam_output.frame_number} which does not match "
                     f"AggregationNodeOutputMessage frame number {self.frame_number}"
                 )
-        return self
 
     @property
     def charuco_overlay_data(self) -> dict:
@@ -130,17 +147,18 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # Posthoc progress reporting
 # ---------------------------------------------------------------------------
 
+@dataclass
 class PipelineProgressMessage(TopicMessageABC):
-    pipeline_id: PipelineIdString
-    frame_count: int = Field(ge=0)
-    last_processed: FrameNumberInt = Field(ge=-1, default=-1)
+    pipeline_id: PipelineIdString = ""
+    frame_count: int = 0
+    last_processed: FrameNumberInt = -1
     working: bool = False
     complete: bool = False
-    error:bool = False
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        frozen=False
-    )
+    error: bool = False
+
+    def __post_init__(self) -> None:
+        if self.frame_count < 0:
+            raise ValueError(f"frame_count must be >= 0, got {self.frame_count}")
 
     def increment(self) -> Self:
         if not self.working:
@@ -158,12 +176,14 @@ class PipelineProgressMessage(TopicMessageABC):
 
 
 
+@dataclass
 class VideoNodeProgressMessage(PipelineProgressMessage):
-    video_id: VideoIdString
+    video_id: VideoIdString = ""
 
 
+@dataclass
 class AggregatorNodeProgressMessage(PipelineProgressMessage):
-    running_aggregation_task: bool = Field(default=False)
+    running_aggregation_task: bool = False
 
 
 # ---------------------------------------------------------------------------

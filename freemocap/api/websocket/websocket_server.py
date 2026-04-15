@@ -1,22 +1,18 @@
 """
 WebSocket server with settings sync integration.
-
-Changes from original:
-  - Accepts a SettingsManager and FreemocapApplication
-  - Runs a _settings_state_relay task alongside existing tasks
-  - _client_message_handler routes settings/* messages to settings_protocol
 """
 import asyncio
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
+import msgspec
 from fastapi import FastAPI
-from pydantic import BaseModel
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
+from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.system.logging_configuration.handlers.websocket_log_queue_handler import (
     get_websocket_log_queue,
@@ -30,11 +26,30 @@ logger = logging.getLogger(__name__)
 
 BACKPRESSURE_WARNING_THRESHOLD: int = 100
 
-class FramerateMessage(BaseModel):
-        camera_group_id: CameraGroupIdString
-        backend_framerate: CurrentFramerate
-        frontend_framerate: CurrentFramerate
-        message_type: Literal["framerate_update"] = "framerate_update"
+
+def _msgspec_enc_hook(obj: object) -> object:
+    """Fallback encoder for types msgspec doesn't natively handle.
+
+    Handles Pydantic BaseModel instances (e.g. skellyforge's Point3d)
+    and dataclass instances by converting them to dicts.
+    """
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "__dataclass_fields__"):
+        import dataclasses
+        return dataclasses.asdict(obj)
+    raise TypeError(f"Cannot encode object of type {type(obj).__name__}")
+
+
+# Reusable msgspec JSON encoder for all websocket JSON messages
+_ws_json_encoder = msgspec.json.Encoder(enc_hook=_msgspec_enc_hook)
+
+
+class FramerateMessage(msgspec.Struct):
+    camera_group_id: CameraGroupIdString
+    backend_framerate: CurrentFramerate
+    frontend_framerate: CurrentFramerate
+    message_type: WebsocketMessageType = WebsocketMessageType.FRAMERATE_UPDATE
 
 
 class WebsocketServer:
@@ -64,6 +79,12 @@ class WebsocketServer:
         # internal `assert waiter is None or waiter.cancelled()` in the
         # protocol drain logic.
         self._send_lock = asyncio.Lock()
+
+    async def _send_msgspec_json(self, data: object) -> None:
+        """Encode any msgspec-compatible object to JSON and send as text."""
+        async with self._send_lock:
+            if self.websocket.client_state == WebSocketState.CONNECTED:
+                await self.websocket.send_text(_ws_json_encoder.encode(data).decode("utf-8"))
 
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
@@ -153,8 +174,7 @@ class WebsocketServer:
 
                 for packet in packets:
                     if packet.frontend_payload is not None:
-                        async with self._send_lock:
-                            await self.websocket.send_json(packet.frontend_payload.model_dump())
+                        await self._send_msgspec_json(packet.frontend_payload)
 
                     if packet.image_bytes is not None:
                         async with self._send_lock:
@@ -182,12 +202,11 @@ class WebsocketServer:
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
 
                 if len(progress_updates) > 0:
-                    # Send posthoc pipeline progress updates
                     for update_messages in progress_updates:
                         if len(update_messages) > 0:
                             for update_message in update_messages:
                                 logger.trace(f"Sending {len(progress_updates)} updates through the websocket ")
-                                await self.websocket.send_json(update_message.model_dump())
+                                await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
                 now = time.monotonic()
@@ -203,7 +222,7 @@ class WebsocketServer:
                                 backend_framerate= server_framerate,
                                 frontend_framerate= display_tracker.current_framerate
                             )
-                            await self.websocket.send_json(framerate_message.model_dump())
+                            await self._send_msgspec_json(framerate_message)
                             # Reset both trackers so the next report reflects only
                             # the interval since this report.
                             server_calc.clear()
@@ -238,7 +257,7 @@ class WebsocketServer:
                     if log_entry.get("levelno", 0) < ws_log_level:
                         continue
                     async with self._send_lock:
-                        await self.websocket.send_json(log_entry)
+                        await self.websocket.send_text(_ws_json_encoder.encode(log_entry).decode("utf-8"))
                 else:
                     await await_10ms()
         except asyncio.CancelledError:
@@ -264,14 +283,13 @@ class WebsocketServer:
                     except Exception:
                         continue
                     payload = {
-                        "message_type": "posthoc_progress",
+                        "message_type": WebsocketMessageType.POSTHOC_PROGRESS,
                         "pipeline_id": msg.pipeline_id,
                         "phase": msg.phase,
                         "progress_fraction": msg.progress_fraction,
                         "detail": msg.detail,
                     }
-                    async with self._send_lock:
-                        await self.websocket.send_json(payload)
+                    await self._send_msgspec_json(payload)
                 else:
                     await await_10ms()
         except asyncio.CancelledError:

@@ -26,6 +26,8 @@ dependencies = [
     "skellylogs",
     "skellypings",
     "scipy-stubs~=1.16.3",
+    "beartype>=0.19",
+    "msgspec>=0.19",
 ]
 
 [tool.uv.sources]

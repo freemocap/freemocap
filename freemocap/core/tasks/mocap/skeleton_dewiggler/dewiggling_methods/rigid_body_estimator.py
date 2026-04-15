@@ -31,7 +31,7 @@ Usage:
 """
 
 import numpy as np
-from pydantic import BaseModel, ConfigDict
+import msgspec
 
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
     SkeletonDefinition
@@ -47,14 +47,11 @@ _FALLBACK_UP: np.ndarray = np.array([0.0, 0.0, 1.0])
 _PARALLEL_THRESHOLD: float = 0.999
 
 
-class RigidBodyPose(BaseModel):
+class RigidBodyPose(msgspec.Struct, frozen=True):
     """Pose of a single rigid body segment (bone).
 
-    All fields use plain Python types so model_dump() produces clean JSON.
+    All fields use plain Python types for clean JSON serialization.
     """
-
-    model_config = ConfigDict(frozen=True)
-
     bone_key: str
     position: tuple[float, float, float]
     orientation: tuple[float, float, float, float]  # [w, x, y, z] quaternion

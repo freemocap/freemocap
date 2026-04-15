@@ -59,7 +59,7 @@ class FrontendImagePacket:
 
     @property
     def frame_number(self) -> FrameNumberInt:
-        return self.frontend_payload.frame_number
+        return FrameNumberInt(self.frontend_payload.frame_number)
 
     @property
     def camera_group_id(self) -> CameraGroupIdString:

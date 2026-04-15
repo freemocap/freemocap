@@ -1,6 +1,6 @@
 import logging
 
-from pydantic import BaseModel, ConfigDict
+import msgspec
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
@@ -17,9 +17,7 @@ logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 
 
-
-
-class FrontendPayload(BaseModel):
+class FrontendPayload(msgspec.Struct):
     """Complete payload for frontend visualization.
 
     Carries both charuco and mediapipe overlay data separately so both
@@ -28,13 +26,13 @@ class FrontendPayload(BaseModel):
 
     frame_number: FrameNumberInt
     camera_group_id: CameraGroupIdString
-    pipeline_id: PipelineIdString|None = None
+    message_type: str = "frontend_payload"
+    pipeline_id: PipelineIdString | None = None
     charuco_overlays: dict[CameraIdString, CharucoOverlayData] | None = None
     skeleton_overlays: dict[CameraIdString, MediapipeOverlayData] | None = None
     keypoints_raw: dict[TrackedPointNameString, Point3d] | None = None
     keypoints_filtered: dict[TrackedPointNameString, Point3d] | None = None
     rigid_body_poses: dict[str, RigidBodyPose] | None = None
-    message_type: str = "frontend_payload"
 
     @classmethod
     def from_aggregation_output(

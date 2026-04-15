@@ -1,6 +1,6 @@
 import multiprocessing
 
-from pydantic import BaseModel
+import msgspec
 
 PointIndex = int
 PipelineIdString = str
@@ -15,7 +15,7 @@ TrackerTypeString = str  # TODO - move this to `skellytracker.types` or somethin
 FrameNumberInt = int
 
 
-class Point3d(BaseModel):
+class Point3d(msgspec.Struct):
     x: float
     y: float
     z: float

@@ -1,51 +1,40 @@
-from typing import Literal
-
-from pydantic import BaseModel, Field
+import msgspec
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 
-class CharucoPointModel(BaseModel):
+class CharucoPointModel(msgspec.Struct):
     """A single detected Charuco corner point."""
-    id: int = Field(description="Charuco corner ID")
-    x: float = Field(description="X coordinate in image space")
-    y: float = Field(description="Y coordinate in image space")
+    id: int
+    x: float
+    y: float
 
 
-class ArucoMarkerModel(BaseModel):
+class ArucoMarkerModel(msgspec.Struct):
     """A single detected ArUco marker with 4 corners."""
-    id: int = Field(description="ArUco marker ID")
-    corners: list[tuple[float, float]] = Field(
-        min_length=4,
-        max_length=4
-    )
+    id: int
+    corners: list[tuple[float, float]]
 
 
-class CharucoMetadataModel(BaseModel):
+class CharucoMetadataModel(msgspec.Struct):
     """Metadata about the charuco detection."""
-    n_charuco_detected: int = Field(description="Number of Charuco corners detected")
-    n_charuco_total: int = Field(description="Total number of Charuco corners on board")
-    n_aruco_detected: int = Field(description="Number of ArUco markers detected")
-    n_aruco_total: int = Field(description="Total number of ArUco markers on board")
-    has_pose: bool = Field(description="Whether board pose was successfully estimated")
-    image_width: int = Field(description="Width of the image in pixels")
-    image_height: int = Field(description="Height of the image in pixels")
+    n_charuco_detected: int
+    n_charuco_total: int
+    n_aruco_detected: int
+    n_aruco_total: int
+    has_pose: bool
+    image_width: int
+    image_height: int
 
 
-class CharucoOverlayData(BaseModel):
+class CharucoOverlayData(msgspec.Struct):
     """Complete message for transmitting charuco observation over websocket."""
-    message_type: Literal["charuco_overlay"] = "charuco_overlay"
-    camera_id: CameraIdString = Field(description="ID of the camera that produced this observation")
-    frame_number: int = Field(description="Frame number of this observation")
-    charuco_corners: list[CharucoPointModel] = Field(
-        default_factory=list,
-        description="List of detected Charuco corner points"
-    )
-    aruco_markers: list[ArucoMarkerModel] = Field(
-        default_factory=list,
-        description="List of detected ArUco markers"
-    )
-    metadata: CharucoMetadataModel = Field(description="Detection metadata and statistics")
+    camera_id: str
+    frame_number: int
+    metadata: CharucoMetadataModel
+    message_type: str = "charuco_overlay"
+    charuco_corners: list[CharucoPointModel] = []
+    aruco_markers: list[ArucoMarkerModel] = []
 
     @classmethod
     def from_charuco_observation(

@@ -1,52 +1,38 @@
-from typing import Literal
-
+import msgspec
 import numpy as np
-from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 
-class MediapipePointModel(BaseModel):
+class MediapipePointModel(msgspec.Struct):
     """A single detected Mediapipe landmark point."""
-    name: str = Field(description="Landmark name")
-    x: float = Field(description="X coordinate in image space")
-    y: float = Field(description="Y coordinate in image space")
-    z: float = Field(description="Z coordinate (normalized depth)")
-    visibility: float = Field(description="Visibility confidence 0-1", ge=0, le=1)
+    name: str
+    x: float
+    y: float
+    z: float
+    visibility: float
 
 
-class MediapipeMetadataModel(BaseModel):
+class MediapipeMetadataModel(msgspec.Struct):
     """Metadata about the mediapipe detection."""
-    n_body_detected: int = Field(description="Number of body landmarks detected")
-    n_right_hand_detected: int = Field(description="Number of right hand landmarks detected")
-    n_left_hand_detected: int = Field(description="Number of left hand landmarks detected")
-    n_face_detected: int = Field(description="Number of face landmarks detected")
-    image_width: int = Field(description="Width of the image in pixels")
-    image_height: int = Field(description="Height of the image in pixels")
+    n_body_detected: int
+    n_right_hand_detected: int
+    n_left_hand_detected: int
+    n_face_detected: int
+    image_width: int
+    image_height: int
 
 
-class MediapipeOverlayData(BaseModel):
+class MediapipeOverlayData(msgspec.Struct):
     """Complete message for transmitting mediapipe observation over websocket."""
-    message_type: Literal["mediapipe_overlay"] = "mediapipe_overlay"
-    camera_id: CameraIdString = Field(description="ID of the camera that produced this observation")
-    frame_number: int = Field(description="Frame number of this observation")
-    body_points: list[MediapipePointModel] = Field(
-        default_factory=list,
-        description="List of detected body landmark points"
-    )
-    right_hand_points: list[MediapipePointModel] = Field(
-        default_factory=list,
-        description="List of detected right hand landmark points"
-    )
-    left_hand_points: list[MediapipePointModel] = Field(
-        default_factory=list,
-        description="List of detected left hand landmark points"
-    )
-    face_points: list[MediapipePointModel] = Field(
-        default_factory=list,
-        description="List of detected face landmark points"
-    )
-    metadata: MediapipeMetadataModel = Field(description="Detection metadata and statistics")
+    camera_id: str
+    frame_number: int
+    metadata: MediapipeMetadataModel
+    message_type: str = "mediapipe_overlay"
+    body_points: list[MediapipePointModel] = []
+    right_hand_points: list[MediapipePointModel] = []
+    left_hand_points: list[MediapipePointModel] = []
+    face_points: list[MediapipePointModel] = []
 
     @classmethod
     def from_mediapipe_observation(

@@ -9,9 +9,8 @@ Lifecycle:
 """
 import logging
 import multiprocessing
+from dataclasses import dataclass, field
 from multiprocessing import parent_process
-
-from pydantic import BaseModel, Field, ConfigDict, PrivateAttr
 
 from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_abcs import PubSubTopicABC, MessageType
@@ -20,7 +19,8 @@ from freemocap.pubsub.pubsub_relay import PubSubRelay
 logger = logging.getLogger(__name__)
 
 
-class PubSubTopicManager(BaseModel):
+@dataclass
+class PubSubTopicManager:
     """
     Manager for pub/sub topics. Auto-instantiates all registered topic classes
     and runs a relay thread for message fan-out.
@@ -32,10 +32,8 @@ class PubSubTopicManager(BaseModel):
         pubsub.publish(SomeTopic, message)  # main-process publishing
     """
 
-    topics: dict[type[PubSubTopicABC], PubSubTopicABC] = Field(default_factory=dict)
-    _relay: PubSubRelay | None = PrivateAttr(default=None)
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    topics: dict[type[PubSubTopicABC], PubSubTopicABC] = field(default_factory=dict)
+    _relay: PubSubRelay | None = None
 
     @classmethod
     def create(cls, global_kill_flag: multiprocessing.Value) -> "PubSubTopicManager":

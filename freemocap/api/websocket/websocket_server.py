@@ -113,9 +113,9 @@ class WebsocketServer:
     @property
     def should_continue(self):
         return (
-            not self._global_kill_flag.value
-            and self._websocket_should_continue
-            and self.websocket.client_state == WebSocketState.CONNECTED
+                not self._global_kill_flag.value
+                and self._websocket_should_continue
+                and self.websocket.client_state == WebSocketState.CONNECTED
         )
 
     async def run(self):
@@ -129,10 +129,10 @@ class WebsocketServer:
                 self._logs_relay(),
                 name="WebsocketLogsRelay",
             ),
-            asyncio.create_task(
-                self._posthoc_progress_relay(),
-                name="WebsocketPosthocProgressRelay",
-            ),
+            # asyncio.create_task(
+            #     self._posthoc_progress_relay(),
+            #     name="WebsocketPosthocProgressRelay",
+            # ),
             asyncio.create_task(
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
@@ -140,7 +140,7 @@ class WebsocketServer:
         ]
 
         try:
-            await asyncio.gather(*self.ws_tasks, return_exceptions=True)
+            await asyncio.gather(*self.ws_tasks)
         except Exception as e:
             logger.exception(f"Error in websocket runner: {e.__class__}: {e}")
             for task in self.ws_tasks:
@@ -277,36 +277,35 @@ class WebsocketServer:
             self._websocket_should_continue = False
             raise
 
-    async def _posthoc_progress_relay(self) -> None:
-        logger.info("Starting posthoc progress relay...")
-        progress_queue = self._app.posthoc_pipeline_manager.shared_progress_queue
-        try:
-            while self.should_continue:
-                if not progress_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-                    try:
-                        msg = progress_queue.get_nowait()
-                    except Exception:
-                        continue
-                    payload = {
-                        "message_type": WebsocketMessageType.POSTHOC_PROGRESS,
-                        "pipeline_id": msg.pipeline_id,
-                        "phase": msg.phase,
-                        "progress_fraction": msg.progress_fraction,
-                        "detail": msg.detail,
-                    }
-                    await self._send_msgspec_json(payload)
-                else:
-                    await await_10ms()
-        except asyncio.CancelledError:
-            logger.debug("Posthoc progress relay task cancelled")
-        except WebSocketDisconnect:
-            logger.info("Client disconnected, ending posthoc progress relay task...")
-        except Exception as e:
-            logger.exception(
-                f"Error in posthoc progress relay: {e.__class__.__name__}: {e}"
-            )
-            self._websocket_should_continue = False
-            raise
+    # async def _posthoc_progress_relay(self) -> None:
+    #     logger.info("Starting posthoc progress relay...")
+    #     try:
+    #         while self.should_continue:
+    #             if not progress_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
+    #                 try:
+    #                     msg = progress_queue.get_nowait()
+    #                 except Exception:
+    #                     continue
+    #                 payload = {
+    #                     "message_type": WebsocketMessageType.POSTHOC_PROGRESS,
+    #                     "pipeline_id": msg.pipeline_id,
+    #                     "phase": msg.phase,
+    #                     "progress_fraction": msg.progress_fraction,
+    #                     "detail": msg.detail,
+    #                 }
+    #                 await self._send_msgspec_json(payload)
+    #             else:
+    #                 await await_10ms()
+    #     except asyncio.CancelledError:
+    #         logger.debug("Posthoc progress relay task cancelled")
+    #     except WebSocketDisconnect:
+    #         logger.info("Client disconnected, ending posthoc progress relay task...")
+    #     except Exception as e:
+    #         logger.exception(
+    #             f"Error in posthoc progress relay: {e.__class__.__name__}: {e}"
+    #         )
+    #         self._websocket_should_continue = False
+    #         raise
 
     async def _client_message_handler(self):
         """Handle messages from the client, including settings messages."""

@@ -1,17 +1,13 @@
 import logging
-from pathlib import Path
 
-from fastapi import APIRouter, Body, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
-from skellycam.core.camera.config import camera_config
-from skellycam.core.camera.config.camera_config import CameraConfig
 from skellycam.core.camera_group.camera_group import CameraConfigs
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
-from freemocap.system.default_paths import default_recording_name, get_default_recording_folder_path
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +33,7 @@ class RealtimePipelineCreateResponse(BaseModel):
         description="ID of the processing pipeline",
     )
     @classmethod
-    def from_pipeline(cls, pipeline: "RealtimePipeline") -> "RealtimePipelineCreateResponse":
+    def from_pipeline(cls, pipeline: RealtimePipeline) -> "RealtimePipelineCreateResponse":
         return cls(
             camera_group_id=pipeline.camera_group.id,
             pipeline_id=pipeline.id,

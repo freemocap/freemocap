@@ -439,7 +439,7 @@ class CalibrationResult(BaseModel, TomlMixin):
         path.write_text(toml.dumps(cameras_dict))
 
     @classmethod
-    def load_anipose_toml(cls, path: Path) -> "CalibrationResultUpdated":
+    def load_anipose_toml(cls, path: Path) -> "CalibrationResult":
         """Load from an anipose-compatible TOML calibration file."""
         path = Path(path)
         if not path.is_file():

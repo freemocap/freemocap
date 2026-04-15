@@ -24,7 +24,6 @@ from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 if TYPE_CHECKING:
     from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-    from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
     from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
     from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 

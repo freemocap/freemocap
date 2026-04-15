@@ -2227,7 +2227,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a1"
-source = { git = "https://github.com/freemocap/skellycam?branch=development#fc52dd41f37152d8f66e3e67a27f29b78b024f6e" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development#f673e077a61d0f70d0915ac81e87dc28110a767e" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },
@@ -2283,7 +2283,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development#e062e7decc95b1efcc5cb9a03e6865b1cdffc4a5" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development#5428f28a33df55f8c4ea8fcc035f52e7dd324755" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

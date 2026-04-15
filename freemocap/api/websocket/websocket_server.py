@@ -181,9 +181,9 @@ class WebsocketServer:
                     if packet.frontend_payload is not None:
                         await self._send_msgspec_json(packet.frontend_payload)
 
-                    if packet.image_bytes is not None:
+                    if packet.images_bytearray is not None:
                         async with self._send_lock:
-                            await self.websocket.send_bytes(packet.image_bytes)
+                            await self.websocket.send_bytes(packet.images_bytearray)
 
                     self.last_sent_frame_number = packet.frame_number
 

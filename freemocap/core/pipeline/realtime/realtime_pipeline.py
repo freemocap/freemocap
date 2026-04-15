@@ -11,7 +11,6 @@ calibration) is NOT here — it belongs in the PipelineManager or route handlers
 import logging
 import uuid
 from dataclasses import dataclass
-from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
@@ -104,6 +103,7 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
+
             )
             for camera_id in camera_group.configs.keys()
         }
@@ -191,9 +191,9 @@ class RealtimePipeline:
             if self.camera_group.alive:
                 result = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
                 if result is not None:
-                    frame_number, mf_timestamp, frames_bytes = result
+                    frame_number, mf_timestamp, frames_bytearray = result
                     return FrontendImagePacket(
-                        image_bytes=frames_bytes,
+                        images_bytearray=frames_bytearray,
                         multiframe_timestamp=mf_timestamp,
 
                         frontend_payload=FrontendPayload(
@@ -210,11 +210,11 @@ class RealtimePipeline:
         if aggregation_output is None:
             return None
 
-        frames_bytes, mf_timestamp = self.camera_group.get_frontend_payload_by_frame_number(
+        frames_bytearray, mf_timestamp = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
         )
         return FrontendImagePacket(
-            image_bytes=frames_bytes,
+            images_bytearray=frames_bytearray,
             multiframe_timestamp=mf_timestamp,
             frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
         )

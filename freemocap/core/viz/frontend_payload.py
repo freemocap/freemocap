@@ -53,7 +53,7 @@ class FrontendPayload(msgspec.Struct):
 
 @dataclass(slots=True, frozen=True)
 class FrontendImagePacket:
-    image_bytes: bytearray
+    images_bytearray: bytearray
     multiframe_timestamp: MultiframeTimestampFloat
     frontend_payload: FrontendPayload
 

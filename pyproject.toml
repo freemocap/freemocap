@@ -21,6 +21,7 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
+#    "skellytracker[all]",
     "skellytracker[mediapipe]",
     #skelly utils
     "skellylogs",

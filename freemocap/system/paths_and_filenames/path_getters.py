@@ -254,7 +254,7 @@ def get_timestamps_directory(recording_directory: Union[str, Path]) -> Optional[
 # TODO: figure out how to deal with different file prefixes for all of these below
 def get_raw_skeleton_npy_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
-    if raw_data_subfolder_path.exists:
+    if raw_data_subfolder_path.exists():
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
         if RAW_3D_NPY_FILE_NAME in raw_data_npy_path_list:
             return str(raw_data_subfolder_path / RAW_3D_NPY_FILE_NAME)
@@ -271,7 +271,7 @@ def get_full_npy_file_path(output_data_folder: Union[str, Path]) -> str:
 
 def get_total_body_center_of_mass_file_path(output_data_folder: Union[str, Path]) -> str:
     center_of_mass_subfolder_path = Path(output_data_folder) / CENTER_OF_MASS_FOLDER_NAME
-    if center_of_mass_subfolder_path.exists:
+    if center_of_mass_subfolder_path.exists():
         center_of_mass_npy_path_list = [path.name for path in center_of_mass_subfolder_path.glob("*.npy")]
 
         if TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME in center_of_mass_npy_path_list:
@@ -282,7 +282,7 @@ def get_total_body_center_of_mass_file_path(output_data_folder: Union[str, Path]
 
 def get_image_tracking_data_file_name(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
-    if raw_data_subfolder_path.exists:
+    if raw_data_subfolder_path.exists():
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
         if DATA_2D_NPY_FILE_NAME in raw_data_npy_path_list:
@@ -293,7 +293,7 @@ def get_image_tracking_data_file_name(data_folder_name: Union[str, Path]) -> str
 
 def get_reprojection_error_file_path(data_folder_name: Union[str, Path]) -> str:
     raw_data_subfolder_path = Path(data_folder_name) / RAW_DATA_FOLDER_NAME
-    if raw_data_subfolder_path.exists:
+    if raw_data_subfolder_path.exists():
         raw_data_npy_path_list = [path.name for path in raw_data_subfolder_path.glob("*.npy")]
 
         if REPROJECTION_ERROR_NPY_FILE_NAME in raw_data_npy_path_list:

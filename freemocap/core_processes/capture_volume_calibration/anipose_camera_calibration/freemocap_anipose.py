@@ -814,9 +814,9 @@ class FisheyeCamera(Camera):
 
 
 class CameraGroup:
-    def __init__(self, cameras, metadata={}):
+    def __init__(self, cameras, metadata=None):
         self.cameras = cameras
-        self.metadata = metadata
+        self.metadata = metadata if metadata is not None else {}
         self.charuco_2d_data = None
 
     def subset_cameras(self, indices):

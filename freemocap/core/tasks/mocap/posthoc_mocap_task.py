@@ -16,13 +16,14 @@ from typing import TYPE_CHECKING
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
+from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
 
 if TYPE_CHECKING:
     pass
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
-from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observation import LegacyMediapipeObservation
-from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
+# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observation import LegacyMediapipeObservation
+# from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
@@ -66,7 +67,8 @@ def run_posthoc_mocap_aggregator_task(
 
     for frame_idx, frame_obs in enumerate(frame_observations):
         for vid_id, obs in frame_obs.items():
-            if not isinstance(obs, MediapipeObservation) and not isinstance(obs, LegacyMediapipeObservation):
+            if not isinstance(obs, RTMPoseObservation) and not isinstance(obs, RTMPoseObservation):
+            # if not isinstance(obs, MediapipeObservation) and not isinstance(obs, LegacyMediapipeObservation):
                 raise TypeError(
                     f"Expected MediapipeObservation for video {vid_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"

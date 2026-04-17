@@ -25,7 +25,7 @@ from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 if TYPE_CHECKING:
     from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
     from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-    from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+    from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
     charuco_observation: BaseObservation | None = None
-    mediapipe_observation: BaseObservation | None = None
+    skeleton_observation: BaseObservation | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -124,18 +124,22 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         return overlay_data
 
     @property
-    def mediapipe_overlay_data(self) -> dict:
-        from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
-        from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+    def skeleton_overlay_data(self) -> dict:
+        # from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
+        from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
+        from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
 
-        overlay_data: dict[CameraIdString, MediapipeOverlayData] = {}
+        overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
-                overlay_data[camera_id] = MediapipeOverlayData.from_mediapipe_observation(
+            # if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
+            if cam_output.skeleton_observation is not None and isinstance(cam_output.skeleton_observation, RTMPoseObservation):
+                # overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_observation(
+                overlay_data[camera_id] = SkeletonOverlayData.from_rtmpose_observation(
                     camera_id=camera_id,
-                    observation=cam_output.mediapipe_observation,
+                    observation=cam_output.skeleton_observation,
                 )
         return overlay_data
+
 
     @property
     def camera_ids(self) -> list[CameraIdString]:

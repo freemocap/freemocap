@@ -16,7 +16,7 @@ from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import Ca
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
+# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -33,6 +33,7 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 import numpy as np
+from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetector
 
 logger = logging.getLogger(__name__)
 
@@ -101,14 +102,18 @@ class CameraNode(SourceNode):
         )
 
         charuco_detector: CharucoDetector | None = None
-        mediapipe_detector: LegacyMediapipeDetector | None = None
+        skeleton_detector: RTMPoseDetector  | None = None
+        # skeleton_detector: LegacyMediapipeDetector | None = None
 
         if config.charuco_tracking_enabled and config.charuco_detector_config is not None:
             charuco_detector = CharucoDetector.create(
                 config=config.charuco_detector_config,
             )
         if config.skeleton_tracking_enabled and config.skeleton_detector_config is not None:
-            mediapipe_detector = LegacyMediapipeDetector.create(
+            # skeleton_detector = LegacyMediapipeDetector.create(
+            #     config=config.skeleton_detector_config ,
+            # )
+            skeleton_detector = RTMPoseDetector.create(
                 config=config.skeleton_detector_config ,
             )
 
@@ -133,11 +138,14 @@ class CameraNode(SourceNode):
                         charuco_detector = None
 
                     if new_config.skeleton_tracking_enabled and new_config.skeleton_detector_config is not None:
-                        mediapipe_detector = LegacyMediapipeDetector.create(
+                        # skeleton_detector = LegacyMediapipeDetector.create(
+                        #     config=new_config.skeleton_detector_config,
+                        # )
+                        skeleton_detector = RTMPoseDetector.create(
                             config=new_config.skeleton_detector_config,
                         )
                     elif not new_config.skeleton_tracking_enabled:
-                        mediapipe_detector = None
+                        skeleton_detector = None
 
                     config = new_config
 
@@ -179,8 +187,8 @@ class CameraNode(SourceNode):
                     )
                 mediapipe_observation = None
                 charuco_observation = None
-                if mediapipe_detector is not None:
-                    mediapipe_observation = mediapipe_detector.detect(
+                if skeleton_detector is not None:
+                    mediapipe_observation = skeleton_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
@@ -195,7 +203,7 @@ class CameraNode(SourceNode):
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
                         charuco_observation=charuco_observation,
-                        mediapipe_observation = mediapipe_observation
+                        skeleton_observation= mediapipe_observation
                     ),
                 )
 

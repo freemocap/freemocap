@@ -210,11 +210,14 @@ class RealtimePipeline:
         if aggregation_output is None:
             return None
 
-        frames_bytearray, mf_timestamp = self.camera_group.get_frontend_payload_by_frame_number(
+        payload = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
         )
-        return FrontendImagePacket(
-            images_bytearray=frames_bytearray,
-            multiframe_timestamp=mf_timestamp,
-            frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
-        )
+        if payload is not None:
+            frames_bytearray, mf_timestamp = payload
+            return FrontendImagePacket(
+                images_bytearray=frames_bytearray,
+                multiframe_timestamp=mf_timestamp,
+                frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
+            )
+        return None

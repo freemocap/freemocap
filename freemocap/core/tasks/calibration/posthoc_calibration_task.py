@@ -32,12 +32,12 @@ from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBo
     CornerObservation, CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.calibration_save import save_calibration_copies
+from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
 from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
 from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
 from freemocap.pubsub.pubsub_topics import AggregatorNodeProgressMessage
 from freemocap.utilities.toml_mixin import numpy_to_python
-from scripts.compare_calibrations import compute_calibration_health
 
 logger = logging.getLogger(__name__)
 

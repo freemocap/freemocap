@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "aniposelib>=0.7.0",
     "libsass>=0.23.0",
-    "opencv-contrib-python==4.10.*",
+    "opencv-contrib-python",#==4.10.*",
     "pyinstaller>=6.11.0",
     "requests>=2.32.3",
     "pydantic>=2.10.4",
@@ -15,20 +15,22 @@ dependencies = [
     "scikit-learn>=1.7.2",
     "pyceres>=2.5",
     "tomli-w>=1.2.0",
-    #    "rtmlib==0.0.14",
-    #    "onnxruntime-gpu",
+    "scipy-stubs~=1.17.1",
+    "beartype>=0.19",
+    "msgspec>=0.19",
+
     #sub-skellies
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
-    #    "skellytracker[all]",
-    "skellytracker[mediapipe]",
+    "skellytracker[rtmpose-gpu]",
+#    "skellytracker[mediapipe]",
+
     #skelly utils
     "skellylogs",
     "skellypings",
-    "scipy-stubs~=1.17.1",
-    "beartype>=0.19",
-    "msgspec>=0.19",
+#    "skellymodels",
+
 ]
 
 [tool.uv.sources]
@@ -39,14 +41,16 @@ freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blende
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }
+#skellymodels = { git = "https://github.com/freemocap/skellymodels" }
 
 [project.scripts]
 freemocap = "freemocap.__main__:main"
 [tool.setuptools]
 py-modules = ["freemocap"]
+
 [tool.uv]
 package = true
-
+exclude-dependencies = ["onnxruntime"]
 
 [tool.bumpver]
 current_version = "v1.4.7"

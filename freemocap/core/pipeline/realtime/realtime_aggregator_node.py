@@ -339,10 +339,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                 if calibration.is_valid and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     mediapipe_observations_by_camera = {
-                        cam_id: output.mediapipe_observation
+                        cam_id: output.skeleton_observation
                         for cam_id, output in camera_node_outputs.items()
                         if isinstance(output, CameraNodeOutputMessage)
-                           and output.mediapipe_observation is not None
+                           and output.skeleton_observation is not None
                     }
                     if mediapipe_observations_by_camera:
                         _merge_triangulated_arrays(

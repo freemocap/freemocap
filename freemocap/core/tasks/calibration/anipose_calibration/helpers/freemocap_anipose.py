@@ -1116,14 +1116,23 @@ class AniposeCharucoBoard(CharucoBoard):
         corners: np.ndarray | None,
         ids: np.ndarray | None,
     ) -> tuple[np.ndarray | None, np.ndarray | None]:
+        """Estimate board pose via solvePnP using detected charuco corner positions and their known 3D locations."""
         if corners is None or ids is None or len(corners) < 5:
             return None, None
 
-        n_corners = corners.size // 2
-        corners = np.reshape(corners, (n_corners, 1, 2)).astype(np.float32)
-        ids = ids.astype(np.int32) if ids.dtype != np.int32 else ids
+        flat_ids = ids.flatten()
+        obj_points = self.objPoints[flat_ids].astype(np.float64)
+        img_points = corners.reshape(-1, 1, 2).astype(np.float64)
 
         K = camera.get_camera_matrix()
         D = camera.get_distortions()
-        ret, rvec, tvec = cv2.aruco.estimatePoseCharucoBoard(corners, ids, self.board, K, D, None, None)
+
+        ret, rvec, tvec = cv2.solvePnP(
+            objectPoints=obj_points,
+            imagePoints=img_points,
+            cameraMatrix=K,
+            distCoeffs=D,
+        )
+        if not ret:
+            return None, None
         return rvec, tvec

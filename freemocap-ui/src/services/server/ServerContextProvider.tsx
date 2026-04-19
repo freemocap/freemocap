@@ -15,7 +15,9 @@ import {
     isFrontendPayload,
     isLogRecord,
     isPosthocProgress,
+    isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
+import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
@@ -37,6 +39,9 @@ interface ServerContextValue {
     subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
     getLatestKeypointsRaw: () => Record<string, Point3d>;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
+    trackerSchemas: Record<string, TrackedObjectDefinition>;
+    activeTrackerId: string | null;
+    getActiveSchema: () => TrackedObjectDefinition | null;
 }
 
 const ServerContext = createContext<ServerContextValue | null>(null);
@@ -54,6 +59,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
+
+    // Tracker schemas — shipped by the backend on WS connect/reconfigure. Held
+    // in both a ref (for synchronous access in frame dispatch) and state (for
+    // re-rendering renderers that depend on it).
+    const trackerSchemasRef = useRef<Record<string, TrackedObjectDefinition>>({});
+    const activeTrackerIdRef = useRef<string | null>(null);
+    const [trackerSchemas, setTrackerSchemas] = useState<Record<string, TrackedObjectDefinition>>({});
+    const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
 
     // Service instances
     const wsConnectionRef = useRef<WebSocketConnection | null>(null);
@@ -149,6 +162,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 latestCharucoRef.current.clear();
                 latestMediapipeRef.current.clear();
                 overlayManagerRef.current?.clearAll();
+                trackerSchemasRef.current = {};
+                activeTrackerIdRef.current = null;
+                setTrackerSchemas({});
+                setActiveTrackerId(null);
                 setConnectedCameraIds([]);
             }
         };
@@ -265,6 +282,19 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     // Handle log records
                     if (isLogRecord(jsonData)) {
                         logStoreRef.current.add(jsonData);
+                    }
+                    // Handle tracker schema handshake (sent once on connect,
+                    // or again when the pipeline reconfigures). Passed straight
+                    // through to the 2D overlay renderer via OverlayManager.
+                    else if (isTrackerSchemas(jsonData)) {
+                        const schemas = jsonData.schemas;
+                        trackerSchemasRef.current = schemas;
+                        const keys = Object.keys(schemas);
+                        const firstId = keys.length > 0 ? keys[0] : null;
+                        activeTrackerIdRef.current = firstId;
+                        setTrackerSchemas(schemas);
+                        setActiveTrackerId(firstId);
+                        overlayManagerRef.current?.setTrackerSchemas(schemas, firstId ?? undefined);
                     }
                     // Handle framerate updates
                     else if (isFramerateUpdate(jsonData)) {
@@ -412,6 +442,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         if (!skeleton) latestMediapipeRef.current.clear();
     }, []);
 
+    const getActiveSchema = useCallback((): TrackedObjectDefinition | null => {
+        const id = activeTrackerIdRef.current;
+        if (!id) return null;
+        return trackerSchemasRef.current[id] ?? null;
+    }, []);
+
     const updateServerConnection = useCallback((host: string, port: number): void => {
         // Update the singleton so HTTP endpoints also update
         serverUrls.setHost(host);
@@ -443,7 +479,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToRigidBodies,
         getLatestKeypointsRaw,
         setOverlayVisibility,
-    }), [isConnected, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility]);
+        trackerSchemas,
+        activeTrackerId,
+        getActiveSchema,
+    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

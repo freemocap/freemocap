@@ -567,7 +567,7 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["recommended"], git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment" },
+    { name = "skellytracker", extras = ["recommended"], git = "https://github.com/freemocap/skellytracker?branch=development" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 
@@ -2289,7 +2289,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#e226bb8852bd8921784c427e7e422015f6c94c10" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development#185c05b0f76c0dc60ef54571fda24644862a6d55" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

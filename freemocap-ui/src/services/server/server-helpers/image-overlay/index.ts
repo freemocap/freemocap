@@ -7,12 +7,15 @@ export * from './overlay-renderer-factory';
 
 export {
     MediapipePointSchema,
-    MediapipeMetadataSchema,
     MediapipeOverlaySchema,
     MediapipeOverlayDataMessageSchema,
+    SkeletonPointSchema,
+    SkeletonOverlaySchema,
+    SkeletonOverlayDataMessageSchema,
     type MediapipePoint,
-    type MediapipeMetadata,
     type MediapipeObservation,
-    type MediapipeOverlayDataMessage
+    type MediapipeOverlayDataMessage,
+    type SkeletonPoint,
+    type SkeletonObservation,
 } from './mediapipe-types';
 export { MediapipeOverlayRenderer } from './mediapipe-overlay-renderer';

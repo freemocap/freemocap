@@ -1,18 +1,16 @@
 from pydantic import BaseModel, ConfigDict, Field
-from skellytracker.trackers.base_tracker.detector_annotation import DetectorConfig
-# from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeDetectorConfig
-# from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
-# from skellytracker.trackers.mediapipe_tracker.body.mediapipe_pose_config import MediapipePoseConfig
-# from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
+from skellytracker.trackers.base_tracker.detector_helpers import  SkeletonDetectorConfig
+from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
+
+
 
 
 class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    detector_config: DetectorConfig = Field(default_factory= RTMPoseDetectorConfig)#LegacyMediapipeDetectorConfig)
+    skeleton_detector_config: SkeletonDetectorConfig = Field(default_factory= RTMPoseDetectorConfig)#LegacyMediapipeDetectorConfig)
     calibration_source: CalibrationSource = Field(
         default=CalibrationSource.MOST_RECENT,
         alias="calibrationSource",
@@ -28,11 +26,11 @@ class PosthocMocapPipelineConfig(BaseModel):
     @classmethod
     def default_realtime(cls) -> "PosthocMocapPipelineConfig":
         # return cls(detector_config=RTMPoseDetectorConfig())
-        return cls(detector_config=RTMPoseDetectorConfig())
+        return cls(skeleton_detector_config=RTMPoseDetectorConfig())
 
     @classmethod
     def default_posthoc(cls) -> "PosthocMocapPipelineConfig":
-        return cls(detector_config=RTMPoseDetectorConfig())
+        return cls(skeleton_detector_config=RTMPoseDetectorConfig())
 
     # @classmethod
     # def default_realtime(cls) -> "PosthocMocapPipelineConfig":

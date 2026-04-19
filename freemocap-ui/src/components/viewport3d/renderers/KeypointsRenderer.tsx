@@ -12,7 +12,7 @@ import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
-import { getPointStyle } from "../helpers/skeleton-config";
+import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
 
 const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
@@ -45,13 +45,23 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         // metalness: 0.3,
     }), []);
 
+    // Pull color hints from the active schema (if any) so per-name palette
+    // overrides from the YAML propagate into the 3D view.
+    const colorHints = useMemo(() => {
+        const schema = server.getActiveSchema();
+        return schema?.color_hints;
+    }, [server, server.activeTrackerId, server.trackerSchemas]);
+
     useEffect(() => {
         const subscribeFn = server[subscribeKey];
         return subscribeFn((pts: Record<string, Point3d>) => {
             pointsRef.current = pts;
             dirtyRef.current = true;
             for (const name of Object.keys(pts)) {
-                if (!nameToIdx.current.has(name) && nextIdx.current < MAX_POINTS && !name.includes("face")) {
+                // Face points are rendered by FaceRenderer, not here.
+                if (!nameToIdx.current.has(name)
+                    && nextIdx.current < MAX_POINTS
+                    && classifyPointName(name) !== 'face') {
                     nameToIdx.current.set(name, nextIdx.current++);
                 }
             }
@@ -82,7 +92,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         for (const [name, idx] of nameToIdx.current) {
             const pt = pts[name];
             if (pt) {
-                const style = colorMode === "byBodyPart" ? getPointStyle(name) : null;
+                const style = colorMode === "byBodyPart" ? getPointStyle(name, colorHints) : null;
                 let scale = style ? style.scale : radius;
                 if (name.includes("hand")) scale *= 0.5; // smaller radius for hand keypoints
                 DUMMY.position.set(pt.x, pt.y, pt.z);

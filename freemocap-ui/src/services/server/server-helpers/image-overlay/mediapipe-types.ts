@@ -1,7 +1,7 @@
 import z from "zod";
 
-// Individual point schema
-export const MediapipePointSchema = z.object({
+// Individual tracked point (name matches an entry in the active tracker's schema)
+export const SkeletonPointSchema = z.object({
     name: z.string(),
     x: z.number(),
     y: z.number(),
@@ -9,33 +9,31 @@ export const MediapipePointSchema = z.object({
     visibility: z.number(),
 });
 
-// Metadata schema
-export const MediapipeMetadataSchema = z.object({
-    n_body_detected: z.number(),
-    n_right_hand_detected: z.number(),
-    n_left_hand_detected: z.number(),
-    n_face_detected: z.number(),
-    image_width: z.number(),
-    image_height: z.number(),
-});
-
-// Single camera observation schema
-export const MediapipeOverlaySchema = z.object({
-    message_type: z.literal("mediapipe_overlay"),
+// Single-camera flat overlay payload. Shape is tracker-agnostic — the frontend
+// looks up connections/styling by name against the `TrackedObjectDefinition`
+// whose id is `tracker_id`.
+export const SkeletonOverlaySchema = z.object({
+    message_type: z.literal("skeleton_overlay"),
     camera_id: z.string(),
     frame_number: z.number(),
-    body_points: z.array(MediapipePointSchema),
-    right_hand_points: z.array(MediapipePointSchema),
-    left_hand_points: z.array(MediapipePointSchema),
-    face_points: z.array(MediapipePointSchema),
-    metadata: MediapipeMetadataSchema,
+    tracker_id: z.string(),
+    image_width: z.number(),
+    image_height: z.number(),
+    points: z.array(SkeletonPointSchema),
 });
 
-// Multi-camera message schema (matches CharucoOverlayDataMessage structure)
-export const MediapipeOverlayDataMessageSchema = z.record(z.string(), MediapipeOverlaySchema);
+// Multi-camera message shape (matches CharucoOverlayDataMessage structure)
+export const SkeletonOverlayDataMessageSchema = z.record(z.string(), SkeletonOverlaySchema);
 
-// Type exports
-export type MediapipePoint = z.infer<typeof MediapipePointSchema>;
-export type MediapipeMetadata = z.infer<typeof MediapipeMetadataSchema>;
-export type MediapipeObservation = z.infer<typeof MediapipeOverlaySchema>;
-export type MediapipeOverlayDataMessage = z.infer<typeof MediapipeOverlayDataMessageSchema>;
+// Type exports — names kept as "Mediapipe*" to minimize churn in callers that
+// haven't been renamed yet. These are now tracker-agnostic.
+export type MediapipePoint = z.infer<typeof SkeletonPointSchema>;
+export type MediapipeObservation = z.infer<typeof SkeletonOverlaySchema>;
+export type MediapipeOverlayDataMessage = z.infer<typeof SkeletonOverlayDataMessageSchema>;
+
+// New preferred names for downstream code
+export type SkeletonPoint = MediapipePoint;
+export type SkeletonObservation = MediapipeObservation;
+export const MediapipePointSchema = SkeletonPointSchema;
+export const MediapipeOverlaySchema = SkeletonOverlaySchema;
+export const MediapipeOverlayDataMessageSchema = SkeletonOverlayDataMessageSchema;

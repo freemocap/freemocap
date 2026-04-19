@@ -16,6 +16,7 @@ from skellylogs import get_websocket_log_queue
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
+from freemocap.api.websocket.tracker_schema_message import TrackerSchemasMessage, collect_active_tracker_schemas
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 
@@ -118,8 +119,24 @@ class WebsocketServer:
                 and self.websocket.client_state == WebSocketState.CONNECTED
         )
 
+    async def _send_tracker_schemas(self) -> None:
+        """Send the active tracker definitions to the client.
+
+        Called once on connect, before the image/payload relay starts. The
+        frontend uses this to drive all skeleton rendering — connection lines,
+        point styling, virtual-point resolution — without hardcoding tracker
+        schemas.
+        """
+        try:
+            message = TrackerSchemasMessage(schemas=collect_active_tracker_schemas())
+            await self._send_msgspec_json(message)
+            logger.debug(f"Sent tracker_schemas message ({list(message.schemas.keys())})")
+        except Exception:
+            logger.exception("Failed to send tracker_schemas handshake message")
+
     async def run(self):
         logger.info("Starting websocket runner...")
+        await self._send_tracker_schemas()
         self.ws_tasks = [
             asyncio.create_task(
                 self._frontend_image_relay(),

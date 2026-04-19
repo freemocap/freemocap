@@ -50,7 +50,7 @@ const WelcomePage: React.FC = () => {
 
         // Auto-navigate to cameras page when first camera connects (0 -> >0 transition)
         if (prevCount === 0 && currentCount > 0) {
-            navigate('/viewport');
+            navigate('/streaming');
         }
 
         prevCountRef.current = currentCount;

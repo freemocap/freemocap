@@ -3,8 +3,9 @@ import {CharucoOverlayRenderer} from './charuco-overlay-renderer';
 import {MediapipeObservation, MediapipeOverlayRenderer} from './mediapipe-overlay-renderer';
 import {BaseOverlayRenderer, ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
+import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
-export type ObservationType = 'charuco_overlay' | 'mediapipe_overlay' | 'rtmpose_overlay';
+export type ObservationType = 'charuco_overlay' | 'mediapipe_overlay' | 'rtmpose_overlay' | 'skeleton_overlay';
 
 
 /**
@@ -40,6 +41,7 @@ export class OverlayRendererFactory {
             'charuco_overlay': ['CharucoTracker'],
             'mediapipe_overlay': ['MediapipeHolisticTracker', 'MediapipeTracker'],
             'rtmpose_overlay': ['RTMPoseTracker'],
+            'skeleton_overlay': ['RTMPoseTracker', 'MediapipeHolisticTracker', 'MediapipeTracker'],
         };
 
         return mapping[rendererType]?.includes(trackerName) || false;
@@ -92,6 +94,24 @@ export class OverlayManager {
     public setModelInfo(modelInfo: ModelInfo): void {
         this.charucoRenderer.setModelInfo(modelInfo);
         this.mediapipeRenderer.setModelInfo(modelInfo);
+    }
+
+    /**
+     * Push the active tracker schema into the skeleton renderer. Looks up the
+     * schema by `tracker_id` that skeleton observations reference; falls back
+     * to the first schema in the map if the exact id isn't present yet.
+     */
+    public setTrackerSchemas(
+        schemas: Record<string, TrackedObjectDefinition>,
+        activeTrackerId?: string,
+    ): void {
+        const keys = Object.keys(schemas);
+        if (keys.length === 0) {
+            this.mediapipeRenderer.setSchema(null);
+            return;
+        }
+        const id = activeTrackerId && schemas[activeTrackerId] ? activeTrackerId : keys[0];
+        this.mediapipeRenderer.setSchema(schemas[id]);
     }
 
     /**

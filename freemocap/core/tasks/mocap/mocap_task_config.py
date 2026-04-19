@@ -1,12 +1,10 @@
 from pydantic import BaseModel, ConfigDict, Field
-from skellytracker.trackers.base_tracker.detector_annotation import DetectorConfig
-# from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeDetectorConfig
-# from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
-# from skellytracker.trackers.mediapipe_tracker.body.mediapipe_pose_config import MediapipePoseConfig
-# from skellytracker.trackers.mediapipe_tracker.mediapipe_model_manager import MediapipePoseModelComplexity
+from skellytracker.trackers.base_tracker.detector_helpers import DetectorConfig
+from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
+
+
 
 
 class PosthocMocapPipelineConfig(BaseModel):

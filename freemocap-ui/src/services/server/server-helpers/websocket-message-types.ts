@@ -13,6 +13,7 @@ import {OverlayRendererFactory} from "@/services/server/server-helpers/image-ove
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
+import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 // Type guard to check if a message is a log record
 export function isLogRecord(data: any): data is LogRecord {
@@ -63,6 +64,27 @@ export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
         typeof data === 'object' &&
         data.message_type === 'frontend_payload' &&
         data.frame_number && typeof data.frame_number === 'number'
+    );
+}
+
+/**
+ * Tracker-schema handshake message — sent once on WS connect and again whenever
+ * the pipeline's tracker configuration changes. `schemas` is keyed by tracker
+ * id (e.g. `"rtmpose_wholebody"`); overlays reference a schema via the
+ * `tracker_id` field in `MediapipeObservation`.
+ */
+export interface TrackerSchemasMessage {
+    message_type: 'tracker_schemas';
+    schemas: Record<string, TrackedObjectDefinition>;
+}
+
+export function isTrackerSchemas(data: any): data is TrackerSchemasMessage {
+    return (
+        data &&
+        typeof data === 'object' &&
+        data.message_type === 'tracker_schemas' &&
+        data.schemas &&
+        typeof data.schemas === 'object'
     );
 }
 

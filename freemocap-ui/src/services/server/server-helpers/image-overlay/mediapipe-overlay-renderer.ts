@@ -1,10 +1,16 @@
 // mediapipe-overlay-renderer.ts
+//
+// Schema-driven 2D skeleton overlay. Point names and connections come from a
+// `TrackedObjectDefinition` pushed over the `tracker_schemas` handshake
+// message. The renderer knows nothing about RTMPose, MediaPipe, or any
+// specific landmark layout — it draws whatever the active schema advertises.
 
 import {
     BaseOverlayRenderer,
     DrawStyle,
-    Point2D
+    Point2D,
 } from "@/services/server/server-helpers/image-overlay/image-overlay-system";
+import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 export interface MediapipePoint {
     name: string;
@@ -15,25 +21,43 @@ export interface MediapipePoint {
 }
 
 export interface MediapipeObservation {
-    message_type: 'mediapipe_overlay';
+    message_type: 'skeleton_overlay';
     camera_id: string;
     frame_number: number;
-    body_points?: MediapipePoint[];
-    right_hand_points?: MediapipePoint[];
-    left_hand_points?: MediapipePoint[];
-    face_points?: MediapipePoint[];
-    metadata: {
-        image_width: number;
-        image_height: number;
-        n_body_detected: number;
-        n_right_hand_detected: number;
-        n_left_hand_detected: number;
-        n_face_detected: number;
-    };
+    tracker_id: string;
+    image_width: number;
+    image_height: number;
+    points: MediapipePoint[];
+}
+
+// Classification used for colour routing. Kept deliberately loose — any name
+// containing "left" / "right" is treated as a side, otherwise center.
+type Side = 'left' | 'right' | 'center';
+
+function classifySide(name: string): Side {
+    const lc = name.toLowerCase();
+    if (lc.includes('left')) return 'left';
+    if (lc.includes('right')) return 'right';
+    return 'center';
+}
+
+function classifyHand(name: string): 'left_hand' | 'right_hand' | null {
+    const lc = name.toLowerCase();
+    if (lc.startsWith('left_hand') || lc.includes('left_hand_')) return 'left_hand';
+    if (lc.startsWith('right_hand') || lc.includes('right_hand_')) return 'right_hand';
+    return null;
+}
+
+function classifyFace(name: string): boolean {
+    const lc = name.toLowerCase();
+    return lc.startsWith('face') || lc.startsWith('face_') || lc.startsWith('face.');
 }
 
 export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
-    // Body styles split by side
+    private schema: TrackedObjectDefinition | null = null;
+
+    // --- Styles keyed by classification ---
+
     private readonly bodyStyleCenter: DrawStyle = {
         pointColor: '#00AA00',
         pointStroke: '#008800',
@@ -106,8 +130,14 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         showLabels: false,
     };
 
+    /** Provide or update the tracker schema that drives connection lookup. */
+    public setSchema(schema: TrackedObjectDefinition | null): void {
+        this.schema = schema;
+    }
+
     /**
-     * Composite mediapipe overlay onto frame
+     * Composite skeleton overlay onto frame. Points come from the observation;
+     * connections come from `this.schema` (resolved by name).
      */
     public async compositeFrame(
         sourceBitmap: ImageBitmap,
@@ -116,326 +146,89 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         this.prepareCanvas(sourceBitmap);
 
         if (observation) {
-            this.drawMediapipeOverlay(observation);
+            this.drawSkeletonOverlay(observation);
         }
 
         return this.createBitmap(sourceBitmap);
     }
 
-    private drawMediapipeOverlay(observation: MediapipeObservation): void {
+    private drawSkeletonOverlay(observation: MediapipeObservation): void {
         this.ctx.save();
 
-        // Draw each aspect in order (face behind, body in middle, hands on top)
-        if (observation.face_points) {
-            this.drawFaceAspect(observation.face_points);
-        }
-
-        if (observation.body_points) {
-            this.drawBodyAspect(observation.body_points);
-        }
-
-        if (observation.right_hand_points) {
-            this.drawHandAspect(observation.right_hand_points, 'right_hand', this.rightHandStyle);
-        }
-
-        if (observation.left_hand_points) {
-            this.drawHandAspect(observation.left_hand_points, 'left_hand', this.leftHandStyle);
-        }
-
-        // Draw info overlay
-        this.drawMediapipeInfo(observation);
-
-        this.ctx.restore();
-    }
-
-    private getBodySide(name: string): 'left' | 'right' | 'center' {
-        if (name.includes('left')) return 'left';
-        if (name.includes('right')) return 'right';
-        return 'center';
-    }
-
-    private getBodyStyleForSide(side: 'left' | 'right' | 'center'): DrawStyle {
-        switch (side) {
-            case 'left': return this.bodyStyleLeft;
-            case 'right': return this.bodyStyleRight;
-            case 'center': return this.bodyStyleCenter;
-        }
-    }
-
-    private drawBodyAspect(points: MediapipePoint[]): void {
-        if (points.length === 0) return;
-
-        // Create point map for segment drawing
-        const pointMap = new Map<string | number, Point2D>();
-        const leftPoints: Point2D[] = [];
-        const rightPoints: Point2D[] = [];
-        const centerPoints: Point2D[] = [];
-
-        for (const point of points) {
-            const point2D: Point2D = {
-                x: point.x,
-                y: point.y,
-                id: point.name,
-                visibility: point.visibility,
-            };
-            pointMap.set(point.name, point2D);
-
-            const side = this.getBodySide(point.name);
-            if (side === 'left') leftPoints.push(point2D);
-            else if (side === 'right') rightPoints.push(point2D);
-            else centerPoints.push(point2D);
-        }
-
-        // Draw body skeleton connections (behind points)
-        this.drawBodyConnections(pointMap);
-
-        // Draw points on top, color-coded by side
-        this.drawPoints(leftPoints, this.bodyStyleLeft);
-        this.drawPoints(rightPoints, this.bodyStyleRight);
-        this.drawPoints(centerPoints, this.bodyStyleCenter);
-
-        // Highlight key points with labels
-        this.drawKeyBodyPoints(pointMap);
-    }
-
-    private drawKeyBodyPoints(pointMap: Map<string | number, Point2D>): void {
-        // Label only important landmarks for clarity
-        const keyPoints = ['body.nose', 'body.left_shoulder', 'body.right_shoulder', 'body.left_hip', 'body.right_hip'];
-
-        for (const key of keyPoints) {
-            const point = pointMap.get(key);
-            if (point && this.isValidPoint(point)) {
-                const style = this.getBodyStyleForSide(this.getBodySide(key));
-                this.drawText(
-                    key.replace('body.', '').replace('_', ' '),
-                    point.x + 5,
-                    point.y - 5,
-                    8,
-                    style.labelColor,
-                    style.labelStroke,
-                    1
-                );
-            }
-        }
-    }
-
-    private drawBodyConnections(
-        pointMap: Map<string | number, Point2D>,
-    ): void {
-        // Connections grouped by side for color coding
-        const centerConnections = [
-            ['body.nose', 'body.left_eye_inner'],
-            ['body.nose', 'body.right_eye_inner'],
-            ['body.mouth_left', 'body.mouth_right'],
-            ['body.left_shoulder', 'body.right_shoulder'],
-            ['body.left_hip', 'body.right_hip'],
-        ];
-
-        const leftConnections = [
-            ['body.left_eye_inner', 'body.left_eye'],
-            ['body.left_eye', 'body.left_eye_outer'],
-            ['body.left_eye_outer', 'body.left_ear'],
-            ['body.left_shoulder', 'body.left_hip'],
-            ['body.left_shoulder', 'body.left_elbow'],
-            ['body.left_elbow', 'body.left_wrist'],
-            ['body.left_wrist', 'body.left_pinky'],
-            ['body.left_wrist', 'body.left_index'],
-            ['body.left_wrist', 'body.left_thumb'],
-            ['body.left_index', 'body.left_pinky'],
-            ['body.left_hip', 'body.left_knee'],
-            ['body.left_knee', 'body.left_ankle'],
-            ['body.left_ankle', 'body.left_heel'],
-            ['body.left_heel', 'body.left_foot_index'],
-            ['body.left_ankle', 'body.left_foot_index'],
-        ];
-
-        const rightConnections = [
-            ['body.right_eye_inner', 'body.right_eye'],
-            ['body.right_eye', 'body.right_eye_outer'],
-            ['body.right_eye_outer', 'body.right_ear'],
-            ['body.right_shoulder', 'body.right_hip'],
-            ['body.right_shoulder', 'body.right_elbow'],
-            ['body.right_elbow', 'body.right_wrist'],
-            ['body.right_wrist', 'body.right_pinky'],
-            ['body.right_wrist', 'body.right_index'],
-            ['body.right_wrist', 'body.right_thumb'],
-            ['body.right_index', 'body.right_pinky'],
-            ['body.right_hip', 'body.right_knee'],
-            ['body.right_knee', 'body.right_ankle'],
-            ['body.right_ankle', 'body.right_heel'],
-            ['body.right_heel', 'body.right_foot_index'],
-            ['body.right_ankle', 'body.right_foot_index'],
-        ];
-
-        const groups: [string[][], DrawStyle][] = [
-            [centerConnections, this.bodyStyleCenter],
-            [leftConnections, this.bodyStyleLeft],
-            [rightConnections, this.bodyStyleRight],
-        ];
-
-        for (const [connections, style] of groups) {
-            for (const [start, end] of connections) {
-                const startPoint = pointMap.get(start);
-                const endPoint = pointMap.get(end);
-
-                if (startPoint && endPoint && this.isValidPoint(startPoint) && this.isValidPoint(endPoint)) {
-                    this.ctx.strokeStyle = style.lineColor;
-                    this.ctx.lineWidth = style.lineWidth;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(startPoint.x, startPoint.y);
-                    this.ctx.lineTo(endPoint.x, endPoint.y);
-                    this.ctx.stroke();
-                }
-            }
-        }
-    }
-
-    private drawHandAspect(
-        points: MediapipePoint[],
-        aspectName: string,
-        style: DrawStyle
-    ): void {
-        if (points.length === 0) return;
-
-        const pointMap = new Map<string | number, Point2D>();
-        const point2DArray: Point2D[] = [];
-
-        for (const point of points) {
-            const point2D: Point2D = {
-                x: point.x,
-                y: point.y,
-                id: point.name,
-                visibility: point.visibility,
-            };
-            pointMap.set(point.name, point2D);
-            point2DArray.push(point2D);
-        }
-
-        // Draw hand skeleton connections
-        this.drawHandConnections(pointMap, style);
-
-        // Draw points
-        this.drawPoints(point2DArray, style);
-    }
-
-    private drawHandConnections(
-        pointMap: Map<string | number, Point2D>,
-        style: DrawStyle
-    ): void {
-        // Define hand connections (MediaPipe hand landmark connections)
-        const handConnections = [
-            // Thumb
-            ['wrist', 'thumb_cmc'],
-            ['thumb_cmc', 'thumb_mcp'],
-            ['thumb_mcp', 'thumb_ip'],
-            ['thumb_ip', 'thumb_tip'],
-            // Index finger
-            ['wrist', 'index_finger_mcp'],
-            ['index_finger_mcp', 'index_finger_pip'],
-            ['index_finger_pip', 'index_finger_dip'],
-            ['index_finger_dip', 'index_finger_tip'],
-            // Middle finger
-            ['wrist', 'middle_finger_mcp'],
-            ['middle_finger_mcp', 'middle_finger_pip'],
-            ['middle_finger_pip', 'middle_finger_dip'],
-            ['middle_finger_dip', 'middle_finger_tip'],
-            // Ring finger
-            ['wrist', 'ring_finger_mcp'],
-            ['ring_finger_mcp', 'ring_finger_pip'],
-            ['ring_finger_pip', 'ring_finger_dip'],
-            ['ring_finger_dip', 'ring_finger_tip'],
-            // Pinky
-            ['wrist', 'pinky_mcp'],
-            ['pinky_mcp', 'pinky_pip'],
-            ['pinky_pip', 'pinky_dip'],
-            ['pinky_dip', 'pinky_tip'],
-            // Palm connections
-            ['index_finger_mcp', 'middle_finger_mcp'],
-            ['middle_finger_mcp', 'ring_finger_mcp'],
-            ['ring_finger_mcp', 'pinky_mcp'],
-        ];
-
-        for (const [start, end] of handConnections) {
-            const startPoint = pointMap.get(start);
-            const endPoint = pointMap.get(end);
-
-            if (startPoint && endPoint && this.isValidPoint(startPoint) && this.isValidPoint(endPoint)) {
-                this.ctx.strokeStyle = style.lineColor;
-                this.ctx.lineWidth = style.lineWidth;
-                this.ctx.beginPath();
-                this.ctx.moveTo(startPoint.x, startPoint.y);
-                this.ctx.lineTo(endPoint.x, endPoint.y);
-                this.ctx.stroke();
-            }
-        }
-    }
-
-    private drawFaceAspect(points: MediapipePoint[]): void {
-        if (points.length === 0) return;
-
-        // For face, we just draw the points as a mesh without connections
-        // (too many points to draw connections clearly)
-        const point2DArray: Point2D[] = points.map(point => ({
-            x: point.x,
-            y: point.y,
-            id: point.name,
-            visibility: point.visibility,
-        }));
-
-        this.drawPoints(point2DArray, this.faceStyle);
-
-        // Draw face contour highlights for key features
-        this.drawFaceContour(points);
-    }
-
-    private drawFaceContour(points: MediapipePoint[]): void {
-        // Draw simplified face contour for better visibility
-        // This would use the face contour indices from the model info
-        // For now, just highlight key face points
-        const keyFacePoints = points.filter(p =>
-            p.name.includes('eye') ||
-            p.name.includes('mouth') ||
-            p.name.includes('nose')
-        );
-
-        const highlightStyle = {
-            ...this.faceStyle,
-            pointRadius: 2,
-            pointColor: '#FFFF00',
-        };
-
-        this.drawPoints(
-            keyFacePoints.map(p => ({
+        const pointMap = new Map<string, Point2D>();
+        for (const p of observation.points) {
+            pointMap.set(p.name, {
                 x: p.x,
                 y: p.y,
                 id: p.name,
                 visibility: p.visibility,
-            })),
-            highlightStyle
-        );
+            });
+        }
+
+        // Connections first (underneath the points), then points.
+        if (this.schema && this.schema.name === observation.tracker_id) {
+            this.drawConnections(pointMap, this.schema);
+        }
+
+        this.drawAllPoints(pointMap);
+        this.drawInfo(observation);
+
+        this.ctx.restore();
     }
 
-    private drawMediapipeInfo(observation: MediapipeObservation): void {
-        const { metadata, frame_number } = observation;
+    private styleFor(name: string): DrawStyle {
+        if (classifyFace(name)) return this.faceStyle;
+        const hand = classifyHand(name);
+        if (hand === 'left_hand') return this.leftHandStyle;
+        if (hand === 'right_hand') return this.rightHandStyle;
+        const side = classifySide(name);
+        if (side === 'left') return this.bodyStyleLeft;
+        if (side === 'right') return this.bodyStyleRight;
+        return this.bodyStyleCenter;
+    }
 
-        // Build detection status
-        const detections: string[] = [];
-        if (metadata.n_body_detected > 0) detections.push('Body');
-        if (metadata.n_right_hand_detected > 0) detections.push('R-Hand');
-        if (metadata.n_left_hand_detected > 0) detections.push('L-Hand');
-        if (metadata.n_face_detected > 0) detections.push('Face');
+    private drawConnections(
+        pointMap: Map<string, Point2D>,
+        schema: TrackedObjectDefinition,
+    ): void {
+        for (const [a, b] of schema.connections) {
+            const start = pointMap.get(a);
+            const end = pointMap.get(b);
+            if (!start || !end || !this.isValidPoint(start) || !this.isValidPoint(end)) continue;
 
-        const statusText = detections.length > 0
-            ? `✔ Detected: ${detections.join(', ')}`
-            : '⚠ No detection';
+            // Segment color picked from endpoint classification — if either
+            // endpoint is hand/face/side the line takes that colour.
+            const style = this.styleFor(a) === this.bodyStyleCenter ? this.styleFor(b) : this.styleFor(a);
 
-        const statusColor = detections.length > 0 ? '#00FF00' : '#FF4444';
+            this.ctx.strokeStyle = style.lineColor;
+            this.ctx.lineWidth = style.lineWidth;
+            this.ctx.beginPath();
+            this.ctx.moveTo(start.x, start.y);
+            this.ctx.lineTo(end.x, end.y);
+            this.ctx.stroke();
+        }
+    }
 
-        // Draw info background
+    private drawAllPoints(pointMap: Map<string, Point2D>): void {
+        // Bucket by style so we can call drawPoints with one style per batch.
+        const buckets = new Map<DrawStyle, Point2D[]>();
+        for (const point of pointMap.values()) {
+            const style = this.styleFor(point.id as string);
+            const list = buckets.get(style);
+            if (list) list.push(point);
+            else buckets.set(style, [point]);
+        }
+        for (const [style, points] of buckets) {
+            this.drawPoints(points, style);
+        }
+    }
+
+    private drawInfo(observation: MediapipeObservation): void {
+        const {points, frame_number, tracker_id} = observation;
+
         this.ctx.fillStyle = this.INFO_BG;
-        this.ctx.fillRect(5, 5, 500, 85);
+        this.ctx.fillRect(5, 5, 500, 60);
 
-        // Draw frame info
         this.drawText(
             `Frame: ${frame_number}`,
             10,
@@ -443,29 +236,20 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
             14,
             this.TEXT_COLOR,
             this.TEXT_STROKE,
-            2
+            2,
         );
 
-        // Draw detection counts
+        const schemaSuffix = this.schema
+            ? (this.schema.name === tracker_id ? '' : ' (schema mismatch!)')
+            : ' (schema pending)';
         this.drawText(
-            `Body: ${metadata.n_body_detected} | Hands: ${metadata.n_right_hand_detected + metadata.n_left_hand_detected} | Face: ${metadata.n_face_detected > 0 ? '✔' : '✗'}`,
+            `Tracker: ${tracker_id} — points: ${points.length}${schemaSuffix}`,
             10,
             50,
             14,
-            this.TEXT_COLOR,
+            points.length > 0 ? '#00FF00' : '#FF4444',
             this.TEXT_STROKE,
-            2
-        );
-
-        // Draw status
-        this.drawText(
-            statusText,
-            10,
-            75,
-            16,
-            statusColor,
-            this.TEXT_STROKE,
-            2
+            2,
         );
     }
 }

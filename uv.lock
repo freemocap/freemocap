@@ -2289,13 +2289,14 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#a31b6394489fe7c48656dcc128059e30de3c8413" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=jon%2Fdevelopment#e226bb8852bd8921784c427e7e422015f6c94c10" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
     { name = "pydantic" },
+    { name = "pyyaml" },
     { name = "requests" },
     { name = "tqdm" },
 ]

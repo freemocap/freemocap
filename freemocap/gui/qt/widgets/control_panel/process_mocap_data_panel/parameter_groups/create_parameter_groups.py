@@ -76,40 +76,7 @@ def create_mediapipe_parameter_group(
         name=MEDIAPIPE_TREE_NAME,
         type="group",
         children=[
-            dict(
-                name=YOLO_CROP_TREE_NAME,
-                type="group",
-                children=[
-                    dict(
-                        name=USE_YOLO_CROP_METHOD,
-                        type="bool",
-                        value=parameter_model.use_yolo_crop_method,
-                        tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
-                    ),
-                    dict(
-                        name=YOLO_MODEL_SIZE,
-                        type="list",
-                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
-                        value=parameter_model.yolo_model_size,
-                        tip="Smaller models are faster but may be less accurate",
-                    ),
-                    dict(
-                        name=BOUNDING_BOX_BUFFER_METHOD,
-                        type="list",
-                        limits=["By box size", "By image size"],
-                        value=parameter_model.buffer_size_method,
-                        tip="Buffer bounding box by percentage of either box size or image size",
-                    ),
-                    dict(
-                        name=BOUNDING_BOX_BUFFER_PERCENTAGE,
-                        type="int",
-                        value=parameter_model.bounding_box_buffer_percentage,
-                        limits=(0, 100),
-                        step=1,
-                        tip="Percentage to increase size of bounding box",
-                    ),
-                ],
-            ),
+
             dict(
                 name=MEDIAPIPE_MODEL_COMPLEXITY,
                 type="list",
@@ -144,6 +111,41 @@ def create_mediapipe_parameter_group(
                 tip="If true, the model will process each image independently, without tracking across frames."
                     "I think this is equivalent to setting `min_tracking_confidence` to 0.0"
                     "Variable name in `mediapipe` code: `static_image_mode`",
+            ),
+            dict(
+                name=YOLO_CROP_TREE_NAME,
+                type="group",
+                expanded=False, # collapsed by default
+                children=[
+                    dict(
+                        name=USE_YOLO_CROP_METHOD,
+                        type="bool",
+                        value=parameter_model.use_yolo_crop_method,
+                        tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
+                    ),
+                    dict(
+                        name=YOLO_MODEL_SIZE,
+                        type="list",
+                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
+                        value=parameter_model.yolo_model_size,
+                        tip="Smaller models are faster but may be less accurate",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_METHOD,
+                        type="list",
+                        limits=["By box size", "By image size"],
+                        value=parameter_model.buffer_size_method,
+                        tip="Buffer bounding box by percentage of either box size or image size",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_PERCENTAGE,
+                        type="int",
+                        value=parameter_model.bounding_box_buffer_percentage,
+                        limits=(0, 100),
+                        step=1,
+                        tip="Percentage to increase size of bounding box",
+                    ),
+                ],
             ),
         ],
     )

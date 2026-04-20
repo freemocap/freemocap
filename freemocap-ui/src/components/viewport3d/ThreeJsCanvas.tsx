@@ -2,11 +2,17 @@ import { useCallback, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Box } from "@mui/material";
 import type CameraControlsImpl from "camera-controls";
+import { Object3D } from "three";
 import { ThreeJsScene } from "./ThreeJsScene";
 import { ViewportOverlay } from "./scene/ViewportOverlay";
 import { ViewportStateProvider } from "./scene/ViewportStateContext";
 import { fitCameraToPoints } from "./scene/SceneCamera";
 import { useServer } from "@/services";
+
+// FreeMoCap's world is Z-up (calibration TOML, triangulated keypoints, etc.).
+// Set the three.js default up vector before any cameras/objects are created so
+// CameraControls orbits around +Z rather than +Y.
+Object3D.DEFAULT_UP.set(0, 0, 1);
 
 export function ThreeJsCanvas() {
     const controlsRef = useRef<CameraControlsImpl>(null!);

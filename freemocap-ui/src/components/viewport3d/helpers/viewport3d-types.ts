@@ -28,6 +28,7 @@ export interface ViewportVisibility {
     rigidBodies: boolean;
     face: boolean;
     connections: boolean;
+    cameras: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -37,6 +38,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     rigidBodies: true,
     face: true,
     connections: true,
+    cameras: true,
 };
 
 /** Live stats from each renderer. */
@@ -46,4 +48,5 @@ export interface ViewportStats {
     rigidBodies: number;
     facePoints: number;
     connections: number;
+    cameras: number;
 }

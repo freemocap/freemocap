@@ -1,6 +1,7 @@
 import {initTRPC} from '@trpc/server';
 import {z} from 'zod';
 import superjson from 'superjson';
+import {parse as parseToml} from 'smol-toml';
 
 // Services
 import {PythonServer} from './services/python-server';
@@ -191,6 +192,53 @@ export const api = t.router({
                     ],
                 });
                 return result.canceled ? null : result.filePaths[0];
+            }),
+
+        readCalibrationToml: t.procedure
+            .input(z.object({ path: z.string() }))
+            .query(({ input }) => {
+                if (!fs.existsSync(input.path)) {
+                    throw new Error(`Calibration TOML not found: ${input.path}`);
+                }
+                const raw = fs.readFileSync(input.path, 'utf-8');
+                const parsed = parseToml(raw) as Record<string, any>;
+                const mtimeMs = fs.statSync(input.path).mtimeMs;
+
+                const cameras: Array<{
+                    id: string;
+                    name: string;
+                    size: [number, number];
+                    matrix: number[][];
+                    distortions: number[];
+                    rotation: [number, number, number];
+                    translation: [number, number, number];
+                    world_orientation: number[][];
+                    world_position: [number, number, number];
+                }> = [];
+
+                for (const [key, val] of Object.entries(parsed)) {
+                    if (key === 'metadata' || typeof val !== 'object' || val === null) continue;
+                    const c = val as any;
+                    if (!Array.isArray(c.world_position) || !Array.isArray(c.world_orientation)) continue;
+                    cameras.push({
+                        id: key,
+                        name: String(c.name ?? key),
+                        size: c.size,
+                        matrix: c.matrix,
+                        distortions: c.distortions,
+                        rotation: c.rotation,
+                        translation: c.translation,
+                        world_orientation: c.world_orientation,
+                        world_position: c.world_position,
+                    });
+                }
+
+                return {
+                    path: input.path,
+                    mtimeMs,
+                    cameras,
+                    metadata: (parsed.metadata ?? null) as Record<string, any> | null,
+                };
             }),
 
         selectTomlFile: t.procedure

@@ -229,10 +229,6 @@ class CalibrationStateTracker:
             if np.any(bad_mask):
                 points_3d[bad_mask] = np.nan
 
-            # Rotate 180° about X (freemocap convention: flip Y and Z)
-            rotation_matrix = np.array([[1, 0, 0], [0, -1, 0], [0, 0, -1]])
-            points_3d = points_3d @ rotation_matrix.T
-
             # Build result dict, excluding NaN points
             result: dict[str, NDArray[np.float64]] = {}
             for i, name in enumerate(point_names):

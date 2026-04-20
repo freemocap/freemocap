@@ -32,6 +32,7 @@ import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-p
 import {useServer} from "@/services/server/ServerContextProvider";
 import SquareFootIcon from "@mui/icons-material/SquareFoot";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 
 export const MocapPanel: React.FC = () => {
     const theme = useTheme();
@@ -67,6 +68,11 @@ export const MocapPanel: React.FC = () => {
         directoryInfo: calibrationDirectoryInfo,
     } = useCalibration();
 
+    // Blender export is driven by the backend aggregator via config flags
+    // (state.blender.*), which mocap-thunks.ts folds into the process request.
+    // The standalone "Process Recording with Blender" button inside
+    // BlenderSection remains available for manual re-exports.
+
     // Auto-poll directory status
     const {triggerRefresh} = useDirectoryWatcher(
         mocapRecordingPath,
@@ -81,6 +87,7 @@ export const MocapPanel: React.FC = () => {
     useEffect(() => {
         setOverlayVisibility(charucoEnabled, skeletonEnabled);
     }, [charucoEnabled, skeletonEnabled, setOverlayVisibility]);
+
     const [triangulateEnabled, setTriangulateEnabled] = useState(true);
     const [filterEnabled, setFilterEnabled] = useState(true);
     const [rigidBodyEnabled, setRigidBodyEnabled] = useState(true);
@@ -402,6 +409,11 @@ export const MocapPanel: React.FC = () => {
                         onFilterToggle={setFilterEnabled}
                         rigidBodyEnabled={rigidBodyEnabled}
                         onRigidBodyToggle={setRigidBodyEnabled}
+                    />
+
+                    <BlenderSection
+                        recordingFolderPath={mocapRecordingPath}
+                        disabled={isLoading}
                     />
                 </Stack>
             </Box>

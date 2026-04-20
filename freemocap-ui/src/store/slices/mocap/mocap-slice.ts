@@ -344,10 +344,16 @@ export const selectCanProcessMocapRecording = createSelector(
         selectMocapRecordingPath,
         selectMocapIsLoading,
         selectMocapIsRecording,
-        selectMocapDirectoryInfo
+        selectMocapDirectoryInfo,
+        selectCalibrationTomlPath,
     ],
-    (mocapPath, isLoading, isRecording, directoryInfo) => {
-        return !!mocapPath && !isLoading && !isRecording && (directoryInfo?.canCalibrate ?? false);
+    (mocapPath, isLoading, isRecording, directoryInfo, manualCalibrationTomlPath) => {
+        const hasVideos = directoryInfo?.hasVideos ?? false;
+        const hasAnyCalibrationToml =
+            !!manualCalibrationTomlPath ||
+            !!directoryInfo?.cameraMocapTomlPath ||
+            !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
+        return !!mocapPath && !isLoading && !isRecording && hasVideos && hasAnyCalibrationToml;
     }
 );
 

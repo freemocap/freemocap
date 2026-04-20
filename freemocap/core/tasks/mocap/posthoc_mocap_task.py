@@ -31,7 +31,7 @@ from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observatio
     skeleton_from_mediapipe_observation_recorders
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import VideoIdString
-
+from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 logger = logging.getLogger(__name__)
 
 
@@ -41,7 +41,6 @@ def run_posthoc_mocap_aggregator_task(
         recording_info: RecordingInfo,
         video_metadata: dict[VideoIdString, VideoMetadata],
         task_config: PosthocMocapPipelineConfig,
-        create_blender_output: bool=True, #TODO - Add this to the mocap config, after we split the RT and PH pipeline
         report_progress: Callable[[str, float], None] | None = None,
 
 ) -> None:
@@ -67,8 +66,7 @@ def run_posthoc_mocap_aggregator_task(
 
     for frame_idx, frame_obs in enumerate(frame_observations):
         for vid_id, obs in frame_obs.items():
-            if not isinstance(obs, RTMPoseObservation) and not isinstance(obs, RTMPoseObservation):
-            # if not isinstance(obs, MediapipeObservation) and not isinstance(obs, LegacyMediapipeObservation):
+            if not isinstance(obs, RTMPoseObservation) and not isinstance(obs, MediapipeObservation):
                 raise TypeError(
                     f"Expected MediapipeObservation for video {vid_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"
@@ -115,11 +113,17 @@ def run_posthoc_mocap_aggregator_task(
 
 
 
-    if create_blender_output:
-
-        export_to_blender(
-            recording_folder_path=str(recording_info.full_recording_path),
-        )
+    if task_config.export_to_blender:
+        try:
+            export_to_blender(
+                recording_folder_path=str(recording_info.full_recording_path),
+                blender_exe_path=task_config.blender_exe_path,
+                open_file_on_completion=task_config.auto_open_blend_file,
+            )
+        except Exception as e:
+            # Don't crash the whole aggregator if blender export fails —
+            # mocap outputs are already saved; blender is an optional post-step.
+            logger.exception(f"Blender export failed (mocap data still saved): {e}")
     if report_progress is not None:
         report_progress("Mocap complete", 1.0)
     logger.info(

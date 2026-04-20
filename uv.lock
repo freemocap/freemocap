@@ -587,7 +587,7 @@ dev = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2025.11.1038"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#e5aab4908f9d4caae7067aa31e8e685a6201b036" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=development#66fd590e8c3c0f3b75a2da06a7ae8dfba96fe254" }
 
 [[package]]
 name = "h11"

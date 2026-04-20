@@ -45,14 +45,16 @@ class ExportToBlenderRequest(BaseModel):
             "example": {
                 "recordingFolderPath": FREEMOCAP_TEST_DATA_PATH,
                 "blenderExePath": None,
+                "autoOpenBlendFile": True,
             }
         },
     )
     recording_folder_path: str = Field(alias="recordingFolderPath", default=FREEMOCAP_TEST_DATA_PATH)
     blender_exe_path: str | None = Field(alias="blenderExePath", default=None, examples=[None])
+    auto_open_blend_file: bool = Field(alias="autoOpenBlendFile", default=True)
 
     @property
-    def blender_file_path(self):
+    def blend_file_path(self):
         recording_name = Path(self.recording_folder_path).stem
         return str(Path(self.recording_folder_path) /f"{recording_name}.blend")
 
@@ -128,13 +130,14 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
 
         export_to_blender(
             recording_folder_path=str(recording_folder),
-            blender_file_path=request.blender_file_path,
+            blend_file_path=request.blend_file_path,
             blender_exe_path=str(blender_exe),
+            open_file_on_completion=request.auto_open_blend_file,
         )
         return ExportToBlenderResponse(
             success=True,
             message="Export to Blender completed",
-            blender_file_path=request.blender_file_path,
+            blender_file_path=request.blend_file_path,
         )
     except HTTPException:
         raise

@@ -12,7 +12,8 @@ export function SceneEnvironment() {
             <directionalLight position={[-3e3, -2e3, -3e3]} intensity={0.3} />
             <Grid
                 renderOrder={-1}
-                position={[0, -0.01, 0]}
+                position={[0, 0, -0.01]}
+                rotation={[Math.PI / 2, 0, 0]}
                 infiniteGrid
                 cellSize={1000}
                 cellThickness={0.5}

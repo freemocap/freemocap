@@ -2,6 +2,7 @@ import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
 import {
     calibrateRecording,
+    loadCalibrationToml,
     startCalibrationRecording,
     stopCalibrationRecording,
 } from "@/store/slices/calibration/calibration-thunks";
@@ -35,6 +36,25 @@ export interface CalibrationDirectoryInfo {
     errorMessage: string | null;
 }
 
+export interface CalibrationCameraData {
+    id: string;
+    name: string;
+    size: [number, number];
+    matrix: number[][];
+    distortions: number[];
+    rotation: [number, number, number];
+    translation: [number, number, number];
+    world_orientation: number[][];
+    world_position: [number, number, number];
+}
+
+export interface LoadedCalibration {
+    path: string;
+    mtimeMs: number;
+    cameras: CalibrationCameraData[];
+    metadata: Record<string, any> | null;
+}
+
 export interface CalibrationState {
     config: CalibrationConfig;
     isRecording: boolean;
@@ -44,6 +64,7 @@ export interface CalibrationState {
     lastCalibrationRecordingPath: string | null;
     manualCalibrationRecordingPath: string | null;
     directoryInfo: CalibrationDirectoryInfo | null;
+    loadedCalibration: LoadedCalibration | null;
 }
 
 // ==================== Initial State ====================
@@ -63,6 +84,7 @@ const initialState: CalibrationState = {
     lastCalibrationRecordingPath: null,
     manualCalibrationRecordingPath: null,
     directoryInfo: null,
+    loadedCalibration: null,
 };
 
 // ==================== Slice ====================
@@ -137,6 +159,16 @@ export const calibrationSlice = createSlice({
             });
 
         builder
+            .addCase(loadCalibrationToml.fulfilled, (state, action) => {
+                if (action.payload) {
+                    state.loadedCalibration = action.payload;
+                }
+            })
+            .addCase(loadCalibrationToml.rejected, (state) => {
+                state.loadedCalibration = null;
+            });
+
+        builder
             .addCase(calibrateRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
@@ -162,6 +194,7 @@ export const selectCalibrationIsRecording = (state: RootState) => state.calibrat
 export const selectCalibrationProgress = (state: RootState) => state.calibration.recordingProgress;
 export const selectCalibrationError = (state: RootState) => state.calibration.error;
 export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
+export const selectLoadedCalibration = (state: RootState) => state.calibration.loadedCalibration;
 
 export const selectCalibrationRecordingPath = createSelector(
     [

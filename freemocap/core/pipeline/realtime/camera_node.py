@@ -185,10 +185,10 @@ class CameraNode(SourceNode):
                         f"RealtimeCameraNode [{camera_id}]: requested frame {frame_msg.frame_number} "
                         f"but ring buffer contained frame {actual_frame_number} — possible ring buffer overwrite"
                     )
-                mediapipe_observation = None
+                skeleton_observation = None
                 charuco_observation = None
                 if skeleton_detector is not None:
-                    mediapipe_observation = skeleton_detector.detect(
+                    skeleton_observation = skeleton_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
@@ -203,7 +203,7 @@ class CameraNode(SourceNode):
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
                         charuco_observation=charuco_observation,
-                        skeleton_observation= mediapipe_observation
+                        skeleton_observation= skeleton_observation
                     ),
                 )
 

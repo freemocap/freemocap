@@ -51,9 +51,16 @@ def compute_board_basis_vectors(
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """Compute orthonormal basis vectors of the charuco board's coordinate frame.
 
-    X axis: from corner 0 toward ``idx_x``.
-    Y axis: orthogonal to X in the board plane.
-    Z axis: board normal (X × Y, pointing "up").
+    X axis: from corner 0 toward ``idx_x`` (board "right").
+    Z axis: board normal, out of the *printed* face (physical "up" when the
+        board lies printed-side-up on the floor).
+
+    OpenCV's CharucoBoard object points use image-plane conventions: +X is
+    board-right and +Y is board-*down* (matching how marker IDs are laid out
+    in the generated image). With that handedness, ``cross(x_hat, y_raw)``
+    points into the *back* of the printed face. We swap the operand order so
+    +Z comes out of the front, and re-derive y_hat from the flipped z to
+    keep the basis right-handed.
 
     Args:
         charuco_frame: (n_corners, 3) array of 3D corner positions for one frame.
@@ -71,7 +78,7 @@ def compute_board_basis_vectors(
 
     x_hat = x_vec / np.linalg.norm(x_vec)
     y_hat_raw = y_vec / np.linalg.norm(y_vec)
-    z_hat = np.cross(x_hat, y_hat_raw)
+    z_hat = np.cross(y_hat_raw, x_hat)
     z_hat = z_hat / np.linalg.norm(z_hat)
     y_hat = np.cross(z_hat, x_hat)
     y_hat = y_hat / np.linalg.norm(y_hat)

@@ -3,6 +3,31 @@ import {RootState} from "@/store";
 import {selectCalibrationRecordingPath} from "./calibration-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
+import {electronIpc} from "@/services/electron-ipc/electron-ipc";
+import type {LoadedCalibration} from "./calibration-slice";
+
+export const loadCalibrationToml = createAsyncThunk<
+    LoadedCalibration | null,
+    { path: string; force?: boolean },
+    { state: RootState; rejectValue: string }
+>(
+    'calibration/loadCalibrationToml',
+    async ({ path, force }, { getState, rejectWithValue }) => {
+        try {
+            if (!electronIpc) return null;
+            const existing = getState().calibration.loadedCalibration;
+            if (!force && existing && existing.path === path) {
+                return existing;
+            }
+            const result = await electronIpc.fileSystem.readCalibrationToml.query({ path });
+            return result as LoadedCalibration;
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to load calibration TOML:', msg);
+            return rejectWithValue(msg);
+        }
+    }
+);
 
 export const startCalibrationRecording = createAsyncThunk<
     { success: boolean; message?: string; calibrationRecordingPath?: string },

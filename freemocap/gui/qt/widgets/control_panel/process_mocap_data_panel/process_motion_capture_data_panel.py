@@ -24,7 +24,7 @@ from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_g
     RUN_IMAGE_TRACKING_NAME,
     RUN_3D_TRIANGULATION_NAME,
     RUN_BUTTERWORTH_FILTER_NAME,
-    NUMBER_OF_PROCESSES_PARAMETER_NAME,
+    NUMBER_OF_PROCESSES_PARAMETER_NAME, OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -141,6 +141,14 @@ class ProcessMotionCaptureDataPanel(QWidget):
                     type="group",
                     children=[
                         self._create_new_run_this_step_parameter(run_step_name=RUN_3D_TRIANGULATION_NAME),
+                        dict(
+                            name=OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
+                            type="int",
+                            value=session_processing_parameter_model.anipose_triangulate_3d_parameters_model.minimum_cameras_for_triangulation, #TODO - this is shoehorned and ugly, but good enough for EoL v1
+                            limits=(1, 100),
+                            step=1,
+                            tip="Minimum number of cameras required for triangulation.",
+                        ),
                         create_3d_triangulation_parameter_group(
                             session_processing_parameter_model.anipose_triangulate_3d_parameters_model
                         ),

@@ -161,6 +161,7 @@ def create_3d_triangulation_parameter_group(
         name=ANIPOSE_TREE_NAME,
         type="group",
         children=[
+
             dict(
                 name=FLATTEN_SINGLE_CAMERA_DATA,
                 type="bool",
@@ -184,14 +185,6 @@ def create_3d_triangulation_parameter_group(
                         limits=(0, 100),
                         step=1,
                         tip="Maximum amount of cameras permitted to drop.",
-                    ),
-                    dict(
-                        name=OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
-                        type="int",
-                        value=parameter_model.minimum_cameras_for_triangulation,
-                        limits=(1, 100),
-                        step=1,
-                        tip="Minimum number of cameras required for triangulation.",
                     ),
                     dict(
                         name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,

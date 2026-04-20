@@ -846,7 +846,24 @@ class CameraGroup:
 
         return out
 
-    def triangulate(self, points, undistort=True, progress=False, kill_event: multiprocessing.Event = None):
+    def _clamp_minimum_cameras(self, minimum_cameras_for_triangulation: int) -> int:
+        n_cams = len(self.cameras)
+        clamped = max(2, min(minimum_cameras_for_triangulation, n_cams))
+        if clamped != minimum_cameras_for_triangulation:
+            logger.warning(
+                f"Clamping minimum_cameras_for_triangulation from {minimum_cameras_for_triangulation} "
+                f"to {clamped} (floor=2, ceiling=len(cameras)={n_cams})."
+            )
+        return clamped
+
+    def triangulate(
+        self,
+        points,
+        undistort=True,
+        progress=False,
+        kill_event: multiprocessing.Event = None,
+        minimum_cameras_for_triangulation: int = 2,
+    ):
         """Given an CxNx2 array, this returns an Nx3 array of points,
         where N is the number of points and C is the number of cameras"""
 
@@ -855,6 +872,8 @@ class CameraGroup:
         ), "Invalid points shape, first dim should be equal to" " number of cameras ({}), but shape is {}".format(
             len(self.cameras), points.shape
         )
+
+        effective_min = self._clamp_minimum_cameras(minimum_cameras_for_triangulation)
 
         one_point = False
         if len(points.shape) == 2:
@@ -884,7 +903,7 @@ class CameraGroup:
         for ip in iterator:
             subp = points[:, ip, :]
             good = ~np.isnan(subp[:, 0])
-            if np.sum(good) >= 2:
+            if np.sum(good) >= effective_min:
                 out[ip] = triangulate_simple(subp[good], cam_mats[good])
 
             if kill_event is not None and kill_event.is_set():
@@ -914,6 +933,8 @@ class CameraGroup:
             len(self.cameras), points.shape
         )
 
+        effective_min = self._clamp_minimum_cameras(minimum_cameras_for_triangulation)
+
         one_point = False
         if len(points.shape) == 2:
             points = points.reshape(-1, 1, 2)
@@ -931,7 +952,7 @@ class CameraGroup:
 
         out = np.empty((n_points, 3))
         out[:] = np.nan
-        
+
         normalized_camera_weights = np.zeros((n_points, n_cams), dtype=float)
 
         cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
@@ -944,12 +965,12 @@ class CameraGroup:
         for ip in iterator:
             subp = points[:, ip, :]
             good = ~np.isnan(subp[:, 0])
-            if np.sum(good) >= 2:
+            if np.sum(good) >= effective_min:
                 valid_camera_indices = np.where(good)[0]
                 p3d, weights = triangulate_with_outlier_rejection(
                     subp[good],
                     cam_mats[good],
-                    minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+                    minimum_cameras_for_triangulation=effective_min,
                     maximum_cameras_to_drop=maximum_cameras_to_drop,
                     target_reprojection_error=target_reprojection_error,
                 )

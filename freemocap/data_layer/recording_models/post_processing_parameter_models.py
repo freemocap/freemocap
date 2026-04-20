@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class AniposeTriangulate3DParametersModel(BaseModel):
     use_triangulate_ransac_method: bool = False
     use_triangulate_outlier_rejection: bool = False
-    minimum_cameras_for_triangulation: int = 2
+    minimum_cameras_for_triangulation: int = 3
     maximum_cameras_to_drop: int = 1
     target_reprojection_error: float = 0.01
     run_3d_triangulation: bool = True

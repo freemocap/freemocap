@@ -7,7 +7,7 @@ import { ThreeJsScene } from "./ThreeJsScene";
 import { ViewportOverlay } from "./scene/ViewportOverlay";
 import { ViewportStateProvider } from "./scene/ViewportStateContext";
 import { fitCameraToPoints } from "./scene/SceneCamera";
-import { useServer } from "@/services";
+import { useKeypointsSource } from "./KeypointsSourceContext";
 
 // FreeMoCap's world is Z-up (calibration TOML, triangulated keypoints, etc.).
 // Set the three.js default up vector before any cameras/objects are created so
@@ -17,7 +17,7 @@ Object3D.DEFAULT_UP.set(0, 0, 1);
 export function ThreeJsCanvas() {
     const controlsRef = useRef<CameraControlsImpl>(null!);
     const containerRef = useRef<HTMLDivElement>(null);
-    const { getLatestKeypointsRaw } = useServer();
+    const { getLatestKeypointsRaw } = useKeypointsSource();
 
     const handleFit = useCallback(() => {
         fitCameraToPoints(controlsRef.current, getLatestKeypointsRaw());

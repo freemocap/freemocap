@@ -13,6 +13,7 @@ import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
+import { useKeypointsSource, type KeypointsSource } from "../KeypointsSourceContext";
 
 const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
@@ -31,6 +32,7 @@ interface KeypointLayerProps {
 
 function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform" }: KeypointLayerProps) {
     const server = useServer();
+    const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
     const meshRef = useRef<InstancedMesh>(null);
     const pointsRef = useRef<Record<string, Point3d>>({});  // plain object, matches wire format
@@ -53,7 +55,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     }, [server, server.activeTrackerId, server.trackerSchemas]);
 
     useEffect(() => {
-        const subscribeFn = server[subscribeKey];
+        const subscribeFn = keypointsSource[subscribeKey];
         return subscribeFn((pts: Record<string, Point3d>) => {
             pointsRef.current = pts;
             dirtyRef.current = true;
@@ -66,7 +68,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
                 }
             }
         });
-    }, [server, subscribeKey]);
+    }, [keypointsSource, subscribeKey]);
 
     useEffect(() => {
         const mesh = meshRef.current;
@@ -91,7 +93,8 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
 
         for (const [name, idx] of nameToIdx.current) {
             const pt = pts[name];
-            if (pt) {
+            const visible = pt && Number.isFinite(pt.x) && Number.isFinite(pt.y) && Number.isFinite(pt.z);
+            if (visible) {
                 const style = colorMode === "byBodyPart" ? getPointStyle(name, colorHints) : null;
                 let scale = style ? style.scale : radius;
                 if (name.includes("hand")) scale *= 0.5; // smaller radius for hand keypoints

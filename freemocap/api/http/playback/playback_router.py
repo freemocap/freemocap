@@ -446,6 +446,27 @@ def stream_video(
 
 
 @playback_router.get(
+    "/{recording_id}/parquet",
+    summary="Serve the recording's freemocap_data_by_frame.parquet",
+)
+def get_recording_parquet(
+    recording_id: str,
+    recording_parent_directory: str | None = Query(
+        default=None,
+        description="Override the default recordings directory",
+    ),
+) -> FileResponse:
+    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    p = recording_path / "output_data" / "freemocap_data_by_frame.parquet"
+    if not p.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Parquet file not found: {p}",
+        )
+    return FileResponse(str(p), media_type="application/octet-stream", filename=p.name)
+
+
+@playback_router.get(
     "/{recording_id}/timestamps",
     summary="Get timestamps for all videos in a recording",
 )

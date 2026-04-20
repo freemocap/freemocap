@@ -81,6 +81,10 @@ class ServerUrls {
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
 
+            // Blender endpoints
+            blenderDetect: `${baseUrl}/freemocap/blender/detect`,
+            blenderExport: `${baseUrl}/freemocap/blender/export`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

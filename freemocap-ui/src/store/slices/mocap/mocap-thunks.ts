@@ -21,9 +21,13 @@ export const startMocapRecording = createAsyncThunk<
             }
 
             const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const blender = state.blender;
             const configWithCalibration = {
                 ...mocapTaskConfig,
                 calibrationTomlPath: calibrationTomlPath,
+                exportToBlender: blender.exportToBlenderEnabled,
+                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
+                autoOpenBlendFile: blender.autoOpenBlendFile,
             };
 
             console.log('🎬 Starting mocap recording with:', {
@@ -69,9 +73,13 @@ export const stopMocapRecording = createAsyncThunk<
 
 
             const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const blender = state.blender;
             const configWithCalibration = {
                 ...mocapTaskConfig,
                 calibrationTomlPath: calibrationTomlPath,
+                exportToBlender: blender.exportToBlenderEnabled,
+                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
+                autoOpenBlendFile: blender.autoOpenBlendFile,
             };
 
             console.log(`🎬 Stopping mocap recording and starting mocap with: ${JSON.stringify(configWithCalibration, null, 2)}`);
@@ -120,9 +128,13 @@ export const processMocapRecording = createAsyncThunk<
             });
 
             const calibrationTomlPath = state.mocap.calibrationTomlPath;
+            const blender = state.blender;
             const configWithCalibration = {
                 ...mocapTaskConfig,
                 calibrationTomlPath: calibrationTomlPath,
+                exportToBlender: blender.exportToBlenderEnabled,
+                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
+                autoOpenBlendFile: blender.autoOpenBlendFile,
             };
 
             const response = await fetch(serverUrls.endpoints.processMocapRecording, {

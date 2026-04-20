@@ -6,6 +6,7 @@ from typing import Union, List
 
 import freemocap_blender_addon
 
+from freemocap.core.blender.helpers import run_blender_export as run_blender_export_module
 from freemocap.core.blender.helpers.run_blender_export import run_blender_export
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
 from freemocap.utilities.open_file import open_file
@@ -37,7 +38,7 @@ OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 
 def run_subprocess(command_list: List[str]):
     logger.debug(f"Running subprocess with command list: {command_list}")
-    process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command_list, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     return process
 
 
@@ -66,7 +67,9 @@ def export_to_blender(
     site_packages_path = str(addon_package_path.parent.parent)
     logger.debug(f"Will inject site-packages path into Blender's sys.path: {site_packages_path}")
 
-    simple_run_script = inspect.getfile(run_blender_export)
+    # Use the module's __file__ directly — inspect.getfile() on a @beartype-wrapped
+    # function returns repr() of the wrapper, not the source file path.
+    simple_run_script = run_blender_export_module.__file__
 
     command_list = [
         str(blender_exe_path),
@@ -91,7 +94,7 @@ def export_to_blender(
             logging.debug(output.strip().decode())
 
     if blender_process.returncode != 0:
-        logging.error(blender_process.stderr.read().decode())
+        logging.error(f"Blender subprocess exited with non-zero return code: {blender_process.returncode}")
     if not Path(blend_file_path).is_file():
         raise RuntimeError(f"Blender output file not found at: {blend_file_path}")
     elif Path(blend_file_path).stat().st_size == 0:

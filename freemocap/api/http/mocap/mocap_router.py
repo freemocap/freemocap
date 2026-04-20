@@ -53,9 +53,15 @@ def _process_mocap_request_schema_extra(schema: dict) -> None:
 
 
 class ProcessMocapRecordingRequest(BaseModel):
-    model_config = ConfigDict(json_schema_extra=_process_mocap_request_schema_extra)
-    mocap_recording_directory: str = Field(default=FREEMOCAP_TEST_DATA_PATH)
-    mocap_config: PosthocMocapPipelineConfig = Field(default_factory=PosthocMocapPipelineConfig)
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra=_process_mocap_request_schema_extra,
+    )
+    mocap_recording_directory: str = Field(alias="mocapRecordingDirectory")
+    mocap_config: PosthocMocapPipelineConfig = Field(
+        alias="mocapTaskConfig",
+        default_factory=PosthocMocapPipelineConfig,
+    )
 
     @classmethod
     def create_test_data_request(cls) -> "ProcessMocapRecordingRequest":

@@ -11,11 +11,11 @@ import {
     Vector3,
 } from "three";
 import { useFrame } from "@react-three/fiber";
-import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import {FACE_CONTOUR_GROUPS} from "@/components/viewport3d/helpers/face-contours";
+import { useKeypointsSource } from "../KeypointsSourceContext";
 
 const MAX_FACE_POINTS = 512;
 const DOT_RADIUS = 0.015;
@@ -27,7 +27,7 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
  * Subscribes to raw keypoints and filters for face.* names.
  */
 export function FaceRenderer() {
-    const { subscribeToKeypointsRaw } = useServer();
+    const { subscribeToKeypointsRaw } = useKeypointsSource();
     const { statsRef } = useViewportState();
 
     const dotsRef = useRef<InstancedMesh>(null);

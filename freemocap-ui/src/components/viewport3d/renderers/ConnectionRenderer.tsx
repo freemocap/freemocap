@@ -8,6 +8,7 @@ import {
 import { useFrame } from "@react-three/fiber";
 import { useServer } from "@/services";
 import { Point3d } from "@/components/viewport3d";
+import { useKeypointsSource } from "../KeypointsSourceContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import {
     buildSegmentsFromSchema,
@@ -26,7 +27,8 @@ import { SKELETON_COLORS } from "../helpers/skeleton-colors";
  * connections are appended in a reserved tail region of the same buffer.
  */
 export function ConnectionRenderer() {
-    const { subscribeToKeypointsRaw, getActiveSchema, activeTrackerId, trackerSchemas } = useServer();
+    const { getActiveSchema, activeTrackerId, trackerSchemas } = useServer();
+    const { subscribeToKeypointsRaw } = useKeypointsSource();
     const { statsRef } = useViewportState();
     const calibrationConfig = useAppSelector(selectCalibrationConfig);
 
@@ -90,7 +92,9 @@ export function ConnectionRenderer() {
             const base = i * 6;
             const c = colors[i];
 
-            if (a && b) {
+            const aOk = a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(a.z);
+            const bOk = b && Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.z);
+            if (aOk && bOk) {
                 positions[base]     = a.x; positions[base + 1] = a.y; positions[base + 2] = a.z;
                 positions[base + 3] = b.x; positions[base + 4] = b.y; positions[base + 5] = b.z;
                 vertexColors[base]     = c.r; vertexColors[base + 1] = c.g; vertexColors[base + 2] = c.b;

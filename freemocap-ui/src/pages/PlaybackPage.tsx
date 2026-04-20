@@ -17,6 +17,7 @@ import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
+import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
@@ -300,7 +301,12 @@ const PlaybackPage: React.FC = () => {
 
                                     <Panel defaultSize={40} minSize={10}>
                                         <Box sx={{height: '100%'}}>
-                                            <ThreeJsCanvas/>
+                                            <FileKeypointsSourceProvider
+                                                recordingId={recordingPath}
+                                                currentFrameRef={controller.currentFrameRef}
+                                            >
+                                                <ThreeJsCanvas/>
+                                            </FileKeypointsSourceProvider>
                                         </Box>
                                     </Panel>
                                 </PanelGroup>

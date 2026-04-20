@@ -2,13 +2,14 @@ import inspect
 import logging
 import subprocess
 from pathlib import Path
-from typing import Union, List
+from typing import List
 
 import freemocap_blender_addon
 
 from freemocap.core.blender.helpers import run_blender_export as run_blender_export_module
 from freemocap.core.blender.helpers.run_blender_export import run_blender_export
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+from freemocap.system.recording_status.recording_status import raise_if_not_blender_ready
 from freemocap.utilities.open_file import open_file
 
 logger = logging.getLogger(__name__)
@@ -25,15 +26,10 @@ RIGHT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "right_hand_right_hand.csv" # TODO -  th
 LEFT_HAND_3D_DATAFRAME_CSV_FILE_NAME = "left_hand_left_hand.csv" # TODO -  the names are duplicated in the right/left hand, needs fixed in skellyforge.skellymodels.human (i think?)
 FACE_3D_DATAFRAME_CSV_FILE_NAME = "face_3d_xyz.csv"
 
-TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "body_total_body_center_of_mass.npy"
-SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "body_segment_center_of_mass.npy"
-
 OLD_DATA_2D_NPY_FILE_NAME = "mediapipe2dData_numCams_numFrames_numTrackedPoints_pixelXY.npy"
 OLD_RAW_3D_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_spatialXYZ.npy"
 OLD_REPROJECTION_ERROR_NPY_FILE_NAME = "mediapipe3dData_numFrames_numTrackedPoints_reprojectionError.npy"
 OLD_DATA_3D_NPY_FILE_NAME = "mediaPipeSkel_3d_body_hands_face.npy"
-OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME = "total_body_center_of_mass_xyz.npy"
-OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME = "segmentCOM_frame_joint_xyz.npy"
 
 
 def run_subprocess(command_list: List[str]):
@@ -49,10 +45,10 @@ def export_to_blender(
         open_file_on_completion:bool=True,
 ):
     try:
-        freemocap_blender_addon_validator(recording_folder_path=recording_folder_path)
-    except FileNotFoundError as e:
+        raise_if_not_blender_ready(recording_folder_path)
+    except FileNotFoundError:
         logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
-        raise e
+        raise
 
     if blender_exe_path is None:
         blender_exe_path:Path = Path(get_best_guess_of_blender_path())
@@ -109,64 +105,6 @@ def export_to_blender(
     blender_process.terminate()  # manually terminate the process
 
 
-
-
-def freemocap_blender_addon_validator(recording_folder_path: Union[str, Path], active_tracker: str = "mediapipe"):
-    """
-    Check if the required files exist in the recording folder
-    """
-    recording_path = Path(recording_folder_path)
-    output_data_path = recording_path / "output_data"
-
-    if active_tracker[-1] != "_":
-        active_tracker = active_tracker + "_"
-
-    if not (output_data_path / (active_tracker + "body_3d_xyz.npy")).exists():
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / (active_tracker + 'body_3d_xyz.npy')}"
-        )
-
-    if not (output_data_path / (active_tracker + "right_hand_right_hand.npy")).exists(): #duplicated hand dnames need fixed in skforge
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / (active_tracker + 'right_hand_right_hand.npy')}"
-        )
-
-    if not (output_data_path / (active_tracker + "left_hand_left_hand.npy")).exists():
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / (active_tracker + 'left_hand_left_hand.npy')}"
-        )
-
-    if not (output_data_path / (active_tracker + "face_3d_xyz.npy")).exists():
-        raise FileNotFoundError(
-            f"Could not find required file: {output_data_path / (active_tracker + 'face_3d_xyz.npy')}"
-        )
-
-    if not (output_data_path / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
-        if (
-                active_tracker != "mediapipe_"
-                or not (output_data_path / OLD_TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME).exists()
-        ):
-            raise FileNotFoundError(
-                f"Could not find required file: {output_data_path  / (active_tracker + TOTAL_BODY_CENTER_OF_MASS_NPY_FILE_NAME)}"
-            )
-
-    if not (output_data_path / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)).exists():
-        if (
-                active_tracker != "mediapipe_"
-                or not (output_data_path / OLD_SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME).exists()
-        ):
-            raise FileNotFoundError(
-                f"Could not find required file: {output_data_path / 'center_of_mass' / (active_tracker + SEGMENT_CENTER_OF_MASS_NPY_FILE_NAME)}"
-            )
-
-    # if not (output_data_path / "raw_data" / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)).exists():
-    #     if (
-    #             active_tracker != "mediapipe_"
-    #             or not (output_data_path / "raw_data" / OLD_REPROJECTION_ERROR_NPY_FILE_NAME).exists()
-    #     ):
-    #         raise FileNotFoundError(
-    #             f"Could not find required file: {output_data_path / 'raw_data' / (active_tracker + REPROJECTION_ERROR_NPY_FILE_NAME)}"
-    #         )
 
 
 if __name__ == "__main__":

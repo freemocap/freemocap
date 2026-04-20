@@ -8,6 +8,7 @@ import {
     detectBlender,
     exportRecordingToBlender,
     exportToBlenderToggled,
+    openRecordingInBlender,
     selectBlender,
     selectEffectiveBlenderExePath,
 } from '@/store/slices/blender';
@@ -63,6 +64,17 @@ export function useBlender() {
         [dispatch]
     );
 
+    const triggerOpenInBlender = useCallback(
+        (recordingFolderPath?: string) => {
+            return dispatch(
+                openRecordingInBlender(
+                    recordingFolderPath ? {recordingFolderPath} : undefined
+                )
+            );
+        },
+        [dispatch]
+    );
+
     const clearError = useCallback(() => {
         dispatch(blenderErrorCleared());
     }, [dispatch]);
@@ -75,6 +87,7 @@ export function useBlender() {
         autoOpenBlendFile: blender.autoOpenBlendFile,
         isExporting: blender.isExporting,
         isDetecting: blender.isDetecting,
+        isOpening: blender.isOpening,
         lastBlendFilePath: blender.lastBlendFilePath,
         error: blender.error,
         isUsingManualBlenderPath: blender.blenderExePath !== null,
@@ -84,6 +97,7 @@ export function useBlender() {
         setExportToBlenderEnabled,
         setAutoOpenBlendFile,
         triggerBlenderExport,
+        triggerOpenInBlender,
         clearError,
     };
 }

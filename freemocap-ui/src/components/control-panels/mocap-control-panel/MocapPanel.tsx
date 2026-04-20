@@ -20,9 +20,9 @@ import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import LaunchIcon from "@mui/icons-material/Launch";
 import ClearIcon from "@mui/icons-material/Clear";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
@@ -33,6 +33,8 @@ import {useServer} from "@/services/server/ServerContextProvider";
 import SquareFootIcon from "@mui/icons-material/SquareFoot";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
+import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
+import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 
 export const MocapPanel: React.FC = () => {
     const theme = useTheme();
@@ -110,6 +112,16 @@ export const MocapPanel: React.FC = () => {
         }
     };
 
+    const handleOpenFolder = async (): Promise<void> => {
+        if (!isElectron || !api || !mocapRecordingPath) return;
+        try {
+            await api.fileSystem.openFolder.mutate({path: mocapRecordingPath});
+        } catch (err) {
+            console.error("Failed to open folder:", err);
+            setLocalError("Failed to open folder in file explorer");
+        }
+    };
+
     const handlePathInputChange = async (
         e: React.ChangeEvent<HTMLInputElement>,
     ): Promise<void> => {
@@ -170,6 +182,28 @@ export const MocapPanel: React.FC = () => {
         const parts = mocapRecordingPath.replace(/[/\\]+$/, "").split(/[/\\]/);
         return parts[parts.length - 1] || null;
     }, [mocapRecordingPath]);
+
+    // Derive parent directory so the backend can resolve non-default recording roots
+    const recordingParentDirectory = useMemo(() => {
+        if (!mocapRecordingPath) return null;
+        const trimmed = mocapRecordingPath.replace(/[/\\]+$/, "");
+        const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+        return idx > 0 ? trimmed.slice(0, idx) : null;
+    }, [mocapRecordingPath]);
+
+    // Only auto-fetch if the folder exists on disk — otherwise recordingId
+    // may tick every second (default path embeds a timestamp) and we'd spam
+    // the backend with 404s for folders that don't exist yet.
+    const directoryExists = directoryInfo?.exists ?? false;
+    const {
+        status: recordingStatus,
+        isLoading: recordingStatusLoading,
+        error: recordingStatusError,
+        refresh: refreshRecordingStatus,
+    } = useRecordingStatus(recordingId, {
+        recordingParentDirectory,
+        autoFetch: directoryExists,
+    });
 
     const formatPhase = (phase: string): string => {
         const labels: Record<string, string> = {
@@ -300,12 +334,27 @@ export const MocapPanel: React.FC = () => {
                                     <Tooltip title="Re-check folder">
                                         <span>
                                             <IconButton
-                                                onClick={triggerRefresh}
+                                                onClick={() => {
+                                                    triggerRefresh();
+                                                    refreshRecordingStatus();
+                                                }}
                                                 edge="end"
                                                 size="small"
                                                 disabled={!mocapRecordingPath || isLoading}
                                             >
                                                 <RefreshIcon fontSize="small" />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                    <Tooltip title="Open folder in file explorer">
+                                        <span>
+                                            <IconButton
+                                                onClick={handleOpenFolder}
+                                                edge="end"
+                                                size="small"
+                                                disabled={!isElectron || !mocapRecordingPath}
+                                            >
+                                                <LaunchIcon fontSize="small" />
                                             </IconButton>
                                         </span>
                                     </Tooltip>
@@ -319,19 +368,21 @@ export const MocapPanel: React.FC = () => {
                         }}
                     />
 
-                    {/* Directory Status (auto-refreshing) */}
-                    <DirectoryStatusPanel
-                        title="Mocap Folder Status"
-                        tomlLabel="Has calibration TOML"
-                        directoryInfo={directoryInfo ? {
-                            ...directoryInfo,
-                            tomlPath: directoryInfo.cameraMocapTomlPath,
-                        } : null}
-                        status={mocapStatus}
-                        onRefresh={triggerRefresh}
-                        refreshDisabled={!mocapRecordingPath || isLoading}
-                        isRefreshing={false}
-                    />
+                    {/* Recording folder status (collapsed by default) */}
+                    {recordingId && (
+                        <RecordingStatusPanel
+                            status={recordingStatus}
+                            isLoading={recordingStatusLoading}
+                            error={recordingStatusError}
+                            onRefresh={() => {
+                                triggerRefresh();
+                                refreshRecordingStatus();
+                            }}
+                            activeCalibrationTomlPath={effectiveCalibrationTomlPath}
+                            folderExists={directoryExists}
+                            recordingFolderPath={mocapRecordingPath}
+                        />
+                    )}
 
                     {/* Calibration TOML — redesigned compact picker */}
                     <CalibrationTomlPicker
@@ -414,6 +465,7 @@ export const MocapPanel: React.FC = () => {
                     <BlenderSection
                         recordingFolderPath={mocapRecordingPath}
                         disabled={isLoading}
+                        hasBlendFile={recordingStatus?.has_blend_file}
                     />
                 </Stack>
             </Box>

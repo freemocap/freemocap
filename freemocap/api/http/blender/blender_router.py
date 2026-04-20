@@ -1,5 +1,6 @@
 import inspect
 import logging
+import subprocess
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -9,6 +10,7 @@ from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.blender.helpers.install_blender_addon import \
     install_freemocap_blender_addon
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
+from freemocap.system.recording_status.recording_status import compute_recording_status
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -64,6 +66,26 @@ class ExportToBlenderResponse(BaseModel):
     success: bool
     message: str | None = None
     blender_file_path: str | None = None
+
+
+class OpenInBlenderRequest(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        json_schema_extra={
+            "example": {
+                "recordingFolderPath": FREEMOCAP_TEST_DATA_PATH,
+                "blenderExePath": None,
+            }
+        },
+    )
+    recording_folder_path: str = Field(alias="recordingFolderPath")
+    blender_exe_path: str | None = Field(alias="blenderExePath", default=None)
+
+
+class OpenInBlenderResponse(BaseModel):
+    success: bool
+    message: str | None = None
+    blend_file_path: str | None = None
 
 
 # ==================== Endpoints ====================
@@ -146,4 +168,38 @@ def export_to_blender_endpoint(request: ExportToBlenderRequest) -> ExportToBlend
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.exception(f"Error exporting to Blender: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@blender_router.post("/open")
+def open_in_blender_endpoint(request: OpenInBlenderRequest) -> OpenInBlenderResponse:
+    """Open an existing .blend file in the given recording folder with Blender (GUI, non-blocking)."""
+    try:
+        recording_folder = Path(request.recording_folder_path)
+        if not recording_folder.is_dir():
+            raise HTTPException(status_code=400, detail=f"Recording folder not found: {request.recording_folder_path}")
+
+        blender_exe_path = request.blender_exe_path or get_best_guess_of_blender_path()
+        if blender_exe_path is None:
+            raise HTTPException(status_code=400, detail="Could not find a Blender executable on this system - install from https://blender.org/download")
+        blender_exe = Path(blender_exe_path)
+        if not blender_exe.is_file():
+            raise HTTPException(status_code=400, detail=f"Blender executable not found at: {blender_exe_path}")
+
+        status = compute_recording_status(recording_folder)
+        if not status.has_blend_file or not status.blend_file_path:
+            raise HTTPException(status_code=400, detail=f"No .blend file found in {recording_folder}")
+
+        logger.info(f"Launching Blender ({blender_exe}) with {status.blend_file_path}")
+        subprocess.Popen([str(blender_exe), status.blend_file_path], shell=False)
+
+        return OpenInBlenderResponse(
+            success=True,
+            message="Launched Blender",
+            blend_file_path=status.blend_file_path,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Error opening .blend in Blender: {e}")
         raise HTTPException(status_code=500, detail=str(e))

@@ -4,6 +4,7 @@ from pathlib import Path
 
 DEFAULT_FREEMOCAP_BASE_FOLDER_NAME = "freemocap_data"
 SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
+ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
 LOG_FILE_FOLDER_NAME = "logs"
 TIMESTAMPS_FOLDER_NAME = "timestamps"

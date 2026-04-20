@@ -14,6 +14,7 @@ import {
     Typography,
 } from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import LaunchIcon from '@mui/icons-material/Launch';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ClearIcon from '@mui/icons-material/Clear';
 import MovieFilterIcon from '@mui/icons-material/MovieFilter';
@@ -23,11 +24,14 @@ import {useElectronIPC} from '@/services';
 interface BlenderSectionProps {
     recordingFolderPath: string | null | undefined;
     disabled?: boolean;
+    /** When provided, the "Open .blend in Blender" button is disabled unless true. */
+    hasBlendFile?: boolean;
 }
 
 export const BlenderSection: React.FC<BlenderSectionProps> = ({
     recordingFolderPath,
     disabled = false,
+    hasBlendFile,
 }) => {
     const {api, isElectron} = useElectronIPC();
     const {
@@ -37,6 +41,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
         autoOpenBlendFile,
         isExporting,
         isDetecting,
+        isOpening,
         lastBlendFilePath,
         error,
         redetectBlender,
@@ -45,6 +50,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
         setExportToBlenderEnabled,
         setAutoOpenBlendFile,
         triggerBlenderExport,
+        triggerOpenInBlender,
         clearError,
     } = useBlender();
 
@@ -65,11 +71,23 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
         void triggerBlenderExport(recordingFolderPath);
     };
 
+    const handleOpenInBlender = (): void => {
+        if (!recordingFolderPath) return;
+        void triggerOpenInBlender(recordingFolderPath);
+    };
+
     const canExport =
         !!recordingFolderPath &&
         !!effectiveBlenderExePath &&
         !isExporting &&
         !disabled;
+
+    const canOpen =
+        !!recordingFolderPath &&
+        !!effectiveBlenderExePath &&
+        !isOpening &&
+        !disabled &&
+        (hasBlendFile === undefined || hasBlendFile);
 
     return (
         <Box sx={{mt: 1}}>
@@ -173,6 +191,16 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     fullWidth
                 >
                     {isExporting ? 'Exporting to Blender…' : 'Process Recording with Blender'}
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    startIcon={<LaunchIcon/>}
+                    onClick={handleOpenInBlender}
+                    disabled={!canOpen}
+                    fullWidth
+                >
+                    {isOpening ? 'Opening…' : 'Open .blend in Blender'}
                 </Button>
 
                 {lastBlendFilePath && (

@@ -62,6 +62,8 @@ class ServerUrls {
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/timestamps`,
             playbackVideoTimestamps: (recordingId: string, videoId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
+            playbackRecordingStatus: (recordingId: string) =>
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/status`,
 
             // Recording endpoints
             startRecording: `${baseUrl}/freemocap/camera/group/all/record/start`,
@@ -84,6 +86,7 @@ class ServerUrls {
             // Blender endpoints
             blenderDetect: `${baseUrl}/freemocap/blender/detect`,
             blenderExport: `${baseUrl}/freemocap/blender/export`,
+            blenderOpen: `${baseUrl}/freemocap/blender/open`,
 
             // WebSocket
             websocket: this.getWebSocketUrl(),

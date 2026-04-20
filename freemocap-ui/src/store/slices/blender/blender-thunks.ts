@@ -84,3 +84,54 @@ export const exportRecordingToBlender = createAsyncThunk<
         }
     }
 );
+
+interface OpenBlenderResult {
+    success: boolean;
+    message?: string | null;
+    blendFilePath?: string | null;
+}
+
+export const openRecordingInBlender = createAsyncThunk<
+    OpenBlenderResult,
+    { recordingFolderPath: string } | void,
+    { state: RootState; rejectValue: string }
+>(
+    'blender/open',
+    async (arg, {getState, rejectWithValue}) => {
+        try {
+            const state = getState();
+            const blender = state.blender;
+            const recordingFolderPath =
+                (arg && arg.recordingFolderPath) ||
+                state.mocap.manualMocapRecordingPath ||
+                state.mocap.lastMocapRecordingPath;
+
+            if (!recordingFolderPath) {
+                return rejectWithValue('No recording folder path available to open in Blender');
+            }
+
+            const blenderExePath = blender.blenderExePath ?? blender.detectedBlenderExePath;
+
+            const response = await fetch(serverUrls.endpoints.blenderOpen, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    recordingFolderPath,
+                    blenderExePath,
+                }),
+            });
+
+            if (!response.ok) {
+                return rejectWithValue(await getDetailedErrorMessage(response));
+            }
+            const data = await response.json();
+            return {
+                success: !!data.success,
+                message: data.message ?? null,
+                blendFilePath: data.blend_file_path ?? null,
+            };
+        } catch (e) {
+            return rejectWithValue(e instanceof Error ? e.message : 'Unknown error');
+        }
+    }
+);

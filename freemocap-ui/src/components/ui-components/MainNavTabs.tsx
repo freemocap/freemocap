@@ -6,6 +6,7 @@ import {Tab, Tabs} from "@mui/material";
 const NAV_TABS = [
     {path: '/welcome', label: 'Home'},
     {path: '/streaming', label: 'Streaming'},
+    {path: '/browse', label: 'Browse'},
     {path: '/playback', label: 'Playback'},
 ] as const;
 

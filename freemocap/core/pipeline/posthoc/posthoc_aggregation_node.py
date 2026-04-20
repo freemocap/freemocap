@@ -204,9 +204,14 @@ class PosthocAggregationNode(AggregatorNode):
                 exc_info=True,
             )
             progress_message.error = True
+            progress_message.error_message = f"{type(e).__name__}: {e}"
+            progress_message.running_aggregation_task = False
             aggregator_progress_pub.put(progress_message)
             ipc.shutdown_pipeline()
-            raise
+            # Do NOT re-raise: an unhandled exception here kills the worker, and the WorkerRegistry
+            # child monitor treats that as a fatal failure and shuts down the parent server.
+            # The error has already been surfaced via the progress message (error=True, error_message=...)
+            # so the frontend can display a meaningful message to the user.
         finally:
             progress_message.complete = True
             aggregator_progress_pub.put(progress_message)

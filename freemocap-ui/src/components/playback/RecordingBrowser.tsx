@@ -10,9 +10,11 @@ import {
     Button,
     Chip,
     CircularProgress,
+    Collapse,
     IconButton,
     InputAdornment,
     List,
+    ListItem,
     ListItemButton,
     ListItemIcon,
     ListItemText,
@@ -24,6 +26,8 @@ import {
     Typography,
     useTheme,
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FolderIcon from '@mui/icons-material/Folder';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -34,6 +38,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
 import {serverUrls} from '@/constants/server-urls';
 import {useTranslation} from 'react-i18next';
+import {RecordingStatusSummary} from '@/types/recording-status';
+import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
+import {useRecordingStatus} from '@/hooks/useRecordingStatus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -49,6 +56,7 @@ interface RecordingEntry {
     total_frames?: number;
     duration_seconds?: number;
     fps?: number;
+    status_summary?: RecordingStatusSummary;
 }
 
 /** Shape passed up to the parent when a recording is loaded */
@@ -63,6 +71,8 @@ interface RecordingBrowserProps {
     onRecordingLoaded: (videos: LoadedVideo[], recordingPath: string, recordingFps?: number) => void;
     /** If set, automatically load this recording path on mount. */
     initialLoadPath?: string | null;
+    /** Name/path of the recording currently loaded into the Playback view — highlighted in the list. */
+    activeRecordingPath?: string | null;
 }
 
 type SortField = 'date' | 'name' | 'size' | 'cameras' | 'frames' | 'duration';
@@ -196,7 +206,7 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
 // Component
 // ---------------------------------------------------------------------------
 
-export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, initialLoadPath }) => {
+export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, initialLoadPath, activeRecordingPath }) => {
     const theme = useTheme();
     const { t } = useTranslation();
     const isDark = theme.palette.mode === 'dark';
@@ -562,7 +572,9 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                             isLoading={loadingPath === rec.path}
                             isAnyLoading={isLoadingRecording}
                             isDark={isDark}
+                            isActive={!!activeRecordingPath && (activeRecordingPath === rec.name || activeRecordingPath === rec.path)}
                             onClick={() => loadRecording(rec.path)}
+                            recordingsRootPath={rec.path.slice(0, Math.max(rec.path.lastIndexOf('/'), rec.path.lastIndexOf('\\'))) || null}
                         />
                     ))}
                 </List>
@@ -580,25 +592,61 @@ interface RecordingRowProps {
     isLoading: boolean;
     isAnyLoading: boolean;
     isDark: boolean;
+    isActive: boolean;
     onClick: () => void;
+    recordingsRootPath: string | null;
 }
 
 const RecordingRow: React.FC<RecordingRowProps> = React.memo(
-    ({ rec, isLoading, isAnyLoading, isDark, onClick }) => {
+    ({ rec, isLoading, isAnyLoading, isDark, isActive, onClick, recordingsRootPath }) => {
         const theme = useTheme();
         const parsedDate = parseTimestampFromName(rec.name);
-    const { t } = useTranslation();
+        const { t } = useTranslation();
+        const [expanded, setExpanded] = useState(false);
+
+        const {
+            status: detailedStatus,
+            isLoading: statusLoading,
+            error: statusError,
+            refresh: refreshStatus,
+        } = useRecordingStatus(expanded ? rec.name : null, {
+            autoFetch: expanded,
+            recordingParentDirectory: recordingsRootPath,
+        });
+
+        const summary = rec.status_summary;
+        const ready = summary?.blender_export_ready ?? false;
+        const stagesComplete = summary?.stages_complete ?? 0;
+        const stagesTotal = summary?.stages_total ?? 0;
+
+        const toggleExpand = (e: React.MouseEvent): void => {
+            e.stopPropagation();
+            setExpanded((v) => !v);
+        };
 
         return (
-            <ListItemButton
-                onClick={onClick}
-                disabled={isAnyLoading}
+            <ListItem
+                disablePadding
                 sx={{
-                    py: 1.25,
-                    px: 2,
-                    opacity: isAnyLoading && !isLoading ? 0.5 : 1,
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    ...(isActive && {
+                        backgroundColor: isDark ? 'rgba(41,182,246,0.12)' : 'rgba(41,182,246,0.10)',
+                        borderLeft: `3px solid ${ACCENT_BLUE}`,
+                    }),
                 }}
             >
+                <Box sx={{display: 'flex', alignItems: 'stretch'}}>
+                <ListItemButton
+                    onClick={onClick}
+                    disabled={isAnyLoading}
+                    sx={{
+                        py: 1.25,
+                        px: 2,
+                        flex: 1,
+                        opacity: isAnyLoading && !isLoading ? 0.5 : 1,
+                    }}
+                >
                 {/* Folder icon or spinner */}
                 <ListItemIcon sx={{ minWidth: 36 }}>
                     {isLoading ? (
@@ -618,18 +666,38 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                 <ListItemText
                     disableTypography
                     primary={
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                fontFamily: MONO_FONT,
-                                fontWeight: 600,
-                                fontSize: '0.85rem',
-                                mb: 0.5,
-                                color: theme.palette.text.primary,
-                            }}
-                        >
-                            {rec.name}
-                        </Typography>
+                        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 0.5}}>
+                            <Typography
+                                variant="body2"
+                                sx={{
+                                    fontFamily: MONO_FONT,
+                                    fontWeight: 600,
+                                    fontSize: '0.85rem',
+                                    color: isActive
+                                        ? (isDark ? ACCENT_BLUE : theme.palette.primary.main)
+                                        : theme.palette.text.primary,
+                                }}
+                            >
+                                {rec.name}
+                            </Typography>
+                            {isActive && (
+                                <Chip
+                                    size="small"
+                                    icon={<PlayArrowIcon sx={{fontSize: '12px !important'}}/>}
+                                    label="loaded in playback"
+                                    sx={{
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        fontFamily: MONO_FONT,
+                                        backgroundColor: isDark ? `${ACCENT_BLUE}22` : 'rgba(41,182,246,0.15)',
+                                        color: isDark ? ACCENT_BLUE : theme.palette.primary.main,
+                                        border: `1px solid ${isDark ? `${ACCENT_BLUE}55` : 'rgba(41,182,246,0.4)'}`,
+                                        '& .MuiChip-icon': {color: 'inherit'},
+                                        '& .MuiChip-label': {px: 0.75},
+                                    }}
+                                />
+                            )}
+                        </Box>
                     }
                     secondary={
                         <Box
@@ -750,10 +818,60 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                     </Typography>
                                 </Tooltip>
                             )}
+
+                            {/* Status summary */}
+                            {summary && (
+                                <Tooltip
+                                    title={
+                                        ready
+                                            ? 'All pipeline stages complete — ready for Blender'
+                                            : `${stagesComplete}/${stagesTotal} pipeline stages complete`
+                                    }
+                                >
+                                    <Chip
+                                        size="small"
+                                        label={
+                                            ready
+                                                ? 'Blender ready'
+                                                : `${stagesComplete}/${stagesTotal} stages`
+                                        }
+                                        color={ready ? 'success' : 'default'}
+                                        icon={ready ? <CheckCircleIcon/> : undefined}
+                                        variant={ready ? 'filled' : 'outlined'}
+                                        sx={{height: 18, fontSize: '0.65rem', '& .MuiChip-label': {px: 0.75}}}
+                                    />
+                                </Tooltip>
+                            )}
                         </Box>
                     }
                 />
-            </ListItemButton>
+                </ListItemButton>
+                <Tooltip title={expanded ? 'Hide folder detail' : 'Show folder detail'}>
+                    <IconButton
+                        size="small"
+                        onClick={toggleExpand}
+                        sx={{
+                            mr: 1,
+                            alignSelf: 'center',
+                            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s ease',
+                        }}
+                    >
+                        <ExpandMoreIcon fontSize="small"/>
+                    </IconButton>
+                </Tooltip>
+                </Box>
+                <Collapse in={expanded} unmountOnExit>
+                    <Box sx={{px: 2, pb: 2}}>
+                        <RecordingStatusPanel
+                            status={detailedStatus}
+                            isLoading={statusLoading}
+                            error={statusError}
+                            onRefresh={refreshStatus}
+                        />
+                    </Box>
+                </Collapse>
+            </ListItem>
         );
     },
 );

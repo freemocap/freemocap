@@ -28,10 +28,10 @@ from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQ
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage, VideoNodeProgressTopic, \
     VideoNodeProgressMessage, PipelineProgressMessage
+from freemocap.system.default_paths import ANNOTATED_VIDEOS_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
 
-ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 
 
 @dataclass
@@ -246,9 +246,12 @@ class VideoNode(SourceNode):
                 f"Exception in VideoNode for {video_path.stem}: {e}"
             )
             progress_message.error = True
+            progress_message.error_message = f"{type(e).__name__}: {e}"
             video_progress_pub.put(progress_message)
             ipc.shutdown_pipeline()
-            raise
+            # Do NOT re-raise: unhandled exceptions here kill the worker, and the WorkerRegistry
+            # child monitor escalates that to a parent-process shutdown (exit code 15).
+            # The error is surfaced via the progress message so the frontend can report it.
         finally:
             video_reader.release()
             progress_message.complete = True

@@ -1,6 +1,6 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
-import {detectBlender, exportRecordingToBlender} from './blender-thunks';
+import {detectBlender, exportRecordingToBlender, openRecordingInBlender} from './blender-thunks';
 
 export interface BlenderState {
     blenderExePath: string | null;
@@ -9,6 +9,7 @@ export interface BlenderState {
     autoOpenBlendFile: boolean;
     isExporting: boolean;
     isDetecting: boolean;
+    isOpening: boolean;
     lastBlendFilePath: string | null;
     error: string | null;
 }
@@ -20,6 +21,7 @@ const initialState: BlenderState = {
     autoOpenBlendFile: true,
     isExporting: false,
     isDetecting: false,
+    isOpening: false,
     lastBlendFilePath: null,
     error: null,
 };
@@ -71,6 +73,22 @@ export const blenderSlice = createSlice({
             .addCase(exportRecordingToBlender.rejected, (state, action) => {
                 state.isExporting = false;
                 state.error = action.payload || 'Failed to export to Blender';
+            });
+
+        builder
+            .addCase(openRecordingInBlender.pending, (state) => {
+                state.isOpening = true;
+                state.error = null;
+            })
+            .addCase(openRecordingInBlender.fulfilled, (state, action) => {
+                state.isOpening = false;
+                if (action.payload.blendFilePath) {
+                    state.lastBlendFilePath = action.payload.blendFilePath;
+                }
+            })
+            .addCase(openRecordingInBlender.rejected, (state, action) => {
+                state.isOpening = false;
+                state.error = action.payload || 'Failed to open Blender';
             });
     },
 });

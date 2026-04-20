@@ -158,6 +158,7 @@ class PipelineProgressMessage(TopicMessageABC):
     working: bool = False
     complete: bool = False
     error: bool = False
+    error_message: str | None = None
 
     def __post_init__(self) -> None:
         if self.frame_count < 0:

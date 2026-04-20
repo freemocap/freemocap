@@ -16,6 +16,7 @@ import SquareFootIcon from "@mui/icons-material/SquareFoot";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import StopIcon from "@mui/icons-material/Stop";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import LaunchIcon from "@mui/icons-material/Launch";
 import ClearIcon from "@mui/icons-material/Clear";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
@@ -72,6 +73,16 @@ export const CalibrationPanel: React.FC = () => {
         } catch (err) {
             console.error("Failed to select directory:", err);
             setLocalError("Failed to select directory");
+        }
+    };
+
+    const handleOpenFolder = async (): Promise<void> => {
+        if (!api || !calibrationRecordingPath) return;
+        try {
+            await api.fileSystem.openFolder.mutate({path: calibrationRecordingPath});
+        } catch (err) {
+            console.error("Failed to open folder:", err);
+            setLocalError("Failed to open folder in file explorer");
         }
     };
 
@@ -209,6 +220,18 @@ export const CalibrationPanel: React.FC = () => {
                                                 disabled={!calibrationRecordingPath || isLoading}
                                             >
                                                 <RefreshIcon fontSize="small"/>
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                    <Tooltip title="Open folder in file explorer">
+                                        <span>
+                                            <IconButton
+                                                onClick={handleOpenFolder}
+                                                edge="end"
+                                                size="small"
+                                                disabled={!calibrationRecordingPath}
+                                            >
+                                                <LaunchIcon fontSize="small"/>
                                             </IconButton>
                                         </span>
                                     </Tooltip>

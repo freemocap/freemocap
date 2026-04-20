@@ -22,6 +22,10 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
+from freemocap.system.recording_status.recording_status import (
+    RecordingStatus,
+    compute_recording_status,
+)
 from freemocap.system.default_paths import get_default_freemocap_recordings_path
 
 _VIEWER_HTML = Path(__file__).parent.parent.parent.parent / "core" / "viz" / "parquet_viewer.html"
@@ -45,6 +49,15 @@ class VideoInfo(BaseModel):
     stream_url: str
 
 
+class RecordingStatusSummary(BaseModel):
+    blender_export_ready: bool = False
+    has_blend_file: bool = False
+    has_annotated_videos: bool = False
+    has_calibration_toml: bool = False
+    stages_complete: int = 0
+    stages_total: int = 0
+
+
 class RecordingListEntry(BaseModel):
     name: str
     path: str
@@ -54,6 +67,7 @@ class RecordingListEntry(BaseModel):
     total_frames: Optional[int] = None
     duration_seconds: Optional[float] = None
     fps: Optional[float] = None
+    status_summary: RecordingStatusSummary = RecordingStatusSummary()
 
 
 # ---------------------------------------------------------------------------
@@ -311,7 +325,9 @@ def list_recordings(
                 total_size = _get_total_size(video_folder)
                 created_ts = _get_created_timestamp(child)
                 stats = _get_recording_stats(child, video_folder)
+                status = compute_recording_status(child)
 
+                stages_complete = sum(1 for s in status.stages if s.complete)
                 entries.append(RecordingListEntry(
                     name=child.name,
                     path=str(child),
@@ -321,11 +337,34 @@ def list_recordings(
                     total_frames=stats.get("total_frames"),
                     duration_seconds=stats.get("duration_seconds"),
                     fps=stats.get("fps"),
+                    status_summary=RecordingStatusSummary(
+                        blender_export_ready=status.blender_export_ready,
+                        has_blend_file=status.has_blend_file,
+                        has_annotated_videos=status.has_annotated_videos,
+                        has_calibration_toml=status.has_calibration_toml,
+                        stages_complete=stages_complete,
+                        stages_total=len(status.stages),
+                    ),
                 ))
         except (FileNotFoundError, PermissionError):
             continue
 
     return entries
+
+
+@playback_router.get(
+    "/{recording_id}/status",
+    summary="Health/readiness status for a recording (blender inputs, blend file, annotated videos)",
+)
+def get_recording_status(
+    recording_id: str,
+    recording_parent_directory: str | None = Query(
+        default=None,
+        description="Override the default recordings directory",
+    ),
+) -> RecordingStatus:
+    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    return compute_recording_status(recording_path)
 
 
 @playback_router.get(

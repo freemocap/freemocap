@@ -993,6 +993,19 @@ class AniposeCameraGroup:
         for i, (row, cam) in enumerate(zip(all_rows, self.cameras)):
             all_rows[i] = board.estimate_pose_rows(cam, row)
 
+        # Verify each camera has at least some frames with a successfully estimated board pose.
+        # solvePnP needs >= 6 charuco corners per frame; if a camera never saw that many, calibration cannot proceed.
+        for cam_idx, (rows, camera) in enumerate(zip(all_rows, self.cameras)):
+            valid_poses = sum(1 for r in rows if r.get("rvec") is not None and r.get("tvec") is not None)
+            if valid_poses == 0:
+                raise ValueError(
+                    f"Camera {cam_idx} ({camera.get_name()}) has no frames with enough charuco corners "
+                    f"for pose estimation (need >= 6 per frame). "
+                    f"Ensure the charuco board is clearly visible and well-lit in every camera's view, "
+                    f"and that the correct board dimensions are configured."
+                )
+            logger.info(f"  Camera {cam_idx} ({camera.get_name()}): {valid_poses}/{len(rows)} frames have valid board pose")
+
         charuco_frames = [f["framenum"][1] for f in all_rows[0]]
 
         logger.info("Merging observations across cameras...")
@@ -1117,7 +1130,8 @@ class AniposeCharucoBoard(CharucoBoard):
         ids: np.ndarray | None,
     ) -> tuple[np.ndarray | None, np.ndarray | None]:
         """Estimate board pose via solvePnP using detected charuco corner positions and their known 3D locations."""
-        if corners is None or ids is None or len(corners) < 5:
+        # cv2.solvePnP's DLT algorithm requires >= 6 point correspondences; skip frames below that.
+        if corners is None or ids is None or len(corners) < 6:
             return None, None
 
         flat_ids = ids.flatten()

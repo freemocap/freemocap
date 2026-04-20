@@ -9,6 +9,7 @@ import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 import {localeSlice} from "@/store/slices/locale";
 import {pipelinesSlice} from "@/store/slices/pipelines/pipelines-slice";
 import {blenderSlice} from "@/store/slices/blender/blender-slice";
+import {recordingStatusSlice} from "@/store/slices/recording-status/recording-status-slice";
 
 export const store = configureStore({
     reducer: {
@@ -22,5 +23,6 @@ export const store = configureStore({
         locale: localeSlice.reducer,
         pipelines: pipelinesSlice.reducer,
         blender: blenderSlice.reducer,
+        recordingStatus: recordingStatusSlice.reducer,
     },
 });

@@ -4,17 +4,15 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import StorageIcon from '@mui/icons-material/Storage';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
-import CloseIcon from '@mui/icons-material/Close';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
 import {PlaybackControls} from '@/components/playback/PlaybackControls';
 import {usePlaybackController} from '@/components/playback/usePlaybackController';
 import {usePlaybackContext} from '@/components/playback/PlaybackContext';
-import {RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
-import {useLocation} from 'react-router-dom';
+import {useLocation, useNavigate} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
@@ -25,6 +23,7 @@ const PlaybackPage: React.FC = () => {
     const {t} = useTranslation();
     const {api} = useElectronIPC();
     const location = useLocation();
+    const navigate = useNavigate();
     const isDark = theme.palette.mode === 'dark';
     const locationState = location.state as { loadRecordingPath?: string } | null;
 
@@ -42,14 +41,6 @@ const PlaybackPage: React.FC = () => {
         layoutDirection: 'horizontal',
     });
     const [resetKey, setResetKey] = useState<number>(0);
-
-    const [isBrowsing, setIsBrowsing] = useState<boolean>(!ctx?.recordingPath);
-
-    useEffect(() => {
-        if (!ctx?.recordingPath) {
-            setIsBrowsing(true);
-        }
-    }, [ctx?.recordingPath]);
 
     const isHorizontal = settings.layoutDirection === 'horizontal';
 
@@ -149,11 +140,11 @@ const PlaybackPage: React.FC = () => {
                                 {recordingName}
                             </Typography>
 
-                            {/* Browse Recordings button */}
-                            <Tooltip title={isBrowsing ? "Close browser" : "Browse recordings"}>
+                            {/* Browse Recordings button — navigates to the Browse tab */}
+                            <Tooltip title="Browse recordings">
                                 <IconButton
                                     size="small"
-                                    onClick={() => setIsBrowsing(!isBrowsing)}
+                                    onClick={() => navigate('/browse')}
                                     sx={{
                                         color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
                                         border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : theme.palette.divider}`,
@@ -167,8 +158,8 @@ const PlaybackPage: React.FC = () => {
                                         },
                                     }}
                                 >
-                                    {isBrowsing ? <CloseIcon sx={{fontSize: 16}}/> : <VideoLibraryIcon sx={{fontSize: 16}}/>}
-                                    {isBrowsing ? 'Close' : 'Browse'}
+                                    <VideoLibraryIcon sx={{fontSize: 16}}/>
+                                    Browse
                                 </IconButton>
                             </Tooltip>
 
@@ -253,7 +244,7 @@ const PlaybackPage: React.FC = () => {
                         </Box>
 
                         {/* Video + 3D viewport area */}
-                        <Box sx={{ flex: 1, minHeight: 0, display: isBrowsing ? 'none' : 'flex', flexDirection: 'column' }}>
+                        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                             {settings.show3dView ? (
                                 <PanelGroup
                                     key={`main-panels-${resetKey}-${settings.layoutDirection}`}
@@ -323,19 +314,6 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </Box>
                         
-                        {/* Recording Browser Area */}
-                        {isBrowsing && (
-                            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                                <RecordingBrowser 
-                                    onRecordingLoaded={(videos, recPath, recFps) => {
-                                        ctx?.onRecordingLoaded(videos, recPath, recFps);
-                                        setIsBrowsing(false);
-                                    }} 
-                                    initialLoadPath={ctx?.initialLoadPath} 
-                                />
-                            </Box>
-                        )}
-
                         {/* Playback controls — full width below video + 3D area */}
                         <PlaybackControls
                             isPlaying={controller.isPlaying}

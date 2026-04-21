@@ -1,132 +1,129 @@
-import React, {createContext, useCallback, useContext, useEffect, useState} from 'react';
+import React, {createContext, useCallback, useContext, useEffect, useRef, useState} from 'react';
 import type {LoadedVideo} from './RecordingBrowser';
 import {serverUrls} from '@/constants/server-urls';
-
-// Module-level cache so playback state survives tab switches
-let cachedPlaybackState = {
-    loadedVideos: [] as LoadedVideo[],
-    recordingPath: null as string | null,
-    recordingFps: undefined as number | undefined,
-    frameTimestamps: null as Record<string, number[]> | null,
-    currentFrame: 0,
-};
+import {useAppDispatch, useAppSelector} from '@/store';
+import {
+    activeRecordingSet,
+    selectActiveRecordingName,
+    selectActiveRecordingOrigin,
+} from '@/store/slices/active-recording/active-recording-slice';
 
 interface PlaybackContextValue {
     loadedVideos: LoadedVideo[];
-    recordingPath: string | null;
     recordingFps: number | undefined;
     frameTimestamps: Record<string, number[]> | null;
-    initialLoadPath: string | null;
     cachedCurrentFrame: number;
     onRecordingLoaded: (videos: LoadedVideo[], recordingPath: string, recordingFps?: number) => void;
     onFrameChange: (frame: number) => void;
-    setInitialLoadPath: (path: string | null) => void;
 }
 
 const PlaybackContext = createContext<PlaybackContextValue | null>(null);
 
 export const PlaybackProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
-    const [initialLoadPath, setInitialLoadPath] = useState<string | null>(null);
+    const dispatch = useAppDispatch();
+    const activeRecordingOrigin = useAppSelector(selectActiveRecordingOrigin);
+    const activeRecordingName = useAppSelector(selectActiveRecordingName);
 
-    const initState = (initialLoadPath && initialLoadPath !== cachedPlaybackState.recordingPath)
-        ? {
-            loadedVideos: [] as LoadedVideo[],
-            recordingPath: null,
-            recordingFps: undefined,
-            frameTimestamps: null,
-            currentFrame: 0,
-        }
-        : cachedPlaybackState;
-
-    const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>(initState.loadedVideos);
-    const [recordingPath, setRecordingPath] = useState<string | null>(initState.recordingPath);
-    const [recordingFps, setRecordingFps] = useState<number | undefined>(initState.recordingFps);
-    const [frameTimestamps, setFrameTimestamps] = useState<Record<string, number[]> | null>(initState.frameTimestamps);
+    const [loadedVideos, setLoadedVideos] = useState<LoadedVideo[]>([]);
+    const [loadedRecordingName, setLoadedRecordingName] = useState<string | null>(null);
+    const [recordingFps, setRecordingFps] = useState<number | undefined>(undefined);
+    const [frameTimestamps, setFrameTimestamps] = useState<Record<string, number[]> | null>(null);
+    const currentFrameRef = useRef<number>(0);
 
     const onRecordingLoaded = useCallback((videos: LoadedVideo[], path: string, fps?: number) => {
         setLoadedVideos(videos);
-        setRecordingPath(path);
+        setLoadedRecordingName(path);
         setRecordingFps(fps);
         setFrameTimestamps(null);
-        cachedPlaybackState = {
-            loadedVideos: videos,
-            recordingPath: path,
-            recordingFps: fps,
-            frameTimestamps: null,
-            currentFrame: 0,
-        };
+        currentFrameRef.current = 0;
     }, []);
 
     const onFrameChange = useCallback((frame: number) => {
-        cachedPlaybackState.currentFrame = frame;
+        currentFrameRef.current = frame;
     }, []);
 
-    // After a recording is loaded, fetch real timestamps from the server
+    // Fetch per-camera timestamps for the loaded recording.
     useEffect(() => {
-        if (loadedVideos.length === 0) return;
-        const fetchTimestamps = async () => {
+        if (loadedVideos.length === 0 || !loadedRecordingName) return;
+        let cancelled = false;
+        (async () => {
             try {
-                if (recordingPath) {
-                    const response = await fetch(serverUrls.endpoints.playbackAllTimestamps(recordingPath));
-                    if (!response.ok) return;
-                    const data = await response.json();
-                    if (data.timestamps && Object.keys(data.timestamps).length > 0) {
-                        setFrameTimestamps(data.timestamps);
-                        cachedPlaybackState.frameTimestamps = data.timestamps;
-                    }
+                const response = await fetch(serverUrls.endpoints.playbackAllTimestamps(loadedRecordingName));
+                if (!response.ok || cancelled) return;
+                const data = await response.json();
+                if (!cancelled && data.timestamps && Object.keys(data.timestamps).length > 0) {
+                    setFrameTimestamps(data.timestamps);
                 }
             } catch {
                 // Timestamps not available
             }
-        };
-        fetchTimestamps();
-    }, [loadedVideos, recordingPath]);
+        })();
+        return () => { cancelled = true; };
+    }, [loadedVideos, loadedRecordingName]);
 
-    // Auto-load latest recording on mount if nothing is loaded
+    // When the active recording changes (and videos haven't been loaded for it yet),
+    // fetch its video list. Skip if user is staging a pending capture.
     useEffect(() => {
-        if (initialLoadPath || initState.loadedVideos.length > 0) return;
+        if (!activeRecordingName) return;
+        if (activeRecordingOrigin === 'pending-capture') return;
+        if (activeRecordingName === loadedRecordingName) return;
 
-        let isMounted = true;
-        const fetchLatest = async () => {
+        let cancelled = false;
+        (async () => {
             try {
-                const response = await fetch(serverUrls.endpoints.playbackRecordings);
-                if (response.ok && isMounted) {
-                    const data = await response.json();
-                    if (data && data.length > 0) {
-                        const latest = data[0];
-                        const vidResp = await fetch(serverUrls.endpoints.playbackVideos(latest.name));
-                        if (vidResp.ok && isMounted) {
-                            const vidsData = await vidResp.json();
-                            const baseUrl = serverUrls.getHttpUrl();
-                            const vids = vidsData.map((v: any) => ({
-                                videoId: v.video_id,
-                                filename: v.filename,
-                                streamUrl: `${baseUrl}${v.stream_url}`,
-                                sizeBytes: v.size_bytes,
-                            }));
-                            onRecordingLoaded(vids, latest.name, latest.fps);
-                        }
-                    }
+                const vidResp = await fetch(serverUrls.endpoints.playbackVideos(activeRecordingName));
+                if (!vidResp.ok || cancelled) return;
+                const vidsData = await vidResp.json();
+                const baseUrl = serverUrls.getHttpUrl();
+                const vids: LoadedVideo[] = vidsData.map((v: any) => ({
+                    videoId: v.video_id,
+                    filename: v.filename,
+                    streamUrl: `${baseUrl}${v.stream_url}`,
+                    sizeBytes: v.size_bytes,
+                }));
+                if (!cancelled) {
+                    onRecordingLoaded(vids, activeRecordingName);
                 }
             } catch {
                 // Ignore errors
             }
-        };
-        fetchLatest();
-        return () => { isMounted = false; };
-    }, [initialLoadPath, initState.loadedVideos.length]);
+        })();
+        return () => { cancelled = true; };
+    }, [activeRecordingName, activeRecordingOrigin, loadedRecordingName, onRecordingLoaded]);
+
+    // Bootstrap: if no active recording on mount, auto-pick the most recent on disk.
+    useEffect(() => {
+        if (activeRecordingName) return;
+        if (activeRecordingOrigin === 'pending-capture') return;
+
+        let cancelled = false;
+        (async () => {
+            try {
+                const response = await fetch(serverUrls.endpoints.playbackRecordings);
+                if (!response.ok || cancelled) return;
+                const data = await response.json();
+                if (cancelled || !data || data.length === 0) return;
+                const latest = data[0];
+                setRecordingFps(latest.fps);
+                dispatch(activeRecordingSet({
+                    recordingName: latest.name,
+                    origin: 'auto-latest',
+                }));
+            } catch {
+                // Ignore errors
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [activeRecordingName, activeRecordingOrigin, dispatch]);
 
     return (
         <PlaybackContext.Provider value={{
             loadedVideos,
-            recordingPath,
             recordingFps,
             frameTimestamps,
-            initialLoadPath,
-            cachedCurrentFrame: initState.currentFrame,
+            cachedCurrentFrame: currentFrameRef.current,
             onRecordingLoaded,
             onFrameChange,
-            setInitialLoadPath,
         }}>
             {children}
         </PlaybackContext.Provider>

@@ -41,6 +41,11 @@ import {useTranslation} from 'react-i18next';
 import {RecordingStatusSummary} from '@/types/recording-status';
 import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
 import {useRecordingStatus} from '@/hooks/useRecordingStatus';
+import {useAppDispatch} from '@/store';
+import {
+    activeRecordingSet,
+    splitParentAndName,
+} from '@/store/slices/active-recording/active-recording-slice';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,8 +74,6 @@ export interface LoadedVideo {
 
 interface RecordingBrowserProps {
     onRecordingLoaded: (videos: LoadedVideo[], recordingPath: string, recordingFps?: number) => void;
-    /** If set, automatically load this recording path on mount. */
-    initialLoadPath?: string | null;
     /** Name/path of the recording currently loaded into the Playback view — highlighted in the list. */
     activeRecordingPath?: string | null;
 }
@@ -206,10 +209,11 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
 // Component
 // ---------------------------------------------------------------------------
 
-export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, initialLoadPath, activeRecordingPath }) => {
+export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, activeRecordingPath }) => {
     const theme = useTheme();
     const { t } = useTranslation();
     const isDark = theme.palette.mode === 'dark';
+    const dispatch = useAppDispatch();
 
     // Data state
     const [recordings, setRecordings] = useState<RecordingEntry[]>([]);
@@ -308,7 +312,16 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
 
                 const recFps = rec?.fps ?? undefined;
 
-                // Send recName as the recording path to identify it successfully in playbackpage
+                // Promote this recording to the app-wide active recording.
+                // Use rec.path to capture baseDirectory if available; otherwise dispatch just the name.
+                const parsed = rec?.path ? splitParentAndName(rec.path) : null;
+                dispatch(activeRecordingSet({
+                    recordingName: parsed?.recordingName ?? recName,
+                    baseDirectory: parsed?.baseDirectory,
+                    origin: 'browsed',
+                }));
+
+                // Context callback is view-model only (loadedVideos/fps).
                 onRecordingLoaded(videos, recName, recFps);
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Failed to load recording');
@@ -319,15 +332,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
         },
         [onRecordingLoaded, recordings],
     );
-
-    // Auto-load a recording if initialLoadPath is provided
-    const [didAutoLoad, setDidAutoLoad] = useState(false);
-    useEffect(() => {
-        if (initialLoadPath && !didAutoLoad) {
-            setDidAutoLoad(true);
-            loadRecording(initialLoadPath);
-        }
-    }, [initialLoadPath, didAutoLoad, loadRecording]);
 
     const handleLoadManualPath = useCallback(() => {
         const trimmed = manualPath.trim();

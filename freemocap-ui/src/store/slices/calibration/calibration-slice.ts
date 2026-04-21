@@ -6,9 +6,11 @@ import {
     loadCalibrationToml,
     startCalibrationRecording,
     stopCalibrationRecording,
-} from "@/store/slices/calibration/calibration-thunks";
-
-// ==================== Types ====================
+} from '@/store/slices/calibration/calibration-thunks';
+import {
+    selectActiveRecordingFullPath,
+    selectActiveRecordingOrigin,
+} from '@/store/slices/active-recording/active-recording-slice';
 
 export type CalibrationSolverMethod = 'anipose' | 'pyceres';
 
@@ -62,13 +64,9 @@ export interface CalibrationState {
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
-    lastCalibrationRecordingPath: string | null;
-    manualCalibrationRecordingPath: string | null;
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
 }
-
-// ==================== Initial State ====================
 
 const initialState: CalibrationState = {
     config: {
@@ -82,13 +80,9 @@ const initialState: CalibrationState = {
     recordingProgress: 0,
     isLoading: false,
     error: null,
-    lastCalibrationRecordingPath: null,
-    manualCalibrationRecordingPath: null,
     directoryInfo: null,
     loadedCalibration: null,
 };
-
-// ==================== Slice ====================
 
 export const calibrationSlice = createSlice({
     name: 'calibration',
@@ -97,47 +91,27 @@ export const calibrationSlice = createSlice({
         calibrationConfigUpdated: (state, action: PayloadAction<Partial<CalibrationConfig>>) => {
             state.config = { ...state.config, ...action.payload };
         },
-
         calibrationProgressUpdated: (state, action: PayloadAction<number>) => {
             state.recordingProgress = action.payload;
         },
-
         calibrationErrorCleared: (state) => {
             state.error = null;
         },
-
-        manualCalibrationRecordingPathChanged: (state, action: PayloadAction<string>) => {
-            state.manualCalibrationRecordingPath = action.payload;
-        },
-
-        manualCalibrationRecordingPathCleared: (state) => {
-            state.manualCalibrationRecordingPath = null;
-        },
-
-        lastCalibrationRecordingPathCleared: (state) => {
-            state.lastCalibrationRecordingPath = null;
-        },
-
         calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
-
         resetCalibrationState: () => initialState,
     },
-
     extraReducers: (builder) => {
         builder
             .addCase(startCalibrationRecording.pending, (state) => {
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(startCalibrationRecording.fulfilled, (state, action) => {
+            .addCase(startCalibrationRecording.fulfilled, (state) => {
                 state.isLoading = false;
                 state.isRecording = true;
                 state.recordingProgress = 0;
-                if (action.payload.calibrationRecordingPath) {
-                    state.lastCalibrationRecordingPath = action.payload.calibrationRecordingPath;
-                }
             })
             .addCase(startCalibrationRecording.rejected, (state, action) => {
                 state.isLoading = false;
@@ -191,12 +165,8 @@ export const calibrationSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload || 'Failed to calibrate recording';
             });
-
-
     },
 });
-
-// ==================== Selectors ====================
 
 export const selectCalibration = (state: RootState) => state.calibration;
 export const selectCalibrationConfig = (state: RootState) => state.calibration.config;
@@ -207,27 +177,11 @@ export const selectCalibrationError = (state: RootState) => state.calibration.er
 export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
 export const selectLoadedCalibration = (state: RootState) => state.calibration.loadedCalibration;
 
-export const selectCalibrationRecordingPath = createSelector(
-    [
-        (state: RootState) => state.calibration.manualCalibrationRecordingPath,
-        (state: RootState) => state.calibration.lastCalibrationRecordingPath,
-        (state: RootState) => state.recording.computed,
-    ],
-    (manualPath, lastPath, recordingComputed) => {
-        if (manualPath) return manualPath;
-        if (lastPath) return lastPath;
-
-        const calibrationFolderName = `${recordingComputed.recordingName}_calibration`;
-        return `${recordingComputed.fullRecordingPath}/${calibrationFolderName}`;
-    }
-);
+export const selectCalibrationRecordingPath = selectActiveRecordingFullPath;
 
 export const selectIsUsingManualCalibrationPath = createSelector(
-    [
-        (state: RootState) => state.calibration.manualCalibrationRecordingPath,
-        (state: RootState) => state.calibration.lastCalibrationRecordingPath,
-    ],
-    (manualPath, lastPath) => manualPath !== null || lastPath !== null
+    [selectActiveRecordingOrigin],
+    (origin) => origin === 'browsed',
 );
 
 export const selectCanStartCalibrationRecording = createSelector(
@@ -247,24 +201,22 @@ export const selectCanCalibrate = createSelector(
         selectCalibrationRecordingPath,
         selectCalibrationIsLoading,
         selectCalibrationIsRecording,
-        selectCalibrationDirectoryInfo
+        selectCalibrationDirectoryInfo,
     ],
-    (calibrationPath, isLoading, isRecording, directoryInfo) => {
-        return !!calibrationPath && !isLoading && !isRecording && (directoryInfo?.canCalibrate ?? false);
+    (recordingPath, isLoading, isRecording, directoryInfo) => {
+        return (
+            !!recordingPath &&
+            !isLoading &&
+            !isRecording &&
+            (directoryInfo?.canCalibrate ?? true)
+        );
     }
 );
-
-// ==================== Actions Export ====================
 
 export const {
     calibrationConfigUpdated,
     calibrationProgressUpdated,
     calibrationErrorCleared,
-    manualCalibrationRecordingPathChanged,
-    manualCalibrationRecordingPathCleared,
-    lastCalibrationRecordingPathCleared,
     calibrationDirectoryInfoUpdated,
-    resetCalibrationState
+    resetCalibrationState,
 } = calibrationSlice.actions;
-
-export default calibrationSlice.reducer;

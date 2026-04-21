@@ -10,6 +10,7 @@ import {localeSlice} from "@/store/slices/locale";
 import {pipelinesSlice} from "@/store/slices/pipelines/pipelines-slice";
 import {blenderSlice} from "@/store/slices/blender/blender-slice";
 import {recordingStatusSlice} from "@/store/slices/recording-status/recording-status-slice";
+import {activeRecordingSlice} from "@/store/slices/active-recording/active-recording-slice";
 
 export const store = configureStore({
     reducer: {
@@ -24,5 +25,6 @@ export const store = configureStore({
         pipelines: pipelinesSlice.reducer,
         blender: blenderSlice.reducer,
         recordingStatus: recordingStatusSlice.reducer,
+        activeRecording: activeRecordingSlice.reducer,
     },
 });

@@ -1,14 +1,94 @@
 import {useLocation, useNavigate} from "react-router-dom";
 import {useCallback, useMemo} from "react";
 import {alpha, darken} from "@mui/material/styles";
-import {Tab, Tabs} from "@mui/material";
+import {Box, Chip, Link, Tab, Tabs, Tooltip, Typography} from "@mui/material";
+import FolderOpenIcon from "@mui/icons-material/FolderOpen";
+import {useAppSelector} from "@/store";
+import {
+    selectActiveRecordingFullPath,
+    selectActiveRecordingName,
+} from "@/store/slices/active-recording/active-recording-slice";
+import {useElectronIPC} from "@/services";
 
 const NAV_TABS = [
     {path: '/welcome', label: 'Home'},
     {path: '/streaming', label: 'Streaming'},
     {path: '/playback', label: 'Playback'},
     {path: '/browse', label: 'Recordings'},
+    {path: '/active-recording', label: 'Active Recording'},
 ] as const;
+
+const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
+
+const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
+    const recordingName = useAppSelector(selectActiveRecordingName);
+    const fullPath = useAppSelector(selectActiveRecordingFullPath);
+    const {api} = useElectronIPC();
+
+    const handleOpenFolder = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!fullPath) return;
+        try {
+            await api?.fileSystem.openFolder.mutate({path: fullPath});
+        } catch (err) {
+            console.error('Failed to open recording folder:', err);
+        }
+    };
+
+
+
+    const tooltipContent = fullPath ? (
+        <Box sx={{p: 0.5}}>
+            <Typography variant="caption" sx={{fontFamily: MONO_FONT, display: 'block', mb: 0.5}}>
+                {fullPath}
+            </Typography>
+            <Link
+                component="button"
+                onClick={handleOpenFolder}
+                underline="hover"
+                sx={{display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: '0.7rem'}}
+            >
+                <FolderOpenIcon sx={{fontSize: 14}}/>
+                Open in Explorer
+            </Link>
+        </Box>
+    ) : (
+        <Typography variant="caption">No active recording</Typography>
+    );
+
+    return (
+        <Tooltip title={tooltipContent} placement="bottom" arrow>
+            <Box sx={{display: 'inline-flex', alignItems: 'center', gap: 0.75}}>
+                <Typography component="span" sx={{fontSize: 'inherit'}}>Active Recording</Typography>
+                {recordingName ? (
+                    <Chip
+                        size="small"
+                        label={recordingName}
+                        sx={{
+                            height: 18,
+                            fontSize: '0.65rem',
+                            fontFamily: MONO_FONT,
+                            maxWidth: 220,
+                            '& .MuiChip-label': {
+                                px: 0.75,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            },
+                        }}
+                    />
+                ) : (
+                    <Typography
+                        component="span"
+                        sx={{fontSize: '0.65rem', color: 'text.disabled', fontStyle: 'italic'}}
+                    >
+                        (none)
+                    </Typography>
+                )}
+            </Box>
+        </Tooltip>
+    );
+};
 
 export const MainNavTabs = () => {
     const location = useLocation();
@@ -39,6 +119,7 @@ export const MainNavTabs = () => {
                     py: 0.5,
                     borderRadius: 0.75,
                     position: 'relative',
+                    textTransform: 'none',
                 },
                 '& .MuiTab-root:not(:last-of-type)::after': {
                     content: '""',
@@ -53,9 +134,13 @@ export const MainNavTabs = () => {
                 },
             })}
         >
-            {NAV_TABS.map(tab => (
-                <Tab key={tab.path} label={tab.label}/>
-            ))}
+            {NAV_TABS.map((tab, idx) => {
+                const isActive = idx === activeTab;
+                const label = tab.path === '/active-recording'
+                    ? <ActiveRecordingTabLabel isActive={isActive}/>
+                    : tab.label;
+                return <Tab key={tab.path} label={label}/>;
+            })}
         </Tabs>
     );
 };

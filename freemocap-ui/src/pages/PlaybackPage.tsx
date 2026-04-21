@@ -12,38 +12,31 @@ import {usePlaybackController} from '@/components/playback/usePlaybackController
 import {usePlaybackContext} from '@/components/playback/PlaybackContext';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
-import {useLocation, useNavigate} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
-import {useAppDispatch} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {loadCalibrationForRecording} from "@/store/slices/calibration/calibration-thunks";
+import {selectActiveRecordingFullPath} from "@/store/slices/active-recording/active-recording-slice";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
     const {t} = useTranslation();
     const {api} = useElectronIPC();
-    const location = useLocation();
     const navigate = useNavigate();
     const isDark = theme.palette.mode === 'dark';
-    const locationState = location.state as { loadRecordingPath?: string } | null;
 
     const ctx = usePlaybackContext();
     const dispatch = useAppDispatch();
+    const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
 
-    // Pass initialLoadPath from route state to the context
     useEffect(() => {
-        const path = locationState?.loadRecordingPath ?? null;
-        if (path) ctx?.setInitialLoadPath(path);
-    }, [locationState?.loadRecordingPath]);
-
-    const recordingPathForCalibration = ctx?.recordingPath ?? null;
-    useEffect(() => {
-        if (!recordingPathForCalibration) return;
-        dispatch(loadCalibrationForRecording(recordingPathForCalibration));
-    }, [dispatch, recordingPathForCalibration]);
+        if (!activeRecordingPath) return;
+        dispatch(loadCalibrationForRecording(activeRecordingPath));
+    }, [dispatch, activeRecordingPath]);
 
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
@@ -55,7 +48,7 @@ const PlaybackPage: React.FC = () => {
     const isHorizontal = settings.layoutDirection === 'horizontal';
 
     const loadedVideos = ctx?.loadedVideos ?? [];
-    const recordingPath = ctx?.recordingPath ?? null;
+    const recordingPath = activeRecordingPath;
     const recordingFps = ctx?.recordingFps;
     const frameTimestamps = ctx?.frameTimestamps ?? null;
     const onFrameChange = ctx?.onFrameChange;

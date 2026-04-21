@@ -6,9 +6,7 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
 import {pathRecomputed} from "@/store/slices/recording/recording-slice";
-import {manualCalibrationRecordingPathChanged} from "@/store/slices/calibration/calibration-slice";
 import {calibrateRecording} from "@/store/slices/calibration/calibration-thunks";
-import {manualMocapRecordingPathChanged} from "@/store/slices/mocap/mocap-slice";
 import {processMocapRecording} from "@/store/slices/mocap/mocap-thunks";
 import {PresetPicker} from "@/components/common/PresetPicker";
 import {RecordingTypePreset, RECORDING_TYPE_OPTIONS} from "./recording-type-preset";
@@ -234,12 +232,11 @@ export const RecordingInfoPanel: React.FC = () => {
 
             try {
                 const result = await dispatch(stopRecording()).unwrap();
-                // Auto-launch pipeline based on recording type preset
+                // stopRecording.fulfilled promotes to activeRecording via extraReducer;
+                // preset dictates which follow-up pipeline to auto-launch.
                 if (result && recordingTypePreset === "calibration") {
-                    dispatch(manualCalibrationRecordingPathChanged(result.recording_path));
                     dispatch(calibrateRecording());
                 } else if (result && recordingTypePreset === "mocap") {
-                    dispatch(manualMocapRecordingPathChanged(result.recording_path));
                     dispatch(processMocapRecording());
                 }
             } catch (error) {

@@ -19,7 +19,6 @@ export const RecordingBrowserSection: React.FC = () => {
         >
             <RecordingBrowser
                 onRecordingLoaded={ctx.onRecordingLoaded}
-                initialLoadPath={ctx.initialLoadPath}
             />
         </CollapsibleSidebarSection>
     );

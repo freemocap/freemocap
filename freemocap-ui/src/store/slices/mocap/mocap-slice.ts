@@ -5,6 +5,10 @@ import {
     startMocapRecording,
     stopMocapRecording,
 } from "@/store/slices/mocap/mocap-thunks";
+import {
+    selectActiveRecordingFullPath,
+    selectActiveRecordingOrigin,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 // ==================== Types ====================
 
@@ -139,8 +143,6 @@ export interface MocapState {
     recordingProgress: number;
     isLoading: boolean;
     error: string | null;
-    lastMocapRecordingPath: string | null;
-    manualMocapRecordingPath: string | null;
     directoryInfo: MocapDirectoryInfo | null;
     /** User-specified calibration TOML path override. null = use most recent (default). */
     calibrationTomlPath: string | null;
@@ -159,8 +161,6 @@ const initialState: MocapState = {
     recordingProgress: 0,
     isLoading: false,
     error: null,
-    lastMocapRecordingPath: null,
-    manualMocapRecordingPath: null,
     directoryInfo: null,
     calibrationTomlPath: null,
     processingProgress: 0,
@@ -201,18 +201,6 @@ export const mocapSlice = createSlice({
             state.error = null;
         },
 
-        manualMocapRecordingPathChanged: (state, action: PayloadAction<string>) => {
-            state.manualMocapRecordingPath = action.payload;
-        },
-
-        manualMocapRecordingPathCleared: (state) => {
-            state.manualMocapRecordingPath = null;
-        },
-
-        lastMocapRecordingPathCleared: (state) => {
-            state.lastMocapRecordingPath = null;
-        },
-
         mocapDirectoryInfoUpdated: (state, action: PayloadAction<MocapDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
@@ -242,13 +230,10 @@ export const mocapSlice = createSlice({
                 state.isLoading = true;
                 state.error = null;
             })
-            .addCase(startMocapRecording.fulfilled, (state, action) => {
+            .addCase(startMocapRecording.fulfilled, (state) => {
                 state.isLoading = false;
                 state.isRecording = true;
                 state.recordingProgress = 0;
-                if (action.payload.mocapRecordingPath) {
-                    state.lastMocapRecordingPath = action.payload.mocapRecordingPath;
-                }
             })
             .addCase(startMocapRecording.rejected, (state, action) => {
                 state.isLoading = false;
@@ -304,27 +289,11 @@ export const selectCalibrationTomlPath = (state: RootState) => state.mocap.calib
 export const selectProcessingProgress = (state: RootState) => state.mocap.processingProgress;
 export const selectProcessingPhase = (state: RootState) => state.mocap.processingPhase;
 
-export const selectMocapRecordingPath = createSelector(
-    [
-        (state: RootState) => state.mocap.manualMocapRecordingPath,
-        (state: RootState) => state.mocap.lastMocapRecordingPath,
-        (state: RootState) => state.recording.computed,
-    ],
-    (manualPath, lastPath, recordingComputed) => {
-        if (manualPath) return manualPath;
-        if (lastPath) return lastPath;
-
-        const mocapFolderName = `${recordingComputed.recordingName}_mocap`;
-        return `${recordingComputed.fullRecordingPath}/${mocapFolderName}`;
-    }
-);
+export const selectMocapRecordingPath = selectActiveRecordingFullPath;
 
 export const selectIsUsingManualMocapPath = createSelector(
-    [
-        (state: RootState) => state.mocap.manualMocapRecordingPath,
-        (state: RootState) => state.mocap.lastMocapRecordingPath,
-    ],
-    (manualPath, lastPath) => manualPath !== null || lastPath !== null
+    [selectActiveRecordingOrigin],
+    (origin) => origin === 'browsed',
 );
 
 export const selectCanStartMocapRecording = createSelector(
@@ -366,9 +335,6 @@ export const {
     skeletonFilterConfigUpdated,
     mocapProgressUpdated,
     mocapErrorCleared,
-    manualMocapRecordingPathChanged,
-    manualMocapRecordingPathCleared,
-    lastMocapRecordingPathCleared,
     mocapDirectoryInfoUpdated,
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,

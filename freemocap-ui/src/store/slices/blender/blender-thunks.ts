@@ -2,6 +2,7 @@ import {createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
 import {serverUrls} from '@/services';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
+import {selectActiveRecordingFullPath} from '@/store/slices/active-recording/active-recording-slice';
 
 interface DetectBlenderResult {
     blenderExePath: string | null;
@@ -51,8 +52,7 @@ export const exportRecordingToBlender = createAsyncThunk<
             const blender = state.blender;
             const recordingFolderPath =
                 (arg && arg.recordingFolderPath) ||
-                state.mocap.manualMocapRecordingPath ||
-                state.mocap.lastMocapRecordingPath;
+                selectActiveRecordingFullPath(state);
 
             if (!recordingFolderPath) {
                 return rejectWithValue('No recording folder path available for Blender export');
@@ -103,8 +103,7 @@ export const openRecordingInBlender = createAsyncThunk<
             const blender = state.blender;
             const recordingFolderPath =
                 (arg && arg.recordingFolderPath) ||
-                state.mocap.manualMocapRecordingPath ||
-                state.mocap.lastMocapRecordingPath;
+                selectActiveRecordingFullPath(state);
 
             if (!recordingFolderPath) {
                 return rejectWithValue('No recording folder path available to open in Blender');

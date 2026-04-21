@@ -4,9 +4,6 @@ import {useElectronIPC} from '@/services';
 import {
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,
-    lastMocapRecordingPathCleared,
-    manualMocapRecordingPathChanged,
-    manualMocapRecordingPathCleared,
     MediapipeDetectorConfig,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,
@@ -29,6 +26,11 @@ import {
     stopMocapRecording,
 } from "@/store/slices/mocap";
 import {pathRecomputed} from "@/store/slices/recording";
+import {
+    activeRecordingCleared,
+    activeRecordingSet,
+    splitParentAndName,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 export function useMocap() {
     const dispatch = useAppDispatch();
@@ -120,15 +122,21 @@ export function useMocap() {
 
     const setManualRecordingPath = useCallback(
         async (path: string) => {
-            dispatch(manualMocapRecordingPathChanged(path));
+            const parsed = splitParentAndName(path);
+            if (parsed) {
+                dispatch(activeRecordingSet({
+                    recordingName: parsed.recordingName,
+                    baseDirectory: parsed.baseDirectory,
+                    origin: 'browsed',
+                }));
+            }
             await validateDirectory(path);
         },
         [dispatch, validateDirectory]
     );
 
     const clearManualRecordingPath = useCallback(() => {
-        dispatch(manualMocapRecordingPathCleared());
-        dispatch(lastMocapRecordingPathCleared());
+        dispatch(activeRecordingCleared());
         dispatch(pathRecomputed());
     }, [dispatch]);
 

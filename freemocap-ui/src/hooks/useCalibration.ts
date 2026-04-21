@@ -9,9 +9,6 @@ import {
     calibrationConfigUpdated,
     calibrationDirectoryInfoUpdated,
     calibrationErrorCleared,
-    lastCalibrationRecordingPathCleared,
-    manualCalibrationRecordingPathChanged,
-    manualCalibrationRecordingPathCleared,
     selectCalibration,
     selectCalibrationDirectoryInfo,
     selectCalibrationRecordingPath,
@@ -22,6 +19,11 @@ import {
     stopCalibrationRecording,
 } from "@/store/slices/calibration";
 import {pathRecomputed} from "@/store/slices/recording";
+import {
+    activeRecordingCleared,
+    activeRecordingSet,
+    splitParentAndName,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 export function useCalibration() {
     const dispatch = useAppDispatch();
@@ -61,16 +63,21 @@ export function useCalibration() {
 
     const setManualRecordingPath = useCallback(
         async (path: string) => {
-            dispatch(manualCalibrationRecordingPathChanged(path));
-            // Validate the new path
+            const parsed = splitParentAndName(path);
+            if (parsed) {
+                dispatch(activeRecordingSet({
+                    recordingName: parsed.recordingName,
+                    baseDirectory: parsed.baseDirectory,
+                    origin: 'browsed',
+                }));
+            }
             await validateDirectory(path);
         },
         [dispatch, validateDirectory]
     );
 
     const clearManualRecordingPath = useCallback(() => {
-        dispatch(manualCalibrationRecordingPathCleared());
-        dispatch(lastCalibrationRecordingPathCleared());
+        dispatch(activeRecordingCleared());
         dispatch(pathRecomputed());
     }, [dispatch]);
 

@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useRef} from "react";
-import {parquetReadObjects} from "hyparquet";
+import {parquetRead} from "hyparquet";
+import type {DecodedArray} from "hyparquet";
 import {Point3d} from "./helpers/viewport3d-types";
 import {
     KeypointsCallback,
@@ -15,9 +16,7 @@ import {serverUrls} from "@/constants/server-urls";
  * per-frame point records in lockstep with the playback slider.
  *
  * Design notes:
- *   - Parquet is the canonical freemocap data format; decoding it client-side
- *     keeps the backend simple (one passthrough file endpoint) and avoids
- *     sibling cache artifacts that can drift from the source.
+ *   - Uses parquetRead (columnar API) instead of parquetReadObjects to read column-wise.
  *   - After decode, each trajectory is packed as Float32Array of length
  *     frameCount * K * 3, giving O(1) per-frame indexing.
  *   - Subscribers receive a pre-allocated scratch record whose Point3d slots
@@ -33,6 +32,15 @@ const TRAJECTORY_PARQUET_VALUE: Record<TrajectoryAlias, string> = {
     filtered: "rigid_3d_xyz",
 };
 
+const ParquetColumnNames = {
+    frame:      "frame",
+    keypoint:   "keypoint",
+    x:          "x",
+    y:          "y",
+    z:          "z",
+    trajectory: "trajectory",
+} as const;
+
 interface TrajectoryData {
     names: string[];
     buffer: Float32Array;           // length = frameCount * K * 3
@@ -41,15 +49,6 @@ interface TrajectoryData {
     scratch: Record<string, Point3d>;
     subscribers: Set<KeypointsCallback>;
     lastEmittedFrame: number;       // -1 means "never emitted"
-}
-
-interface ParquetRow {
-    frame: number;
-    keypoint: string;
-    x: number;
-    y: number;
-    z: number;
-    trajectory: string;
 }
 
 function emptyTrajectory(): TrajectoryData {
@@ -64,16 +63,85 @@ function emptyTrajectory(): TrajectoryData {
     };
 }
 
+// Helper to check if a value is a BigInt
+function isBigInt(value: unknown): value is bigint {
+    return typeof value === "bigint";
+}
+
+// Helper to convert any BigInt-containing array to Float64Array
+function convertBigIntArray(arr: DecodedArray): Float64Array | DecodedArray {
+    if (arr instanceof BigInt64Array || arr instanceof BigUint64Array) {
+        const out = new Float64Array(arr.length);
+        for (let i = 0; i < arr.length; i++) {
+            out[i] = Number(arr[i]);
+        }
+        return out;
+    }
+    // Check if plain array contains BigInt values
+    if (Array.isArray(arr) && arr.length > 0 && isBigInt(arr[0])) {
+        const out = new Float64Array(arr.length);
+        for (let i = 0; i < arr.length; i++) {
+            out[i] = Number(arr[i]);
+        }
+        return out;
+    }
+    return arr;
+}
+
+// Merge row-group chunks for a single column into one contiguous array.
+function concatDecodedArrays(chunks: DecodedArray[]): DecodedArray {
+    // First, convert any BigInt arrays to Float64Array
+    const converted = chunks.map(c => convertBigIntArray(c));
+    
+    // Even for a single chunk, check if it was a BigInt array (already converted above)
+    if (converted.length === 1) {
+        return converted[0];
+    }
+    
+    const total = converted.reduce((s, c) => s + c.length, 0);
+    const first = converted[0];
+    if (first instanceof Float64Array) {
+        const out = new Float64Array(total);
+        let off = 0;
+        for (const c of converted) { out.set(c as Float64Array, off); off += c.length; }
+        return out;
+    }
+    if (first instanceof Float32Array) {
+        const out = new Float32Array(total);
+        let off = 0;
+        for (const c of converted) { out.set(c as Float32Array, off); off += c.length; }
+        return out;
+    }
+    if (first instanceof Int32Array) {
+        const out = new Int32Array(total);
+        let off = 0;
+        for (const c of converted) { out.set(c as Int32Array, off); off += c.length; }
+        return out;
+    }
+    // String columns or other arrays
+    const out: unknown[] = [];
+    for (const c of converted) for (let i = 0; i < c.length; i++) out.push((c as unknown[])[i]);
+    return out;
+}
+
 function buildTrajectory(
-    rows: ParquetRow[],
+    cols: Record<string, DecodedArray>,
     parquetValue: string,
     frameCount: number,
 ): TrajectoryData {
+    // Frame column may be Int32Array or Float64Array (if converted from BigInt)
+    const frameCol = cols[ParquetColumnNames.frame] as Int32Array | Float64Array;
+    const keypointCol = cols[ParquetColumnNames.keypoint] as string[];
+    const xCol = cols[ParquetColumnNames.x] as Float64Array;
+    const yCol = cols[ParquetColumnNames.y] as Float64Array;
+    const zCol = cols[ParquetColumnNames.z] as Float64Array;
+    const trajCol = cols[ParquetColumnNames.trajectory] as string[];
+    const rowCount = frameCol.length;
+
     // First pass: collect unique keypoint names for this trajectory.
     const nameSet = new Set<string>();
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (row.trajectory === parquetValue) nameSet.add(String(row.keypoint));
+    for (let i = 0; i < rowCount; i++) {
+        if (trajCol[i] === parquetValue) nameSet.add(keypointCol[i]);
     }
     if (nameSet.size === 0) return emptyTrajectory();
 
@@ -85,18 +153,17 @@ function buildTrajectory(
     const buffer = new Float32Array(frameCount * K * 3);
     buffer.fill(NaN);
 
-    // Second pass: scatter rows into the packed buffer.
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (row.trajectory !== parquetValue) continue;
-        const f = row.frame;
+    // Second pass: scatter columnar data into the packed buffer.
+    for (let i = 0; i < rowCount; i++) {
+        if (trajCol[i] !== parquetValue) continue;
+        const f = frameCol[i];
         if (f < 0 || f >= frameCount) continue;
-        const k = nameToIdx.get(String(row.keypoint));
+        const k = nameToIdx.get(keypointCol[i]);
         if (k === undefined) continue;
         const off = (f * K + k) * 3;
-        buffer[off] = row.x;
-        buffer[off + 1] = row.y;
-        buffer[off + 2] = row.z;
+        buffer[off]     = xCol[i];
+        buffer[off + 1] = yCol[i];
+        buffer[off + 2] = zCol[i];
     }
 
     const scratch: Record<string, Point3d> = {};
@@ -139,7 +206,7 @@ function fireSubscribers(traj: TrajectoryData): void {
 
 export const FileKeypointsSourceProvider: React.FC<{
     recordingId: string | null;
-    currentFrameRef: React.MutableRefObject<number>;
+    currentFrameRef: React.RefObject<number>;
     children: React.ReactNode;
 }> = ({recordingId, currentFrameRef, children}) => {
 
@@ -170,18 +237,31 @@ export const FileKeypointsSourceProvider: React.FC<{
                 const ab = await resp.arrayBuffer();
                 const tFetched = performance.now();
 
-                const rows = (await parquetReadObjects({
+                // Collect column chunks. onChunk fires once per column per row group,
+                // so large files produce multiple chunks per column that must be merged.
+                const chunkMap: Record<string, DecodedArray[]> = {};
+                await parquetRead({
                     file: ab,
-                    columns: ["frame", "keypoint", "x", "y", "z", "trajectory"],
-                })) as ParquetRow[];
+                    columns: Object.values(ParquetColumnNames),
+                    onChunk: ({columnName, columnData}) => {
+                        (chunkMap[columnName] ??= []).push(columnData);
+                    },
+                });
                 const tDecoded = performance.now();
 
                 if (controller.signal.aborted) return;
 
+                // Merge row-group chunks into single contiguous arrays per column.
+                const cols: Record<string, DecodedArray> = {};
+                for (const name of Object.keys(chunkMap)) {
+                    cols[name] = concatDecodedArrays(chunkMap[name]);
+                }
+
+                // Frame column may be Int32Array or Float64Array (if converted from BigInt)
+                const frameCol = cols[ParquetColumnNames.frame] as Int32Array | Float64Array;
                 let frameCount = 0;
-                for (let i = 0; i < rows.length; i++) {
-                    const f = rows[i].frame;
-                    if (f > frameCount) frameCount = f;
+                for (let i = 0; i < frameCol.length; i++) {
+                    if (frameCol[i] > frameCount) frameCount = frameCol[i];
                 }
                 frameCount += 1;
 
@@ -189,8 +269,8 @@ export const FileKeypointsSourceProvider: React.FC<{
                 const rawSubs = rawRef.current.subscribers;
                 const filteredSubs = filteredRef.current.subscribers;
 
-                const rawTraj = buildTrajectory(rows, TRAJECTORY_PARQUET_VALUE.raw, frameCount);
-                const filteredTraj = buildTrajectory(rows, TRAJECTORY_PARQUET_VALUE.filtered, frameCount);
+                const rawTraj = buildTrajectory(cols, TRAJECTORY_PARQUET_VALUE.raw, frameCount);
+                const filteredTraj = buildTrajectory(cols, TRAJECTORY_PARQUET_VALUE.filtered, frameCount);
                 rawTraj.subscribers = rawSubs;
                 filteredTraj.subscribers = filteredSubs;
                 rawRef.current = rawTraj;
@@ -198,7 +278,7 @@ export const FileKeypointsSourceProvider: React.FC<{
 
                 const tBuilt = performance.now();
                 console.info(
-                    `[FileKeypointsSource] parquet ready: ${rows.length} rows, ${frameCount} frames, ` +
+                    `[FileKeypointsSource] parquet ready: ${frameCol.length} rows, ${frameCount} frames, ` +
                     `raw K=${rawTraj.keypointCount}, filtered K=${filteredTraj.keypointCount} ` +
                     `(fetch ${(tFetched - t0) | 0}ms, decode ${(tDecoded - tFetched) | 0}ms, pivot ${(tBuilt - tDecoded) | 0}ms)`
                 );

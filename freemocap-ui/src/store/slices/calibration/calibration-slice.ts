@@ -2,6 +2,7 @@ import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
 import {
     calibrateRecording,
+    loadCalibrationForRecording,
     loadCalibrationToml,
     startCalibrationRecording,
     stopCalibrationRecording,
@@ -166,6 +167,16 @@ export const calibrationSlice = createSlice({
             })
             .addCase(loadCalibrationToml.rejected, (state) => {
                 state.loadedCalibration = null;
+            });
+
+        builder
+            .addCase(loadCalibrationForRecording.fulfilled, (state, action) => {
+                if (action.payload) {
+                    state.loadedCalibration = action.payload;
+                }
+            })
+            .addCase(loadCalibrationForRecording.rejected, (state, action) => {
+                console.warn('[calibration] loadCalibrationForRecording rejected:', action.payload);
             });
 
         builder

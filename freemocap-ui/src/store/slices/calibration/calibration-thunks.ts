@@ -6,6 +6,31 @@ import {serverUrls} from "@/services";
 import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import type {LoadedCalibration} from "./calibration-slice";
 
+export const loadCalibrationForRecording = createAsyncThunk<
+    LoadedCalibration | null,
+    string,
+    { state: RootState; rejectValue: string }
+>(
+    'calibration/loadCalibrationForRecording',
+    async (recordingId, { rejectWithValue }) => {
+        try {
+            const url = `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/calibration`;
+            const resp = await fetch(url);
+            if (resp.status === 404) {
+                console.warn(`[calibration] No calibration found for recording: ${recordingId}`);
+                return null;
+            }
+            if (!resp.ok) {
+                return rejectWithValue(`Calibration fetch failed: ${resp.status}`);
+            }
+            return (await resp.json()) as LoadedCalibration;
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            return rejectWithValue(msg);
+        }
+    }
+);
+
 export const loadCalibrationToml = createAsyncThunk<
     LoadedCalibration | null,
     { path: string; force?: boolean },

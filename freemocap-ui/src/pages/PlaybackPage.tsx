@@ -18,6 +18,8 @@ import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
+import {useAppDispatch} from "@/store";
+import {loadCalibrationForRecording} from "@/store/slices/calibration/calibration-thunks";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
@@ -29,12 +31,19 @@ const PlaybackPage: React.FC = () => {
     const locationState = location.state as { loadRecordingPath?: string } | null;
 
     const ctx = usePlaybackContext();
+    const dispatch = useAppDispatch();
 
     // Pass initialLoadPath from route state to the context
     useEffect(() => {
         const path = locationState?.loadRecordingPath ?? null;
         if (path) ctx?.setInitialLoadPath(path);
     }, [locationState?.loadRecordingPath]);
+
+    const recordingPathForCalibration = ctx?.recordingPath ?? null;
+    useEffect(() => {
+        if (!recordingPathForCalibration) return;
+        dispatch(loadCalibrationForRecording(recordingPathForCalibration));
+    }, [dispatch, recordingPathForCalibration]);
 
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,

@@ -6,7 +6,7 @@ import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {RecordingBrowser} from '@/components/playback/RecordingBrowser';
 import {usePlaybackContext} from '@/components/playback/PlaybackContext';
 
-const BrowsePage: React.FC = () => {
+const BrowserPage: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const ctx = usePlaybackContext();
@@ -44,4 +44,4 @@ const BrowsePage: React.FC = () => {
     );
 };
 
-export default BrowsePage;
+export default BrowserPage;

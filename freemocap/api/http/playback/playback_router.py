@@ -16,8 +16,9 @@ Endpoints:
 import csv
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+import toml
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from pydantic import BaseModel
 from freemocap.system.recording_status.recording_status import (
     RecordingStatus,
     compute_recording_status,
+    _find_calibration_toml,
 )
 from freemocap.system.default_paths import get_default_freemocap_recordings_path
 
@@ -464,6 +466,65 @@ def get_recording_parquet(
             detail=f"Parquet file not found: {p}",
         )
     return FileResponse(str(p), media_type="application/octet-stream", filename=p.name)
+
+
+@playback_router.get(
+    "/{recording_id}/calibration",
+    summary="Return parsed calibration data (camera poses) for a recording",
+)
+def get_recording_calibration(
+    recording_id: str,
+    recording_parent_directory: str | None = Query(
+        default=None,
+        description="Override the default recordings directory",
+    ),
+) -> dict[str, Any]:
+    """Parse the recording's calibration TOML and return camera pose data.
+
+    Returns JSON matching the frontend LoadedCalibration shape:
+      { path, mtimeMs, cameras: [...], metadata }
+    Returns 404 if no calibration TOML is present in the recording folder.
+    """
+    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    toml_path = _find_calibration_toml(recording_path)
+    if toml_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No calibration TOML found in recording: {recording_path}",
+        )
+
+    try:
+        raw = toml_path.read_text(encoding="utf-8")
+        parsed = toml.loads(raw)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to parse calibration TOML: {e}")
+
+    mtime_ms = toml_path.stat().st_mtime * 1000
+
+    cameras = []
+    for key, val in parsed.items():
+        if key == "metadata" or not isinstance(val, dict):
+            continue
+        if "world_position" not in val or "world_orientation" not in val:
+            continue
+        cameras.append({
+            "id": key,
+            "name": str(val.get("name", key)),
+            "size": val.get("size"),
+            "matrix": val.get("matrix"),
+            "distortions": val.get("distortions"),
+            "rotation": val.get("rotation"),
+            "translation": val.get("translation"),
+            "world_orientation": val["world_orientation"],
+            "world_position": val["world_position"],
+        })
+
+    return {
+        "path": str(toml_path),
+        "mtimeMs": mtime_ms,
+        "cameras": cameras,
+        "metadata": parsed.get("metadata", None),
+    }
 
 
 @playback_router.get(

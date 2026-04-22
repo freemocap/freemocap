@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from "react";
-import {Box, useTheme} from "@mui/material";
+import {Box, Checkbox, FormControlLabel, useTheme} from "@mui/material";
 import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -33,6 +33,7 @@ export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string
     {value: "calibration", label: "Calibration"},
     {value: "mocap", label: "Mocap"},
 ];
+
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
@@ -59,6 +60,7 @@ export const RecordingInfoPanel: React.FC = () => {
     const [recordingTag, setRecordingTag] = useState<string>("");
     const [micDeviceIndex, setMicDeviceIndex] = useState<number>(-1);
     const [recordingTypePreset, setRecordingTypePreset] = useState<RecordingTypePreset>("none");
+    const [autoProcess, setAutoProcess] = useState<boolean>(true); // Auto-process by default when preset selected
     const {isElectron, api} = useElectronIPC();
     const {connectedCameraIds} = useServer();
     const noCamerasConnected = connectedCameraIds.length === 0;
@@ -97,7 +99,7 @@ export const RecordingInfoPanel: React.FC = () => {
             const timeoutMs = 5000;
             const elapsed = Date.now() - pendingOperation.timestamp;
             if (elapsed > timeoutMs) {
-                console.error(`Recording ${pendingOperation.type} operation timed out after ${timeoutMs}ms`);
+                console.error("Recording " + pendingOperation.type + " operation timed out after " + timeoutMs + "ms");
                 setPendingOperation(null);
             }
         }
@@ -199,7 +201,7 @@ export const RecordingInfoPanel: React.FC = () => {
             ? customSubfolderName || getTimestampString()
             : "";
         const recordingPath = createSubfolder
-            ? `${recordingInfo.recordingDirectory}/${subfolderName}`
+            ? recordingInfo.recordingDirectory + "/" + subfolderName
             : recordingInfo.recordingDirectory;
 
         console.log("Recording path:", recordingPath);
@@ -240,10 +242,10 @@ export const RecordingInfoPanel: React.FC = () => {
             try {
                 const result = await dispatch(stopRecording()).unwrap();
                 // stopRecording.fulfilled promotes to activeRecording via extraReducer;
-                // preset dictates which follow-up pipeline to auto-launch.
-                if (result && recordingTypePreset === "calibration") {
+                // preset + autoProcess dictates which follow-up pipeline to auto-launch.
+                if (result && autoProcess && recordingTypePreset === "calibration") {
                     dispatch(calibrateRecording());
-                } else if (result && recordingTypePreset === "mocap") {
+                } else if (result && autoProcess && recordingTypePreset === "mocap") {
                     dispatch(processMocapRecording());
                 }
             } catch (error) {
@@ -252,7 +254,7 @@ export const RecordingInfoPanel: React.FC = () => {
                 throw error; // Fail loudly as per preferences
             }
         } else if (useDelayStart) {
-            console.log(`Starting countdown from ${delaySeconds} seconds`);
+            console.log("Starting countdown from " + delaySeconds + " seconds");
             setCountdown(delaySeconds);
         } else {
             await handleStartRecording();
@@ -281,6 +283,43 @@ export const RecordingInfoPanel: React.FC = () => {
                     disabled={noCamerasConnected && !recordingInfo.isRecording}
                     onClick={handleRecordButtonClick}
                 />
+            }
+            secondaryControls={
+                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                    <PresetPicker
+                        value={recordingTypePreset}
+                        options={RECORDING_TYPE_OPTIONS}
+                        onChange={setRecordingTypePreset}
+                        disabled={recordingInfo.isRecording}
+                        size="small"
+                        minWidth={70}
+                        sx={{
+                            '& .MuiSelect-select': {py: 0.25, fontSize: 11, color: 'inherit'},
+                            '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
+                            '& .MuiSvgIcon-root': {color: 'inherit', fontSize: 14},
+                        }}
+                    />
+                    <FormControlLabel
+                        control={
+                            <Checkbox
+                                checked={autoProcess}
+                                onChange={(e) => setAutoProcess(e.target.checked)}
+                                disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
+                                size="small"
+                                sx={{py: 0, '& .MuiSvgIcon-root': {fontSize: 14}}}
+                            />
+                        }
+                        label="Auto Process"
+                        sx={{
+                            ml: 0,
+                            mr: 0,
+                            '& .MuiFormControlLabel-label': {
+                                fontSize: 10,
+                                opacity: recordingTypePreset === "none" ? 0.5 : 1,
+                            },
+                        }}
+                    />
+                </Box>
             }
             defaultExpanded={false}
         >
@@ -311,23 +350,6 @@ export const RecordingInfoPanel: React.FC = () => {
                         },
                     }}
                 >
-                    {/* Full recording button in expanded content */}
-                    <Box sx={{px: 1, py: 1, display: 'flex', alignItems: 'center', gap: 1}}>
-                        Recording Type Presets:
-                        <PresetPicker
-                            value={recordingTypePreset}
-                            options={RECORDING_TYPE_OPTIONS}
-                            onChange={setRecordingTypePreset}
-                            disabled={recordingInfo.isRecording}
-                            size="small"
-                            minWidth={80}
-                            sx={{
-                                '& .MuiSelect-select': {py: 0.25, fontSize: 12, color: 'inherit'},
-                                '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
-                                '& .MuiSvgIcon-root': {color: 'inherit'},
-                            }}
-                        />
-                    </Box>
                     <Box sx={{px: 1, py: 1}}>
                         {/* Microphone selector */}
                         <MicrophoneSelector

@@ -26,6 +26,8 @@ import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
 import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {selectPlannedRecordingName, selectPlannedRecordingDirectory} from "@/store/slices/recording";
+import {useAppSelector} from "@/store";
 
 export const CalibrationPanel: React.FC = () => {
     const theme = useTheme();
@@ -50,6 +52,17 @@ export const CalibrationPanel: React.FC = () => {
         calibrateSelectedRecording,
         clearError,
     } = useCalibration();
+
+    // Planned recording info (potential recording when no actual recording exists)
+    const plannedName = useAppSelector(selectPlannedRecordingName);
+    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
+
+    // Compute the effective path to display (actual or planned)
+    const effectiveCalibrationPath = calibrationRecordingPath 
+        || (plannedName ? plannedDirectory + '/' + plannedName : null);
+
+    // Determine if we're showing a pending (not yet created) recording
+    const isPendingRecording = !calibrationRecordingPath && !!plannedName;
 
     // Auto-poll directory status instead of requiring manual refresh
     const {triggerRefresh, isWatching} = useDirectoryWatcher(
@@ -77,9 +90,9 @@ export const CalibrationPanel: React.FC = () => {
     };
 
     const handleOpenFolder = async (): Promise<void> => {
-        if (!api || !calibrationRecordingPath) return;
+        if (!api || !effectiveCalibrationPath) return;
         try {
-            await api.fileSystem.openFolder.mutate({path: calibrationRecordingPath});
+            await api.fileSystem.openFolder.mutate({path: effectiveCalibrationPath});
         } catch (err) {
             console.error("Failed to open folder:", err);
             setLocalError("Failed to open folder in file explorer");
@@ -93,7 +106,7 @@ export const CalibrationPanel: React.FC = () => {
         if (newPath.includes("~") && api) {
             try {
                 const home: string = await api.fileSystem.getHomeDirectory.query();
-                const expanded: string = newPath.replace(/^~([/\\])?/, home ? `${home}$1` : "");
+                const expanded: string = newPath.replace(/^~([\/])?/, home ? home + '$1' : "");
                 await setManualRecordingPath(expanded);
             } catch {
                 await setManualRecordingPath(newPath);
@@ -112,20 +125,24 @@ export const CalibrationPanel: React.FC = () => {
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const statusLabel = isRecording
-        ? `Recording ${recordingProgress.toFixed(0)}%`
+        ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
             ? "Processing..."
-            : directoryInfo?.cameraCalibrationTomlPath
-                ? "Calibrated"
-                : "Idle";
+            : isPendingRecording
+                ? "Pending"
+                : directoryInfo?.cameraCalibrationTomlPath
+                    ? "Calibrated"
+                    : "Idle";
 
     const statusColor = isRecording
         ? theme.palette.error.main
         : isLoading
             ? theme.palette.warning.main
-            : directoryInfo?.cameraCalibrationTomlPath
-                ? theme.palette.success.main
-                : theme.palette.grey[600];
+            : isPendingRecording
+                ? theme.palette.grey[500]
+                : directoryInfo?.cameraCalibrationTomlPath
+                    ? theme.palette.success.main
+                    : theme.palette.grey[600];
 
     return (
         <CollapsibleSidebarSection
@@ -153,19 +170,6 @@ export const CalibrationPanel: React.FC = () => {
                             {displayError}
                         </Alert>
                     )}
-
-                    {/*<FormControlLabel*/}
-                    {/*    control={*/}
-                    {/*        <Checkbox*/}
-                    {/*            checked={config.liveTrackCharuco}*/}
-                    {/*            onChange={(e) =>*/}
-                    {/*                updateCalibrationConfig({liveTrackCharuco: e.target.checked})*/}
-                    {/*            }*/}
-                    {/*            disabled={isLoading}*/}
-                    {/*        />*/}
-                    {/*    }*/}
-                    {/*    label="Live Track Charuco Board"*/}
-                    {/*/>*/}
 
                     {/* Recording Controls */}
                     <Stack direction="row" spacing={2}>
@@ -196,11 +200,11 @@ export const CalibrationPanel: React.FC = () => {
                     {/* Recording Path Input */}
                     <TextField
                         label="Calibration Recording Path"
-                        value={calibrationRecordingPath}
+                        value={effectiveCalibrationPath || ''}
                         onChange={handlePathInputChange}
                         fullWidth
                         size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
+                        helperText={isUsingManualPath ? "Using custom path" : isPendingRecording ? "Pending capture - will create on record" : "Using default recording directory"}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -229,7 +233,7 @@ export const CalibrationPanel: React.FC = () => {
                                                 onClick={handleOpenFolder}
                                                 edge="end"
                                                 size="small"
-                                                disabled={!calibrationRecordingPath}
+                                                disabled={!effectiveCalibrationPath}
                                             >
                                                 <LaunchIcon fontSize="small"/>
                                             </IconButton>
@@ -244,6 +248,24 @@ export const CalibrationPanel: React.FC = () => {
                             ),
                         }}
                     />
+                    
+                    {/* Pending recording indicator */}
+                    {isPendingRecording && (
+                        <Box sx={{p: 1, borderRadius: 1, bgcolor: theme.palette.action.hover}}>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Chip
+                                    label="Pending capture"
+                                    size="small"
+                                    variant="outlined"
+                                    sx={{height: 18, fontSize: '0.65rem', borderStyle: 'dashed', opacity: 0.7}}
+                                />
+                                <Typography variant="caption" color="text.secondary" sx={{fontFamily: 'monospace'}}>
+                                    {plannedName}
+                                </Typography>
+                            </Stack>
+                        </Box>
+                    )}
+
                     <Button
                         variant="contained"
                         color="secondary"
@@ -287,7 +309,7 @@ export const CalibrationPanel: React.FC = () => {
                             >
                                 <Box
                                     sx={{
-                                        width: `${recordingProgress}%`,
+                                        width: recordingProgress + "%",
                                         height: "100%",
                                         bgcolor: theme.palette.primary.main,
                                         transition: "width 0.3s",

@@ -35,6 +35,8 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
+import {selectPlannedRecordingName, selectPlannedRecordingDirectory} from "@/store/slices/recording";
+import {useAppSelector} from "@/store";
 
 export const MocapPanel: React.FC = () => {
     const theme = useTheme();
@@ -69,6 +71,38 @@ export const MocapPanel: React.FC = () => {
     const {
         directoryInfo: calibrationDirectoryInfo,
     } = useCalibration();
+
+    // Planned recording info (potential recording when no actual recording exists)
+    const plannedName = useAppSelector(selectPlannedRecordingName);
+    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
+
+    // Compute the effective path to display (actual or planned)
+    const effectiveMocapPath = mocapRecordingPath 
+        || (plannedName ? plannedDirectory + '/' + plannedName : null);
+
+    // Determine if we're showing a pending (not yet created) recording
+    const isPendingRecording = !mocapRecordingPath && !!plannedName;
+
+    // Derive recording ID from path (last folder name) - works for both actual and planned
+    const recordingId = useMemo(() => {
+        if (mocapRecordingPath) {
+            const parts = mocapRecordingPath.replace(/[/\\]+$/, "").split(/[/\\]/);
+            return parts[parts.length - 1] || null;
+        }
+        // Fall back to planned name if no actual recording
+        return plannedName || null;
+    }, [mocapRecordingPath, plannedName]);
+
+    // Derive parent directory so the backend can resolve non-default recording roots
+    const recordingParentDirectory = useMemo(() => {
+        if (mocapRecordingPath) {
+            const trimmed = mocapRecordingPath.replace(/[/\\]+$/, "");
+            const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+            return idx > 0 ? trimmed.slice(0, idx) : null;
+        }
+        // Fall back to planned directory
+        return plannedDirectory || null;
+    }, [mocapRecordingPath, plannedDirectory]);
 
     // Blender export is driven by the backend aggregator via config flags
     // (state.blender.*), which mocap-thunks.ts folds into the process request.
@@ -113,9 +147,9 @@ export const MocapPanel: React.FC = () => {
     };
 
     const handleOpenFolder = async (): Promise<void> => {
-        if (!isElectron || !api || !mocapRecordingPath) return;
+        if (!isElectron || !api || !effectiveMocapPath) return;
         try {
-            await api.fileSystem.openFolder.mutate({path: mocapRecordingPath});
+            await api.fileSystem.openFolder.mutate({path: effectiveMocapPath});
         } catch (err) {
             console.error("Failed to open folder:", err);
             setLocalError("Failed to open folder in file explorer");
@@ -129,7 +163,7 @@ export const MocapPanel: React.FC = () => {
         if (newPath.includes("~") && isElectron && api) {
             try {
                 const home: string = await api.fileSystem.getHomeDirectory.query();
-                const expanded: string = newPath.replace(/^~([/\\])?/, home ? `${home}$1` : "");
+                const expanded: string = newPath.replace(/^~([/\\])?/, home ? home + '$1' : "");
                 await setManualRecordingPath(expanded);
             } catch {
                 await setManualRecordingPath(newPath);
@@ -176,21 +210,6 @@ export const MocapPanel: React.FC = () => {
 
     const displayError = error || localError || directoryInfo?.errorMessage;
 
-    // Derive recording ID from path (last folder name)
-    const recordingId = useMemo(() => {
-        if (!mocapRecordingPath) return null;
-        const parts = mocapRecordingPath.replace(/[/\\]+$/, "").split(/[/\\]/);
-        return parts[parts.length - 1] || null;
-    }, [mocapRecordingPath]);
-
-    // Derive parent directory so the backend can resolve non-default recording roots
-    const recordingParentDirectory = useMemo(() => {
-        if (!mocapRecordingPath) return null;
-        const trimmed = mocapRecordingPath.replace(/[/\\]+$/, "");
-        const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-        return idx > 0 ? trimmed.slice(0, idx) : null;
-    }, [mocapRecordingPath]);
-
     // Only auto-fetch if the folder exists on disk — otherwise recordingId
     // may tick every second (default path embeds a timestamp) and we'd spam
     // the backend with 404s for folders that don't exist yet.
@@ -218,20 +237,24 @@ export const MocapPanel: React.FC = () => {
     };
 
     const statusLabel = isRecording
-        ? `Recording ${recordingProgress.toFixed(0)}%`
+        ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
-            ? `${formatPhase(processingPhase)} ${processingProgress}%`
-            : effectiveCalibrationTomlPath
-                ? "Ready"
-                : "Idle";
+            ? formatPhase(processingPhase) + " " + processingProgress + "%"
+            : isPendingRecording
+                ? "Pending"
+                : effectiveCalibrationTomlPath
+                    ? "Ready"
+                    : "Idle";
 
     const statusColor = isRecording
         ? theme.palette.error.main
         : isLoading
             ? theme.palette.warning.main
-            : effectiveCalibrationTomlPath
-                ? theme.palette.success.main
-                : theme.palette.grey[600];
+            : isPendingRecording
+                ? theme.palette.grey[500]
+                : effectiveCalibrationTomlPath
+                    ? theme.palette.success.main
+                    : theme.palette.grey[600];
 
     return (
         <CollapsibleSidebarSection
@@ -278,9 +301,19 @@ export const MocapPanel: React.FC = () => {
                             borderRadius: 1,
                             bgcolor: theme.palette.action.hover,
                         }}>
-                            <Typography variant="caption" color="text.secondary">
-                                Recording ID
-                            </Typography>
+                            <Stack direction="row" spacing={1} alignItems="center">
+                                <Typography variant="caption" color="text.secondary">
+                                    Recording ID
+                                </Typography>
+                                {isPendingRecording && (
+                                    <Chip
+                                        label="Pending capture"
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{height: 18, fontSize: '0.65rem', borderStyle: 'dashed', opacity: 0.7}}
+                                    />
+                                )}
+                            </Stack>
                             <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 600}}>
                                 {recordingId}
                             </Typography>
@@ -316,11 +349,11 @@ export const MocapPanel: React.FC = () => {
                     {/* Recording Path Input */}
                     <TextField
                         label="Mocap Recording Path"
-                        value={mocapRecordingPath}
+                        value={effectiveMocapPath || ''}
                         onChange={handlePathInputChange}
                         fullWidth
                         size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
+                        helperText={isUsingManualPath ? "Using custom path" : isPendingRecording ? "Pending capture - will create on record" : "Using default recording directory"}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -352,7 +385,7 @@ export const MocapPanel: React.FC = () => {
                                                 onClick={handleOpenFolder}
                                                 edge="end"
                                                 size="small"
-                                                disabled={!isElectron || !mocapRecordingPath}
+                                                disabled={!isElectron || !effectiveMocapPath}
                                             >
                                                 <LaunchIcon fontSize="small" />
                                             </IconButton>
@@ -369,7 +402,7 @@ export const MocapPanel: React.FC = () => {
                     />
 
                     {/* Recording folder status (collapsed by default) */}
-                    {recordingId && (
+                    {recordingId && !isPendingRecording && (
                         <RecordingStatusPanel
                             status={recordingStatus}
                             isLoading={recordingStatusLoading}
@@ -410,7 +443,7 @@ export const MocapPanel: React.FC = () => {
                             >
                                 <Box
                                     sx={{
-                                        width: `${recordingProgress}%`,
+                                        width: recordingProgress + "%",
                                         height: "100%",
                                         bgcolor: theme.palette.primary.main,
                                         transition: "width 0.3s",
@@ -437,7 +470,7 @@ export const MocapPanel: React.FC = () => {
                             >
                                 <Box
                                     sx={{
-                                        width: `${processingProgress}%`,
+                                        width: processingProgress + "%",
                                         height: "100%",
                                         bgcolor: theme.palette.warning.main,
                                         transition: "width 0.4s",

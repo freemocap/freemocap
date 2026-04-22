@@ -1,5 +1,8 @@
 import {z} from 'zod';
 
+export const RecordingTypePresetSchema = z.enum(['none', 'calibration', 'mocap']);
+export type RecordingTypePreset = z.infer<typeof RecordingTypePresetSchema>;
+
 export const RecordingConfigSchema = z.object({
     // Recording behavior settings
     useDelayStart: z.boolean(),
@@ -15,7 +18,18 @@ export const RecordingConfigSchema = z.object({
     // Folder settings
     createSubfolder: z.boolean(),
     customSubfolderName: z.string(),
+
+    // Device & preset settings
+    micDeviceIndex: z.number(),
+    recordingTypePreset: RecordingTypePresetSchema,
+    autoProcess: z.boolean(),
 });
+
+export const PendingOperationSchema = z.object({
+    type: z.enum(['start', 'stop']),
+    timestamp: z.number(),
+});
+export type PendingOperation = z.infer<typeof PendingOperationSchema>;
 const StatsSummarySchema = z.object({
     median: z.number(),
     mean: z.number(),
@@ -56,6 +70,8 @@ export const RecordingInfoSchema = z.object({
     config: RecordingConfigSchema,
     computed: ComputedRecordingPathSchema,
     completionData: StopRecordingResponseSchema.nullable(),
+    pendingOperation: PendingOperationSchema.nullable(),
+    countdown: z.number().nullable(),
 });
 
 export type RecordingConfig = z.infer<typeof RecordingConfigSchema>;

@@ -75,41 +75,10 @@ def create_mediapipe_parameter_group(
     return Parameter.create(
         name=MEDIAPIPE_TREE_NAME,
         type="group",
+        expanded=False, # collapsed by default
+
         children=[
-            dict(
-                name=YOLO_CROP_TREE_NAME,
-                type="group",
-                children=[
-                    dict(
-                        name=USE_YOLO_CROP_METHOD,
-                        type="bool",
-                        value=parameter_model.use_yolo_crop_method,
-                        tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
-                    ),
-                    dict(
-                        name=YOLO_MODEL_SIZE,
-                        type="list",
-                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
-                        value=parameter_model.yolo_model_size,
-                        tip="Smaller models are faster but may be less accurate",
-                    ),
-                    dict(
-                        name=BOUNDING_BOX_BUFFER_METHOD,
-                        type="list",
-                        limits=["By box size", "By image size"],
-                        value=parameter_model.buffer_size_method,
-                        tip="Buffer bounding box by percentage of either box size or image size",
-                    ),
-                    dict(
-                        name=BOUNDING_BOX_BUFFER_PERCENTAGE,
-                        type="int",
-                        value=parameter_model.bounding_box_buffer_percentage,
-                        limits=(0, 100),
-                        step=1,
-                        tip="Percentage to increase size of bounding box",
-                    ),
-                ],
-            ),
+
             dict(
                 name=MEDIAPIPE_MODEL_COMPLEXITY,
                 type="list",
@@ -145,65 +114,93 @@ def create_mediapipe_parameter_group(
                     "I think this is equivalent to setting `min_tracking_confidence` to 0.0"
                     "Variable name in `mediapipe` code: `static_image_mode`",
             ),
-        ],
-    )
-
-
-def create_3d_triangulation_parameter_group(
-        parameter_model: AniposeTriangulate3DParametersModel = None,
-) -> Parameter:
-    if parameter_model is None:
-        parameter_model = AniposeTriangulate3DParametersModel()
-
-    return Parameter.create(
-        name=ANIPOSE_TREE_NAME,
-        type="group",
-        children=[
             dict(
-                name=FLATTEN_SINGLE_CAMERA_DATA,
-                type="bool",
-                value=parameter_model.flatten_single_camera_data,
-                tip="If true, flatten the data from single camera recordings.",
-            ),
-            dict(
-                name=OUTLIER_REJECTION_TREE_NAME,
+                name=YOLO_CROP_TREE_NAME,
                 type="group",
+                expanded=False, # collapsed by default
                 children=[
                     dict(
-                        name=USE_OUTLIER_REJECTION_METHOD,
+                        name=USE_YOLO_CROP_METHOD,
                         type="bool",
-                        value=parameter_model.use_triangulate_outlier_rejection,
-                        tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
+                        value=parameter_model.use_yolo_crop_method,
+                        tip="If true, `skellytracker` will use YOLO to pre-crop the person from the image before running the `mediapipe` tracker",
                     ),
                     dict(
-                        name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
+                        name=YOLO_MODEL_SIZE,
+                        type="list",
+                        limits=["nano", "small", "medium", "large", "extra_large", "high_res"],
+                        value=parameter_model.yolo_model_size,
+                        tip="Smaller models are faster but may be less accurate",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_METHOD,
+                        type="list",
+                        limits=["By box size", "By image size"],
+                        value=parameter_model.buffer_size_method,
+                        tip="Buffer bounding box by percentage of either box size or image size",
+                    ),
+                    dict(
+                        name=BOUNDING_BOX_BUFFER_PERCENTAGE,
                         type="int",
-                        value=parameter_model.maximum_cameras_to_drop,
+                        value=parameter_model.bounding_box_buffer_percentage,
                         limits=(0, 100),
                         step=1,
-                        tip="Maximum amount of cameras permitted to drop.",
-                    ),
-                    dict(
-                        name=OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
-                        type="int",
-                        value=parameter_model.minimum_cameras_for_triangulation,
-                        limits=(1, 100),
-                        step=1,
-                        tip="Minimum number of cameras required for triangulation.",
-                    ),
-                    dict(
-                        name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
-                        type="float",
-                        value=parameter_model.target_reprojection_error,
-                        limits=(0.0, 1.0),
-                        step=0.001,
-                        tip="The target reprojection error that stops the outlier rejection search.\n"
-                            "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
+                        tip="Percentage to increase size of bounding box",
                     ),
                 ],
             ),
         ],
     )
+
+
+# def create_3d_triangulation_parameter_group(
+#         parameter_model: AniposeTriangulate3DParametersModel = None,
+# ) -> Parameter:
+#     if parameter_model is None:
+#         parameter_model = AniposeTriangulate3DParametersModel()
+#
+#     return Parameter.create(
+#         name=ANIPOSE_TREE_NAME,
+#         type="group",
+#         children=[
+#
+#             dict(
+#                 name=FLATTEN_SINGLE_CAMERA_DATA,
+#                 type="bool",
+#                 value=parameter_model.flatten_single_camera_data,
+#                 tip="If true, flatten the data from single camera recordings.",
+#             ),
+#             dict(
+#                 name=OUTLIER_REJECTION_TREE_NAME,
+#                 type="group",
+#                 children=[
+#                     dict(
+#                         name=USE_OUTLIER_REJECTION_METHOD,
+#                         type="bool",
+#                         value=parameter_model.use_triangulate_outlier_rejection,
+#                         tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
+#                     ),
+#                     dict(
+#                         name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
+#                         type="int",
+#                         value=parameter_model.maximum_cameras_to_drop,
+#                         limits=(0, 100),
+#                         step=1,
+#                         tip="Maximum amount of cameras permitted to drop.",
+#                     ),
+#                     dict(
+#                         name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
+#                         type="float",
+#                         value=parameter_model.target_reprojection_error,
+#                         limits=(0.0, 1.0),
+#                         step=0.001,
+#                         tip="The target reprojection error that stops the outlier rejection search.\n"
+#                             "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
+#                     ),
+#                 ],
+#             ),
+#         ],
+#     )
 
 
 def create_post_processing_parameter_group(
@@ -215,6 +212,7 @@ def create_post_processing_parameter_group(
     return Parameter.create(
         name=BUTTERWORTH_FILTER_TREE_NAME,
         type="group",
+        expanded=False, # collapsed by default
         children=[
             dict(
                 name=POST_PROCESSING_FRAME_RATE,

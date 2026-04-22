@@ -42,6 +42,8 @@ class TabbedReleaseNotesDialog(QDialog):
         self.dark_mode = dark_mode
 
         self.setMinimumSize(min_width, min_height)
+        self.setSizeGripEnabled(True)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint | Qt.WindowMinimizeButtonHint)
         self.setWindowTitle("FreeMoCap Release Notes")
         self.setStyleSheet(
             ReleaseNotesStyles.get_dialog_style(
@@ -115,6 +117,7 @@ class TabbedReleaseNotesDialog(QDialog):
         title_widget = QLabel()
         title_widget.setWordWrap(True)
         title_widget.setOpenExternalLinks(True)
+        title_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
 
         # Title HTML content with inline styles
         title_html_content = f"""
@@ -142,8 +145,10 @@ class TabbedReleaseNotesDialog(QDialog):
             subtitle_widget = QLabel()
             subtitle_widget.setWordWrap(True)
             subtitle_widget.setOpenExternalLinks(True)
+            subtitle_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
 
-            # Apply styling directly to the widget
+
+        # Apply styling directly to the widget
             subtitle_widget.setStyleSheet(f"""
                         QLabel {{
                             font-size: 16px;
@@ -166,7 +171,7 @@ class TabbedReleaseNotesDialog(QDialog):
 
                 if not image_pixmap.isNull():
                     # Scale image to fit within scroll area while maintaining aspect ratio
-                    max_width = 540
+                    max_width = 720
                     if image_pixmap.width() > max_width:
                         scaled_pixmap = image_pixmap.scaledToWidth(
                             max_width,
@@ -190,6 +195,8 @@ class TabbedReleaseNotesDialog(QDialog):
         text_widget = QLabel()
         text_widget.setWordWrap(True)
         text_widget.setOpenExternalLinks(True)
+        text_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
+
         text_widget.setStyleSheet(
             """
             font-size: 14px;
@@ -255,7 +262,7 @@ if __name__ == "__main__":
     dialog = TabbedReleaseNotesDialog(
         gui_state=load_gui_state(),
         kill_thread_event=threading.Event(),
-        dark_mode=True,  # Set to True for dark mode, False for light mode
+        dark_mode=True,
     )
     dialog.show()
 

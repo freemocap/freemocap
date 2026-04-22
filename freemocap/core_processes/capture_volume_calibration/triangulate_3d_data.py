@@ -62,7 +62,12 @@ def triangulate_3d_data(
         )
     else:
         logger.info("Using simple `triangulate` method ")
-        data3d_flat = anipose_calibration_object.triangulate(data2d_flat, progress=True, kill_event=kill_event)
+        data3d_flat = anipose_calibration_object.triangulate(
+            data2d_flat,
+            progress=True,
+            kill_event=kill_event,
+            minimum_cameras_for_triangulation=minimum_cameras_for_triangulation,
+        )
 
     spatial_data3d_numFrames_numTrackedPoints_XYZ = data3d_flat.reshape(number_of_frames, number_of_tracked_points, 3)
 

@@ -141,6 +141,12 @@ class HomeWidget(QWidget):
         feedback_string = QLabel(feedback_string)
         feedback_string.setOpenExternalLinks(True)
         hbox.addWidget(feedback_string, alignment=Qt.AlignmentFlag.AlignRight)
+
+        discord_string = '<a href="https://discord.gg/P2nyraRYjb" style="color: #333333;">community</a>'
+        discord_string = QLabel(discord_string)
+        discord_string.setOpenExternalLinks(True)
+        hbox.addWidget(discord_string, alignment=Qt.AlignmentFlag.AlignRight)
+
         donate_string = '<a href="https://freemocap.org/about-us.html#donate" style="color: #333333;">donate &lt;3</a>'
         donate_string = QLabel(donate_string)
         donate_string.setOpenExternalLinks(True)

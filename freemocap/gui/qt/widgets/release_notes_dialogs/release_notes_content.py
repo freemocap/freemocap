@@ -17,6 +17,7 @@ SKELLY_OUTLIER_REJECTION = PATH_TO_FREEMOCAP_LOGO_SVG.replace(
     SKELLY_LOGO_BASE_SVG_FILENAME, "skelly-outlier-rejection.png")
 
 CHARUCO_AS_GROUND_PLANE_PNG = Path(PATH_TO_FREEMOCAP_LOGO_SVG).parent.parent / "charuco/charuco_as_groundplane.png"
+OUTLIER_REJECTION_UI_PNG = str(Path(PATH_TO_FREEMOCAP_LOGO_SVG).parent.parent / "notes/outlier_rejection_ui.png")
 
 if not Path(SKELLY_SWEAT_PNG).exists():
     logger.warning(f"Could not find {SKELLY_SWEAT_PNG}")
@@ -48,6 +49,7 @@ def get_v180_release_notes() -> ReleaseNoteContent:
     return ReleaseNoteContent(
         latest=True,
         logo_path=SKELLY_OUTLIER_REJECTION,
+        image_path=OUTLIER_REJECTION_UI_PNG,
         tab_order=0,
         tab_title="v1.8.0 Reprojection Outlier Rejection",
         content_title="FreeMoCap v1.8.0 - Outlier rejection",
@@ -57,27 +59,88 @@ def get_v180_release_notes() -> ReleaseNoteContent:
     p {{ margin: 5px 0; }}
     ul, ol {{ margin: 10px 0 10px 20px; }}
     li {{ margin: 3px 0; }}
-    a {{ color: #4fc3f7; text-decoration: none; }}
+    a {{ color: #94c4c7; text-decoration: none; }}
     b {{ font-weight: bold; }}
     em {{ font-style: italic; }}
     .emphasis {{ font-weight: bold; }}
     .note {{ margin: 10px 0; padding: 8px; background-color: #884; }}
 </style>
 
+<p>
+v1.8.0 adds an <b>optional</b> outlier-rejection step to the triangulation pipeline, which should greatly improve the reconstruction quality with 4+ camera systems!
 
-This version includes 
+We are pretty sure it will be an improvement in most cases, but to safe it is set <b>off by default</b> in this release — we want the community to kick the tires before we consider flipping the switch.
 </p>
 
 
+
+
+<hr/>
+
 <p>
-For details or to download high resolution images board images, see  <a href="https://docs.freemocap.org/documentation/multi-camera-calibration.html#charuco-board-types"><em>Preparing the Charuco Board</em></a>.
+    <b>What it does</b>
+</p>
+<p>
+When triangulating a 3D point, the method checks how well the reconstructed point projects back into each camera view. Points with high reprojection error are re-triangulated using a subset of cameras — an exponential weighting scheme scores candidate subsets by their reprojection error and selects the combination that minimizes error across the remaining views. Full details on the <a href="https://docs.freemocap.org/documentation/reprojection-filtering.html"><em>Reprojection Filtering</em></a> docs page.
 </p>
 
 <hr/>
 
 <p>
-For additional details about what's new in v1.7.0 - See <a
-        href="https://github.com/freemocap/freemocap/releases/tag/v1.8.0">the official release page</a>
+    <b>Why it matters</b>
+</p>
+<p>
+Previously, adding more cameras to a rig ran into a "poison pill" problem: the more cameras you had, the higher the odds that at least one of them would pick up a bad track (a so-called <em>ghost skeleton</em>) and contaminate the 3D reconstruction. This effectively capped the number of cameras that were useful in practice. With outlier rejection, bad views can be identified and excluded on a per-point basis, making <b>high-camera-count rigs</b> viable for more robust and ambitious recordings.
+</p>
+
+<hr/>
+
+<p>
+    <b>How to use it</b>
+</p>
+<ul>
+    <li>In the <span class="emphasis">3D Triangulation Methods</span> panel, open the <span class="emphasis">Outlier Rejection</span> sub-group and enable <span class="emphasis">"Use Outlier Rejection Method?"</span> before processing.</li>
+    <li><b>Recommended</b> if you have <b>4 or more cameras</b>.</li>
+    <li>For the method to have any effect, the number of cameras in your recording must be <em>greater than</em> <span class="emphasis">"Minimum Cameras for Triangulation"</span> (see below) — otherwise there are no subsets left to test. With a 3-camera rig you'd need to lower the minimum to 2, which can introduce instability/wobble in the reconstruction.</li>
+</ul>
+
+<p class="note">
+    <b>Heads up:</b> This is a significant shift from the previous triangulation logic, so it ships <b>off by default</b>. If it works well for you (or doesn't!), we want to hear about it.
+</p>
+
+<hr/>
+
+<p>
+    <b>🆕 Also new: <em>Minimum Cameras for Triangulation</em> (a top-level option)</b>
+</p>
+<p>
+While we were in the neighborhood, we promoted <span class="emphasis">"Minimum Cameras for Triangulation"</span> out of the outlier-rejection sub-group and up to the top level of the <span class="emphasis">3D Triangulation Methods</span> panel. It now applies to <em>both</em> the simple triangulation path <em>and</em> the outlier-rejection path. Any point with fewer valid 2D detections than this threshold will be left as NaN in the 3D output — which is generally what you want, since reconstructions from too few cameras are noisy and unreliable.
+</p>
+<p>
+If you set this value higher than the number of cameras in your recording (e.g. <b>min=3</b> on a 2-camera rig), FreeMoCap will emit a warning in the logs and <b>automatically clamp the value down to the number of cameras available</b> so processing still runs. The hard floor is 2 (triangulation from a single camera isn't possible). This means you can leave a sensible default in place and not have to babysit the setting across rigs of different sizes.
+</p>
+
+<hr/>
+
+<p>
+    <b>Tell us how it went</b>
+</p>
+<p>
+Please share your results — good, bad, or weird — on the <a href="https://discord.gg/freemocap">FreeMoCap Discord</a> or in the tracking issue <a href="https://github.com/freemocap/freemocap/issues/782">freemocap#782</a>. Your feedback will decide whether we make outlier rejection the default in a future release. These release notes will be updated if/when that happens.
+</p>
+
+<hr/>
+<p>
+    <b>🎉 Contributor shout-out</b>
+</p>
+<p>
+This feature was contributed by <a href="https://github.com/ajc27-git">ajc27</a>, a long-time member of the FreeMoCap community who has done great work on the Blender output pipeline and has been a consistent, generous presence helping folks in our Discord server. This is their first contribution to touch the <em>core reconstruction pipeline</em> — which is worth celebrating!. See <a href="https://github.com/freemocap/freemocap/pull/758">PR #758</a> for the code.
+</p>
+<hr/>
+
+<p>
+For additional details about what's new in v1.8.0 - see <a
+        href="https://github.com/freemocap/freemocap/releases/tag/v1.8.0">the official release page</a>.
 </p>
 
 <p>
@@ -85,8 +148,6 @@ For additional details about what's new in v1.7.0 - See <a
 </p>
         """,
     )
-
-
 
 
 def get_v170_release_notes() -> ReleaseNoteContent:

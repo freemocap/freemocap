@@ -75,6 +75,8 @@ def create_mediapipe_parameter_group(
     return Parameter.create(
         name=MEDIAPIPE_TREE_NAME,
         type="group",
+        expanded=False, # collapsed by default
+
         children=[
 
             dict(
@@ -151,54 +153,54 @@ def create_mediapipe_parameter_group(
     )
 
 
-def create_3d_triangulation_parameter_group(
-        parameter_model: AniposeTriangulate3DParametersModel = None,
-) -> Parameter:
-    if parameter_model is None:
-        parameter_model = AniposeTriangulate3DParametersModel()
-
-    return Parameter.create(
-        name=ANIPOSE_TREE_NAME,
-        type="group",
-        children=[
-
-            dict(
-                name=FLATTEN_SINGLE_CAMERA_DATA,
-                type="bool",
-                value=parameter_model.flatten_single_camera_data,
-                tip="If true, flatten the data from single camera recordings.",
-            ),
-            dict(
-                name=OUTLIER_REJECTION_TREE_NAME,
-                type="group",
-                children=[
-                    dict(
-                        name=USE_OUTLIER_REJECTION_METHOD,
-                        type="bool",
-                        value=parameter_model.use_triangulate_outlier_rejection,
-                        tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
-                    ),
-                    dict(
-                        name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
-                        type="int",
-                        value=parameter_model.maximum_cameras_to_drop,
-                        limits=(0, 100),
-                        step=1,
-                        tip="Maximum amount of cameras permitted to drop.",
-                    ),
-                    dict(
-                        name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
-                        type="float",
-                        value=parameter_model.target_reprojection_error,
-                        limits=(0.0, 1.0),
-                        step=0.001,
-                        tip="The target reprojection error that stops the outlier rejection search.\n"
-                            "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
-                    ),
-                ],
-            ),
-        ],
-    )
+# def create_3d_triangulation_parameter_group(
+#         parameter_model: AniposeTriangulate3DParametersModel = None,
+# ) -> Parameter:
+#     if parameter_model is None:
+#         parameter_model = AniposeTriangulate3DParametersModel()
+#
+#     return Parameter.create(
+#         name=ANIPOSE_TREE_NAME,
+#         type="group",
+#         children=[
+#
+#             dict(
+#                 name=FLATTEN_SINGLE_CAMERA_DATA,
+#                 type="bool",
+#                 value=parameter_model.flatten_single_camera_data,
+#                 tip="If true, flatten the data from single camera recordings.",
+#             ),
+#             dict(
+#                 name=OUTLIER_REJECTION_TREE_NAME,
+#                 type="group",
+#                 children=[
+#                     dict(
+#                         name=USE_OUTLIER_REJECTION_METHOD,
+#                         type="bool",
+#                         value=parameter_model.use_triangulate_outlier_rejection,
+#                         tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
+#                     ),
+#                     dict(
+#                         name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
+#                         type="int",
+#                         value=parameter_model.maximum_cameras_to_drop,
+#                         limits=(0, 100),
+#                         step=1,
+#                         tip="Maximum amount of cameras permitted to drop.",
+#                     ),
+#                     dict(
+#                         name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
+#                         type="float",
+#                         value=parameter_model.target_reprojection_error,
+#                         limits=(0.0, 1.0),
+#                         step=0.001,
+#                         tip="The target reprojection error that stops the outlier rejection search.\n"
+#                             "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
+#                     ),
+#                 ],
+#             ),
+#         ],
+#     )
 
 
 def create_post_processing_parameter_group(
@@ -210,6 +212,7 @@ def create_post_processing_parameter_group(
     return Parameter.create(
         name=BUTTERWORTH_FILTER_TREE_NAME,
         type="group",
+        expanded=False, # collapsed by default
         children=[
             dict(
                 name=POST_PROCESSING_FRAME_RATE,

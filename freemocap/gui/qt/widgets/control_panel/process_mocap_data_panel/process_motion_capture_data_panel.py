@@ -18,13 +18,14 @@ from freemocap.gui.qt.utilities.save_and_load_gui_state import GuiState
 from freemocap.gui.qt.widgets.control_panel.calibration_control_panel import CalibrationControlPanel
 from freemocap.gui.qt.widgets.control_panel.process_mocap_data_panel.parameter_groups.create_parameter_groups import (
     create_mediapipe_parameter_group,
-    create_3d_triangulation_parameter_group,
     create_post_processing_parameter_group,
     extract_parameter_model_from_parameter_tree,
     RUN_IMAGE_TRACKING_NAME,
     RUN_3D_TRIANGULATION_NAME,
     RUN_BUTTERWORTH_FILTER_NAME,
     NUMBER_OF_PROCESSES_PARAMETER_NAME, OUTLIER_REJECTION_MINIMUM_CAMERAS_FOR_TRIANGULATION,
+    OUTLIER_REJECTION_TREE_NAME, USE_OUTLIER_REJECTION_METHOD, OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
+    OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR, FLATTEN_SINGLE_CAMERA_DATA,
 )
 from freemocap.gui.qt.workers.process_motion_capture_data_thread_worker import (
     ProcessMotionCaptureDataThreadWorker,
@@ -149,9 +150,47 @@ class ProcessMotionCaptureDataPanel(QWidget):
                             step=1,
                             tip="Minimum number of cameras required for triangulation.",
                         ),
-                        create_3d_triangulation_parameter_group(
-                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model
+
+                        dict(
+                            name=FLATTEN_SINGLE_CAMERA_DATA,
+                            type="bool",
+                            value=
+                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model.flatten_single_camera_data,
+                            tip="If true, flatten the data from single camera recordings.",
                         ),
+                        dict(
+                            name=OUTLIER_REJECTION_TREE_NAME,
+                            type="group",
+                            children=[
+                                dict(
+                                    name=USE_OUTLIER_REJECTION_METHOD,
+                                    type="bool",
+                                    value=
+                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model.use_triangulate_outlier_rejection,
+                                    tip="If true, use `anipose`'s `triangulate_using_outlier_rejection` method.",
+                                ),
+                                dict(
+                                    name=OUTLIER_REJECTION_MAXIMUM_CAMERAS_TO_DROP,
+                                    type="int",
+                                    value=
+                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model.maximum_cameras_to_drop,
+                                    limits=(0, 100),
+                                    step=1,
+                                    tip="Maximum amount of cameras permitted to drop.",
+                                ),
+                                dict(
+                                    name=OUTLIER_REJECTION_TARGET_REPROJECTION_ERROR,
+                                    type="float",
+                                    value=
+                            session_processing_parameter_model.anipose_triangulate_3d_parameters_model.target_reprojection_error,
+                                    limits=(0.0, 1.0),
+                                    step=0.001,
+                                    tip="The target reprojection error that stops the outlier rejection search.\n"
+                                        "If a camera combination achieves an error below this value, it is accepted and further dropped-camera iterations are skipped.",
+                                ),
+                            ],
+                        ),
+
                     ],
                     tip="Methods for triangulating 3d points from 2d points (using epipolar geometry and the 'camera_calibration' data).",
                 ),

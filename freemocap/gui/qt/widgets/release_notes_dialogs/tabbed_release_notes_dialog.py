@@ -115,6 +115,7 @@ class TabbedReleaseNotesDialog(QDialog):
         title_widget = QLabel()
         title_widget.setWordWrap(True)
         title_widget.setOpenExternalLinks(True)
+        title_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
 
         # Title HTML content with inline styles
         title_html_content = f"""
@@ -142,8 +143,10 @@ class TabbedReleaseNotesDialog(QDialog):
             subtitle_widget = QLabel()
             subtitle_widget.setWordWrap(True)
             subtitle_widget.setOpenExternalLinks(True)
+            subtitle_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
 
-            # Apply styling directly to the widget
+
+        # Apply styling directly to the widget
             subtitle_widget.setStyleSheet(f"""
                         QLabel {{
                             font-size: 16px;
@@ -190,6 +193,8 @@ class TabbedReleaseNotesDialog(QDialog):
         text_widget = QLabel()
         text_widget.setWordWrap(True)
         text_widget.setOpenExternalLinks(True)
+        text_widget.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse | Qt.TextInteractionFlag.TextSelectableByKeyboard | Qt.TextInteractionFlag.LinksAccessibleByMouse)
+
         text_widget.setStyleSheet(
             """
             font-size: 14px;

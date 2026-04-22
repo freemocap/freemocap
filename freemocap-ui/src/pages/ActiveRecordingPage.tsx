@@ -1,16 +1,14 @@
 import React, {useCallback} from 'react';
-import {Box, Button, Chip, IconButton, Stack, Tooltip, Typography, useTheme} from '@mui/material';
+import {Box, Button, Chip, Stack, Tooltip, Typography, useTheme} from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import TuneIcon from '@mui/icons-material/Tune';
-import ScienceIcon from '@mui/icons-material/Science';
 import {useNavigate} from 'react-router-dom';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
 import {useRecordingStatus} from '@/hooks/useRecordingStatus';
-import {useAppDispatch, useAppSelector} from '@/store';
+import {useAppSelector} from '@/store';
 import {
     selectActiveRecordingBaseDirectory,
     selectActiveRecordingFullPath,
@@ -18,12 +16,14 @@ import {
     selectActiveRecordingOrigin,
     selectActiveRecordingStructure,
 } from '@/store/slices/active-recording/active-recording-slice';
-import {calibrateRecording} from '@/store/slices/calibration/calibration-thunks';
-import {processMocapRecording} from '@/store/slices/mocap/mocap-thunks';
+import {selectPlannedRecordingDirectory, selectPlannedRecordingName} from '@/store/slices/recording';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import {useBlender} from "@/hooks/useBlender";
 import LaunchIcon from "@mui/icons-material/Launch";
+import {RecordingInfoPanel} from '@/components/control-panels/recording-info-panel/RecordingInfoPanel';
+import {CalibrationPanel} from '@/components/control-panels/calibration-control-panel/CalibrationPanel';
+import {MocapPanel} from '@/components/control-panels/mocap-control-panel/MocapPanel';
 
 const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
 
@@ -38,7 +38,6 @@ const ActiveRecordingPage: React.FC = () => {
     const theme = useTheme();
     const {t} = useTranslation();
     const navigate = useNavigate();
-    const dispatch = useAppDispatch();
     const {api} = useElectronIPC();
 
     const {triggerOpenInBlender} = useBlender();
@@ -50,6 +49,8 @@ const ActiveRecordingPage: React.FC = () => {
     const fullPath = useAppSelector(selectActiveRecordingFullPath);
     const origin = useAppSelector(selectActiveRecordingOrigin);
     const structure = useAppSelector(selectActiveRecordingStructure);
+    const plannedName = useAppSelector(selectPlannedRecordingName);
+    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
 
     const {
         status,
@@ -77,14 +78,6 @@ const ActiveRecordingPage: React.FC = () => {
 
 
 
-    const handleCalibrate = useCallback(() => {
-        dispatch(calibrateRecording());
-    }, [dispatch]);
-
-    const handleProcessMocap = useCallback(() => {
-        dispatch(processMocapRecording());
-    }, [dispatch]);
-
     const pageBg = theme.palette.mode === 'dark'
         ? theme.palette.background.default
         : theme.palette.background.paper;
@@ -92,34 +85,59 @@ const ActiveRecordingPage: React.FC = () => {
     return (
         <Box
             sx={{
-                flex: 1,
+                width: '100%',
+                height: '100%',
                 display: 'flex',
                 flexDirection: 'column',
-                height: '100%',
+                overflowY: 'auto',
+                overflowX: 'hidden',
                 backgroundColor: pageBg,
                 borderStyle: 'solid',
                 borderWidth: '1px',
                 borderColor: theme.palette.divider,
             }}
         >
-            <Box sx={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'auto', p: 2, gap: 2}}>
+            <Box sx={{display: 'flex', flexDirection: 'column', p: 2, gap: 2}}>
                 <ErrorBoundary>
                     {!recordingName ? (
-                        <Box sx={{textAlign: 'center', py: 6}}>
-                            <Typography variant="h6" color="text.secondary">
-                                No active recording
-                            </Typography>
-                            <Typography variant="body2" color="text.disabled" sx={{mt: 1}}>
-                                Capture a new recording from Streaming, or pick one from Recordings.
-                            </Typography>
-                            <Stack direction="row" spacing={1} justifyContent="center" sx={{mt: 3}}>
-                                <Button variant="outlined" onClick={() => navigate('/streaming')}>
-                                    Go to Streaming
-                                </Button>
-                                <Button variant="outlined" onClick={() => navigate('/browse')}>
-                                    Browse recordings
-                                </Button>
+                        <Box sx={{py: 4, px: 2}}>
+                            <Stack spacing={2} alignItems="flex-start">
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                    <Typography
+                                        variant="h6"
+                                        sx={{fontFamily: MONO_FONT, fontWeight: 600, opacity: 0.5}}
+                                    >
+                                        {plannedName || '—'}
+                                    </Typography>
+                                    <Chip
+                                        label="Pending capture"
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{height: 20, fontSize: '0.7rem', borderStyle: 'dashed', opacity: 0.7}}
+                                    />
+                                </Stack>
+                                {plannedName && (
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{fontFamily: MONO_FONT}}
+                                    >
+                                        {plannedDirectory}/{plannedName}
+                                    </Typography>
+                                )}
+                                <Typography variant="body2" color="text.disabled" sx={{fontStyle: 'italic'}}>
+                                    This folder will be created when you start your first recording.
+                                </Typography>
+                                <Stack direction="row" spacing={1} sx={{mt: 1}}>
+                                    <Button variant="outlined" onClick={() => navigate('/streaming')}>
+                                        Go to Streaming
+                                    </Button>
+                                    <Button variant="outlined" onClick={() => navigate('/browse')}>
+                                        Browse recordings
+                                    </Button>
+                                </Stack>
                             </Stack>
+                            <RecordingInfoPanel/>
                         </Box>
                     ) : (
                         <>
@@ -239,23 +257,9 @@ const ActiveRecordingPage: React.FC = () => {
                                 />
                             </Box>
 
-                            {/* Quick actions */}
-                            <Stack direction="row" spacing={1}>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<TuneIcon/>}
-                                    onClick={handleCalibrate}
-                                >
-                                    Calibrate
-                                </Button>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<ScienceIcon/>}
-                                    onClick={handleProcessMocap}
-                                >
-                                    Process mocap
-                                </Button>
-                            </Stack>
+                            {/* Control panels */}
+                            <CalibrationPanel/>
+                            <MocapPanel/>
                         </>
                     )}
                 </ErrorBoundary>

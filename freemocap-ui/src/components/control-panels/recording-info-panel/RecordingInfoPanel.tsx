@@ -9,7 +9,7 @@ import {pathRecomputed} from "@/store/slices/recording/recording-slice";
 import {calibrateRecording} from "@/store/slices/calibration/calibration-thunks";
 import {processMocapRecording} from "@/store/slices/mocap/mocap-thunks";
 import {PresetPicker} from "@/components/common/PresetPicker";
-import {RecordingTypePreset, RECORDING_TYPE_OPTIONS} from "./recording-type-preset";
+
 import {
     MicrophoneSelector
 } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
@@ -26,6 +26,13 @@ interface RecordingOperation {
     timestamp: number;
 }
 
+export type RecordingTypePreset = "none" | "calibration" | "mocap";
+
+export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string }[] = [
+    {value: "none", label: "None"},
+    {value: "calibration", label: "Calibration"},
+    {value: "mocap", label: "Mocap"},
+];
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
@@ -116,7 +123,7 @@ export const RecordingInfoPanel: React.FC = () => {
             const hours = Math.floor(seconds / 3600);
             const minutes = Math.floor((seconds % 3600) / 60);
             const secs = seconds % 60;
-            
+
             const parts: string[] = [];
             if (hours > 0) {
                 parts.push(hours.toString().padStart(2, '0'));
@@ -261,21 +268,6 @@ export const RecordingInfoPanel: React.FC = () => {
         <CollapsibleSidebarSection
             icon={<FiberManualRecordIcon sx={{color: "inherit"}}/>}
             title={"Recording"}
-            secondaryControls={
-                <PresetPicker
-                    value={recordingTypePreset}
-                    options={RECORDING_TYPE_OPTIONS}
-                    onChange={setRecordingTypePreset}
-                    disabled={recordingInfo.isRecording}
-                    size="small"
-                    minWidth={80}
-                    sx={{
-                        '& .MuiSelect-select': {py: 0.25, fontSize: 12, color: 'inherit'},
-                        '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
-                        '& .MuiSvgIcon-root': {color: 'inherit'},
-                    }}
-                />
-            }
             summaryContent={
                 <RecordingSummary
                     isRecording={recordingInfo.isRecording}
@@ -320,7 +312,23 @@ export const RecordingInfoPanel: React.FC = () => {
                     }}
                 >
                     {/* Full recording button in expanded content */}
-                    <Box sx={{ px: 1, py: 1 }}>
+                    <Box sx={{px: 1, py: 1, display: 'flex', alignItems: 'center', gap: 1}}>
+                        Recording Type Presets:
+                        <PresetPicker
+                            value={recordingTypePreset}
+                            options={RECORDING_TYPE_OPTIONS}
+                            onChange={setRecordingTypePreset}
+                            disabled={recordingInfo.isRecording}
+                            size="small"
+                            minWidth={80}
+                            sx={{
+                                '& .MuiSelect-select': {py: 0.25, fontSize: 12, color: 'inherit'},
+                                '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
+                                '& .MuiSvgIcon-root': {color: 'inherit'},
+                            }}
+                        />
+                    </Box>
+                    <Box sx={{px: 1, py: 1}}>
                         {/* Microphone selector */}
                         <MicrophoneSelector
                             selectedMicIndex={micDeviceIndex}
@@ -328,7 +336,7 @@ export const RecordingInfoPanel: React.FC = () => {
                             disabled={recordingInfo.isRecording}
                         />
                     </Box>
-                    
+
                     <RecordingPathTreeItem
                         recordingDirectory={recordingInfo.recordingDirectory}
                         recordingName={recordingName}

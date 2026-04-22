@@ -55,7 +55,7 @@ export const activeRecordingSlice = createSlice({
         },
         activeRecordingCleared: (state) => {
             state.recordingName = null;
-            state.origin = null;
+            state.origin = 'pending-capture';
         },
     },
     extraReducers: (builder) => {

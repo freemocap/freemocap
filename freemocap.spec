@@ -3,7 +3,12 @@
 import sys
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
-from PyInstaller.utils.hooks import collect_all, collect_dynamic_libs, collect_submodules
+from PyInstaller.utils.hooks import (
+    collect_all,
+    collect_data_files,
+    collect_dynamic_libs,
+    collect_submodules,
+)
 import cv2
 import os
 
@@ -21,6 +26,12 @@ datas.extend(scipy_datas)
 binaries.extend(scipy_binaries)
 hiddenimports.extend(scipy_hidden)
 
+# ── pandas (newer versions ship _cyutility that default hook misses) ──
+pandas_datas, pandas_binaries, pandas_hidden = collect_all('pandas')
+datas.extend(pandas_datas)
+binaries.extend(pandas_binaries)
+hiddenimports.extend(pandas_hidden)
+
 # ── mediapipe (needs .tflite model files at runtime) ──
 import mediapipe
 mp_path = os.path.dirname(mediapipe.__file__)
@@ -31,6 +42,42 @@ hiddenimports.extend(collect_submodules('mediapipe'))
 import skellyforge
 sf_path = os.path.dirname(skellyforge.__file__)
 datas.append((os.path.join(sf_path, 'skellymodels', 'tracker_info', '*.yaml'), 'skellyforge/skellymodels/tracker_info'))
+
+# ── skellytracker (recursive: all YAMLs under the package, any tracker) ──
+datas.extend(collect_data_files('skellytracker', includes=['**/*.yaml']))
+hiddenimports.extend(collect_submodules('skellytracker'))
+
+# ── NVIDIA CUDA runtime (bundled so users don't need a system CUDA install) ──
+# skellytracker's rtmpose_detector does `find_spec("nvidia")` +
+# `nvidia_root.glob("*/bin")` at runtime, so the full tree must be preserved.
+for nvidia_subpkg in [
+    'nvidia.cublas',
+    'nvidia.cuda_runtime',
+    'nvidia.cuda_nvrtc',
+    'nvidia.cudnn',
+    'nvidia.cufft',
+    'nvidia.nvjitlink',
+]:
+    try:
+        nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
+        datas.extend(nv_datas)
+        binaries.extend(nv_binaries)
+        hiddenimports.extend(nv_hidden)
+    except Exception as e:
+        print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
+              f"— GPU acceleration may not work in the frozen build. ({e})")
+
+# ── onnxruntime (GPU build — needs provider DLLs bundled explicitly) ──
+ort_datas, ort_binaries, ort_hidden = collect_all('onnxruntime')
+datas.extend(ort_datas)
+binaries.extend(ort_binaries)
+hiddenimports.extend(ort_hidden)
+
+# ── rtmlib (model registry + configs) ──
+rtm_datas, rtm_binaries, rtm_hidden = collect_all('rtmlib')
+datas.extend(rtm_datas)
+binaries.extend(rtm_binaries)
+hiddenimports.extend(rtm_hidden)
 
 # ── setuptools (needed by some vendored deps at runtime) ──
 setuptools_datas, _, setuptools_hidden = collect_all('setuptools')
@@ -67,7 +114,6 @@ a = Analysis(
         'pyinstaller',
 
         # ── Heavy unused modules ──
-        'torch',
         'tkinter',
         '_tkinter',
         'IPython',

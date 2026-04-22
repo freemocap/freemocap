@@ -3,11 +3,13 @@ import {useCallback, useMemo} from "react";
 import {alpha, darken} from "@mui/material/styles";
 import {Box, Chip, Link, Tab, Tabs, Tooltip, Typography} from "@mui/material";
 import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import {useAppSelector} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
+    activeRecordingCleared,
     selectActiveRecordingFullPath,
     selectActiveRecordingName,
 } from "@/store/slices/active-recording/active-recording-slice";
+import {selectPlannedRecordingName} from "@/store/slices/recording";
 import {useElectronIPC} from "@/services";
 
 const NAV_TABS = [
@@ -21,8 +23,10 @@ const NAV_TABS = [
 const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
 
 const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
+    const dispatch = useAppDispatch();
     const recordingName = useAppSelector(selectActiveRecordingName);
     const fullPath = useAppSelector(selectActiveRecordingFullPath);
+    const plannedName = useAppSelector(selectPlannedRecordingName);
     const {api} = useElectronIPC();
 
     const handleOpenFolder = async (e: React.MouseEvent) => {
@@ -35,7 +39,10 @@ const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
         }
     };
 
-
+    const handleClearRecording = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        dispatch(activeRecordingCleared());
+    };
 
     const tooltipContent = fullPath ? (
         <Box sx={{p: 0.5}}>
@@ -52,6 +59,8 @@ const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
                 Open in Explorer
             </Link>
         </Box>
+    ) : plannedName ? (
+        <Typography variant="caption">No active recording — will record as <strong>{plannedName}</strong></Typography>
     ) : (
         <Typography variant="caption">No active recording</Typography>
     );
@@ -64,11 +73,38 @@ const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
                     <Chip
                         size="small"
                         label={recordingName}
+                        onDelete={handleClearRecording}
                         sx={{
                             height: 18,
                             fontSize: '0.65rem',
                             fontFamily: MONO_FONT,
                             maxWidth: 220,
+                            '& .MuiChip-label': {
+                                px: 0.75,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            },
+                            '& .MuiChip-deleteIcon': {
+                                fontSize: 12,
+                                opacity: 0,
+                                transition: 'opacity 0.15s',
+                            },
+                            '&:hover .MuiChip-deleteIcon': {opacity: 1},
+                        }}
+                    />
+                ) : plannedName ? (
+                    <Chip
+                        size="small"
+                        label={plannedName}
+                        variant="outlined"
+                        sx={{
+                            height: 18,
+                            fontSize: '0.65rem',
+                            fontFamily: MONO_FONT,
+                            maxWidth: 220,
+                            opacity: 0.55,
+                            borderStyle: 'dashed',
                             '& .MuiChip-label': {
                                 px: 0.75,
                                 overflow: 'hidden',

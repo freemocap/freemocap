@@ -522,28 +522,44 @@ export const ServerConnectionStatus: React.FC = () => {
                                     label={t("executable")}
                                     disabled={serverRunning || serverLoading}
                                     sx={{ fontSize: '0.75rem' }}
+                                    renderValue={(value) => (
+                                        <Tooltip title={value as string} placement="bottom-start">
+                                            <Box
+                                                sx={{
+                                                    overflow: 'auto',
+                                                    whiteSpace: 'nowrap',
+                                                    '&::-webkit-scrollbar': { height: 4 },
+                                                    '&::-webkit-scrollbar-track': { background: 'transparent' },
+                                                    '&::-webkit-scrollbar-thumb': { background: theme.palette.divider, borderRadius: 2 },
+                                                }}
+                                            >
+                                                <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>
+                                                    {value as string}
+                                                </Typography>
+                                            </Box>
+                                        </Tooltip>
+                                    )}
                                 >
                                     {validCandidates.map((candidate) => (
                                         <MenuItem key={candidate.path} value={candidate.path} sx={{ fontSize: '0.75rem' }}>
-                                            <Box>
-                                                <Typography variant="caption" sx={{ fontWeight: 600 }}>
-                                                    {candidate.name}
-                                                </Typography>
-                                                <Typography
-                                                    variant="caption"
-                                                    sx={{
-                                                        display: 'block',
-                                                        color: theme.palette.text.secondary,
-                                                        fontSize: '0.65rem',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap',
-                                                        maxWidth: 250,
-                                                    }}
-                                                >
-                                                    {candidate.path}
-                                                </Typography>
-                                            </Box>
+                                            <Tooltip title={candidate.path} placement="right">
+                                                <Box sx={{ minWidth: 0, maxWidth: 400 }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                                                        {candidate.name}
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="caption"
+                                                        sx={{
+                                                            display: 'block',
+                                                            color: theme.palette.text.secondary,
+                                                            fontSize: '0.65rem',
+                                                            whiteSpace: 'nowrap',
+                                                        }}
+                                                    >
+                                                        {candidate.path}
+                                                    </Typography>
+                                                </Box>
+                                            </Tooltip>
                                         </MenuItem>
                                     ))}
                                     {invalidCandidates.length > 0 && validCandidates.length > 0 && (

@@ -1,4 +1,5 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {RootState} from '@/store/types';
 import {ComputedRecordingPath, RecordingConfig, RecordingInfo} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
 
@@ -201,3 +202,6 @@ export const {
     pathRecomputed,
     recordingCompletionDismissed
 } = recordingSlice.actions;
+
+export const selectPlannedRecordingName = (state: RootState) => state.recording.computed.recordingName;
+export const selectPlannedRecordingDirectory = (state: RootState) => state.recording.recordingDirectory;

@@ -42,6 +42,8 @@ class TabbedReleaseNotesDialog(QDialog):
         self.dark_mode = dark_mode
 
         self.setMinimumSize(min_width, min_height)
+        self.setSizeGripEnabled(True)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowMaximizeButtonHint | Qt.WindowMinimizeButtonHint)
         self.setWindowTitle("FreeMoCap Release Notes")
         self.setStyleSheet(
             ReleaseNotesStyles.get_dialog_style(
@@ -169,7 +171,7 @@ class TabbedReleaseNotesDialog(QDialog):
 
                 if not image_pixmap.isNull():
                     # Scale image to fit within scroll area while maintaining aspect ratio
-                    max_width = 540
+                    max_width = 720
                     if image_pixmap.width() > max_width:
                         scaled_pixmap = image_pixmap.scaledToWidth(
                             max_width,
@@ -260,7 +262,7 @@ if __name__ == "__main__":
     dialog = TabbedReleaseNotesDialog(
         gui_state=load_gui_state(),
         kill_thread_event=threading.Event(),
-        dark_mode=True,  # Set to True for dark mode, False for light mode
+        dark_mode=True,
     )
     dialog.show()
 

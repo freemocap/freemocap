@@ -87,7 +87,8 @@ class AniposeCameraCalibrator:
         )
 
     def calibrate_camera_capture_volume(self, pin_camera_0_to_origin: bool = False,
-                                        use_charuco_as_groundplane: bool = False) -> tuple[Path, GroundPlaneSuccess]:
+                                        use_charuco_as_groundplane: bool = False,
+                                        recording_name: str | None = None) -> tuple[Path, GroundPlaneSuccess]:
         video_paths_list_of_list_of_strings = [[str(this_path)] for this_path in self._list_of_video_paths]
 
         (
@@ -114,8 +115,10 @@ class AniposeCameraCalibrator:
 
         self.get_real_world_matrices(self._anipose_camera_group_object)
 
+        if recording_name is None:
+            recording_name = self._calibration_videos_folder_path.parent.stem
         calibration_toml_filename = create_camera_calibration_file_name(
-            recording_name=self._calibration_videos_folder_path.parent.stem
+            recording_name=recording_name
         )
 
         calibration_folder_toml_path = Path(get_calibrations_folder_path()) / calibration_toml_filename

@@ -227,7 +227,7 @@ const ActiveRecordingPage: React.FC = () => {
                                 >
                                     <Typography variant="subtitle2" sx={{mb: 1}}>Canonical layout</Typography>
                                     <Stack spacing={0.5}>
-                                        <PathRow label="videos/raw" value={structure.videosRawDir}/>
+                                        <PathRow label="videos/synchronized" value={structure.videosSynchronizedDir}/>
                                         <PathRow label="videos/annotated" value={structure.videosAnnotatedDir}/>
                                         <PathRow label="output/" value={structure.outputDir}/>
                                         <PathRow label="calibration.toml" value={structure.calibrationTomlPath}/>

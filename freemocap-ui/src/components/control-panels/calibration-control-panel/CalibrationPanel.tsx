@@ -26,13 +26,14 @@ import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
 import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {selectPlannedRecordingName, selectPlannedRecordingDirectory} from "@/store/slices/recording";
+import {selectPlannedRecordingName} from "@/store/slices/recording";
+import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
 export const CalibrationPanel: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
-    const {api} = useElectronIPC();
+    const {api, isElectron} = useElectronIPC();
 
     const {
         error,
@@ -55,11 +56,9 @@ export const CalibrationPanel: React.FC = () => {
 
     // Planned recording info (potential recording when no actual recording exists)
     const plannedName = useAppSelector(selectPlannedRecordingName);
-    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
 
-    // Compute the effective path to display (actual or planned)
-    const effectiveCalibrationPath = calibrationRecordingPath 
-        || (plannedName ? plannedDirectory + '/' + plannedName : null);
+    // Effective path: actual activeRecording if any, otherwise the planned path
+    const effectiveCalibrationPath = useAppSelector(selectEffectiveRecordingPath);
 
     // Determine if we're showing a pending (not yet created) recording
     const isPendingRecording = !calibrationRecordingPath && !!plannedName;
@@ -77,7 +76,7 @@ export const CalibrationPanel: React.FC = () => {
     }, [clearError]);
 
     const handleSelectDirectory = async (): Promise<void> => {
-        if (!api) return;
+        if (!isElectron || !api) return;
         try {
             const result: string | null = await api.fileSystem.selectDirectory.mutate();
             if (result) {
@@ -90,7 +89,7 @@ export const CalibrationPanel: React.FC = () => {
     };
 
     const handleOpenFolder = async (): Promise<void> => {
-        if (!api || !effectiveCalibrationPath) return;
+        if (!isElectron || !api || !effectiveCalibrationPath) return;
         try {
             await api.fileSystem.openFolder.mutate({path: effectiveCalibrationPath});
         } catch (err) {
@@ -178,7 +177,8 @@ export const CalibrationPanel: React.FC = () => {
                             color="primary"
                             startIcon={<PlayArrowIcon/>}
                             onClick={dispatchStartCalibrationRecording}
-                            disabled={!canStartRecording || isLoading}
+                            // disabled={!canStartRecording || isLoading}
+                            disabled={ isLoading}
                             fullWidth
                         >
                             Start Calibration Recording
@@ -233,14 +233,14 @@ export const CalibrationPanel: React.FC = () => {
                                                 onClick={handleOpenFolder}
                                                 edge="end"
                                                 size="small"
-                                                disabled={!effectiveCalibrationPath}
+                                                disabled={!isElectron || !effectiveCalibrationPath}
                                             >
                                                 <LaunchIcon fontSize="small"/>
                                             </IconButton>
                                         </span>
                                     </Tooltip>
                                     <Tooltip title="Select directory">
-                                        <IconButton onClick={handleSelectDirectory} edge="end">
+                                        <IconButton onClick={handleSelectDirectory} edge="end" disabled={!isElectron}>
                                             <FolderOpenIcon/>
                                         </IconButton>
                                     </Tooltip>

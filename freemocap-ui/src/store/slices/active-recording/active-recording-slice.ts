@@ -1,7 +1,12 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
 import {stopRecording} from '@/store/slices/recording/recording-thunks';
+import {
+    selectPlannedRecordingDirectory,
+    selectPlannedRecordingName,
+} from '@/store/slices/recording/recording-slice';
 import {buildRecordingStructure, RecordingStructure} from './recording-structure';
+import type {RecordingLayoutPresetName} from './layout-presets/layout-presets';
 
 export type ActiveRecordingOrigin =
     | 'pending-capture'
@@ -13,20 +18,24 @@ export interface ActiveRecordingState {
     baseDirectory: string;
     recordingName: string | null;
     origin: ActiveRecordingOrigin | null;
+    layoutPreset: RecordingLayoutPresetName;
 }
 
 const DEFAULT_BASE_DIRECTORY = '~/freemocap_data/recordings';
+const DEFAULT_LAYOUT_PRESET: RecordingLayoutPresetName = 'canonical';
 
 const initialState: ActiveRecordingState = {
     baseDirectory: DEFAULT_BASE_DIRECTORY,
     recordingName: null,
     origin: null,
+    layoutPreset: DEFAULT_LAYOUT_PRESET,
 };
 
 export interface ActiveRecordingSetPayload {
     recordingName: string;
     origin: ActiveRecordingOrigin;
     baseDirectory?: string;
+    layoutPreset?: RecordingLayoutPresetName;
 }
 
 export const splitParentAndName = (fullPath: string): {baseDirectory: string; recordingName: string} | null => {
@@ -49,13 +58,18 @@ export const activeRecordingSlice = createSlice({
             if (action.payload.baseDirectory) {
                 state.baseDirectory = action.payload.baseDirectory;
             }
+            state.layoutPreset = action.payload.layoutPreset ?? DEFAULT_LAYOUT_PRESET;
         },
         activeRecordingBaseDirectoryChanged: (state, action: PayloadAction<string>) => {
             state.baseDirectory = action.payload;
         },
+        activeRecordingLayoutSet: (state, action: PayloadAction<RecordingLayoutPresetName>) => {
+            state.layoutPreset = action.payload;
+        },
         activeRecordingCleared: (state) => {
             state.recordingName = null;
             state.origin = 'pending-capture';
+            state.layoutPreset = DEFAULT_LAYOUT_PRESET;
         },
     },
     extraReducers: (builder) => {
@@ -69,6 +83,7 @@ export const activeRecordingSlice = createSlice({
                 state.recordingName = action.payload.recording_name;
             }
             state.origin = 'just-captured';
+            state.layoutPreset = DEFAULT_LAYOUT_PRESET;
         });
     },
 });
@@ -76,6 +91,7 @@ export const activeRecordingSlice = createSlice({
 export const {
     activeRecordingSet,
     activeRecordingBaseDirectoryChanged,
+    activeRecordingLayoutSet,
     activeRecordingCleared,
 } = activeRecordingSlice.actions;
 
@@ -85,6 +101,7 @@ export const selectActiveRecording = (state: RootState) => state.activeRecording
 export const selectActiveRecordingName = (state: RootState) => state.activeRecording.recordingName;
 export const selectActiveRecordingBaseDirectory = (state: RootState) => state.activeRecording.baseDirectory;
 export const selectActiveRecordingOrigin = (state: RootState) => state.activeRecording.origin;
+export const selectActiveRecordingLayoutPreset = (state: RootState) => state.activeRecording.layoutPreset;
 
 export const selectHasActiveRecording = createSelector(
     [selectActiveRecordingName],
@@ -92,16 +109,25 @@ export const selectHasActiveRecording = createSelector(
 );
 
 export const selectActiveRecordingStructure = createSelector(
-    [selectActiveRecordingBaseDirectory, selectActiveRecordingName],
-    (baseDirectory, recordingName): RecordingStructure | null => {
+    [selectActiveRecordingBaseDirectory, selectActiveRecordingName, selectActiveRecordingLayoutPreset],
+    (baseDirectory, recordingName, layoutPreset): RecordingStructure | null => {
         if (!recordingName) return null;
-        return buildRecordingStructure({baseDirectory, recordingName});
+        return buildRecordingStructure({baseDirectory, recordingName}, {preset: layoutPreset});
     },
 );
 
 export const selectActiveRecordingFullPath = createSelector(
     [selectActiveRecordingStructure],
     (structure): string | null => structure?.fullPath ?? null,
+);
+
+export const selectEffectiveRecordingPath = createSelector(
+    [selectActiveRecordingFullPath, selectPlannedRecordingDirectory, selectPlannedRecordingName],
+    (activePath, plannedDir, plannedName): string | null => {
+        if (activePath) return activePath;
+        if (plannedName && plannedDir) return `${plannedDir}/${plannedName}`;
+        return null;
+    },
 );
 
 export const selectActiveRecordingCalibrationTomlPath = createSelector(
@@ -114,9 +140,9 @@ export const selectActiveRecordingDataParquetPath = createSelector(
     (structure): string | null => structure?.dataParquetPath ?? null,
 );
 
-export const selectActiveRecordingVideosRawDir = createSelector(
+export const selectActiveRecordingVideosSynchronizedDir = createSelector(
     [selectActiveRecordingStructure],
-    (structure): string | null => structure?.videosRawDir ?? null,
+    (structure): string | null => structure?.videosSynchronizedDir ?? null,
 );
 
 export const selectActiveRecordingVideosAnnotatedDir = createSelector(

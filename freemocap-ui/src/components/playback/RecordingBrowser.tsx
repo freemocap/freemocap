@@ -46,6 +46,11 @@ import {
     activeRecordingSet,
     splitParentAndName,
 } from '@/store/slices/active-recording/active-recording-slice';
+import {
+    detectLayoutPreset,
+    listDetectedLegacyMarkers,
+    type RecordingLayoutValidation,
+} from '@/store/slices/active-recording/recording-structure';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -62,6 +67,7 @@ interface RecordingEntry {
     duration_seconds?: number;
     fps?: number;
     status_summary?: RecordingStatusSummary;
+    layout_validation?: RecordingLayoutValidation;
 }
 
 /** Shape passed up to the parent when a recording is loaded */
@@ -315,10 +321,14 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                 // Promote this recording to the app-wide active recording.
                 // Use rec.path to capture baseDirectory if available; otherwise dispatch just the name.
                 const parsed = rec?.path ? splitParentAndName(rec.path) : null;
+                const layoutPreset = rec?.layout_validation
+                    ? detectLayoutPreset(rec.layout_validation)
+                    : undefined;
                 dispatch(activeRecordingSet({
                     recordingName: parsed?.recordingName ?? recName,
                     baseDirectory: parsed?.baseDirectory,
                     origin: 'browsed',
+                    layoutPreset,
                 }));
 
                 // Context callback is view-model only (loadedVideos/fps).
@@ -623,6 +633,14 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
         const stagesComplete = summary?.stages_complete ?? 0;
         const stagesTotal = summary?.stages_total ?? 0;
 
+        const layoutPreset = rec.layout_validation
+            ? detectLayoutPreset(rec.layout_validation)
+            : 'canonical';
+        const isLegacyLayout = layoutPreset === 'legacy_v1';
+        const legacyMarkers = rec.layout_validation
+            ? listDetectedLegacyMarkers(rec.layout_validation)
+            : [];
+
         const toggleExpand = (e: React.MouseEvent): void => {
             e.stopPropagation();
             setExpanded((v) => !v);
@@ -700,6 +718,37 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                         '& .MuiChip-label': {px: 0.75},
                                     }}
                                 />
+                            )}
+                            {isLegacyLayout && (
+                                <Tooltip
+                                    title={
+                                        <Box sx={{fontFamily: MONO_FONT, fontSize: '0.7rem'}}>
+                                            <div>Legacy folder layout (legacy_v1)</div>
+                                            {legacyMarkers.length > 0 && (
+                                                <ul style={{margin: '4px 0 0 16px', padding: 0}}>
+                                                    {legacyMarkers.map((marker) => (
+                                                        <li key={marker}>{marker}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </Box>
+                                    }
+                                    arrow
+                                >
+                                    <Chip
+                                        size="small"
+                                        label="Legacy"
+                                        sx={{
+                                            height: 18,
+                                            fontSize: '0.65rem',
+                                            fontFamily: MONO_FONT,
+                                            backgroundColor: isDark ? 'rgba(255,167,38,0.18)' : 'rgba(255,167,38,0.15)',
+                                            color: isDark ? '#ffb74d' : '#e65100',
+                                            border: `1px solid ${isDark ? 'rgba(255,167,38,0.5)' : 'rgba(230,81,0,0.4)'}`,
+                                            '& .MuiChip-label': {px: 0.75},
+                                        }}
+                                    />
+                                </Tooltip>
                             )}
                         </Box>
                     }

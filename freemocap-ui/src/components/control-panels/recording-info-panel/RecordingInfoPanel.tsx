@@ -5,7 +5,25 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
-import {pathRecomputed} from "@/store/slices/recording/recording-slice";
+import {
+    autoProcessToggled,
+    baseNameChanged,
+    countdownSet,
+    createSubfolderToggled,
+    currentIncrementChanged,
+    currentIncrementIncremented,
+    customSubfolderNameChanged,
+    delaySecondsChanged,
+    micDeviceIndexChanged,
+    pathRecomputed,
+    pendingOperationSet,
+    recordingTagChanged,
+    recordingTypePresetChanged,
+    useDelayStartToggled,
+    useIncrementToggled,
+    useTimestampToggled,
+} from "@/store/slices/recording/recording-slice";
+import type {RecordingTypePreset} from "@/store/slices/recording/recording-types";
 import {calibrateRecording} from "@/store/slices/calibration/calibration-thunks";
 import {processMocapRecording} from "@/store/slices/mocap/mocap-thunks";
 import {PresetPicker} from "@/components/common/PresetPicker";
@@ -21,12 +39,7 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {RecordingSummary} from "./RecordingSummary";
 import {RecordingHeaderButton} from "./RecordingHeaderButton";
 
-interface RecordingOperation {
-    type: 'start' | 'stop';
-    timestamp: number;
-}
-
-export type RecordingTypePreset = "none" | "calibration" | "mocap";
+export type {RecordingTypePreset};
 
 export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string }[] = [
     {value: "none", label: "None"},
@@ -34,38 +47,45 @@ export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string
     {value: "mocap", label: "Mocap"},
 ];
 
+const formatDuration = (startedAt: string | null): string => {
+    if (!startedAt) return "";
+    const seconds = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    const parts: string[] = [];
+    if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
+    parts.push(minutes.toString().padStart(2, '0'));
+    parts.push(secs.toString().padStart(2, '0'));
+    return parts.join(':');
+};
+
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
-    const recordingInfo = useAppSelector(
-        (state) => state.recording
-    );
+    const recordingInfo = useAppSelector((state) => state.recording);
+    const {config, pendingOperation, countdown} = recordingInfo;
+    const {
+        createSubfolder,
+        useDelayStart,
+        delaySeconds,
+        useTimestamp,
+        useIncrement,
+        currentIncrement,
+        baseName,
+        customSubfolderName,
+        recordingTag,
+        micDeviceIndex,
+        recordingTypePreset,
+        autoProcess,
+    } = config;
 
-    // Local UI state
-    const [createSubfolder, setCreateSubfolder] = useState<boolean>(false);
-    const [useDelayStart, setUseDelayStart] = useState<boolean>(false);
-    const [delaySeconds, setDelaySeconds] = useState<number>(3);
-    const [countdown, setCountdown] = useState<number | null>(null);
-
-    // Track pending operation and recording start time
-    const [pendingOperation, setPendingOperation] = useState<RecordingOperation | null>(null);
-    const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
-
-    // Local recording naming
-    const [useTimestamp, setUseTimestamp] = useState<boolean>(true);
-    const [useIncrement, setUseIncrement] = useState<boolean>(false);
-    const [currentIncrement, setCurrentIncrement] = useState<number>(1);
-    const [baseName, setBaseName] = useState<string>("recording");
-    const [customSubfolderName, setCustomSubfolderName] = useState<string>("");
-    const [recordingTag, setRecordingTag] = useState<string>("");
-    const [micDeviceIndex, setMicDeviceIndex] = useState<number>(-1);
-    const [recordingTypePreset, setRecordingTypePreset] = useState<RecordingTypePreset>("none");
-    const [autoProcess, setAutoProcess] = useState<boolean>(true); // Auto-process by default when preset selected
     const {isElectron, api} = useElectronIPC();
     const {connectedCameraIds} = useServer();
     const noCamerasConnected = connectedCameraIds.length === 0;
 
-    // Recording duration for summary
+    // Duration display is derived from shared startedAt so all panel
+    // instances show the same ticking value.
     const [recordingDuration, setRecordingDuration] = useState<string>("");
 
     // Keep the computed recording path timestamp ticking with the wall clock
@@ -75,70 +95,31 @@ export const RecordingInfoPanel: React.FC = () => {
         return () => clearInterval(id);
     }, [dispatch, recordingInfo.isRecording]);
 
-    // Track when recording state changes to clear pending state
+    // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
     useEffect(() => {
-        if (pendingOperation) {
-            const isNowRecording = recordingInfo.isRecording;
-            const wasStarting = pendingOperation.type === 'start';
-            const wasStopping = pendingOperation.type === 'stop';
+        if (!pendingOperation) return;
+        const timeoutMs = 5000;
+        const elapsed = Date.now() - pendingOperation.timestamp;
+        const remaining = Math.max(0, timeoutMs - elapsed);
+        const timer = setTimeout(() => {
+            console.error("Recording " + pendingOperation.type + " operation timed out after " + timeoutMs + "ms");
+            dispatch(pendingOperationSet(null));
+        }, remaining);
+        return () => clearTimeout(timer);
+    }, [dispatch, pendingOperation]);
 
-            // Clear pending if state changed as expected
-            if ((wasStarting && isNowRecording) || (wasStopping && !isNowRecording)) {
-                setPendingOperation(null);
-
-                // Set or clear recording start time
-                if (wasStarting && isNowRecording) {
-                    setRecordingStartTime(Date.now());
-                } else if (wasStopping && !isNowRecording) {
-                    setRecordingStartTime(null);
-                    setRecordingDuration("");
-                }
-            }
-
-            // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
-            const timeoutMs = 5000;
-            const elapsed = Date.now() - pendingOperation.timestamp;
-            if (elapsed > timeoutMs) {
-                console.error("Recording " + pendingOperation.type + " operation timed out after " + timeoutMs + "ms");
-                setPendingOperation(null);
-            }
-        }
-    }, [recordingInfo.isRecording, pendingOperation]);
-
-    // Set initial recording start time if already recording on mount
+    // Update duration display from shared startedAt
     useEffect(() => {
-        if (recordingInfo.isRecording && !recordingStartTime) {
-            setRecordingStartTime(Date.now());
-        }
-    }, []);
-
-    // Update recording duration display
-    useEffect(() => {
-        if (!recordingInfo.isRecording || !recordingStartTime) {
+        if (!recordingInfo.isRecording || !recordingInfo.startedAt) {
             setRecordingDuration("");
             return;
         }
-
-        const updateDuration = (): void => {
-            const now = Date.now();
-            const seconds = Math.floor((now - recordingStartTime) / 1000);
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-
-            const parts: string[] = [];
-            if (hours > 0) {
-                parts.push(hours.toString().padStart(2, '0'));
-            }
-            parts.push(minutes.toString().padStart(2, '0'));
-            parts.push(secs.toString().padStart(2, '0'));
-            setRecordingDuration(parts.join(':'));
-        };
-
-        updateDuration();
-        const interval = setInterval(updateDuration, 1000);
-        return () => clearInterval(interval);
-    }, [recordingInfo.isRecording, recordingStartTime]);
+        setRecordingDuration(formatDuration(recordingInfo.startedAt));
+        const id = setInterval(() => {
+            setRecordingDuration(formatDuration(recordingInfo.startedAt));
+        }, 1000);
+        return () => clearInterval(id);
+    }, [recordingInfo.isRecording, recordingInfo.startedAt]);
 
     // replace ~ with user's home directory
     useEffect(() => {
@@ -160,18 +141,15 @@ export const RecordingInfoPanel: React.FC = () => {
 
     // Handle countdown timer
     useEffect(() => {
-        if (countdown !== null && countdown > 0) {
-            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+        if (countdown === null) return;
+        if (countdown > 0) {
+            const timer = setTimeout(() => dispatch(countdownSet(countdown - 1)), 1000);
             return () => clearTimeout(timer);
-        } else if (countdown === 0) {
-            handleStartRecording();
-            setCountdown(null);
         }
+        // countdown === 0
+        dispatch(countdownSet(null));
+        handleStartRecording();
     }, [countdown]);
-
-    const handleRecordingTagChange = (tag: string): void => {
-        setRecordingTag(tag);
-    };
 
     const buildRecordingName = (): string => {
         const parts: string[] = [];
@@ -208,11 +186,10 @@ export const RecordingInfoPanel: React.FC = () => {
         console.log("Recording name:", recordingName);
 
         if (useIncrement) {
-            setCurrentIncrement((prev) => prev + 1);
+            dispatch(currentIncrementIncremented());
         }
 
-        // Set pending state before dispatching
-        setPendingOperation({type: 'start', timestamp: Date.now()});
+        dispatch(pendingOperationSet({type: 'start', timestamp: Date.now()}));
 
         try {
             await dispatch(
@@ -224,25 +201,22 @@ export const RecordingInfoPanel: React.FC = () => {
             ).unwrap();
         } catch (error) {
             console.error("Failed to start recording:", error);
-            setPendingOperation(null);
+            dispatch(pendingOperationSet(null));
             throw error; // Fail loudly as per preferences
         }
     };
 
     const handleRecordButtonClick = async (): Promise<void> => {
-        // Don't allow clicking while pending
         if (pendingOperation) {
             return;
         }
 
         if (recordingInfo.isRecording) {
             console.log("Stopping recording...");
-            setPendingOperation({type: 'stop', timestamp: Date.now()});
+            dispatch(pendingOperationSet({type: 'stop', timestamp: Date.now()}));
 
             try {
                 const result = await dispatch(stopRecording()).unwrap();
-                // stopRecording.fulfilled promotes to activeRecording via extraReducer;
-                // preset + autoProcess dictates which follow-up pipeline to auto-launch.
                 if (result && autoProcess && recordingTypePreset === "calibration") {
                     dispatch(calibrateRecording());
                 } else if (result && autoProcess && recordingTypePreset === "mocap") {
@@ -250,12 +224,12 @@ export const RecordingInfoPanel: React.FC = () => {
                 }
             } catch (error) {
                 console.error("Failed to stop recording:", error);
-                setPendingOperation(null);
+                dispatch(pendingOperationSet(null));
                 throw error; // Fail loudly as per preferences
             }
         } else if (useDelayStart) {
             console.log("Starting countdown from " + delaySeconds + " seconds");
-            setCountdown(delaySeconds);
+            dispatch(countdownSet(delaySeconds));
         } else {
             await handleStartRecording();
         }
@@ -289,7 +263,7 @@ export const RecordingInfoPanel: React.FC = () => {
                     <PresetPicker
                         value={recordingTypePreset}
                         options={RECORDING_TYPE_OPTIONS}
-                        onChange={setRecordingTypePreset}
+                        onChange={(v) => dispatch(recordingTypePresetChanged(v))}
                         disabled={recordingInfo.isRecording}
                         size="small"
                         minWidth={70}
@@ -303,7 +277,7 @@ export const RecordingInfoPanel: React.FC = () => {
                         control={
                             <Checkbox
                                 checked={autoProcess}
-                                onChange={(e) => setAutoProcess(e.target.checked)}
+                                onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
                                 disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
                                 size="small"
                                 sx={{py: 0, '& .MuiSvgIcon-root': {fontSize: 14}}}
@@ -351,10 +325,9 @@ export const RecordingInfoPanel: React.FC = () => {
                     }}
                 >
                     <Box sx={{px: 1, py: 1}}>
-                        {/* Microphone selector */}
                         <MicrophoneSelector
                             selectedMicIndex={micDeviceIndex}
-                            onMicSelected={setMicDeviceIndex}
+                            onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
                             disabled={recordingInfo.isRecording}
                         />
                     </Box>
@@ -374,15 +347,15 @@ export const RecordingInfoPanel: React.FC = () => {
                         createSubfolder={createSubfolder}
                         customSubfolderName={customSubfolderName}
                         isRecording={recordingInfo.isRecording}
-                        onDelayToggle={setUseDelayStart}
-                        onDelayChange={setDelaySeconds}
-                        onTagChange={handleRecordingTagChange}
-                        onUseTimestampChange={setUseTimestamp}
-                        onBaseNameChange={setBaseName}
-                        onUseIncrementChange={setUseIncrement}
-                        onIncrementChange={setCurrentIncrement}
-                        onCreateSubfolderChange={setCreateSubfolder}
-                        onCustomSubfolderNameChange={setCustomSubfolderName}
+                        onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
+                        onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
+                        onTagChange={(v) => dispatch(recordingTagChanged(v))}
+                        onUseTimestampChange={(v) => dispatch(useTimestampToggled(v))}
+                        onBaseNameChange={(v) => dispatch(baseNameChanged(v))}
+                        onUseIncrementChange={(v) => dispatch(useIncrementToggled(v))}
+                        onIncrementChange={(v) => dispatch(currentIncrementChanged(v))}
+                        onCreateSubfolderChange={(v) => dispatch(createSubfolderToggled(v))}
+                        onCustomSubfolderNameChange={(v) => dispatch(customSubfolderNameChanged(v))}
                     />
                 </SimpleTreeView>
             </Box>

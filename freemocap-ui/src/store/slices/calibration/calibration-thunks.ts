@@ -8,13 +8,18 @@ import type {LoadedCalibration} from "./calibration-slice";
 
 export const loadCalibrationForRecording = createAsyncThunk<
     LoadedCalibration | null,
-    string,
+    { recordingId: string; recordingParentDirectory?: string | null },
     { state: RootState; rejectValue: string }
 >(
     'calibration/loadCalibrationForRecording',
-    async (recordingId, { rejectWithValue }) => {
+    async ({ recordingId, recordingParentDirectory }, { rejectWithValue }) => {
         try {
-            const url = `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/calibration`;
+            const params = new URLSearchParams();
+            if (recordingParentDirectory) {
+                params.set('recording_parent_directory', recordingParentDirectory);
+            }
+            const qs = params.toString();
+            const url = `${serverUrls.getHttpUrl()}/freemocap/playback/${encodeURIComponent(recordingId)}/calibration${qs ? `?${qs}` : ''}`;
             const resp = await fetch(url);
             if (resp.status === 404) {
                 console.warn(`[calibration] No calibration found for recording: ${recordingId}`);

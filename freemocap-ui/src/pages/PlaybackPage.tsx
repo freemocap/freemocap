@@ -20,7 +20,11 @@ import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
 import {useAppDispatch, useAppSelector} from "@/store";
 import {loadCalibrationForRecording} from "@/store/slices/calibration/calibration-thunks";
-import {selectActiveRecordingFullPath} from "@/store/slices/active-recording/active-recording-slice";
+import {
+    selectActiveRecordingBaseDirectory,
+    selectActiveRecordingFullPath,
+    selectActiveRecordingName,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
@@ -32,11 +36,16 @@ const PlaybackPage: React.FC = () => {
     const ctx = usePlaybackContext();
     const dispatch = useAppDispatch();
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
+    const activeRecordingName = useAppSelector(selectActiveRecordingName);
+    const activeRecordingBaseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
 
     useEffect(() => {
-        if (!activeRecordingPath) return;
-        dispatch(loadCalibrationForRecording(activeRecordingPath));
-    }, [dispatch, activeRecordingPath]);
+        if (!activeRecordingName) return;
+        dispatch(loadCalibrationForRecording({
+            recordingId: activeRecordingName,
+            recordingParentDirectory: activeRecordingBaseDirectory,
+        }));
+    }, [dispatch, activeRecordingName, activeRecordingBaseDirectory]);
 
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
@@ -304,7 +313,8 @@ const PlaybackPage: React.FC = () => {
                                     <Panel defaultSize={40} minSize={10}>
                                         <Box sx={{height: '100%'}}>
                                             <FileKeypointsSourceProvider
-                                                recordingId={recordingPath}
+                                                recordingId={activeRecordingName}
+                                                recordingParentDirectory={activeRecordingBaseDirectory}
                                                 currentFrameRef={controller.currentFrameRef}
                                             >
                                                 <ThreeJsCanvas/>

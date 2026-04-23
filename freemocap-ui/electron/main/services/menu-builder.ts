@@ -18,6 +18,8 @@ export type MenuAction =
     | 'start-recording'
     | 'stop-recording'
     | 'open-recording-folder'
+    | 'load-test-data'
+    | 'clear-active-recording'
     | 'toggle-fullscreen'
     | 'toggle-locale'
     | 'check-for-updates'
@@ -34,6 +36,9 @@ export interface MenuLabels {
     menuView: string;
     menuCamera: string;
     menuRecording: string;
+    menuData: string;
+    menuLoadTestData: string;
+    menuClearActiveRecording: string;
     menuHelp: string;
     menuDetectCameras: string;
     menuConnectCameras: string;
@@ -66,6 +71,9 @@ const DEFAULT_LABELS: MenuLabels = {
     menuView: 'View',
     menuCamera: 'Camera',
     menuRecording: 'Recording',
+    menuData: 'Data',
+    menuLoadTestData: 'Load Test Data',
+    menuClearActiveRecording: 'Clear Active Recording',
     menuHelp: 'Help',
     menuDetectCameras: 'Detect Cameras',
     menuConnectCameras: 'Connect Cameras',
@@ -243,6 +251,23 @@ function buildRecordingMenu(t: MenuLabels): MenuItemConstructorOptions {
     };
 }
 
+function buildDataMenu(t: MenuLabels): MenuItemConstructorOptions {
+    return {
+        label: t.menuData,
+        submenu: [
+            {
+                label: t.menuLoadTestData,
+                accelerator: 'CmdOrCtrl+T',
+                click: () => sendMenuAction('load-test-data'),
+            },
+            {
+                label: t.menuClearActiveRecording,
+                click: () => sendMenuAction('clear-active-recording'),
+            },
+        ],
+    };
+}
+
 function buildHelpMenu(t: MenuLabels): MenuItemConstructorOptions {
     return {
         label: t.menuHelp,
@@ -326,6 +351,7 @@ export function buildApplicationMenu(params: MenuBuildParams = {}): void {
     template.push(buildViewMenu(t));
     template.push(buildCameraMenu(t));
     template.push(buildRecordingMenu(t));
+    template.push(buildDataMenu(t));
 
     // macOS window menu
     if (isMac) {

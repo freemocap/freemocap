@@ -1,0 +1,31 @@
+# Recording folder layout presets.
+#
+# Tokens in path templates:
+#   {fullPath}       -> {baseDirectory}/{recordingName}
+#   {recordingName}  -> the recording folder name
+#
+# Templates are passed through joinPath at resolution time for separator
+# normalization, so forward slashes are canonical here.
+#
+# Keep in sync with the backend RecordingStructure spec at
+# freemocap/system/recording_structure/recording_structure.py
+
+canonical:
+  videosSynchronizedDir: "{fullPath}/videos/synchronized"
+  videosAnnotatedDir:    "{fullPath}/videos/annotated"
+  outputDir:             "{fullPath}/output"
+  logsDir:               "{fullPath}/logs"
+  calibrationTomlPath:   "{fullPath}/{recordingName}_calibration.toml"
+  recordingInfoPath:     "{fullPath}/{recordingName}_recording_info.json"
+  dataParquetPath:       "{fullPath}/{recordingName}_data.parquet"
+  blendPath:             "{fullPath}/{recordingName}.blend"
+
+legacy_v1:
+  videosSynchronizedDir: "{fullPath}/synchronized_videos"
+  videosAnnotatedDir:    "{fullPath}/annotated_videos"
+  outputDir:             "{fullPath}/output_data"
+  logsDir:               "{fullPath}/logs"
+  calibrationTomlPath:   "{fullPath}/{recordingName}_camera_calibration.toml"
+  recordingInfoPath:     "{fullPath}/{recordingName}_recording_info.json"
+  dataParquetPath:       "{fullPath}/output_data/freemocap_data_by_frame.parquet"
+  blendPath:             "{fullPath}/{recordingName}.blend"

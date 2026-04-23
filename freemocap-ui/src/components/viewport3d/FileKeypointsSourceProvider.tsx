@@ -206,9 +206,10 @@ function fireSubscribers(traj: TrajectoryData): void {
 
 export const FileKeypointsSourceProvider: React.FC<{
     recordingId: string | null;
+    recordingParentDirectory?: string | null;
     currentFrameRef: React.RefObject<number>;
     children: React.ReactNode;
-}> = ({recordingId, currentFrameRef, children}) => {
+}> = ({recordingId, recordingParentDirectory, currentFrameRef, children}) => {
 
     const rawRef = useRef<TrajectoryData>(emptyTrajectory());
     const filteredRef = useRef<TrajectoryData>(emptyTrajectory());
@@ -226,7 +227,12 @@ export const FileKeypointsSourceProvider: React.FC<{
         (async () => {
             try {
                 const baseUrl = serverUrls.getHttpUrl();
-                const url = `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/parquet`;
+                const params = new URLSearchParams();
+                if (recordingParentDirectory) {
+                    params.set('recording_parent_directory', recordingParentDirectory);
+                }
+                const qs = params.toString();
+                const url = `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/parquet${qs ? `?${qs}` : ''}`;
 
                 const t0 = performance.now();
                 const resp = await fetch(url, {signal: controller.signal});
@@ -290,7 +296,7 @@ export const FileKeypointsSourceProvider: React.FC<{
         })();
 
         return () => controller.abort();
-    }, [recordingId]);
+    }, [recordingId, recordingParentDirectory]);
 
     // rAF loop: poll the controller's frame ref and push updates when the
     // integer frame changes.

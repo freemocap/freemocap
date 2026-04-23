@@ -36,6 +36,7 @@ import {BlenderSection} from "@/components/control-panels/mocap-control-panel/Bl
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 import {selectPlannedRecordingName, selectPlannedRecordingDirectory} from "@/store/slices/recording";
+import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
 export const MocapPanel: React.FC = () => {
@@ -76,9 +77,8 @@ export const MocapPanel: React.FC = () => {
     const plannedName = useAppSelector(selectPlannedRecordingName);
     const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
 
-    // Compute the effective path to display (actual or planned)
-    const effectiveMocapPath = mocapRecordingPath 
-        || (plannedName ? plannedDirectory + '/' + plannedName : null);
+    // Effective path: actual activeRecording if any, otherwise the planned path
+    const effectiveMocapPath = useAppSelector(selectEffectiveRecordingPath);
 
     // Determine if we're showing a pending (not yet created) recording
     const isPendingRecording = !mocapRecordingPath && !!plannedName;
@@ -327,7 +327,8 @@ export const MocapPanel: React.FC = () => {
                             color="primary"
                             startIcon={<PlayArrowIcon />}
                             onClick={dispatchStartMocapRecording}
-                            disabled={!canStartRecording || isLoading}
+                            // disabled={!canStartRecording || isLoading}
+                            disabled={isLoading}
                             fullWidth
                         >
                             Start Mocap Recording

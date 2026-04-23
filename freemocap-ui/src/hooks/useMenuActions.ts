@@ -7,8 +7,9 @@ import {themeModeToggled} from '@/store/slices/theme';
 import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras} from '@/store/slices/cameras';
 import {stopRecording} from '@/store/slices/recording';
 import {selectVideoLoadFolder} from '@/store/slices/videos';
+import {activeRecordingCleared, activeRecordingSet} from '@/store/slices/active-recording';
 // import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
-import {isElectron} from '@/services/electron-ipc/electron-ipc';
+import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
 import {SUPPORTED_LOCALES} from '@/i18n';
 import type {MenuAction} from '../../electron/main/services/menu-builder';
 
@@ -18,6 +19,9 @@ const MENU_LABEL_KEYS = [
     'menuView',
     'menuCamera',
     'menuRecording',
+    'menuData',
+    'menuLoadTestData',
+    'menuClearActiveRecording',
     'menuHelp',
     'menuDetectCameras',
     'menuConnectCameras',
@@ -57,6 +61,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
+    const { api } = useElectronIPC();
 
     const isRecording = useAppSelector((state) => state.recording.isRecording);
     // const currentLocale = useAppSelector(selectLocale);
@@ -80,7 +85,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
     useEffect(() => {
         if (!isElectron() || !window.electronAPI?.onMenuAction) return;
 
-        const cleanup = window.electronAPI.onMenuAction((action: string) => {
+        const cleanup = window.electronAPI.onMenuAction(async (action: string) => {
             // Handle locale change actions (dynamic pattern: "change-locale:xx")
             if (action.startsWith('change-locale:')) {
                 const localeCode = action.slice('change-locale:'.length);
@@ -164,9 +169,30 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                     dispatch(selectVideoLoadFolder());
                     navigate('/playback');
                     break;
+
+                // Data actions
+                case 'load-test-data': {
+                    if (!api) break;
+                    try {
+                        const home: string = await api.fileSystem.getHomeDirectory.query();
+                        const sep = home.includes('\\') ? '\\' : '/';
+                        const baseDirectory = `${home}${sep}freemocap_data${sep}recordings`;
+                        dispatch(activeRecordingSet({
+                            baseDirectory,
+                            recordingName: 'freemocap_test_data',
+                            origin: 'browsed',
+                        }));
+                    } catch (error) {
+                        console.error('Failed to resolve home directory for test data:', error);
+                    }
+                    break;
+                }
+                case 'clear-active-recording':
+                    dispatch(activeRecordingCleared());
+                    break;
             }
         });
 
         return cleanup;
-    }, [dispatch, navigate, isRecording, onToggleSidebar]);
+    }, [dispatch, navigate, isRecording, onToggleSidebar, api]);
 }

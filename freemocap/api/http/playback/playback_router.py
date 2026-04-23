@@ -28,6 +28,10 @@ from freemocap.system.recording_status.recording_status import (
     compute_recording_status,
     _find_calibration_toml,
 )
+from freemocap.system.recording_structure.recording_structure import (
+    RecordingLayoutValidation,
+    RecordingStructure,
+)
 from freemocap.system.default_paths import get_default_freemocap_recordings_path
 
 _VIEWER_HTML = Path(__file__).parent.parent.parent.parent / "core" / "viz" / "parquet_viewer.html"
@@ -70,6 +74,7 @@ class RecordingListEntry(BaseModel):
     duration_seconds: Optional[float] = None
     fps: Optional[float] = None
     status_summary: RecordingStatusSummary = RecordingStatusSummary()
+    layout_validation: Optional[RecordingLayoutValidation] = None
 
 
 # ---------------------------------------------------------------------------
@@ -328,6 +333,10 @@ def list_recordings(
                 created_ts = _get_created_timestamp(child)
                 stats = _get_recording_stats(child, video_folder)
                 status = compute_recording_status(child)
+                layout_validation = RecordingStructure(
+                    base_directory=child.parent,
+                    recording_name=child.name,
+                ).validate_layout()
 
                 stages_complete = sum(1 for s in status.stages if s.complete)
                 entries.append(RecordingListEntry(
@@ -347,6 +356,7 @@ def list_recordings(
                         stages_complete=stages_complete,
                         stages_total=len(status.stages),
                     ),
+                    layout_validation=layout_validation,
                 ))
         except (FileNotFoundError, PermissionError):
             continue
@@ -459,13 +469,44 @@ def get_recording_parquet(
     ),
 ) -> FileResponse:
     recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
-    p = recording_path / "output_data" / "freemocap_data_by_frame.parquet"
-    if not p.is_file():
+    p = _find_recording_parquet(recording_path)
+    if p is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Parquet file not found: {p}",
+            detail=f"No parquet file found in recording: {recording_path}",
         )
     return FileResponse(str(p), media_type="application/octet-stream", filename=p.name)
+
+
+def _find_recording_parquet(recording_path: Path) -> Path | None:
+    """Locate a recording's parquet across canonical + legacy layouts.
+
+    Tries, in order:
+      1. {recording}/{name}_data.parquet          (canonical)
+      2. {recording}/output_data/freemocap_data_by_frame.parquet  (legacy)
+      3. any *.parquet under the recording folder (fallback; warns)
+    """
+    name = recording_path.name
+    canonical = recording_path / f"{name}_data.parquet"
+    if canonical.is_file():
+        logger.info(f"Found canonical parquet: {canonical}")
+        return canonical
+
+    legacy = recording_path / "output_data" / "freemocap_data_by_frame.parquet"
+    if legacy.is_file():
+        logger.info(f"Found legacy parquet: {legacy}")
+        return legacy
+
+    matches = [p for p in recording_path.rglob("*.parquet") if p.is_file()]
+    if matches:
+        found = matches[0]
+        logger.warning(
+            f"Parquet not at canonical/legacy location; using fallback match: {found} "
+            f"(searched under {recording_path}; {len(matches)} .parquet files found)"
+        )
+        return found
+
+    return None
 
 
 @playback_router.get(

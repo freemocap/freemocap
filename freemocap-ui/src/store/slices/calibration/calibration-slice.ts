@@ -10,6 +10,7 @@ import {
 import {
     selectActiveRecordingFullPath,
     selectActiveRecordingOrigin,
+    selectEffectiveRecordingPath,
 } from '@/store/slices/active-recording/active-recording-slice';
 
 export type CalibrationSolverMethod = 'anipose' | 'pyceres';
@@ -188,11 +189,11 @@ export const selectCanStartCalibrationRecording = createSelector(
     [
         selectCalibrationIsRecording,
         selectCalibrationIsLoading,
-        selectCalibrationRecordingPath,
+        selectEffectiveRecordingPath,
         selectCalibrationDirectoryInfo
     ],
-    (isRecording, isLoading, recordingPath, directoryInfo) => {
-        return !isRecording && !isLoading && !!recordingPath && (directoryInfo?.canRecord ?? true);
+    (isRecording, isLoading, effectivePath, directoryInfo) => {
+        return !isRecording && !isLoading && !!effectivePath && (directoryInfo?.canRecord ?? true);
     }
 );
 

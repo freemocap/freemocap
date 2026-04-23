@@ -51,6 +51,9 @@ class ServerUrls {
             updateConfigs: `${baseUrl}/skellycam/camera/update`,
             pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
             detectMicrophones: `${baseUrl}/skellycam/camera/microphone/detect`,
+            // Recording endpoints
+            startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
+            stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
             // Playback endpoints
             playbackRecordings: `${baseUrl}/freemocap/playback/recordings`,
@@ -65,9 +68,6 @@ class ServerUrls {
             playbackRecordingStatus: (recordingId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/status`,
 
-            // Recording endpoints
-            startRecording: `${baseUrl}/freemocap/camera/group/all/record/start`,
-            stopRecording: `${baseUrl}/freemocap/camera/group/all/record/stop`,
 
             // Realtime pipeline endpoints
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,

@@ -12,7 +12,7 @@ Layout (target):
 
     {base_directory}/{recording_name}/
     ├── videos/
-    │   ├── raw/                              # was synchronized_videos/
+    │   ├── synchronized/                     # was synchronized_videos/
     │   └── annotated/                        # was annotated_videos/
     ├── output/                               # per-stage processed artifacts
     ├── logs/                                 # per-recording logs
@@ -59,17 +59,26 @@ class FilePresence(BaseModel):
 
 
 class RecordingLayoutValidation(BaseModel):
-    """Report describing which expected files/dirs are present on disk."""
+    """Report describing which expected files/dirs are present on disk.
+
+    `is_legacy_layout` is true if any legacy marker exists — the frontend uses
+    the individual marker fields to pick a layout preset.
+    """
 
     full_path: str
     is_legacy_layout: bool = False
-    videos_raw: FilePresence
+    videos_synchronized: FilePresence
     videos_annotated: FilePresence
     output_dir: FilePresence
     calibration_toml: FilePresence
     recording_info: FilePresence
     data_parquet: FilePresence
     blend: FilePresence
+    synchronized_videos_dir: FilePresence
+    annotated_videos_dir: FilePresence
+    output_data_dir: FilePresence
+    camera_calibration_toml: FilePresence
+    legacy_parquet_in_output_data: FilePresence
 
 
 class RecordingStructure(BaseModel):
@@ -89,8 +98,8 @@ class RecordingStructure(BaseModel):
 
     @computed_field
     @property
-    def videos_raw_dir(self) -> Path:
-        return self.full_path / "videos" / "raw"
+    def videos_synchronized_dir(self) -> Path:
+        return self.full_path / "videos" / "synchronized"
 
     @computed_field
     @property
@@ -129,27 +138,54 @@ class RecordingStructure(BaseModel):
 
     def create_on_disk(self) -> None:
         """Create the expected subdirectory skeleton. Idempotent."""
-        for d in (self.videos_raw_dir, self.videos_annotated_dir, self.output_dir, self.logs_dir):
+        for d in (self.videos_synchronized_dir, self.videos_annotated_dir, self.output_dir, self.logs_dir):
             d.mkdir(parents=True, exist_ok=True)
 
     def validate_layout(self) -> RecordingLayoutValidation:
         """Check which expected files/dirs exist. Returns a report, does not raise."""
         legacy_sync = self.full_path / "synchronized_videos"
         legacy_annot = self.full_path / "annotated_videos"
-        is_legacy = legacy_sync.exists() and not self.videos_raw_dir.exists()
+        legacy_output = self.full_path / "output_data"
+        legacy_calib = self.full_path / f"{self.recording_name}_camera_calibration.toml"
+        legacy_parquet = legacy_output / "freemocap_data_by_frame.parquet"
+
+        synchronized_videos_dir = _presence(legacy_sync)
+        annotated_videos_dir = _presence(legacy_annot)
+        output_data_dir = _presence(legacy_output)
+        camera_calibration_toml = _presence(legacy_calib)
+        legacy_parquet_in_output_data = _presence(legacy_parquet)
+
+        is_legacy = any((
+            synchronized_videos_dir.exists,
+            annotated_videos_dir.exists,
+            output_data_dir.exists,
+            camera_calibration_toml.exists,
+            legacy_parquet_in_output_data.exists,
+        ))
 
         return RecordingLayoutValidation(
             full_path=str(self.full_path),
             is_legacy_layout=is_legacy,
-            videos_raw=_presence(self.videos_raw_dir if not is_legacy else legacy_sync),
+            videos_synchronized=_presence(
+                self.videos_synchronized_dir
+                if self.videos_synchronized_dir.exists()
+                else legacy_sync
+            ),
             videos_annotated=_presence(
-                self.videos_annotated_dir if not is_legacy else legacy_annot
+                self.videos_annotated_dir
+                if self.videos_annotated_dir.exists()
+                else legacy_annot
             ),
             output_dir=_presence(self.output_dir),
             calibration_toml=_presence(self.calibration_toml_path),
             recording_info=_presence(self.recording_info_path),
             data_parquet=_presence(self.data_parquet_path),
             blend=_presence(self.blend_path),
+            synchronized_videos_dir=synchronized_videos_dir,
+            annotated_videos_dir=annotated_videos_dir,
+            output_data_dir=output_data_dir,
+            camera_calibration_toml=camera_calibration_toml,
+            legacy_parquet_in_output_data=legacy_parquet_in_output_data,
         )
 
 

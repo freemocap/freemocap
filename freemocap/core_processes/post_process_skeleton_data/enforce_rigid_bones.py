@@ -69,14 +69,14 @@ def enforce_rigid_bones(
         proximal_marker, distal_marker = segment.proximal, segment.distal
 
         for frame_index, current_length in enumerate(lengths):
-            if current_length != desired_length:
-                proximal_position = marker_data[proximal_marker][frame_index]
-                distal_position = marker_data[distal_marker][frame_index]
+            if not np.isclose(current_length, desired_length):
+                proximal_position = rigid_marker_data[proximal_marker][frame_index]
+                distal_position = rigid_marker_data[distal_marker][frame_index]
                 direction = distal_position - proximal_position
-                try:
-                    direction /= np.linalg.norm(direction)  # Normalize to unit vector
-                except ZeroDivisionError:
-                    direction /= 1e-5  # Set to a small value if the direction is zero
+                norm = np.linalg.norm(direction)
+                if norm < 1e-10:
+                    continue
+                direction /= norm
                 adjustment = (desired_length - current_length) * direction
 
                 rigid_marker_data[distal_marker][frame_index] += adjustment

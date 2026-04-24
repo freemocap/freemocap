@@ -1,5 +1,6 @@
 import logging
 import multiprocessing
+import queue
 import threading
 from logging.handlers import QueueHandler
 from queue import Queue
@@ -41,12 +42,12 @@ class LoggingQueueListener(QThread):
         logger.info("Starting LoggingQueueListener thread")
         try:
             while not self._exit_event.is_set():
-                if self._logging_queue.empty():
+                try:
+                    record = self._logging_queue.get(block=True, timeout=0.1)
+                except queue.Empty:
                     if self._parent._keep_logging:
                         QtCore.QMetaObject.invokeMethod(self._parent, "log_progress", QtCore.Qt.QueuedConnection)
                     continue
-
-                record = self._logging_queue.get(block=True)
 
                 if record is None:
                     break
@@ -88,14 +89,24 @@ class LogViewWidget(QPlainTextEdit):
         self._logging_queue_listener.start()
 
     def add_log(self, record: logging.LogRecord):
-        level = record.levelname.ljust(7)  # 7 characters long, right padded with spaces
-        timestamp = f"[{record.asctime}.{record.msecs:04.0f}]".ljust(24)  # 24 characters long
-        process_id_str = f"{record.process}".rjust(6)  # 5 characters long, left padded with spaces
-        thread_id_str = f"{record.thread}".rjust(6)  # 5 characters long, left padded with spaces
-        full_message = record.getMessage().split(":::::")[-1].strip()
-        message_content = full_message.split("||||")[-1].strip()
-        code_path_str = full_message.split("||||")[0].strip()
-        package, method, line = code_path_str.split(":")
+        if not isinstance(record, logging.LogRecord):
+            return
+
+        try:
+            level = record.levelname.ljust(7)
+            timestamp = f"[{record.asctime}.{record.msecs:04.0f}]".ljust(24)
+            process_id_str = f"{record.process}".rjust(6)
+            thread_id_str = f"{record.thread}".rjust(6)
+            full_message = record.getMessage().split(":::::")[-1].strip()
+            message_content = full_message.split("||||")[-1].strip()
+            code_path_str = full_message.split("||||")[0].strip()
+            parts = code_path_str.split(":")
+            if len(parts) == 3:
+                package, method, line = parts
+            else:
+                package, method, line = code_path_str, "", ""
+        except Exception:
+            return
 
         if message_content == LOG_VIEW_PROGRESS_BAR_STRING + ".":
             self._keep_logging = True

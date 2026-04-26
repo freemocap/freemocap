@@ -29,13 +29,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install freemocap==v1.4.7
       - name: Freeze dependencies to requirements.txt
         run: |
           pip freeze > ${{ github.workspace }}/requirements.txt
-      - name: Remove opencv-python dependency
+          cat ${{ github.workspace }}/requirements.txt
+      - name: Remove opencv-python and freemocap dependency
         run: |
-          sed '/opencv-python/d' requirements.txt > tmp && mv tmp requirements.txt
+          sed -E '/opencv-python|freemocap @ file:\/\/\/Users\/runne\/work\/freemocap\/freemocap/d' requirements.txt > tmp && mv tmp requirements.txt
+      - name: Add current freemocap version
+        run: |
+          echo freemocap==v1.4.7 >> requirements.txt
       - name: Download PyApp
         run: |
           curl -L -o pyapp.zip "https://github.com/ofek/pyapp/releases/download/v0.22.0/source.zip"
@@ -51,6 +55,7 @@ jobs:
           export PYAPP_PROJECT_DEPENDENCY_FILE=${{ github.workspace }}/requirements.txt
           export PYAPP_EXEC_SCRIPT=${{ github.workspace }}/freemocap/__main__.py
           export PYAPP_PIP_EXTRA_ARGS=--no-deps
+          export PYAPP_UV_ENABLED=true
           export PYAPP_EXPOSE_ALL_COMMANDS=true
           cargo build --release
           cargo install pyapp --force --root ${{ github.workspace }}

@@ -1,10 +1,11 @@
 import logging
+import os
 import signal
 import sys
 from importlib.metadata import distributions
 from pathlib import Path
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QLibraryInfo, QTimer
 from PySide6.QtWidgets import QApplication
 
 from freemocap.gui.qt.main_window.freemocap_main_window import MainWindow, EXIT_CODE_REBOOT
@@ -26,9 +27,33 @@ def sigint_handler(*args):
     QApplication.quit()
 
 
+def _normalize_qt_plugin_environment():
+    if not sys.platform.startswith("linux"):
+        return
+
+    cv2_qt_plugins_fragment = f"{Path('cv2') / 'qt' / 'plugins'}".replace("\\", "/")
+
+    qt_plugin_path = os.environ.get("QT_PLUGIN_PATH")
+    if qt_plugin_path:
+        plugin_paths = [
+            plugin_path
+            for plugin_path in qt_plugin_path.split(os.pathsep)
+            if cv2_qt_plugins_fragment not in plugin_path.replace("\\", "/")
+        ]
+        if plugin_paths:
+            os.environ["QT_PLUGIN_PATH"] = os.pathsep.join(plugin_paths)
+        else:
+            os.environ.pop("QT_PLUGIN_PATH", None)
+
+    pyside_platform_plugins_path = Path(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)) / "platforms"
+    if pyside_platform_plugins_path.exists():
+        os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = str(pyside_platform_plugins_path)
+
+
 def qt_gui_main():
     logger.info("Starting main...")
     signal.signal(signal.SIGINT, sigint_handler)
+    _normalize_qt_plugin_environment()
     app = get_qt_app()
     timer = QTimer()
     timer.start(500)

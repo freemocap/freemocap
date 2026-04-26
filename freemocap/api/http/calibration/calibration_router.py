@@ -49,6 +49,9 @@ class CalibrateRecordingRequest(BaseModel):
         if self.calibration_recording_directory is None:
             raise RuntimeError("CalibrationConfig.calibration_recording_directory not set")
         recording_dir = Path(self.calibration_recording_directory).expanduser()
+        if not(recording_dir.stem.endswith("calibration")):
+            recording_dir = recording_dir.parent / f"{recording_dir.stem}_calibration"
+
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
             recording_name=recording_dir.stem,
@@ -108,7 +111,9 @@ async def stop_calibration_recording(
     try:
         recording_info = await app.stop_recording_all()
         if recording_info is None:
-            raise RuntimeError("No active recording to stop")
+            logger.warning("No active recording to stop")
+            return {"success": True}
+        logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
         await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=request.calibration_config,

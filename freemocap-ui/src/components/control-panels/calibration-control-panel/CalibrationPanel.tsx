@@ -3,10 +3,10 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
+    Chip, FormControlLabel,
     IconButton,
     InputAdornment,
-    Stack,
+    Stack, Switch,
     TextField,
     Tooltip,
     Typography,
@@ -29,6 +29,7 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {selectPlannedRecordingName} from "@/store/slices/recording";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
+import {config} from "zod";
 
 export const CalibrationPanel: React.FC = () => {
     const theme = useTheme();
@@ -37,10 +38,11 @@ export const CalibrationPanel: React.FC = () => {
 
     const {
         error,
+        config,
         isLoading,
         isRecording,
         recordingProgress,
-        canStartRecording,
+        updateCalibrationConfig,
         canCalibrate,
         calibrationRecordingPath,
         directoryInfo,
@@ -289,6 +291,24 @@ export const CalibrationPanel: React.FC = () => {
                         isRefreshing={false}
                     />
 
+                    {/* Groundplane */}
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                size="small"
+                                checked={config.useGroundplane}
+                                onChange={(_, checked) =>
+                                    updateCalibrationConfig({useGroundplane: checked})
+                                }
+                                disabled={isLoading}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2">
+                                Align to ground plane to initial charuco position
+                            </Typography>
+                        }
+                    />
                     <CharucoBoardConfigSection />
 
                     <CalibrationSolverSection/>

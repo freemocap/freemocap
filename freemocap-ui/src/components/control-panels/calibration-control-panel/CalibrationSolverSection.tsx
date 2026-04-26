@@ -52,24 +52,7 @@ export const CalibrationSolverSection: React.FC = () => {
                 </Select>
             </FormControl>
 
-            {/* Groundplane */}
-            <FormControlLabel
-                control={
-                    <Switch
-                        size="small"
-                        checked={config.useGroundplane}
-                        onChange={(_, checked) =>
-                            updateCalibrationConfig({useGroundplane: checked})
-                        }
-                        disabled={isLoading}
-                    />
-                }
-                label={
-                    <Typography variant="body2">
-                        Align to ground plane
-                    </Typography>
-                }
-            />
+
         </Stack>
     );
 };

@@ -9,13 +9,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pandas as pd
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCameraGroup, \
     AniposeCharucoBoard
+from freemocap.core.tasks.calibration.shared.interpolate_trajectories import \
+    interpolate_trajectory_data
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tasks.calibration.shared.groundplane_math import find_still_charuco_frame, CharucoVisibilityError, \
     CharucoVelocityError, compute_board_basis_vectors
@@ -30,37 +31,6 @@ class GroundPlaneSuccess:
     def __init__(self, success: bool, error: str | None = None):
         self.success = success
         self.error = error
-
-
-def interpolate_skeleton_data(skeleton_data: np.ndarray, method_to_use: str = "linear", order: int = 3) -> np.ndarray:
-    """Interpolate missing NaN values in a 3D skeleton/charuco numpy array.
-
-    Args:
-        skeleton_data: (n_frames, n_markers, 3) array with possible NaN gaps.
-        method_to_use: Pandas interpolation method (e.g. 'linear', 'polynomial').
-        order: Order for polynomial/spline interpolation methods.
-
-    Returns:
-        Interpolated array with same shape, NaN gaps filled.
-    """
-    num_frames = skeleton_data.shape[0]
-    num_markers = skeleton_data.shape[1]
-    interpolated = np.empty((num_frames, num_markers, 3))
-
-    for marker in range(num_markers):
-        marker_data = skeleton_data[:, marker, :]
-        df = pd.DataFrame(marker_data)
-        df_interpolated = df.interpolate(method=method_to_use, axis=0, order=order)
-        marker_array = np.array(df_interpolated)
-        # Fill remaining NaNs (e.g. at recording start) with column mean
-        marker_array = np.where(
-            np.isfinite(marker_array),
-            marker_array,
-            np.nanmean(marker_array),
-        )
-        interpolated[:, marker, :] = marker_array
-
-    return interpolated
 
 
 def anipose_pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:
@@ -105,7 +75,7 @@ def _shift_origin_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
     return new_tvecs
 
 
-def set_charuco_board_as_groundplane(
+def set_charuco_board_as_groundplane_anipose(
     *,
     observation_recorders: dict[VideoIdString, BaseRecorder],
     anipose_camera_group: AniposeCameraGroup,
@@ -138,7 +108,7 @@ def set_charuco_board_as_groundplane(
     charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     logger.info(f"Charuco 3d data reconstructed with shape: {charuco3d_fr_id_xyz.shape}")
 
-    charuco_3d_xyz_interpolated = interpolate_skeleton_data(skeleton_data=charuco3d_fr_id_xyz)
+    charuco_3d_xyz_interpolated = interpolate_trajectory_data(trajectory_data=charuco3d_fr_id_xyz)
 
     try:
         charuco_still_frame_idx = find_still_charuco_frame(
@@ -170,7 +140,7 @@ def set_charuco_board_as_groundplane(
         method="charuco",
     )
 
-    rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco(
+    rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco_anipose(
         camera_group=anipose_camera_group,
         charuco_origin_in_world=charuco_origin_in_world,
         rmat_charuco_to_world=rmat_charuco_to_world,
@@ -184,7 +154,7 @@ def set_charuco_board_as_groundplane(
     # Recalculate 3D charuco data in new coordinate system
     charuco_3d_flat = anipose_camera_group.triangulate(charuco_2d_flat)
     charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
-    charuco_3d_xyz_interpolated = interpolate_skeleton_data(skeleton_data=charuco3d_fr_id_xyz)
+    charuco_3d_xyz_interpolated = interpolate_trajectory_data(trajectory_data=charuco3d_fr_id_xyz)
 
     if recording_folder_path is not None:
         charuco_save_path = Path(recording_folder_path) / "output_data" / "charuco_3d_xyz.npy"
@@ -195,7 +165,7 @@ def set_charuco_board_as_groundplane(
     return anipose_camera_group, GroundPlaneSuccess(success=True), ground_plane_result
 
 
-def _adjust_world_reference_frame_to_charuco(
+def _adjust_world_reference_frame_to_charuco_anipose(
     *,
     camera_group: AniposeCameraGroup,
     charuco_origin_in_world: np.ndarray,
@@ -220,7 +190,7 @@ def _adjust_world_reference_frame_to_charuco(
     return rvecs_new, tvecs_new
 
 
-def get_real_world_matrices(camera_group: AniposeCameraGroup) -> tuple[list, list]:
+def get_real_world_matrices_anipose(camera_group: AniposeCameraGroup) -> tuple[list, list]:
     """Calculate real-world positions and orientations of cameras."""
     rvecs = camera_group.get_rotations()
     tvecs = camera_group.get_translations()

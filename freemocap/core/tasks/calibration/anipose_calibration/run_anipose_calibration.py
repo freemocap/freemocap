@@ -16,9 +16,9 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.anipose_calibration.anipose_adapters import create_anipose_board, \
     anipose_group_to_camera_models
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.calibration_helpers import \
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_calibration_helpers import \
     anipose_pin_camera_zero_to_origin, \
-    set_charuco_board_as_groundplane, get_real_world_matrices
+    set_charuco_board_as_groundplane_anipose, get_real_world_matrices_anipose
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCamera, \
     AniposeCameraGroup
 from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CalibrationResult
@@ -114,7 +114,7 @@ def run_anipose_calibration(
             for video_id, recorder in observation_recorders_by_video.items():
                 recorder.add_observation(observation=charuco_observations_by_camera[video_id])
 
-        anipose_camera_group, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane(
+        anipose_camera_group, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane_anipose(
             observation_recorders=observation_recorders_by_video,
             anipose_camera_group=anipose_camera_group,
             anipose_charuco_board=anipose_charuco_board,
@@ -127,7 +127,7 @@ def run_anipose_calibration(
             logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
 
     # Compute real-world camera positions and orientations
-    get_real_world_matrices(camera_group=anipose_camera_group)
+    get_real_world_matrices_anipose(camera_group=anipose_camera_group)
 
     # Convert anipose results to shared CameraModel types
     camera_models = anipose_group_to_camera_models(group=anipose_camera_group)

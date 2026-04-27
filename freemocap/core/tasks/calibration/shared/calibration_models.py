@@ -93,6 +93,7 @@ class CharucoBoardDefinition(BaseModel, TomlMixin):
             square_length_mm=54.0,
         )
 
+
 # =============================================================================
 # INTRINSICS
 # =============================================================================
@@ -164,10 +165,10 @@ class CameraIntrinsics(BaseModel, TomlMixin):
 
     @classmethod
     def from_camera_matrix_and_dist(
-        cls,
-        *,
-        camera_matrix: NDArray[np.float64],
-        dist_coeffs: NDArray[np.float64],
+            cls,
+            *,
+            camera_matrix: NDArray[np.float64],
+            dist_coeffs: NDArray[np.float64],
     ) -> "CameraIntrinsics":
         """Construct from a 3x3 camera matrix and distortion coefficients."""
         if camera_matrix.shape != (3, 3):
@@ -238,10 +239,10 @@ class CameraExtrinsics(BaseModel, TomlMixin):
 
     @classmethod
     def from_rodrigues(
-        cls,
-        *,
-        rvec: NDArray[np.float64],
-        tvec: NDArray[np.float64],
+            cls,
+            *,
+            rvec: NDArray[np.float64],
+            tvec: NDArray[np.float64],
     ) -> "CameraExtrinsics":
         """Construct from Rodrigues rotation vector + translation."""
         rmat, _ = cv2.Rodrigues(np.asarray(rvec, dtype=np.float64).ravel())
@@ -289,6 +290,34 @@ class CameraModel(BaseModel, TomlMixin):
         Rt[:, 3] = t
         return K @ Rt
 
+    @classmethod
+    def from_anipose_camera(cls, anipose_camera) -> "CameraModel":
+        """Build a CameraModel from an aniposelib-style Camera object.
+
+        Used by AniposeCameraGroup to delegate triangulation/reprojection to
+        the unified Triangulator while bundle-adjustment is in flight.
+        """
+        from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCamera
+        if not isinstance(anipose_camera, AniposeCamera):
+            raise TypeError(f"{anipose_camera} is not an anipose camera - type: {type(anipose_camera)}")
+        size = anipose_camera.get_size()
+        if size is None:
+            size_tuple = (0, 0)
+        else:
+            size_tuple = (int(size[0]), int(size[1]))
+        return cls(
+            name=anipose_camera.get_name(),
+            image_size=size_tuple,
+            intrinsics=CameraIntrinsics.from_camera_matrix_and_dist(
+                camera_matrix=np.asarray(anipose_camera.get_camera_matrix(), dtype=np.float64),
+                dist_coeffs=np.asarray(anipose_camera.get_distortions(), dtype=np.float64),
+            ),
+            extrinsics=CameraExtrinsics.from_rodrigues(
+                rvec=np.asarray(anipose_camera.get_rotation(), dtype=np.float64),
+                tvec=np.asarray(anipose_camera.get_translation(), dtype=np.float64),
+            ),
+        )
+
 
 # =============================================================================
 # OBSERVATIONS
@@ -335,7 +364,6 @@ class CharucoCornersObservation(BaseModel):
 # =============================================================================
 
 
-
 class CalibrationResult(BaseModel, TomlMixin):
     """Output of either calibration pipeline.
 
@@ -358,6 +386,7 @@ class CalibrationResult(BaseModel, TomlMixin):
     time_seconds: float
     n_observations_used: int
     n_observations_rejected: int
+    groundplane_aligned: bool = False
 
     @property
     def camera_names(self) -> list[str]:
@@ -378,7 +407,8 @@ class CalibrationResult(BaseModel, TomlMixin):
         The Triangulator performs DLT triangulation directly from CameraModel
         intrinsics/extrinsics with no anipose dependency.
         """
-        from freemocap.core.tasks.calibration.shared.triangulator import Triangulator
+        from freemocap.core.tasks.triangulation.triangulator import Triangulator
+
         return Triangulator.from_calibration_result(calibration=self)
 
     def get_triangulator_for_cameras(self, camera_ids: list[str]) -> "Triangulator":
@@ -390,7 +420,7 @@ class CalibrationResult(BaseModel, TomlMixin):
         Raises:
             KeyError: If any camera_id is not found in this calibration.
         """
-        from freemocap.core.tasks.calibration.shared.triangulator import Triangulator
+        from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
         return Triangulator.from_calibration_for_cameras(
             calibration=self,
@@ -400,9 +430,9 @@ class CalibrationResult(BaseModel, TomlMixin):
     # ---- Anipose-compatible TOML (same as existing) ----
 
     def dump_anipose_toml(
-        self,
-        path: Path,
-        metadata: dict | None = None,
+            self,
+            path: Path,
+            metadata: dict | None = None,
     ) -> None:
         """Write anipose-compatible TOML."""
         cameras_dict: dict[str, object] = {}
@@ -514,4 +544,5 @@ class CalibrationResult(BaseModel, TomlMixin):
             time_seconds=metadata.get("solver_time_seconds", 0.0),
             n_observations_used=metadata.get("n_observations_used", 0),
             n_observations_rejected=metadata.get("n_observations_rejected", 0),
+            groundplane_aligned=metadata.get("groundplane_applied", False),
         )

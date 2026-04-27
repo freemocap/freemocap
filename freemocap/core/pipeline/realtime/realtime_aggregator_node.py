@@ -343,6 +343,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=mediapipe_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
+                                triangulation_config=aggregator_config.triangulation_config,
                             ),
                             into=raw_keypoints,
                         )
@@ -360,6 +361,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
+                                triangulation_config=aggregator_config.triangulation_config,
                             ),
                             into=raw_keypoints,
                         )

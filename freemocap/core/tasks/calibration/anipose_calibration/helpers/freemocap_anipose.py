@@ -3,9 +3,7 @@
 # More info on Anipose: https://anipose.readthedocs.io/en/latest/
 
 import logging
-import multiprocessing
 import multiprocessing.synchronize
-from collections import defaultdict
 from copy import copy
 from pathlib import Path
 
@@ -16,7 +14,6 @@ from aniposelib.boards import extract_points, extract_rtvecs, merge_rows, Charuc
 from numba import jit
 from scipy import optimize
 from scipy.sparse import dok_matrix
-from tqdm import trange
 
 from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, make_M, \
     robust_average_transforms, find_spanning_tree_pairs, get_rtvec
@@ -520,6 +517,19 @@ class AniposeCameraGroup:
             out[cnum] = cam.project(points).reshape(n_points, 2)
         return out
 
+    def _to_triangulator(self):
+        """Build a Triangulator from the current (in-flight) AniposeCamera state.
+
+        Solver iterations mutate camera intrinsics/extrinsics, so this rebuilds
+        on every call. Pydantic construction cost is microseconds; solver
+        iterations take seconds.
+        """
+        from freemocap.core.tasks.calibration.shared.calibration_models import CameraModel
+        from freemocap.core.tasks.triangulation.triangulator import Triangulator
+        return Triangulator(
+            cameras=[CameraModel.from_anipose_camera(cam) for cam in self.cameras],
+        )
+
     def triangulate(
         self,
         points: np.ndarray,
@@ -527,7 +537,13 @@ class AniposeCameraGroup:
         progress: bool = False,
         kill_event: multiprocessing.synchronize.Event | None = None,
     ) -> np.ndarray | None:
-        """Given CxNx2 points, returns Nx3 triangulated 3D points."""
+        """Given CxNx2 points, returns Nx3 triangulated 3D points.
+
+        Delegates to the unified `Triangulator` so all triangulation in the
+        codebase routes through one implementation.
+        """
+        from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+
         assert points.shape[0] == len(self.cameras), (
             f"First dim should equal number of cameras ({len(self.cameras)}), "
             f"but shape is {points.shape}"
@@ -538,35 +554,26 @@ class AniposeCameraGroup:
             points = points.reshape(-1, 1, 2)
             one_point = True
 
-        if undistort:
-            new_points = np.empty(points.shape)
-            for cnum, cam in enumerate(self.cameras):
-                sub = np.copy(points[cnum])
-                new_points[cnum] = cam.undistort_points(sub)
-            points = new_points
+        if kill_event is not None and kill_event.is_set():
+            return None
 
-        n_cams, n_points, _ = points.shape
-        out = np.empty((n_points, 3))
-        out[:] = np.nan
-
-        cam_mats = np.array([cam.get_extrinsics_mat() for cam in self.cameras])
-        iterator = trange(n_points, ncols=70) if progress else range(n_points)
-
-        for ip in iterator:
-            subp = points[:, ip, :]
-            good = ~np.isnan(subp[:, 0])
-            if np.sum(good) >= 2:
-                out[ip] = triangulate_simple(subp[good], cam_mats[good])
-            if kill_event is not None and kill_event.is_set():
-                return None
+        triangulator = self._to_triangulator()
+        result = triangulator.triangulate(
+            data2d=points,
+            config=TriangulationConfig(use_outlier_rejection=False),
+            assume_undistorted_normalized=not undistort,
+        )
+        out = result.points_3d
 
         if one_point:
             out = out[0]
         return out
 
-    @jit(parallel=True, forceobj=True)
     def reprojection_error(self, points_3d: np.ndarray, points_2d: np.ndarray, mean: bool = False):
-        """Compute reprojection error. Returns CxNx2, or Nx1 if mean=True."""
+        """Compute reprojection error. Returns CxNx2, or N if mean=True.
+
+        Delegates to the unified `Triangulator`.
+        """
         one_point = False
         if len(points_3d.shape) == 1 and len(points_2d.shape) == 2:
             points_3d = points_3d.reshape(1, 3)
@@ -578,17 +585,15 @@ class AniposeCameraGroup:
             f"2D/3D shape mismatch: 2D={points_2d.shape}, 3D={points_3d.shape}"
         )
 
-        errors = np.empty((n_cams, n_points, 2))
-        for camera_number, cam in enumerate(self.cameras):
-            errors[camera_number] = cam.single_camera_reprojection_error(points_3d, points_2d[camera_number])
-
+        triangulator = self._to_triangulator()
         if mean:
-            errors_norm = np.linalg.norm(errors, axis=2)
-            good = ~np.isnan(errors_norm)
-            errors_norm[~good] = 0
-            denom = np.sum(good, axis=0).astype("float64")
-            denom[denom < 1.5] = np.nan
-            errors = np.sum(errors_norm, axis=0) / denom
+            errors = triangulator.mean_reprojection_error(
+                points_3d=points_3d, points_2d_pixel=points_2d,
+            )
+        else:
+            errors = triangulator.signed_reprojection_error(
+                points_3d=points_3d, points_2d_pixel=points_2d,
+            )
 
         if one_point:
             errors = float(errors[0]) if mean else errors.reshape(-1, 2)

@@ -7,7 +7,6 @@ then interpolates, filters, and saves the result.
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from skellyforge.post_processing.filters.apply_filter import filter_trajectory
 from skellyforge.post_processing.filters.filter_config import FilterConfig
@@ -18,8 +17,10 @@ from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3M
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCameraGroup
-from freemocap.core.tasks.mocap.mocap_helpers.triangulate_trajectory_array import TriangulationConfig, triangulate_dict
+from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
+from freemocap.core.tasks.mocap.mocap_helpers.triangulate_trajectory_array import triangulate_dict
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.triangulation.triangulator import Triangulator
 from freemocap.core.types.type_overloads import VideoIdString
 
 
@@ -34,7 +35,7 @@ def charuco_model_from_observations(
     observation_recorders: dict[VideoIdString, BaseRecorder],
     output_data_folder: Path | str,
     calibration_toml_path: Path | str | None,
-    anipose_camera_group: AniposeCameraGroup | None = None,
+    triangulator: Triangulator | None = None,
     triangulation_config: TriangulationConfig | None = None,
     interp_config: InterpolationConfig | None = None,
     filter_config: FilterConfig | None = None,
@@ -47,12 +48,13 @@ def charuco_model_from_observations(
     if filter_config is None:
         filter_config = FilterConfig()
 
-    if anipose_camera_group is not None and calibration_toml_path is not None:
-        raise ValueError("Provide either anipose_camera_group or calibration_toml_path, not both.")
-    if anipose_camera_group is None and calibration_toml_path is None:
-        raise ValueError("Must provide either anipose_camera_group or calibration_toml_path.")
+    if triangulator is not None and calibration_toml_path is not None:
+        raise ValueError("Provide either triangulator or calibration_toml_path, not both.")
+    if triangulator is None and calibration_toml_path is None:
+        raise ValueError("Must provide either triangulator or calibration_toml_path.")
     if calibration_toml_path is not None:
-        anipose_camera_group = AniposeCameraGroup.load(str(calibration_toml_path))
+        calibration = CalibrationResult.load_anipose_toml(Path(calibration_toml_path))
+        triangulator = Triangulator.from_calibration_result(calibration=calibration)
 
     Path(output_data_folder).mkdir(parents=True, exist_ok=True)
 
@@ -69,7 +71,7 @@ def charuco_model_from_observations(
 
     raw_trajectory_3d: Trajectory3d = triangulate_dict(
         data2d_fr_mar_xy_by_camera=data2d_by_video,
-        camera_group=anipose_camera_group,
+        triangulator=triangulator,
         config=triangulation_config,
     )
 

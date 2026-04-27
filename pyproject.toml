@@ -45,13 +45,14 @@ skellypings = { git = "https://github.com/freemocap/skellypings" }
 #skellymodels = { git = "https://github.com/freemocap/skellymodels" }
 
 [project.scripts]
-freemocap = "freemocap.__main__:main"
+freemocap = "freemocap.__main__:run_main"
 [tool.setuptools]
 py-modules = ["freemocap"]
 
 [tool.uv]
 package = true
-exclude-dependencies = ["onnxruntime"]
+exclude-dependencies = ["onnxruntime"] # fix erroneous inclusion of onnxruntime that happens alongside onnxruntime-gpu
+override-dependencies = ["numpy>=2.3.4"]  # fix cv2 vs rtmlib conflict on numpy version
 
 [tool.bumpver]
 current_version = "v1.4.7"

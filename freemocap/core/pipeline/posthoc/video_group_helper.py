@@ -3,6 +3,7 @@ Simplified VideoHelper with OpenCV best practices.
 Includes smart frame reading and caching.
 """
 
+import logging
 from collections import OrderedDict
 from pathlib import Path
 
@@ -10,8 +11,10 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-from freemocap.core.tasks.calibration.shared.camera_to_video_identity_matcher import camera_ids_from_video_paths
+from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
 from freemocap.core.types.type_overloads import VideoIdString
+
+logger = logging.getLogger(__name__)
 
 # Module level constants
 DEFAULT_CACHE_SIZE_MB = 500
@@ -349,19 +352,32 @@ class VideoGroupHelper(BaseModel):
         return self
 
     @classmethod
-    def from_video_paths(cls, video_paths: list[str], close_videos: bool = True) -> "VideoGroupHelper":
+    def from_video_paths(cls, video_paths: list[str | Path], close_videos: bool = True) -> "VideoGroupHelper":
         """Create VideoGroupHelper from a list of video file paths.
 
-        Camera IDs are extracted from video filenames when possible.
-        Falls back to sorted positional indices if extraction fails.
+        Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
+        which tries the canonical SkellyCam format first then falls back to
+        heuristic extraction (cam-prefix, trailing-int, alphabetical ordering).
         """
-        id_to_path = camera_ids_from_video_paths(
-            video_paths=[Path(p) for p in video_paths],
-        )
+        paths = sorted(Path(p) for p in video_paths)
+        parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
+
+        # Detect collisions or unknown indices (-1 sentinel) and re-assign
+        indices = [pv.camera_index for pv in parsed_list]
+        if -1 in indices or len(set(indices)) < len(indices):
+            logger.warning(
+                f"Camera indices are ambiguous or colliding ({indices}); "
+                f"re-assigning by alphabetical filename order."
+            )
+            for i, pv in enumerate(parsed_list):
+                pv.camera_index = i
+
+        # Sort by camera_index and build VideoHelper map keyed by camera_id
+        pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
 
         videos: dict[VideoIdString, VideoHelper] = {}
-        for camera_id, video_path in id_to_path.items():
-            videos[camera_id] = VideoHelper.from_video_path(video_path)
+        for pv, path in pairs:
+            videos[pv.camera_id] = VideoHelper.from_video_path(path)
 
         instance = cls(
             videos=videos,
@@ -373,10 +389,13 @@ class VideoGroupHelper(BaseModel):
 
     @classmethod
     def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":
-        video_paths = sorted(
-            [str(p) for p in video_folder_path.iterdir() if p.suffix.lower() in {'.mp4', '.avi', '.mov', '.mkv'}])
-
-        return cls.from_video_paths(video_paths)
+        paths = sorted(
+            p for p in video_folder_path.glob("*")
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        )
+        if not paths:
+            raise FileNotFoundError(f"No video files found in {video_folder_path}")
+        return cls.from_video_paths(paths)
 
     @classmethod
     def from_recording_path(cls, recording_path: str,

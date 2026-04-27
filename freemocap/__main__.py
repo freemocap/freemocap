@@ -104,11 +104,12 @@ async def main(force_preferred_port:bool=True) -> None:
         worker_registry.shutdown_all()
         logger.success("Done! Thank you for using FreeMoCap 💀✨")
 
-
+def run_main() -> None:
+    asyncio.run(main())
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows
     try:
-        asyncio.run(main())
+        run_main()
     except Exception as e:
         logger.exception(f"Unhandled exception: {e}")
         os._exit(1)

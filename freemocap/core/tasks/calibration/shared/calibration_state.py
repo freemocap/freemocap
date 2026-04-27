@@ -16,7 +16,8 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 
 from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
-from freemocap.core.tasks.calibration.shared.triangulator import Triangulator
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +144,7 @@ class CalibrationStateTracker:
         frame_number: int,
         frame_observations_by_camera: dict[CameraIdString, BaseObservation],
         max_reprojection_error_px: float,
+        triangulation_config: TriangulationConfig | None = None,
     ) -> dict[str, NDArray[np.float64]] | None:
         """Attempt triangulation with reprojection error gating.
 
@@ -155,6 +157,9 @@ class CalibrationStateTracker:
         """
         if not self.is_valid:
             return None
+
+        if triangulation_config is None:
+            triangulation_config = TriangulationConfig()
 
         try:
             calibration_camera_names = self._triangulator.camera_names
@@ -214,16 +219,17 @@ class CalibrationStateTracker:
                     if pt_name in cam_points:
                         stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
 
-            # Triangulate: (n_cameras, 1, n_points, 2) → (1, n_points, 3)
-            triangulated = sub_triangulator.triangulate_array(
-                data2d=stacked[:, np.newaxis, :, :],
+            # Triangulate the single frame
+            triangulation_result = sub_triangulator.triangulate(
+                data2d=stacked,
+                config=triangulation_config,
             )
-            points_3d = triangulated[0]  # (n_points, 3)
+            points_3d = triangulation_result.points_3d  # (n_points, 3)
 
-            # Reprojection error gate
+            # Reprojection error gate (in pixels, mean across valid cameras)
             mean_reproj_error = sub_triangulator.mean_reprojection_error(
                 points_3d=points_3d,
-                points_2d=stacked,
+                points_2d_pixel=stacked,
             )  # (n_points,)
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):

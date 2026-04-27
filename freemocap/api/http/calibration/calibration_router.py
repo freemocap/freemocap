@@ -49,9 +49,6 @@ class CalibrateRecordingRequest(BaseModel):
         if self.calibration_recording_directory is None:
             raise RuntimeError("CalibrationConfig.calibration_recording_directory not set")
         recording_dir = Path(self.calibration_recording_directory).expanduser()
-        if not(recording_dir.stem.endswith("calibration")):
-            recording_dir = recording_dir.parent / f"{recording_dir.stem}_calibration"
-
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
             recording_name=recording_dir.stem,

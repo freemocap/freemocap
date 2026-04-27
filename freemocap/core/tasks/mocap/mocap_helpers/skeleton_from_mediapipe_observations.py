@@ -13,7 +13,8 @@ from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelIn
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
 from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
-from freemocap.core.tasks.calibration.shared.triangulator import Triangulator
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.triangulation.triangulator import Triangulator
 from freemocap.core.types.type_overloads import VideoIdString
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ def skeleton_from_mediapipe_observation_recorders(
     observation_recorders: dict[VideoIdString, BaseRecorder],
     path_to_calibration_toml: Path | str,
     path_to_output_data_folder: Path | str,
+    triangulation_config: TriangulationConfig | None = None,
     interp_config: InterpolationConfig | None = None,
     filter_config: FilterConfig | None = None,
 ) -> Human:
@@ -32,6 +34,8 @@ def skeleton_from_mediapipe_observation_recorders(
     are matched to calibration camera names. Each key must have an exact match
     in the calibration file's camera names.
     """
+    if triangulation_config is None:
+        triangulation_config = TriangulationConfig()
     if interp_config is None:
         interp_config = InterpolationConfig()
     if filter_config is None:
@@ -58,16 +62,27 @@ def skeleton_from_mediapipe_observation_recorders(
         camera_ids=camera_ids,
     )
 
-    # Triangulate
-    raw_3d = triangulator.triangulate_dict(points_2d_by_camera=data2d_by_camera)
+    result = triangulator.triangulate(
+        data2d=data2d_by_camera,
+        config=triangulation_config,
+    )
+    raw_3d = result.points_3d
+
+    # Persist per-camera weights as a sibling NPY (only useful when outlier rejection is on,
+    # but always written so downstream can read consistently).
+    #TODO - Make this less dumb and sloppy
+    np.save(
+        Path(path_to_output_data_folder) / "per_camera_weights.npy",
+        result.per_camera_weights,
+    )
 
     n_frames = raw_3d.shape[0]
     raw_trajectory_3d = Trajectory3d(
         start_frame=0,
         end_frame=n_frames,
         triangulated_data=raw_3d,
-        reprojection_error=np.array([]),
-        reprojection_error_by_camera=np.array([]),
+        reprojection_error=np.nanmean(result.reprojection_error, axis=0),
+        reprojection_error_by_camera=result.reprojection_error,
     )
 
     interpolated_trajectory_3d: Trajectory3d = interpolate_trajectory(
@@ -86,10 +101,13 @@ def skeleton_from_mediapipe_observation_recorders(
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
-    try:
-        skeleton.put_skeleton_on_ground()
-    except Exception as e:
-        logger.warning(f"Could not put skeleton on ground: {e}")
+
+    if not calibration.groundplane_aligned:
+        try:
+            logger.debug("Groundplane undefined in calibration - aligning to skeleton feet")
+            skeleton.put_skeleton_on_ground()
+        except Exception as e:
+            logger.warning(f"Could not put skeleton on ground: {e}")
 
     try:
         skeleton.fix_hands_to_wrist()

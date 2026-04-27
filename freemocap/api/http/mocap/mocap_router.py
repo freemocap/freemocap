@@ -35,8 +35,7 @@ class StartMocapRecordingRequest(BaseModel):
     def to_recording_info(self) -> RecordingInfo:
         recording_dir = Path(self.mocap_recording_directory).expanduser()
         recording_name = recording_dir.stem
-        if not recording_name.endswith("_mocap"):
-            recording_name += "_mocap"
+
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
             recording_name=recording_name,

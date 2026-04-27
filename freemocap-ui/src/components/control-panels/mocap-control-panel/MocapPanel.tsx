@@ -320,32 +320,33 @@ export const MocapPanel: React.FC = () => {
                         </Box>
                     )}
 
-                    {/* Recording Controls */}
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayArrowIcon />}
-                            onClick={dispatchStartMocapRecording}
-                            // disabled={!canStartRecording || isLoading}
-                            disabled={isLoading}
-                            fullWidth
-                        >
-                            Start Mocap Recording
-                        </Button>
-                        {isRecording && (
-                            <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<StopIcon />}
-                                onClick={dispatchStopMocapRecording}
-                                disabled={isLoading}
-                                fullWidth
-                            >
-                                Stop Recording
-                            </Button>
-                        )}
-                    </Stack>
+                    {/*/!* Recording Controls *!/*/}
+                    {/* TODO - Wire up these recording buttons to the EXACT same workflow as the recording panel  - current wiring has slop*/}
+                    {/*<Stack direction="row" spacing={2}>*/}
+                    {/*    <Button*/}
+                    {/*        variant="contained"*/}
+                    {/*        color="primary"*/}
+                    {/*        startIcon={<PlayArrowIcon />}*/}
+                    {/*        onClick={dispatchStartMocapRecording}*/}
+                    {/*        // disabled={!canStartRecording || isLoading}*/}
+                    {/*        disabled={isLoading}*/}
+                    {/*        fullWidth*/}
+                    {/*    >*/}
+                    {/*        Start Mocap Recording*/}
+                    {/*    </Button>*/}
+                    {/*    {isRecording && (*/}
+                    {/*        <Button*/}
+                    {/*            variant="contained"*/}
+                    {/*            color="error"*/}
+                    {/*            startIcon={<StopIcon />}*/}
+                    {/*            onClick={dispatchStopMocapRecording}*/}
+                    {/*            disabled={isLoading}*/}
+                    {/*            fullWidth*/}
+                    {/*        >*/}
+                    {/*            Stop Recording*/}
+                    {/*        </Button>*/}
+                    {/*    )}*/}
+                    {/*</Stack>*/}
 
                     {/* Recording Path Input */}
                     <TextField

@@ -173,31 +173,32 @@ export const CalibrationPanel: React.FC = () => {
                     )}
 
                     {/* Recording Controls */}
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayArrowIcon/>}
-                            onClick={dispatchStartCalibrationRecording}
-                            // disabled={!canStartRecording || isLoading}
-                            disabled={ isLoading}
-                            fullWidth
-                        >
-                            Start Calibration Recording
-                        </Button>
-                        {isRecording && (
-                            <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<StopIcon/>}
-                                onClick={dispatchStopCalibrationRecording}
-                                disabled={isLoading}
-                                fullWidth
-                            >
-                                Stop Recording
-                            </Button>
-                        )}
-                    </Stack>
+                    {/* TODO - Wire up these recording buttons to the EXACT same workflow as the recording panel  - current wiring has slop*/}
+                    {/*<Stack direction="row" spacing={2}>*/}
+                    {/*    <Button*/}
+                    {/*        variant="contained"*/}
+                    {/*        color="primary"*/}
+                    {/*        startIcon={<PlayArrowIcon/>}*/}
+                    {/*        onClick={dispatchStartCalibrationRecording}*/}
+                    {/*        // disabled={!canStartRecording || isLoading}*/}
+                    {/*        disabled={ isLoading}*/}
+                    {/*        fullWidth*/}
+                    {/*    >*/}
+                    {/*        Start Calibration Recording*/}
+                    {/*    </Button>*/}
+                    {/*    {isRecording && (*/}
+                    {/*        <Button*/}
+                    {/*            variant="contained"*/}
+                    {/*            color="error"*/}
+                    {/*            startIcon={<StopIcon/>}*/}
+                    {/*            onClick={dispatchStopCalibrationRecording}*/}
+                    {/*            disabled={isLoading}*/}
+                    {/*            fullWidth*/}
+                    {/*        >*/}
+                    {/*            Stop Recording*/}
+                    {/*        </Button>*/}
+                    {/*    )}*/}
+                    {/*</Stack>*/}
 
                     {/* Recording Path Input */}
                     <TextField

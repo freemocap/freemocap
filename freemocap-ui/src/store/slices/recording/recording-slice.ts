@@ -2,6 +2,7 @@ import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
 import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo, RecordingTypePreset} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
+import {loadFromStorage} from '@/store/persistence';
 
 const getTimestampString = (): string => {
     const now = new Date();
@@ -65,31 +66,38 @@ const computeRecordingPath = (
     };
 };
 
+const DEFAULT_RECORDING_DIRECTORY = '~/freemocap_data/recordings';
+
+const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
+    useDelayStart: false,
+    delaySeconds: 3,
+    useTimestamp: true,
+    useIncrement: false,
+    currentIncrement: 1,
+    baseName: 'recording',
+    recordingTag: '',
+    createSubfolder: false,
+    customSubfolderName: '',
+    micDeviceIndex: -1,
+    recordingTypePreset: 'none',
+    autoProcess: true,
+};
+
+const _persistedConfig = loadFromStorage<RecordingConfig | null>('recording.config', null);
+const _persistedDirectory = loadFromStorage<string | null>('recording.directory', null);
+
 const initialState: RecordingInfo = {
     isRecording: false,
-    recordingDirectory: '~/freemocap_data/recordings',
+    recordingDirectory: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
     recordingName: null,
     startedAt: null,
     duration: 0,
     completionData: null,
-    config: {
-        useDelayStart: false,
-        delaySeconds: 3,
-        useTimestamp: true,
-        useIncrement: false,
-        currentIncrement: 1,
-        baseName: 'recording',
-        recordingTag: '',
-        createSubfolder: false,
-        customSubfolderName: '',
-        micDeviceIndex: -1,
-        recordingTypePreset: 'none',
-        autoProcess: true,
-    },
+    config: _persistedConfig ?? { ...DEFAULT_RECORDING_CONFIG },
     computed: {
         recordingName: '',
         subfolderName: '',
-        fullRecordingPath: '~/freemocap_data/recordings',
+        fullRecordingPath: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
     },
     pendingOperation: null,
     countdown: null,

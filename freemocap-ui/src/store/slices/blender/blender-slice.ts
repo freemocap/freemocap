@@ -1,6 +1,7 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
 import {detectBlender, exportRecordingToBlender, openRecordingInBlender} from './blender-thunks';
+import {loadFromStorage} from '@/store/persistence';
 
 export interface BlenderState {
     blenderExePath: string | null;
@@ -14,11 +15,19 @@ export interface BlenderState {
     error: string | null;
 }
 
+interface PersistedBlenderSettings {
+    blenderExePath: string | null;
+    exportToBlenderEnabled: boolean;
+    autoOpenBlendFile: boolean;
+}
+
+const _persistedBlender = loadFromStorage<PersistedBlenderSettings | null>('blender.settings', null);
+
 const initialState: BlenderState = {
-    blenderExePath: null,
+    blenderExePath: _persistedBlender?.blenderExePath ?? null,
     detectedBlenderExePath: null,
-    exportToBlenderEnabled: true,
-    autoOpenBlendFile: true,
+    exportToBlenderEnabled: _persistedBlender?.exportToBlenderEnabled ?? true,
+    autoOpenBlendFile: _persistedBlender?.autoOpenBlendFile ?? true,
     isExporting: false,
     isDetecting: false,
     isOpening: false,

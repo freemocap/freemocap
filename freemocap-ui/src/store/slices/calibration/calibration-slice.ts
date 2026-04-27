@@ -1,5 +1,6 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
+import {loadFromStorage} from '@/store/persistence';
 import {
     calibrateRecording,
     loadCalibrationForRecording,
@@ -69,14 +70,18 @@ export interface CalibrationState {
     loadedCalibration: LoadedCalibration | null;
 }
 
+const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
+    charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
+    minSharedViewsPerCamera: 200,
+    autoStopOnMinViewCount: true,
+    solverMethod: 'anipose',
+    useGroundplane: false,
+};
+
+const _persistedCalibrationConfig = loadFromStorage<CalibrationConfig | null>('calibration.config', null);
+
 const initialState: CalibrationState = {
-    config: {
-        charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
-        minSharedViewsPerCamera: 200,
-        autoStopOnMinViewCount: true,
-        solverMethod: 'anipose',
-        useGroundplane: false,
-    },
+    config: _persistedCalibrationConfig ?? { ...DEFAULT_CALIBRATION_CONFIG },
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,

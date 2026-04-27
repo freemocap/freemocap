@@ -1,5 +1,6 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
+import {loadFromStorage} from '@/store/persistence';
 import {
     processMocapRecording,
     startMocapRecording,
@@ -153,8 +154,10 @@ export interface MocapState {
 
 // ==================== Initial State ====================
 
+const _persistedMocapConfig = loadFromStorage<MocapConfig | null>('mocap.config', null);
+
 const initialState: MocapState = {
-    config: {
+    config: _persistedMocapConfig ?? {
         detector: { ...MEDIAPIPE_REALTIME_PRESET },
         skeleton_filter: { ...DEFAULT_REALTIME_FILTER_CONFIG },
     },

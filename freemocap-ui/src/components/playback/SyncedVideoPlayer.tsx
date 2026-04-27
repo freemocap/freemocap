@@ -298,6 +298,14 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                                 playsInline
                                 style={{width: '100%', height: '100%', objectFit: 'contain'}}
                                 onLoadedMetadata={handleLoadedMetadata}
+                                onError={(e) => {
+                                    const v = e.currentTarget as HTMLVideoElement;
+                                    const err = v.error;
+                                    console.error(
+                                        `[playback] video error for ${video.videoId}: ` +
+                                        `code=${err?.code} message="${err?.message ?? 'unknown'}" src=${v.src}`
+                                    );
+                                }}
                             />
 
                             {settings.showOverlays && (

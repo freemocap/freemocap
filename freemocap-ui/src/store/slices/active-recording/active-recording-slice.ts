@@ -1,12 +1,13 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
-import {stopRecording} from '@/store/slices/recording/recording-thunks';
+import {startRecording, stopRecording} from '@/store/slices/recording/recording-thunks';
 import {
     selectPlannedRecordingDirectory,
     selectPlannedRecordingName,
 } from '@/store/slices/recording/recording-slice';
 import {buildRecordingStructure, RecordingStructure} from './recording-structure';
 import type {RecordingLayoutPresetName} from './layout-presets/layout-presets';
+import {loadFromStorage} from '@/store/persistence';
 
 export type ActiveRecordingOrigin =
     | 'pending-capture'
@@ -24,11 +25,20 @@ export interface ActiveRecordingState {
 const DEFAULT_BASE_DIRECTORY = '~/freemocap_data/recordings';
 const DEFAULT_LAYOUT_PRESET: RecordingLayoutPresetName = 'canonical';
 
+interface PersistedActiveRecording {
+    recordingName: string | null;
+    baseDirectory: string;
+    layoutPreset: RecordingLayoutPresetName;
+}
+
+const _persisted = loadFromStorage<PersistedActiveRecording | null>('activeRecording', null);
+
 const initialState: ActiveRecordingState = {
-    baseDirectory: DEFAULT_BASE_DIRECTORY,
-    recordingName: null,
-    origin: null,
-    layoutPreset: DEFAULT_LAYOUT_PRESET,
+    baseDirectory: _persisted?.baseDirectory ?? DEFAULT_BASE_DIRECTORY,
+    recordingName: _persisted?.recordingName ?? null,
+    // Normalize origin on restore — 'just-captured' and 'auto-latest' are transient
+    origin: _persisted?.recordingName ? 'browsed' : null,
+    layoutPreset: _persisted?.layoutPreset ?? DEFAULT_LAYOUT_PRESET,
 };
 
 export interface ActiveRecordingSetPayload {
@@ -73,6 +83,13 @@ export const activeRecordingSlice = createSlice({
         },
     },
     extraReducers: (builder) => {
+        // Clear active recording as soon as a new capture begins so playback doesn't show stale data
+        builder.addCase(startRecording.pending, (state) => {
+            state.recordingName = null;
+            state.origin = 'pending-capture';
+            state.layoutPreset = DEFAULT_LAYOUT_PRESET;
+        });
+
         builder.addCase(stopRecording.fulfilled, (state, action) => {
             if (!action.payload) return;
             const parsed = splitParentAndName(action.payload.recording_path);

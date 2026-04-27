@@ -220,6 +220,40 @@ def _get_recording_stats(recording_path: Path, video_folder: Path) -> dict:
             except (OSError, csv.Error):
                 continue
 
+    # No timestamp CSV found — fall back to reading video metadata with cv2
+    logger.warning(
+        f"No timestamp CSVs found for '{recording_path.name}'. "
+        f"Searched: {[str(d) for d in timestamp_dirs]}. Falling back to cv2."
+    )
+    try:
+        import cv2
+        video_files = sorted(
+            p for p in video_folder.iterdir()
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        )
+        if video_files:
+            cap = cv2.VideoCapture(str(video_files[0]))
+            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            cap.release()
+            if frame_count > 0:
+                stats["total_frames"] = frame_count
+                if fps and fps > 0:
+                    stats["fps"] = round(fps, 1)
+                    stats["duration_seconds"] = round(frame_count / fps, 2)
+                logger.info(
+                    f"cv2 fallback for '{recording_path.name}': "
+                    f"{frame_count} frames @ {fps:.1f} fps "
+                    f"(from '{video_files[0].name}')"
+                )
+            else:
+                logger.warning(
+                    f"cv2 read 0 frames from '{video_files[0].name}' — "
+                    f"video may be unreadable or empty"
+                )
+    except Exception as e:
+        logger.warning(f"cv2 fallback failed for '{video_folder}': {e}")
+
     return stats
 
 

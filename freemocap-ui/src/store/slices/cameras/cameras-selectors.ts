@@ -7,6 +7,7 @@ import {CameraConfig} from './cameras-types';
 export const selectCameras = (state: RootState) => state.cameras.cameras;
 export const selectIsPaused = (state: RootState) => state.cameras.isPaused;
 export const selectIsLoading = (state: RootState) => state.cameras.isLoading;
+export const selectAutoApply = (state: RootState) => state.cameras.autoApply;
 export const selectError = (state: RootState) => state.cameras.error;
 
 // ========== Derived Selectors ==========

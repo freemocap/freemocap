@@ -18,9 +18,39 @@ const METHOD_LEVELS: Record<ConsoleMethod, string> = {
 };
 
 const UI_LOGGER_NAME = 'ui-console';
+const BRIDGE_FILE_MARKER = 'console-log-bridge';
 
 let installed = false;
 let installedCleanup: (() => void) | null = null;
+
+interface CallerInfo {
+    funcName: string;
+    pathname: string;
+    filename: string;
+    module: string;
+    lineno: number;
+}
+
+/** Walk the V8/SpiderMonkey stack to find the first frame outside this bridge file. */
+function extractCallerInfo(): CallerInfo {
+    const stack = new Error().stack ?? '';
+    for (const line of stack.split('\n')) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith('at ')) continue;
+        if (trimmed.includes(BRIDGE_FILE_MARKER)) continue;
+        // Format: "at FuncName (path/file.ts:line:col)" or "at path/file.ts:line:col"
+        const match = trimmed.match(/at (?:(.+?) \()?(.+?):(\d+):\d+\)?/);
+        if (match) {
+            const funcName = match[1]?.trim() || '';
+            const pathname = match[2] || 'browser';
+            const lineno = parseInt(match[3], 10) || 0;
+            const filename = pathname.split('/').pop() || pathname;
+            const mod = filename.replace(/\.[^.]+$/, '');
+            return {funcName, pathname, filename, module: mod, lineno};
+        }
+    }
+    return {funcName: '', pathname: 'browser', filename: 'browser', module: 'browser', lineno: 0};
+}
 
 function formatArg(arg: unknown): string {
     if (typeof arg === 'string') return arg;
@@ -39,6 +69,7 @@ function formatArg(arg: unknown): string {
 function buildUiConsoleRecord(
     levelname: string,
     args: unknown[],
+    caller: CallerInfo,
     stackInfo: string | null = null,
 ): LogRecord {
     const message = args.map(formatArg).join(' ');
@@ -64,14 +95,14 @@ function buildUiConsoleRecord(
         args: [],
         levelname,
         levelno,
-        pathname: 'browser',
-        filename: 'browser',
-        module: 'browser',
+        pathname: caller.pathname,
+        filename: caller.filename,
+        module: caller.module,
         exc_info: null,
         exc_text: null,
         stack_info: stackInfo,
-        lineno: 0,
-        funcName: '',
+        lineno: caller.lineno,
+        funcName: caller.funcName,
         created: now / 1000,
         msecs: date.getMilliseconds(),
         relativeCreated: 0,
@@ -84,6 +115,7 @@ function buildUiConsoleRecord(
         asctime,
         formatted_message: `${asctime} [${UI_LOGGER_NAME}] ${levelname} - ${message}`,
         type: 'log_record',
+        source: 'ui',
     };
 }
 
@@ -111,7 +143,8 @@ export function installConsoleLogBridge(store: LogStore): () => void {
         console[method] = (...args: unknown[]): void => {
             original(...args);
             try {
-                store.add(buildUiConsoleRecord(METHOD_LEVELS[method], args));
+                const caller = extractCallerInfo();
+                store.add(buildUiConsoleRecord(METHOD_LEVELS[method], args, caller));
             } catch {
                 // Never let logging blow up the caller.
             }
@@ -125,7 +158,7 @@ export function installConsoleLogBridge(store: LogStore): () => void {
             ? `${err.name}: ${err.message}`
             : (event.message || 'Uncaught error');
         try {
-            store.add(buildUiConsoleRecord('ERROR', [msg], stack));
+            store.add(buildUiConsoleRecord('ERROR', [msg], extractCallerInfo(), stack));
         } catch { /* ignore */ }
     };
 
@@ -136,7 +169,7 @@ export function installConsoleLogBridge(store: LogStore): () => void {
             ? `Unhandled promise rejection: ${reason.name}: ${reason.message}`
             : `Unhandled promise rejection: ${formatArg(reason)}`;
         try {
-            store.add(buildUiConsoleRecord('ERROR', [msg], stack));
+            store.add(buildUiConsoleRecord('ERROR', [msg], extractCallerInfo(), stack));
         } catch { /* ignore */ }
     };
 

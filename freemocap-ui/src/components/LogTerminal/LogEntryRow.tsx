@@ -45,7 +45,7 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
                         borderRadius: 2,
                         fontSize: '0.75em',
                         fontWeight: 600,
-                        marginRight: 8,
+                        marginRight: 4,
                         display: 'inline-block',
                         lineHeight: 'normal',
                         verticalAlign: 'middle',
@@ -53,6 +53,23 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
                 >
                     {log.levelname}
                 </span>
+                {/*Show UI vs Server tag*/}
+                {/*<span*/}
+                {/*    style={{*/}
+                {/*        backgroundColor: log.source === 'ui' ? '#FF9944' : '#4488aa',*/}
+                {/*        color: '#000',*/}
+                {/*        padding: '1px 5px',*/}
+                {/*        borderRadius: 2,*/}
+                {/*        fontSize: '0.75em',*/}
+                {/*        fontWeight: 600,*/}
+                {/*        marginRight: 8,*/}
+                {/*        display: 'inline-block',*/}
+                {/*        lineHeight: 'normal',*/}
+                {/*        verticalAlign: 'middle',*/}
+                {/*    }}*/}
+                {/*>*/}
+                {/*    {log.source === 'ui' ? 'UI' : 'SERVER'}*/}
+                {/*</span>*/}
                 <span style={{color: '#fff'}}>
                     <Linkify text={multiLine ? log.message.split('\n')[0] : log.message}/>
                 </span>

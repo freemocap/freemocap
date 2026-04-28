@@ -126,10 +126,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         canvasManagerRef.current = new CanvasManager();
         overlayManagerRef.current = new OverlayManager();
 
-        const uninstallConsoleBridge = installConsoleLogBridge(logStoreRef.current);
+        // const uninstallConsoleBridge = installConsoleLogBridge(logStoreRef.current);
 
         return () => {
-            uninstallConsoleBridge();
+            // uninstallConsoleBridge();
             if (wsConnectionRef.current) {
                 wsConnectionRef.current.disconnect();
             }

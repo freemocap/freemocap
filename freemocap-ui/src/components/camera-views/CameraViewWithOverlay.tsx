@@ -1,13 +1,17 @@
 import React, {useState} from 'react';
-import {Box, IconButton, Tooltip, Typography} from '@mui/material';
+import {Box, CircularProgress, IconButton, Tooltip, Typography} from '@mui/material';
 import RotateRightIcon from '@mui/icons-material/RotateRight';
 import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
 import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
 import WbIncandescentIcon from '@mui/icons-material/WbIncandescent';
 import BrightnessAutoIcon from '@mui/icons-material/BrightnessAuto';
+import SyncIcon from '@mui/icons-material/Sync';
+import SyncDisabledIcon from '@mui/icons-material/SyncDisabled';
+import CheckIcon from '@mui/icons-material/Check';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
-import {selectCameraById} from '@/store/slices/cameras/cameras-selectors';
-import {cameraDesiredConfigUpdated} from '@/store/slices/cameras/cameras-slice';
+import {selectCameraById, selectIsLoading, selectAutoApply} from '@/store/slices/cameras/cameras-selectors';
+import {cameraDesiredConfigUpdated, autoApplyToggled} from '@/store/slices/cameras/cameras-slice';
+import {camerasConnectOrUpdate} from '@/store/slices/cameras/cameras-thunks';
 import {ROTATION_DEGREE_LABELS, ROTATION_OPTIONS, RotationValue} from '@/store/slices/cameras/cameras-types';
 import {CameraView} from './CameraView';
 
@@ -22,7 +26,10 @@ interface CameraViewWithOverlayProps {
 export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cameraIndex, cameraId}) => {
     const dispatch = useAppDispatch();
     const [hovered, setHovered] = useState(false);
+    const [isApplying, setIsApplying] = useState(false);
     const camera = useAppSelector(state => selectCameraById(state, cameraId));
+    const isLoading = useAppSelector(selectIsLoading);
+    const isAutoApply = useAppSelector(selectAutoApply);
     const desiredConfig = camera?.desiredConfig;
 
     const rotation = desiredConfig?.rotation as RotationValue ?? -1;
@@ -53,9 +60,9 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
     };
 
     const handleRecommendExposure = () => {
+        // Server computes recommended exposure and returns MANUAL mode + value in the response.
+        // The fulfilled handler in cameras-slice normalizes desiredConfig from the server response.
         dispatch(cameraDesiredConfigUpdated({cameraId, config: {exposure_mode: 'RECOMMEND'}}));
-        // Immediately return to MANUAL after triggering recommend
-        dispatch(cameraDesiredConfigUpdated({cameraId, config: {exposure_mode: 'MANUAL'}}));
     };
 
     const handleAutoExposure = () => {
@@ -66,8 +73,21 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
         }
     };
 
+    const handleApply = async () => {
+        setIsApplying(true);
+        try {
+            await dispatch(camerasConnectOrUpdate()).unwrap();
+        } catch {
+            // error stored in redux state
+        } finally {
+            setIsApplying(false);
+        }
+    };
+
     const exposureLabel =
-        exposureMode === 'AUTO' ? 'auto' : String(exposure);
+        exposureMode === 'AUTO'      ? 'auto' :
+        exposureMode === 'RECOMMEND' ? '...'  :
+        String(exposure);
 
     return (
         <Box
@@ -96,8 +116,13 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
                 >
                     {/* Rotation row */}
                     <Box sx={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                        <Tooltip title="Rotate 90° clockwise" placement="left">
-                            <IconButton size="small" onClick={handleRotate} sx={btnSx}>
+                        <Tooltip title="Rotate 90° clockwise" placement="left" disableInteractive enterDelay={600}>
+                            <IconButton
+                                size="small"
+                                onClick={handleRotate}
+                                disabled={isLoading}
+                                sx={btnSx}
+                            >
                                 <RotateRightIcon sx={{fontSize: 16}}/>
                             </IconButton>
                         </Tooltip>
@@ -108,24 +133,24 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
 
                     {/* Exposure +/- row */}
                     <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                        <Tooltip title="Decrease exposure" placement="left">
+                        <Tooltip title="Decrease exposure" placement="left" disableInteractive enterDelay={600}>
                             <span>
                                 <IconButton
                                     size="small"
                                     onClick={handleExposureDown}
-                                    disabled={exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
+                                    disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
                                     sx={btnSx}
                                 >
                                     <BrightnessLowIcon sx={{fontSize: 16}}/>
                                 </IconButton>
                             </span>
                         </Tooltip>
-                        <Tooltip title="Increase exposure" placement="left">
+                        <Tooltip title="Increase exposure" placement="left" disableInteractive enterDelay={600}>
                             <span>
                                 <IconButton
                                     size="small"
                                     onClick={handleExposureUp}
-                                    disabled={exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
+                                    disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
                                     sx={btnSx}
                                 >
                                     <BrightnessHighIcon sx={{fontSize: 16}}/>
@@ -137,24 +162,72 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
 
                     {/* Exposure mode row */}
                     <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                        <Tooltip title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'} placement="left">
+                        <Tooltip
+                            title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
+                            placement="left"
+                            disableInteractive
+                            enterDelay={600}
+                        >
                             <IconButton
                                 size="small"
                                 onClick={handleAutoExposure}
+                                disabled={isLoading}
                                 sx={exposureMode === 'AUTO' ? btnActiveSx : btnSx}
                             >
                                 <BrightnessAutoIcon sx={{fontSize: 16}}/>
                             </IconButton>
                         </Tooltip>
-                        <Tooltip title="Recommend exposure for this camera" placement="left">
+                        <Tooltip
+                            title="Recommend exposure for this camera"
+                            placement="left"
+                            disableInteractive
+                            enterDelay={600}
+                        >
                             <IconButton
                                 size="small"
                                 onClick={handleRecommendExposure}
+                                disabled={isLoading}
                                 sx={btnSx}
                             >
                                 <WbIncandescentIcon sx={{fontSize: 16}}/>
                             </IconButton>
                         </Tooltip>
+                    </Box>
+
+                    <Box sx={dividerSx}/>
+
+                    {/* Auto-apply row */}
+                    <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                        <Tooltip
+                            title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
+                            placement="left"
+                            disableInteractive
+                            enterDelay={600}
+                        >
+                            <IconButton
+                                size="small"
+                                onClick={() => dispatch(autoApplyToggled())}
+                                sx={isAutoApply ? btnActiveSx : btnSx}
+                            >
+                                {isAutoApply ? <SyncIcon sx={{fontSize: 16}}/> : <SyncDisabledIcon sx={{fontSize: 16}}/>}
+                            </IconButton>
+                        </Tooltip>
+                        {!isAutoApply && (
+                            <Tooltip title="Apply changes to camera" placement="left" disableInteractive enterDelay={600}>
+                                <span>
+                                    <IconButton
+                                        size="small"
+                                        onClick={handleApply}
+                                        disabled={isApplying}
+                                        sx={btnSx}
+                                    >
+                                        {isApplying
+                                            ? <CircularProgress size={16} sx={{color: 'inherit'}}/>
+                                            : <CheckIcon sx={{fontSize: 16}}/>}
+                                    </IconButton>
+                                </span>
+                            </Tooltip>
+                        )}
                     </Box>
                 </Box>
             )}

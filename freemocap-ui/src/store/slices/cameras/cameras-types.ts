@@ -93,6 +93,7 @@ export interface CamerasState {
     cameras: Camera[];
     isPaused: boolean;
     isLoading: boolean;
+    autoApply: boolean;
     error: string | null;
 }
 

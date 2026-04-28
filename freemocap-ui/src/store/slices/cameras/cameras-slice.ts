@@ -28,6 +28,7 @@ const initialState: CamerasState = {
     cameras: [],
     isPaused: false,
     isLoading: false,
+    autoApply: true,
     error: null,
 };
 
@@ -91,6 +92,10 @@ export const cameraSlice = createSlice({
                 camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
             });
             persistAllCameraSettings(state);
+        },
+
+        autoApplyToggled: (state) => {
+            state.autoApply = !state.autoApply;
         },
 
         savedSettingsCleared: (state) => {
@@ -176,5 +181,6 @@ export const {
     cameraDesiredConfigUpdated,
     configCopiedToAll,
     recommendExposureForAll,
+    autoApplyToggled,
     savedSettingsCleared,
 } = cameraSlice.actions;

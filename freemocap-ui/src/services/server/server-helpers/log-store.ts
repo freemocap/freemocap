@@ -28,6 +28,8 @@ export const LogRecordSchema = z.object({
     asctime: z.string(),
     formatted_message: z.string(),
     type: z.string(),
+    // 'ui' for browser console logs, 'server' (default) for backend logs
+    source: z.string().optional().default('server'),
 });
 
 export type LogRecord = z.infer<typeof LogRecordSchema>;

@@ -114,11 +114,19 @@ export const camerasConnectOrUpdate = createAsyncThunk<
 
         const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
 
-        const response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3_000);
+        let response: Response;
+        try {
+            response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         if (!response.ok) {
             const error = await response.json();

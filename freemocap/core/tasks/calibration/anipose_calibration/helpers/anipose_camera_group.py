@@ -651,7 +651,7 @@ class AniposeCameraGroup(BaseModel):
         charuco_frames = [f["framenum"][1] for f in all_rows[0]]
 
         logger.info("Merging observations across cameras...")
-        merged = merge_rows(all_rows)
+        merged = merge_rows(all_rows=all_rows, camera_ids=self.camera_ids)
 
         image_points, board_observations = extract_points(merged, board, min_cameras=2)
         logger.info(f"Extracted points: shape={image_points.shape}")
@@ -671,7 +671,7 @@ class AniposeCameraGroup(BaseModel):
             self.translations = tvecs
 
         logger.info("Starting iterative bundle adjustment...")
-        error = self.bundle_adjust_iter(image_points, board_observations, verbose=verbose, error_threshold=1)
+        error = self.bundle_adjust_iter(image_points, board_observations, verbose=verbose, error_threshold=1.0)
         logger.info(f"Calibration complete — final error: {error:.4f}")
 
         return error, merged, charuco_frames

@@ -430,7 +430,7 @@ def extract_roration_translation_vectors(
 
 def merge_rows(
         all_rows: list[list[dict[str, Any]]],
-        camera_ids: list[CameraIdString] | None = None,
+        camera_ids: list[CameraIdString],
 ) -> list[dict[CameraIdString, dict[str, Any]]]:
     """Merge per-camera detection rows by frame number.
 
@@ -447,8 +447,7 @@ def merge_rows(
     assert camera_ids is None or len(all_rows) == len(camera_ids), \
         "number of rows does not match the number of camera IDs"
 
-    if camera_ids is None:
-        camera_ids = list(range(len(all_rows)))
+
 
     rows_dict: dict[Any, dict[Any, dict[str, Any]]] = defaultdict(dict)
     framenums: set = set()

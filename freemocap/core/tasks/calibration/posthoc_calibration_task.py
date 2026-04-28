@@ -14,7 +14,6 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 
 import json
 import logging
-from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -35,8 +34,7 @@ from freemocap.core.tasks.calibration.shared.calibration_save import save_calibr
 from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
 from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
-from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue
-from freemocap.pubsub.pubsub_topics import AggregatorNodeProgressMessage
+from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.utilities.toml_mixin import numpy_to_python
 
 logger = logging.getLogger(__name__)

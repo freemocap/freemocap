@@ -303,24 +303,24 @@ class CameraModel(BaseModel, TomlMixin):
         Used by AniposeCameraGroup to delegate triangulation/reprojection to
         the unified Triangulator while bundle-adjustment is in flight.
         """
-        from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCamera
+        from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera import AniposeCamera
         if not isinstance(anipose_camera, AniposeCamera):
             raise TypeError(f"{anipose_camera} is not an anipose camera - type: {type(anipose_camera)}")
-        size = anipose_camera.get_size()
+        size = anipose_camera.size
         if size is None:
             size_tuple = (0, 0)
         else:
             size_tuple = (int(size[0]), int(size[1]))
         return cls(
-            id=anipose_camera.get_name(),
+            id=anipose_camera.id,
             image_size=size_tuple,
             intrinsics=CameraIntrinsics.from_camera_matrix_and_dist(
-                camera_matrix=np.asarray(anipose_camera.get_camera_matrix(), dtype=np.float64),
-                dist_coeffs=np.asarray(anipose_camera.get_distortions(), dtype=np.float64),
+                camera_matrix=np.asarray(anipose_camera.camera_matrix, dtype=np.float64),
+                dist_coeffs=np.asarray(anipose_camera.distortion_coefficients, dtype=np.float64),
             ),
             extrinsics=CameraExtrinsics.from_rodrigues(
-                rvec=np.asarray(anipose_camera.get_rotation(), dtype=np.float64),
-                tvec=np.asarray(anipose_camera.get_translation(), dtype=np.float64),
+                rvec=np.asarray(anipose_camera.rotation_vector, dtype=np.float64),
+                tvec=np.asarray(anipose_camera.translation_vector, dtype=np.float64),
             ),
         )
 

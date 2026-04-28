@@ -30,24 +30,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aniposelib"
-version = "0.7.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numba" },
-    { name = "numpy" },
-    { name = "opencv-contrib-python" },
-    { name = "pandas" },
-    { name = "scipy" },
-    { name = "toml" },
-    { name = "tqdm" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/67/62/371f2f863cf622005cbd416c3c3ef0a3b6affb8457279dfb7d907a554404/aniposelib-0.7.2.tar.gz", hash = "sha256:fec4ea30e2673385fa4574364bf949fbc27e9416901d57f04ec1c46bc665619c", size = 22420, upload-time = "2025-06-04T21:33:35.814Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/b9/92/f42ac9b51451f051be1edae7bb33171b270e671b7ad97a9bcd98f4ca4af0/aniposelib-0.7.2-py3-none-any.whl", hash = "sha256:07534e7ba3554770bd4f04c18526bba75559897df4abc7145c4c84e0596c3b01", size = 22824, upload-time = "2025-06-04T21:33:33.759Z" },
-]
-
-[[package]]
 name = "annotated-doc"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -512,11 +494,11 @@ name = "freemocap"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "aniposelib" },
     { name = "beartype" },
     { name = "freemocap-blender-addon" },
     { name = "libsass" },
     { name = "msgspec" },
+    { name = "numba" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
     { name = "pyceres" },
@@ -548,11 +530,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aniposelib", specifier = ">=0.7.0" },
     { name = "beartype", specifier = ">=0.19" },
     { name = "freemocap-blender-addon", git = "https://github.com/freemocap/freemocap_blender_addon?branch=development" },
     { name = "libsass", specifier = ">=0.23.0" },
     { name = "msgspec", specifier = ">=0.19" },
+    { name = "numba", specifier = ">=0.65.1" },
     { name = "numpydantic", specifier = ">=1.6.7" },
     { name = "opencv-contrib-python" },
     { name = "pyceres", specifier = ">=2.5" },
@@ -812,7 +794,7 @@ name = "macholib"
 version = "1.16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "altgraph" },
+    { name = "altgraph", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/10/2f/97589876ea967487978071c9042518d28b958d87b17dceb7cdc1d881f963/macholib-1.16.4.tar.gz", hash = "sha256:f408c93ab2e995cd2c46e34fe328b130404be143469e41bc366c807448979362", size = 59427, upload-time = "2025-11-22T08:28:38.373Z" }
 wheels = [
@@ -1748,11 +1730,11 @@ name = "pyobjc-framework-avfoundation"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
-    { name = "pyobjc-framework-coreaudio" },
-    { name = "pyobjc-framework-coremedia" },
-    { name = "pyobjc-framework-quartz" },
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-coreaudio", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-coremedia", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cd/42/c026ab308edc2ed5582d8b4b93da6b15d1b6557c0086914a4aabedd1f032/pyobjc_framework_avfoundation-12.1.tar.gz", hash = "sha256:eda0bb60be380f9ba2344600c4231dd58a3efafa99fdc65d3673ecfbb83f6fcb", size = 310047, upload-time = "2025-11-14T10:09:40.069Z" }
 wheels = [
@@ -1769,7 +1751,7 @@ name = "pyobjc-framework-cocoa"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/02/a3/16ca9a15e77c061a9250afbae2eae26f2e1579eb8ca9462ae2d2c71e1169/pyobjc_framework_cocoa-12.1.tar.gz", hash = "sha256:5556c87db95711b985d5efdaaf01c917ddd41d148b1e52a0c66b1a2e2c5c1640", size = 2772191, upload-time = "2025-11-14T10:13:02.069Z" }
 wheels = [
@@ -1786,8 +1768,8 @@ name = "pyobjc-framework-coreaudio"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/84/d1/0b884c5564ab952ff5daa949128c64815300556019c1bba0cf2ca752a1a0/pyobjc_framework_coreaudio-12.1.tar.gz", hash = "sha256:a9e72925fcc1795430496ce0bffd4ddaa92c22460a10308a7283ade830089fe1", size = 75077, upload-time = "2025-11-14T10:13:22.345Z" }
 wheels = [
@@ -1804,8 +1786,8 @@ name = "pyobjc-framework-coremedia"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/da/7d/5ad600ff7aedfef8ba8f51b11d9aaacdf247b870bd14045d6e6f232e3df9/pyobjc_framework_coremedia-12.1.tar.gz", hash = "sha256:166c66a9c01e7a70103f3ca44c571431d124b9070612ef63a1511a4e6d9d84a7", size = 89566, upload-time = "2025-11-14T10:13:49.788Z" }
 wheels = [
@@ -1822,8 +1804,8 @@ name = "pyobjc-framework-quartz"
 version = "12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/94/18/cc59f3d4355c9456fc945eae7fe8797003c4da99212dd531ad1b0de8a0c6/pyobjc_framework_quartz-12.1.tar.gz", hash = "sha256:27f782f3513ac88ec9b6c82d9767eef95a5cf4175ce88a1e5a65875fee799608", size = 3159099, upload-time = "2025-11-14T10:21:24.31Z" }
 wheels = [

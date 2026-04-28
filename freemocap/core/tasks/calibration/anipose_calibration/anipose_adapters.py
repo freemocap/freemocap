@@ -3,8 +3,9 @@
 These let the anipose solver keep its internal AniposeCameraGroup/AniposeCamera
 classes while the rest of the system speaks CameraModel/CalibrationResult.
 """
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCharucoBoard, \
-    AniposeCameraGroup, AniposeCamera
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera import AniposeCamera
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera_group import AniposeCameraGroup
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_charuco_board import AniposeCharucoBoard
 from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CameraModel, CameraIntrinsics, \
     CameraExtrinsics
 
@@ -56,22 +57,22 @@ def anipose_group_to_camera_models(group: AniposeCameraGroup) -> list[CameraMode
     cameras: list[CameraModel] = []
     for ac in group.cameras:
         intrinsics = CameraIntrinsics.from_camera_matrix_and_dist(
-            camera_matrix=ac.get_camera_matrix(),
-            dist_coeffs=ac.get_distortions(),
+            camera_matrix=ac.camera_matrix,
+            dist_coeffs=ac.distortion_coefficients,
         )
 
         extrinsics = CameraExtrinsics.from_rodrigues(
-            rvec=ac.get_rotation(),
-            tvec=ac.get_translation(),
+            rvec=ac.rotation_vector,
+            tvec=ac.translation_vector,
         )
 
-        size = ac.get_size()
+        size = ac.size
         if size is None:
-            raise ValueError(f"AniposeCamera '{ac.get_name()}' has no image size set")
+            raise ValueError(f"AniposeCamera '{ac.id}' has no image size set")
 
         cameras.append(
             CameraModel(
-                id=ac.get_name(),
+                id=ac.id,
                 image_size=(int(size[0]), int(size[1])),
                 intrinsics=intrinsics,
                 extrinsics=extrinsics,

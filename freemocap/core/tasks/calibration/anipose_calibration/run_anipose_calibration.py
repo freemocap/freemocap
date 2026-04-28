@@ -19,8 +19,8 @@ from freemocap.core.tasks.calibration.anipose_calibration.anipose_adapters impor
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_calibration_helpers import \
     anipose_pin_camera_zero_to_origin, \
     set_charuco_board_as_groundplane_anipose, get_real_world_matrices_anipose
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCamera, \
-    AniposeCameraGroup
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera import AniposeCamera
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera_group import AniposeCameraGroup
 from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CalibrationResult
 from freemocap.core.tasks.calibration.shared.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
@@ -68,7 +68,7 @@ def run_anipose_calibration(
         if charuco_observation_aggregator is None:
             charuco_observation_aggregator = CharucoObservationAggregator.from_charuco_observation_payload(
                 charuco_observations_by_camera=charuco_observations_by_camera,
-                anipose_camera_ordering=[camera.name for camera in anipose_camera_group.cameras],
+                anipose_camera_ordering=[camera.id for camera in anipose_camera_group.cameras],
             )
         else:
             charuco_observation_aggregator.add_observations(charuco_observations_by_camera)

@@ -272,9 +272,9 @@ def initialize_extrinsics(
     graph = build_maximum_spanning_tree(
         connection_counts=connections,
         n_nodes=n_cams,
-        node_labels=camera_names,
+        node_ids=camera_names,
     )
-    pairs = find_spanning_tree_pairs(graph=graph, root=0)
+    pairs = find_spanning_tree_pairs(graph=graph)
     logger.info(f"Spanning tree pairs: {[(camera_names[a], camera_names[b]) for a, b in pairs]}")
 
     # Step 3: Chain pairwise transforms from root

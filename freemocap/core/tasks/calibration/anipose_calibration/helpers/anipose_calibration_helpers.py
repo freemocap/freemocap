@@ -13,8 +13,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import AniposeCameraGroup, \
-    AniposeCharucoBoard
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera_group import AniposeCameraGroup
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_charuco_board import AniposeCharucoBoard
 from freemocap.core.tasks.calibration.shared.interpolate_trajectories import \
     interpolate_trajectory_data
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
@@ -40,15 +40,15 @@ def anipose_pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> Anipo
     All other cameras are expressed relative to camera 0.
     """
     rvecs_new = _align_rotations_to_cam0(camera_group=camera_group)
-    camera_group.set_rotations(rvecs_new)
+    camera_group.rotations = rvecs_new
     tvecs_new = _shift_origin_to_cam0(camera_group=camera_group)
-    camera_group.set_translations(tvecs_new)
+    camera_group.translations = tvecs_new
     return camera_group
 
 
 def _align_rotations_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
     """Align all camera rotations to camera 0's coordinate frame."""
-    rvecs = camera_group.get_rotations()
+    rvecs = camera_group.rotations
     R0, _ = cv2.Rodrigues(rvecs[0])
 
     rvecs_new = np.empty_like(rvecs)
@@ -61,8 +61,8 @@ def _align_rotations_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
 
 def _shift_origin_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
     """Shift world origin to camera 0's position."""
-    tvecs = camera_group.get_translations()
-    rvecs = camera_group.get_rotations()
+    tvecs = camera_group.translations
+    rvecs = camera_group.rotations
 
     R0, _ = cv2.Rodrigues(rvecs[0, :])
     delta_to_origin_world = -R0.T @ tvecs[0, :]
@@ -146,8 +146,8 @@ def set_charuco_board_as_groundplane_anipose(
         rmat_charuco_to_world=rmat_charuco_to_world,
     )
 
-    anipose_camera_group.set_rotations(rvecs_new)
-    anipose_camera_group.set_translations(tvecs_new)
+    anipose_camera_group.rotations = rvecs_new
+    anipose_camera_group.translations = tvecs_new
 
     logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
 
@@ -172,8 +172,8 @@ def _adjust_world_reference_frame_to_charuco_anipose(
     rmat_charuco_to_world: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Adjust camera extrinsics to use charuco board as world reference frame."""
-    tvecs = camera_group.get_translations()
-    rvecs = camera_group.get_rotations()
+    tvecs = camera_group.translations
+    rvecs = camera_group.rotations
 
     tvecs_new = np.zeros_like(tvecs)
     rvecs_new = np.zeros_like(rvecs)
@@ -192,8 +192,8 @@ def _adjust_world_reference_frame_to_charuco_anipose(
 
 def get_real_world_matrices_anipose(camera_group: AniposeCameraGroup) -> tuple[list, list]:
     """Calculate real-world positions and orientations of cameras."""
-    rvecs = camera_group.get_rotations()
-    tvecs = camera_group.get_translations()
+    rvecs = camera_group.rotations
+    tvecs = camera_group.translations
 
     positions = []
     orientations = []
@@ -206,7 +206,7 @@ def get_real_world_matrices_anipose(camera_group: AniposeCameraGroup) -> tuple[l
         positions.append(t_world.astype(float).tolist())
         orientations.append(rmat_cam_to_world.astype(float).tolist())
 
-    camera_group.set_world_positions(positions)
-    camera_group.set_world_orientations(orientations)
+    camera_group.world_positions = np.array(positions)
+    camera_group.world_orientations = np.array(orientations)
 
     return positions, orientations

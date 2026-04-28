@@ -277,11 +277,24 @@ def run_pyceres_bundle_adjustment(
                     pyceres.SubsetManifold(8, constant_indices),
                 )
 
-        # Pin camera 0 extrinsics if configured
+        # Pin one camera's extrinsics if configured. Defaults to the first
+        # camera in the input list, but can be set explicitly via
+        # config.pin_camera_id (resolved with the shared fallback ladder).
         if config.pin_camera_0:
-            cam0 = cameras[0]
-            problem.set_parameter_block_constant(cam_quat_arrays[cam0.name])
-            problem.set_parameter_block_constant(cam_trans_arrays[cam0.name])
+            if config.pin_camera_id is None:
+                pin_cam = cameras[0]
+            else:
+                from freemocap.core.tasks.calibration.shared.camera_id_resolution import (
+                    resolve_camera_id_or_raise,
+                )
+                resolved = resolve_camera_id_or_raise(
+                    config.pin_camera_id,
+                    [c.name for c in cameras],
+                    context="pyceres solver pin_camera_id",
+                )
+                pin_cam = next(c for c in cameras if c.name == resolved)
+            problem.set_parameter_block_constant(cam_quat_arrays[pin_cam.name])
+            problem.set_parameter_block_constant(cam_trans_arrays[pin_cam.name])
 
         # Register board pose parameter blocks
         for frame_idx in sorted_frame_indices:
@@ -418,7 +431,7 @@ def run_pyceres_bundle_adjustment(
 
         result_cameras.append(
             CameraModel(
-                name=cam.name,
+                id=cam.id,
                 image_size=cam.image_size,
                 intrinsics=new_intrinsics,
                 extrinsics=new_extrinsics,

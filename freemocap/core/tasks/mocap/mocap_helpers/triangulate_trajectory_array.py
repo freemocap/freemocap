@@ -78,7 +78,7 @@ def _subset_triangulator_to_data(
     data dict key 'video_synchronized_cam_0'.
     """
     valid_camera_names: list[str] = []
-    for camera_name in triangulator.camera_names:
+    for camera_name in triangulator.camera_ids:
         for key in data_dict.keys():
             if camera_name in key:
                 valid_camera_names.append(camera_name)
@@ -88,7 +88,7 @@ def _subset_triangulator_to_data(
         raise ValueError(
             f"Camera names in data do not match triangulator. "
             f"Make sure calibration matches input data. "
-            f"Triangulator: {triangulator.camera_names}, data: {list(data_dict.keys())}"
+            f"Triangulator: {triangulator.camera_ids}, data: {list(data_dict.keys())}"
         )
 
     if len(valid_camera_names) == triangulator.n_cameras:
@@ -110,7 +110,7 @@ def _reorder_data_to_triangulator(
     Returns a dict whose keys are triangulator camera names (not the original data keys).
     """
     ordered: dict[str, np.ndarray] = {}
-    for camera_name in triangulator.camera_names:
+    for camera_name in triangulator.camera_ids:
         for camera_id, data in data_by_camera.items():
             if camera_name in camera_id:
                 ordered[camera_name] = data

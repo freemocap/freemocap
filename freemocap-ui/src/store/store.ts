@@ -1,4 +1,5 @@
 import {configureStore} from "@reduxjs/toolkit";
+import {cameraConfigListenerMiddleware} from "@/store/camera-config-listener";
 import {cameraSlice} from "@/store/slices/cameras";
 import {recordingSlice} from "@/store/slices/recording";
 import {themeSlice} from "@/store/slices/theme";
@@ -14,6 +15,8 @@ import {activeRecordingSlice} from "@/store/slices/active-recording/active-recor
 import {saveToStorage} from "@/store/persistence";
 
 export const store = configureStore({
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware().concat(cameraConfigListenerMiddleware.middleware),
     reducer: {
         cameras: cameraSlice.reducer,
         recording: recordingSlice.reducer,

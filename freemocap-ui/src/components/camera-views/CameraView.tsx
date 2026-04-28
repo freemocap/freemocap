@@ -3,6 +3,7 @@ import {useServer} from '@/services/server/ServerContextProvider';
 import {backendColor, frontendColor} from '@/components/framerate-viewer/FrameRateViewer';
 
 interface CameraViewProps {
+    cameraIndex: number;
     cameraId: string;
     scale?: number;
     maxWidth?: boolean;
@@ -17,7 +18,7 @@ const FPS_UPDATE_INTERVAL_MS = 250;
  * FPS display uses direct DOM manipulation via a low-frequency setInterval
  * instead of a per-component requestAnimationFrame loop.
  */
-export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, maxWidth }) => {
+export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraId, scale, maxWidth }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const displayFpsRef = useRef<HTMLSpanElement>(null);
     const serverFpsRef = useRef<HTMLSpanElement>(null);
@@ -94,8 +95,8 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                     lineHeight: 1.4,
                 }}
             >
-                <div>{cameraId}</div>
                 <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                    <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
                     <span style={{ color: frontendColor }}>
                         D:<span ref={displayFpsRef}>--</span>
                     </span>

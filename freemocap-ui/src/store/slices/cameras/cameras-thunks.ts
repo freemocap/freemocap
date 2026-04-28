@@ -48,9 +48,10 @@ export const detectCameras = createAsyncThunk<
             // Storage was corrupted and has been cleared — proceed with defaults
         }
 
-        const detectedIds = new Set(data.cameras.map(c => c.index.toString()));
+        const detectedIds = new Set(data.cameras.map(c => c.camera_id));
 
-        // Prune persisted entries for cameras that are no longer detected
+        // Prune persisted entries for cameras that are no longer detected.
+
         const prunedPersisted: PersistedCameraSettingsMap = {};
         for (const [id, settings] of Object.entries(persisted)) {
             if (detectedIds.has(id)) {
@@ -60,7 +61,7 @@ export const detectCameras = createAsyncThunk<
         savePersistedCameraSettings(prunedPersisted);
 
         return data.cameras.map((serverCamera): Camera => {
-            const cameraId = serverCamera.index.toString();
+            const cameraId = serverCamera.camera_id;
             const existing = existingCameras.find(cam => cam.id === cameraId);
             const saved = prunedPersisted[cameraId];
 

@@ -7,6 +7,7 @@ import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
+import {installConsoleLogBridge} from "@/services/server/server-helpers/console-log-bridge";
 import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
@@ -125,7 +126,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         canvasManagerRef.current = new CanvasManager();
         overlayManagerRef.current = new OverlayManager();
 
+        const uninstallConsoleBridge = installConsoleLogBridge(logStoreRef.current);
+
         return () => {
+            uninstallConsoleBridge();
             if (wsConnectionRef.current) {
                 wsConnectionRef.current.disconnect();
             }

@@ -70,7 +70,7 @@ def apply_groundplane_to_cameras(
 
         result.append(
             CameraModel(
-                name=cam.name,
+                id=cam.id,
                 image_size=cam.image_size,
                 intrinsics=cam.intrinsics,
                 extrinsics=CameraExtrinsics(

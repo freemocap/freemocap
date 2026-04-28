@@ -18,11 +18,9 @@ blended with an anthropometric prior. The filter resets on calibration reload
 since the coordinate frame may change.
 """
 import logging
-import multiprocessing
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
-from typing import Iterable
 
 import numpy as np
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -36,7 +34,6 @@ from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
-from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import RealtimeAggregatorNodeConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
@@ -158,7 +155,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             *,
             config: RealtimePipelineConfig,
             camera_group_id: CameraGroupIdString,
-            camera_ids: list[CameraGroupIdString],
+            camera_ids: list[CameraIdString],
             worker_registry: WorkerRegistry,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
             ipc: PipelineIPC,
@@ -199,7 +196,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             *,
             pipeline_config: RealtimePipelineConfig,
             camera_group_id: CameraGroupIdString,
-            camera_ids: list[CameraGroupIdString],
+            camera_ids: list[CameraIdString],
             ipc: PipelineIPC,
             shutdown_self_flag: Synchronized,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
@@ -331,17 +328,18 @@ class RealtimeAggregatorNode(AggregatorNode):
                 rigid_body_poses: dict[str, RigidBodyPose] = {}
                 if calibration.is_valid and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
-                    mediapipe_observations_by_camera = {
+                    skeleton_observations_by_camera = {
                         cam_id: output.skeleton_observation
                         for cam_id, output in camera_node_outputs.items()
                         if isinstance(output, CameraNodeOutputMessage)
                            and output.skeleton_observation is not None
                     }
-                    if mediapipe_observations_by_camera:
+                    if skeleton_observations_by_camera:
                         _merge_triangulated_arrays(
+                            # TODO - This try_triangulate function is WAY too slow and bloated to happen in the fast loop!
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
-                                frame_observations_by_camera=mediapipe_observations_by_camera,
+                                frame_observations_by_camera=skeleton_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),

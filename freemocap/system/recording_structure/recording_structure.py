@@ -35,23 +35,6 @@ from pydantic import BaseModel, ConfigDict, computed_field
 RecordingTypeTag = Literal["calibration", "mocap"]
 
 
-class RecordingInfo(BaseModel):
-    """Contents of `{recording_name}_recording_info.json`.
-
-    Fields beyond the core set are forward-compatible — extend as needed.
-    """
-
-    model_config = ConfigDict(extra="allow")
-
-    recording_name: str
-    recording_types: list[RecordingTypeTag] = []
-    created_at: datetime | None = None
-    camera_configs: dict[str, dict] = {}
-    base_fps: float | None = None
-    duration_seconds: float | None = None
-    operator_notes: str | None = None
-
-
 class FilePresence(BaseModel):
     path: str
     exists: bool
@@ -82,7 +65,7 @@ class RecordingLayoutValidation(BaseModel):
 
 
 class RecordingStructure(BaseModel):
-    """Authoritative model of a freemocap recording folder layout.
+    """Canonical model of a freemocap recording folder layout.
 
     Consumers build one of these at the system boundary (router arg parsing,
     capture thunk completion, etc.) and pass it around instead of raw strings.

@@ -103,6 +103,7 @@ export interface DetectCamerasRequest {
 
 export interface DetectCamerasResponse {
     cameras: Array<{
+        camera_id: string;
         index: number;
         name: string;
         vendor_id?: string;

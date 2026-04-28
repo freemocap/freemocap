@@ -85,6 +85,14 @@ export const cameraSlice = createSlice({
             persistAllCameraSettings(state);
         },
 
+        recommendExposureForAll: (state) => {
+            state.cameras.forEach(camera => {
+                camera.desiredConfig = { ...camera.desiredConfig, exposure_mode: 'RECOMMEND' };
+                camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
+            });
+            persistAllCameraSettings(state);
+        },
+
         savedSettingsCleared: (state) => {
             clearPersistedCameraSettings();
             for (const camera of state.cameras) {
@@ -167,5 +175,6 @@ export const {
     cameraSelectionToggled,
     cameraDesiredConfigUpdated,
     configCopiedToAll,
+    recommendExposureForAll,
     savedSettingsCleared,
 } = cameraSlice.actions;

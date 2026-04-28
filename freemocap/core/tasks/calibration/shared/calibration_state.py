@@ -16,6 +16,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 
 from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
+from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
@@ -162,17 +163,20 @@ class CalibrationStateTracker:
             triangulation_config = TriangulationConfig()
 
         try:
-            calibration_camera_names = self._triangulator.camera_names
+            calibration_camera_names = self._triangulator.camera_ids
 
-            # Collect named 2D points per calibration camera
+            # Collect named 2D points per calibration camera. Mismatched
+            # camera_ids raise CameraIdMismatchError (caught by the outer
+            # except below) — the failure counter handles transient mismatches and invalidates the calibration after MAX_CONSECUTIVE_FAILURES,
+            # at which point the pipeline degrades to 2D-only with a clear
+            # error in the logs.
+            #TODO - This feels like a slow way to run this in such a tight loop - need a better solution and to handle this with numpy quickness, not dict/string matching
             tracked_by_cam: dict[str, dict[str, NDArray[np.float64]]] = {}
             for cam_id, obs in frame_observations_by_camera.items():
                 matched_name = _match_camera_name(
                     cam_id=cam_id,
                     calibration_camera_names=calibration_camera_names,
                 )
-                if matched_name is None:
-                    continue
                 tracked_by_cam[matched_name] = {
                     name: np.asarray(pt, dtype=np.float64)[:2]
                     for name, pt in obs.to_tracked_points().items()
@@ -192,7 +196,7 @@ class CalibrationStateTracker:
                 )
             else:
                 sub_triangulator = self._triangulator
-            ordered_cam_names: list[str] = sub_triangulator.camera_names
+            ordered_cam_names: list[str] = sub_triangulator.camera_ids
             n_cameras = len(ordered_cam_names)
 
             # Find all point names and count how many cameras see each
@@ -273,17 +277,17 @@ def _match_camera_name(
     *,
     cam_id: CameraIdString,
     calibration_camera_names: list[str],
-) -> str | None:
-    """Match a runtime camera ID to a calibration camera name.
+) -> str:
+    """Match a runtime camera_id to a calibration camera name.
 
-    Uses exact string matching only. Returns None (with a warning) if
-    no match is found.
+    Uses exact equality first, then the same fallback ladder as the
+    SkellyCam video filename parser (cam-prefix, trailing-int, opaque
+    digit). Raises `CameraIdMismatchError` (a `KeyError`) on miss — the
+    caller's existing exception handling treats this as a triangulation
+    failure that increments the consecutive-failure counter.
     """
-    if cam_id in calibration_camera_names:
-        return cam_id
-
-    logger.warning(
-        f"Camera '{cam_id}' has no exact match in calibration cameras "
-        f"{calibration_camera_names} — skipping this camera for triangulation"
+    return resolve_camera_id_or_raise(
+        cam_id,
+        calibration_camera_names,
+        context="runtime frame camera_id vs calibration TOML",
     )
-    return None

@@ -71,7 +71,7 @@ def anipose_group_to_camera_models(group: AniposeCameraGroup) -> list[CameraMode
 
         cameras.append(
             CameraModel(
-                name=ac.get_name(),
+                id=ac.get_name(),
                 image_size=(int(size[0]), int(size[1])),
                 intrinsics=intrinsics,
                 extrinsics=extrinsics,

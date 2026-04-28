@@ -14,6 +14,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, model_validator
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.calibration.shared.calibration_models import (
     CalibrationResult,
@@ -28,16 +29,15 @@ from freemocap.core.tasks.triangulation.helpers.triangulation_result import Tria
 
 logger = logging.getLogger(__name__)
 
-
 PointsByCamera = dict[str, NDArray[np.float64]]
 PointsArray = NDArray[np.float64]
 TriangulateInput = PointsByCamera | PointsArray
 
 
 def _undistort_points_for_camera(
-    *,
-    points_2d: NDArray[np.float64],
-    camera: CameraModel,
+        *,
+        points_2d: NDArray[np.float64],
+        camera: CameraModel,
 ) -> NDArray[np.float64]:
     """Undistort 2D pixel points using camera intrinsics. Returns normalized coords."""
     pts = points_2d.reshape(-1, 1, 2).astype(np.float64)
@@ -68,8 +68,8 @@ class Triangulator(BaseModel):
         return self
 
     @property
-    def camera_names(self) -> list[str]:
-        return [cam.name for cam in self.cameras]
+    def camera_ids(self) -> list[str]:
+        return [cam.id for cam in self.cameras]
 
     @property
     def n_cameras(self) -> int:
@@ -85,20 +85,21 @@ class Triangulator(BaseModel):
 
     @classmethod
     def from_calibration_for_cameras(
-        cls,
-        calibration: CalibrationResult,
-        camera_ids: list[str],
+            cls,
+            calibration: CalibrationResult,
+            camera_ids: list[CameraIdString],
     ) -> "Triangulator":
         """Build a triangulator with cameras ordered to match camera_ids."""
-        calibration_cameras_by_name = {cam.name: cam for cam in calibration.cameras}
+        calibration_cameras_by_id = {cam.id: cam for cam in calibration.cameras}
         ordered_cameras: list[CameraModel] = []
         for cam_id in camera_ids:
-            if cam_id not in calibration_cameras_by_name:
+            # TODO - Should add more robust camera matching method here. Camera ID's are not stable across (say) reboot, but there might be a way to match by index, or even by min reproj err
+            if cam_id not in calibration_cameras_by_id:
                 raise KeyError(
                     f"Camera '{cam_id}' not found in calibration. "
-                    f"Calibration contains: {list(calibration_cameras_by_name.keys())}"
+                    f"Calibration contains: {list(calibration_cameras_by_id.keys())}"
                 )
-            ordered_cameras.append(calibration_cameras_by_name[cam_id])
+            ordered_cameras.append(calibration_cameras_by_id[cam_id])
         return cls(cameras=ordered_cameras)
 
     @classmethod
@@ -111,7 +112,7 @@ class Triangulator(BaseModel):
         by_name = {cam.name: cam for cam in self.cameras}
         missing = [n for n in camera_names if n not in by_name]
         if missing:
-            raise KeyError(f"Unknown cameras: {missing}. Known: {self.camera_names}")
+            raise KeyError(f"Unknown cameras: {missing}. Known: {self.camera_ids}")
         return Triangulator(cameras=[by_name[n] for n in camera_names])
 
     # =========================================================================
@@ -151,11 +152,12 @@ class Triangulator(BaseModel):
     # =========================================================================
 
     def triangulate(
-        self,
-        *,
-        data2d: TriangulateInput,
-        config: TriangulationConfig | None = None,
-        assume_undistorted_normalized: bool = False,
+            self,
+            *,
+            data2d: TriangulateInput,
+            config: TriangulationConfig | None = None,
+            assume_undistorted_normalized: bool = False,
+            camera_order: list[CameraIdString] | None = None,
     ) -> TriangulationResult:
         """Triangulate 2D pixel observations into 3D.
 
@@ -164,7 +166,12 @@ class Triangulator(BaseModel):
             - NDArray of shape (n_cameras, n_points, 2)             [single-frame batch]
             - NDArray of shape (n_cameras, n_frames, n_points, 2)   [multi-frame batch]
 
-        Camera ordering is matched by name for dicts, by index for arrays.
+        Camera ordering is matched by name for dicts. For array input, the
+        first axis is positionally aligned with `self.cameras` — the caller
+        is responsible for that alignment. Pass `camera_order` (a list of
+        camera names matching the array's first axis) to assert that
+        alignment explicitly; if it doesn't match `self.camera_names`,
+        triangulation raises rather than silently producing garbage 3D.
 
         If `assume_undistorted_normalized=True`, callers must pass already-undistorted
         normalized coordinates (intrinsics-removed); used by the calibration solver
@@ -177,6 +184,15 @@ class Triangulator(BaseModel):
         """
         if config is None:
             config = TriangulationConfig()
+
+        if camera_order is not None and camera_order != self.camera_ids:
+            # TODO - This dumb, we should do better than this
+            raise ValueError(
+                f"camera_order does not match this Triangulator's camera order. "
+                f"Got {camera_order}, expected {self.camera_ids}. Either reorder "
+                f"the input array's first axis to match, or rebuild the Triangulator "
+                f"via Triangulator.from_calibration_for_cameras(...) with the desired order."
+            )
 
         stacked, was_single_frame, n_frames, n_points = self._normalize_input(data2d=data2d)
 
@@ -254,9 +270,9 @@ class Triangulator(BaseModel):
     # =========================================================================
 
     def _normalize_input(
-        self,
-        *,
-        data2d: TriangulateInput,
+            self,
+            *,
+            data2d: TriangulateInput,
     ) -> tuple[NDArray[np.float64], bool, int, int]:
         """Normalize all accepted input shapes to (n_cameras, n_frames, n_points, 2).
 
@@ -293,16 +309,16 @@ class Triangulator(BaseModel):
         )
 
     def _normalize_dict(
-        self,
-        *,
-        points_2d_by_camera: PointsByCamera,
+            self,
+            *,
+            points_2d_by_camera: PointsByCamera,
     ) -> tuple[NDArray[np.float64], bool, int, int]:
-        name_to_idx = {name: i for i, name in enumerate(self.camera_names)}
-        for cam_name in points_2d_by_camera:
-            if cam_name not in name_to_idx:
+        id_to_idx = {name: i for i, name in enumerate(self.camera_ids)}
+        for camera_id in points_2d_by_camera:
+            if camera_id not in id_to_idx:
                 raise KeyError(
-                    f"Camera '{cam_name}' not found in triangulator. "
-                    f"Known cameras: {self.camera_names}"
+                    f"Camera '{camera_id}' not found in triangulator. "
+                    f"Known cameras: {self.camera_ids}"
                 )
 
         first_array = next(iter(points_2d_by_camera.values()))
@@ -315,21 +331,21 @@ class Triangulator(BaseModel):
         stacked = np.full(
             (self.n_cameras, n_frames, n_points, 2), np.nan, dtype=np.float64,
         )
-        for cam_name, data in points_2d_by_camera.items():
+        for camera_id, data in points_2d_by_camera.items():
             if data.shape != (n_frames, n_points, 2):
                 raise ValueError(
-                    f"Camera '{cam_name}' has shape {data.shape}, "
+                    f"Camera '{camera_id}' has shape {data.shape}, "
                     f"expected ({n_frames}, {n_points}, 2)"
                 )
-            stacked[name_to_idx[cam_name]] = data.astype(np.float64, copy=False)
+            stacked[id_to_idx[camera_id]] = data.astype(np.float64, copy=False)
 
         return stacked, False, n_frames, n_points
 
     def _compute_reprojection_error_flat(
-        self,
-        *,
-        points_3d_flat: NDArray[np.float64],
-        data2d_pixel_flat: NDArray[np.float64],
+            self,
+            *,
+            points_3d_flat: NDArray[np.float64],
+            data2d_pixel_flat: NDArray[np.float64],
     ) -> NDArray[np.float64]:
         """Compute per-camera Euclidean pixel reprojection error. Returns (n_cameras, n_flat)."""
         projected = self.project(points_3d=points_3d_flat)
@@ -340,10 +356,10 @@ class Triangulator(BaseModel):
         return norm
 
     def _compute_reprojection_error_flat_normalized(
-        self,
-        *,
-        points_3d_flat: NDArray[np.float64],
-        data2d_normalized_flat: NDArray[np.float64],
+            self,
+            *,
+            points_3d_flat: NDArray[np.float64],
+            data2d_normalized_flat: NDArray[np.float64],
     ) -> NDArray[np.float64]:
         """Per-camera Euclidean reprojection error in undistorted-normalized coords."""
         n_flat = points_3d_flat.shape[0]
@@ -369,10 +385,10 @@ class Triangulator(BaseModel):
     # =========================================================================
 
     def signed_reprojection_error(
-        self,
-        *,
-        points_3d: NDArray[np.float64],
-        points_2d_pixel: NDArray[np.float64],
+            self,
+            *,
+            points_3d: NDArray[np.float64],
+            points_2d_pixel: NDArray[np.float64],
     ) -> NDArray[np.float64]:
         """Signed pixel reprojection error per camera, per point.
 
@@ -391,10 +407,10 @@ class Triangulator(BaseModel):
         return error
 
     def mean_reprojection_error(
-        self,
-        *,
-        points_3d: NDArray[np.float64],
-        points_2d_pixel: NDArray[np.float64],
+            self,
+            *,
+            points_3d: NDArray[np.float64],
+            points_2d_pixel: NDArray[np.float64],
     ) -> NDArray[np.float64]:
         """Mean Euclidean reprojection error per point, averaged across valid cameras.
 

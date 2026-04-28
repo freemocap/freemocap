@@ -158,7 +158,7 @@ def _run_pyceres_path(
     if len(all_observations) == 0:
         raise ValueError("No valid charuco observations found")
 
-    camera_names = list(video_metadata.keys())
+    camera_ids = list(video_metadata.keys())
     image_sizes: dict[str, tuple[int, int]] = {
         vid_id: (vm.width, vm.height)
         for vid_id, vm in video_metadata.items()
@@ -168,7 +168,7 @@ def _run_pyceres_path(
         board=board,
         all_observations=all_observations,
         image_sizes=image_sizes,
-        camera_names=camera_names,
+        camera_ids=camera_ids,
         config=task_config.pyceres_solver_config,
         use_groundplane=task_config.use_groundplane,
     )

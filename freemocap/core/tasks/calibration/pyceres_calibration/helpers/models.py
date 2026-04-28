@@ -63,6 +63,9 @@ class PyceresCalibrationSolverConfig(BaseModel):
     intrinsics_mode: IntrinsicsOptimizationMode = IntrinsicsOptimizationMode()
     intrinsics_prior_weight: float = 0.01
     pin_camera_0: bool = True
+    # Which camera to pin at the origin during bundle adjustment. None means
+    # "the first camera in the input list"
+    pin_camera_id: str | None = None
     outlier_rejection_iterations: int = 5
     initial_outlier_threshold_px: float = 15.0
     final_outlier_threshold_px: float = 2.0

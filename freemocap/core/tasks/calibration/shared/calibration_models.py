@@ -274,10 +274,16 @@ class CameraModel(BaseModel, TomlMixin):
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
-    name: str
+    id: str
     image_size: tuple[int, int]  # (width, height)
     intrinsics: CameraIntrinsics
     extrinsics: CameraExtrinsics
+
+    @computed_field
+    @property
+    def name(self) -> str:
+        """Camera name (alias for id), for compatibility with old anipose TOML format."""
+        return self.id
 
     @property
     def projection_matrix(self) -> NDArray[np.float64]:
@@ -306,7 +312,7 @@ class CameraModel(BaseModel, TomlMixin):
         else:
             size_tuple = (int(size[0]), int(size[1]))
         return cls(
-            name=anipose_camera.get_name(),
+            id=anipose_camera.get_name(),
             image_size=size_tuple,
             intrinsics=CameraIntrinsics.from_camera_matrix_and_dist(
                 camera_matrix=np.asarray(anipose_camera.get_camera_matrix(), dtype=np.float64),
@@ -438,8 +444,9 @@ class CalibrationResult(BaseModel, TomlMixin):
         cameras_dict: dict[str, object] = {}
 
         for cam in self.cameras:
-            cameras_dict[cam.name] = {
-                "name": cam.name,
+            cameras_dict[cam.id] = {
+                "name": cam.id,
+                "id": cam.id,
                 "size": list(cam.image_size),
                 "matrix": cam.intrinsics.to_camera_matrix().tolist(),
                 "distortions": cam.intrinsics.to_dist_coeffs_5().tolist(),
@@ -512,9 +519,12 @@ class CalibrationResult(BaseModel, TomlMixin):
             tvec = np.array(d["translation"], dtype=np.float64).ravel()
             extrinsics = CameraExtrinsics.from_rodrigues(rvec=rvec, tvec=tvec)
 
+            camera_id = d.get("id", None)
+            if camera_id is None:
+                camera_id = d.get("name", None)
             cameras.append(
                 CameraModel(
-                    name=str(d["name"]),
+                    id=str(camera_id),
                     image_size=size,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics,

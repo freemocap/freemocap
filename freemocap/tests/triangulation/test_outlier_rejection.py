@@ -63,7 +63,7 @@ def _make_synthetic_extrinsics() -> tuple[np.ndarray, list[CameraModel]]:
 
         cameras.append(
             CameraModel(
-                name=f"cam_{i}",
+                id=f"cam_{i}",
                 image_size=(640, 480),
                 intrinsics=CameraIntrinsics(fx=500.0, fy=500.0, cx=320.0, cy=240.0),
                 extrinsics=CameraExtrinsics.from_rodrigues(

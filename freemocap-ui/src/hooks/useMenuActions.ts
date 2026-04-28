@@ -8,6 +8,7 @@ import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras
 import {stopRecording} from '@/store/slices/recording';
 import {selectVideoLoadFolder} from '@/store/slices/videos';
 import {activeRecordingCleared, activeRecordingSet} from '@/store/slices/active-recording';
+import {calibrationConfigUpdated} from '@/store/slices/calibration/calibration-slice';
 // import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
 import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
 import {SUPPORTED_LOCALES} from '@/i18n';
@@ -181,6 +182,9 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                             baseDirectory,
                             recordingName: 'freemocap_test_data',
                             origin: 'browsed',
+                        }));
+                        dispatch(calibrationConfigUpdated({
+                            charucoBoard: { squares_x: 7, squares_y: 5, square_length_mm: 58 },
                         }));
                     } catch (error) {
                         console.error('Failed to resolve home directory for test data:', error);

@@ -14,7 +14,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera_group import AniposeCameraGroup
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_charuco_board import AniposeCharucoBoard
+from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.interpolate_trajectories import \
     interpolate_trajectory_data
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
@@ -79,7 +79,7 @@ def set_charuco_board_as_groundplane_anipose(
     *,
     observation_recorders: dict[VideoIdString, BaseRecorder],
     anipose_camera_group: AniposeCameraGroup,
-    anipose_charuco_board: AniposeCharucoBoard,
+    board: CharucoBoardDefinition,
     recording_folder_path: "Path | None" = None,
 ) -> tuple[AniposeCameraGroup, GroundPlaneSuccess, GroundPlaneResult | None]:
     """Set the charuco board plane as the world groundplane."""
@@ -113,8 +113,8 @@ def set_charuco_board_as_groundplane_anipose(
     try:
         charuco_still_frame_idx = find_still_charuco_frame(
             charuco_3d=charuco3d_fr_id_xyz,
-            squares_x=anipose_charuco_board.squaresX,
-            squares_y=anipose_charuco_board.squaresY,
+            squares_x=board.squares_x,
+            squares_y=board.squares_y,
         )
     except CharucoVisibilityError as e:
         logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
@@ -127,8 +127,8 @@ def set_charuco_board_as_groundplane_anipose(
 
     x_hat, y_hat, z_hat = compute_board_basis_vectors(
         charuco_frame=charuco_frame,
-        squares_x=anipose_charuco_board.squaresX,
-        squares_y=anipose_charuco_board.squaresY,
+        squares_x=board.squares_x,
+        squares_y=board.squares_y,
     )
 
     charuco_origin_in_world = charuco_frame[0]

@@ -14,8 +14,10 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from freemocap.core.tasks.calibration.anipose_calibration.anipose_adapters import create_anipose_board, \
-    anipose_group_to_camera_models
+from freemocap.core.tasks.calibration.anipose_calibration.anipose_adapters import (
+    calibrate_rows_from_board_definition,
+    anipose_group_to_camera_models,
+)
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_calibration_helpers import \
     anipose_pin_camera_zero_to_origin, \
     set_charuco_board_as_groundplane_anipose, get_real_world_matrices_anipose
@@ -55,7 +57,6 @@ def run_anipose_calibration(
         for video_id, video_meta in video_metadata.items()
     ]
     anipose_camera_group = AniposeCameraGroup(cameras=anipose_cameras)
-    anipose_charuco_board = create_anipose_board(board=board)
 
     logger.info(
         f"Starting Anipose calibration with "
@@ -77,11 +78,12 @@ def run_anipose_calibration(
         raise ValueError("No charuco observations were provided for calibration")
 
     # Run anipose bundle adjustment
-    all_camera_rows = charuco_observation_aggregator.all_camera_rows
+    all_camera_rows = charuco_observation_aggregator.to_anipose_rows(n_corners=board.n_corners)
     logger.info(f"Aggregated charuco observations for {len(all_camera_rows)} cameras")
-    error, merged, charuco_frame_numbers = anipose_camera_group.calibrate_rows(
-        all_camera_rows,
-        anipose_charuco_board,
+    error, merged, charuco_frame_numbers = calibrate_rows_from_board_definition(
+        camera_group=anipose_camera_group,
+        all_rows=all_camera_rows,
+        board=board,
         init_intrinsics=init_intrinsics,
         init_extrinsics=init_extrinsics,
         verbose=verbose,
@@ -117,7 +119,7 @@ def run_anipose_calibration(
         anipose_camera_group, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane_anipose(
             observation_recorders=observation_recorders_by_video,
             anipose_camera_group=anipose_camera_group,
-            anipose_charuco_board=anipose_charuco_board,
+            board=board,
             recording_folder_path=Path(recording_info.full_recording_path),
         )
         if groundplane_success.success:

@@ -14,7 +14,7 @@ from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig

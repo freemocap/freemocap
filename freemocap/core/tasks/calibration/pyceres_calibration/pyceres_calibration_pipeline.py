@@ -18,9 +18,10 @@ from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import 
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.postprocessing import pin_camera_to_origin, \
     align_to_charuco_groundplane
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.solver import run_pyceres_bundle_adjustment
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, \
-    CharucoCornersObservation, \
-    CalibrationResult, CameraModel
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 
 logger = logging.getLogger(__name__)

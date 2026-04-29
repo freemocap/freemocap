@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
 
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 

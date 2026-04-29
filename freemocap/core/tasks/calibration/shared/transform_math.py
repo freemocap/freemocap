@@ -20,7 +20,7 @@ from skellycam.core.types.type_overloads import CameraIdString
 logger = logging.getLogger(__name__)
 
 
-def make_M(rvec: NDArray[np.float64], tvec: NDArray[np.float64]) -> NDArray[np.float64]:
+def build_transformation_matrix(rvec: NDArray[np.float64], tvec: NDArray[np.float64]) -> NDArray[np.float64]:
     """Build a 4x4 rigid transformation matrix from a Rodrigues rotation vector and translation.
 
     Args:
@@ -124,7 +124,7 @@ def mean_transform(matrices: list[NDArray[np.float64]]) -> NDArray[np.float64]:
     if np.any(np.isnan(mean_tvec)):
         raise ValueError(f"NaN in mean tvec: {mean_tvec}")
 
-    return make_M(mean_rvec, mean_tvec)
+    return build_transformation_matrix(mean_rvec, mean_tvec)
 
 
 def mean_transform_robust(

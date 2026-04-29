@@ -16,8 +16,12 @@ from scipy.spatial.transform import Rotation
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.cost_functions import CharucoReprojectionCost, \
     IntrinsicsPriorCost
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CameraModel, \
-    CharucoCornersObservation, CalibrationResult, CameraIntrinsics, CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 
 logger = logging.getLogger(__name__)
 

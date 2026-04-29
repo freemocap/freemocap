@@ -18,7 +18,8 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_s
     stack_rodrigues,
     stack_translations,
 )
-from freemocap.core.tasks.calibration.shared.calibration_models import CameraModel, CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tasks.calibration.shared.groundplane_math import (
     CharucoVelocityError,

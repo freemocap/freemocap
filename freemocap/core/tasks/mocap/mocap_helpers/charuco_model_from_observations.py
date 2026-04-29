@@ -17,7 +17,7 @@ from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3M
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.mocap.mocap_helpers.triangulate_trajectory_array import triangulate_dict
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator

@@ -6,18 +6,15 @@ import logging
 from collections import defaultdict
 from typing import Any
 
-import cv2
 import numpy as np
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.charuco_board_ops import get_empty_detection, \
+from freemocap.core.tasks.calibration.charuco.charuco_board_ops import get_empty_detection, \
     get_object_points
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
-from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, make_M, \
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, build_transformation_matrix, \
     robust_average_transforms, find_spanning_tree_pairs, get_rtvec
 
-numba_logger = logging.getLogger("numba")
-numba_logger.setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +42,6 @@ class BoardObservations(_BoardObservationsRequired):
     """
 
 
-# Convenience alias for un-annotated callers that still pass ``None``.
-OptionalBoardObservations = BoardObservations | None
 
 
 # =============================================================================
@@ -82,7 +77,7 @@ def get_error_dict(errors_full: np.ndarray, min_points: int = 10) -> dict[tuple[
     return error_dict
 
 
-def subset_extra(board_observations: OptionalBoardObservations, ixs: np.ndarray) -> OptionalBoardObservations:
+def subset_extra(board_observations: BoardObservations, ixs: np.ndarray) -> BoardObservations:
     """Subset a BoardObservations dict to the given point indices.
 
     Args:
@@ -92,8 +87,6 @@ def subset_extra(board_observations: OptionalBoardObservations, ixs: np.ndarray)
     Returns:
         A new BoardObservations with all arrays subsetted, or ``None``.
     """
-    if board_observations is None:
-        return None
     result = BoardObservations(
         objp=board_observations["objp"][ixs],
         ids=board_observations["ids"][ixs],
@@ -107,10 +100,10 @@ def subset_extra(board_observations: OptionalBoardObservations, ixs: np.ndarray)
 
 def resample_points(
         image_points: np.ndarray,
-        board_observations: OptionalBoardObservations = None,
+        board_observations: BoardObservations,
         num_samples: int = 25,
-) -> tuple[np.ndarray, OptionalBoardObservations]:
-    """Subsample 2-D image points for bundle adjustment, prioritising multi-camera coverage.
+) -> tuple[np.ndarray, BoardObservations]:
+    """Subsample 2-D image points for bundle adjustment, prioritizing multi-camera coverage.
 
     For each pair of cameras that share observations, picks up to ``num_samples``
     points weighted toward those seen by more cameras.
@@ -268,8 +261,8 @@ def _get_pairwise_transform(rotation_translation_vectors: np.ndarray, left: int,
         d = rotation_translation_vectors[:, detection_index]
         good = ~np.isnan(d[:, 0])
         if good[left] and good[right]:
-            M_left = make_M(d[left, 0:3], d[left, 3:6])
-            M_right = make_M(d[right, 0:3], d[right, 3:6])
+            M_left = build_transformation_matrix(d[left, 0:3], d[left, 3:6])
+            M_right = build_transformation_matrix(d[right, 0:3], d[right, 3:6])
             transforms.append(M_left @ np.linalg.inv(M_right))
 
     if len(transforms) == 0:
@@ -412,7 +405,7 @@ def extract_roration_translation_vectors(
                             "estimate_pose_rows should have been run before merging, "
                             "or pass board and cameras as arguments."
                         )
-                    from freemocap.core.tasks.calibration.anipose_calibration.helpers.charuco_board_ops import estimate_pose_points
+                    from freemocap.core.tasks.calibration.charuco.charuco_board_ops import estimate_pose_points
                     rvec, tvec = estimate_pose_points(board, cameras[camera_index], r["corners"], r["ids"])
                     r["rvec"] = rvec
                     r["tvec"] = tvec

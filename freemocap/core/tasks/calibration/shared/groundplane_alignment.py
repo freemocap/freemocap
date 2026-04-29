@@ -14,10 +14,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CameraExtrinsics,
-    CameraModel,
-)
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 
 logger = logging.getLogger(__name__)
 
@@ -84,15 +82,3 @@ def apply_groundplane_to_cameras(
         f"Ground plane alignment complete (method: {ground_plane.method})"
     )
     return result
-
-
-def groundplane_metadata(
-    ground_plane: GroundPlaneResult,
-    recording_id: str,
-) -> dict:
-    """Return metadata dict to merge into calibration TOML."""
-    return {
-        "groundplane_applied": True,
-        "groundplane_method": ground_plane.method,
-        "groundplane_recording_id": recording_id,
-    }

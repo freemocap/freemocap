@@ -12,13 +12,14 @@ from typing import Any
 
 import cv2
 import numpy as np
+from freemocap.core.tasks.calibration.shared.transform_math import build_transformation_matrix, get_rtvec
 from numba import jit
 from numpy.typing import NDArray
 from scipy import optimize
 from scipy.sparse import dok_matrix
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.anipose_calibration.helpers import charuco_board_ops
+from freemocap.core.tasks.calibration.charuco import charuco_board_ops
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_solver_ops import (
     PARAMS_PER_CAMERA,
     apply_camera_params,
@@ -26,8 +27,6 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_s
     pack_camera_params,
 )
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anipose import (
-    BoardObservations,
-    OptionalBoardObservations,
     extract_points,
     extract_roration_translation_vectors,
     get_connections,
@@ -37,12 +36,10 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anip
     remap_ids,
     resample_points,
     subset_extra,
-    transform_points,
+    transform_points, BoardObservations,
 )
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CameraModel,
-    CharucoBoardDefinition,
-)
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -68,10 +65,11 @@ def _make_triangulator(cameras: list[CameraModel]):
 
 
 def triangulate(
-    cameras: list[CameraModel],
-    points: NDArray[np.float64],
-    undistort: bool = True,
-    kill_event: multiprocessing.synchronize.Event | None = None,
+        cameras: list[CameraModel],
+        points: NDArray[np.float64],
+        undistort: bool = True,
+        use_outlier_rejection: bool = True,
+        kill_event: multiprocessing.synchronize.Event | None = None,
 ) -> NDArray[np.float64] | None:
     """Triangulate a (num_cameras, N, 2) image-point array to (N, 3) world points."""
     from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
@@ -93,7 +91,7 @@ def triangulate(
     triangulator = _make_triangulator(cameras)
     result = triangulator.triangulate(
         data2d=points,
-        config=TriangulationConfig(use_outlier_rejection=False),
+        config=TriangulationConfig(use_outlier_rejection=use_outlier_rejection),
         assume_undistorted_normalized=not undistort,
     )
     out = result.points_3d
@@ -103,10 +101,10 @@ def triangulate(
 
 
 def reprojection_error(
-    cameras: list[CameraModel],
-    points_3d: NDArray[np.float64],
-    points_2d: NDArray[np.float64],
-    mean: bool = False,
+        cameras: list[CameraModel],
+        points_3d: NDArray[np.float64],
+        points_2d: NDArray[np.float64],
+        mean: bool = False,
 ) -> NDArray[np.float64] | float:
     """Reprojection error between 3-D points and 2-D observations."""
     one_point = False
@@ -137,9 +135,9 @@ def reprojection_error(
 
 
 def average_error(
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    median: bool = False,
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        median: bool = False,
 ) -> float:
     points_3d = triangulate(cameras, points_2d)
     errors = reprojection_error(cameras, points_3d, points_2d, mean=True)
@@ -151,19 +149,18 @@ def average_error(
 # =============================================================================
 
 
-def bundle_adjust_iter(
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    board_observations: OptionalBoardObservations = None,
-    num_iterations: int = 10,
-    damping_start: float = 15,
-    damping_end: float = 1,
-    max_nfev: int = 200,
-    ftol: float = 1e-4,
-    num_samples_per_iteration: int = 100,
-    num_samples_full: int = 1000,
-    error_threshold: float = 0.3,
-    verbose: bool = True,
+def iterative_bundle_adjustment(
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        board_observations: BoardObservations,
+        num_iterations: int = 10,
+        damping_start: float = 15,
+        damping_end: float = 1,
+        max_nfev: int = 200,
+        ftol: float = 1e-4,
+        num_samples_per_iteration: int = 100,
+        num_samples_full: int = 1000,
+        error_threshold: float = 0.3,
 ) -> float:
     """Iterative bundle adjustment with a decaying outlier-rejection schedule.
 
@@ -183,8 +180,7 @@ def bundle_adjust_iter(
     )
     error = average_error(cameras, points_2d, median=True)
 
-    if verbose:
-        print("error: ", error)
+    logger.info(f"Reprojection error before bundle adjustment: {error:.4f} pixels ")
 
     mus = np.exp(np.linspace(np.log(damping_start), np.log(damping_end), num=num_iterations))
 
@@ -216,9 +212,8 @@ def bundle_adjust_iter(
         if error < error_threshold:
             break
 
-        if verbose:
-            print(error_dict)
-            print("error: {:.2f}, mu: {:.1f}, ratio: {:.3f}".format(error, mu, np.mean(good)))
+        logger.info(
+            f"Iteration {iteration + 1}/{num_iterations}: error={error:.4f}, mu={mu:.2f}, inliers={np.sum(good)}/{len(good)}")
 
         bundle_adjust(
             cameras,
@@ -227,7 +222,6 @@ def bundle_adjust_iter(
             loss="linear",
             ftol=ftol,
             max_nfev=max_nfev,
-            verbose=verbose,
         )
 
     points_2d, board_observations = resample_points(
@@ -255,22 +249,20 @@ def bundle_adjust_iter(
         loss="linear",
         ftol=ftol,
         max_nfev=max(200, max_nfev),
-        verbose=verbose,
     )
 
     return average_error(cameras, points_2d, median=True)
 
 
 def bundle_adjust(
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    board_observations: OptionalBoardObservations = None,
-    loss: str = "linear",
-    threshold: float = 50,
-    ftol: float = 1e-4,
-    max_nfev: int = 1000,
-    start_params: NDArray[np.float64] | None = None,
-    verbose: bool = True,
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        board_observations: BoardObservations,
+        loss: str = "linear",
+        threshold: float = 50,
+        ftol: float = 1e-4,
+        max_nfev: int = 1000,
+        start_params: NDArray[np.float64] | None = None,
 ) -> float:
     """Single scipy.least_squares bundle-adjust pass; mutates cameras in place."""
     if points_2d.shape[0] != len(cameras):
@@ -279,8 +271,7 @@ def bundle_adjust(
             f"but shape is {points_2d.shape}"
         )
 
-    if board_observations is not None:
-        board_observations["ids_map"] = remap_ids(board_observations["ids"])
+    board_observations["ids_map"] = remap_ids(board_observations["ids"])
 
     x0, num_camera_params = _initialize_params_bundle(cameras, points_2d, board_observations)
 
@@ -300,7 +291,7 @@ def bundle_adjust(
         ftol=ftol,
         method="trf",
         tr_solver="lsmr",
-        verbose=2 * verbose,
+        verbose=2,
         max_nfev=max_nfev,
         args=(cameras, points_2d, num_camera_params, board_observations),
     )
@@ -315,11 +306,11 @@ def bundle_adjust(
 
 @jit(parallel=True, forceobj=True)
 def _error_fun_bundle(
-    params: NDArray[np.float64],
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    num_camera_params: int,
-    board_observations: OptionalBoardObservations,
+        params: NDArray[np.float64],
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        num_camera_params: int,
+        board_observations: BoardObservations,
 ) -> NDArray[np.float64]:
     good = ~np.isnan(points_2d)
     num_cameras = len(cameras)
@@ -334,27 +325,24 @@ def _error_fun_bundle(
     points_3d_test = params[total_cam_params: total_cam_params + num_3d_params].reshape(-1, 3)
     errors_reproj = reprojection_error(cameras, points_3d_test, points_2d)[good]
 
-    if board_observations is not None:
-        ids = board_observations["ids_map"]
-        objp = board_observations["objp"]
-        min_scale = np.min(objp[objp > 0])
-        num_boards = int(np.max(ids)) + 1
-        board_param_start = total_cam_params + num_3d_params
-        rvecs = params[board_param_start: board_param_start + num_boards * 3].reshape(-1, 3)
-        tvecs = params[board_param_start + num_boards * 3: board_param_start + num_boards * 6].reshape(-1, 3)
-        expected = transform_points(objp, rvecs[ids], tvecs[ids])
-        errors_obj = 2 * (points_3d_test - expected).ravel() / min_scale
-    else:
-        errors_obj = np.array([])
+    ids = board_observations["ids_map"]
+    objp = board_observations["objp"]
+    min_scale = np.min(objp[objp > 0])
+    num_boards = int(np.max(ids)) + 1
+    board_param_start = total_cam_params + num_3d_params
+    rvecs = params[board_param_start: board_param_start + num_boards * 3].reshape(-1, 3)
+    tvecs = params[board_param_start + num_boards * 3: board_param_start + num_boards * 6].reshape(-1, 3)
+    expected = transform_points(objp, rvecs[ids], tvecs[ids])
+    errors_obj = 2 * (points_3d_test - expected).ravel() / min_scale
 
     return np.hstack([errors_reproj, errors_obj])
 
 
 def _jac_sparsity_bundle(
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    num_camera_params: int,
-    board_observations: OptionalBoardObservations,
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        num_camera_params: int,
+        board_observations: BoardObservations,
 ) -> dok_matrix:
     point_indices = np.zeros(points_2d.shape, dtype="int32")
     cam_indices = np.zeros(points_2d.shape, dtype="int32")
@@ -366,13 +354,9 @@ def _jac_sparsity_bundle(
 
     good = ~np.isnan(points_2d)
 
-    if board_observations is not None:
-        ids = board_observations["ids_map"]
-        num_boards = int(np.max(ids)) + 1
-        total_board_params = num_boards * 6
-    else:
-        num_boards = 0
-        total_board_params = 0
+    ids = board_observations["ids_map"]
+    num_boards = int(np.max(ids)) + 1
+    total_board_params = num_boards * 6
 
     num_cameras = points_2d.shape[0]
     num_points = points_2d.shape[1]
@@ -412,15 +396,14 @@ def _jac_sparsity_bundle(
 
 
 def _initialize_params_bundle(
-    cameras: list[CameraModel],
-    points_2d: NDArray[np.float64],
-    board_observations: OptionalBoardObservations,
+        cameras: list[CameraModel],
+        points_2d: NDArray[np.float64],
+        board_observations: BoardObservations,
 ) -> tuple[NDArray[np.float64], int]:
     """Build the initial parameter vector for bundle adjustment.
 
     Layout: [camera_params... | 3d_points... | board_rvecs... | board_tvecs...]
     """
-    from freemocap.core.tasks.calibration.shared.transform_math import get_rtvec, make_M
 
     cam_params = np.hstack([pack_camera_params(cam) for cam in cameras])
     num_camera_params = len(cam_params) // len(cameras)
@@ -432,32 +415,29 @@ def _initialize_params_bundle(
 
     points_3d = triangulate(cameras, points_2d)
 
-    if board_observations is not None:
-        ids = board_observations["ids_map"]
-        num_boards = int(np.max(ids[~np.isnan(ids)])) + 1
-        total_board_params = num_boards * 6
+    ids = board_observations["ids_map"]
+    num_boards = int(np.max(ids[~np.isnan(ids)])) + 1
+    total_board_params = num_boards * 6
 
-        rvecs = np.zeros((num_boards, 3), dtype="float64")
-        tvecs = np.zeros((num_boards, 3), dtype="float64")
+    rvecs = np.zeros((num_boards, 3), dtype="float64")
+    tvecs = np.zeros((num_boards, 3), dtype="float64")
 
-        if "rvecs" in board_observations and "tvecs" in board_observations:
-            rvecs_all = board_observations["rvecs"]
-            tvecs_all = board_observations["tvecs"]
-            for board_num in range(num_boards):
-                point_id = np.where(ids == board_num)[0][0]
-                cam_ids_possible = np.where(~np.isnan(points_2d[:, point_id, 0]))[0]
-                cam_id = np.random.choice(cam_ids_possible)
-                M_cam = make_M(
-                    cameras[cam_id].extrinsics.rodrigues_vector,
-                    cameras[cam_id].extrinsics.translation,
-                )
-                M_board_cam = make_M(rvecs_all[cam_id, point_id], tvecs_all[cam_id, point_id])
-                M_board = np.linalg.inv(M_cam) @ M_board_cam
-                rvec, tvec = get_rtvec(M_board)
-                rvecs[board_num] = rvec
-                tvecs[board_num] = tvec
-    else:
-        total_board_params = 0
+    if "rvecs" in board_observations and "tvecs" in board_observations:
+        rvecs_all = board_observations["rvecs"]
+        tvecs_all = board_observations["tvecs"]
+        for board_num in range(num_boards):
+            point_id = np.where(ids == board_num)[0][0]
+            cam_ids_possible = np.where(~np.isnan(points_2d[:, point_id, 0]))[0]
+            cam_id = np.random.choice(cam_ids_possible)
+            M_cam = build_transformation_matrix(
+                cameras[cam_id].extrinsics.rodrigues_vector,
+                cameras[cam_id].extrinsics.translation,
+            )
+            M_board_cam = build_transformation_matrix(rvecs_all[cam_id, point_id], tvecs_all[cam_id, point_id])
+            M_board = np.linalg.inv(M_cam) @ M_board_cam
+            rvec, tvec = get_rtvec(M_board)
+            rvecs[board_num] = rvec
+            tvecs[board_num] = tvec
 
     x0 = np.zeros(total_cam_params + points_3d.size + total_board_params)
     x0[:total_cam_params] = cam_params
@@ -477,12 +457,9 @@ def _initialize_params_bundle(
 
 
 def calibrate_cameras_from_rows(
-    cameras: list[CameraModel],
-    all_rows: list[list[dict[str, Any]]],
-    board: CharucoBoardDefinition,
-    init_intrinsics: bool = True,
-    init_extrinsics: bool = True,
-    verbose: bool = True,
+        cameras: list[CameraModel],
+        all_rows: list[list[dict[str, Any]]],
+        board: CharucoBoardDefinition,
 ) -> tuple[float, list, list]:
     """Calibrate cameras from charuco board observation rows.
 
@@ -501,20 +478,19 @@ def calibrate_cameras_from_rows(
         if camera.image_size is None:
             raise ValueError(f"Camera '{camera.id}' has no image size")
 
-    if init_intrinsics:
-        logger.info("Initializing camera intrinsics...")
-        for cam_idx, (rows, camera) in enumerate(zip(all_rows, cameras)):
-            objp, imgp = charuco_board_ops.get_all_calibration_points(board, rows)
-            mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]
-            if len(mixed) == 0:
-                raise ValueError(f"No valid calibration points for camera {cam_idx} (need >= 7)")
-            logger.info(f"  Camera {cam_idx}: {len(mixed)} usable frames")
-            objp, imgp = zip(*mixed)
-            matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(camera.image_size))
-            camera.intrinsics.fx = float(matrix[0, 0])
-            camera.intrinsics.fy = float(matrix[1, 1])
-            camera.intrinsics.cx = float(matrix[0, 2])
-            camera.intrinsics.cy = float(matrix[1, 2])
+    logger.info("Initializing camera intrinsics...")
+    for cam_idx, (rows, camera) in enumerate(zip(all_rows, cameras)):
+        objp, imgp = charuco_board_ops.get_all_calibration_points(board, rows)
+        mixed = [(o, i) for (o, i) in zip(objp, imgp) if len(o) >= 7]
+        if len(mixed) == 0:
+            raise ValueError(f"No valid calibration points for camera {cam_idx} (need >= 7)")
+        logger.info(f"  Camera {cam_idx}: {len(mixed)} usable frames")
+        objp, imgp = zip(*mixed)
+        matrix = cv2.initCameraMatrix2D(objp, imgp, tuple(camera.image_size))
+        camera.intrinsics.fx = float(matrix[0, 0])
+        camera.intrinsics.fy = float(matrix[1, 1])
+        camera.intrinsics.cx = float(matrix[0, 2])
+        camera.intrinsics.cy = float(matrix[1, 2])
 
     logger.info("Estimating board poses...")
     for i, (row, cam) in enumerate(zip(all_rows, cameras)):
@@ -540,21 +516,19 @@ def calibrate_cameras_from_rows(
     image_points, board_observations = extract_points(merged, board, camera_ids=cam_ids, min_cameras=2)
     logger.info(f"Extracted points: shape={image_points.shape}")
 
-    if init_extrinsics:
-        logger.info("Initializing camera extrinsics...")
-        rtvecs = extract_roration_translation_vectors(merged, camera_ids=cam_ids)
+    logger.info("Initializing camera extrinsics...")
+    rtvecs = extract_roration_translation_vectors(merged, camera_ids=cam_ids)
 
-        if verbose:
-            connections = get_connections(rtvecs, cam_ids)
-            for (cam_a, cam_b), count in sorted(connections.items()):
-                if cam_a < cam_b:
-                    logger.info(f"  {cam_a} <-> {cam_b}: {count} shared frames")
+    connections = get_connections(rtvecs, cam_ids)
+    for (cam_a, cam_b), count in sorted(connections.items()):
+        if cam_a < cam_b:
+            logger.info(f"  {cam_a} <-> {cam_b}: {count} shared frames")
 
-        rvecs, tvecs = get_initial_extrinsics(rtvecs, camera_ids=cam_ids)
-        apply_extrinsics(cameras, rvecs, tvecs)
+    rvecs, tvecs = get_initial_extrinsics(rtvecs, camera_ids=cam_ids)
+    apply_extrinsics(cameras, rvecs, tvecs)
 
     logger.info("Starting iterative bundle adjustment...")
-    error = bundle_adjust_iter(cameras, image_points, board_observations, verbose=verbose, error_threshold=1.0)
+    error = iterative_bundle_adjustment(cameras, image_points, board_observations, error_threshold=1.0)
     logger.info(f"Calibration complete — final error: {error:.4f}")
 
     return error, merged, charuco_frames

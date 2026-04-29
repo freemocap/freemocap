@@ -27,9 +27,9 @@ from freemocap.core.tasks.calibration.anipose_calibration.run_anipose_calibratio
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig, \
     CalibrationSolverMethod
 from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, \
-    CharucoCornersObservation, \
-    CornerObservation, CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.charuco.charuco_corners import CornerObservation, CharucoCornersObservation
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.calibration_save import save_calibration_copies
 from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health

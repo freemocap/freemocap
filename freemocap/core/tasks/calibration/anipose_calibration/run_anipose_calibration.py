@@ -14,21 +14,18 @@ from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoOb
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_calibration_helpers import (
-    GroundPlaneSuccess,
     pin_camera_zero_to_origin,
     set_charuco_board_as_groundplane,
 )
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.bundle_adjust import (
     calibrate_cameras_from_rows,
 )
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CalibrationResult,
-    CameraExtrinsics,
-    CameraIntrinsics,
-    CameraModel,
-    CharucoBoardDefinition,
-)
-from freemocap.core.tasks.calibration.shared.charuco_observation_aggregator import CharucoObservationAggregator
+from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.types.type_overloads import VideoIdString
 
@@ -42,10 +39,7 @@ def run_anipose_calibration(
     video_metadata: dict[CameraIdString, VideoMetadata],
     recording_info: RecordingInfo,
     pin_camera_0_to_origin: bool = True,
-    use_charuco_as_groundplane: bool = False,
-    init_intrinsics: bool = True,
-    init_extrinsics: bool = True,
-    verbose: bool = True,
+    use_charuco_as_groundplane: bool = True,
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run anipose calibration from charuco observations.
 
@@ -91,9 +85,6 @@ def run_anipose_calibration(
         cameras=cameras,
         all_rows=all_camera_rows,
         board=board,
-        init_intrinsics=init_intrinsics,
-        init_extrinsics=init_extrinsics,
-        verbose=verbose,
     )
 
     logger.info(f"Anipose calibration completed — error: {error}")

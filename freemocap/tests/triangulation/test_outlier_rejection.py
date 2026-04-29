@@ -7,11 +7,9 @@ Covers:
 """
 import numpy as np
 
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CameraExtrinsics,
-    CameraIntrinsics,
-    CameraModel,
-)
+from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.triangulation.helpers.outlier_rejection import (
     triangulate_with_outlier_rejection,
 )

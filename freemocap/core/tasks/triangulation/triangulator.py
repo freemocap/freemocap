@@ -16,10 +16,8 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, model_validator
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CalibrationResult,
-    CameraModel,
-)
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.outlier_rejection import (
     triangulate_with_outlier_rejection,
 )

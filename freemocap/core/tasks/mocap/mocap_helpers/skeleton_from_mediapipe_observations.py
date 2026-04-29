@@ -12,7 +12,7 @@ from skellyforge.skellymodels.managers.human import Human
 from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CalibrationResult
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 from freemocap.core.types.type_overloads import VideoIdString

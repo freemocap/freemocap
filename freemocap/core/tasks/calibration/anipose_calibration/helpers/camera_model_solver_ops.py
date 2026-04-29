@@ -8,10 +8,8 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import NDArray
 
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CameraExtrinsics,
-    CameraModel,
-)
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 
 
 # Parameter layout per camera: [rvec(3), tvec(3), focal(1), dist0(1)] = 8 floats.

@@ -17,9 +17,11 @@ from numpy.typing import NDArray
 from scipy.linalg import inv as matrix_inverse
 from scipy.spatial.transform import Rotation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoCornersObservation, CameraIntrinsics, \
-    CharucoBoardDefinition, CameraExtrinsics
-from freemocap.core.tasks.calibration.shared.transform_math import make_M, robust_average_transforms, \
+from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
+from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.transform_math import build_transformation_matrix, robust_average_transforms, \
     build_maximum_spanning_tree, find_spanning_tree_pairs, get_rtvec
 
 logger = logging.getLogger(__name__)
@@ -170,7 +172,7 @@ def _estimate_board_poses(
         if not success:
             continue
 
-        poses[obs.frame_index] = make_M(rvec=rvec.ravel(), tvec=tvec.ravel())
+        poses[obs.frame_index] = build_transformation_matrix(rvec=rvec.ravel(), tvec=tvec.ravel())
 
     return poses
 
@@ -393,7 +395,7 @@ def initialize_board_poses(
                 continue
 
             # Board pose in camera frame
-            T_cam_board = make_M(rvec=rvec.ravel(), tvec=tvec.ravel())
+            T_cam_board = build_transformation_matrix(rvec=rvec.ravel(), tvec=tvec.ravel())
 
             # Camera extrinsics: T_cam_world (world → camera)
             ext = extrinsics[cam_name]

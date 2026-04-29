@@ -9,10 +9,7 @@ from pydantic import BaseModel, Field
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import (
-    CharucoCornersObservation,
-    CornerObservation,
-)
+from freemocap.core.tasks.calibration.charuco.charuco_corners import CornerObservation, CharucoCornersObservation
 
 
 def charuco_observation_to_corners_observation(
@@ -24,11 +21,11 @@ def charuco_observation_to_corners_observation(
         return CharucoCornersObservation(camera_name=camera_name, frame_index=obs.frame_number, corners=[])
 
     corners = []
-    for cid, xy in zip(
+    for cornder_id, xy in zip(
         obs.detected_charuco_corner_ids.ravel(),
         obs.detected_charuco_corners_image_coordinates,
     ):
-        corners.append(CornerObservation(corner_id=int(cid), pixel_xy=xy.ravel()[:2]))
+        corners.append(CornerObservation(corner_id=int(cornder_id), pixel_xy=xy.ravel()[:2]))
 
     return CharucoCornersObservation(camera_name=camera_name, frame_index=obs.frame_number, corners=corners)
 

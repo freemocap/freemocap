@@ -4,17 +4,7 @@ import {SKELETON_COLORS} from "@/components/viewport3d/helpers/skeleton-colors";
 import {PointStyle} from "@/components/viewport3d/helpers/viewport3d-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
-// Maximum tracked points the instanced mesh can hold
-export const MAX_POINTS = 1000;
 
-// Z-axis offset applied to all tracked points to center the skeleton in view
-export const Z_OFFSET = -15;
-
-// --- Point classification (shared by 3D point + segment styling) -------------
-//
-// These helpers are the single place we encode "what body part does this name
-// look like" — everything else defers to them. They work on any tracker's
-// naming scheme as long as body/hand/face names carry identifiable substrings.
 
 export function classifyPointName(name: string): 'face' | 'left_hand' | 'right_hand' | 'left' | 'right' | 'center' {
     const lc = name.toLowerCase();

@@ -35,8 +35,8 @@ class SimpleRealtimeKeypointFilter:
     min_cutoff: float = 0.005
     beta: float = 0.3
     d_cutoff: float = 1.0
-    max_prediction_frames: int = 10
-    prediction_velocity_decay: float = 0.75
+    max_prediction_frames: int = 3
+    prediction_velocity_decay: float = 0.5
 
     _filters: dict[str, OneEuroFilter3D] = field(default_factory=dict, init=False, repr=False)
     _prediction_counts: dict[str, int] = field(default_factory=dict, init=False, repr=False)

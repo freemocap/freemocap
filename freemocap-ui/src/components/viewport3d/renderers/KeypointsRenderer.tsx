@@ -19,8 +19,8 @@ const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
 const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
-const RAW_RADIUS = 0.08;
-const FILTERED_RADIUS = 0.12;
+const RAW_RADIUS = 0.04;
+const FILTERED_RADIUS = 0.04;
 
 interface KeypointLayerProps {
     subscribeKey: "subscribeToKeypointsRaw" | "subscribeToKeypointsFiltered";
@@ -40,9 +40,9 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const nameToIdx = useRef<Map<string, number>>(new Map());
     const nextIdx = useRef(0);
 
-    const geo = useMemo(() => new SphereGeometry(100, 8, 6), []);
+    const geo = useMemo(() => new SphereGeometry(50, 8, 6), []);
     const mat = useMemo(() => new MeshStandardMaterial({
-        color: "#00ff00",
+        color: "#ffffff",
         // roughness: 0.4,
         // metalness: 0.3,
     }), []);

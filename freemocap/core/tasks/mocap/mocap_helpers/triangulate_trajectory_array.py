@@ -67,7 +67,7 @@ def triangulate_dict(
     )
 
 
-def _subset_triangulatocalibration r_to_data(
+def _subset_triangulator_to_data(
         *,
         triangulator: Triangulator,
         data_dict: dict[str, Any],

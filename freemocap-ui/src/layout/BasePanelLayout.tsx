@@ -14,7 +14,9 @@ import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
 export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
     const theme = useTheme();
     const leftPanelRef = useRef<ImperativePanelHandle>(null);
+    const bottomPanelRef = useRef<ImperativePanelHandle>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
 
     const handleToggleCollapse = useCallback(() => {
         const panel = leftPanelRef.current;
@@ -34,6 +36,9 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
     const handlePanelExpand = useCallback(() => {
         setIsCollapsed(false);
     }, []);
+
+    const handleBottomPanelCollapse = useCallback(() => setIsBottomCollapsed(true), []);
+    const handleBottomPanelExpand = useCallback(() => setIsBottomCollapsed(false), []);
 
     // Connect native menu actions to the app
     useMenuActions({ onToggleSidebar: handleToggleCollapse });
@@ -91,8 +96,16 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
                     }}
                 />
 
-                <Panel collapsible defaultSize={13} minSize={10} collapsedSize={4}>
-                    <BottomPanelContent/>
+                <Panel
+                    ref={bottomPanelRef}
+                    collapsible
+                    defaultSize={13}
+                    minSize={10}
+                    collapsedSize={4}
+                    onCollapse={handleBottomPanelCollapse}
+                    onExpand={handleBottomPanelExpand}
+                >
+                    <BottomPanelContent isCollapsed={isBottomCollapsed}/>
                 </Panel>
             </PanelGroup>
         </Box>

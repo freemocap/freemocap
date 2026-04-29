@@ -1,13 +1,50 @@
 import React from 'react';
 import {Box, useTheme} from '@mui/material';
+import {Warning as WarningIcon} from '@mui/icons-material';
 import {useLogTerminal} from './useLogTerminal';
 import {LogToolbar} from './LogToolbar';
 import {LogSearchBar} from './LogSearchBar';
 import {VirtualLogList} from './VirtualLogList';
+import {LogSnapshot, LogRecord} from '@/services/server/server-helpers/log-store';
+import {LOG_COLORS} from './constants';
 
-export const LogTerminal: React.FC = () => {
+const LogCollapsedView: React.FC<{snapshot: LogSnapshot; filteredLogs: LogRecord[]}> = ({snapshot, filteredLogs}) => {
+    const theme = useTheme();
+    const mostRecent = filteredLogs[filteredLogs.length - 1] ?? snapshot.entries[snapshot.entries.length - 1];
+    const color = mostRecent
+        ? (LOG_COLORS[mostRecent.levelname.toUpperCase()] ?? theme.palette.text.primary)
+        : theme.palette.text.secondary;
+
+    return (
+        <Box sx={{
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            px: 1,
+            overflow: 'hidden',
+            backgroundColor: theme.palette.mode === 'dark' ? '#1a1a1a' : theme.palette.grey[100],
+        }}>
+            <span style={{fontSize: '0.8em', fontWeight: 'bold', color: theme.palette.text.primary as string, flexShrink: 0}}>
+                Server Logs
+            </span>
+            {snapshot.hasErrors && (
+                <WarningIcon sx={{color: LOG_COLORS.ERROR, fontSize: '1em', flexShrink: 0}}/>
+            )}
+            <span style={{fontSize: '0.75em', color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                {mostRecent ? `[${mostRecent.levelname}] ${mostRecent.message}` : 'No logs yet'}
+            </span>
+        </Box>
+    );
+};
+
+export const LogTerminal: React.FC<{isCollapsed?: boolean}> = ({isCollapsed = false}) => {
     const theme = useTheme();
     const terminal = useLogTerminal();
+
+    if (isCollapsed) {
+        return <LogCollapsedView snapshot={terminal.snapshot} filteredLogs={terminal.filteredLogs}/>;
+    }
 
     return (
         <Box

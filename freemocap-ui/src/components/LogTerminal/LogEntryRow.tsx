@@ -70,14 +70,14 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
                 {/*>*/}
                 {/*    {log.source === 'ui' ? 'UI' : 'SERVER'}*/}
                 {/*</span>*/}
-                <span style={{color: '#fff'}}>
+                <span style={{color: color}}>
                     <Linkify text={multiLine ? log.message.split('\n')[0] : log.message}/>
                 </span>
             </div>
 
             {/* Remaining lines for multi-line messages */}
             {multiLine && (
-                <div style={{whiteSpace: 'pre', color: '#fff', paddingLeft: 4}}>
+                <div style={{whiteSpace: 'pre', color: color, paddingLeft: 4}}>
                     <Linkify text={log.message.split('\n').slice(1).join('\n')}/>
                 </div>
             )}

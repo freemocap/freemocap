@@ -6,7 +6,7 @@ import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {useTheme} from "@mui/material/styles";
 import TabbedBottomLeftPanel from "@/components/tabbed-bottom-panel/TabbedBottomLeftPanel";
 
-export default function BottomPanelContent() {
+export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean }) {
     const theme = useTheme();
 
     return (
@@ -15,7 +15,7 @@ export default function BottomPanelContent() {
                 {/* Framerate Viewer Panel */}
                 <Panel defaultSize={30} minSize={20}>
                     <Box sx={{height: '100%', overflow: 'auto'}}>
-                        <TabbedBottomLeftPanel/>
+                        <TabbedBottomLeftPanel isCollapsed={isCollapsed}/>
                     </Box>
                 </Panel>
 
@@ -31,7 +31,7 @@ export default function BottomPanelContent() {
                 {/* Logs Terminal Panel */}
                 <Panel defaultSize={70} minSize={20}>
                     <Box sx={{height: '100%', overflow: 'auto'}}>
-                        <LogTerminal/>
+                        <LogTerminal isCollapsed={isCollapsed}/>
                     </Box>
                 </Panel>
             </PanelGroup>

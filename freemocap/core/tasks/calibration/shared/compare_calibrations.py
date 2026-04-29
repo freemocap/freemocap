@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 
 from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition, CameraModel, \
     CharucoCornersObservation, CalibrationResult
+from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +93,7 @@ def _triangulate_board_frame(
     Returns:
         (n_corners, 3) array with NaN for corners that couldn't be triangulated.
     """
-    cam_by_name = {cam.name: cam for cam in cameras}
+    cam_by_name = {cam.id: cam for cam in cameras}
     result = np.full((n_corners, 3), np.nan, dtype=np.float64)
 
     for corner_id in range(n_corners):
@@ -167,7 +168,8 @@ class PerCameraHealth(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    camera_name: str
+    camera_id: CameraIdString
+    camera_index: CameraIndexInt
     fx: float
     fy: float
     cx: float
@@ -187,7 +189,7 @@ class PerCameraHealth(BaseModel):
         fl_flag = "✓" if self.focal_length_reasonable else "✗"
         pp_flag = "✓" if self.principal_point_reasonable else "✗"
         return (
-            f"  {self.camera_name}:\n"
+            f"  Camera#{self.camera_index}: {self.camera_id}:\n"
             f"    Focal length:    fx={self.fx:.1f}  fy={self.fy:.1f}  "
             f"(fx/fy={self.fx_fy_ratio:.3f})  [{fl_flag}]\n"
             f"    Principal point: cx={self.cx:.1f}  cy={self.cy:.1f}  "
@@ -292,7 +294,8 @@ def compute_calibration_health(
         fx_fy_ratio = i.fx / i.fy if i.fy != 0 else float("inf")
 
         per_camera.append(PerCameraHealth(
-            camera_name=cam.name,
+            camera_id=cam.id,
+            camera_index = cam.index,
             fx=i.fx, fy=i.fy, cx=i.cx, cy=i.cy,
             k1=i.k1, k2=i.k2,
             image_width=w, image_height=h,
@@ -345,8 +348,8 @@ class CameraComparisonResult(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    camera_name: str
-
+    camera_id: CameraIdString
+    camera_index: CameraIndexInt
     fx_a: float
     fx_b: float
     fy_a: float
@@ -371,7 +374,7 @@ class CameraComparisonResult(BaseModel):
     @property
     def summary(self) -> str:
         return (
-            f"  Camera '{self.camera_name}':\n"
+            f"  Camera #{self.camera_index}: '{self.camera_id}':\n"
             f"    Focal length:     A=({self.fx_a:.1f}, {self.fy_a:.1f})  "
             f"B=({self.fx_b:.1f}, {self.fy_b:.1f})  "
             f"Δ={self.focal_length_delta_px:.2f}px\n"
@@ -474,7 +477,8 @@ def _compare_single_camera(
     )
 
     return CameraComparisonResult(
-        camera_name=cam_a.name,
+        camera_id=cam_a.id,
+        camera_index=cam_a.index,
         fx_a=ia.fx, fx_b=ib.fx,
         fy_a=ia.fy, fy_b=ib.fy,
         cx_a=ia.cx, cx_b=ib.cx,
@@ -510,8 +514,8 @@ def compare_calibration_results(
         all_observations: If provided, runs board reconstruction accuracy
             test for both calibrations using the same observations.
     """
-    names_a = set(result_a.camera_names)
-    names_b = set(result_b.camera_names)
+    names_a = set(result_a.camera_ids)
+    names_b = set(result_b.camera_ids)
     if names_a != names_b:
         raise ValueError(
             f"Camera name mismatch: {label_a} has {sorted(names_a)}, "

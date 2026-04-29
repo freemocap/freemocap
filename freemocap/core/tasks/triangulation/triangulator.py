@@ -107,13 +107,13 @@ class Triangulator(BaseModel):
         result = CalibrationResult.load_anipose_toml(Path(path))
         return cls.from_calibration_result(calibration=result)
 
-    def subset(self, camera_names: list[str]) -> "Triangulator":
+    def subset(self, camera_ids: list[CameraIdString]) -> "Triangulator":
         """Return a new Triangulator restricted to the named cameras (preserving order of camera_names)."""
-        by_name = {cam.name: cam for cam in self.cameras}
-        missing = [n for n in camera_names if n not in by_name]
+        by_id = {cam.id: cam for cam in self.cameras}
+        missing = [n for n in camera_ids if n not in by_id]
         if missing:
             raise KeyError(f"Unknown cameras: {missing}. Known: {self.camera_ids}")
-        return Triangulator(cameras=[by_name[n] for n in camera_names])
+        return Triangulator(cameras=[by_id[n] for n in camera_ids])
 
     # =========================================================================
     # PROJECTION

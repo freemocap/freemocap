@@ -1,7 +1,7 @@
 """Anipose calibration post-processing helpers.
 
 Pin camera 0 to origin, charuco groundplane alignment,
-real-world camera position computation.
+real-world camera position computation — all operating on list[CameraModel].
 """
 
 import logging
@@ -13,13 +13,20 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera_group import AniposeCameraGroup
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
-from freemocap.core.tasks.calibration.shared.interpolate_trajectories import \
-    interpolate_trajectory_data
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_solver_ops import (
+    apply_extrinsics,
+    stack_rodrigues,
+    stack_translations,
+)
+from freemocap.core.tasks.calibration.shared.calibration_models import CameraModel, CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
-from freemocap.core.tasks.calibration.shared.groundplane_math import find_still_charuco_frame, CharucoVisibilityError, \
-    CharucoVelocityError, compute_board_basis_vectors
+from freemocap.core.tasks.calibration.shared.groundplane_math import (
+    CharucoVelocityError,
+    CharucoVisibilityError,
+    compute_board_basis_vectors,
+    find_still_charuco_frame,
+)
+from freemocap.core.tasks.calibration.shared.interpolate_trajectories import interpolate_trajectory_data
 from freemocap.core.types.type_overloads import VideoIdString
 
 logger = logging.getLogger(__name__)
@@ -33,56 +40,45 @@ class GroundPlaneSuccess:
         self.error = error
 
 
-def anipose_pin_camera_zero_to_origin(camera_group: AniposeCameraGroup) -> AniposeCameraGroup:
+def pin_camera_zero_to_origin(cameras: list[CameraModel]) -> list[CameraModel]:
     """Re-express all camera extrinsics relative to camera 0.
 
     Camera 0 ends up with identity rotation and zero translation.
     All other cameras are expressed relative to camera 0.
     """
-    rvecs_new = _align_rotations_to_cam0(camera_group=camera_group)
-    camera_group.rotations = rvecs_new
-    tvecs_new = _shift_origin_to_cam0(camera_group=camera_group)
-    camera_group.translations = tvecs_new
-    return camera_group
+    rvecs = stack_rodrigues(cameras)
+    tvecs = stack_translations(cameras)
 
-
-def _align_rotations_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
-    """Align all camera rotations to camera 0's coordinate frame."""
-    rvecs = camera_group.rotations
     R0, _ = cv2.Rodrigues(rvecs[0])
-
     rvecs_new = np.empty_like(rvecs)
     for i in range(rvecs.shape[0]):
         Ri, _ = cv2.Rodrigues(rvecs[i])
         Ri_new, _ = cv2.Rodrigues(Ri @ R0.T)
         rvecs_new[i] = Ri_new.flatten()
-    return rvecs_new
 
-
-def _shift_origin_to_cam0(camera_group: AniposeCameraGroup) -> np.ndarray:
-    """Shift world origin to camera 0's position."""
-    tvecs = camera_group.translations
-    rvecs = camera_group.rotations
-
-    R0, _ = cv2.Rodrigues(rvecs[0, :])
-    delta_to_origin_world = -R0.T @ tvecs[0, :]
-
-    new_tvecs = np.zeros_like(tvecs)
+    # Use R0_new (identity for camera 0 after alignment) — not original R0
+    R0_new, _ = cv2.Rodrigues(rvecs_new[0])
+    delta_to_origin_world = -R0_new.T @ tvecs[0, :]
+    tvecs_new = np.zeros_like(tvecs)
     for cam_i in range(tvecs.shape[0]):
-        Ri, _ = cv2.Rodrigues(rvecs[cam_i, :])
+        Ri, _ = cv2.Rodrigues(rvecs_new[cam_i])
         delta_to_origin_camera_i = Ri @ delta_to_origin_world
-        new_tvecs[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
-    return new_tvecs
+        tvecs_new[cam_i, :] = tvecs[cam_i, :] + delta_to_origin_camera_i
+
+    apply_extrinsics(cameras, rvecs_new, tvecs_new)
+    return cameras
 
 
-def set_charuco_board_as_groundplane_anipose(
+def set_charuco_board_as_groundplane(
     *,
     observation_recorders: dict[VideoIdString, BaseRecorder],
-    anipose_camera_group: AniposeCameraGroup,
+    cameras: list[CameraModel],
     board: CharucoBoardDefinition,
     recording_folder_path: "Path | None" = None,
-) -> tuple[AniposeCameraGroup, GroundPlaneSuccess, GroundPlaneResult | None]:
+) -> tuple[list[CameraModel], GroundPlaneSuccess, GroundPlaneResult | None]:
     """Set the charuco board plane as the world groundplane."""
+    from freemocap.core.tasks.calibration.anipose_calibration.helpers.bundle_adjust import triangulate
+
     logger.info("Getting 2D Charuco data")
     data2d_by_video: dict[VideoIdString, np.ndarray] = {}
     if len(observation_recorders) == 0:
@@ -104,7 +100,7 @@ def set_charuco_board_as_groundplane_anipose(
     charuco_2d_flat = charuco2d_cam_fr_id_xy.reshape(num_cameras, -1, 2)
 
     logger.info("Getting 3d Charuco data")
-    charuco_3d_flat = anipose_camera_group.triangulate(charuco_2d_flat)
+    charuco_3d_flat = triangulate(cameras, charuco_2d_flat)
     charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     logger.info(f"Charuco 3d data reconstructed with shape: {charuco3d_fr_id_xyz.shape}")
 
@@ -118,10 +114,10 @@ def set_charuco_board_as_groundplane_anipose(
         )
     except CharucoVisibilityError as e:
         logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e)), None
+        return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
     except CharucoVelocityError as e:
         logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return anipose_camera_group, GroundPlaneSuccess(success=False, error=str(e)), None
+        return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
 
     charuco_frame = charuco_3d_xyz_interpolated[charuco_still_frame_idx]
 
@@ -140,19 +136,16 @@ def set_charuco_board_as_groundplane_anipose(
         method="charuco",
     )
 
-    rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco_anipose(
-        camera_group=anipose_camera_group,
+    rvecs_new, tvecs_new = _adjust_world_reference_frame_to_charuco(
+        cameras=cameras,
         charuco_origin_in_world=charuco_origin_in_world,
         rmat_charuco_to_world=rmat_charuco_to_world,
     )
+    apply_extrinsics(cameras, rvecs_new, tvecs_new)
 
-    anipose_camera_group.rotations = rvecs_new
-    anipose_camera_group.translations = tvecs_new
+    logger.info("Camera calibration adjusted to set charuco board as ground plane")
 
-    logger.info("Anipose camera calibration data adjusted to set charuco board as ground plane")
-
-    # Recalculate 3D charuco data in new coordinate system
-    charuco_3d_flat = anipose_camera_group.triangulate(charuco_2d_flat)
+    charuco_3d_flat = triangulate(cameras, charuco_2d_flat)
     charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     charuco_3d_xyz_interpolated = interpolate_trajectory_data(trajectory_data=charuco3d_fr_id_xyz)
 
@@ -162,18 +155,18 @@ def set_charuco_board_as_groundplane_anipose(
         np.save(charuco_save_path, charuco_3d_xyz_interpolated)
         logger.info(f"Charuco 3d data saved to {charuco_save_path}")
 
-    return anipose_camera_group, GroundPlaneSuccess(success=True), ground_plane_result
+    return cameras, GroundPlaneSuccess(success=True), ground_plane_result
 
 
-def _adjust_world_reference_frame_to_charuco_anipose(
+def _adjust_world_reference_frame_to_charuco(
     *,
-    camera_group: AniposeCameraGroup,
+    cameras: list[CameraModel],
     charuco_origin_in_world: np.ndarray,
     rmat_charuco_to_world: np.ndarray,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Adjust camera extrinsics to use charuco board as world reference frame."""
-    tvecs = camera_group.translations
-    rvecs = camera_group.rotations
+    rvecs = stack_rodrigues(cameras)
+    tvecs = stack_translations(cameras)
 
     tvecs_new = np.zeros_like(tvecs)
     rvecs_new = np.zeros_like(rvecs)
@@ -190,23 +183,7 @@ def _adjust_world_reference_frame_to_charuco_anipose(
     return rvecs_new, tvecs_new
 
 
-def get_real_world_matrices_anipose(camera_group: AniposeCameraGroup) -> tuple[list, list]:
-    """Calculate real-world positions and orientations of cameras."""
-    rvecs = camera_group.rotations
-    tvecs = camera_group.translations
-
-    positions = []
-    orientations = []
-
-    for i in range(tvecs.shape[0]):
-        rmat_world_to_cam_i, _ = cv2.Rodrigues(rvecs[i])
-        rmat_cam_to_world = rmat_world_to_cam_i.T
-        t_world = -rmat_cam_to_world @ tvecs[i]
-
-        positions.append(t_world.astype(float).tolist())
-        orientations.append(rmat_cam_to_world.astype(float).tolist())
-
-    camera_group.world_positions = np.array(positions)
-    camera_group.world_orientations = np.array(orientations)
-
-    return positions, orientations
+# Keep old names as aliases for backward compatibility within this module.
+# (run_anipose_calibration.py is updated separately.)
+anipose_pin_camera_zero_to_origin = pin_camera_zero_to_origin
+set_charuco_board_as_groundplane_anipose = set_charuco_board_as_groundplane

@@ -35,7 +35,7 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
-import {selectPlannedRecordingName, selectPlannedRecordingDirectory} from "@/store/slices/recording";
+import {selectPlannedRecordingName} from "@/store/slices/recording";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
@@ -75,7 +75,6 @@ export const MocapPanel: React.FC = () => {
 
     // Planned recording info (potential recording when no actual recording exists)
     const plannedName = useAppSelector(selectPlannedRecordingName);
-    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
 
     // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveMocapPath = useAppSelector(selectEffectiveRecordingPath);
@@ -83,26 +82,20 @@ export const MocapPanel: React.FC = () => {
     // Determine if we're showing a pending (not yet created) recording
     const isPendingRecording = !mocapRecordingPath && !!plannedName;
 
-    // Derive recording ID from path (last folder name) - works for both actual and planned
+    // Derive recording ID from path (last folder name)
     const recordingId = useMemo(() => {
-        if (mocapRecordingPath) {
-            const parts = mocapRecordingPath.replace(/[/\\]+$/, "").split(/[/\\]/);
-            return parts[parts.length - 1] || null;
-        }
-        // Fall back to planned name if no actual recording
-        return plannedName || null;
-    }, [mocapRecordingPath, plannedName]);
+        if (!mocapRecordingPath) return null;
+        const parts = mocapRecordingPath.replace(/[/\\]+$/, "").split(/[/\\]/);
+        return parts[parts.length - 1] || null;
+    }, [mocapRecordingPath]);
 
     // Derive parent directory so the backend can resolve non-default recording roots
     const recordingParentDirectory = useMemo(() => {
-        if (mocapRecordingPath) {
-            const trimmed = mocapRecordingPath.replace(/[/\\]+$/, "");
-            const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
-            return idx > 0 ? trimmed.slice(0, idx) : null;
-        }
-        // Fall back to planned directory
-        return plannedDirectory || null;
-    }, [mocapRecordingPath, plannedDirectory]);
+        if (!mocapRecordingPath) return null;
+        const trimmed = mocapRecordingPath.replace(/[/\\]+$/, "");
+        const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
+        return idx > 0 ? trimmed.slice(0, idx) : null;
+    }, [mocapRecordingPath]);
 
     // Blender export is driven by the backend aggregator via config flags
     // (state.blender.*), which mocap-thunks.ts folds into the process request.
@@ -210,10 +203,6 @@ export const MocapPanel: React.FC = () => {
 
     const displayError = error || localError || directoryInfo?.errorMessage;
 
-    // Only auto-fetch if the folder exists on disk — otherwise recordingId
-    // may tick every second (default path embeds a timestamp) and we'd spam
-    // the backend with 404s for folders that don't exist yet.
-    const directoryExists = directoryInfo?.exists ?? false;
     const {
         status: recordingStatus,
         isLoading: recordingStatusLoading,
@@ -221,7 +210,6 @@ export const MocapPanel: React.FC = () => {
         refresh: refreshRecordingStatus,
     } = useRecordingStatus(recordingId, {
         recordingParentDirectory,
-        autoFetch: directoryExists,
     });
 
     const formatPhase = (phase: string): string => {
@@ -414,7 +402,7 @@ export const MocapPanel: React.FC = () => {
                                 refreshRecordingStatus();
                             }}
                             activeCalibrationTomlPath={effectiveCalibrationTomlPath}
-                            folderExists={directoryExists}
+                            // folderExists={directoryExists}
                             recordingFolderPath={mocapRecordingPath}
                         />
                     )}

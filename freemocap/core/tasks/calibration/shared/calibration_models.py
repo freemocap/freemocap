@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator, co
 from scipy.spatial.transform import Rotation
 
 from freemocap.utilities.toml_mixin import TomlMixin, numpy_to_python
+from skellycam.core.types.type_overloads import CameraIndexInt, CameraIdString
 
 
 # =============================================================================
@@ -274,16 +275,11 @@ class CameraModel(BaseModel, TomlMixin):
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
 
-    id: str
+    id: CameraIdString
+    index: CameraIndexInt
     image_size: tuple[int, int]  # (width, height)
     intrinsics: CameraIntrinsics
     extrinsics: CameraExtrinsics
-
-    @computed_field
-    @property
-    def name(self) -> str:
-        """Camera name (alias for id), for compatibility with old anipose TOML format."""
-        return self.id
 
     @property
     def projection_matrix(self) -> NDArray[np.float64]:
@@ -296,33 +292,6 @@ class CameraModel(BaseModel, TomlMixin):
         Rt[:, 3] = t
         return K @ Rt
 
-    @classmethod
-    def from_anipose_camera(cls, anipose_camera) -> "CameraModel":
-        """Build a CameraModel from an aniposelib-style Camera object.
-
-        Used by AniposeCameraGroup to delegate triangulation/reprojection to
-        the unified Triangulator while bundle-adjustment is in flight.
-        """
-        from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_camera import AniposeCamera
-        if not isinstance(anipose_camera, AniposeCamera):
-            raise TypeError(f"{anipose_camera} is not an anipose camera - type: {type(anipose_camera)}")
-        size = anipose_camera.size
-        if size is None:
-            size_tuple = (0, 0)
-        else:
-            size_tuple = (int(size[0]), int(size[1]))
-        return cls(
-            id=anipose_camera.id,
-            image_size=size_tuple,
-            intrinsics=CameraIntrinsics.from_camera_matrix_and_dist(
-                camera_matrix=np.asarray(anipose_camera.camera_matrix, dtype=np.float64),
-                dist_coeffs=np.asarray(anipose_camera.distortion_coefficients, dtype=np.float64),
-            ),
-            extrinsics=CameraExtrinsics.from_rodrigues(
-                rvec=np.asarray(anipose_camera.rotation_vector, dtype=np.float64),
-                tvec=np.asarray(anipose_camera.translation_vector, dtype=np.float64),
-            ),
-        )
 
 
 # =============================================================================
@@ -395,15 +364,15 @@ class CalibrationResult(BaseModel, TomlMixin):
     groundplane_aligned: bool = False
 
     @property
-    def camera_names(self) -> list[str]:
-        return [c.name for c in self.cameras]
+    def camera_ids(self) -> list[str]:
+        return [c.id for c in self.cameras]
 
-    def get_camera(self, name: str) -> CameraModel:
+    def get_camera(self, camera_id: str) -> CameraModel:
         """Look up a camera by name."""
         for cam in self.cameras:
-            if cam.name == name:
+            if cam.id == camera_id:
                 return cam
-        raise KeyError(f"Camera '{name}' not found. Available: {self.camera_names}")
+        raise KeyError(f"Camera '{camera_id}' not found. Available: {self.camera_ids}")
 
     # ---- Triangulator construction ----
 
@@ -447,6 +416,7 @@ class CalibrationResult(BaseModel, TomlMixin):
             cameras_dict[cam.id] = {
                 "name": cam.id,
                 "id": cam.id,
+                "index": cam.index,
                 "size": list(cam.image_size),
                 "matrix": cam.intrinsics.to_camera_matrix().tolist(),
                 "distortions": cam.intrinsics.to_dist_coeffs_5().tolist(),
@@ -522,9 +492,11 @@ class CalibrationResult(BaseModel, TomlMixin):
             camera_id = d.get("id", None)
             if camera_id is None:
                 camera_id = d.get("name", None)
+
             cameras.append(
                 CameraModel(
-                    id=str(camera_id),
+                    id=CameraIdString(camera_id),
+                    index=CameraIndexInt(d["index"]),
                     image_size=size,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics,

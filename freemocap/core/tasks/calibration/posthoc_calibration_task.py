@@ -18,6 +18,7 @@ from pathlib import Path
 
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
@@ -34,7 +35,6 @@ from freemocap.core.tasks.calibration.shared.calibration_save import save_calibr
 from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
 from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
-from freemocap.core.types.type_overloads import VideoIdString
 from freemocap.utilities.toml_mixin import numpy_to_python
 
 logger = logging.getLogger(__name__)
@@ -60,10 +60,10 @@ def _create_board(task_config: PosthocCalibrationPipelineConfig) -> CharucoBoard
 
 
 def _charuco_observation_to_frame_observation(
-    *,
-    charuco_obs: CharucoObservation,
-    camera_name: str,
-    frame_index: int,
+        *,
+        charuco_obs: CharucoObservation,
+        camera_name: str,
+        frame_index: int,
 ) -> CharucoCornersObservation:
     """Convert a skellytracker CharucoObservation to a CharucoCornersObservation.
 
@@ -92,8 +92,8 @@ def _charuco_observation_to_frame_observation(
 
 
 def _convert_all_observations(
-    *,
-    charuco_observations_by_frame: list[dict[VideoIdString, CharucoObservation]],
+        *,
+        charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]],
 ) -> list[CharucoCornersObservation]:
     """Convert all charuco observations to CharucoCornersObservation models."""
     all_frame_obs: list[CharucoCornersObservation] = []
@@ -117,11 +117,11 @@ def _convert_all_observations(
 
 
 def _save_result(
-    *,
-    result: CalibrationResult,
-    recording_info: RecordingInfo,
-    solver_method: str,
-    ground_plane: GroundPlaneResult | None = None,
+        *,
+        result: CalibrationResult,
+        recording_info: RecordingInfo,
+        solver_method: str,
+        ground_plane: GroundPlaneResult | None = None,
 ) -> Path:
     """Save CalibrationResult to all standard locations via anipose-compatible TOML."""
     metadata: dict = {
@@ -146,11 +146,11 @@ def _save_result(
 
 
 def _run_pyceres_path(
-    *,
-    all_observations: list[CharucoCornersObservation],
-    board: CharucoBoardDefinition,
-    task_config: PosthocCalibrationPipelineConfig,
-    video_metadata: dict[VideoIdString, VideoMetadata],
+        *,
+        all_observations: list[CharucoCornersObservation],
+        board: CharucoBoardDefinition,
+        task_config: PosthocCalibrationPipelineConfig,
+        video_metadata: dict[CameraIdString, VideoMetadata],
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the pyceres bundle adjustment solver."""
     if len(all_observations) == 0:
@@ -158,8 +158,8 @@ def _run_pyceres_path(
 
     camera_ids = list(video_metadata.keys())
     image_sizes: dict[str, tuple[int, int]] = {
-        vid_id: (vm.width, vm.height)
-        for vid_id, vm in video_metadata.items()
+        camera_id: (vm.width, vm.height)
+        for camera_id, vm in video_metadata.items()
     }
 
     result, ground_plane = run_pyceres_calibration(
@@ -185,12 +185,12 @@ def _run_pyceres_path(
 
 
 def _run_anipose_path(
-    *,
-    charuco_observations_by_frame: list[dict[VideoIdString, CharucoObservation]],
-    board: CharucoBoardDefinition,
-    task_config: PosthocCalibrationPipelineConfig,
-    recording_info: RecordingInfo,
-    video_metadata: dict[VideoIdString, VideoMetadata],
+        *,
+        charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]],
+        board: CharucoBoardDefinition,
+        task_config: PosthocCalibrationPipelineConfig,
+        recording_info: RecordingInfo,
+        video_metadata: dict[CameraIdString, VideoMetadata],
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the legacy anipose solver."""
     logger.info("Starting anipose calibration...")
@@ -216,11 +216,11 @@ def _run_anipose_path(
 
 
 def run_posthoc_calibration_task(
-    *,
-    frame_observations: list[dict[VideoIdString, CharucoObservation]],
-    recording_info: RecordingInfo,
-    video_metadata: dict[VideoIdString, VideoMetadata],
-    task_config: PosthocCalibrationPipelineConfig,
+        *,
+        frame_observations: list[dict[CameraIdString, CharucoObservation]],
+        recording_info: RecordingInfo,
+        video_metadata: dict[CameraIdString, VideoMetadata],
+        task_config: PosthocCalibrationPipelineConfig,
 ) -> None:
     """Run posthoc calibration on collected charuco observations.
 
@@ -229,21 +229,21 @@ def run_posthoc_calibration_task(
     that is saved via the same anipose-compatible TOML format.
     """
 
-    video_ids = list(video_metadata.keys())
+    camera_ids = list(video_metadata.keys())
 
     # ---- Validate all observations are CharucoObservation ----
-    charuco_observations_by_frame: list[dict[VideoIdString, CharucoObservation]] = []
+    charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]] = []
     for frame_idx, frame_obs in enumerate(frame_observations):
-        frame_charuco: dict[VideoIdString, CharucoObservation] = {}
-        for vid_id, obs in frame_obs.items():
+        frame_charuco: dict[CameraIdString, CharucoObservation] = {}
+        for camera_id, obs in frame_obs.items():
             if not isinstance(obs, CharucoObservation):
                 raise TypeError(
-                    f"Expected CharucoObservation for video {vid_id} frame {frame_idx}, "
+                    f"Expected CharucoObservation for video {camera_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"
                 )
-            frame_charuco[vid_id] = obs
+            frame_charuco[camera_id] = obs
         charuco_observations_by_frame.append(frame_charuco)
-    views_per_camera = {vid_id: len(charuco_observations_by_frame) for vid_id in video_ids}
+    views_per_camera = {camera_id: len(charuco_observations_by_frame) for camera_id in camera_ids}
     logger.debug(f"Received (video id: charuco observation count): {views_per_camera}")
 
     # ---- Create shared board definition ----
@@ -255,7 +255,7 @@ def run_posthoc_calibration_task(
     )
 
     # Save observations so comparison tools can run board reconstruction tests
-    observations_json_path = Path(recording_info.full_recording_path) / "output_data"/"charuco_observations.json"
+    observations_json_path = Path(recording_info.full_recording_path) / "output_data" / "charuco_observations.json"
     observations_json_path.parent.mkdir(parents=True, exist_ok=True)
     observations_json_path.write_text(
         json.dumps([numpy_to_python(obs.model_dump()) for obs in all_observations], indent=4)
@@ -285,7 +285,6 @@ def run_posthoc_calibration_task(
         case _:
             raise ValueError(f"Unknown solver method: {task_config.solver_method}")
 
-
     # ---- Save calibration result (unified for both paths) ----
     _save_result(
         result=result,
@@ -303,12 +302,12 @@ def run_posthoc_calibration_task(
     logger.info(f"\n{health.summary}")
 
     # ---- Build charuco board model from observations ----
-    observation_recorders_by_video: dict[VideoIdString, BaseRecorder] = {
-        vid_id: BaseRecorder() for vid_id in video_ids
+    observation_recorders_by_video: dict[CameraIdString, BaseRecorder] = {
+        camera_id: BaseRecorder() for camera_id in camera_ids
     }
     for charuco_obs_by_camera in charuco_observations_by_frame:
-        for vid_id, recorder in observation_recorders_by_video.items():
-            recorder.add_observation(observation=charuco_obs_by_camera[vid_id])
+        for camera_id, recorder in observation_recorders_by_video.items():
+            recorder.add_observation(observation=charuco_obs_by_camera[camera_id])
 
     charuco_model_from_observations(
         observation_recorders=observation_recorders_by_video,

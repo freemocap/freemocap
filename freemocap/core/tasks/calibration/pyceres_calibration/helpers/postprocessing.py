@@ -86,7 +86,7 @@ def pin_camera_to_origin(
         )
 
     logger.info(
-        f"Pinned camera '{ref_cam.name}' to origin. "
+        f"Pinned camera '{ref_cam.id}' to origin. "
         f"Adjusted {len(cameras)} camera extrinsics."
     )
 
@@ -113,7 +113,7 @@ def _triangulate_charuco_corners(
         (n_frames, n_corners, 3) array of triangulated 3D positions.
     """
     # Group observations by frame
-    cam_name_to_model = {cam.name: cam for cam in cameras}
+    cam_name_to_model = {cam.id: cam for cam in cameras}
     frame_groups: dict[int, dict[str, CharucoCornersObservation]] = {}
     for obs in all_observations:
         if obs.frame_index not in frame_groups:

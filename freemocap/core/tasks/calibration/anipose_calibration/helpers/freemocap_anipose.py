@@ -8,9 +8,11 @@ from typing import Any
 
 import cv2
 import numpy as np
+from freemocap.core.tasks.calibration.anipose_calibration.helpers.charuco_board_ops import get_empty_detection, \
+    get_object_points
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_charuco_board import AniposeCharucoBoard
+from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, make_M, \
     robust_average_transforms, find_spanning_tree_pairs, get_rtvec
 
@@ -367,7 +369,7 @@ def get_initial_extrinsics(
 
 def extract_roration_translation_vectors(
         merged: list[dict[CameraIdString, dict[str, Any]]],
-        camera_ids: list[CameraIdString] | None = None,
+        camera_ids: list[CameraIdString],
         min_cameras: int = 1,
         board=None,
         cameras: list | None = None,
@@ -384,16 +386,14 @@ def extract_roration_translation_vectors(
         camera_ids: Ordered camera IDs determining axis order of the output.
             If ``None``, inferred from the union of row keys (sorted).
         min_cameras: Drop frames seen by fewer than this many cameras.
-        board: Calibration board object; required if poses are not pre-estimated.
+        board: CharucoBoardDefinition; required if poses are not pre-estimated.
         cameras: List of cameras; required alongside ``board`` if poses are not pre-estimated.
 
     Returns:
         (num_cameras, num_detections, 6) float64 array of [rvec | tvec] concatenated.
         Entries are NaN where a camera did not observe the board in that frame.
     """
-    if camera_ids is None:
-        s = set.union(*[set(r.keys()) for r in merged])
-        camera_ids = sorted(s)
+
 
     num_cameras = len(camera_ids)
     num_detections = len(merged)
@@ -409,10 +409,11 @@ def extract_roration_translation_vectors(
                     if board is None:
                         raise ValueError(
                             "rvec or tvec not found in rows. "
-                            "board.estimate_pose_rows should have been run before merging, "
+                            "estimate_pose_rows should have been run before merging, "
                             "or pass board and cameras as arguments."
                         )
-                    rvec, tvec = board.estimate_pose_points(cameras[camera_index], r["corners"], r["ids"])
+                    from freemocap.core.tasks.calibration.anipose_calibration.helpers.charuco_board_ops import estimate_pose_points
+                    rvec, tvec = estimate_pose_points(board, cameras[camera_index], r["corners"], r["ids"])
                     r["rvec"] = rvec
                     r["tvec"] = tvec
 
@@ -471,8 +472,8 @@ def merge_rows(
 
 def extract_points(
         merged: list[dict[CameraIdString, dict[str, Any]]],
-        board:AniposeCharucoBoard,
-        camera_ids: list[CameraIdString] | None = None,
+        board: CharucoBoardDefinition,
+        camera_ids: list[CameraIdString],
         min_cameras: int = 1,
         min_points: int = 4,
         check_rtvecs: bool = True,
@@ -482,8 +483,7 @@ def extract_points(
     Args:
         merged: Output of ``merge_rows`` — list of per-frame dicts mapping
             camera_id → detection dict.
-        board: Calibration board object providing ``get_empty_detection`` and
-            ``get_object_points``.
+        board: Calibration board definition.
         camera_ids: Ordered camera IDs. If ``None``, inferred from row keys (sorted).
         min_cameras: Drop points seen by fewer than this many cameras.
         min_points: Minimum valid corners required in a single camera-frame.
@@ -498,16 +498,15 @@ def extract_points(
                 ``rvecs`` (num_cameras, N, 3): per-camera rotation vectors,
                 ``tvecs`` (num_cameras, N, 3): per-camera translation vectors.
     """
-    if camera_ids is None:
-        s = set.union(*[set(r.keys()) for r in merged])
-        camera_ids = sorted(s)
 
-    test = board.get_empty_detection().reshape(-1, 2)
+
+
+    test = get_empty_detection(board).reshape(-1, 2)
     num_cameras = len(camera_ids)
     num_points_per_detection = test.shape[0]
     num_detections = len(merged)
 
-    objp_template = board.get_object_points().reshape(-1, 3)
+    objp_template = get_object_points(board).reshape(-1, 3)
 
     image_points = np.full(
         (num_cameras, num_detections, num_points_per_detection, 2), np.nan, dtype="float64"

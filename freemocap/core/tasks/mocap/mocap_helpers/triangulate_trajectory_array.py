@@ -67,7 +67,7 @@ def triangulate_dict(
     )
 
 
-def _subset_triangulator_to_data(
+def _subset_triangulatocalibration r_to_data(
         *,
         triangulator: Triangulator,
         data_dict: dict[str, Any],
@@ -77,27 +77,27 @@ def _subset_triangulator_to_data(
     Mirrors the legacy fuzzy-match behavior: triangulator camera 'cam_0' matches
     data dict key 'video_synchronized_cam_0'.
     """
-    valid_camera_names: list[str] = []
-    for camera_name in triangulator.camera_ids:
+    valid_camera_ids: list[CameraIdString] = []
+    for camera_id in triangulator.camera_ids:
         for key in data_dict.keys():
-            if camera_name in key:
-                valid_camera_names.append(camera_name)
+            if camera_id in key:
+                valid_camera_ids.append(camera_id)
                 break
 
-    if len(valid_camera_names) != len(data_dict):
+    if len(valid_camera_ids) != len(data_dict):
         raise ValueError(
             f"Camera names in data do not match triangulator. "
             f"Make sure calibration matches input data. "
             f"Triangulator: {triangulator.camera_ids}, data: {list(data_dict.keys())}"
         )
 
-    if len(valid_camera_names) == triangulator.n_cameras:
+    if len(valid_camera_ids) == triangulator.n_cameras:
         return triangulator
     logger.warning(
         f"Data is missing cameras from triangulator, "
-        f"triangulating with only cameras present in data: {valid_camera_names}"
+        f"triangulating with only cameras present in data: {valid_camera_ids}"
     )
-    return triangulator.subset(camera_names=valid_camera_names)
+    return triangulator.subset(camera_ids=valid_camera_ids)
 
 
 def _reorder_data_to_triangulator(

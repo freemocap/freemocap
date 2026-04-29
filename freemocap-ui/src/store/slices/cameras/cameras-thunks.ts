@@ -1,5 +1,5 @@
 // cameras-thunks.ts
-import {createAsyncThunk} from '@reduxjs/toolkit';
+import {createAction, createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
 import {serverUrls} from '@/services';
 import {
@@ -17,6 +17,11 @@ import {
     PersistedCameraSettingsMap,
     savePersistedCameraSettings,
 } from './camera-settings-storage';
+
+// Dispatched before a connect request that includes RECOMMEND mode cameras.
+// Handled by the slice to optimistically flip RECOMMEND → MANUAL so the UI
+// clears immediately and the listener doesn't re-trigger during the long request.
+export const recommendExposureSent = createAction('cameras/recommendExposureSent');
 
 export const detectCameras = createAsyncThunk<
     Camera[],
@@ -104,7 +109,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
     { state: RootState }
 >(
     'cameras/connect',
-    async (_, { getState }) => {
+    async (_, { getState, dispatch }) => {
         const state = getState();
         const cameraConfigs = selectSelectedCameraConfigs(state);
 
@@ -112,10 +117,22 @@ export const camerasConnectOrUpdate = createAsyncThunk<
             throw new Error('No cameras selected for connection');
         }
 
+        const hasRecommend = Object.values(cameraConfigs).some(
+            c => c.exposure_mode === 'RECOMMEND'
+        );
+
         const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
 
+        // Optimistically flip RECOMMEND → MANUAL before the request goes out so
+        // the UI clears immediately and the listener won't queue another call.
+        if (hasRecommend) {
+            dispatch(recommendExposureSent());
+        }
+
+        // RECOMMEND triggers a slow backend algorithm; give it enough time.
+        const timeoutMs = hasRecommend ? 60_000 : 3_000;
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3_000);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
         let response: Response;
         try {
             response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {

@@ -7,7 +7,7 @@ import {
     createDefaultCameraConfig,
     extractConfigSettings,
 } from './cameras-types';
-import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras,} from './cameras-thunks';
+import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras, recommendExposureSent,} from './cameras-thunks';
 import {
     buildPersistedEntry,
     clearPersistedCameraSettings,
@@ -130,6 +130,16 @@ export const cameraSlice = createSlice({
             .addCase(detectCameras.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to detect cameras';
+            })
+
+            // ========== Recommend Exposure Sent ==========
+            .addCase(recommendExposureSent, (state) => {
+                state.cameras.forEach(camera => {
+                    if (camera.desiredConfig.exposure_mode === 'RECOMMEND') {
+                        camera.desiredConfig = { ...camera.desiredConfig, exposure_mode: 'MANUAL' };
+                    }
+                });
+                persistAllCameraSettings(state);
             })
 
             // ========== Connect Cameras ==========

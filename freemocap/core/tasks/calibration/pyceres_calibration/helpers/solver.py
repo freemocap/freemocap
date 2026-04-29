@@ -133,7 +133,7 @@ def run_pyceres_bundle_adjustment(
         CalibrationResult with optimized camera models.
     """
     t_start = time.monotonic()
-    camera_name_to_idx = {cam.name: idx for idx, cam in enumerate(cameras)}
+    camera_name_to_idx = {cam.id: idx for idx, cam in enumerate(cameras)}
     board_pts_3d = board.corner_positions_board_frame
 
     # =========================================================================
@@ -180,7 +180,7 @@ def run_pyceres_bundle_adjustment(
     for obs in obs_records:
         cam_obs_counts[obs.camera_name] += 1
     for cam in cameras:
-        logger.info(f"  Camera '{cam.name}': {cam_obs_counts.get(cam.name, 0)} corner observations")
+        logger.info(f"  Camera '{cam.id}': {cam_obs_counts.get(cam.id, 0)} corner observations")
 
     # =========================================================================
     # ALLOCATE PARAMETER ARRAYS
@@ -194,9 +194,9 @@ def run_pyceres_bundle_adjustment(
     cam_intrinsics_arrays: dict[str, NDArray[np.float64]] = {}
 
     for cam in cameras:
-        cam_quat_arrays[cam.name] = cam.extrinsics.quaternion_wxyz.copy()
-        cam_trans_arrays[cam.name] = cam.extrinsics.translation.copy()
-        cam_intrinsics_arrays[cam.name] = cam.intrinsics.to_param_array()
+        cam_quat_arrays[cam.id] = cam.extrinsics.quaternion_wxyz.copy()
+        cam_trans_arrays[cam.id] = cam.extrinsics.translation.copy()
+        cam_intrinsics_arrays[cam.id] = cam.intrinsics.to_param_array()
 
     # Board pose parameters
     board_quat_arrays: dict[int, NDArray[np.float64]] = {}
@@ -213,7 +213,7 @@ def run_pyceres_bundle_adjustment(
 
     # Save initial intrinsics for prior cost
     initial_intrinsics: dict[str, NDArray[np.float64]] = {
-        cam.name: cam.intrinsics.to_param_array() for cam in cameras
+        cam.id: cam.intrinsics.to_param_array() for cam in cameras
     }
 
     # =========================================================================
@@ -258,9 +258,9 @@ def run_pyceres_bundle_adjustment(
 
         # Register camera parameter blocks
         for cam in cameras:
-            q_arr = cam_quat_arrays[cam.name]
-            t_arr = cam_trans_arrays[cam.name]
-            i_arr = cam_intrinsics_arrays[cam.name]
+            q_arr = cam_quat_arrays[cam.id]
+            t_arr = cam_trans_arrays[cam.id]
+            i_arr = cam_intrinsics_arrays[cam.id]
 
             problem.add_parameter_block(q_arr, 4)
             problem.set_manifold(q_arr, pyceres.QuaternionManifold())
@@ -289,12 +289,12 @@ def run_pyceres_bundle_adjustment(
                 )
                 resolved = resolve_camera_id_or_raise(
                     config.pin_camera_id,
-                    [c.name for c in cameras],
+                    [c.id for c in cameras],
                     context="pyceres solver pin_camera_id",
                 )
-                pin_cam = next(c for c in cameras if c.name == resolved)
-            problem.set_parameter_block_constant(cam_quat_arrays[pin_cam.name])
-            problem.set_parameter_block_constant(cam_trans_arrays[pin_cam.name])
+                pin_cam = next(c for c in cameras if c.id == resolved)
+            problem.set_parameter_block_constant(cam_quat_arrays[pin_cam.id])
+            problem.set_parameter_block_constant(cam_trans_arrays[pin_cam.id])
 
         # Register board pose parameter blocks
         for frame_idx in sorted_frame_indices:
@@ -329,13 +329,13 @@ def run_pyceres_bundle_adjustment(
         if config.intrinsics_prior_weight > 0:
             for cam in cameras:
                 prior_cost = IntrinsicsPriorCost(
-                    initial_intrinsics=initial_intrinsics[cam.name],
+                    initial_intrinsics=initial_intrinsics[cam.id],
                     weight=config.intrinsics_prior_weight,
                 )
                 problem.add_residual_block(
                     prior_cost,
                     None,
-                    [cam_intrinsics_arrays[cam.name]],
+                    [cam_intrinsics_arrays[cam.id]],
                 )
 
         logger.info(f"Problem: {problem.num_residual_blocks()} residual blocks, "
@@ -420,10 +420,10 @@ def run_pyceres_bundle_adjustment(
     # =========================================================================
     result_cameras: list[CameraModel] = []
     for cam in cameras:
-        new_intrinsics = CameraIntrinsics.from_param_array(cam_intrinsics_arrays[cam.name])
+        new_intrinsics = CameraIntrinsics.from_param_array(cam_intrinsics_arrays[cam.id])
 
-        quat = cam_quat_arrays[cam.name]
-        trans = cam_trans_arrays[cam.name]
+        quat = cam_quat_arrays[cam.id]
+        trans = cam_trans_arrays[cam.id]
         new_extrinsics = CameraExtrinsics(
             quaternion_wxyz=quat.copy(),
             translation=trans.copy(),

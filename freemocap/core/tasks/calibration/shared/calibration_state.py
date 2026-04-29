@@ -132,7 +132,7 @@ class CalibrationStateTracker:
             self._calibration_file_mtime = os.path.getmtime(path)
             logger.info(
                 f"Loaded calibration from {path} with "
-                f"{len(cameras)} cameras: {[c.name for c in cameras]}"
+                f"{len(cameras)} cameras: {[c.id for c in cameras]}"
             )
             return True
         except Exception as e:
@@ -191,7 +191,7 @@ class CalibrationStateTracker:
                 sub_triangulator = Triangulator(
                     cameras=[
                         cam for cam in self._triangulator.cameras
-                        if cam.name in tracked_by_cam
+                        if cam.id in tracked_by_cam
                     ]
                 )
             else:

@@ -204,7 +204,7 @@ def run_pyceres_calibration(
     for cam in result.cameras:
         pos = cam.extrinsics.world_position
         logger.info(
-            f"  Camera '{cam.name}': "
+            f"  Camera '{cam.id}': "
             f"pos=({pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f})mm, "
             f"fx={cam.intrinsics.fx:.1f}, fy={cam.intrinsics.fy:.1f}"
         )

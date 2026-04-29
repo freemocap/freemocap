@@ -13,7 +13,7 @@ import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
 from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
-from freemocap.core.types.type_overloads import VideoIdString
+from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ SEQUENTIAL_READ_THRESHOLD = 5  # If reading within 5 frames ahead, use sequentia
 
 class VideoMetadata(BaseModel):
     """Video metadata container"""
+    file_path: Path
     width: int
     height: int
     fps: float
@@ -49,6 +50,21 @@ class VideoMetadata(BaseModel):
                     f"end_frame ({end_frame}) exceeds total frame_count ({total_frame_count})"
                 )
         return values
+
+    @property
+    def parsed_filename(self) -> ParsedVideoFilename:
+        return ParsedVideoFilename.from_path(self.file_path)
+
+    @property
+    def recording_name(self) -> str:
+        return self.parsed_filename.recording_name
+
+    @property
+    def camera_id(self) -> CameraIdString:
+        return self.parsed_filename.camera_id
+    @property
+    def camera_index(self) -> CameraIndexInt:
+        return self.parsed_filename.camera_index
 
 
 
@@ -150,6 +166,7 @@ class VideoHelper(BaseModel):
         duration_seconds = frame_count / fps if fps > 0 else 0.0
 
         metadata = VideoMetadata(
+            file_path = video_path,
             width=width,
             height=height,
             fps=fps,
@@ -338,8 +355,8 @@ class VideoGroupHelper(BaseModel):
         extra="forbid",
         frozen=True
     )
-    videos: dict[VideoIdString, VideoHelper]
-    video_metadata_by_id: dict[VideoIdString, VideoMetadata]
+    videos: dict[CameraIdString, VideoHelper]
+    video_metadata_by_id: dict[CameraIdString, VideoMetadata]
     # True if camera_id keys came from the recording manifest (authoritative).
     # False if they came from filename parsing (best-effort).
     keyed_from_manifest: bool = False
@@ -349,7 +366,7 @@ class VideoGroupHelper(BaseModel):
     filename_reindex_applied: bool = False
 
     @property
-    def video_ids(self) -> list[VideoIdString]:
+    def video_ids(self) -> list[CameraIdString]:
         return list(self.videos.keys())
 
     @model_validator(mode="after")
@@ -386,7 +403,7 @@ class VideoGroupHelper(BaseModel):
         # Sort by camera_index and build VideoHelper map keyed by camera_id
         pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
 
-        videos: dict[VideoIdString, VideoHelper] = {}
+        videos: dict[CameraIdString, VideoHelper] = {}
         for pv, path in pairs:
             videos[pv.camera_id] = VideoHelper.from_video_path(path)
 
@@ -409,7 +426,7 @@ class VideoGroupHelper(BaseModel):
         close_videos: bool = True,
     ) -> "VideoGroupHelper":
         """Build from an authoritative camera_id → relative-filename mapping."""
-        videos: dict[VideoIdString, VideoHelper] = {}
+        videos: dict[CameraIdString, VideoHelper] = {}
         for camera_id, filename in manifest_videos.items():
             video_path = videos_dir / filename
             if not video_path.exists():

@@ -16,8 +16,8 @@ import { useViewportState } from "../scene/ViewportStateContext";
 
 const FRUSTUM_DEPTH_MM = 75;
 const BODY_SIZE_MM = 20;
-const FRUSTUM_COLOR = "#106995";
-const BODY_COLOR = "#2080b0";
+const FRUSTUM_COLOR = "#08855e";
+const BODY_COLOR = "#08855e";
 
 interface CameraPose {
     position: Vector3;

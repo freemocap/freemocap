@@ -1,12 +1,13 @@
 // hooks/useCalibration.ts
 import {useCallback} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
-
+import {store} from '@/store';
 import {useElectronIPC} from '@/services';
 import {
     calibrateRecording,
     CalibrationConfig,
     calibrationConfigUpdated,
+    CalibrationDirectoryInfo,
     calibrationDirectoryInfoUpdated,
     calibrationErrorCleared,
     selectCalibration,
@@ -18,6 +19,20 @@ import {
     startCalibrationRecording,
     stopCalibrationRecording,
 } from "@/store/slices/calibration";
+
+function calibrationDirectoryInfoEqual(a: CalibrationDirectoryInfo | null, b: CalibrationDirectoryInfo): boolean {
+    if (!a) return false;
+    return (
+        a.exists === b.exists &&
+        a.canRecord === b.canRecord &&
+        a.canCalibrate === b.canCalibrate &&
+        a.hasSynchronizedVideos === b.hasSynchronizedVideos &&
+        a.hasVideos === b.hasVideos &&
+        a.cameraCalibrationTomlPath === b.cameraCalibrationTomlPath &&
+        a.lastSuccessfulCalibrationTomlPath === b.lastSuccessfulCalibrationTomlPath &&
+        a.errorMessage === b.errorMessage
+    );
+}
 import {pathRecomputed} from "@/store/slices/recording";
 import {
     activeRecordingCleared,
@@ -52,7 +67,10 @@ export function useCalibration() {
 
             try {
                 const info = await api.fileSystem.validateCalibrationDirectory.query({ directoryPath });
-                dispatch(calibrationDirectoryInfoUpdated(info));
+                const current = store.getState().calibration.directoryInfo;
+                if (!calibrationDirectoryInfoEqual(current, info)) {
+                    dispatch(calibrationDirectoryInfoUpdated(info));
+                }
             } catch (error) {
                 console.error('Failed to validate calibration directory:', error);
                 // Don't throw - just log the error

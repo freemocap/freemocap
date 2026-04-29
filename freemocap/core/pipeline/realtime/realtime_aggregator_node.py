@@ -44,6 +44,7 @@ from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.realtime_p
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
     RealtimeSkeletonFilter, FilterResult
+from freemocap.core.pipeline.realtime.realtime_keypoint_filter import SimpleRealtimeKeypointFilter
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -233,6 +234,12 @@ class RealtimeAggregatorNode(AggregatorNode):
             max_rejected_streak=filter_config.max_rejected_streak,
         )
 
+        # Lightweight One Euro filter: smooths raw keypoints and gap-fills brief occlusions
+        keypoint_filter = SimpleRealtimeKeypointFilter(
+            min_cutoff=filter_config.min_cutoff,
+            beta=filter_config.beta,
+        )
+
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in camera_ids
         }
@@ -267,6 +274,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"hot-reloaded calibration from {calibration.calibration_path}"
                         )
                         # Coordinate frame may have changed — reset filter + gate
+                        keypoint_filter.reset()
                         skeleton_filter.reset()
                         point_gate.reset()
 
@@ -363,6 +371,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                             into=raw_keypoints,
                         )
 
+                    # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
+                    if raw_keypoints:
+                        filtered_keypoints = keypoint_filter.filter(
+                            t=time.monotonic(),
+                            raw_keypoints=raw_keypoints,
+                        )
+
                     # Velocity gate: reject teleportation spikes
                     if aggregator_config.filter_enabled:
                         if raw_keypoints:
@@ -375,13 +390,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 into=filtered_keypoints,
                             )
 
-                        # # Filter + constrain skeleton keypoints
-                        # if filtered_keypoints and config.skeleton_enabled:
-                        #     filtered_keypoints = _filter_skeleton_arrays(
-                        #         point_arrays=filtered_keypoints,
-                        #         skeleton_filter=skeleton_filter,
-                        #         t=time.monotonic(),
-                        #     )
+                        # Filter + constrain skeleton keypoints
+                        if filtered_keypoints and aggregator_config.skeleton_enabled:
+                            filtered_keypoints = _filter_skeleton_arrays(
+                                point_arrays=filtered_keypoints,
+                                skeleton_filter=skeleton_filter,
+                                t=time.monotonic(),
+                            )
 
                     # # Estimate rigid body segment poses
                     # if filtered_keypoints and config.skeleton_enabled and skeleton_filter.current_bone_lengths:

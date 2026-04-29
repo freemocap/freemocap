@@ -28,7 +28,7 @@ import { SKELETON_COLORS } from "../helpers/skeleton-colors";
  */
 export function ConnectionRenderer() {
     const { getActiveSchema, activeTrackerId, trackerSchemas } = useServer();
-    const { subscribeToKeypointsRaw } = useKeypointsSource();
+    const { subscribeToKeypointsFiltered } = useKeypointsSource();
     const { statsRef } = useViewportState();
     const calibrationConfig = useAppSelector(selectCalibrationConfig);
 
@@ -67,7 +67,7 @@ export function ConnectionRenderer() {
     }), []);
 
     useEffect(() => {
-        return subscribeToKeypointsRaw((allPts: Record<string, Point3d>) => {
+        return subscribeToKeypointsFiltered((allPts: Record<string, Point3d>) => {
             const map = new Map<string, Point3d>();
             for (const [name, pt] of Object.entries(allPts)) {
                 map.set(name, pt);
@@ -75,7 +75,7 @@ export function ConnectionRenderer() {
             pointsRef.current = map;
             dirtyRef.current = true;
         });
-    }, [subscribeToKeypointsRaw]);
+    }, [subscribeToKeypointsFiltered]);
 
     useFrame(() => {
         if (!dirtyRef.current) return;

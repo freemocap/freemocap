@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     #    "aniposelib>=0.7.0",
+    "numba>=0.65.1",
     "libsass>=0.23.0",
     "opencv-contrib-python",#==4.10.*",
     "pyinstaller>=6.11.0",
@@ -29,7 +30,6 @@ dependencies = [
     "skellylogs",
     "skellypings",
     #    "skellymodels",
-    "numba>=0.65.1",
 ]
 
 [tool.uv.sources]

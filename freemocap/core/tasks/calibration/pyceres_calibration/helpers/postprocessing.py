@@ -12,8 +12,8 @@ from scipy.spatial.transform import Rotation
 
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, \
     apply_groundplane_to_cameras

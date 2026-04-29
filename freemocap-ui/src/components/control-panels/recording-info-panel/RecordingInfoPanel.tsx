@@ -15,7 +15,6 @@ import {
     customSubfolderNameChanged,
     delaySecondsChanged,
     micDeviceIndexChanged,
-    pathRecomputed,
     pendingOperationSet,
     recordingTagChanged,
     recordingTypePresetChanged,
@@ -88,12 +87,13 @@ export const RecordingInfoPanel: React.FC = () => {
     // instances show the same ticking value.
     const [recordingDuration, setRecordingDuration] = useState<string>("");
 
-    // Keep the computed recording path timestamp ticking with the wall clock
+    // Local wall-clock tick for the name preview — avoids Redux state changes and cascading re-renders
+    const [previewTimestamp, setPreviewTimestamp] = useState<string>(() => getTimestampString());
     useEffect(() => {
         if (recordingInfo.isRecording) return;
-        const id = setInterval(() => dispatch(pathRecomputed()), 1000);
+        const id = setInterval(() => setPreviewTimestamp(getTimestampString()), 1000);
         return () => clearInterval(id);
-    }, [dispatch, recordingInfo.isRecording]);
+    }, [recordingInfo.isRecording]);
 
     // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
     useEffect(() => {
@@ -151,11 +151,11 @@ export const RecordingInfoPanel: React.FC = () => {
         handleStartRecording();
     }, [countdown]);
 
-    const buildRecordingName = (): string => {
+    const buildRecordingName = (timestampOverride?: string): string => {
         const parts: string[] = [];
 
         if (useTimestamp) {
-            parts.push(getTimestampString());
+            parts.push(timestampOverride ?? getTimestampString());
         } else {
             parts.push(baseName);
         }
@@ -235,9 +235,9 @@ export const RecordingInfoPanel: React.FC = () => {
         }
     };
 
-    const recordingName = buildRecordingName();
+    const recordingName = buildRecordingName(previewTimestamp);
     const subfolderName = createSubfolder
-        ? customSubfolderName || getTimestampString()
+        ? customSubfolderName || previewTimestamp
         : undefined;
 
     return (

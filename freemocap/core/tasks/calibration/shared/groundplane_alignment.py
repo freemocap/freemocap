@@ -28,6 +28,13 @@ class GroundPlaneResult:
     rotation_matrix: NDArray[np.float64]  # (3,3) [x_hat | y_hat | z_hat]
     method: str  # "charuco" or "feet"
 
+    def to_dict(self) -> dict:
+        return {
+            "origin": list(self.origin),
+            "rotation_matrix": list(self.rotation_matrix),
+            "method": self.method,
+        }
+
 
 def apply_groundplane_to_cameras(
     cameras: list[CameraModel],

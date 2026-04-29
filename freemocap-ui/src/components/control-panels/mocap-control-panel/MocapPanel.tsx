@@ -35,7 +35,7 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
-import {selectPlannedRecordingName} from "@/store/slices/recording";
+import {selectHasPlannedRecordingName} from "@/store/slices/recording";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
@@ -73,14 +73,14 @@ export const MocapPanel: React.FC = () => {
         directoryInfo: calibrationDirectoryInfo,
     } = useCalibration();
 
-    // Planned recording info (potential recording when no actual recording exists)
-    const plannedName = useAppSelector(selectPlannedRecordingName);
+    // Whether any planned recording name exists (boolean avoids re-render on every timestamp tick)
+    const hasPlannedName = useAppSelector(selectHasPlannedRecordingName);
 
     // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveMocapPath = useAppSelector(selectEffectiveRecordingPath);
 
     // Determine if we're showing a pending (not yet created) recording
-    const isPendingRecording = !mocapRecordingPath && !!plannedName;
+    const isPendingRecording = !mocapRecordingPath && hasPlannedName;
 
     // Derive recording ID from path (last folder name)
     const recordingId = useMemo(() => {

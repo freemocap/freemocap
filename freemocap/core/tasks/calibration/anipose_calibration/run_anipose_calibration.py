@@ -24,8 +24,8 @@ from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntr
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
-from freemocap.core.tasks.calibration.charuco.charuco_observation_aggregator import CharucoObservationAggregator
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco_board.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.types.type_overloads import VideoIdString
 

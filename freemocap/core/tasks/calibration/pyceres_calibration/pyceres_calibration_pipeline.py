@@ -20,8 +20,8 @@ from freemocap.core.tasks.calibration.pyceres_calibration.helpers.postprocessing
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.solver import run_pyceres_bundle_adjustment
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 
 logger = logging.getLogger(__name__)

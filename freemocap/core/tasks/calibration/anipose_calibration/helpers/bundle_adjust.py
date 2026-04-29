@@ -13,13 +13,12 @@ from typing import Any
 import cv2
 import numpy as np
 from freemocap.core.tasks.calibration.shared.transform_math import build_transformation_matrix, get_rtvec
-from numba import jit
 from numpy.typing import NDArray
 from scipy import optimize
 from scipy.sparse import dok_matrix
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.charuco import charuco_board_ops
+from freemocap.core.tasks.calibration.charuco_board import charuco_board_ops
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_solver_ops import (
     PARAMS_PER_CAMERA,
     apply_camera_params,
@@ -38,11 +37,11 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anip
     subset_extra,
     transform_points, BoardObservations,
 )
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 
 logger = logging.getLogger(__name__)
-
 
 def camera_ids_from_camera_models(cameras: list[CameraModel]) -> list[CameraIdString]:
     return [CameraIdString(cam.id) for cam in cameras]
@@ -271,7 +270,7 @@ def bundle_adjust(
             f"but shape is {points_2d.shape}"
         )
 
-    board_observations["ids_map"] = remap_ids(board_observations["ids"])
+    board_observations.corner_ids_map = remap_ids(board_observations.corner_ids)
 
     x0, num_camera_params = _initialize_params_bundle(cameras, points_2d, board_observations)
 
@@ -304,7 +303,6 @@ def bundle_adjust(
     return average_error(cameras, points_2d)
 
 
-@jit(parallel=True, forceobj=True)
 def _error_fun_bundle(
         params: NDArray[np.float64],
         cameras: list[CameraModel],
@@ -312,21 +310,75 @@ def _error_fun_bundle(
         num_camera_params: int,
         board_observations: BoardObservations,
 ) -> NDArray[np.float64]:
+    """Residual function for scipy.least_squares bundle adjustment.
+
+    Previously decorated with ``@jit(parallel=True, forceobj=True)`` which
+    forced Numba into *object mode* — it cannot compile functions that
+    mutate Python objects (CameraModel) or call arbitrary Python functions
+    (reprojection_error → Triangulator).  Object-mode Numba provides zero
+    speed benefit and emitted a type-inference warning on every run.
+
+    Instead, we now inline the two hot-path operations:
+
+    1. **apply_camera_params** — directly set camera attributes from the
+       param slice, avoiding the function-call / object-construction
+       overhead of ``CameraExtrinsics.from_rodrigues`` inside the old
+       helper.
+    2. **reprojection_error** — directly call ``cv2.projectPoints`` per
+       camera instead of building a full ``Triangulator`` object on every
+       solver iteration.
+    """
     good = ~np.isnan(points_2d)
     num_cameras = len(cameras)
+    num_points = points_2d.shape[1]
 
+    # -- Inline apply_camera_params: mutate cameras directly from params --
     for camera_index in range(num_cameras):
         param_start = camera_index * num_camera_params
-        param_end = (camera_index + 1) * num_camera_params
-        apply_camera_params(cameras[camera_index], params[param_start:param_end])
+        p = params[param_start: param_start + num_camera_params]
+        cam = cameras[camera_index]
+        focal = float(p[6])
+        cam.intrinsics.fx = focal
+        cam.intrinsics.fy = focal
+        cam.intrinsics.k1 = float(p[7])
+        cam.intrinsics.k2 = 0.0
+        cam.intrinsics.p1 = 0.0
+        cam.intrinsics.p2 = 0.0
+        cam.extrinsics = CameraExtrinsics.from_rodrigues(
+            rvec=np.asarray(p[0:3], dtype=np.float64),
+            tvec=np.asarray(p[3:6], dtype=np.float64),
+        )
 
+    # -- Extract 3D points from param vector --
     total_cam_params = num_camera_params * num_cameras
-    num_3d_params = points_2d.shape[1] * 3
+    num_3d_params = num_points * 3
     points_3d_test = params[total_cam_params: total_cam_params + num_3d_params].reshape(-1, 3)
-    errors_reproj = reprojection_error(cameras, points_3d_test, points_2d)[good]
 
-    ids = board_observations["ids_map"]
-    objp = board_observations["objp"]
+    # -- Inline reprojection error (avoids Triangulator construction) --
+    nan_mask = np.isnan(points_3d_test).any(axis=1)
+    valid_pts = points_3d_test[~nan_mask].reshape(-1, 1, 3)
+    projected_all = np.empty((num_cameras, num_points, 2), dtype=np.float64)
+    for cam_idx, cam in enumerate(cameras):
+        if valid_pts.shape[0] == 0:
+            projected_all[cam_idx] = np.nan
+            continue
+        proj, _ = cv2.projectPoints(
+            valid_pts,
+            cam.extrinsics.rodrigues_vector,
+            cam.extrinsics.translation,
+            cam.intrinsics.to_camera_matrix(),
+            cam.intrinsics.to_dist_coeffs(),
+        )
+        full = np.full((num_points, 2), np.nan, dtype=np.float64)
+        full[~nan_mask] = proj.reshape(-1, 2)
+        projected_all[cam_idx] = full
+
+    signed_errors = points_2d - projected_all  # (num_cameras, num_points, 2)
+    errors_reproj = signed_errors[good]
+
+    # -- Board-object constraint residuals (unchanged logic) --
+    ids = board_observations.corner_ids_map
+    objp = board_observations.object_points
     min_scale = np.min(objp[objp > 0])
     num_boards = int(np.max(ids)) + 1
     board_param_start = total_cam_params + num_3d_params
@@ -354,7 +406,7 @@ def _jac_sparsity_bundle(
 
     good = ~np.isnan(points_2d)
 
-    ids = board_observations["ids_map"]
+    ids = board_observations.corner_ids_map
     num_boards = int(np.max(ids)) + 1
     total_board_params = num_boards * 6
 
@@ -415,16 +467,16 @@ def _initialize_params_bundle(
 
     points_3d = triangulate(cameras, points_2d)
 
-    ids = board_observations["ids_map"]
+    ids = board_observations.corner_ids_map
     num_boards = int(np.max(ids[~np.isnan(ids)])) + 1
     total_board_params = num_boards * 6
 
     rvecs = np.zeros((num_boards, 3), dtype="float64")
     tvecs = np.zeros((num_boards, 3), dtype="float64")
 
-    if "rvecs" in board_observations and "tvecs" in board_observations:
-        rvecs_all = board_observations["rvecs"]
-        tvecs_all = board_observations["tvecs"]
+    if board_observations.rotation_vectors is not None and board_observations.translation_vectors is not None:
+        rvecs_all = board_observations.rotation_vectors
+        tvecs_all = board_observations.translation_vectors
         for board_num in range(num_boards):
             point_id = np.where(ids == board_num)[0][0]
             cam_ids_possible = np.where(~np.isnan(points_2d[:, point_id, 0]))[0]

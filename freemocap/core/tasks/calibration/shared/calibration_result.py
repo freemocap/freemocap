@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import toml
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
@@ -108,8 +108,7 @@ class CalibrationResult(BaseModel, TomlMixin):
             "squares_y": self.board.squares_y,
             "square_length_mm": self.board.square_length_mm,
             "marker_length_mm": self.board.aruco_marker_length_mm,
-            "marker_bits": self.board.marker_bits,
-            "dict_size": self.board.dict_size,
+            "aruco_dictionary_enum": self.board.aruco_dictionary_enum,
         }
         cameras_dict["metadata"] = numpy_to_python(meta)
 
@@ -178,14 +177,27 @@ class CalibrationResult(BaseModel, TomlMixin):
         if len(cameras) == 0:
             raise ValueError(f"No cameras found in {path}")
 
+        import cv2 as _cv2
         board_meta = metadata.get("board", {})
+        # Backward compat: old TOMLs stored marker_bits + dict_size; new ones store aruco_dictionary_enum directly.
+        _legacy_aruco_dicts = {
+            (4, 50): _cv2.aruco.DICT_4X4_50, (4, 100): _cv2.aruco.DICT_4X4_100,
+            (4, 250): _cv2.aruco.DICT_4X4_250, (4, 1000): _cv2.aruco.DICT_4X4_1000,
+            (5, 50): _cv2.aruco.DICT_5X5_50, (5, 100): _cv2.aruco.DICT_5X5_100,
+            (5, 250): _cv2.aruco.DICT_5X5_250, (5, 1000): _cv2.aruco.DICT_5X5_1000,
+        }
+        if "aruco_dictionary_enum" in board_meta:
+            aruco_dict_enum = int(board_meta["aruco_dictionary_enum"])
+        else:
+            aruco_dict_enum = _legacy_aruco_dicts.get(
+                (board_meta.get("marker_bits", 4), board_meta.get("dict_size", 250)),
+                _cv2.aruco.DICT_4X4_250,
+            )
         board = CharucoBoardDefinition(
             squares_x=board_meta.get("squares_x", 7),
             squares_y=board_meta.get("squares_y", 5),
             square_length_mm=board_meta.get("square_length_mm", 1.0),
-            # aruco_marker_length_mm=board_meta.get("marker_length_mm", 0.8),
-            marker_bits=board_meta.get("marker_bits", 4),
-            dict_size=board_meta.get("dict_size", 250),
+            aruco_dictionary_enum=aruco_dict_enum,
         )
 
         return cls(

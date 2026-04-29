@@ -24,27 +24,8 @@ from numpy.typing import NDArray
 IntArray = np.ndarray
 
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 
-
-_ARUCO_DICTS = {
-    (4, 50): cv2.aruco.DICT_4X4_50,
-    (5, 50): cv2.aruco.DICT_5X5_50,
-    (6, 50): cv2.aruco.DICT_6X6_50,
-    (7, 50): cv2.aruco.DICT_7X7_50,
-    (4, 100): cv2.aruco.DICT_4X4_100,
-    (5, 100): cv2.aruco.DICT_5X5_100,
-    (6, 100): cv2.aruco.DICT_6X6_100,
-    (7, 100): cv2.aruco.DICT_7X7_100,
-    (4, 250): cv2.aruco.DICT_4X4_250,
-    (5, 250): cv2.aruco.DICT_5X5_250,
-    (6, 250): cv2.aruco.DICT_6X6_250,
-    (7, 250): cv2.aruco.DICT_7X7_250,
-    (4, 1000): cv2.aruco.DICT_4X4_1000,
-    (5, 1000): cv2.aruco.DICT_5X5_1000,
-    (6, 1000): cv2.aruco.DICT_6X6_1000,
-    (7, 1000): cv2.aruco.DICT_7X7_1000,
-}
 
 
 @dataclass(frozen=True)
@@ -86,7 +67,7 @@ def get_empty_detection(board: CharucoBoardDefinition) -> NDArray[np.float64]:
 
 def fill_points(
     board: CharucoBoardDefinition,
-    corners: NDArray[np.float64] | None,
+    corners: np.ndarray | None,
     ids: IntArray | None,
 ) -> NDArray[np.float64]:
     """Scatter detected corners into a (n_corners, 1, 2) array indexed by corner id."""
@@ -102,9 +83,9 @@ def fill_points(
 def estimate_pose_points(
     board: CharucoBoardDefinition,
     camera: CameraModel,
-    corners: NDArray[np.float64] | None,
+    corners: np.ndarray | None,
     ids: IntArray | None,
-) -> tuple[NDArray[np.float64] | None, NDArray[np.float64] | None]:
+) -> tuple[np.ndarray | None, np.ndarray | None]:
     """solvePnP-based board pose estimate. Returns (rvec, tvec) or (None, None).
 
     Requires >= 6 charuco corner correspondences (cv2.solvePnP DLT minimum).

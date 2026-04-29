@@ -20,8 +20,8 @@ from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntr
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.charuco.charuco_corners import CharucoCornersObservation
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 
 logger = logging.getLogger(__name__)
 

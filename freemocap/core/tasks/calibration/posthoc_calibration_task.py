@@ -28,12 +28,12 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
     CalibrationSolverMethod
 from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.charuco.charuco_corners import CornerObservation, CharucoCornersObservation
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CornerObservation, CharucoCornersObservation
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.calibration_save import save_calibration_copies
 from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health
-from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, groundplane_metadata
+from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
 from freemocap.utilities.toml_mixin import numpy_to_python
 
@@ -129,7 +129,13 @@ def _save_result(
         "recording_info": recording_info.model_dump(),
     }
     if ground_plane is not None:
-        metadata.update(groundplane_metadata(ground_plane, recording_info.recording_name))
+        groundplane_metadata =  {
+            "groundplane_applied": True,
+            "groundplane_method": ground_plane.method,
+            "groundplane_recording_id": recording_info.recording_name,
+            "groundplane_result": ground_plane.to_dict()
+        }
+        metadata.update(groundplane_metadata)
 
     recording_toml = save_calibration_copies(
         save_fn=lambda path: result.dump_anipose_toml(path=path, metadata=metadata),

@@ -172,7 +172,13 @@ export const recordingSlice = createSlice({
         },
         // Force recomputation of path (useful for timestamp updates)
         pathRecomputed: (state) => {
-            state.computed = computeRecordingPath(state.recordingDirectory, state.config);
+            const next = computeRecordingPath(state.recordingDirectory, state.config);
+            if (
+                next.recordingName === state.computed.recordingName &&
+                next.subfolderName === state.computed.subfolderName &&
+                next.fullRecordingPath === state.computed.fullRecordingPath
+            ) return;
+            state.computed = next;
         },
         recordingCompletionDismissed: (state) => {
             state.completionData = null;
@@ -240,3 +246,5 @@ export const {
 
 export const selectPlannedRecordingName = (state: RootState) => state.recording.computed.recordingName;
 export const selectPlannedRecordingDirectory = (state: RootState) => state.recording.recordingDirectory;
+export const selectHasPlannedRecordingName = (state: RootState): boolean =>
+    state.recording.computed.recordingName.length > 0;

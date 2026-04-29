@@ -4,14 +4,16 @@
 
 import logging
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from freemocap.core.tasks.calibration.charuco.charuco_board_ops import get_empty_detection, \
+from freemocap.core.tasks.calibration.charuco_board.charuco_board_ops import get_empty_detection, \
     get_object_points
+from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString
 
-from freemocap.core.tasks.calibration.charuco.charuco_board import CharucoBoardDefinition
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, build_transformation_matrix, \
     robust_average_transforms, find_spanning_tree_pairs, get_rtvec
 
@@ -24,22 +26,15 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 
-class _BoardObservationsRequired(dict):
-    """Base keys always present in a BoardObservations dict."""
+@dataclass
+class BoardObservations:
+    """Per-frame charuco board data for the bundle adjustment solver."""
 
-
-class BoardObservations(_BoardObservationsRequired):
-    """Typed dict carrying per-frame charuco board data for bundle adjustment.
-
-    Required keys (always present after ``extract_points``):
-        objp    -- (N, 3) float64: 3-D object points in board space
-        ids     -- (N,) int32: board frame indices for each point row
-        rvecs   -- (num_cameras, N, 3) float64: per-camera rotation vectors
-        tvecs   -- (num_cameras, N, 3) float64: per-camera translation vectors
-
-    Optional key (added by ``bundle_adjust`` just before optimisation):
-        ids_map -- (N,) int32: contiguous 0-based remapping of ``ids``
-    """
+    object_points: NDArray[np.float64]        # (N, 3) board-frame 3-D corner positions
+    corner_ids: NDArray[np.int32]             # (N,) board frame indices per point row
+    rotation_vectors: NDArray[np.float64]     # (num_cameras, N, 3) per-camera rvecs from solvePnP
+    translation_vectors: NDArray[np.float64]  # (num_cameras, N, 3) per-camera tvecs from solvePnP
+    corner_ids_map: NDArray[np.int32] | None = None  # contiguous 0-based remapping; set by bundle_adjust
 
 
 
@@ -78,24 +73,19 @@ def get_error_dict(errors_full: np.ndarray, min_points: int = 10) -> dict[tuple[
 
 
 def subset_extra(board_observations: BoardObservations, ixs: np.ndarray) -> BoardObservations:
-    """Subset a BoardObservations dict to the given point indices.
-
-    Args:
-        board_observations: Board data dict, or ``None``.
-        ixs: Boolean or integer index array selecting which points to keep.
-
-    Returns:
-        A new BoardObservations with all arrays subsetted, or ``None``.
-    """
-    result = BoardObservations(
-        objp=board_observations["objp"][ixs],
-        ids=board_observations["ids"][ixs],
-        rvecs=board_observations["rvecs"][:, ixs],
-        tvecs=board_observations["tvecs"][:, ixs],
+    """Subset a BoardObservations to the given point indices."""
+    corner_ids_map = (
+        board_observations.corner_ids_map[ixs]
+        if board_observations.corner_ids_map is not None
+        else None
     )
-    if "ids_map" in board_observations:
-        result["ids_map"] = board_observations["ids_map"][ixs]
-    return result
+    return BoardObservations(
+        object_points=board_observations.object_points[ixs],
+        corner_ids=board_observations.corner_ids[ixs],
+        rotation_vectors=board_observations.rotation_vectors[:, ixs],
+        translation_vectors=board_observations.translation_vectors[:, ixs],
+        corner_ids_map=corner_ids_map,
+    )
 
 
 def resample_points(
@@ -405,7 +395,7 @@ def extract_roration_translation_vectors(
                             "estimate_pose_rows should have been run before merging, "
                             "or pass board and cameras as arguments."
                         )
-                    from freemocap.core.tasks.calibration.charuco.charuco_board_ops import estimate_pose_points
+                    from freemocap.core.tasks.calibration.charuco_board.charuco_board_ops import estimate_pose_points
                     rvec, tvec = estimate_pose_points(board, cameras[camera_index], r["corners"], r["ids"])
                     r["rvec"] = rvec
                     r["tvec"] = tvec
@@ -551,10 +541,10 @@ def extract_points(
     board_ids = board_ids[good]
 
     board_observations = BoardObservations(
-        objp=objp,
-        ids=board_ids,
-        rvecs=rvecs,
-        tvecs=tvecs,
+        object_points=objp,
+        corner_ids=board_ids,
+        rotation_vectors=rvecs,
+        translation_vectors=tvecs,
     )
 
     return image_points, board_observations

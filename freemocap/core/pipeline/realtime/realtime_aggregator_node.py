@@ -336,7 +336,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                     }
                     if skeleton_observations_by_camera:
                         _merge_triangulated_arrays(
-                            # TODO - This try_triangulate function is WAY too slow and bloated to happen in the fast loop!
                             triangulated=calibration.try_triangulate(
                                 frame_number=latest_requested_frame,
                                 frame_observations_by_camera=skeleton_observations_by_camera,

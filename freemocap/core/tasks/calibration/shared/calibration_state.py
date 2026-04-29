@@ -49,6 +49,14 @@ class CalibrationStateTracker:
         self._consecutive_failure_count: int = 0
         self._calibration_path: Path | None = None
         self._calibration_file_mtime: float | None = None
+        # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
+        # Lazily populated on first frame with a given camera subset; reused thereafter.
+        self._subset_triangulator_cache: dict[frozenset, Triangulator] = {}
+        # Maps runtime CameraIdString -> resolved calibration camera name.
+        # Lazily populated. Cleared when the incoming camera ID set changes.
+        self._cam_id_name_cache: dict[str, str] = {}
+        # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
+        self._last_incoming_cam_ids: frozenset | None = None
 
     @classmethod
     def create_and_try_load(cls) -> "CalibrationStateTracker":
@@ -134,6 +142,9 @@ class CalibrationStateTracker:
                 f"Loaded calibration from {path} with "
                 f"{len(cameras)} cameras: {[c.id for c in cameras]}"
             )
+            self._subset_triangulator_cache.clear()
+            self._cam_id_name_cache.clear()
+            self._last_incoming_cam_ids = None
             return True
         except Exception as e:
             logger.warning(f"Failed to load calibration from {path}: {e}", exc_info=True)
@@ -163,20 +174,29 @@ class CalibrationStateTracker:
             triangulation_config = TriangulationConfig()
 
         try:
-            calibration_camera_names = self._triangulator.camera_ids
+            calibration_camera_ids = self._triangulator.camera_ids
+
+            # Detect when the incoming camera set changes (rare: reconnect, etc.)
+            # and clear the name-resolution cache so stale entries don't linger.
+            incoming_cam_ids: frozenset[str] = frozenset(frame_observations_by_camera.keys())
+            if incoming_cam_ids != self._last_incoming_cam_ids:
+                self._cam_id_name_cache.clear()
+                self._last_incoming_cam_ids = incoming_cam_ids
 
             # Collect named 2D points per calibration camera. Mismatched
             # camera_ids raise CameraIdMismatchError (caught by the outer
-            # except below) — the failure counter handles transient mismatches and invalidates the calibration after MAX_CONSECUTIVE_FAILURES,
+            # except below) — the failure counter handles transient mismatches
+            # and invalidates the calibration after MAX_CONSECUTIVE_FAILURES,
             # at which point the pipeline degrades to 2D-only with a clear
             # error in the logs.
-            #TODO - This feels like a slow way to run this in such a tight loop - need a better solution and to handle this with numpy quickness, not dict/string matching
             tracked_by_cam: dict[str, dict[str, NDArray[np.float64]]] = {}
             for cam_id, obs in frame_observations_by_camera.items():
-                matched_name = _match_camera_name(
-                    cam_id=cam_id,
-                    calibration_camera_names=calibration_camera_names,
-                )
+                if cam_id not in self._cam_id_name_cache:
+                    self._cam_id_name_cache[cam_id] = _match_camera_name(
+                        cam_id=cam_id,
+                        calibration_camera_names=calibration_camera_ids,
+                    )
+                matched_name = self._cam_id_name_cache[cam_id]
                 tracked_by_cam[matched_name] = {
                     name: np.asarray(pt, dtype=np.float64)[:2]
                     for name, pt in obs.to_tracked_points().items()
@@ -185,17 +205,21 @@ class CalibrationStateTracker:
             if len(tracked_by_cam) < 2:
                 return {}
 
-            # Build subset triangulator if we don't have all cameras
-            active_cam_names = sorted(tracked_by_cam.keys())
-            if set(active_cam_names) != set(calibration_camera_names):
+            # Reuse a cached sub-triangulator for this camera subset; only build
+            # a new one when we see a novel active-camera combination.
+            active_cam_set: frozenset[str] = frozenset(tracked_by_cam.keys())
+            if active_cam_set == frozenset(calibration_camera_ids):
+                sub_triangulator = self._triangulator
+            elif active_cam_set in self._subset_triangulator_cache:
+                sub_triangulator = self._subset_triangulator_cache[active_cam_set]
+            else:
                 sub_triangulator = Triangulator(
                     cameras=[
                         cam for cam in self._triangulator.cameras
                         if cam.id in tracked_by_cam
                     ]
                 )
-            else:
-                sub_triangulator = self._triangulator
+                self._subset_triangulator_cache[active_cam_set] = sub_triangulator
             ordered_cam_names: list[str] = sub_triangulator.camera_ids
             n_cameras = len(ordered_cam_names)
 
@@ -270,6 +294,9 @@ class CalibrationStateTracker:
         self._triangulator = None
         self._calibration = None
         self._calibration_path = None
+        self._subset_triangulator_cache.clear()
+        self._cam_id_name_cache.clear()
+        self._last_incoming_cam_ids = None
         # Preserve _calibration_file_mtime so we can detect when the file changes
 
 

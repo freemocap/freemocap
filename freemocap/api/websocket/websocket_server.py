@@ -173,22 +173,25 @@ class WebsocketServer:
     async def _frontend_image_relay(self) -> None:
         logger.info("Starting frontend image payload relay...")
         try:
-            skipped_previous = False
             while self.should_continue:
-                await await_10ms()
                 if not self.last_frame_acknowledged():
-                    skipped_previous = True
+                    # Still waiting for the frontend to ack the last frame.
+                    # Poll at a low rate — the ack comes in via the
+                    # _client_message_handler task, so we just need to
+                    # yield control often enough to notice it.
+                    await await_10ms()
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
                         logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
                     continue
 
-                if skipped_previous:
-                    skipped_previous = False
-                    continue
+                # Ack received — block (off the event loop) until the
+                # aggregator signals a processed frame is ready, then pull
+                # and send immediately
+                await self._app.wait_for_realtime_result(timeout=0.5)
 
                 try:
-                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
+                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=int(self.last_sent_frame_number))
                 except IndexError:
                     logger.warning("Ring buffer overwrite — resetting to latest frame")
                     self.last_sent_frame_number = -1
@@ -255,7 +258,7 @@ class WebsocketServer:
             self._websocket_should_continue = False
             raise
 
-    async def _logs_relay(self, ws_log_level: int = MIN_LOG_LEVEL_FOR_WEBSOCKET):
+    async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
         logger.info("Starting websocket log relay listener...")
         logs_queue = get_websocket_log_queue()
         try:

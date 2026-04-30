@@ -18,6 +18,8 @@ blended with an anthropometric prior. The filter resets on calibration reload
 since the coordinate frame may change.
 """
 import logging
+import multiprocessing
+import multiprocessing.synchronize
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
@@ -161,6 +163,8 @@ class RealtimeAggregatorNode(AggregatorNode):
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
+            result_ready_event: multiprocessing.synchronize.Event,
+            result_consumed_event: multiprocessing.synchronize.Event,
     ) -> "RealtimeAggregatorNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -185,6 +189,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                 aggregation_output_pub=pubsub.get_publication_queue(
                     AggregationNodeOutputTopic,
                 ),
+                result_ready_event=result_ready_event,
+                result_consumed_event=result_consumed_event,
             ),
         )
         return cls(
@@ -205,6 +211,8 @@ class RealtimeAggregatorNode(AggregatorNode):
             pipeline_config_sub: TopicSubscriptionQueue,
             process_frame_number_pub: TopicPublicationQueue,
             aggregation_output_pub: TopicPublicationQueue,
+            result_ready_event: multiprocessing.synchronize.Event,
+            result_consumed_event: multiprocessing.synchronize.Event,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
         aggregator_config = pipeline_config.aggregator_config
@@ -286,8 +294,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
                     break
                 current_multiframe_number = camera_group_shm.latest_multiframe_number
+                # Only request the next frame once the previous result has been
+                # consumed by the websocket relay. Caps the in-flight result
+                # depth at one — the aggregator keeps a frame ready, then waits
+                # for the consumer to grab it before kicking off the next pass.
                 if (current_multiframe_number > latest_requested_frame
-                        and last_received_frame >= latest_requested_frame):
+                        and last_received_frame >= latest_requested_frame
+                        and result_consumed_event.is_set()):
                     process_frame_number_pub.put(
                         ProcessFrameNumberMessage(
                             frame_number=current_multiframe_number,
@@ -426,6 +439,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # rigid_body_poses=rigid_body_poses,
                     ),
                 )
+                # Mark the slot as full and not-yet-consumed; the consumer
+                # (websocket relay via RealtimePipeline.get_latest_frontend_payload)
+                # flips these in the opposite order on grab.
+                result_consumed_event.clear()
+                result_ready_event.set()
 
                 camera_node_outputs = {cam_id: None for cam_id in camera_ids}
 

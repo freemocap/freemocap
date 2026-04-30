@@ -11,6 +11,7 @@ Responsibilities:
   - Recording orchestration (start/stop across all pipelines)
   - Orderly shutdown
 """
+import asyncio
 import logging
 import multiprocessing
 import multiprocessing.synchronize
@@ -103,6 +104,25 @@ class RealtimePipelineManager(PipelineManagerABC):
     # ------------------------------------------------------------------
     # Frontend payload streaming
     # ------------------------------------------------------------------
+
+    async def wait_for_any_result_ready(self, timeout: float = 0.5) -> None:
+        """Wait until at least one active pipeline has a processed frame ready.
+
+        Returns as soon as any pipeline signals its result_ready_event, or
+        after `timeout` seconds if none does. Falls back to a short sleep when
+        there are no alive pipelines (camera-only or idle mode) so callers
+        don't busy-spin while waiting for a pipeline to start.
+        """
+        with self.lock:
+            alive = [p for p in self.pipelines.values() if p.alive]
+        if not alive:
+            await asyncio.sleep(0.01)
+            return
+        # Wait on all alive pipelines concurrently; return on the first hit.
+        tasks = [asyncio.create_task(p.wait_for_result_ready(timeout)) for p in alive]
+        _done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for t in pending:
+            t.cancel()
 
     def get_latest_frontend_payloads(
             self,

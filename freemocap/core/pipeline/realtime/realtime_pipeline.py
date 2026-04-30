@@ -8,7 +8,10 @@ published through the pubsub system.
 Calibration or Kinematic reconstructions-specific orchestration (start/stop recording, triggering posthoc
 calibration) is NOT here — it belongs in the PipelineManager or route handlers.
 """
+import asyncio
 import logging
+import multiprocessing
+import multiprocessing.synchronize
 import uuid
 from dataclasses import dataclass
 
@@ -52,6 +55,8 @@ class RealtimePipeline:
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: RealtimeAggregatorNode
     aggregation_output_subscription: TopicSubscriptionQueue
+    result_ready_event: multiprocessing.synchronize.Event
+    result_consumed_event: multiprocessing.synchronize.Event
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
     started: bool = False
@@ -108,6 +113,17 @@ class RealtimePipeline:
             for camera_id in camera_group.configs.keys()
         }
 
+        # Backpressure events between the aggregator and the websocket consumer.
+        # The aggregator processes one frame, publishes the result, clears
+        # `result_consumed_event`, and sets `result_ready_event`. The consumer
+        # waits on `result_ready_event`, grabs the result, then flips the events
+        # in the opposite order — releasing the aggregator to start the next
+        # frame. Initial state: nothing is ready, but the slot is "consumed"
+        # (free), so the aggregator can produce its first frame immediately.
+        result_ready_event = multiprocessing.Event()
+        result_consumed_event = multiprocessing.Event()
+        result_consumed_event.set()
+
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
             camera_ids=camera_group.camera_ids,
@@ -116,6 +132,8 @@ class RealtimePipeline:
             config=pipeline_config,
             ipc=ipc,
             pubsub=pubsub,
+            result_ready_event=result_ready_event,
+            result_consumed_event=result_consumed_event,
         )
 
         aggregation_output_subscription = pubsub.get_subscription(
@@ -129,6 +147,8 @@ class RealtimePipeline:
             camera_nodes=camera_nodes,
             aggregation_node=aggregation_node,
             aggregation_output_subscription=aggregation_output_subscription,
+            result_ready_event=result_ready_event,
+            result_consumed_event=result_consumed_event,
             ipc=ipc,
             pubsub=pubsub,
         )
@@ -186,6 +206,15 @@ class RealtimePipeline:
             requested_configs=camera_configs,
         )
 
+    async def wait_for_result_ready(self, timeout: float) -> bool:
+        """Block (off the event loop) until the aggregator has a result ready.
+
+        Returns True if a result became available within `timeout`, False on
+        timeout. Used by the websocket relay to avoid spinning on a polling
+        loop while the aggregator is processing the next frame.
+        """
+        return await asyncio.to_thread(self.result_ready_event.wait, timeout)
+
     def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt, ) -> FrontendImagePacket | None:
         if not self.alive:
             if self.camera_group.alive:
@@ -209,6 +238,14 @@ class RealtimePipeline:
 
         if aggregation_output is None:
             return None
+
+        # Flip the backpressure events: clear "ready" (we just took it) and
+        # set "consumed" (the aggregator can now process the next frame).
+        # The aggregator should already be idling on the consumed-gate, so
+        # this signal is what kicks off the next pass — in parallel with
+        # the websocket sending this packet to the frontend.
+        self.result_ready_event.clear()
+        self.result_consumed_event.set()
 
         payload = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,

@@ -130,6 +130,13 @@ class FreemocapApplication:
     # Frontend payloads
     # ------------------------------------------------------------------
 
+    async def wait_for_realtime_result(self, timeout: float = 0.5) -> None:
+        """Yield until at least one realtime pipeline has a processed frame ready.
+
+        Used by the websocket relay for an event-driven wake-up. Falls back immediately when no pipeline is alive (camera-only or idle mode).
+        """
+        await self.realtime_pipeline_manager.wait_for_any_result_ready(timeout=timeout)
+
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,

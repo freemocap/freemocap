@@ -18,7 +18,6 @@ blended with an anthropometric prior. The filter resets on calibration reload
 since the coordinate frame may change.
 """
 import logging
-import multiprocessing
 import multiprocessing.synchronize
 import time
 from dataclasses import dataclass
@@ -37,6 +36,7 @@ from skellyforge.data_models.trajectory_3d import Point3d
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
@@ -254,10 +254,12 @@ class RealtimeAggregatorNode(AggregatorNode):
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.monotonic()
+        t_frame_requested: float = time.perf_counter()
 
+        timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}")
 
         try:
-            previous_tik = time.perf_counter()
+            previous_loop_tik = time.perf_counter()
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
@@ -294,10 +296,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
                     break
                 current_multiframe_number = camera_group_shm.latest_multiframe_number
-                # Only request the next frame once the previous result has been
-                # consumed by the websocket relay. Caps the in-flight result
-                # depth at one — the aggregator keeps a frame ready, then waits
-                # for the consumer to grab it before kicking off the next pass.
+                # First-frame bootstrap and fallback. Normally, subsequent frames are
+                # requested optimistically after camera collection completes (below).
+                # This block handles startup (latest_requested_frame == -1) and the
+                # rare case where the shm hadn't advanced at the optimistic-request point.
                 if (current_multiframe_number > latest_requested_frame
                         and last_received_frame >= latest_requested_frame
                         and result_consumed_event.is_set()):
@@ -307,6 +309,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ),
                     )
                     latest_requested_frame = current_multiframe_number
+                    t_frame_requested = time.perf_counter()
 
                 # ---- Collect camera node outputs ----
                 if camera_node_sub.empty():
@@ -339,6 +342,22 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 last_received_frame = latest_requested_frame
+                t_frame_start = time.perf_counter()
+                timer.record("frame_collection_wait", (t_frame_start - t_frame_requested) * 1e3)
+
+                # ---- Optimistically request next frame before aggregating ----
+                # result_consumed_event is guaranteed set at this point: we checked it
+                # before requesting this frame and haven't published a result yet.
+                # Camera nodes start detecting frame N+1 while we triangulate/filter N.
+                frame_n_outputs = camera_node_outputs
+                camera_node_outputs = {cam_id: None for cam_id in camera_ids}
+                latest_shm_frame = camera_group_shm.latest_multiframe_number
+                if latest_shm_frame > latest_requested_frame:
+                    process_frame_number_pub.put(
+                        ProcessFrameNumberMessage(frame_number=latest_shm_frame)
+                    )
+                    latest_requested_frame = latest_shm_frame
+                    t_frame_requested = time.perf_counter()
 
                 # ---- Triangulate and process if calibration is valid ----
                 # All processing stays in dict[str, ndarray] until final
@@ -351,49 +370,56 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
                         cam_id: output.skeleton_observation
-                        for cam_id, output in camera_node_outputs.items()
+                        for cam_id, output in frame_n_outputs.items()
                         if isinstance(output, CameraNodeOutputMessage)
                            and output.skeleton_observation is not None
                     }
                     if skeleton_observations_by_camera:
+                        t0 = time.perf_counter()
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_triangulate(
-                                frame_number=latest_requested_frame,
+                                frame_number=last_received_frame,
                                 frame_observations_by_camera=skeleton_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
                             into=raw_keypoints,
                         )
+                        timer.record("skeleton_triangulation", (time.perf_counter() - t0) * 1e3)
 
                     # Triangulate charuco observations
                     charuco_observations_by_camera = {
                         cam_id: output.charuco_observation
-                        for cam_id, output in camera_node_outputs.items()
+                        for cam_id, output in frame_n_outputs.items()
                         if isinstance(output, CameraNodeOutputMessage)
                            and output.charuco_observation is not None
                     }
                     if charuco_observations_by_camera:
+                        t0 = time.perf_counter()
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_triangulate(
-                                frame_number=latest_requested_frame,
+                                frame_number=last_received_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
                             into=raw_keypoints,
                         )
+                        timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:
+                        t0 = time.perf_counter()
                         filtered_keypoints = keypoint_filter.filter(
                             t=time.monotonic(),
                             raw_keypoints=raw_keypoints,
                         )
+                        timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
 
                     # Velocity gate: reject teleportation spikes
                     if aggregator_config.filter_enabled:
                         if raw_keypoints:
+                            t0 = time.perf_counter()
                             gate_result: GateResult = point_gate.gate(
                                 t=time.monotonic(),
                                 points=raw_keypoints,
@@ -402,14 +428,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 triangulated=gate_result.positions,
                                 into=filtered_keypoints,
                             )
+                            timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
                         # Filter + constrain skeleton keypoints
                         if filtered_keypoints and aggregator_config.skeleton_enabled:
+                            t0 = time.perf_counter()
                             filtered_keypoints = _filter_skeleton_arrays(
                                 point_arrays=filtered_keypoints,
                                 skeleton_filter=skeleton_filter,
                                 t=time.monotonic(),
                             )
+                            timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
 
                     # # Estimate rigid body segment poses
                     # if filtered_keypoints and config.skeleton_enabled and skeleton_filter.current_bone_lengths:
@@ -420,20 +449,22 @@ class RealtimeAggregatorNode(AggregatorNode):
                     #     )
 
                 # Convert to Point3d once at the end for the output message
+                timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
 
                 now = time.perf_counter()
-                loop_time = now - previous_tik
-                previous_tik = now
-                # logger.trace(f"RealtimeAggregationNode [{camera_group_id}] loop time: {loop_time*1e3:.3f} ms")
+                timer.record("loop_time", (now - previous_loop_tik) * 1e3)
+                previous_loop_tik = now
+
+                timer.maybe_report()
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
-                        frame_number=latest_requested_frame,
+                        frame_number=last_received_frame,
                         pipeline_id=ipc.pipeline_id,
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
-                        camera_node_outputs=camera_node_outputs,
+                        camera_node_outputs=frame_n_outputs,
                         keypoints_raw=_arrays_to_point3d(raw_keypoints),
                         keypoints_filtered=_arrays_to_point3d(filtered_keypoints),
                         # rigid_body_poses=rigid_body_poses,
@@ -444,8 +475,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # flips these in the opposite order on grab.
                 result_consumed_event.clear()
                 result_ready_event.set()
-
-                camera_node_outputs = {cam_id: None for cam_id in camera_ids}
 
         except Exception as e:
             logger.error(

@@ -6,15 +6,14 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 (toggling detectors, changing charuco board params, etc).
 """
 import logging
-import multiprocessing
+import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
-from typing import TYPE_CHECKING
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
-from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue, CameraIndexInt
 from skellycam.utilities.wait_functions import wait_1ms
 # from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
 
@@ -22,6 +21,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
+from freemocap.core.pipeline_stage_timer import PipelineStageTimer
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -40,18 +40,18 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CameraNode(SourceNode):
-    camera_id:CameraIdString
+    camera_id: CameraIdString
 
     @classmethod
     def create(
-        cls,
-        *,
-        camera_id: CameraIdString,
-        camera_shm_dto: SharedMemoryRingBufferDTO,
-        worker_registry: WorkerRegistry,
-        config: CameraNodeConfig,
-        ipc: PipelineIPC,
-        pubsub: PubSubTopicManager,
+            cls,
+            *,
+            camera_id: CameraIdString,
+            camera_shm_dto: SharedMemoryRingBufferDTO,
+            worker_registry: WorkerRegistry,
+            config: CameraNodeConfig,
+            ipc: PipelineIPC,
+            pubsub: PubSubTopicManager,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -82,15 +82,15 @@ class CameraNode(SourceNode):
 
     @staticmethod
     def _run(
-        *,
-        camera_id: CameraIdString,
-        ipc: PipelineIPC,
-        config: CameraNodeConfig,
-        process_frame_number_sub: TopicSubscriptionQueue,
-        pipeline_config_sub: TopicSubscriptionQueue,
-        camera_output_pub: TopicPublicationQueue,
-        shutdown_self_flag: Synchronized,
-        camera_shm_dto: SharedMemoryRingBufferDTO,
+            *,
+            camera_id: CameraIdString,
+            ipc: PipelineIPC,
+            config: CameraNodeConfig,
+            process_frame_number_sub: TopicSubscriptionQueue,
+            pipeline_config_sub: TopicSubscriptionQueue,
+            camera_output_pub: TopicPublicationQueue,
+            shutdown_self_flag: Synchronized,
+            camera_shm_dto: SharedMemoryRingBufferDTO,
     ) -> None:
         import cv2
         from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
@@ -102,7 +102,7 @@ class CameraNode(SourceNode):
         )
 
         charuco_detector: CharucoDetector | None = None
-        skeleton_detector: RTMPoseDetector  | None = None
+        skeleton_detector: RTMPoseDetector | None = None
         # skeleton_detector: LegacyMediapipeDetector | None = None
 
         if config.charuco_tracking_enabled and config.charuco_detector_config is not None:
@@ -114,10 +114,11 @@ class CameraNode(SourceNode):
             #     config=config.skeleton_detector_config ,
             # )
             skeleton_detector = RTMPoseDetector.create(
-                config=config.skeleton_detector_config ,
+                config=config.skeleton_detector_config,
             )
 
         frame_recarray: np.recarray | None = None
+        timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -127,7 +128,7 @@ class CameraNode(SourceNode):
                 # ---- Handle config updates ----
                 while not pipeline_config_sub.empty():
                     update_msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
-                    new_config:CameraNodeConfig = update_msg.pipeline_config.camera_node_config
+                    new_config: CameraNodeConfig = update_msg.pipeline_config.camera_node_config
                     logger.debug(f"RealtimeCameraNode [{camera_id}] received config update")
 
                     if new_config.charuco_tracking_enabled and new_config.charuco_detector_config is not None:
@@ -176,10 +177,11 @@ class CameraNode(SourceNode):
                 else:
                     image = frame_recarray.image[0]
 
-                actual_frame_number:int = int(frame_recarray.frame_metadata.frame_number[0])
+                actual_frame_number: int = int(frame_recarray.frame_metadata.frame_number[0])
                 actual_camera_id: CameraIdString = frame_recarray.frame_metadata.camera_info.camera_id[0]
                 if actual_camera_id != camera_id:
-                    raise RuntimeError(f"RealtimeCameraNode [{camera_id}]: expected camera ID {camera_id} but got frame with camera ID {actual_camera_id}")
+                    raise RuntimeError(
+                        f"RealtimeCameraNode [{camera_id}]: expected camera ID {camera_id} but got frame with camera ID {actual_camera_id}")
                 if actual_frame_number != frame_msg.frame_number:
                     logger.warning(
                         f"RealtimeCameraNode [{camera_id}]: requested frame {frame_msg.frame_number} "
@@ -187,25 +189,32 @@ class CameraNode(SourceNode):
                     )
                 skeleton_observation = None
                 charuco_observation = None
+                t_frame_start = time.perf_counter()
                 if skeleton_detector is not None:
+                    t0 = time.perf_counter()
                     skeleton_observation = skeleton_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
+                    timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
                 if charuco_detector is not None:
+                    t0 = time.perf_counter()
                     charuco_observation = charuco_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
+                    timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+                timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)
 
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
                         camera_id=actual_camera_id,
                         frame_number=actual_frame_number,
                         charuco_observation=charuco_observation,
-                        skeleton_observation= skeleton_observation
+                        skeleton_observation=skeleton_observation,
                     ),
                 )
+                timer.maybe_report()
 
         except Exception as e:
             logger.exception(f"Exception in RealtimeCameraNode [{camera_id}]: {e}")

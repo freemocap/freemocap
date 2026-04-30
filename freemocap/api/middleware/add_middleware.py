@@ -14,7 +14,21 @@ def add_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def log_requests(request: Request, call_next) -> Response:
         start_time = time.perf_counter()
-        logger.api(f"Received request: {request.method} {request.url}")#"
+
+        body_bytes = await request.body()
+        if body_bytes:
+            try:
+                parsed = json.loads(body_bytes)
+                body_str = json.dumps(parsed, indent=2)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                # Not JSON — just decode and show the raw text
+                try:
+                    body_str = body_bytes.decode("utf-8")
+                except UnicodeDecodeError:
+                    body_str = f"<binary data, {len(body_bytes)} bytes>"
+            logger.api(f"Received request: {request.method} {request.url}. Body:\n{body_str}")
+        else:
+            logger.api(f"Received request: {request.method} {request.url}. No body.")
 
         try:
             response: Response = await call_next(request)

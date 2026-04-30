@@ -55,13 +55,20 @@ export function FaceRenderer() {
         return g;
     }, []);
 
+    useEffect(() => () => {
+        dotGeo.dispose();
+        dotMat.dispose();
+        lineMat.dispose();
+        lineGeo.dispose();
+    }, [dotGeo, dotMat, lineMat, lineGeo]);
+
     useEffect(() => {
         return subscribeToKeypointsRaw((allPts: Record<string, Point3d>) => {
-            const face = new Map<string, Point3d>();
+            const face = pointsRef.current;
+            face.clear();
             for (const [name, pt] of Object.entries(allPts)) {
                 if (name.startsWith("face.")) face.set(name, pt);
             }
-            pointsRef.current = face;
             dirtyRef.current = true;
 
             for (const name of face.keys()) {

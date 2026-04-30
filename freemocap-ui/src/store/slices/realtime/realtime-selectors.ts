@@ -1,5 +1,6 @@
 import {RootState} from "@/store";
 import {createSelector} from "@reduxjs/toolkit";
+import {selectCameras} from "@/store/slices/cameras";
 
 // ==================== Primitive Selectors ====================
 
@@ -16,7 +17,7 @@ export const selectAggregatorConfig = (state: RootState) => state.realtime.pipel
 // ==================== Derived Selectors ====================
 
 export const selectCanConnectPipeline = createSelector(
-    [selectIsPipelineConnected, selectIsPipelineLoading, (state: RootState) => state.cameras.cameras],
+    [selectIsPipelineConnected, selectIsPipelineLoading, selectCameras],
     (isConnected, isLoading, cameras) => {
         const anyCameraSelected = cameras.some(cam => cam.selected);
         return !isConnected && !isLoading && anyCameraSelected;

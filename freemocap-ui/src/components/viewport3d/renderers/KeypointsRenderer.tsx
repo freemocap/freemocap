@@ -47,12 +47,25 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         // metalness: 0.3,
     }), []);
 
+    useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
+
     // Pull color hints from the active schema (if any) so per-name palette
     // overrides from the YAML propagate into the 3D view.
-    const colorHints = useMemo(() => {
+    // Intentionally omit `server` object from deps — activeTrackerId and
+    // trackerSchemas are the reactive signals; server is a stable context ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const rawColorHints = useMemo(() => {
         const schema = server.getActiveSchema();
         return schema?.color_hints;
-    }, [server, server.activeTrackerId, server.trackerSchemas]);
+    }, [server.activeTrackerId, server.trackerSchemas]);
+
+    // Pre-build Color objects so getPointStyle doesn't allocate inside useFrame.
+    const colorHints = useMemo((): Record<string, Color> | undefined => {
+        if (!rawColorHints) return undefined;
+        return Object.fromEntries(
+            Object.entries(rawColorHints).map(([name, hex]) => [name, new Color(hex)])
+        ) as Record<string, Color>;
+    }, [rawColorHints]);
 
     useEffect(() => {
         const subscribeFn = keypointsSource[subscribeKey];

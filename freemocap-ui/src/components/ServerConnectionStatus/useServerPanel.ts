@@ -97,10 +97,14 @@ export function useServerPanel(): ServerPanelState {
     useEffect(() => { saveToStorage(STORAGE_KEYS.SERVER_HOST, serverHost); }, [serverHost]);
     useEffect(() => { saveToStorage(STORAGE_KEYS.SERVER_PORT, serverPort); }, [serverPort]);
 
-    // Apply persisted host/port to the server connection on mount
+    // Apply persisted host/port to the server connection once on mount.
+    // Intentionally runs only once — serverHost/serverPort here are the values
+    // loaded from localStorage at initialisation. Subsequent reconnections when
+    // the user changes these values are handled by applyHostPort().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         updateServerConnection(serverHost, serverPort);
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
 
     // ── Server status polling ──
 

@@ -19,6 +19,9 @@ import { useAppSelector } from "@/store";
 import { selectCalibrationConfig } from "@/store/slices/calibration/calibration-slice";
 import { SKELETON_COLORS } from "../helpers/skeleton-colors";
 
+// Module-level constant — avoids per-frame array allocation inside useFrame.
+const ARUCO_EDGES: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]];
+
 /**
  * Renders skeleton connections as colored line segments.
  *
@@ -34,6 +37,7 @@ export function ConnectionRenderer() {
 
     const linesRef = useRef<LineSegments>(null);
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
+    const arucoMarkersRef = useRef<Map<number, (Point3d | undefined)[]>>(new Map());
     const dirtyRef = useRef(false);
 
     // Build the segment list whenever the active schema changes.
@@ -66,13 +70,15 @@ export function ConnectionRenderer() {
         opacity: 0.85,
     }), []);
 
+    useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
+
     useEffect(() => {
         return subscribeToKeypointsFiltered((allPts: Record<string, Point3d>) => {
-            const map = new Map<string, Point3d>();
+            const m = pointsRef.current;
+            m.clear();
             for (const [name, pt] of Object.entries(allPts)) {
-                map.set(name, pt);
+                m.set(name, pt);
             }
-            pointsRef.current = map;
             dirtyRef.current = true;
         });
     }, [subscribeToKeypointsFiltered]);
@@ -150,6 +156,47 @@ export function ConnectionRenderer() {
                     }
                     segIdx++;
                 }
+            }
+        }
+
+        // Aruco marker outline squares — 4 orange edges per detected marker.
+        const ar = SKELETON_COLORS.aruco.r;
+        const ag = SKELETON_COLORS.aruco.g;
+        const ab = SKELETON_COLORS.aruco.b;
+
+        const arucoMarkers = arucoMarkersRef.current;
+        arucoMarkers.clear();
+        for (const [name, pt] of pts.entries()) {
+            const match = name.match(/^ArucoMarkerCorner-(\d+)-(\d+)$/);
+            if (match) {
+                const markerId = parseInt(match[1]);
+                const cornerIdx = parseInt(match[2]);
+                if (!arucoMarkers.has(markerId)) {
+                    arucoMarkers.set(markerId, [undefined, undefined, undefined, undefined]);
+                }
+                arucoMarkers.get(markerId)![cornerIdx] = pt;
+            }
+        }
+
+        for (const corners of arucoMarkers.values()) {
+            for (const [i, j] of ARUCO_EDGES) {
+                if (segIdx >= maxSegments) break;
+                const a = corners[i];
+                const b = corners[j];
+                const base = segIdx * 6;
+                const aOk = a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(a.z);
+                const bOk = b && Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.z);
+                if (aOk && bOk) {
+                    positions[base]     = a.x; positions[base + 1] = a.y; positions[base + 2] = a.z;
+                    positions[base + 3] = b.x; positions[base + 4] = b.y; positions[base + 5] = b.z;
+                    vertexColors[base]     = ar; vertexColors[base + 1] = ag; vertexColors[base + 2] = ab;
+                    vertexColors[base + 3] = ar; vertexColors[base + 4] = ag; vertexColors[base + 5] = ab;
+                    visibleCount++;
+                } else {
+                    for (let k = 0; k < 6; k++) positions[base + k] = 1e5;
+                    for (let k = 0; k < 6; k++) vertexColors[base + k] = 0;
+                }
+                segIdx++;
             }
         }
 

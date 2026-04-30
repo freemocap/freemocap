@@ -6,9 +6,10 @@ import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-
 
 
 
-export function classifyPointName(name: string): 'face' | 'left_hand' | 'right_hand' | 'left' | 'right' | 'center' {
+export function classifyPointName(name: string): 'face' | 'left_hand' | 'right_hand' | 'left' | 'right' | 'center' | 'aruco' {
     const lc = name.toLowerCase();
     if (lc.startsWith('face') || lc.includes('.face') || /^face[._-]/.test(lc)) return 'face';
+    if (lc.startsWith('arucomarkercorner')) return 'aruco';
     if (lc.includes('left_hand')) return 'left_hand';
     if (lc.includes('right_hand')) return 'right_hand';
     if (lc.includes('left')) return 'left';
@@ -18,9 +19,11 @@ export function classifyPointName(name: string): 'face' | 'left_hand' | 'right_h
 
 // --- Point styling: color + sphere scale per body part ----------------------
 
+// Accepts pre-built Color objects (keyed by point name) so callers in render
+// loops can avoid allocating a new Color on every frame.
 export function getPointStyle(
     name: string,
-    colorHints?: Record<string, string>,
+    colorHints?: Record<string, Color>,
 ): PointStyle {
     const hinted = colorHints?.[name];
     const klass = classifyPointName(name);
@@ -30,27 +33,31 @@ export function getPointStyle(
 
     switch (klass) {
         case 'face':
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.face;
+            color = hinted ?? SKELETON_COLORS.face;
             scale = 0.02;
             break;
         case 'left_hand':
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.leftHand;
+            color = hinted ?? SKELETON_COLORS.leftHand;
             scale = 0.075;
             break;
         case 'right_hand':
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.rightHand;
+            color = hinted ?? SKELETON_COLORS.rightHand;
             scale = 0.075;
             break;
         case 'left':
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.left;
+            color = hinted ?? SKELETON_COLORS.left;
             scale = sizeForBodyPoint(name);
             break;
         case 'right':
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.right;
+            color = hinted ?? SKELETON_COLORS.right;
             scale = sizeForBodyPoint(name);
             break;
+        case 'aruco':
+            color = hinted ?? SKELETON_COLORS.aruco;
+            scale = 0.08;
+            break;
         default:
-            color = hinted ? new Color(hinted) : SKELETON_COLORS.center;
+            color = hinted ?? SKELETON_COLORS.center;
             scale = sizeForBodyPoint(name);
     }
 
@@ -80,7 +87,7 @@ export function getSegmentColor(
     const dk = classifyPointName(distal);
     // Prefer the more specific classification.
     const rank: Record<string, number> = {
-        face: 5, left_hand: 4, right_hand: 4, left: 3, right: 3, center: 1,
+        face: 5, left_hand: 4, right_hand: 4, left: 3, right: 3, aruco: 2, center: 1,
     };
     const best = (rank[pk] ?? 0) >= (rank[dk] ?? 0) ? pk : dk;
     switch (best) {
@@ -89,6 +96,7 @@ export function getSegmentColor(
         case 'right_hand': return SKELETON_COLORS.rightHand;
         case 'left': return SKELETON_COLORS.left;
         case 'right': return SKELETON_COLORS.right;
+        case 'aruco': return SKELETON_COLORS.aruco;
         default: return SKELETON_COLORS.center;
     }
 }

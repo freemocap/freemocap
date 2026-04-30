@@ -12,7 +12,7 @@ const initialState: PipelineState = {
 };
 
 export const realtimeSlice = createSlice({
-    name: 'pipeline',
+    name: 'realtime',
     initialState,
     reducers: {
         pipelineStateReset: () => initialState,

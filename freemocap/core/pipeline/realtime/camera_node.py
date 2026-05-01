@@ -52,6 +52,7 @@ class CameraNode(SourceNode):
             config: CameraNodeConfig,
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
+            skeleton_inference_centralized: bool = False,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -63,6 +64,7 @@ class CameraNode(SourceNode):
                 ipc=ipc,
                 config=config,
                 camera_shm_dto=camera_shm_dto,
+                skeleton_inference_centralized=skeleton_inference_centralized,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
                 ),
@@ -91,6 +93,7 @@ class CameraNode(SourceNode):
             camera_output_pub: TopicPublicationQueue,
             shutdown_self_flag: Synchronized,
             camera_shm_dto: SharedMemoryRingBufferDTO,
+            skeleton_inference_centralized: bool = False,
     ) -> None:
         import cv2
         from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
@@ -109,7 +112,15 @@ class CameraNode(SourceNode):
             charuco_detector = CharucoDetector.create(
                 config=config.charuco_detector_config,
             )
-        if config.skeleton_tracking_enabled and config.skeleton_detector_config is not None:
+        if (
+                config.skeleton_tracking_enabled
+                and config.skeleton_detector_config is not None
+                and not skeleton_inference_centralized
+        ):
+            # In centralized GPU mode, the dedicated SkeletonInferenceNode owns
+            # the ONNX session and serves all cameras via batched inference.
+            # Skipping per-camera construction here is what avoids spawning
+            # N independent CUDA contexts on a single GPU.
             # skeleton_detector = LegacyMediapipeDetector.create(
             #     config=config.skeleton_detector_config ,
             # )
@@ -138,14 +149,18 @@ class CameraNode(SourceNode):
                     elif not new_config.charuco_tracking_enabled:
                         charuco_detector = None
 
-                    if new_config.skeleton_tracking_enabled and new_config.skeleton_detector_config is not None:
+                    if (
+                            new_config.skeleton_tracking_enabled
+                            and new_config.skeleton_detector_config is not None
+                            and not skeleton_inference_centralized
+                    ):
                         # skeleton_detector = LegacyMediapipeDetector.create(
                         #     config=new_config.skeleton_detector_config,
                         # )
                         skeleton_detector = RTMPoseDetector.create(
                             config=new_config.skeleton_detector_config,
                         )
-                    elif not new_config.skeleton_tracking_enabled:
+                    elif not new_config.skeleton_tracking_enabled or skeleton_inference_centralized:
                         skeleton_detector = None
 
                     config = new_config

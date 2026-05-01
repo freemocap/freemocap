@@ -25,6 +25,9 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
+    RealtimeSkeletonInferenceNode,
+)
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -54,6 +57,7 @@ class RealtimePipeline:
     config: RealtimePipelineConfig
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: RealtimeAggregatorNode
+    skeleton_inference_node: RealtimeSkeletonInferenceNode | None
     aggregation_output_subscription: TopicSubscriptionQueue
     result_ready_event: multiprocessing.synchronize.Event
     result_consumed_event: multiprocessing.synchronize.Event
@@ -65,10 +69,13 @@ class RealtimePipeline:
     def alive(self) -> bool:
         if not self.started:
             return False
-        return (
+        nodes_alive = (
                 all(node.is_alive for node in self.camera_nodes.values())
                 and self.aggregation_node.is_alive
         )
+        if self.skeleton_inference_node is not None:
+            nodes_alive = nodes_alive and self.skeleton_inference_node.is_alive
+        return nodes_alive
 
     @property
     def camera_group_id(self) -> CameraGroupIdString:
@@ -108,10 +115,22 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
-
+                skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
             )
             for camera_id in camera_group.configs.keys()
         }
+
+        skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
+        if pipeline_config.use_centralized_gpu_inference:
+            skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                camera_group_id=camera_group.id,
+                camera_ids=camera_group.camera_ids,
+                worker_registry=worker_registry,
+                camera_group_shm_dto=camera_group.shm.to_dto(),
+                config=pipeline_config,
+                ipc=ipc,
+                pubsub=pubsub,
+            )
 
         # Backpressure events between the aggregator and the websocket consumer.
         # The aggregator processes one frame, publishes the result, clears
@@ -146,6 +165,7 @@ class RealtimePipeline:
             config=pipeline_config,
             camera_nodes=camera_nodes,
             aggregation_node=aggregation_node,
+            skeleton_inference_node=skeleton_inference_node,
             aggregation_output_subscription=aggregation_output_subscription,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
@@ -169,6 +189,17 @@ class RealtimePipeline:
 
         self.aggregation_node.start()
 
+        # Start the centralized GPU inference node before camera nodes so its
+        # session (including any TRT engine compilation) is ready by the time
+        # the first frame request lands. First-run TRT compile can take 1–3
+        # minutes; subsequent runs are cache-hits.
+        if self.skeleton_inference_node is not None:
+            logger.info(
+                f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
+                f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
+            )
+            self.skeleton_inference_node.start()
+
         for camera_id, node in self.camera_nodes.items():
             node.start()
 
@@ -183,11 +214,15 @@ class RealtimePipeline:
         for node in self.camera_nodes.values():
             node.worker._intentionally_terminated = True
         self.aggregation_node.worker._intentionally_terminated = True
+        if self.skeleton_inference_node is not None:
+            self.skeleton_inference_node.worker._intentionally_terminated = True
 
         self.pubsub.close()
         for node in self.camera_nodes.values():
             if node.is_alive:
                 node.shutdown()
+        if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
+            self.skeleton_inference_node.shutdown()
         if self.aggregation_node.is_alive:
             self.aggregation_node.shutdown()
         logger.debug(f"RealtimePipeline [{self.id}] shut down")

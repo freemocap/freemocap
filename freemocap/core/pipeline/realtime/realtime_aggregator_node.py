@@ -58,7 +58,14 @@ from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     AggregationNodeOutputTopic,
     PipelineConfigUpdateMessage,
+    SkeletonInferenceResultMessage,
+    SkeletonInferenceResultTopic,
 )
+
+# Cap on how many pending skeleton-inference results we hold while waiting for
+# camera-node charuco outputs to arrive. Prevents unbounded memory growth if
+# camera nodes lag (e.g. one camera unplugged). Older entries get dropped.
+_MAX_PENDING_SKELETON_RESULTS: int = 2
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +187,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 camera_node_sub=pubsub.get_subscription(
                     CameraNodeOutputTopic,
                 ),
+                skeleton_inference_sub=pubsub.get_subscription(
+                    SkeletonInferenceResultTopic,
+                ),
                 pipeline_config_sub=pubsub.get_subscription(
                     PipelineConfigUpdateTopic,
                 ),
@@ -208,6 +218,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             shutdown_self_flag: Synchronized,
             camera_group_shm_dto: CameraGroupSharedMemoryDTO,
             camera_node_sub: TopicSubscriptionQueue,
+            skeleton_inference_sub: TopicSubscriptionQueue,
             pipeline_config_sub: TopicSubscriptionQueue,
             process_frame_number_pub: TopicPublicationQueue,
             aggregation_output_pub: TopicPublicationQueue,
@@ -251,6 +262,10 @@ class RealtimeAggregatorNode(AggregatorNode):
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in camera_ids
         }
+        # Pending skeleton inference results keyed by frame_number. Populated
+        # by the centralized SkeletonInferenceNode (when GPU mode is on);
+        # consumed when the matching camera outputs arrive for that frame.
+        pending_skeleton_results: dict[int, dict[CameraIdString, object | None]] = {}
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.monotonic()
@@ -311,24 +326,61 @@ class RealtimeAggregatorNode(AggregatorNode):
                     latest_requested_frame = current_multiframe_number
                     t_frame_requested = time.perf_counter()
 
+                # ---- Collect skeleton inference results (GPU mode) ----
+                # Drained on every iteration so they're available whenever the
+                # corresponding camera-node charuco outputs finish arriving.
+                while not skeleton_inference_sub.empty():
+                    skel_msg: SkeletonInferenceResultMessage = skeleton_inference_sub.get()
+                    pending_skeleton_results[skel_msg.frame_number] = skel_msg.per_camera_skeleton
+                # Bound the pending dict so a lagging camera can't grow it forever.
+                if len(pending_skeleton_results) > _MAX_PENDING_SKELETON_RESULTS:
+                    oldest = sorted(pending_skeleton_results.keys())[
+                             :len(pending_skeleton_results) - _MAX_PENDING_SKELETON_RESULTS]
+                    for k in oldest:
+                        pending_skeleton_results.pop(k, None)
+
                 # ---- Collect camera node outputs ----
-                if camera_node_sub.empty():
-                    continue
+                # If camera outputs are already complete (we looped back waiting
+                # for the skeleton inference result), skip collection — the
+                # existing entries are still valid and we just need the skeleton.
+                all_cam_ready = all(
+                    isinstance(v, CameraNodeOutputMessage)
+                    for v in camera_node_outputs.values()
+                )
+                if not all_cam_ready:
+                    if camera_node_sub.empty():
+                        continue
+                    cam_output: CameraNodeOutputMessage = camera_node_sub.get()
+                    if cam_output.camera_id not in camera_ids:
+                        raise ValueError(
+                            f"Camera ID {cam_output.camera_id} not in "
+                            f"camera IDs {list(camera_ids)}"
+                        )
+                    camera_node_outputs[cam_output.camera_id] = cam_output
 
-                cam_output: CameraNodeOutputMessage = camera_node_sub.get()
-                if cam_output.camera_id not in camera_ids:
-                    raise ValueError(
-                        f"Camera ID {cam_output.camera_id} not in "
-                        f"camera IDs {list(camera_ids)}"
-                    )
-                camera_node_outputs[cam_output.camera_id] = cam_output
+                    if not all(
+                            isinstance(v, CameraNodeOutputMessage)
+                            for v in camera_node_outputs.values()
+                    ):
+                        continue
 
-                # ---- Check if all cameras reported for this frame ----
-                if not all(
-                        isinstance(v, CameraNodeOutputMessage)
-                        for v in camera_node_outputs.values()
-                ):
-                    continue
+                # ---- In GPU mode, also wait for the skeleton inference result ----
+                if pipeline_config.use_centralized_gpu_inference:
+                    expected_frame = next(iter(camera_node_outputs.values())).frame_number
+                    if expected_frame not in pending_skeleton_results:
+                        # Camera outputs are ready but skeleton inference hasn't
+                        # caught up yet. Loop again — `camera_node_outputs` stays
+                        # populated, and the skeleton result will land in the
+                        # `skeleton_inference_sub` drain at the top of the next
+                        # iteration.
+                        continue
+                    # Splice the per-camera skeletons into each CameraNodeOutputMessage
+                    # so downstream triangulation code (which reads
+                    # `output.skeleton_observation`) needs no changes.
+                    skeleton_per_camera = pending_skeleton_results.pop(expected_frame)
+                    for cam_id, output_msg in camera_node_outputs.items():
+                        if output_msg is not None:
+                            output_msg.skeleton_observation = skeleton_per_camera.get(cam_id)
 
                 frame_numbers = [
                     msg.frame_number

@@ -69,6 +69,25 @@ class CameraNodeOutputMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
+# Centralized GPU skeleton inference results
+# ---------------------------------------------------------------------------
+# Published by RealtimeSkeletonInferenceNode when GPU mode is on. One message
+# per processed multi-camera frame, holding per-camera skeleton observations
+# from a single batched ONNX call. Aggregator merges this with per-camera
+# CameraNodeOutputMessage (which carries charuco only in this mode) by
+# (frame_number).
+
+@dataclass
+class SkeletonInferenceResultMessage(TopicMessageABC):
+    frame_number: FrameNumberInt = 0
+    per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
+
+
+# ---------------------------------------------------------------------------
 # Video (posthoc) node outputs
 # ---------------------------------------------------------------------------
 
@@ -197,6 +216,7 @@ class AggregatorNodeProgressMessage(PipelineProgressMessage):
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
+SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)

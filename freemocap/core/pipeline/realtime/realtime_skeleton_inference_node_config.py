@@ -7,6 +7,7 @@ so a single source of truth governs which model is used in either pipeline mode.
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+from skellytracker.trackers.rtmpose_tracker.rtmpose_session import ExecutionProviderName
 
 
 def _default_engine_cache_dir() -> Path:
@@ -20,10 +21,16 @@ class RealtimeSkeletonInferenceNodeConfig(BaseModel):
     max_batch_size: int = 8
 
     # Where TensorRT engine + timing caches live. First TRT run compiles to here
-    # (slow, 1-3 minutes); subsequent runs are a cache hit and load instantly.
+    # (slow, 1-5 minutes); subsequent runs are a cache hit and load instantly.
     engine_cache_dir: Path = Field(default_factory=_default_engine_cache_dir)
 
     # If the requested execution provider isn't available, fall back automatically
-    # (trt -> cuda -> cpu) instead of raising. Lets dev laptops without a GPU
-    # still run the pipeline (slowly).
+    # (trt -> cuda -> cpu) instead of raising.
     fallback_on_missing_provider: bool = True
+
+    # "trt":  TensorRT EP — 2-5x faster than CUDA EP, requires NVIDIA GPU +
+    #         `pip install tensorrt`. Compiles engines on first run (1-5 min),
+    #         cached to engine_cache_dir on all subsequent runs.
+    # "cuda": CUDA EP — requires NVIDIA GPU + onnxruntime-gpu, no extra install.
+    # "cpu":  CPU EP — no GPU required, slowest.
+    execution_provider: ExecutionProviderName = "cuda"

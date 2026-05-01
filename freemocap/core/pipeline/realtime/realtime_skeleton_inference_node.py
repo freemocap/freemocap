@@ -284,11 +284,9 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
     # failing pydantic validation — keeps the pipeline alive on weird configs.
     mode = skel_config.mode if skel_config.mode in ("performance", "lightweight", "balanced") else "balanced"
 
-    provider = skel_config.resolved_provider()
-
     session_config = RTMPoseSessionConfig(
         mode=mode,
-        execution_provider=provider,
+        execution_provider=inf_config.execution_provider,
         engine_cache_dir=inf_config.engine_cache_dir,
         max_batch_size=inf_config.max_batch_size,
         on_provider_missing="fallback" if inf_config.fallback_on_missing_provider else "raise",
@@ -298,7 +296,7 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
         return RTMPoseSession.create(session_config)
     except Exception as e:
         logger.error(
-            f"Failed to construct RTMPoseSession with provider={provider!r}: {e!r}",
+            f"Failed to construct RTMPoseSession with provider={inf_config.execution_provider!r}: {e!r}",
             exc_info=True,
         )
         return None

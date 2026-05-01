@@ -342,14 +342,15 @@ def _read_frames(
 
         actual_frame_number = int(frame_recarray.frame_metadata.frame_number[0])
         if actual_frame_number != requested_frame_number:
-            # Ring buffer overwritten between request and read — same warning
-            # the camera_node emits at line 186.
+            # Ring buffer has moved on — use the frame that's actually there
+            # rather than dropping the camera entirely. A 1-2 frame offset
+            # (~16-32 ms) is imperceptible vs a missing overlay that causes
+            # per-camera blinking every time inference loses the race.
             logger.warning(
                 f"SkeletonInferenceNode: requested frame {requested_frame_number} "
                 f"from camera {camera_id} but got {actual_frame_number} — "
-                f"possible ring buffer overwrite, skipping."
+                f"ring buffer advanced; using available frame."
             )
-            continue
 
         rotation = frame_recarray.frame_metadata.camera_info.rotation
         if rotation != -1:

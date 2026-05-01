@@ -8,7 +8,7 @@ import {CameraViewWithOverlay} from "./CameraViewWithOverlay";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from "react-i18next";
 import {useAppSelector} from "@/store/hooks";
-import {selectConnectedCameras} from "@/store/slices/cameras/cameras-selectors";
+import {selectCameras} from "@/store/slices/cameras/cameras-selectors";
 
 const recordingBorderPulse = keyframes`
     0% { border-color: #ff2020; box-shadow: 0 0 4px rgba(255, 32, 32, 0.4); }
@@ -166,39 +166,48 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     }, []);
 
     // Watch camera configs for rotation/resolution changes
-    const connectedCameras = useAppSelector(selectConnectedCameras);
+    const cameras = useAppSelector(selectCameras);
+
+    const sortedCameraIds = useMemo(() => {
+        return [...connectedCameraIds].sort((a, b) => {
+            const idxA = cameras.find(c => c.id === a)?.index ?? Infinity;
+            const idxB = cameras.find(c => c.id === b)?.index ?? Infinity;
+            return idxA - idxB;
+        });
+    }, [connectedCameraIds, cameras]);
+
     const configFingerprint = useMemo(() => {
-        return connectedCameras
+        return cameras
             .map((cam) => {
                 const cfg = cam.actualConfig;
                 return `${cam.id}:${cfg.rotation}:${cfg.resolution.width}x${cfg.resolution.height}`;
             })
             .join("|");
-    }, [connectedCameras]);
+    }, [cameras]);
 
     // Compute tiling: manual column count overrides auto-optimal.
     // Stabilized with a ref to prevent flip-flop.
     const prevTilingRef = useRef<Tiling>({ cols: 1, rows: 1 });
     const tiling = useMemo(() => {
         const candidate = manualColumns !== null
-            ? tilingFromColumns(connectedCameraIds.length, manualColumns)
-            : computeOptimalTiling(connectedCameraIds.length, containerWidth, containerHeight);
+            ? tilingFromColumns(sortedCameraIds.length, manualColumns)
+            : computeOptimalTiling(sortedCameraIds.length, containerWidth, containerHeight);
         const prev = prevTilingRef.current;
         if (candidate.cols === prev.cols && candidate.rows === prev.rows) {
             return prev;
         }
         prevTilingRef.current = candidate;
         return candidate;
-    }, [connectedCameraIds.length, containerWidth, containerHeight, manualColumns]);
+    }, [sortedCameraIds.length, containerWidth, containerHeight, manualColumns]);
 
     const [layout, setLayout] = useState<LayoutItem[]>(() =>
-        buildLayout(connectedCameraIds, tiling),
+        buildLayout(sortedCameraIds, tiling),
     );
 
     // Re-tile when cameras, tiling, config, or reset changes
     useEffect(() => {
-        setLayout(buildLayout(connectedCameraIds, tiling));
-    }, [connectedCameraIds, tiling, resetKey, configFingerprint]);
+        setLayout(buildLayout(sortedCameraIds, tiling));
+    }, [sortedCameraIds, tiling, resetKey, configFingerprint]);
 
     // Snapshot layout before drag for swap detection
     const layoutBeforeDragRef = useRef<LayoutItem[]>(layout);
@@ -261,7 +270,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
         return Math.max(30, (containerHeight - totalMargin) / tiling.rows);
     }, [containerHeight, tiling.rows]);
 
-    if (connectedCameraIds.length === 0) {
+    if (sortedCameraIds.length === 0) {
         return (
             <Box
                 ref={containerRef}
@@ -336,8 +345,8 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                 onDragStop={handleDragStop}
                 onResizeStop={handleResizeStop}
             >
-                {connectedCameraIds.map((cameraId) => {
-                    const cam = connectedCameras.find(c => c.id === cameraId);
+                {sortedCameraIds.map((cameraId) => {
+                    const cam = cameras.find(c => c.id === cameraId);
                     return (
                         <Box
                             key={cameraId}

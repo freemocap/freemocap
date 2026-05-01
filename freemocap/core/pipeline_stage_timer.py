@@ -7,7 +7,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-REPORT_INTERVAL_SECONDS: float = 30.0
+REPORT_INTERVAL_SECONDS: float = 10.0
 ROLLING_WINDOW_FRAMES: int = 500
 
 @dataclass

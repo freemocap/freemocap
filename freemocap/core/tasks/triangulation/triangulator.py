@@ -7,6 +7,7 @@ algorithm based on the supplied `TriangulationConfig`.
 
 Pure numpy + cv2 (for undistortion). No aniposelib coupling.
 """
+import itertools
 import logging
 from pathlib import Path
 
@@ -21,7 +22,7 @@ from freemocap.core.tasks.calibration.shared.calibration_result import Calibrati
 from freemocap.core.tasks.triangulation.helpers.outlier_rejection import (
     triangulate_with_outlier_rejection,
 )
-from freemocap.core.tasks.triangulation.helpers.triangulate_simple import triangulate_simple
+from freemocap.core.tasks.triangulation.helpers.triangulate_simple import triangulate_simple, triangulate_simple_batch
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_result import TriangulationResult
 
@@ -53,16 +54,30 @@ class Triangulator(BaseModel):
     cameras: list[CameraModel]
 
     _extrinsics_mats: NDArray[np.float64] | None = None
+    # Cached per-camera cv2 inputs (computed once at construction, not on every project() call)
+    _rvecs: list | None = None   # list of (3,1) Rodrigues vectors
+    _tvecs: list | None = None   # list of (3,) translation vectors
+    _Ks: list | None = None      # list of (3,3) camera matrices
+    _dists: list | None = None   # list of distortion coefficient arrays
 
     @model_validator(mode="after")
     def _precompute(self) -> "Triangulator":
         if len(self.cameras) < 2:
             raise ValueError(f"Triangulator requires at least 2 cameras, got {len(self.cameras)}")
         ext = np.zeros((len(self.cameras), 3, 4), dtype=np.float64)
+        rvecs, tvecs, Ks, dists = [], [], [], []
         for i, cam in enumerate(self.cameras):
             ext[i, :, :3] = cam.extrinsics.rotation_matrix
             ext[i, :, 3] = cam.extrinsics.translation
+            rvecs.append(cam.extrinsics.rodrigues_vector.reshape(3, 1))
+            tvecs.append(cam.extrinsics.translation)
+            Ks.append(cam.intrinsics.to_camera_matrix())
+            dists.append(cam.intrinsics.to_dist_coeffs())
         object.__setattr__(self, "_extrinsics_mats", ext)
+        object.__setattr__(self, "_rvecs", rvecs)
+        object.__setattr__(self, "_tvecs", tvecs)
+        object.__setattr__(self, "_Ks", Ks)
+        object.__setattr__(self, "_dists", dists)
         return self
 
     @property
@@ -131,15 +146,14 @@ class Triangulator(BaseModel):
         out = np.empty((self.n_cameras, n_points, 2), dtype=np.float64)
         nan_mask = np.isnan(points_3d).any(axis=1)
         valid_pts = points_3d[~nan_mask].reshape(-1, 1, 3)
-        for cam_idx, cam in enumerate(self.cameras):
+        for cam_idx in range(self.n_cameras):
             if valid_pts.shape[0] == 0:
                 out[cam_idx] = np.nan
                 continue
-            rvec = cam.extrinsics.rodrigues_vector
-            tvec = cam.extrinsics.translation
-            K = cam.intrinsics.to_camera_matrix()
-            dist = cam.intrinsics.to_dist_coeffs()
-            projected, _ = cv2.projectPoints(valid_pts, rvec, tvec, K, dist)
+            projected, _ = cv2.projectPoints(
+                valid_pts, self._rvecs[cam_idx], self._tvecs[cam_idx],
+                self._Ks[cam_idx], self._dists[cam_idx],
+            )
             full = np.full((n_points, 2), np.nan, dtype=np.float64)
             full[~nan_mask] = projected.reshape(-1, 2)
             out[cam_idx] = full
@@ -198,10 +212,11 @@ class Triangulator(BaseModel):
             undistorted = stacked
         else:
             undistorted = np.empty_like(stacked)
-            for cam_idx, cam in enumerate(self.cameras):
-                flat_in = stacked[cam_idx].reshape(-1, 2)
-                flat_out = _undistort_points_for_camera(points_2d=flat_in, camera=cam)
-                undistorted[cam_idx] = flat_out.reshape(n_frames, n_points, 2)
+            for cam_idx in range(self.n_cameras):
+                pts = stacked[cam_idx].reshape(-1, 2).astype(np.float64)
+                pts_cv = pts.reshape(-1, 1, 2)
+                und = cv2.undistortPoints(pts_cv, self._Ks[cam_idx], self._dists[cam_idx])
+                undistorted[cam_idx] = und.reshape(n_frames, n_points, 2)
 
         # Flatten frames * points -> (n_cameras, n_flat, 2)
         n_flat = n_frames * n_points
@@ -210,14 +225,61 @@ class Triangulator(BaseModel):
         points_3d_flat = np.full((n_flat, 3), np.nan, dtype=np.float64)
         weights_flat = np.full((n_flat, self.n_cameras), np.nan, dtype=np.float64)
 
-        for pt_idx in range(n_flat):
-            subp = und_flat[:, pt_idx, :]  # (n_cameras, 2)
-            valid = ~np.isnan(subp[:, 0])
-            n_valid = int(np.sum(valid))
-            if n_valid < config.minimum_cameras_for_triangulation:
-                continue
+        # Per-point validity: True where the 2D observation is not NaN.
+        valid_all = ~np.isnan(und_flat[:, :, 0])  # (n_cameras, n_flat)
+        n_valid_per_pt = valid_all.sum(axis=0)     # (n_flat,)
 
-            valid_idx = np.where(valid)[0]
+        # --- Batch path: points visible in ALL cameras (common case for RTMPose) ---
+        all_cams_valid = valid_all.all(axis=0) & (n_valid_per_pt >= config.minimum_cameras_for_triangulation)
+        batch_idx = np.where(all_cams_valid)[0]
+
+        if batch_idx.size > 0:
+            # (n_batch, n_cameras, 2) — rearrange from (n_cameras, n_batch, 2)
+            pts_batch = np.ascontiguousarray(und_flat[:, batch_idx, :].transpose(1, 0, 2))
+            p3d_batch = triangulate_simple_batch(
+                points_batch=pts_batch, extrinsics_mats=self._extrinsics_mats
+            )  # (n_batch, 3)
+
+            if config.use_outlier_rejection:
+                # Batch-project to check normalized reprojection error
+                n_batch = batch_idx.size
+                hom = np.concatenate(
+                    [p3d_batch, np.ones((n_batch, 1), dtype=np.float64)], axis=1
+                )  # (n_batch, 4)
+                proj = self._extrinsics_mats @ hom.T  # (n_cameras, 3, n_batch)
+                z = proj[:, 2, :]
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    proj_2d = proj[:, :2, :] / z[:, None, :]  # (n_cameras, 2, n_batch)
+                proj_2d_T = proj_2d.transpose(2, 0, 1)  # (n_batch, n_cameras, 2)
+                mean_errors = np.linalg.norm(proj_2d_T - pts_batch, axis=2).mean(axis=1)  # (n_batch,)
+
+                good_mask = mean_errors < config.target_reprojection_error
+                good_global = batch_idx[good_mask]
+                points_3d_flat[good_global] = p3d_batch[good_mask]
+                weights_flat[good_global, :] = 1.0
+
+                # For batch points above error threshold, use vectorized batch outlier rejection
+                bad_local = np.where(~good_mask)[0]
+                n_bad = len(bad_local)
+                if n_bad > 0:
+                    bad_global = batch_idx[bad_local]
+                    p3d_rej, cam_w_rej = self._batch_outlier_rejection(
+                        pts_batch=pts_batch[bad_local],
+                        p3d_default=p3d_batch[bad_local],
+                        default_mean_errors=mean_errors[bad_local],
+                        config=config,
+                    )
+                    points_3d_flat[bad_global] = p3d_rej
+                    weights_flat[bad_global, :] = cam_w_rej
+            else:
+                points_3d_flat[batch_idx] = p3d_batch
+                weights_flat[batch_idx, :] = 1.0 / self.n_cameras
+
+        # --- Per-point path: points with partial camera coverage ---
+        for pt_idx in np.where(~all_cams_valid & (n_valid_per_pt >= config.minimum_cameras_for_triangulation))[0]:
+            subp = und_flat[:, pt_idx, :]  # (n_cameras, 2)
+            valid_idx = np.where(valid_all[:, pt_idx])[0]
+            n_valid = len(valid_idx)
             valid_pts = subp[valid_idx]
             valid_ext = self._extrinsics_mats[valid_idx]
 
@@ -246,7 +308,6 @@ class Triangulator(BaseModel):
                 points_3d_flat=points_3d_flat,
                 data2d_pixel_flat=stacked.reshape(self.n_cameras, n_flat, 2),
             )
-
         # Reshape outputs
         if was_single_frame:
             points_3d = points_3d_flat.reshape(n_points, 3)
@@ -266,6 +327,97 @@ class Triangulator(BaseModel):
     # =========================================================================
     # INTERNAL HELPERS
     # =========================================================================
+
+    def _batch_outlier_rejection(
+            self,
+            *,
+            pts_batch: NDArray[np.float64],
+            p3d_default: NDArray[np.float64],
+            default_mean_errors: NDArray[np.float64],
+            config: "TriangulationConfig",
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+        """Vectorized subset-ensemble outlier rejection for P points simultaneously.
+
+        Instead of calling triangulate_with_outlier_rejection() P times (one per
+        failing keypoint), runs triangulate_simple_batch() once per camera
+        combination — O(n_combos) SVD calls instead of O(P × n_combos).
+
+        Args:
+            pts_batch: (P, n_cameras, 2) undistorted-normalized coords, no NaNs.
+            p3d_default: (P, 3) triangulated from all cameras.
+            default_mean_errors: (P,) mean reprojection error for the default result.
+            config: triangulation config (target_reprojection_error, max_drop, etc.)
+
+        Returns:
+            (points_3d, camera_weights): shapes (P, 3) and (P, n_cameras).
+        """
+        P = pts_batch.shape[0]
+        n_cam = self.n_cameras
+        target = config.target_reprojection_error
+        min_cams = config.minimum_cameras_for_triangulation
+        max_drop = config.maximum_cameras_to_drop
+
+        # Initialise weighted ensemble accumulators using the default (all-cameras) result
+        default_weights = np.exp(-5.0 * default_mean_errors / target)   # (P,)
+        weighted_p3d_sum = p3d_default * default_weights[:, None]        # (P, 3)
+        total_weight = default_weights.copy()                             # (P,)
+        cam_weights_acc = np.full((P, n_cam), 0.0, dtype=np.float64)
+        cam_weights_acc += default_weights[:, None]                      # broadcast (P, n_cam)
+
+        best_p3d = p3d_default.copy()          # (P, 3)
+        best_errors = default_mean_errors.copy()  # (P,)
+
+        local_indices = list(range(n_cam))
+
+        for drop_count in range(1, max_drop + 1):
+            selected = n_cam - drop_count
+            if selected < min_cams:
+                break
+
+            for combo in itertools.combinations(local_indices, selected):
+                combo_arr = np.array(combo, dtype=np.intp)
+                pts_sub = pts_batch[:, combo_arr, :]        # (P, selected, 2)
+                ext_sub = self._extrinsics_mats[combo_arr]  # (selected, 3, 4)
+
+                # Triangulate all P points for this camera subset in one SVD call
+                p3d_sub = triangulate_simple_batch(
+                    points_batch=pts_sub, extrinsics_mats=ext_sub
+                )  # (P, 3)
+
+                # Batch-project through subset cameras to get mean reprojection error per point
+                hom = np.concatenate(
+                    [p3d_sub, np.ones((P, 1), dtype=np.float64)], axis=1
+                )  # (P, 4)
+                proj = ext_sub @ hom.T   # (selected, 3, P)
+                z = proj[:, 2, :]
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    proj_2d = proj[:, :2, :] / z[:, None, :]   # (selected, 2, P)
+                proj_2d_T = proj_2d.transpose(2, 0, 1)          # (P, selected, 2)
+                mean_errs = np.linalg.norm(proj_2d_T - pts_sub, axis=2).mean(axis=1)  # (P,)
+
+                # Accumulate weighted ensemble
+                weights = np.exp(-5.0 * mean_errs / target)     # (P,)
+                weighted_p3d_sum += p3d_sub * weights[:, None]
+                total_weight += weights
+                cam_weights_acc[:, combo_arr] += weights[:, None]
+
+                # Update per-point best
+                improved = mean_errs < best_errors
+                best_p3d = np.where(improved[:, None], p3d_sub, best_p3d)
+                best_errors = np.where(improved, mean_errs, best_errors)
+
+        # Build output: weighted ensemble where weight > threshold, else best
+        valid_w = total_weight > 1e-12
+        safe_w = np.where(valid_w, total_weight, 1.0)
+        weighted_p3d = np.where(valid_w[:, None], weighted_p3d_sum / safe_w[:, None], best_p3d)
+        cam_weights = np.where(valid_w[:, None], cam_weights_acc / safe_w[:, None], 0.0)
+
+        # If best never improved over default, revert to default with flat weights
+        no_improvement = best_errors >= default_mean_errors
+        weighted_p3d = np.where(no_improvement[:, None], p3d_default, weighted_p3d)
+        cam_weights = np.where(no_improvement[:, None], 1.0, cam_weights)
+
+        return weighted_p3d, cam_weights
 
     def _normalize_input(
             self,
@@ -361,21 +513,22 @@ class Triangulator(BaseModel):
     ) -> NDArray[np.float64]:
         """Per-camera Euclidean reprojection error in undistorted-normalized coords."""
         n_flat = points_3d_flat.shape[0]
-        out = np.full((self.n_cameras, n_flat), np.nan, dtype=np.float64)
-        for cam_idx in range(self.n_cameras):
-            ext = self._extrinsics_mats[cam_idx]
-            for pt_idx in range(n_flat):
-                obs = data2d_normalized_flat[cam_idx, pt_idx]
-                if np.isnan(obs).any() or np.isnan(points_3d_flat[pt_idx]).any():
-                    continue
-                hom = np.array(
-                    [points_3d_flat[pt_idx, 0], points_3d_flat[pt_idx, 1],
-                     points_3d_flat[pt_idx, 2], 1.0],
-                    dtype=np.float64,
-                )
-                proj = ext @ hom
-                proj_2d = proj[:2] / proj[2]
-                out[cam_idx, pt_idx] = float(np.linalg.norm(proj_2d - obs))
+        hom = np.concatenate(
+            [points_3d_flat, np.ones((n_flat, 1), dtype=np.float64)], axis=1
+        )  # (n_flat, 4)
+        # _extrinsics_mats: (n_cameras, 3, 4); hom.T: (4, n_flat)
+        proj = self._extrinsics_mats @ hom.T  # (n_cameras, 3, n_flat)
+        z = proj[:, 2, :]  # (n_cameras, n_flat)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            proj_2d = proj[:, :2, :] / z[:, None, :]  # (n_cameras, 2, n_flat)
+        proj_2d = np.transpose(proj_2d, (0, 2, 1))  # (n_cameras, n_flat, 2)
+        diff = data2d_normalized_flat - proj_2d  # (n_cameras, n_flat, 2)
+        out = np.linalg.norm(diff, axis=2)  # (n_cameras, n_flat)
+        nan_mask = (
+            np.isnan(data2d_normalized_flat).any(axis=2)
+            | np.isnan(points_3d_flat).any(axis=1)[None, :]
+        )
+        out[nan_mask] = np.nan
         return out
 
     # =========================================================================

@@ -429,7 +429,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if skeleton_observations_by_camera:
                         t0 = time.perf_counter()
                         _merge_triangulated_arrays(
-                            triangulated=calibration.try_triangulate(
+                            triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
                                 frame_observations_by_camera=skeleton_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
@@ -449,7 +449,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if charuco_observations_by_camera:
                         t0 = time.perf_counter()
                         _merge_triangulated_arrays(
-                            triangulated=calibration.try_triangulate(
+                            triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,

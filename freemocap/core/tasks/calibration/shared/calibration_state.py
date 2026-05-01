@@ -7,6 +7,7 @@ failure, and periodic file-change detection for hot-reloading.
 
 import logging
 import os
+import time
 from pathlib import Path
 
 import numpy as np
@@ -57,6 +58,11 @@ class CalibrationStateTracker:
         self._cam_id_name_cache: dict[str, str] = {}
         # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
         self._last_incoming_cam_ids: frozenset | None = None
+        # Sub-timing accumulators (reset each time we log the report)
+        self._timing_call_count: int = 0
+        self._timing_buckets: dict[str, list[float]] = {
+            "build_stacked": [], "triangulate": [], "mean_reproj_error": [], "result_dict": []
+        }
 
     @classmethod
     def create_and_try_load(cls) -> "CalibrationStateTracker":
@@ -150,7 +156,7 @@ class CalibrationStateTracker:
             logger.warning(f"Failed to load calibration from {path}: {e}", exc_info=True)
             return False
 
-    def try_triangulate(
+    def try_angulate(
         self,
         *,
         frame_number: int,
@@ -183,31 +189,22 @@ class CalibrationStateTracker:
                 self._cam_id_name_cache.clear()
                 self._last_incoming_cam_ids = incoming_cam_ids
 
-            # Collect named 2D points per calibration camera. Mismatched
-            # camera_ids raise CameraIdMismatchError (caught by the outer
-            # except below) — the failure counter handles transient mismatches
-            # and invalidates the calibration after MAX_CONSECUTIVE_FAILURES,
-            # at which point the pipeline degrades to 2D-only with a clear
-            # error in the logs.
-            tracked_by_cam: dict[str, dict[str, NDArray[np.float64]]] = {}
+            # Resolve runtime cam_id -> calibration camera name once per cam.
+            matched_obs_by_cam: dict[str, BaseObservation] = {}
             for cam_id, obs in frame_observations_by_camera.items():
                 if cam_id not in self._cam_id_name_cache:
                     self._cam_id_name_cache[cam_id] = _match_camera_name(
                         cam_id=cam_id,
                         calibration_camera_names=calibration_camera_ids,
                     )
-                matched_name = self._cam_id_name_cache[cam_id]
-                tracked_by_cam[matched_name] = {
-                    name: np.asarray(pt, dtype=np.float64)[:2]
-                    for name, pt in obs.to_tracked_points().items()
-                }
+                matched_obs_by_cam[self._cam_id_name_cache[cam_id]] = obs
 
-            if len(tracked_by_cam) < 2:
+            if len(matched_obs_by_cam) < 2:
                 return {}
 
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.
-            active_cam_set: frozenset[str] = frozenset(tracked_by_cam.keys())
+            active_cam_set: frozenset[str] = frozenset(matched_obs_by_cam.keys())
             if active_cam_set == frozenset(calibration_camera_ids):
                 sub_triangulator = self._triangulator
             elif active_cam_set in self._subset_triangulator_cache:
@@ -216,45 +213,91 @@ class CalibrationStateTracker:
                 sub_triangulator = Triangulator(
                     cameras=[
                         cam for cam in self._triangulator.cameras
-                        if cam.id in tracked_by_cam
+                        if cam.id in matched_obs_by_cam
                     ]
                 )
                 self._subset_triangulator_cache[active_cam_set] = sub_triangulator
             ordered_cam_names: list[str] = sub_triangulator.camera_ids
             n_cameras = len(ordered_cam_names)
 
-            # Find all point names and count how many cameras see each
-            all_point_names: set[str] = set()
-            for pts in tracked_by_cam.values():
-                all_point_names.update(pts.keys())
-
-            # Keep only points visible in ≥2 cameras
-            point_names: list[str] = sorted(
-                name for name in all_point_names
-                if sum(1 for cam in ordered_cam_names if name in tracked_by_cam[cam]) >= 2
+            # Fast path: when every observation type uses the canonical
+            # PointCloud-only `to_tracked_points` (i.e. doesn't add any extra
+            # named points beyond `obs.points`), and all cameras share the same
+            # PointCloud names tuple, we can stack `xyz[:, :2]` arrays directly
+            # and skip per-keypoint dict construction. RTMPose hits this path.
+            ordered_obs: list[BaseObservation] = [
+                matched_obs_by_cam[c] for c in ordered_cam_names
+            ]
+            first_obs = ordered_obs[0]
+            canonical_names: tuple[str, ...] = first_obs.points.names
+            fast_path = (
+                type(first_obs).to_tracked_points is BaseObservation.to_tracked_points
+                and all(
+                    type(o).to_tracked_points is BaseObservation.to_tracked_points
+                    and o.points.names == canonical_names
+                    for o in ordered_obs[1:]
+                )
             )
 
-            if not point_names:
-                return {}
-
-            n_points = len(point_names)
-
-            # Build (n_cameras, n_points, 2) array with NaN for missing observations
-            stacked = np.full((n_cameras, n_points, 2), np.nan, dtype=np.float64)
-            for cam_idx, cam_name in enumerate(ordered_cam_names):
-                cam_points = tracked_by_cam[cam_name]
-                for pt_idx, pt_name in enumerate(point_names):
-                    if pt_name in cam_points:
-                        stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
+            _t0 = time.perf_counter()
+            if fast_path:
+                # Build (n_cameras, n_points, 2) by stacking xy slices.
+                stacked = np.stack(
+                    [np.ascontiguousarray(o.points.xy, dtype=np.float64) for o in ordered_obs]
+                )
+                point_names_seq: tuple[str, ...] = canonical_names
+                # Filter to points visible in ≥2 cameras
+                visible_per_point = (~np.isnan(stacked[..., 0])).sum(axis=0)
+                keep_mask = visible_per_point >= 2
+                if not bool(keep_mask.any()):
+                    return {}
+                if not bool(keep_mask.all()):
+                    stacked = stacked[:, keep_mask, :]
+                    point_names_seq = tuple(
+                        n for n, k in zip(canonical_names, keep_mask.tolist()) if k
+                    )
+            else:
+                # Fallback for observations whose `to_tracked_points` adds extra
+                # named points (e.g. CharucoObservation injects per-aruco-corner
+                # entries). Original dict-based assembly.
+                tracked_by_cam: dict[str, dict[str, NDArray[np.float64]]] = {
+                    cam_name: {
+                        name: np.asarray(pt, dtype=np.float64)[:2]
+                        for name, pt in matched_obs_by_cam[cam_name].to_tracked_points().items()
+                    }
+                    for cam_name in ordered_cam_names
+                }
+                all_point_names: set[str] = set()
+                for pts in tracked_by_cam.values():
+                    all_point_names.update(pts.keys())
+                point_names_list: list[str] = sorted(
+                    name for name in all_point_names
+                    if sum(1 for cam in ordered_cam_names if name in tracked_by_cam[cam]) >= 2
+                )
+                if not point_names_list:
+                    return {}
+                point_names_seq = tuple(point_names_list)
+                stacked = np.full(
+                    (n_cameras, len(point_names_seq), 2), np.nan, dtype=np.float64
+                )
+                for cam_idx, cam_name in enumerate(ordered_cam_names):
+                    cam_points = tracked_by_cam[cam_name]
+                    for pt_idx, pt_name in enumerate(point_names_seq):
+                        if pt_name in cam_points:
+                            stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
+            self._timing_buckets["build_stacked"].append((time.perf_counter() - _t0) * 1e3)
 
             # Triangulate the single frame
+            _t0 = time.perf_counter()
             triangulation_result = sub_triangulator.triangulate(
                 data2d=stacked,
                 config=triangulation_config,
             )
             points_3d = triangulation_result.points_3d  # (n_points, 3)
+            self._timing_buckets["triangulate"].append((time.perf_counter() - _t0) * 1e3)
 
             # Reprojection error gate (in pixels, mean across valid cameras)
+            _t0 = time.perf_counter()
             mean_reproj_error = sub_triangulator.mean_reprojection_error(
                 points_3d=points_3d,
                 points_2d_pixel=stacked,
@@ -262,12 +305,30 @@ class CalibrationStateTracker:
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):
                 points_3d[bad_mask] = np.nan
+            self._timing_buckets["mean_reproj_error"].append((time.perf_counter() - _t0) * 1e3)
 
             # Build result dict, excluding NaN points
-            result: dict[str, NDArray[np.float64]] = {}
-            for i, name in enumerate(point_names):
-                if not np.isnan(points_3d[i]).any():
-                    result[name] = points_3d[i]
+            _t0 = time.perf_counter()
+            valid_pt_mask = ~np.isnan(points_3d).any(axis=1)
+            result: dict[str, NDArray[np.float64]] = {
+                name: points_3d[i]
+                for i, name in enumerate(point_names_seq)
+                if valid_pt_mask[i]
+            }
+            self._timing_buckets["result_dict"].append((time.perf_counter() - _t0) * 1e3)
+
+            self._timing_call_count += 1
+            if self._timing_call_count % 100 == 0:
+                lines = ["  try_triangulate sub-timing (ms, last 100 calls):"]
+                for k, vals in self._timing_buckets.items():
+                    if vals:
+                        import statistics
+                        lines.append(
+                            f"    {k:<22} mean={statistics.mean(vals):.2f}  "
+                            f"p50={statistics.median(vals):.2f}  max={max(vals):.2f}"
+                        )
+                        vals.clear()
+                logger.info("\n".join(lines))
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0

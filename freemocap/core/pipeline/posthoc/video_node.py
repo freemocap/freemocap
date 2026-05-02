@@ -141,10 +141,13 @@ class VideoNode(SourceNode):
         if not video_reader.isOpened():
             raise RuntimeError(f"Failed to open video file: {video_path}")
         frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        progress_message = VideoNodeProgressMessage(video_id=video_id,
-                                                    pipeline_id=pipeline_id,
-                                                    frame_count=frame_count,)
-        video_progress_pub.put(progress_message)
+        video_progress_pub.put(VideoNodeProgressMessage(
+            video_id=video_id,
+            pipeline_id=pipeline_id,
+            phase="collecting_frames",
+            progress_fraction=0.0,
+            detail=f"Video {video_id}: preparing {frame_count} frames",
+        ))
 
         # Set up annotation pipeline if requested
         annotator = None
@@ -190,6 +193,7 @@ class VideoNode(SourceNode):
         )
 
         frame_number: int = 0
+        _error_occurred = False
         try:
             with tqdm(
                 total=frame_count,
@@ -238,7 +242,13 @@ class VideoNode(SourceNode):
 
                     success, image = video_reader.read()
                     frame_number += 1
-                    video_progress_pub.put(progress_message.increment())
+                    video_progress_pub.put(VideoNodeProgressMessage(
+                        video_id=video_id,
+                        pipeline_id=pipeline_id,
+                        phase="detecting_frames",
+                        progress_fraction=frame_number / frame_count,
+                        detail=f"Video {video_id}: {frame_number}/{frame_count} frames",
+                    ))
                     pbar.update(1)
 
             logger.info(
@@ -250,17 +260,27 @@ class VideoNode(SourceNode):
             logger.exception(
                 f"Exception in VideoNode for {video_path.stem}: {e}"
             )
-            progress_message.error = True
-            progress_message.error_message = f"{type(e).__name__}: {e}"
-            video_progress_pub.put(progress_message)
+            _error_occurred = True
+            video_progress_pub.put(VideoNodeProgressMessage(
+                video_id=video_id,
+                pipeline_id=pipeline_id,
+                phase="failed",
+                progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
+                detail=f"{type(e).__name__}: {e}",
+            ))
             ipc.shutdown_pipeline()
             # Do NOT re-raise: unhandled exceptions here kill the worker, and the WorkerRegistry
             # child monitor escalates that to a parent-process shutdown (exit code 15).
             # The error is surfaced via the progress message so the frontend can report it.
         finally:
             video_reader.release()
-            progress_message.complete = True
-            video_progress_pub.put(progress_message)
+            if not _error_occurred:
+                video_progress_pub.put(VideoNodeProgressMessage(
+                    video_id=video_id,
+                    pipeline_id=pipeline_id,
+                    phase="complete",
+                    progress_fraction=1.0,
+                ))
             if video_writer is not None:
                 video_writer.release()
             if base_reader is not None:

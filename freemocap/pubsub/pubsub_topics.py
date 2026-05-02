@@ -6,7 +6,7 @@ via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
@@ -171,42 +171,21 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
 @dataclass
 class PipelineProgressMessage(TopicMessageABC):
-    pipeline_id: PipelineIdString = ""
-    frame_count: int = 0
-    last_processed: FrameNumberInt = -1
-    working: bool = False
-    complete: bool = False
-    error: bool = False
-    error_message: str | None = None
-
-    def __post_init__(self) -> None:
-        if self.frame_count < 0:
-            raise ValueError(f"frame_count must be >= 0, got {self.frame_count}")
-
-    def increment(self) -> Self:
-        if not self.working:
-            self.working = True
-        if self.last_processed + 1 >= self.frame_count:
-            self.complete = True
-            self.working = False
-        if self.last_processed > self.frame_count:
-            raise ValueError(
-                f"Cannot increment last_processed beyond frame_count: "
-                f"{self.last_processed} + 1 > {self.frame_count}"
-            )
-        self.last_processed += 1
-        return self
-
+    message_type: str = "posthoc_progress"
+    pipeline_id: str = ""
+    phase: str = ""  # collecting_frames | detecting_frames | all_frames_collected | running_task | complete | failed
+    progress_fraction: float = 0.0
+    detail: str = ""
 
 
 @dataclass
 class VideoNodeProgressMessage(PipelineProgressMessage):
-    video_id: VideoIdString = ""
+    video_id: str = ""
 
 
 @dataclass
 class AggregatorNodeProgressMessage(PipelineProgressMessage):
-    running_aggregation_task: bool = False
+    pass
 
 
 # ---------------------------------------------------------------------------

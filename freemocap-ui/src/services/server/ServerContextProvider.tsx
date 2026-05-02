@@ -362,6 +362,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 try {
                     const jsonData = JSON.parse(event.data);
 
+                    // Diagnostic: log all non-trivial message types
+                    if (jsonData.message_type && jsonData.message_type !== 'frontend_payload' && jsonData.message_type !== 'log_record') {
+                        console.log('[WS] received message_type:', jsonData.message_type, jsonData);
+                    }
+
                     // Handle log records
                     if (isLogRecord(jsonData)) {
                         logStoreRef.current.add(jsonData);
@@ -390,6 +395,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFrontendPayload(jsonData)) {
                         pendingJsonPayloadRef.current = jsonData;
                     } else if (isPosthocProgress(jsonData)) {
+                        console.log('[WS] posthoc_progress dispatching:', jsonData.pipeline_id, jsonData.phase, jsonData.progress_fraction);
                         const progress = Math.round(jsonData.progress_fraction * 100);
                         if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== progress) {
                             lastPipelineProgressRef.current[jsonData.pipeline_id] = progress;
@@ -410,6 +416,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                 detail: jsonData.detail,
                             }));
                         }
+                    } else {
+                        console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);

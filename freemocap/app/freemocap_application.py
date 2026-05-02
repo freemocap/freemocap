@@ -140,14 +140,17 @@ class FreemocapApplication:
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
-    ) ->tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
+    ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
         self.posthoc_pipeline_manager.evict_completed()
+
+        # Collect posthoc progress regardless of whether a realtime pipeline is running
+        posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
         active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
 
         if not active_pipelines:
-            # Camera-only path
+            # Camera-only / posthoc-only path
             results: list[FrontendImagePacket] = []
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
                     if_newer_than=if_newer_than
@@ -156,18 +159,16 @@ class FreemocapApplication:
                 results.append(FrontendImagePacket(
                     images_bytearray=image_bytes,
                     multiframe_timestamp=mf_timestamp,
-                    frontend_payload=FrontendPayload(camera_group_id=cg_id,frame_number=frame_number),
+                    frontend_payload=FrontendPayload(camera_group_id=cg_id, frame_number=frame_number),
                 ))
-            return results, []
+            return results, posthoc_progress
 
-        # Pipeline path — delegate to manager, which also returns FrontendImagePacket
-        realtime_pipeline_packets =  self.realtime_pipeline_manager.get_latest_frontend_payloads(
+        # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
+        realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
             if_newer_than=if_newer_than
         )
 
-        posthoc_pipeline_progress_messages = self.posthoc_pipeline_manager.get_progress_updates()
-
-        return realtime_pipeline_packets, posthoc_pipeline_progress_messages
+        return realtime_pipeline_packets, posthoc_progress
 
     # ------------------------------------------------------------------
     # Lifecycle

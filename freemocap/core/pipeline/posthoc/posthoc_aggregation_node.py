@@ -116,9 +116,12 @@ class PosthocAggregationNode(AggregatorNode):
         video_ids = list(video_metadata.keys())
         total_expected = len(frame_numbers) * len(video_ids)
 
-        progress_message = AggregatorNodeProgressMessage(pipeline_id=pipeline_id,
-                                                         frame_count=total_expected)
-        aggregator_progress_pub.put(progress_message)
+        aggregator_progress_pub.put(AggregatorNodeProgressMessage(
+            pipeline_id=pipeline_id,
+            phase="all_frames_collected",
+            progress_fraction=0.0,
+            detail=f"Waiting for {total_expected} observations from video nodes",
+        ))
         logger.debug(
             f"PosthocAggregationNode [{pipeline_id}] starting — "
             f"expecting {len(frame_numbers)} frames × {len(video_ids)} videos "
@@ -132,6 +135,7 @@ class PosthocAggregationNode(AggregatorNode):
         got_all_by_frame: dict[FrameNumberInt, bool] = {frame_number: False for frame_number in frame_numbers}
         received_count: int = 0
 
+        _error_occurred = True  # pessimistic; cleared to False only on clean completion
         try:
             with tqdm(
                 total=total_expected,
@@ -194,37 +198,46 @@ class PosthocAggregationNode(AggregatorNode):
                     observations[vid_id] = output_msg.observation
                 observations_by_frame.append(observations)
 
-            progress_message.running_aggregation_task = True
-            aggregator_progress_pub.put(progress_message)
+            aggregator_progress_pub.put(AggregatorNodeProgressMessage(
+                pipeline_id=pipeline_id,
+                phase="running_task",
+                progress_fraction=0.5,
+                detail="Running aggregation task...",
+            ))
 
             aggregation_task_fn(
                 frame_observations=observations_by_frame,
                 recording_info=recording_info,
                 video_metadata=video_metadata,
-
             )
-            progress_message.running_aggregation_task = False
-            aggregator_progress_pub.put(progress_message)
 
             logger.info(f"PosthocAggregationNode [{pipeline_id}] — task completed")
+            _error_occurred = False
 
         except Exception as e:
             logger.error(
                 f"Exception in PosthocAggregationNode [{pipeline_id}]: {e}",
                 exc_info=True,
             )
-            progress_message.error = True
-            progress_message.error_message = f"{type(e).__name__}: {e}"
-            progress_message.running_aggregation_task = False
-            aggregator_progress_pub.put(progress_message)
+            _error_occurred = True
+            aggregator_progress_pub.put(AggregatorNodeProgressMessage(
+                pipeline_id=pipeline_id,
+                phase="failed",
+                progress_fraction=0.0,
+                detail=f"{type(e).__name__}: {e}",
+            ))
             ipc.shutdown_pipeline()
             # Do NOT re-raise: an unhandled exception here kills the worker, and the WorkerRegistry
             # child monitor treats that as a fatal failure and shuts down the parent server.
-            # The error has already been surfaced via the progress message (error=True, error_message=...)
-            # so the frontend can display a meaningful message to the user.
+            # The error has already been surfaced via the progress message so the frontend can
+            # display a meaningful message to the user.
         finally:
-            progress_message.complete = True
-            aggregator_progress_pub.put(progress_message)
+            if not _error_occurred:
+                aggregator_progress_pub.put(AggregatorNodeProgressMessage(
+                    pipeline_id=pipeline_id,
+                    phase="complete",
+                    progress_fraction=1.0,
+                ))
             logger.debug(
                 f"PosthocAggregationNode [{pipeline_id}] exiting"
             )

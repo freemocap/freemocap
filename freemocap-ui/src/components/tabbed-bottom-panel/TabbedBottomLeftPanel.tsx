@@ -9,7 +9,7 @@ export default function TabbedBottomLeftPanel({isCollapsed = false}: { isCollaps
     return (
         <TabbedContent tabs={[
             {label: 'Framerate', content: <FramerateViewerPanel/>},
-            // {label: 'Pipelines', content: <PipelineProgressPanel/>}, // disabled for now, we'll fix this later
+            {label: 'Pipelines', content: <PipelineProgressPanel/>},
         ]}/>
     );
 }

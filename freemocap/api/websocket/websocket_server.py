@@ -149,10 +149,6 @@ class WebsocketServer:
                 self._logs_relay(),
                 name="WebsocketLogsRelay",
             ),
-            # asyncio.create_task(
-            #     self._posthoc_progress_relay(),
-            #     name="WebsocketPosthocProgressRelay",
-            # ),
             asyncio.create_task(
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
@@ -237,6 +233,9 @@ class WebsocketServer:
                             framerate_source="Display")
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
 
+                if progress_updates:
+                    logger.info(f"Sending {len(progress_updates)} posthoc progress update(s): "
+                                f"{[f'{m.pipeline_id}/{m.phase}/{m.progress_fraction:.2f}' for m in progress_updates]}")
                 for update_message in progress_updates:
                     await self._send_msgspec_json(update_message)
 
@@ -303,36 +302,6 @@ class WebsocketServer:
             )
             self._websocket_should_continue = False
             raise
-
-    # async def _posthoc_progress_relay(self) -> None:
-    #     logger.info("Starting posthoc progress relay...")
-    #     try:
-    #         while self.should_continue:
-    #             if not progress_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-    #                 try:
-    #                     msg = progress_queue.get_nowait()
-    #                 except Exception:
-    #                     continue
-    #                 payload = {
-    #                     "message_type": WebsocketMessageType.POSTHOC_PROGRESS,
-    #                     "pipeline_id": msg.pipeline_id,
-    #                     "phase": msg.phase,
-    #                     "progress_fraction": msg.progress_fraction,
-    #                     "detail": msg.detail,
-    #                 }
-    #                 await self._send_msgspec_json(payload)
-    #             else:
-    #                 await await_10ms()
-    #     except asyncio.CancelledError:
-    #         logger.debug("Posthoc progress relay task cancelled")
-    #     except WebSocketDisconnect:
-    #         logger.info("Client disconnected, ending posthoc progress relay task...")
-    #     except Exception as e:
-    #         logger.exception(
-    #             f"Error in posthoc progress relay: {e.__class__.__name__}: {e}"
-    #         )
-    #         self._websocket_should_continue = False
-    #         raise
 
     async def _client_message_handler(self):
         """Handle messages from the client, including settings messages."""

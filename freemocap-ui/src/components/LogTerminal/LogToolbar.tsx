@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {alpha, Box, IconButton, ToggleButton, ToggleButtonGroup, Tooltip, useTheme} from '@mui/material';
 import {
     ContentCopy as ContentCopyIcon,
@@ -29,7 +29,7 @@ interface Props {
     onToggleSearch: () => void;
 }
 
-export const LogToolbar: React.FC<Props> = ({
+export const LogToolbar = memo(function LogToolbar({
     snapshot,
     isPaused,
     copyFeedback,
@@ -42,7 +42,7 @@ export const LogToolbar: React.FC<Props> = ({
     onSaveToDisk,
     onScrollToBottom,
     onToggleSearch,
-}) => {
+}: Props) {
     const theme = useTheme();
     const {t} = useTranslation();
 
@@ -168,4 +168,10 @@ export const LogToolbar: React.FC<Props> = ({
             </Box>
         </Box>
     );
-};
+}, (prev, next) =>
+    prev.snapshot.version  === next.snapshot.version &&
+    prev.isPaused          === next.isPaused         &&
+    prev.copyFeedback      === next.copyFeedback     &&
+    prev.showSearch        === next.showSearch       &&
+    prev.selectedLevels    === next.selectedLevels,
+);

@@ -8,7 +8,7 @@ class CameraNodeConfig(BaseModel):
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
     charuco_detector_config: CharucoDetectorConfig|None = Field(default_factory=CharucoDetectorConfig)
-    skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="lightweight",
+    skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="performance",
                                                                                                                 confidence_threshold=5))
     # skeleton_detector_config: LegacyMediapipeDetectorConfig|None = Field(default_factory=LegacyMediapipeDetectorConfig)
 

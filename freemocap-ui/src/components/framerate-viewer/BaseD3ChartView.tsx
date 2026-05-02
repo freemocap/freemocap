@@ -41,7 +41,7 @@ type BaseChartViewProps = {
 let nextClipId = 0
 
 /** How often (ms) to run the imperative D3 data-update. */
-const CHART_UPDATE_INTERVAL_MS = 500
+const CHART_UPDATE_INTERVAL_MS = 1000
 
 export default memo(function BaseD3ChartView({
     title,

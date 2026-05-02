@@ -244,7 +244,3 @@ export const {
     countdownSet,
 } = recordingSlice.actions;
 
-export const selectPlannedRecordingName = (state: RootState) => state.recording.computed.recordingName;
-export const selectPlannedRecordingDirectory = (state: RootState) => state.recording.recordingDirectory;
-export const selectHasPlannedRecordingName = (state: RootState): boolean =>
-    state.recording.computed.recordingName.length > 0;

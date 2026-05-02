@@ -16,7 +16,6 @@ import {
     selectActiveRecordingOrigin,
     selectActiveRecordingStructure,
 } from '@/store/slices/active-recording/active-recording-slice';
-import {selectPlannedRecordingDirectory, selectPlannedRecordingName} from '@/store/slices/recording';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import {useBlender} from "@/hooks/useBlender";
@@ -49,9 +48,6 @@ const ActiveRecordingPage: React.FC = () => {
     const fullPath = useAppSelector(selectActiveRecordingFullPath);
     const origin = useAppSelector(selectActiveRecordingOrigin);
     const structure = useAppSelector(selectActiveRecordingStructure);
-    const plannedName = useAppSelector(selectPlannedRecordingName);
-    const plannedDirectory = useAppSelector(selectPlannedRecordingDirectory);
-
     const {
         status,
         isLoading: statusLoading,
@@ -102,31 +98,8 @@ const ActiveRecordingPage: React.FC = () => {
                     {!recordingName ? (
                         <Box sx={{py: 4, px: 2}}>
                             <Stack spacing={2} alignItems="flex-start">
-                                <Stack direction="row" alignItems="center" spacing={1}>
-                                    <Typography
-                                        variant="h6"
-                                        sx={{fontFamily: MONO_FONT, fontWeight: 600, opacity: 0.5}}
-                                    >
-                                        {plannedName || '—'}
-                                    </Typography>
-                                    <Chip
-                                        label="Pending capture"
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{height: 20, fontSize: '0.7rem', borderStyle: 'dashed', opacity: 0.7}}
-                                    />
-                                </Stack>
-                                {plannedName && (
-                                    <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{fontFamily: MONO_FONT}}
-                                    >
-                                        {plannedDirectory}/{plannedName}
-                                    </Typography>
-                                )}
                                 <Typography variant="body2" color="text.disabled" sx={{fontStyle: 'italic'}}>
-                                    This folder will be created when you start your first recording.
+                                    No active recording. This folder will be created when you start recording.
                                 </Typography>
                                 <Stack direction="row" spacing={1} sx={{mt: 1}}>
                                     <Button variant="outlined" onClick={() => navigate('/streaming')}>

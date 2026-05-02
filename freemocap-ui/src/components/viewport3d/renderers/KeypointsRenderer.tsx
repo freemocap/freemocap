@@ -2,12 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 import {
     Color,
     InstancedMesh,
-    MeshStandardMaterial,
+    MeshBasicMaterial,
     Object3D,
     SphereGeometry,
     Vector3,
 } from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
@@ -34,18 +34,17 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const server = useServer();
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
+    const { invalidate } = useThree();
     const meshRef = useRef<InstancedMesh>(null);
     const pointsRef = useRef<Record<string, Point3d>>({});  // plain object, matches wire format
     const dirtyRef = useRef(false);
     const nameToIdx = useRef<Map<string, number>>(new Map());
     const nextIdx = useRef(0);
 
-    const geo = useMemo(() => new SphereGeometry(50, 8, 6), []);
-    const mat = useMemo(() => new MeshStandardMaterial({
-        color: "#ffffff",
-        // roughness: 0.4,
-        // metalness: 0.3,
-    }), []);
+    // Low-poly sphere (6×4 = 24 tris vs 8×6 = 48). MeshBasicMaterial skips all
+    // lighting calculations — significant savings at 1024 instanced meshes.
+    const geo = useMemo(() => new SphereGeometry(50, 6, 4), []);
+    const mat = useMemo(() => new MeshBasicMaterial({ color: "#ffffff" }), []);
 
     useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
@@ -72,6 +71,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         return subscribeFn((pts: Record<string, Point3d>) => {
             pointsRef.current = pts;
             dirtyRef.current = true;
+            invalidate();
             for (const name of Object.keys(pts)) {
                 // Face points are rendered by FaceRenderer, not here.
                 if (!nameToIdx.current.has(name)
@@ -81,7 +81,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
                 }
             }
         });
-    }, [keypointsSource, subscribeKey]);
+    }, [keypointsSource, subscribeKey, invalidate]);
 
     useEffect(() => {
         const mesh = meshRef.current;
@@ -101,6 +101,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     useFrame(() => {
         const mesh = meshRef.current;
         if (!mesh || !dirtyRef.current) return;
+        const t0 = performance.now();
         const pts = pointsRef.current;
         let count = 0;
 
@@ -129,6 +130,8 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
         dirtyRef.current = false;
         statsRef.current[statsKey] = count;
+        const elapsed = performance.now() - t0;
+        if (elapsed > 8) console.warn(`KeypointLayer (${statsKey}) useFrame: ${elapsed.toFixed(1)}ms`);
     });
 
     return (

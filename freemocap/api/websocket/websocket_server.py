@@ -27,6 +27,9 @@ from skellycam.core.recorders.framerate_tracker import FramerateTracker, Current
 logger = logging.getLogger(__name__)
 
 BACKPRESSURE_WARNING_THRESHOLD: int = 100
+# When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
+# At 30 fps, 30 frames ≈ 1 second of tolerated lag before the aggregator is unblocked.
+BACKPRESSURE_RESET_THRESHOLD: int = 30
 
 
 def _msgspec_enc_hook(obj: object) -> object:
@@ -175,15 +178,23 @@ class WebsocketServer:
         try:
             while self.should_continue:
                 if not self.last_frame_acknowledged():
-                    # Still waiting for the frontend to ack the last frame.
-                    # Poll at a low rate — the ack comes in via the
-                    # _client_message_handler task, so we just need to
-                    # yield control often enough to notice it.
-                    await await_10ms()
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
-                    if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
-                        logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
-                    continue
+                    if backpressure >= BACKPRESSURE_RESET_THRESHOLD:
+                        # Frontend is too far behind. Reset rather than stalling the aggregator
+                        # indefinitely — a stalled aggregator causes camera-node queues to grow
+                        # without bound and eventually OOM the process.
+                        logger.warning(
+                            f"Frontend ack lag reached {backpressure} frames "
+                            f"(threshold={BACKPRESSURE_RESET_THRESHOLD}) — resetting ack counter"
+                        )
+                        self.last_received_frontend_confirmation = self.last_sent_frame_number
+                        # Fall through to send the next frame.
+                    else:
+                        # Still within tolerable lag — yield and wait for the ack.
+                        await await_10ms()
+                        if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
+                            logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
+                        continue
 
                 # Ack received — block (off the event loop) until the
                 # aggregator signals a processed frame is ready, then pull

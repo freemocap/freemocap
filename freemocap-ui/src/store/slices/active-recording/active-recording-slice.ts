@@ -1,10 +1,6 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
 import {startRecording, stopRecording} from '@/store/slices/recording/recording-thunks';
-import {
-    selectPlannedRecordingDirectory,
-    selectPlannedRecordingName,
-} from '@/store/slices/recording/recording-slice';
 import {buildRecordingStructure, RecordingStructure} from './recording-structure';
 import type {RecordingLayoutPresetName} from './layout-presets/layout-presets';
 import {loadFromStorage} from '@/store/persistence';
@@ -139,12 +135,8 @@ export const selectActiveRecordingFullPath = createSelector(
 );
 
 export const selectEffectiveRecordingPath = createSelector(
-    [selectActiveRecordingFullPath, selectPlannedRecordingDirectory, selectPlannedRecordingName],
-    (activePath, plannedDir, plannedName): string | null => {
-        if (activePath) return activePath;
-        if (plannedName && plannedDir) return `${plannedDir}/${plannedName}`;
-        return null;
-    },
+    [selectActiveRecordingFullPath],
+    (activePath): string | null => activePath ?? null,
 );
 
 export const selectActiveRecordingCalibrationTomlPath = createSelector(

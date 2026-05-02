@@ -5,7 +5,7 @@ import {
     LineBasicMaterial,
     LineSegments,
 } from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useServer } from "@/services";
 import { Point3d } from "@/components/viewport3d";
 import { useKeypointsSource } from "../KeypointsSourceContext";
@@ -33,11 +33,13 @@ export function ConnectionRenderer() {
     const { getActiveSchema, activeTrackerId, trackerSchemas } = useServer();
     const { subscribeToKeypointsFiltered } = useKeypointsSource();
     const { statsRef } = useViewportState();
+    const { invalidate } = useThree();
     const calibrationConfig = useAppSelector(selectCalibrationConfig);
 
     const linesRef = useRef<LineSegments>(null);
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
     const arucoMarkersRef = useRef<Map<number, (Point3d | undefined)[]>>(new Map());
+    const prevArucoNamesRef = useRef<Set<string>>(new Set());
     const dirtyRef = useRef(false);
 
     // Build the segment list whenever the active schema changes.
@@ -80,11 +82,13 @@ export function ConnectionRenderer() {
                 m.set(name, pt);
             }
             dirtyRef.current = true;
+            invalidate();
         });
-    }, [subscribeToKeypointsFiltered]);
+    }, [subscribeToKeypointsFiltered, invalidate]);
 
     useFrame(() => {
         if (!dirtyRef.current) return;
+        const t0 = performance.now();
         const pts = pointsRef.current;
         const positions = geo.attributes.position.array as Float32Array;
         const vertexColors = geo.attributes.color.array as Float32Array;
@@ -160,21 +164,52 @@ export function ConnectionRenderer() {
         }
 
         // Aruco marker outline squares — 4 orange edges per detected marker.
+        // Only rebuild the marker Map when the set of aruco point names changes.
         const ar = SKELETON_COLORS.aruco.r;
         const ag = SKELETON_COLORS.aruco.g;
         const ab = SKELETON_COLORS.aruco.b;
 
+        const ARUCO_PREFIX = "ArucoMarkerCorner-";
         const arucoMarkers = arucoMarkersRef.current;
-        arucoMarkers.clear();
-        for (const [name, pt] of pts.entries()) {
-            const match = name.match(/^ArucoMarkerCorner-(\d+)-(\d+)$/);
-            if (match) {
-                const markerId = parseInt(match[1]);
-                const cornerIdx = parseInt(match[2]);
+        const prevNames = prevArucoNamesRef.current;
+
+        // Check whether aruco names changed (set comparison by size + membership).
+        let arucoChanged = false;
+        let newArucoCount = 0;
+        for (const name of pts.keys()) {
+            if (!name.startsWith(ARUCO_PREFIX)) continue;
+            newArucoCount++;
+            if (!prevNames.has(name)) { arucoChanged = true; }
+        }
+        if (newArucoCount !== prevNames.size) arucoChanged = true;
+
+        if (arucoChanged) {
+            arucoMarkers.clear();
+            prevNames.clear();
+            for (const [name, pt] of pts.entries()) {
+                if (!name.startsWith(ARUCO_PREFIX)) continue;
+                prevNames.add(name);
+                const rest = name.slice(ARUCO_PREFIX.length);
+                const sep = rest.indexOf("-");
+                if (sep === -1) continue;
+                const markerId = parseInt(rest.slice(0, sep));
+                const cornerIdx = parseInt(rest.slice(sep + 1));
                 if (!arucoMarkers.has(markerId)) {
                     arucoMarkers.set(markerId, [undefined, undefined, undefined, undefined]);
                 }
                 arucoMarkers.get(markerId)![cornerIdx] = pt;
+            }
+        } else {
+            // Names unchanged — just refresh the Point3d references in-place.
+            for (const [name, pt] of pts.entries()) {
+                if (!name.startsWith(ARUCO_PREFIX)) continue;
+                const rest = name.slice(ARUCO_PREFIX.length);
+                const sep = rest.indexOf("-");
+                if (sep === -1) continue;
+                const markerId = parseInt(rest.slice(0, sep));
+                const cornerIdx = parseInt(rest.slice(sep + 1));
+                const corners = arucoMarkers.get(markerId);
+                if (corners) corners[cornerIdx] = pt;
             }
         }
 
@@ -211,6 +246,8 @@ export function ConnectionRenderer() {
         geo.attributes.color.needsUpdate = true;
         dirtyRef.current = false;
         statsRef.current.connections = visibleCount;
+        const elapsed = performance.now() - t0;
+        if (elapsed > 8) console.warn(`ConnectionRenderer useFrame: ${elapsed.toFixed(1)}ms`);
     });
 
     return (

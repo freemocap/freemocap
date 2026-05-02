@@ -1,12 +1,14 @@
 import logging
 import multiprocessing
 from dataclasses import dataclass, field
-from queue import Empty
+from queue import Empty, Full
 from typing import TypeVar, Generic, ClassVar
 
 from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubscriptionQueue
 
 logger = logging.getLogger(__name__)
+
+_TOPIC_QUEUE_MAXSIZE: int = 100  #prevents unbounded growth when consumers lag
 
 
 @dataclass
@@ -31,7 +33,9 @@ class PubSubTopicABC(Generic[MessageType]):
     topic_registry: ClassVar[set[type['PubSubTopicABC']]] = set()
 
     message_type: type[TopicMessageABC] = TopicMessageABC
-    publication: TopicPublicationQueue = field(default_factory=multiprocessing.Queue)
+    publication: TopicPublicationQueue = field(
+        default_factory=lambda: multiprocessing.Queue(maxsize=_TOPIC_QUEUE_MAXSIZE)
+    )
     subscriptions: list[TopicSubscriptionQueue] = field(default_factory=list)
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -45,7 +49,7 @@ class PubSubTopicABC(Generic[MessageType]):
 
     def get_subscription(self) -> TopicSubscriptionQueue:
         """Create and register a new subscription queue."""
-        sub = multiprocessing.Queue()
+        sub = multiprocessing.Queue(maxsize=_TOPIC_QUEUE_MAXSIZE)
         self.subscriptions.append(sub)
         return sub
 
@@ -74,7 +78,17 @@ class PubSubTopicABC(Generic[MessageType]):
             except Empty:
                 break
             for sub in self.subscriptions:
-                sub.put(message)
+                try:
+                    sub.put_nowait(message)
+                except Full:
+                    try:
+                        sub.get_nowait()  # evict oldest to make room
+                    except Empty:
+                        pass
+                    try:
+                        sub.put_nowait(message)
+                    except Full:
+                        pass  # concurrent consumer drained it between our get and put
             relayed += 1
         return relayed
 

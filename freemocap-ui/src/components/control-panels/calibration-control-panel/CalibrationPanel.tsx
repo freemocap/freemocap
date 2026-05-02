@@ -26,10 +26,8 @@ import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
 import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {selectPlannedRecordingName} from "@/store/slices/recording";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
-import {config} from "zod";
 
 export const CalibrationPanel: React.FC = () => {
     const theme = useTheme();
@@ -56,14 +54,8 @@ export const CalibrationPanel: React.FC = () => {
         clearError,
     } = useCalibration();
 
-    // Planned recording info (potential recording when no actual recording exists)
-    const plannedName = useAppSelector(selectPlannedRecordingName);
-
     // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveCalibrationPath = useAppSelector(selectEffectiveRecordingPath);
-
-    // Determine if we're showing a pending (not yet created) recording
-    const isPendingRecording = !calibrationRecordingPath && !!plannedName;
 
     // Auto-poll directory status instead of requiring manual refresh
     const {triggerRefresh, isWatching} = useDirectoryWatcher(
@@ -129,21 +121,17 @@ export const CalibrationPanel: React.FC = () => {
         ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
             ? "Processing..."
-            : isPendingRecording
-                ? "Pending"
-                : directoryInfo?.cameraCalibrationTomlPath
-                    ? "Calibrated"
-                    : "Idle";
+            : directoryInfo?.cameraCalibrationTomlPath
+                ? "Calibrated"
+                : "Idle";
 
     const statusColor = isRecording
         ? theme.palette.error.main
         : isLoading
             ? theme.palette.warning.main
-            : isPendingRecording
-                ? theme.palette.grey[500]
-                : directoryInfo?.cameraCalibrationTomlPath
-                    ? theme.palette.success.main
-                    : theme.palette.grey[600];
+            : directoryInfo?.cameraCalibrationTomlPath
+                ? theme.palette.success.main
+                : theme.palette.grey[600];
 
     return (
         <CollapsibleSidebarSection
@@ -207,7 +195,7 @@ export const CalibrationPanel: React.FC = () => {
                         onChange={handlePathInputChange}
                         fullWidth
                         size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : isPendingRecording ? "Pending capture - will create on record" : "Using default recording directory"}
+                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -252,23 +240,6 @@ export const CalibrationPanel: React.FC = () => {
                         }}
                     />
                     
-                    {/* Pending recording indicator */}
-                    {isPendingRecording && (
-                        <Box sx={{p: 1, borderRadius: 1, bgcolor: theme.palette.action.hover}}>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Chip
-                                    label="Pending capture"
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{height: 18, fontSize: '0.65rem', borderStyle: 'dashed', opacity: 0.7}}
-                                />
-                                <Typography variant="caption" color="text.secondary" sx={{fontFamily: 'monospace'}}>
-                                    {plannedName}
-                                </Typography>
-                            </Stack>
-                        </Box>
-                    )}
-
                     <Button
                         variant="contained"
                         color="secondary"

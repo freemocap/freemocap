@@ -35,7 +35,6 @@ import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarS
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
-import {selectHasPlannedRecordingName} from "@/store/slices/recording";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
@@ -73,14 +72,8 @@ export const MocapPanel: React.FC = () => {
         directoryInfo: calibrationDirectoryInfo,
     } = useCalibration();
 
-    // Whether any planned recording name exists (boolean avoids re-render on every timestamp tick)
-    const hasPlannedName = useAppSelector(selectHasPlannedRecordingName);
-
     // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveMocapPath = useAppSelector(selectEffectiveRecordingPath);
-
-    // Determine if we're showing a pending (not yet created) recording
-    const isPendingRecording = !mocapRecordingPath && hasPlannedName;
 
     // Derive recording ID from path (last folder name)
     const recordingId = useMemo(() => {
@@ -228,21 +221,17 @@ export const MocapPanel: React.FC = () => {
         ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
             ? formatPhase(processingPhase) + " " + processingProgress + "%"
-            : isPendingRecording
-                ? "Pending"
-                : effectiveCalibrationTomlPath
-                    ? "Ready"
-                    : "Idle";
+            : effectiveCalibrationTomlPath
+                ? "Ready"
+                : "Idle";
 
     const statusColor = isRecording
         ? theme.palette.error.main
         : isLoading
             ? theme.palette.warning.main
-            : isPendingRecording
-                ? theme.palette.grey[500]
-                : effectiveCalibrationTomlPath
-                    ? theme.palette.success.main
-                    : theme.palette.grey[600];
+            : effectiveCalibrationTomlPath
+                ? theme.palette.success.main
+                : theme.palette.grey[600];
 
     return (
         <CollapsibleSidebarSection
@@ -293,14 +282,6 @@ export const MocapPanel: React.FC = () => {
                                 <Typography variant="caption" color="text.secondary">
                                     Recording ID
                                 </Typography>
-                                {isPendingRecording && (
-                                    <Chip
-                                        label="Pending capture"
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{height: 18, fontSize: '0.65rem', borderStyle: 'dashed', opacity: 0.7}}
-                                    />
-                                )}
                             </Stack>
                             <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 600}}>
                                 {recordingId}
@@ -343,7 +324,7 @@ export const MocapPanel: React.FC = () => {
                         onChange={handlePathInputChange}
                         fullWidth
                         size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : isPendingRecording ? "Pending capture - will create on record" : "Using default recording directory"}
+                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -392,7 +373,7 @@ export const MocapPanel: React.FC = () => {
                     />
 
                     {/* Recording folder status (collapsed by default) */}
-                    {recordingId && !isPendingRecording && (
+                    {recordingId && (
                         <RecordingStatusPanel
                             status={recordingStatus}
                             isLoading={recordingStatusLoading}

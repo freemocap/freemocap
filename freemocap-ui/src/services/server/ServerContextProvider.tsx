@@ -12,6 +12,7 @@ import {OverlayManager} from "@/services/server/server-helpers/image-overlay/ove
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 import {
+    FrontendPayloadMessage,
     isFramerateUpdate,
     isFrontendPayload,
     isLogRecord,
@@ -88,6 +89,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
 
+    // Last-dispatched progress per pipeline — skip dispatch when value is unchanged
+    const lastPipelineProgressRef = useRef<Record<string, number>>({});
+
     // 3D data refs and subscriber sets
     // Plain Record — matches JSON.parse output directly, no remapping needed.
     const trackedPointsRef = useRef<Record<string, Point3d>>({});
@@ -107,6 +111,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // back-to-back in a single macrotask without yielding.
     // TODO - Check if this is nonsense
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
+    const pendingJsonPayloadRef = useRef<FrontendPayloadMessage | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const frameLoopRef = useRef<number | null>(null);
 
@@ -158,6 +163,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 serverFpsRef.current = null;
                 processingFrameRef.current = false;
                 pendingPayloadRef.current = null;
+                pendingJsonPayloadRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
                 trackedPointsRef.current = {};
@@ -212,9 +218,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 });
             }
 
-            // Composite overlays onto frames before sending to canvas workers
+            // Composite overlays onto frames and dispatch to canvas workers in parallel.
             const overlayManager = overlayManagerRef.current!;
-            for (const frameData of frames) {
+            await Promise.all(frames.map(async (frameData) => {
                 const charucoObs = charucoEnabledRef.current
                     ? latestCharucoRef.current.get(frameData.cameraId) ?? null
                     : null;
@@ -238,7 +244,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     frameData.cameraId,
                     compositeBitmap,
                 );
-            }
+            }));
 
             if (frameNumbers.size > 0) {
                 const maxFrameNumber = Math.max(...Array.from(frameNumbers));
@@ -246,23 +252,115 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
-        // requestAnimationFrame(rAF)-driven processing loop. Runs on its own macrotask boundary,
-        // so createImageBitmap promises can resolve without being starved
-        // by the WebSocket onmessage dispatch loop.
-        //TODO - check if this is nonsense
-        const processFrameLoop = async (): Promise<void> => {
+        // Dispatches a buffered frontend_payload to all 3D-scene subscribers.
+        // Called from the rAF loop (not from the WebSocket handler) so subscriber
+        // work happens during the animation frame, not mid-message-storm.
+        let lastFrontendFrameTime = 0;
+        const frontendDurations: number[] = [];
+        const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
+            if (payload.charuco_overlays) {
+                for (const [cameraId, charuco] of Object.entries(payload.charuco_overlays)) {
+                    latestCharucoRef.current.set(cameraId, charuco as CharucoObservation);
+                }
+            }
+            if (payload.skeleton_overlays) {
+                for (const [cameraId, skeleton] of Object.entries(payload.skeleton_overlays)) {
+                    latestMediapipeRef.current.set(cameraId, skeleton as MediapipeObservation);
+                }
+            }
+
+            if (payload.keypoints_raw) {
+                trackedPointsRef.current = payload.keypoints_raw as Record<string, Point3d>;
+                for (const cb of trackedPointsSubscribersRef.current) {
+                    cb(trackedPointsRef.current);
+                }
+                // Measure display (browser-side) framerate from actual packet arrival times.
+                const now = performance.now();
+                if (lastFrontendFrameTime > 0) {
+                    const dur = now - lastFrontendFrameTime;
+                    frontendDurations.push(dur);
+                    if (frontendDurations.length > 30) frontendDurations.shift();
+                    if (frontendDurations.length >= 2) {
+                        let sum = 0, min = Infinity, max = -Infinity;
+                        for (const d of frontendDurations) {
+                            sum += d;
+                            if (d < min) min = d;
+                            if (d > max) max = d;
+                        }
+                        const mean = sum / frontendDurations.length;
+                        framerateStoreRef.current.updateFrontend({
+                            mean_frame_duration_ms: mean,
+                            mean_frames_per_second: mean > 0 ? 1000 / mean : 0,
+                            frame_duration_mean: mean,
+                            frame_duration_median: mean,
+                            frame_duration_min: min,
+                            frame_duration_max: max,
+                            frame_duration_stddev: 0,
+                            frame_duration_coefficient_of_variation: 0,
+                            calculation_window_size: frontendDurations.length,
+                            framerate_source: 'Display (browser)',
+                        });
+                    }
+                }
+                lastFrontendFrameTime = now;
+            }
+
+            if (payload.keypoints_filtered) {
+                keypointsFilteredRef.current = payload.keypoints_filtered as Record<string, Point3d>;
+                for (const cb of keypointsFilteredSubscribersRef.current) {
+                    cb(keypointsFilteredRef.current);
+                }
+            }
+
+            if (payload.rigid_body_poses) {
+                const posesMap = new Map<string, RigidBodyPose>();
+                for (const [key, pose] of Object.entries(payload.rigid_body_poses)) {
+                    posesMap.set(key, pose as RigidBodyPose);
+                }
+                rigidBodiesRef.current = posesMap;
+                for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
+            }
+        };
+
+        // rAF-driven processing loop. Non-async so the next rAF is always
+        // registered immediately — the async decode+dispatch chain runs via
+        // .then() and never blocks rAF re-registration.
+        let lastRafTime = 0;
+        let decodeStartTime = 0;
+        const processFrameLoop = (): void => {
+            const now = performance.now();
+            const rafGap = lastRafTime > 0 ? now - lastRafTime : 0;
+            lastRafTime = now;
+            if (rafGap > 50) {
+                // Still decoding from last frame? Gap is decode-caused. Otherwise it's main-thread jank (R3F, GC, etc.).
+                const tag = processingFrameRef.current
+                    ? `decode-busy (started ${(now - decodeStartTime).toFixed(1)}ms ago)`
+                    : 'main-thread jank';
+                console.warn(`rAF gap: ${rafGap.toFixed(1)}ms [${tag}]`);
+            }
+
+            // Dispatch buffered JSON payload (keypoints, overlays, rigid bodies).
+            // Processed here rather than in the WebSocket handler to keep the
+            // handler minimal and move subscriber work into the animation frame.
+            if (pendingJsonPayloadRef.current !== null) {
+                const jsonPayload = pendingJsonPayloadRef.current;
+                pendingJsonPayloadRef.current = null;
+                dispatchJsonPayload(jsonPayload);
+            }
+
             if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
                 const payload = pendingPayloadRef.current;
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
-                try {
-                    const result = await frameProcessorRef.current!.processFramePayload(payload);
-                    await dispatchFrames(result);
-                } catch (error) {
-                    console.error('Error processing frame:', error);
-                } finally {
-                    processingFrameRef.current = false;
-                }
+                decodeStartTime = performance.now();
+                frameProcessorRef.current!.processFramePayload(payload)
+                    .then(result => {
+                        const decodeMs = performance.now() - decodeStartTime;
+                        if (decodeMs > 20) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
+                        return dispatchFrames(result);
+                    })
+                    .catch(err => console.error('Error processing frame:', err))
+                    .finally(() => { processingFrameRef.current = false; });
             }
             frameLoopRef.current = requestAnimationFrame(processFrameLoop);
         };
@@ -287,8 +385,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     if (isLogRecord(jsonData)) {
                         logStoreRef.current.add(jsonData);
                     }
-                    // Handle tracker schema handshake (sent once on connect,
-                    // or again when the pipeline reconfigures). Passed straight
+                        // Handle tracker schema handshake (sent once on connect,
+                        // or again when the pipeline reconfigures). Passed straight
                     // through to the 2D overlay renderer via OverlayManager.
                     else if (isTrackerSchemas(jsonData)) {
                         const schemas = jsonData.schemas;
@@ -300,68 +398,37 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         setActiveTrackerId(firstId);
                         overlayManagerRef.current?.setTrackerSchemas(schemas, firstId ?? undefined);
                     }
-                    // Handle framerate updates
+                    // Handle framerate updates — backend_framerate stored; frontend_framerate
+                    // is now measured locally in dispatchJsonPayload so we skip it here.
                     else if (isFramerateUpdate(jsonData)) {
-                        // Store backend FPS in ref for fast non-reactive access
                         serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
-                        // Update mutable framerate store (no Redux, no re-renders)
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
-                        framerateStoreRef.current.updateFrontend(jsonData.frontend_framerate);
                     }
-                    // Handle charuco overlay data
+                    // Buffer frontend_payload for dispatch in the rAF loop.
+                    // Older unprocessed payloads are overwritten (keep latest only).
                     else if (isFrontendPayload(jsonData)) {
-                        if (jsonData.charuco_overlays) {
-                            for (const [cameraId, charuco] of Object.entries(jsonData.charuco_overlays)) {
-                                latestCharucoRef.current.set(cameraId, charuco as CharucoObservation);
-                            }
+                        pendingJsonPayloadRef.current = jsonData;
+                    } else if (isPosthocProgress(jsonData)) {
+                        const progress = Math.round(jsonData.progress_fraction * 100);
+                        if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== progress) {
+                            lastPipelineProgressRef.current[jsonData.pipeline_id] = progress;
+                            const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+                                collecting_frames: PipelinePhase.SETTING_UP,
+                                detecting_frames: PipelinePhase.PROCESSING_VIDEOS,
+                                all_frames_collected: PipelinePhase.AGGREGATING,
+                                processing: PipelinePhase.AGGREGATING,
+                                running_task: PipelinePhase.AGGREGATING,
+                                complete: PipelinePhase.COMPLETE,
+                                failed: PipelinePhase.FAILED,
+                            };
+                            store.dispatch(pipelineProgressUpdated({
+                                pipelineId: jsonData.pipeline_id,
+                                pipelineType: PipelineType.MOCAP, // TODO: backend should send type
+                                phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+                                progress,
+                                detail: jsonData.detail,
+                            }));
                         }
-                        if (jsonData.skeleton_overlays) {
-                            for (const [cameraId, skeleton] of Object.entries(jsonData.skeleton_overlays)) {
-                                latestMediapipeRef.current.set(cameraId, skeleton as MediapipeObservation);
-                            }
-                        }
-
-                        // Keypoints arrive as plain JSON objects — assign directly, no remapping.
-                        if (jsonData.keypoints_raw) {
-                            trackedPointsRef.current = jsonData.keypoints_raw as Record<string, Point3d>;
-                            for (const cb of trackedPointsSubscribersRef.current) {
-                                cb(trackedPointsRef.current);
-                            }
-                        }
-
-                        if (jsonData.keypoints_filtered) {
-                            keypointsFilteredRef.current = jsonData.keypoints_filtered as Record<string, Point3d>;
-                            for (const cb of keypointsFilteredSubscribersRef.current) {
-                                cb(keypointsFilteredRef.current);
-                            }
-                        }
-
-                        if (jsonData.rigid_body_poses) {
-                            const posesMap = new Map<string, RigidBodyPose>();
-                            for (const [key, pose] of Object.entries(jsonData.rigid_body_poses)) {
-                                posesMap.set(key, pose as RigidBodyPose);
-                            }
-                            rigidBodiesRef.current = posesMap;
-                            for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
-                        }
-                    }
-                    else if (isPosthocProgress(jsonData)) {
-                        const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
-                            collecting_frames: PipelinePhase.SETTING_UP,
-                            detecting_frames: PipelinePhase.PROCESSING_VIDEOS,
-                            all_frames_collected: PipelinePhase.AGGREGATING,
-                            processing: PipelinePhase.AGGREGATING,
-                            running_task: PipelinePhase.AGGREGATING,
-                            complete: PipelinePhase.COMPLETE,
-                            failed: PipelinePhase.FAILED,
-                        };
-                        store.dispatch(pipelineProgressUpdated({
-                            pipelineId: jsonData.pipeline_id,
-                            pipelineType: PipelineType.MOCAP, // TODO: backend should send type
-                            phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
-                            progress: Math.round(jsonData.progress_fraction * 100),
-                            detail: jsonData.detail,
-                        }));
                     }
                 } catch (error) {
                     console.error('Error parsing JSON message:', error);
@@ -420,12 +487,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const subscribeToKeypointsRaw = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
         trackedPointsSubscribersRef.current.add(cb);
-        return () => { trackedPointsSubscribersRef.current.delete(cb); };
+        return () => {
+            trackedPointsSubscribersRef.current.delete(cb);
+        };
     }, []);
 
     const subscribeToKeypointsFiltered = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
         keypointsFilteredSubscribersRef.current.add(cb);
-        return () => { keypointsFilteredSubscribersRef.current.delete(cb); };
+        return () => {
+            keypointsFilteredSubscribersRef.current.delete(cb);
+        };
     }, []);
 
     const subscribeToRigidBodies = useCallback((cb: (poses: Map<string, RigidBodyPose>) => void): () => void => {

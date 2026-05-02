@@ -153,7 +153,10 @@ async function decodePayload(data) {
         const meta = frameMetadata[i];
         const jpegData = new Uint8Array(data, meta.jpegStart, meta.jpegLength);
         let blob = new Blob([jpegData], { type: 'image/jpeg' });
+        const bitmapT0 = performance.now();
         const bitmap = await createImageBitmap(blob, BITMAP_OPTIONS);
+        const bitmapMs = performance.now() - bitmapT0;
+        if (bitmapMs > 20) console.warn('createImageBitmap spike: ' + bitmapMs.toFixed(1) + 'ms (cam ' + meta.cameraId + ')');
         blob = null;
         frames[i] = {
             cameraId: meta.cameraId,

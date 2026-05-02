@@ -46,9 +46,10 @@ export function ThreeJsCanvas() {
                 sx={{ width: "100%", height: "100%", position: "relative", outline: "none" }}
             >
                 <Canvas
-                    shadows
                     camera={{ position: [1e3, 1e3, 1e3], fov: 75, near: 0.1, far: 1e5 }}
-                    gl={{ antialias: true, logarithmicDepthBuffer: true }}
+                    gl={{ antialias: false, logarithmicDepthBuffer: false }}
+                    dpr={1}
+                    frameloop="demand"
                 >
                     <ThreeJsScene cameraControlsRef={controlsRef} />
                 </Canvas>

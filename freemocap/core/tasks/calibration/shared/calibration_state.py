@@ -10,6 +10,8 @@ import os
 import time
 from pathlib import Path
 
+from freemocap.core.pipeline_stage_timer import PipelineStageTimer
+
 import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString
@@ -58,11 +60,7 @@ class CalibrationStateTracker:
         self._cam_id_name_cache: dict[str, str] = {}
         # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
         self._last_incoming_cam_ids: frozenset | None = None
-        # Sub-timing accumulators (reset each time we log the report)
-        self._timing_call_count: int = 0
-        self._timing_buckets: dict[str, list[float]] = {
-            "build_stacked": [], "triangulate": [], "mean_reproj_error": [], "result_dict": []
-        }
+        self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
     def create_and_try_load(cls) -> "CalibrationStateTracker":
@@ -285,7 +283,7 @@ class CalibrationStateTracker:
                     for pt_idx, pt_name in enumerate(point_names_seq):
                         if pt_name in cam_points:
                             stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
-            self._timing_buckets["build_stacked"].append((time.perf_counter() - _t0) * 1e3)
+            self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
 
             # Triangulate the single frame
             _t0 = time.perf_counter()
@@ -294,7 +292,7 @@ class CalibrationStateTracker:
                 config=triangulation_config,
             )
             points_3d = triangulation_result.points_3d  # (n_points, 3)
-            self._timing_buckets["triangulate"].append((time.perf_counter() - _t0) * 1e3)
+            self._timer.record("triangulate", (time.perf_counter() - _t0) * 1e3)
 
             # Reprojection error gate (in pixels, mean across valid cameras)
             _t0 = time.perf_counter()
@@ -305,7 +303,7 @@ class CalibrationStateTracker:
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):
                 points_3d[bad_mask] = np.nan
-            self._timing_buckets["mean_reproj_error"].append((time.perf_counter() - _t0) * 1e3)
+            self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 
             # Build result dict, excluding NaN points
             _t0 = time.perf_counter()
@@ -315,20 +313,8 @@ class CalibrationStateTracker:
                 for i, name in enumerate(point_names_seq)
                 if valid_pt_mask[i]
             }
-            self._timing_buckets["result_dict"].append((time.perf_counter() - _t0) * 1e3)
-
-            self._timing_call_count += 1
-            if self._timing_call_count % 100 == 0:
-                lines = ["  try_triangulate sub-timing (ms, last 100 calls):"]
-                for k, vals in self._timing_buckets.items():
-                    if vals:
-                        import statistics
-                        lines.append(
-                            f"    {k:<22} mean={statistics.mean(vals):.2f}  "
-                            f"p50={statistics.median(vals):.2f}  max={max(vals):.2f}"
-                        )
-                        vals.clear()
-                logger.info("\n".join(lines))
+            self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
+            self._timer.maybe_report()
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0

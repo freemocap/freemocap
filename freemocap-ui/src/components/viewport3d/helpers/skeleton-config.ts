@@ -6,15 +6,24 @@ import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-
 
 
 
-export function classifyPointName(name: string): 'face' | 'left_hand' | 'right_hand' | 'left' | 'right' | 'center' | 'aruco' {
+type PointClass = 'face' | 'left_hand' | 'right_hand' | 'left' | 'right' | 'center' | 'aruco';
+
+const classifyCache = new Map<string, PointClass>();
+
+export function classifyPointName(name: string): PointClass {
+    const cached = classifyCache.get(name);
+    if (cached !== undefined) return cached;
     const lc = name.toLowerCase();
-    if (lc.startsWith('face') || lc.includes('.face') || /^face[._-]/.test(lc)) return 'face';
-    if (lc.startsWith('arucomarkercorner')) return 'aruco';
-    if (lc.includes('left_hand')) return 'left_hand';
-    if (lc.includes('right_hand')) return 'right_hand';
-    if (lc.includes('left')) return 'left';
-    if (lc.includes('right')) return 'right';
-    return 'center';
+    let result: PointClass;
+    if (lc.startsWith('face') || lc.includes('.face') || /^face[._-]/.test(lc)) result = 'face';
+    else if (lc.startsWith('arucomarkercorner')) result = 'aruco';
+    else if (lc.includes('left_hand')) result = 'left_hand';
+    else if (lc.includes('right_hand')) result = 'right_hand';
+    else if (lc.includes('left')) result = 'left';
+    else if (lc.includes('right')) result = 'right';
+    else result = 'center';
+    classifyCache.set(name, result);
+    return result;
 }
 
 // --- Point styling: color + sphere scale per body part ----------------------

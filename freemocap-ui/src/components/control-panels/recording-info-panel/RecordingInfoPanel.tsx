@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect} from "react";
 import {Box, Checkbox, FormControlLabel, useTheme} from "@mui/material";
 import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
@@ -46,19 +46,6 @@ export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string
     {value: "mocap", label: "Mocap"},
 ];
 
-const formatDuration = (startedAt: string | null): string => {
-    if (!startedAt) return "";
-    const seconds = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    const parts: string[] = [];
-    if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
-    parts.push(minutes.toString().padStart(2, '0'));
-    parts.push(secs.toString().padStart(2, '0'));
-    return parts.join(':');
-};
-
 export const RecordingInfoPanel: React.FC = () => {
     const theme = useTheme();
     const dispatch = useAppDispatch();
@@ -83,17 +70,6 @@ export const RecordingInfoPanel: React.FC = () => {
     const {connectedCameraIds} = useServer();
     const noCamerasConnected = connectedCameraIds.length === 0;
 
-    // Duration display is derived from shared startedAt so all panel
-    // instances show the same ticking value.
-    const [recordingDuration, setRecordingDuration] = useState<string>("");
-
-    // Local wall-clock tick for the name preview — avoids Redux state changes and cascading re-renders
-    const [previewTimestamp, setPreviewTimestamp] = useState<string>(() => getTimestampString());
-    useEffect(() => {
-        if (recordingInfo.isRecording) return;
-        const id = setInterval(() => setPreviewTimestamp(getTimestampString()), 1000);
-        return () => clearInterval(id);
-    }, [recordingInfo.isRecording]);
 
     // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
     useEffect(() => {
@@ -108,18 +84,6 @@ export const RecordingInfoPanel: React.FC = () => {
         return () => clearTimeout(timer);
     }, [dispatch, pendingOperation]);
 
-    // Update duration display from shared startedAt
-    useEffect(() => {
-        if (!recordingInfo.isRecording || !recordingInfo.startedAt) {
-            setRecordingDuration("");
-            return;
-        }
-        setRecordingDuration(formatDuration(recordingInfo.startedAt));
-        const id = setInterval(() => {
-            setRecordingDuration(formatDuration(recordingInfo.startedAt));
-        }, 1000);
-        return () => clearInterval(id);
-    }, [recordingInfo.isRecording, recordingInfo.startedAt]);
 
     // replace ~ with user's home directory
     useEffect(() => {
@@ -151,30 +115,15 @@ export const RecordingInfoPanel: React.FC = () => {
         handleStartRecording();
     }, [countdown]);
 
-    const buildRecordingName = (timestampOverride?: string): string => {
-        const parts: string[] = [];
-
-        if (useTimestamp) {
-            parts.push(timestampOverride ?? getTimestampString());
-        } else {
-            parts.push(baseName);
-        }
-
-        if (recordingTypePreset !== "none") {
-            parts.push(recordingTypePreset);
-        }
-
-        if (recordingTag) {
-            parts.push(recordingTag);
-        }
-
-        return parts.join("_");
-    };
 
     const handleStartRecording = async (): Promise<void> => {
         console.log("Starting recording...");
 
-        const recordingName = buildRecordingName();
+        const ts = getTimestampString();
+        const nameParts = useTimestamp ? [ts] : [baseName];
+        if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
+        if (recordingTag) nameParts.push(recordingTag);
+        const recordingName = nameParts.join("_");
         const subfolderName = createSubfolder
             ? customSubfolderName || getTimestampString()
             : "";
@@ -235,11 +184,6 @@ export const RecordingInfoPanel: React.FC = () => {
         }
     };
 
-    const recordingName = buildRecordingName(previewTimestamp);
-    const subfolderName = createSubfolder
-        ? customSubfolderName || previewTimestamp
-        : undefined;
-
     return (
         <CollapsibleSidebarSection
             icon={<FiberManualRecordIcon sx={{color: "inherit"}}/>}
@@ -247,7 +191,7 @@ export const RecordingInfoPanel: React.FC = () => {
             summaryContent={
                 <RecordingSummary
                     isRecording={recordingInfo.isRecording}
-                    recordingDuration={recordingDuration}
+                    startedAt={recordingInfo.startedAt}
                 />
             }
             primaryControl={
@@ -334,14 +278,13 @@ export const RecordingInfoPanel: React.FC = () => {
 
                     <RecordingPathTreeItem
                         recordingDirectory={recordingInfo.recordingDirectory}
-                        recordingName={recordingName}
-                        subfolder={subfolderName}
                         countdown={countdown}
                         recordingTag={recordingTag}
                         useDelayStart={useDelayStart}
                         delaySeconds={delaySeconds}
                         useTimestamp={useTimestamp}
                         baseName={baseName}
+                        recordingTypePreset={recordingTypePreset}
                         useIncrement={useIncrement}
                         currentIncrement={currentIncrement}
                         createSubfolder={createSubfolder}

@@ -25,6 +25,7 @@ Backpressure:
   messages are dropped rather than queued. If the GPU falls behind the camera
   group's frame rate, we lose frames instead of accumulating lag.
 """
+import gc
 import logging
 import time
 from dataclasses import dataclass
@@ -150,6 +151,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             return
 
         timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+        _MAX_SESSION_RESTARTS = 3
+        session_restart_count = 0
         # Per-camera scratch recarrays (avoids reallocating each frame).
         frame_recarrays: dict[CameraIdString, np.recarray | None] = {
             cam_id: None for cam_id in camera_ids
@@ -211,7 +214,37 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter()
-                batch_results = session.predict_batch(images)
+                try:
+                    batch_results = session.predict_batch(images)
+                except MemoryError as mem_err:
+                    logger.error(
+                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] MemoryError during "
+                        f"inference (restart {session_restart_count + 1}/{_MAX_SESSION_RESTARTS}): "
+                        f"{mem_err}"
+                    )
+                    if session_restart_count >= _MAX_SESSION_RESTARTS:
+                        logger.error(
+                            f"RealtimeSkeletonInferenceNode [{camera_group_id}] exceeded max "
+                            f"session restarts — giving up."
+                        )
+                        ipc.kill_everything()
+                        return
+                    del session
+                    gc.collect()
+                    session = _build_session(pipeline_config)
+                    if session is None:
+                        logger.error(
+                            f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
+                            f"session after MemoryError — giving up."
+                        )
+                        ipc.kill_everything()
+                        return
+                    session_restart_count += 1
+                    logger.info(
+                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] session rebuilt "
+                        f"successfully after MemoryError."
+                    )
+                    continue  # skip this frame, resume on next
                 inf_ms = (time.perf_counter() - t_inf) * 1e3
                 timer.record("predict_batch", inf_ms)
                 # Per-camera-equivalent latency, for comparing with the legacy

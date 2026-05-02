@@ -22,6 +22,12 @@ import {
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
+import {
+    BLOCK_KIND,
+    blockToPointDict,
+    isKeypointsMessage,
+    parseKeypointsMessage,
+} from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
@@ -90,6 +96,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // TODO - Check if this is nonsense
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const pendingJsonPayloadRef = useRef<FrontendPayloadMessage | null>(null);
+    // Latest binary keypoints frame (only when FREEMOCAP_BINARY_KEYPOINTS=1
+    // is set on the backend). Older unprocessed frames are overwritten.
+    const pendingKeypointsRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const frameLoopRef = useRef<number | null>(null);
 
@@ -142,6 +151,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 processingFrameRef.current = false;
                 pendingPayloadRef.current = null;
                 pendingJsonPayloadRef.current = null;
+                pendingKeypointsRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
                 trackedPointsRef.current = {};
@@ -303,6 +313,31 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
+        // Decode the binary keypoints message (when FREEMOCAP_BINARY_KEYPOINTS
+        // is enabled on the backend) and dispatch to the same subscribers as
+        // the JSON path. Step 1 of the refactor preserves the legacy
+        // Record<string, Point3d> shape so the renderer contract is unchanged.
+        const dispatchBinaryKeypoints = (buf: ArrayBuffer): void => {
+            const parsed = parseKeypointsMessage(buf);
+            for (const block of parsed.blocks) {
+                const schema = trackerSchemasRef.current[block.trackerId];
+                if (!schema) {
+                    // Schema handshake hasn't arrived yet, or the backend is
+                    // shipping a tracker we don't know about. Drop silently —
+                    // the next frame after the handshake will populate.
+                    continue;
+                }
+                const dict = blockToPointDict(block, schema.tracked_points);
+                if (block.kind === BLOCK_KIND.KEYPOINTS_RAW_3D) {
+                    trackedPointsRef.current = dict;
+                    for (const cb of trackedPointsSubscribersRef.current) cb(dict);
+                } else if (block.kind === BLOCK_KIND.KEYPOINTS_FILTERED_3D) {
+                    keypointsFilteredRef.current = dict;
+                    for (const cb of keypointsFilteredSubscribersRef.current) cb(dict);
+                }
+            }
+        };
+
         // rAF-driven processing loop. Non-async so the next rAF is always
         // registered immediately — the async decode+dispatch chain runs via
         // .then() and never blocks rAF re-registration.
@@ -329,6 +364,21 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 dispatchJsonPayload(jsonPayload);
             }
 
+            // Decode any buffered binary keypoints frame after the JSON
+            // payload — when both are present for the same frame the binary
+            // copy is authoritative for keypoints (the backend already nulls
+            // those JSON fields when binary is active, but order it this way
+            // anyway so a stray JSON copy can't clobber the binary one).
+            if (pendingKeypointsRef.current !== null) {
+                const buf = pendingKeypointsRef.current;
+                pendingKeypointsRef.current = null;
+                try {
+                    dispatchBinaryKeypoints(buf);
+                } catch (err) {
+                    console.error('Error parsing binary keypoints message:', err);
+                }
+            }
+
             if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
                 const payload = pendingPayloadRef.current;
                 pendingPayloadRef.current = null;
@@ -349,10 +399,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
         const handleMessage = (event: MessageEvent): void => {
-            // Handle binary frame data: just buffer the latest payload.
-            // Older unprocessed payloads are overwritten (frame dropping).
+            // Handle binary frame data: demux on the first byte. Image frames
+            // start with MessageType.PAYLOAD_HEADER (0); keypoints messages
+            // start with KEYPOINTS_PAYLOAD_HEADER (3). Older unprocessed
+            // payloads of either kind are overwritten (frame dropping).
             if (event.data instanceof ArrayBuffer) {
-                pendingPayloadRef.current = event.data;
+                if (isKeypointsMessage(event.data)) {
+                    pendingKeypointsRef.current = event.data;
+                } else {
+                    pendingPayloadRef.current = event.data;
+                }
             }
             // Handle text/JSON messages (logs, framerate updates, frontend payloads, etc.)
             else if (typeof event.data === 'string') {
@@ -361,11 +417,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
                 try {
                     const jsonData = JSON.parse(event.data);
-
-                    // Diagnostic: log all non-trivial message types
-                    if (jsonData.message_type && jsonData.message_type !== 'frontend_payload' && jsonData.message_type !== 'log_record') {
-                        console.log('[WS] received message_type:', jsonData.message_type, jsonData);
-                    }
 
                     // Handle log records
                     if (isLogRecord(jsonData)) {
@@ -395,7 +446,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFrontendPayload(jsonData)) {
                         pendingJsonPayloadRef.current = jsonData;
                     } else if (isPosthocProgress(jsonData)) {
-                        console.log('[WS] posthoc_progress dispatching:', jsonData.pipeline_id, jsonData.phase, jsonData.progress_fraction);
+
                         const progress = Math.round(jsonData.progress_fraction * 100);
                         if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== progress) {
                             lastPipelineProgressRef.current[jsonData.pipeline_id] = progress;
@@ -554,4 +605,3 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         </ServerContext.Provider>
     );
 };
-

@@ -8,6 +8,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+import numpy as np
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
@@ -115,6 +116,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
     keypoints_raw: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
     keypoints_filtered: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
+    # Pre-Point3d numpy form of the same data, kept around so the websocket
+    # binary serializer can ship raw bytes without re-unwrapping each
+    # Pydantic model. Each value is a (3,) float array. Sparse — only points
+    # that triangulated successfully are present.
+    keypoints_raw_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
+    keypoints_filtered_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
 
     def __post_init__(self) -> None:

@@ -538,6 +538,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         camera_node_outputs=frame_n_outputs,
                         keypoints_raw=_arrays_to_point3d(raw_keypoints),
                         keypoints_filtered=_arrays_to_point3d(filtered_keypoints),
+                        keypoints_raw_arrays=raw_keypoints,
+                        keypoints_filtered_arrays=filtered_keypoints,
                         # rigid_body_poses=rigid_body_poses,
                     ),
                 )

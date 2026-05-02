@@ -40,6 +40,7 @@ class SimpleRealtimeKeypointFilter:
 
     _filters: dict[str, OneEuroFilter3D] = field(default_factory=dict, init=False, repr=False)
     _prediction_counts: dict[str, int] = field(default_factory=dict, init=False, repr=False)
+    _last_t: float | None = field(default=None, init=False, repr=False)
 
     def filter(self, *, t: float, raw_keypoints: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         """Return smoothed + gap-filled keypoints.
@@ -53,6 +54,14 @@ class SimpleRealtimeKeypointFilter:
             dict mapping point name → filtered (3,) ndarray.
             Includes predictions for recently-seen keypoints absent this frame.
         """
+        if self._last_t is not None and t <= self._last_t:
+            raise RuntimeError(
+                f"Non-monotonic timestamp passed to keypoint filter: "
+                f"t={t} <= last_t={self._last_t} (dt={t - self._last_t}). "
+                f"The aggregator processed the same frame twice, or the clock went backwards."
+            )
+        self._last_t = t
+
         result: dict[str, np.ndarray] = {}
 
         # Process keypoints present this frame
@@ -86,3 +95,4 @@ class SimpleRealtimeKeypointFilter:
         """Clear all filter state. Call when the calibration/coordinate frame changes."""
         self._filters.clear()
         self._prediction_counts.clear()
+        self._last_t = None

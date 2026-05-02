@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from pydantic import BaseModel, ConfigDict
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
+from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
@@ -63,6 +64,7 @@ class RealtimePipeline:
     result_consumed_event: multiprocessing.synchronize.Event
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
+    worker_registry: WorkerRegistry
     started: bool = False
 
     @property
@@ -107,10 +109,17 @@ class RealtimePipeline:
             global_kill_flag=global_kill_flag,
         )
 
+        camera_registry = worker_registry
+        if pipeline_config.camera_node_config.worker_mode == WorkerMode.THREAD:
+            camera_registry = WorkerRegistry(
+                global_kill_flag=global_kill_flag,
+                worker_mode=WorkerMode.THREAD,
+            )
+
         camera_nodes = {
             camera_id: CameraNode.create(
                 camera_id=camera_id,
-                worker_registry=worker_registry,
+                worker_registry=camera_registry,
                 camera_shm_dto=camera_group.shm.to_dto().camera_shm_dtos[camera_id],
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
@@ -122,7 +131,8 @@ class RealtimePipeline:
         }
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if pipeline_config.use_centralized_gpu_inference:
+        if (pipeline_config.use_centralized_gpu_inference
+                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=camera_group.camera_ids,
@@ -172,6 +182,7 @@ class RealtimePipeline:
             result_consumed_event=result_consumed_event,
             ipc=ipc,
             pubsub=pubsub,
+            worker_registry=worker_registry,
         )
 
     def start(self) -> None:
@@ -229,13 +240,44 @@ class RealtimePipeline:
         logger.debug(f"RealtimePipeline [{self.id}] shut down")
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
-        """Push a config update to all pipeline workers via pubsub."""
+        """Push a config update to all pipeline workers via pubsub.
+
+        Also manages SkeletonInferenceNode lifecycle when skeleton_tracking_enabled
+        transitions between True and False.
+        """
+        old_skeleton = self.config.camera_node_config.skeleton_tracking_enabled
+        new_skeleton = new_config.camera_node_config.skeleton_tracking_enabled
+
         self.config = new_config
         logger.trace(f"Pushing new config to realtime pipeline: {self.id} \n {new_config.model_dump_json(indent=4)}")
         self.pubsub.publish(
             topic_type=PipelineConfigUpdateTopic,
             message=PipelineConfigUpdateMessage(pipeline_config=new_config),
         )
+
+        if old_skeleton and not new_skeleton:
+            # Skeleton tracking disabled: shut down the centralized inference node.
+            if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
+                logger.info(f"RealtimePipeline [{self.id}]: skeleton tracking disabled — shutting down SkeletonInferenceNode")
+                self.skeleton_inference_node.shutdown()
+            self.skeleton_inference_node = None
+
+        elif not old_skeleton and new_skeleton and new_config.use_centralized_gpu_inference:
+            # Skeleton tracking re-enabled: create and start a fresh inference node.
+            logger.info(
+                f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
+                f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
+            )
+            self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                camera_group_id=self.camera_group.id,
+                camera_ids=self.camera_group.camera_ids,
+                worker_registry=self.worker_registry,
+                camera_group_shm_dto=self.camera_group.shm.to_dto(),
+                config=new_config,
+                ipc=self.ipc,
+                pubsub=self.pubsub,
+            )
+            self.skeleton_inference_node.start()
 
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return await self.camera_group.update_camera_settings(

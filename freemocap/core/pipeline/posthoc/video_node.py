@@ -16,6 +16,7 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import cv2
+from tqdm import tqdm
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
 from skellytracker.trackers.base_tracker.detector_helpers import create_detector_from_config, \
@@ -190,51 +191,55 @@ class VideoNode(SourceNode):
 
         frame_number: int = 0
         try:
-
-            success, image = video_reader.read()
-            while success and not shutdown_self_flag.value and ipc.should_continue:
-                observation = detector.detect(
-                    frame_number=frame_number,
-                    image=image,
-                )
-                video_output_pub.put(
-                    VideoNodeOutputMessage(
-                        video_id=video_id,
-                        frame_number=frame_number,
-                        observation=observation,
-                    ),
-                )
-
-
-
-
-                # Annotate and write frame if enabled
-                if annotator is not None and video_writer is not None:
-                    # Use previous annotated frame as base if available, else source frame
-                    if base_reader is not None:
-                        base_ok, base_frame = base_reader.read()
-                        if not base_ok or base_frame is None:
-                            logger.warning(
-                                f"Previous annotated video ran out of frames at frame {frame_number} "
-                                f"for {video_path.stem} — falling back to source frames"
-                            )
-                            base_reader.release()
-                            base_reader = None
-                            annotation_base = image
-                        else:
-                            annotation_base = base_frame
-                    else:
-                        annotation_base = image
-
-                    annotated_frame = annotator.annotate_image(
-                        image=annotation_base,
-                        observation=observation,
-                    )
-                    video_writer.write(annotated_frame)
-
+            with tqdm(
+                total=frame_count,
+                desc=video_path.stem,
+                unit="frame",
+                leave=True,
+                dynamic_ncols=True,
+            ) as pbar:
                 success, image = video_reader.read()
-                frame_number += 1
-                video_progress_pub.put(progress_message.increment())
+                while success and not shutdown_self_flag.value and ipc.should_continue:
+                    observation = detector.detect(
+                        frame_number=frame_number,
+                        image=image,
+                    )
+                    video_output_pub.put(
+                        VideoNodeOutputMessage(
+                            video_id=video_id,
+                            frame_number=frame_number,
+                            observation=observation,
+                        ),
+                    )
+
+                    # Annotate and write frame if enabled
+                    if annotator is not None and video_writer is not None:
+                        # Use previous annotated frame as base if available, else source frame
+                        if base_reader is not None:
+                            base_ok, base_frame = base_reader.read()
+                            if not base_ok or base_frame is None:
+                                logger.warning(
+                                    f"Previous annotated video ran out of frames at frame {frame_number} "
+                                    f"for {video_path.stem} — falling back to source frames"
+                                )
+                                base_reader.release()
+                                base_reader = None
+                                annotation_base = image
+                            else:
+                                annotation_base = base_frame
+                        else:
+                            annotation_base = image
+
+                        annotated_frame = annotator.annotate_image(
+                            image=annotation_base,
+                            observation=observation,
+                        )
+                        video_writer.write(annotated_frame)
+
+                    success, image = video_reader.read()
+                    frame_number += 1
+                    video_progress_pub.put(progress_message.increment())
+                    pbar.update(1)
 
             logger.info(
                 f"VideoNode for {video_path.stem} finished reading "

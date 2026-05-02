@@ -38,6 +38,8 @@ from freemocap.pubsub.pubsub_topics import (
     AggregatorNodeProgressTopic,
     AggregatorNodeProgressMessage, PipelineProgressMessage,
 )
+from tqdm import tqdm
+
 from freemocap.utilities.wait_functions import wait_1ms
 
 logger = logging.getLogger(__name__)
@@ -131,36 +133,44 @@ class PosthocAggregationNode(AggregatorNode):
         received_count: int = 0
 
         try:
-            while not shutdown_self_flag.value and ipc.should_continue:
-                wait_1ms()
+            with tqdm(
+                total=total_expected,
+                desc=f"[{pipeline_id}] collecting",
+                unit="obs",
+                leave=True,
+                dynamic_ncols=True,
+            ) as pbar:
+                while not shutdown_self_flag.value and ipc.should_continue:
+                    wait_1ms()
 
-                if video_node_output_subscription.empty():
-                    continue
+                    if video_node_output_subscription.empty():
+                        continue
 
-                msg: VideoNodeOutputMessage = video_node_output_subscription.get()
+                    msg: VideoNodeOutputMessage = video_node_output_subscription.get()
 
-                if msg.video_id not in video_ids:
-                    raise ValueError(
-                        f"Unexpected video ID '{msg.video_id}' — "
-                        f"expected one of {video_ids}"
-                    )
-                if msg.frame_number not in video_outputs_by_frame:
-                    raise ValueError(
-                        f"Unexpected frame number {msg.frame_number} — "
-                        f"expected range [{start_frame}, {end_frame})"
-                    )
+                    if msg.video_id not in video_ids:
+                        raise ValueError(
+                            f"Unexpected video ID '{msg.video_id}' — "
+                            f"expected one of {video_ids}"
+                        )
+                    if msg.frame_number not in video_outputs_by_frame:
+                        raise ValueError(
+                            f"Unexpected frame number {msg.frame_number} — "
+                            f"expected range [{start_frame}, {end_frame})"
+                        )
 
-                video_outputs_by_frame[msg.frame_number][msg.video_id] = msg
-                received_count += 1
+                    video_outputs_by_frame[msg.frame_number][msg.video_id] = msg
+                    received_count += 1
+                    pbar.update(1)
 
-                if all(
-                        isinstance(v, VideoNodeOutputMessage)
-                        for v in video_outputs_by_frame[msg.frame_number].values()
-                ):
-                    got_all_by_frame[msg.frame_number] = True
+                    if all(
+                            isinstance(v, VideoNodeOutputMessage)
+                            for v in video_outputs_by_frame[msg.frame_number].values()
+                    ):
+                        got_all_by_frame[msg.frame_number] = True
 
-                if all(got_all_by_frame.values()):
-                    break
+                    if all(got_all_by_frame.values()):
+                        break
 
             missing_frames = [frame_number for frame_number, complete in got_all_by_frame.items() if not complete]
             if missing_frames:

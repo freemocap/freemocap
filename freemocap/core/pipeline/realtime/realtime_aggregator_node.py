@@ -356,6 +356,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"Camera ID {cam_output.camera_id} not in "
                             f"camera IDs {list(camera_ids)}"
                         )
+                    if cam_output.frame_number != latest_requested_frame:
+                        raise RuntimeError(
+                            f"WRONG FRAME from camera {cam_output.camera_id}: "
+                            f"received frame {cam_output.frame_number} but expected "
+                            f"{latest_requested_frame} (last_received={last_received_frame}). "
+                            f"Camera processed the wrong frame — same frame sent twice?"
+                        )
                     camera_node_outputs[cam_output.camera_id] = cam_output
 
                     if not all(
@@ -365,7 +372,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         continue
 
                 # ---- In GPU mode, also wait for the skeleton inference result ----
-                if pipeline_config.use_centralized_gpu_inference:
+                if (pipeline_config.use_centralized_gpu_inference
+                        and pipeline_config.camera_node_config.skeleton_tracking_enabled):
                     expected_frame = next(iter(camera_node_outputs.values())).frame_number
                     if expected_frame not in pending_skeleton_results:
                         # Camera outputs are ready but skeleton inference hasn't
@@ -411,6 +419,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
                     latest_requested_frame = latest_shm_frame
                     t_frame_requested = time.perf_counter() if timer is not None else 0.0
+                elif latest_shm_frame < latest_requested_frame:
+                    raise RuntimeError(
+                        f"SHM frame counter went backwards: latest_shm_frame={latest_shm_frame} "
+                        f"< latest_requested_frame={latest_requested_frame}. "
+                        f"Ring buffer should be monotonically increasing."
+                    )
 
                 # ---- Triangulate and process if calibration is valid ----
                 # All processing stays in dict[str, ndarray] until final

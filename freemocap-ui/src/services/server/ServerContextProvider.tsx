@@ -158,6 +158,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
+        let lastFrontendFrameTime = 0;
+        const frontendDurations: number[] = [];
+
         // Process a decoded frame result: update camera list, dispatch to workers, send ack.
         const dispatchFrames = async (
             result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
@@ -228,13 +231,42 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 const maxFrameNumber = Math.max(...Array.from(frameNumbers));
                 ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
             }
+
+            // Measure display fps from decoded frame arrivals — fires every frame
+            // regardless of pipeline state, so the framerate panel always has data.
+            const now = performance.now();
+            if (lastFrontendFrameTime > 0) {
+                const dur = now - lastFrontendFrameTime;
+                frontendDurations.push(dur);
+                if (frontendDurations.length > 30) frontendDurations.shift();
+                if (frontendDurations.length >= 2) {
+                    let sum = 0, min = Infinity, max = -Infinity;
+                    for (const d of frontendDurations) {
+                        sum += d;
+                        if (d < min) min = d;
+                        if (d > max) max = d;
+                    }
+                    const mean = sum / frontendDurations.length;
+                    framerateStoreRef.current.updateFrontend({
+                        mean_frame_duration_ms: mean,
+                        mean_frames_per_second: mean > 0 ? 1000 / mean : 0,
+                        frame_duration_mean: mean,
+                        frame_duration_median: mean,
+                        frame_duration_min: min,
+                        frame_duration_max: max,
+                        frame_duration_stddev: 0,
+                        frame_duration_coefficient_of_variation: 0,
+                        calculation_window_size: frontendDurations.length,
+                        framerate_source: 'Display (browser)',
+                    });
+                }
+            }
+            lastFrontendFrameTime = now;
         };
 
         // Dispatches a buffered frontend_payload to all 3D-scene subscribers.
         // Called from the rAF loop (not from the WebSocket handler) so subscriber
         // work happens during the animation frame, not mid-message-storm.
-        let lastFrontendFrameTime = 0;
-        const frontendDurations: number[] = [];
         const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
             if (payload.charuco_overlays) {
                 for (const [cameraId, charuco] of Object.entries(payload.charuco_overlays)) {
@@ -252,35 +284,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 for (const cb of trackedPointsSubscribersRef.current) {
                     cb(trackedPointsRef.current);
                 }
-                // Measure display (browser-side) framerate from actual packet arrival times.
-                const now = performance.now();
-                if (lastFrontendFrameTime > 0) {
-                    const dur = now - lastFrontendFrameTime;
-                    frontendDurations.push(dur);
-                    if (frontendDurations.length > 30) frontendDurations.shift();
-                    if (frontendDurations.length >= 2) {
-                        let sum = 0, min = Infinity, max = -Infinity;
-                        for (const d of frontendDurations) {
-                            sum += d;
-                            if (d < min) min = d;
-                            if (d > max) max = d;
-                        }
-                        const mean = sum / frontendDurations.length;
-                        framerateStoreRef.current.updateFrontend({
-                            mean_frame_duration_ms: mean,
-                            mean_frames_per_second: mean > 0 ? 1000 / mean : 0,
-                            frame_duration_mean: mean,
-                            frame_duration_median: mean,
-                            frame_duration_min: min,
-                            frame_duration_max: max,
-                            frame_duration_stddev: 0,
-                            frame_duration_coefficient_of_variation: 0,
-                            calculation_window_size: frontendDurations.length,
-                            framerate_source: 'Display (browser)',
-                        });
-                    }
-                }
-                lastFrontendFrameTime = now;
             }
 
             if (payload.keypoints_filtered) {

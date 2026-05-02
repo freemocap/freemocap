@@ -8,7 +8,7 @@ from freemocap.core.types.type_overloads import TopicPublicationQueue, TopicSubs
 
 logger = logging.getLogger(__name__)
 
-_TOPIC_QUEUE_MAXSIZE: int = 100  #prevents unbounded growth when consumers lag
+_TOPIC_QUEUE_MAXSIZE: int = 100  # prevents unbounded growth when consumers lag
 
 
 @dataclass
@@ -29,14 +29,19 @@ class PubSubTopicABC(Generic[MessageType]):
     in children, or via publish() in the main process). The PubSubRelay
     thread reads from the publication queue and fans out to all
     subscription queues.
+
+    Set queue_maxsize=0 on a subclass for an unbounded queue (e.g. topics
+    where the producer can outrun the consumer before the consumer starts).
     """
     topic_registry: ClassVar[set[type['PubSubTopicABC']]] = set()
+    queue_maxsize: ClassVar[int] = _TOPIC_QUEUE_MAXSIZE
 
     message_type: type[TopicMessageABC] = TopicMessageABC
-    publication: TopicPublicationQueue = field(
-        default_factory=lambda: multiprocessing.Queue(maxsize=_TOPIC_QUEUE_MAXSIZE)
-    )
+    publication: TopicPublicationQueue = field(init=False)
     subscriptions: list[TopicSubscriptionQueue] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        self.publication = multiprocessing.Queue(maxsize=self.__class__.queue_maxsize)
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Auto-register when subclassed."""
@@ -49,7 +54,7 @@ class PubSubTopicABC(Generic[MessageType]):
 
     def get_subscription(self) -> TopicSubscriptionQueue:
         """Create and register a new subscription queue."""
-        sub = multiprocessing.Queue(maxsize=_TOPIC_QUEUE_MAXSIZE)
+        sub = multiprocessing.Queue(maxsize=self.__class__.queue_maxsize)
         self.subscriptions.append(sub)
         return sub
 
@@ -107,18 +112,26 @@ class PubSubTopicABC(Generic[MessageType]):
 
 def create_topic(
         message_type: type[MessageType],
+        queue_maxsize: int | None = None,
 ) -> type[PubSubTopicABC[MessageType]]:
     """
     Factory that creates a topic class for a message type.
 
     Uses type() to dynamically create a subclass — triggers auto-registration
     via __init_subclass__.
+
+    Pass queue_maxsize=0 for an unbounded queue on topics where a slow-starting
+    consumer (e.g. a child process) must not lose messages produced before it starts.
     """
     topic_name = message_type.__name__.replace('Message', 'Topic')
 
-    topic_class = type(topic_name, (PubSubTopicABC,), {
+    attrs: dict = {
         'message_type': message_type,
         '__module__': message_type.__module__,
-    })
+    }
+    if queue_maxsize is not None:
+        attrs['queue_maxsize'] = queue_maxsize
+
+    topic_class = type(topic_name, (PubSubTopicABC,), attrs)
 
     return topic_class

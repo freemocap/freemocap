@@ -315,6 +315,7 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
         return None
 
     inf_config = pipeline_config.skeleton_inference_node_config
+    #TODO - this is dumb, I think? WE should be able to just use the inference node config directly  without this nonsense?
 
     # Pick mode safely. RTMPoseSessionConfig accepts a Literal of three values;
     # other strings (e.g. legacy values) get coerced to "balanced" rather than
@@ -378,9 +379,7 @@ def _read_frames(
         actual_frame_number = int(frame_recarray.frame_metadata.frame_number[0])
         if actual_frame_number != requested_frame_number:
             # Ring buffer has moved on — use the frame that's actually there
-            # rather than dropping the camera entirely. A 1-2 frame offset
-            # (~16-32 ms) is imperceptible vs a missing overlay that causes
-            # per-camera blinking every time inference loses the race.
+            # rather than dropping the camera entirely.
             logger.warning(
                 f"SkeletonInferenceNode: requested frame {requested_frame_number} "
                 f"from camera {camera_id} but got {actual_frame_number} — "

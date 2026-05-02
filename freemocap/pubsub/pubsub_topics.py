@@ -217,7 +217,7 @@ ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
-VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
+VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)
 AggregatorNodeProgressTopic = create_topic(AggregatorNodeProgressMessage)

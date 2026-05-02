@@ -141,12 +141,15 @@ class VideoNode(SourceNode):
         if not video_reader.isOpened():
             raise RuntimeError(f"Failed to open video file: {video_path}")
         frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
+        # Use a unique pipeline_id per video node so the frontend can show separate progress bars
+        # and group them under the base pipeline_id (everything before the ':').
+        node_pipeline_id = f"{pipeline_id}:{video_id}"
         video_progress_pub.put(VideoNodeProgressMessage(
             video_id=video_id,
-            pipeline_id=pipeline_id,
+            pipeline_id=node_pipeline_id,
             phase="collecting_frames",
             progress_fraction=0.0,
-            detail=f"Video {video_id}: preparing {frame_count} frames",
+            detail=f"Preparing {frame_count} frames",
         ))
 
         # Set up annotation pipeline if requested
@@ -244,7 +247,7 @@ class VideoNode(SourceNode):
                     frame_number += 1
                     video_progress_pub.put(VideoNodeProgressMessage(
                         video_id=video_id,
-                        pipeline_id=pipeline_id,
+                        pipeline_id=node_pipeline_id,
                         phase="detecting_frames",
                         progress_fraction=frame_number / frame_count,
                         detail=f"Video {video_id}: {frame_number}/{frame_count} frames",
@@ -263,7 +266,7 @@ class VideoNode(SourceNode):
             _error_occurred = True
             video_progress_pub.put(VideoNodeProgressMessage(
                 video_id=video_id,
-                pipeline_id=pipeline_id,
+                pipeline_id=node_pipeline_id,
                 phase="failed",
                 progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
                 detail=f"{type(e).__name__}: {e}",
@@ -277,7 +280,7 @@ class VideoNode(SourceNode):
             if not _error_occurred:
                 video_progress_pub.put(VideoNodeProgressMessage(
                     video_id=video_id,
-                    pipeline_id=pipeline_id,
+                    pipeline_id=node_pipeline_id,
                     phase="complete",
                     progress_fraction=1.0,
                 ))

@@ -10,7 +10,7 @@ import os
 import time
 from pathlib import Path
 
-from freemocap.core.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
 from numpy.typing import NDArray

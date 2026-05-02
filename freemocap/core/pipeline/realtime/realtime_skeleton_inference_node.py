@@ -59,7 +59,7 @@ from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
-from freemocap.core.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (

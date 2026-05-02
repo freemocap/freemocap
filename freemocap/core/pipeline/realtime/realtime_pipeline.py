@@ -116,6 +116,7 @@ class RealtimePipeline:
                 ipc=ipc,
                 pubsub=pubsub,
                 skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
+                log_pipeline_times=pipeline_config.log_pipeline_times,
             )
             for camera_id in camera_group.configs.keys()
         }

@@ -7,11 +7,8 @@ import {
     Quaternion,
     Vector3,
 } from "three";
-import { useAppSelector } from "@/store";
-import {
-    CalibrationCameraData,
-    selectLoadedCalibration,
-} from "@/store/slices/calibration/calibration-slice";
+import type { CalibrationCameraData } from "@/store/slices/calibration/calibration-slice";
+import { useWorkerData } from "../WorkerDataContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 
 const FRUSTUM_DEPTH_MM = 75;
@@ -102,7 +99,7 @@ function MocapCameraInstance({ cam }: { cam: CalibrationCameraData }) {
 }
 
 export function MocapCameraRenderer() {
-    const loaded = useAppSelector(selectLoadedCalibration);
+    const { loadedCalibration: loaded } = useWorkerData();
     const { statsRef } = useViewportState();
 
     useEffect(() => {

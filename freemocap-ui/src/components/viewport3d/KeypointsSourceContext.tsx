@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useMemo} from "react";
 import {Point3d} from "./helpers/viewport3d-types";
-import {useServer} from "@/services";
+import {useServerOptional} from "@/services/server/server-context";
 
 /**
  * Abstraction over "where do 3D keypoints come from". The Streaming panel
@@ -36,18 +36,26 @@ export const KeypointsSourceProvider: React.FC<{
  */
 export function useKeypointsSource(): KeypointsSource {
     const ctx = useContext(KeypointsSourceContext);
-    const server = useServer();
+    // useServerOptional returns null when called outside ServerContextProvider
+    // (e.g. inside a Web Worker where only WorkerDataStore provides keypoints).
+    const server = useServerOptional();
 
     // Build the live adapter lazily so it doesn't allocate when a provider is present.
-    const liveAdapter = useMemo<KeypointsSource>(() => ({
-        subscribeToKeypointsRaw: server.subscribeToKeypointsRaw,
-        subscribeToKeypointsFiltered: server.subscribeToKeypointsFiltered,
-        getLatestKeypointsRaw: server.getLatestKeypointsRaw,
-    }), [
-        server.subscribeToKeypointsRaw,
-        server.subscribeToKeypointsFiltered,
-        server.getLatestKeypointsRaw,
+    const liveAdapter = useMemo<KeypointsSource | null>(() => {
+        if (!server) return null;
+        return {
+            subscribeToKeypointsRaw: server.subscribeToKeypointsRaw,
+            subscribeToKeypointsFiltered: server.subscribeToKeypointsFiltered,
+            getLatestKeypointsRaw: server.getLatestKeypointsRaw,
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        server?.subscribeToKeypointsRaw,
+        server?.subscribeToKeypointsFiltered,
+        server?.getLatestKeypointsRaw,
     ]);
 
-    return ctx ?? liveAdapter;
+    const source = ctx ?? liveAdapter;
+    if (!source) throw new Error("No KeypointsSource: mount KeypointsSourceProvider or ServerContextProvider");
+    return source;
 }

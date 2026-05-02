@@ -150,7 +150,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             ipc.kill_everything()
             return
 
-        timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+        log_pipeline_times = pipeline_config.log_pipeline_times
+        timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}") if log_pipeline_times else None
         _MAX_SESSION_RESTARTS = 3
         session_restart_count = 0
         # Per-camera scratch recarrays (avoids reallocating each frame).
@@ -186,7 +187,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     latest_frame_msg = candidate
                 if latest_frame_msg is None:
                     continue
-                if dropped_count:
+                if dropped_count and timer is not None:
                     timer.record("dropped_frames", float(dropped_count))
 
                 if not camera_group_shm.valid:
@@ -199,21 +200,22 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 requested_frame_number = latest_frame_msg.frame_number
 
                 # ---- Read N images from per-camera ring buffers ----
-                t_read = time.perf_counter()
+                t_read = time.perf_counter() if timer is not None else 0.0
                 images, ordered_camera_ids = _read_frames(
                     camera_ids=camera_ids,
                     camera_shms=camera_shms,
                     frame_recarrays=frame_recarrays,
                     requested_frame_number=requested_frame_number,
                 )
-                timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
+                if timer is not None:
+                    timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
 
                 if not images:
                     # Ring buffer didn't have the frame for any camera; skip.
                     continue
 
                 # ---- Batched skeleton inference ----
-                t_inf = time.perf_counter()
+                t_inf = time.perf_counter() if timer is not None else 0.0
                 try:
                     batch_results = session.predict_batch(images)
                 except MemoryError as mem_err:
@@ -245,11 +247,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         f"successfully after MemoryError."
                     )
                     continue  # skip this frame, resume on next
-                inf_ms = (time.perf_counter() - t_inf) * 1e3
-                timer.record("predict_batch", inf_ms)
-                # Per-camera-equivalent latency, for comparing with the legacy
-                # per-camera `skeleton_detection` timer in camera_node logs.
-                timer.record("predict_per_camera", inf_ms / max(len(images), 1))
+                if timer is not None:
+                    inf_ms = (time.perf_counter() - t_inf) * 1e3
+                    timer.record("predict_batch", inf_ms)
+                    # Per-camera-equivalent latency, for comparing with the legacy
+                    # per-camera `skeleton_detection` timer in camera_node logs.
+                    timer.record("predict_per_camera", inf_ms / max(len(images), 1))
 
                 # ---- Build per-camera observations ----
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
@@ -274,7 +277,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         per_camera_skeleton=per_camera_skeleton,
                     ),
                 )
-                timer.maybe_report()
+                if timer is not None:
+                    timer.maybe_report()
 
         except Exception as e:
             logger.error(

@@ -8,7 +8,6 @@ import {FaceRenderer} from "@/components/viewport3d/renderers/FaceRenderer";
 import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRenderer";
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
-import {useCalibrationTomlLoader} from "@/components/viewport3d/hooks/useCalibrationTomlLoader";
 
 /** Logs when a single R3F frame's work (useFrame callbacks + GPU upload) takes too long. */
 function FrameProfiler() {
@@ -30,7 +29,6 @@ interface ThreeJsSceneProps {
 
 export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
     const { visibility } = useViewportState();
-    useCalibrationTomlLoader();
 
     return (
         <>

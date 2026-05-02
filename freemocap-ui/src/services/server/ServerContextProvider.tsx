@@ -1,5 +1,7 @@
 // ServerContextProvider.tsx
-import React, {createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState} from 'react';
+import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import { ServerContext, type ServerContextValue } from './server-context';
+export { useServer, useServerOptional, ServerContext, type ServerContextValue } from './server-context';
 
 import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
@@ -23,30 +25,6 @@ import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
-
-interface ServerContextValue {
-    isConnected: boolean;
-    connect: () => void;
-    disconnect: () => void;
-    sendWebsocketMessage: (data: string | object) => void;
-    setCanvasForCamera: (cameraId: string, canvas: HTMLCanvasElement) => void;
-    getFps: (cameraId: string) => number | null;
-    getServerFps: () => number | null;
-    getFramerateStore: () => FramerateStore;
-    getLogStore: () => LogStore;
-    connectedCameraIds: string[];
-    updateServerConnection: (host: string, port: number) => void;
-    subscribeToKeypointsRaw: (cb: (points: Record<string, Point3d>) => void) => () => void;
-    subscribeToKeypointsFiltered: (cb: (points: Record<string, Point3d>) => void) => () => void;
-    subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
-    getLatestKeypointsRaw: () => Record<string, Point3d>;
-    setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
-    trackerSchemas: Record<string, TrackedObjectDefinition>;
-    activeTrackerId: string | null;
-    getActiveSchema: () => TrackedObjectDefinition | null;
-}
-
-const ServerContext = createContext<ServerContextValue | null>(null);
 
 // Compare two already-sorted string arrays without allocating
 function sortedArraysEqual(a: string[], b: string[]): boolean {
@@ -566,8 +544,3 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     );
 };
 
-export const useServer = (): ServerContextValue => {
-    const context = useContext(ServerContext);
-    if (!context) throw new Error('useServer must be used within ServerContextProvider');
-    return context;
-};

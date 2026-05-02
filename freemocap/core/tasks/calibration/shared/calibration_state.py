@@ -60,7 +60,7 @@ class CalibrationStateTracker:
         self._cam_id_name_cache: dict[str, str] = {}
         # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
         self._last_incoming_cam_ids: frozenset | None = None
-        self._timer = PipelineStageTimer(name="CalibrationStateTracker")
+        # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
     def create_and_try_load(cls) -> "CalibrationStateTracker":
@@ -283,7 +283,7 @@ class CalibrationStateTracker:
                     for pt_idx, pt_name in enumerate(point_names_seq):
                         if pt_name in cam_points:
                             stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
-            self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
+            # self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
 
             # Triangulate the single frame
             _t0 = time.perf_counter()
@@ -292,7 +292,7 @@ class CalibrationStateTracker:
                 config=triangulation_config,
             )
             points_3d = triangulation_result.points_3d  # (n_points, 3)
-            self._timer.record("triangulate", (time.perf_counter() - _t0) * 1e3)
+#             self._timer.record("triangulate", (time.perf_counter() - _t0) * 1e3)
 
             # Reprojection error gate (in pixels, mean across valid cameras)
             _t0 = time.perf_counter()
@@ -303,7 +303,7 @@ class CalibrationStateTracker:
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):
                 points_3d[bad_mask] = np.nan
-            self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
+#             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 
             # Build result dict, excluding NaN points
             _t0 = time.perf_counter()
@@ -313,8 +313,8 @@ class CalibrationStateTracker:
                 for i, name in enumerate(point_names_seq)
                 if valid_pt_mask[i]
             }
-            self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
-            self._timer.maybe_report()
+#             self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
+#             self._timer.maybe_report()
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0

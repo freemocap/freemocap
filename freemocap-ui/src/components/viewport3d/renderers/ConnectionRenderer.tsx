@@ -6,7 +6,7 @@ import {
     LineSegments,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useServer } from "@/services";
+import { useWorkerData } from "../WorkerDataContext";
 import { Point3d } from "@/components/viewport3d";
 import { useKeypointsSource } from "../KeypointsSourceContext";
 import { useViewportState } from "../scene/ViewportStateContext";
@@ -15,8 +15,6 @@ import {
     MAX_SEGMENT_EXTRAS,
 } from "../helpers/skeleton-config";
 import { resolvePoint } from "../helpers/virtual-points";
-import { useAppSelector } from "@/store";
-import { selectCalibrationConfig } from "@/store/slices/calibration/calibration-slice";
 import { SKELETON_COLORS } from "../helpers/skeleton-colors";
 
 // Module-level constant — avoids per-frame array allocation inside useFrame.
@@ -30,11 +28,10 @@ const ARUCO_EDGES: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0]];
  * connections are appended in a reserved tail region of the same buffer.
  */
 export function ConnectionRenderer() {
-    const { getActiveSchema, activeTrackerId, trackerSchemas } = useServer();
+    const { activeTrackerId, trackerSchemas, calibrationConfig } = useWorkerData();
     const { subscribeToKeypointsFiltered } = useKeypointsSource();
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
-    const calibrationConfig = useAppSelector(selectCalibrationConfig);
 
     const linesRef = useRef<LineSegments>(null);
     const pointsRef = useRef<Map<string, Point3d>>(new Map());

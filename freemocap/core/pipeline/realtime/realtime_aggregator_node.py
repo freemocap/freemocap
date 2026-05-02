@@ -269,12 +269,12 @@ class RealtimeAggregatorNode(AggregatorNode):
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.monotonic()
-        t_frame_requested: float = time.perf_counter()
-
-        timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}")
+        log_pipeline_times = pipeline_config.log_pipeline_times
+        timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}") if log_pipeline_times else None
+        t_frame_requested: float = time.perf_counter() if timer is not None else 0.0
 
         try:
-            previous_loop_tik = time.perf_counter()
+            previous_loop_tik = time.perf_counter() if timer is not None else 0.0
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
@@ -324,7 +324,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ),
                     )
                     latest_requested_frame = current_multiframe_number
-                    t_frame_requested = time.perf_counter()
+                    t_frame_requested = time.perf_counter() if timer is not None else 0.0
 
                 # ---- Collect skeleton inference results (GPU mode) ----
                 # Drained on every iteration so they're available whenever the
@@ -394,8 +394,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 last_received_frame = latest_requested_frame
-                t_frame_start = time.perf_counter()
-                timer.record("frame_collection_wait", (t_frame_start - t_frame_requested) * 1e3)
+                t_frame_start = time.perf_counter() if timer is not None else 0.0
+                if timer is not None:
+                    timer.record("frame_collection_wait", (t_frame_start - t_frame_requested) * 1e3)
 
                 # ---- Optimistically request next frame before aggregating ----
                 # result_consumed_event is guaranteed set at this point: we checked it
@@ -409,7 +410,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ProcessFrameNumberMessage(frame_number=latest_shm_frame)
                     )
                     latest_requested_frame = latest_shm_frame
-                    t_frame_requested = time.perf_counter()
+                    t_frame_requested = time.perf_counter() if timer is not None else 0.0
 
                 # ---- Triangulate and process if calibration is valid ----
                 # All processing stays in dict[str, ndarray] until final
@@ -427,7 +428,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                            and output.skeleton_observation is not None
                     }
                     if skeleton_observations_by_camera:
-                        t0 = time.perf_counter()
+                        t0 = time.perf_counter() if timer is not None else 0.0
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
@@ -437,7 +438,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into=raw_keypoints,
                         )
-                        timer.record("skeleton_triangulation", (time.perf_counter() - t0) * 1e3)
+                        if timer is not None:
+                            timer.record("skeleton_triangulation", (time.perf_counter() - t0) * 1e3)
 
                     # Triangulate charuco observations
                     charuco_observations_by_camera = {
@@ -447,7 +449,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                            and output.charuco_observation is not None
                     }
                     if charuco_observations_by_camera:
-                        t0 = time.perf_counter()
+                        t0 = time.perf_counter() if timer is not None else 0.0
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
@@ -457,21 +459,23 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into=raw_keypoints,
                         )
-                        timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
+                        if timer is not None:
+                            timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:
-                        t0 = time.perf_counter()
+                        t0 = time.perf_counter() if timer is not None else 0.0
                         filtered_keypoints = keypoint_filter.filter(
                             t=time.monotonic(),
                             raw_keypoints=raw_keypoints,
                         )
-                        timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
+                        if timer is not None:
+                            timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
 
                     # Velocity gate: reject teleportation spikes
                     if aggregator_config.filter_enabled:
                         if raw_keypoints:
-                            t0 = time.perf_counter()
+                            t0 = time.perf_counter() if timer is not None else 0.0
                             gate_result: GateResult = point_gate.gate(
                                 t=time.monotonic(),
                                 points=raw_keypoints,
@@ -480,17 +484,19 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 triangulated=gate_result.positions,
                                 into=filtered_keypoints,
                             )
-                            timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
+                            if timer is not None:
+                                timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
                         # Filter + constrain skeleton keypoints
                         if filtered_keypoints and aggregator_config.skeleton_enabled:
-                            t0 = time.perf_counter()
+                            t0 = time.perf_counter() if timer is not None else 0.0
                             filtered_keypoints = _filter_skeleton_arrays(
                                 point_arrays=filtered_keypoints,
                                 skeleton_filter=skeleton_filter,
                                 t=time.monotonic(),
                             )
-                            timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
+                            if timer is not None:
+                                timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
 
                     # # Estimate rigid body segment poses
                     # if filtered_keypoints and config.skeleton_enabled and skeleton_filter.current_bone_lengths:
@@ -501,13 +507,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                     #     )
 
                 # Convert to Point3d once at the end for the output message
-                timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
-
-                now = time.perf_counter()
-                timer.record("loop_time", (now - previous_loop_tik) * 1e3)
-                previous_loop_tik = now
-
-                timer.maybe_report()
+                if timer is not None:
+                    timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
+                    now = time.perf_counter()
+                    timer.record("loop_time", (now - previous_loop_tik) * 1e3)
+                    previous_loop_tik = now
+                    timer.maybe_report()
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

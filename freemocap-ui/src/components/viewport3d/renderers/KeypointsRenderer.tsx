@@ -8,7 +8,7 @@ import {
     Vector3,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useServer } from "@/services";
+import { useWorkerData } from "../WorkerDataContext";
 import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
@@ -31,7 +31,7 @@ interface KeypointLayerProps {
 }
 
 function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform" }: KeypointLayerProps) {
-    const server = useServer();
+    const workerData = useWorkerData();
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
@@ -50,13 +50,10 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
 
     // Pull color hints from the active schema (if any) so per-name palette
     // overrides from the YAML propagate into the 3D view.
-    // Intentionally omit `server` object from deps — activeTrackerId and
-    // trackerSchemas are the reactive signals; server is a stable context ref.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     const rawColorHints = useMemo(() => {
-        const schema = server.getActiveSchema();
+        const schema = workerData.getActiveSchema();
         return schema?.color_hints;
-    }, [server.activeTrackerId, server.trackerSchemas]);
+    }, [workerData, workerData.activeTrackerId, workerData.trackerSchemas]);
 
     // Pre-build Color objects so getPointStyle doesn't allocate inside useFrame.
     const colorHints = useMemo((): Record<string, Color> | undefined => {

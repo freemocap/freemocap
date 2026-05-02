@@ -14,21 +14,14 @@ import {
     selectEffectiveRecordingPath,
 } from '@/store/slices/active-recording/active-recording-slice';
 
-export type CalibrationSolverMethod = 'anipose' | 'pyceres';
-
-export interface CharucoBoardConfig {
-    squares_x: number;
-    squares_y: number;
-    square_length_mm: number;
-}
-
-export interface CalibrationConfig {
-    charucoBoard: CharucoBoardConfig;
-    minSharedViewsPerCamera: number;
-    autoStopOnMinViewCount: boolean;
-    solverMethod: CalibrationSolverMethod;
-    useGroundplane: boolean;
-}
+export type {
+    CalibrationSolverMethod,
+    CharucoBoardConfig,
+    CalibrationConfig,
+    CalibrationCameraData,
+    LoadedCalibration,
+} from './calibration-types';
+import type { CalibrationConfig, LoadedCalibration } from './calibration-types';
 
 export interface CalibrationDirectoryInfo {
     exists: boolean;
@@ -39,25 +32,6 @@ export interface CalibrationDirectoryInfo {
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
     errorMessage: string | null;
-}
-
-export interface CalibrationCameraData {
-    id: string;
-    name: string;
-    size: [number, number];
-    matrix: number[][];
-    distortions: number[];
-    rotation: [number, number, number];
-    translation: [number, number, number];
-    world_orientation: number[][];
-    world_position: [number, number, number];
-}
-
-export interface LoadedCalibration {
-    path: string;
-    mtimeMs: number;
-    cameras: CalibrationCameraData[];
-    metadata: Record<string, any> | null;
 }
 
 export interface CalibrationState {

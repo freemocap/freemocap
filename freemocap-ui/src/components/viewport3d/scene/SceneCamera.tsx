@@ -2,7 +2,6 @@ import { useCallback, useEffect } from "react";
 import { CameraControls } from "@react-three/drei";
 import type CameraControlsImpl from "camera-controls";
 import { Box3, Vector3 } from "three";
-import { useServer } from "@/services";
 import { Point3d } from "../helpers/viewport3d-types";
 import { RefObject } from "react";
 

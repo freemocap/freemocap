@@ -53,6 +53,7 @@ class CameraNode(SourceNode):
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
             skeleton_inference_centralized: bool = False,
+            log_pipeline_times: bool = False,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -65,6 +66,7 @@ class CameraNode(SourceNode):
                 config=config,
                 camera_shm_dto=camera_shm_dto,
                 skeleton_inference_centralized=skeleton_inference_centralized,
+                log_pipeline_times=log_pipeline_times,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
                 ),
@@ -94,6 +96,7 @@ class CameraNode(SourceNode):
             shutdown_self_flag: Synchronized,
             camera_shm_dto: SharedMemoryRingBufferDTO,
             skeleton_inference_centralized: bool = False,
+            log_pipeline_times: bool = False,
     ) -> None:
         import cv2
         from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
@@ -129,7 +132,9 @@ class CameraNode(SourceNode):
             )
 
         frame_recarray: np.recarray | None = None
-        timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
+        timer = None
+        if log_pipeline_times:
+            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -204,22 +209,25 @@ class CameraNode(SourceNode):
                     )
                 skeleton_observation = None
                 charuco_observation = None
-                t_frame_start = time.perf_counter()
+                t_frame_start = time.perf_counter() if timer is not None else 0.0
                 if skeleton_detector is not None:
-                    t0 = time.perf_counter()
+                    t0 = time.perf_counter() if timer is not None else 0.0
                     skeleton_observation = skeleton_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
-                    timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
+                    if timer is not None:
+                        timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
                 if charuco_detector is not None:
-                    t0 = time.perf_counter()
+                    t0 = time.perf_counter() if timer is not None else 0.0
                     charuco_observation = charuco_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
-                    timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
-                timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)
+                    if timer is not None:
+                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+                if timer is not None:
+                    timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)
 
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
@@ -229,7 +237,8 @@ class CameraNode(SourceNode):
                         skeleton_observation=skeleton_observation,
                     ),
                 )
-                timer.maybe_report()
+                if timer is not None:
+                    timer.maybe_report()
 
         except Exception as e:
             logger.exception(f"Exception in RealtimeCameraNode [{camera_id}]: {e}")

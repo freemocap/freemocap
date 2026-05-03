@@ -60,6 +60,7 @@ export const LogTerminal: React.FC<{isCollapsed?: boolean}> = ({isCollapsed = fa
                 isPaused={terminal.isPaused}
                 copyFeedback={terminal.copyFeedback}
                 showSearch={terminal.showSearch}
+                showLevelFilters={terminal.showLevelFilters}
                 selectedLevels={terminal.selectedLevels}
                 onLevelToggle={terminal.handleLevelToggle}
                 onPauseToggle={terminal.handlePauseToggle}
@@ -68,6 +69,7 @@ export const LogTerminal: React.FC<{isCollapsed?: boolean}> = ({isCollapsed = fa
                 onSaveToDisk={terminal.handleSaveToDisk}
                 onScrollToBottom={terminal.scrollToBottom}
                 onToggleSearch={() => terminal.setShowSearch((prev) => !prev)}
+                onToggleLevelFilters={() => terminal.setShowLevelFilters((prev) => !prev)}
             />
 
             {terminal.showSearch && (

@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useRef, useState, useEffect} from 'react';
 import {LogRecord} from '@/services/server/server-helpers/log-store';
 import {LOG_COLORS, LINE_HEIGHT, ROW_PADDING} from './constants';
 import {Linkify} from './Linkify';
@@ -11,11 +11,24 @@ interface Props {
 
 export const LogEntryRow = React.memo(({log, style}: Props) => {
     const [expanded, setExpanded] = useState(false);
+    const rowRef = useRef<HTMLDivElement>(null);
     const color = LOG_COLORS[log.levelname.toUpperCase()] || '#ccc';
     const multiLine = log.message.includes('\n');
 
+    useEffect(() => {
+        if (!expanded) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (rowRef.current && !rowRef.current.contains(e.target as Node)) {
+                setExpanded(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [expanded]);
+
     return (
         <div
+            ref={rowRef}
             style={{
                 ...style,
                 borderLeft: `2px solid ${color}`,
@@ -34,7 +47,7 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
         >
             {/* Header line: timestamp + level badge + first (or only) message line */}
             <div style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'}}>
-                <span style={{color: '#888', marginRight: 8, fontSize: '0.9em'}}>
+                <span style={{color: '#888', marginRight: 8, fontSize: '0.7em'}}>
                     {log.asctime}
                 </span>
                 <span
@@ -43,7 +56,7 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
                         color: '#000',
                         padding: '1px 5px',
                         borderRadius: 2,
-                        fontSize: '0.75em',
+                        fontSize: '0.5em',
                         fontWeight: 600,
                         marginRight: 4,
                         display: 'inline-block',
@@ -70,14 +83,14 @@ export const LogEntryRow = React.memo(({log, style}: Props) => {
                 {/*>*/}
                 {/*    {log.source === 'ui' ? 'UI' : 'SERVER'}*/}
                 {/*</span>*/}
-                <span style={{color: color}}>
+                <span style={{color: color, fontSize: '0.75em'}}>
                     <Linkify text={multiLine ? log.message.split('\n')[0] : log.message}/>
                 </span>
             </div>
 
             {/* Remaining lines for multi-line messages */}
             {multiLine && (
-                <div style={{whiteSpace: 'pre', color: color, paddingLeft: 4}}>
+                <div style={{whiteSpace: 'pre', fontSize: '0.75em', color: color, paddingLeft: 4}}>
                     <Linkify text={log.message.split('\n').slice(1).join('\n')}/>
                 </div>
             )}

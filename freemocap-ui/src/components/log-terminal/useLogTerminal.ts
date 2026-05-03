@@ -21,6 +21,7 @@ export interface LogTerminalState {
     selectedLevels: string[];
     searchText: string;
     showSearch: boolean;
+    showLevelFilters: boolean;
     copyFeedback: boolean;
     // actions
     handleScroll: () => void;
@@ -32,6 +33,7 @@ export interface LogTerminalState {
     handleClear: () => void;
     setSearchText: React.Dispatch<React.SetStateAction<string>>;
     setShowSearch: React.Dispatch<React.SetStateAction<boolean>>;
+    setShowLevelFilters: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export function useLogTerminal(): LogTerminalState {
@@ -47,6 +49,7 @@ export function useLogTerminal(): LogTerminalState {
     const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
     const [searchText, setSearchText] = useState('');
     const [showSearch, setShowSearch] = useState(false);
+    const [showLevelFilters, setShowLevelFilters] = useState(false);
     const [copyFeedback, setCopyFeedback] = useState(false);
 
     // Virtualization state
@@ -160,6 +163,7 @@ export function useLogTerminal(): LogTerminalState {
         setSelectedLevels([]);
         setSearchText('');
         setShowSearch(false);
+        setShowLevelFilters(false);
         setIsPaused(false);
         lastVersionRef.current = -1;
         setSnapshot({entries: [], hasErrors: false, countsByLevel: {}, version: 0});
@@ -184,6 +188,7 @@ export function useLogTerminal(): LogTerminalState {
         selectedLevels,
         searchText,
         showSearch,
+        showLevelFilters,
         copyFeedback,
         handleScroll,
         scrollToBottom,
@@ -194,5 +199,6 @@ export function useLogTerminal(): LogTerminalState {
         handleClear,
         setSearchText,
         setShowSearch,
+        setShowLevelFilters,
     };
 }

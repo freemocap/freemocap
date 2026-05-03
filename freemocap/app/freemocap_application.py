@@ -23,7 +23,7 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
-from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 

@@ -35,11 +35,10 @@ from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressR
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt, TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
+from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 from freemocap.pubsub.pubsub_topics import (
     VideoNodeOutputMessage,
     VideoNodeOutputTopic,
-    AggregatorNodeProgressTopic,
-    AggregatorNodeProgressMessage, PipelineProgressMessage,
 )
 from tqdm import tqdm
 
@@ -67,6 +66,7 @@ class PosthocAggregationNode(AggregatorNode):
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
     ) -> "PosthocAggregationNode":
+        _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"Pipeline-{pipeline_id}-PosthocAggregationNode",
@@ -79,19 +79,15 @@ class PosthocAggregationNode(AggregatorNode):
                 recording_info=recording_info,
                 video_metadata=video_metadata,
                 ipc=ipc,
-                aggregator_progress_pub=pubsub.get_publication_queue(
-                    AggregatorNodeProgressTopic
-                ),
+                aggregator_progress_pub=_progress_queue,
                 video_node_output_subscription=pubsub.get_subscription(
                     VideoNodeOutputTopic,
                 ),
             ),
-
         )
         return cls(
             shutdown_self_flag=shutdown_self_flag,
-            progress_subscription=pubsub.get_subscription(
-                AggregatorNodeProgressTopic,),
+            progress_subscription=_progress_queue,
             worker=worker,
         )
 

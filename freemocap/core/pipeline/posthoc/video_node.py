@@ -27,11 +27,11 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.pipeline_phases import VideoNodePhase, PosthocPipelineType
+from freemocap.core.pipeline.posthoc.progress_messages import VideoNodeProgressMessage, PipelineProgressMessage
 from freemocap.core.types.type_overloads import TopicPublicationQueue, PipelineIdString, \
     TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
-from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage, VideoNodeProgressTopic, \
-    VideoNodeProgressMessage, PipelineProgressMessage
+from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage
 from freemocap.system.default_paths import ANNOTATED_VIDEOS_FOLDER_NAME
 
 logger = logging.getLogger(__name__)
@@ -59,6 +59,7 @@ class VideoNode(SourceNode):
         save_annotated_video: bool = True,
         pipeline_id: PipelineIdString | None = None,
     ) -> "VideoNode":
+        _progress_queue: multiprocessing.queues.Queue = multiprocessing.Queue()
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
             name=f"VideoNode-{video_path.stem}",
@@ -72,9 +73,7 @@ class VideoNode(SourceNode):
                 video_output_pub=pubsub.get_publication_queue(
                     VideoNodeOutputTopic,
                 ),
-                video_progress_pub=pubsub.get_publication_queue(
-                    VideoNodeProgressTopic
-                ),
+                video_progress_pub=_progress_queue,
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
                 pipeline_id=pipeline_id,
@@ -86,7 +85,7 @@ class VideoNode(SourceNode):
             video_path=video_path,
             shutdown_self_flag=shutdown_self_flag,
             worker=worker,
-            progress_subscription=pubsub.get_subscription(VideoNodeProgressTopic)
+            progress_subscription=_progress_queue,
         )
 
     @staticmethod

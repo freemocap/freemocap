@@ -26,7 +26,7 @@ from freemocap.core.tasks.calibration.posthoc_calibration_task import run_postho
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 

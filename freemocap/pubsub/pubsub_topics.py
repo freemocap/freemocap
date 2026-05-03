@@ -189,32 +189,6 @@ class PipelineTimingMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
-# Posthoc progress reporting
-# ---------------------------------------------------------------------------
-
-@dataclass
-class PipelineProgressMessage(TopicMessageABC):
-    message_type: str = "posthoc_progress"
-    pipeline_id: str = ""
-    pipeline_type: str = ""
-    phase: str = ""
-    progress_fraction: float = 0.0
-    detail: str = ""
-    recording_name: str = ""
-    recording_path: str = ""
-
-
-@dataclass
-class VideoNodeProgressMessage(PipelineProgressMessage):
-    camera_id: CameraIdString = ""
-
-
-@dataclass
-class AggregatorNodeProgressMessage(PipelineProgressMessage):
-    pass
-
-
-# ---------------------------------------------------------------------------
 # Topic instantiation
 # ---------------------------------------------------------------------------
 
@@ -224,6 +198,4 @@ CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
-VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)
-AggregatorNodeProgressTopic = create_topic(AggregatorNodeProgressMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)

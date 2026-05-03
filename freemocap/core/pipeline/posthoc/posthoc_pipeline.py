@@ -31,7 +31,7 @@ from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.posthoc.video_node import VideoNode
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
-from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 

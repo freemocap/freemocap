@@ -6,6 +6,7 @@ Runs indefinitely until shutdown. Responds to pipeline config updates
 (toggling detectors, changing charuco board params, etc).
 """
 import logging
+import queue
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
@@ -14,7 +15,6 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
-from skellycam.utilities.wait_functions import wait_1ms
 # from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -30,6 +30,7 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     ProcessFrameNumberMessage,
     CameraNodeOutputMessage,
+    PipelineTimingTopic,
 )
 
 import numpy as np
@@ -76,6 +77,9 @@ class CameraNode(SourceNode):
                 camera_output_pub=pubsub.get_publication_queue(
                     CameraNodeOutputTopic,
                 ),
+                timing_pub=pubsub.get_publication_queue(
+                    PipelineTimingTopic,
+                ),
             ),
         )
         return cls(
@@ -93,6 +97,7 @@ class CameraNode(SourceNode):
             process_frame_number_sub: TopicSubscriptionQueue,
             pipeline_config_sub: TopicSubscriptionQueue,
             camera_output_pub: TopicPublicationQueue,
+            timing_pub: TopicPublicationQueue,
             shutdown_self_flag: Synchronized,
             camera_shm_dto: SharedMemoryRingBufferDTO,
             skeleton_inference_centralized: bool = False,
@@ -139,8 +144,6 @@ class CameraNode(SourceNode):
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
-                wait_1ms()
-
                 # ---- Handle config updates ----
                 while not pipeline_config_sub.empty():
                     update_msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
@@ -159,9 +162,6 @@ class CameraNode(SourceNode):
                             and new_config.skeleton_detector_config is not None
                             and not skeleton_inference_centralized
                     ):
-                        # skeleton_detector = LegacyMediapipeDetector.create(
-                        #     config=new_config.skeleton_detector_config,
-                        # )
                         skeleton_detector = RTMPoseDetector.create(
                             config=new_config.skeleton_detector_config,
                         )
@@ -178,11 +178,13 @@ class CameraNode(SourceNode):
                     )
                     break
 
-                # ---- Process frames ----
-                if process_frame_number_sub.empty():
+                # ---- Block until a frame request arrives (up to 5ms) ----
+                # Replaces the busy-poll (empty() check + 1ms sleep) with an
+                # efficient OS-level wait, cutting latency and CPU waste.
+                try:
+                    frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get(timeout=0.005)
+                except queue.Empty:
                     continue
-
-                frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get()
                 frame_recarray = camera_shm.get_data_by_index(
                     index=frame_msg.frame_number,
                     rec_array=frame_recarray,
@@ -238,7 +240,11 @@ class CameraNode(SourceNode):
                     ),
                 )
                 if timer is not None:
-                    timer.maybe_report()
+                    timer.maybe_flush(
+                        publication_queue=timing_pub,
+                        node_kind="camera",
+                        camera_id=camera_id,
+                    )
 
         except Exception as e:
             logger.exception(f"Exception in RealtimeCameraNode [{camera_id}]: {e}")

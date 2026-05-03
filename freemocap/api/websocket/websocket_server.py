@@ -206,17 +206,11 @@ class WebsocketServer:
 
                 for packet in packets:
                     if packet.frontend_payload is not None:
-                        # When the binary-keypoints path is active, drop the
-                        # JSON copy of the same data so the wire carries it
-                        # exactly once.
-                        if packet.keypoints_bytearray is not None:
-                            packet.frontend_payload.keypoints_raw = None
-                            packet.frontend_payload.keypoints_filtered = None
                         await self._send_msgspec_json(packet.frontend_payload)
 
-                    if packet.keypoints_bytearray is not None:
+                    if packet.keypoints_binary_payload is not None:
                         async with self._send_lock:
-                            await self.websocket.send_bytes(packet.keypoints_bytearray)
+                            await self.websocket.send_bytes(packet.keypoints_binary_payload)
 
                     if packet.images_bytearray is not None:
                         async with self._send_lock:

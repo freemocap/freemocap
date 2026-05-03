@@ -24,11 +24,15 @@ import {
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 import {
     BLOCK_KIND,
-    blockToPointDict,
     isKeypointsMessage,
     parseKeypointsMessage,
 } from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
-import {Point3d, RigidBodyPose} from "@/components/viewport3d";
+import {RigidBodyPose} from "@/components/viewport3d";
+import {
+    KeypointsCallback,
+    KeypointsFrame,
+    pointDictToFrame,
+} from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 
@@ -77,13 +81,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const lastPipelineProgressRef = useRef<Record<string, number>>({});
 
     // 3D data refs and subscriber sets
-    // Plain Record — matches JSON.parse output directly, no remapping needed.
-    const trackedPointsRef = useRef<Record<string, Point3d>>({});
+    const trackedPointsRef = useRef<KeypointsFrame | null>(null);
     const rigidBodiesRef = useRef<Map<string, RigidBodyPose>>(new Map());
-    const trackedPointsSubscribersRef = useRef<Set<(points: Record<string, Point3d>) => void>>(new Set());
+    const trackedPointsSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
     const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
-    const keypointsFilteredRef = useRef<Record<string, Point3d>>({});
-    const keypointsFilteredSubscribersRef = useRef<Set<(points: Record<string, Point3d>) => void>>(new Set());
+    const keypointsFilteredRef = useRef<KeypointsFrame | null>(null);
+    const keypointsFilteredSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
 
 
     // Holds the latest binary payload received from the WebSocket.
@@ -101,10 +104,26 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const pendingKeypointsRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const frameLoopRef = useRef<number | null>(null);
+    // Frame number extracted from the binary header immediately on receipt.
+    // Sent as the ack at the top of the next rAF tick — long before decode
+    // finishes — so the backend can pipeline the next frame without waiting
+    // for our JPEG decode + overlay compositing to complete.
+    const pendingAckFrameNumberRef = useRef<number | null>(null);
 
     // Cached sorted camera IDs from the last frame — compared by value to avoid
     // per-frame Array.from().sort() allocations when the camera list hasn't changed.
     const lastCameraIdsRef = useRef<string[]>([]);
+
+    // Tracks what ran in the most recent rAF tick for jank diagnosis.
+    const lastTickRef = useRef({
+        sentAck: false,
+        processedJson: false,
+        processedBinaryKP: false,
+        startedDecode: false,
+        decodingInProgress: false,
+        wsMessageCount: 0,   // WS messages received since last tick
+    });
+    const wsMessagesSinceLastTickRef = useRef(0);
 
     // Initialize services once
     useEffect(() => {
@@ -152,11 +171,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingPayloadRef.current = null;
                 pendingJsonPayloadRef.current = null;
                 pendingKeypointsRef.current = null;
+                pendingAckFrameNumberRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
-                trackedPointsRef.current = {};
+                trackedPointsRef.current = null;
                 rigidBodiesRef.current = new Map();
-                keypointsFilteredRef.current = {};
+                keypointsFilteredRef.current = null;
                 latestCharucoRef.current.clear();
                 latestMediapipeRef.current.clear();
                 overlayManagerRef.current?.clearAll();
@@ -171,13 +191,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         let lastFrontendFrameTime = 0;
         const frontendDurations: number[] = [];
 
-        // Process a decoded frame result: update camera list, dispatch to workers, send ack.
-        const dispatchFrames = async (
+        // Process a decoded frame result: update camera list, dispatch to workers.
+        // Synchronous — overlay compositing is fire-and-forget so it never blocks
+        // the rAF loop. The ack is sent at the top of processFrameLoop, well before
+        // decode finishes, so the backend pipelines the next frame sooner.
+        const dispatchFrames = (
             result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
-        ): Promise<void> => {
+        ): void => {
             if (!result) return;
 
-            const {frames, cameraIds, frameNumbers} = result;
+            const {frames, cameraIds} = result;
 
             // Only allocate a new sorted array if the camera set actually changed.
             const lastIds = lastCameraIdsRef.current;
@@ -209,9 +232,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 });
             }
 
-            // Composite overlays onto frames and dispatch to canvas workers in parallel.
+            // Composite overlays onto frames and dispatch to canvas workers.
+            // Fire-and-forget: overlay compositing runs asynchronously and never
+            // blocks the rAF loop. The canvas worker renders the composited bitmap
+            // when it arrives (overwriting any earlier raw frame for that camera).
             const overlayManager = overlayManagerRef.current!;
-            await Promise.all(frames.map(async (frameData) => {
+            for (const frameData of frames) {
                 const charucoObs = charucoEnabledRef.current
                     ? latestCharucoRef.current.get(frameData.cameraId) ?? null
                     : null;
@@ -219,27 +245,18 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     ? latestMediapipeRef.current.get(frameData.cameraId) ?? null
                     : null;
 
-                let compositeBitmap: ImageBitmap;
                 if (charucoObs || mediapipeObs) {
-                    compositeBitmap = await overlayManager.processFrame(
+                    overlayManager.processFrame(
                         frameData.cameraId,
                         frameData.bitmap,
                         charucoObs,
                         mediapipeObs,
-                    );
+                    ).then(compositeBitmap => {
+                        canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, compositeBitmap);
+                    }).catch(err => console.error('Overlay error for camera', frameData.cameraId, err));
                 } else {
-                    compositeBitmap = frameData.bitmap;
+                    canvasManagerRef.current!.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
                 }
-
-                canvasManagerRef.current!.sendFrameToWorker(
-                    frameData.cameraId,
-                    compositeBitmap,
-                );
-            }));
-
-            if (frameNumbers.size > 0) {
-                const maxFrameNumber = Math.max(...Array.from(frameNumbers));
-                ws.send({type: 'frameAcknowledgment', frameNumber: maxFrameNumber});
             }
 
             // Measure display fps from decoded frame arrivals — fires every frame
@@ -290,17 +307,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
 
             if (payload.keypoints_raw) {
-                trackedPointsRef.current = payload.keypoints_raw as Record<string, Point3d>;
-                for (const cb of trackedPointsSubscribersRef.current) {
-                    cb(trackedPointsRef.current);
-                }
+                const frame = pointDictToFrame(payload.keypoints_raw as Record<string, {x:number;y:number;z:number}>);
+                trackedPointsRef.current = frame;
+                for (const cb of trackedPointsSubscribersRef.current) cb(frame);
             }
 
             if (payload.keypoints_filtered) {
-                keypointsFilteredRef.current = payload.keypoints_filtered as Record<string, Point3d>;
-                for (const cb of keypointsFilteredSubscribersRef.current) {
-                    cb(keypointsFilteredRef.current);
-                }
+                const frame = pointDictToFrame(payload.keypoints_filtered as Record<string, {x:number;y:number;z:number}>);
+                keypointsFilteredRef.current = frame;
+                for (const cb of keypointsFilteredSubscribersRef.current) cb(frame);
             }
 
             if (payload.rigid_body_poses) {
@@ -313,27 +328,30 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
-        // Decode the binary keypoints message (when FREEMOCAP_BINARY_KEYPOINTS
-        // is enabled on the backend) and dispatch to the same subscribers as
-        // the JSON path. Step 1 of the refactor preserves the legacy
-        // Record<string, Point3d> shape so the renderer contract is unchanged.
+        // Decode the binary keypoints message and dispatch typed frames
+        // directly — no Point3d object creation, no JSON parsing.
         const dispatchBinaryKeypoints = (buf: ArrayBuffer): void => {
             const parsed = parseKeypointsMessage(buf);
             for (const block of parsed.blocks) {
                 const schema = trackerSchemasRef.current[block.trackerId];
                 if (!schema) {
-                    // Schema handshake hasn't arrived yet, or the backend is
-                    // shipping a tracker we don't know about. Drop silently —
-                    // the next frame after the handshake will populate.
+                    // Schema handshake hasn't arrived yet — drop silently.
                     continue;
                 }
-                const dict = blockToPointDict(block, schema.tracked_points);
+                // Cast to Float32Array (the serializer always uses float32).
+                const interleaved = block.interleaved instanceof Float32Array
+                    ? block.interleaved
+                    : new Float32Array(block.interleaved);
+                const frame: KeypointsFrame = {
+                    pointNames: schema.tracked_points,
+                    interleaved,
+                };
                 if (block.kind === BLOCK_KIND.KEYPOINTS_RAW_3D) {
-                    trackedPointsRef.current = dict;
-                    for (const cb of trackedPointsSubscribersRef.current) cb(dict);
+                    trackedPointsRef.current = frame;
+                    for (const cb of trackedPointsSubscribersRef.current) cb(frame);
                 } else if (block.kind === BLOCK_KIND.KEYPOINTS_FILTERED_3D) {
-                    keypointsFilteredRef.current = dict;
-                    for (const cb of keypointsFilteredSubscribersRef.current) cb(dict);
+                    keypointsFilteredRef.current = frame;
+                    for (const cb of keypointsFilteredSubscribersRef.current) cb(frame);
                 }
             }
         };
@@ -342,17 +360,51 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // registered immediately — the async decode+dispatch chain runs via
         // .then() and never blocks rAF re-registration.
         let lastRafTime = 0;
+        let lastBodyDuration = 0;
         let decodeStartTime = 0;
         const processFrameLoop = (): void => {
             const now = performance.now();
             const rafGap = lastRafTime > 0 ? now - lastRafTime : 0;
+            // Time the body: measure from now to just before we register next rAF.
+            // This separates "our body was slow" from "browser delayed the next rAF".
+            const bodyStart = now;
             lastRafTime = now;
+
             if (rafGap > 50) {
-                // Still decoding from last frame? Gap is decode-caused. Otherwise it's main-thread jank (R3F, GC, etc.).
-                const tag = processingFrameRef.current
-                    ? `decode-busy (started ${(now - decodeStartTime).toFixed(1)}ms ago)`
+                const prev = lastTickRef.current;
+                const decoding = processingFrameRef.current;
+                const tag = decoding
+                    ? `decode-busy (${(now - decodeStartTime).toFixed(0)}ms)`
                     : 'main-thread jank';
-                console.warn(`rAF gap: ${rafGap.toFixed(1)}ms [${tag}]`);
+                console.warn(
+                    `rAF gap: ${rafGap.toFixed(0)}ms [${tag}] prevBody:${lastBodyDuration.toFixed(0)}ms` +
+                    ` | prev: ack=${prev.sentAck} json=${prev.processedJson}` +
+                    ` binKP=${prev.processedBinaryKP} decode=${prev.startedDecode}` +
+                    ` decoding=${prev.decodingInProgress} wsMsg=${prev.wsMessageCount}` +
+                    ` | cur: pendJson=${pendingJsonPayloadRef.current !== null}` +
+                    ` pendBinKP=${pendingKeypointsRef.current !== null}` +
+                    ` pendImg=${pendingPayloadRef.current !== null}`
+                );
+            }
+
+            // Snapshot tick activity for the next jank report
+            const tick = {
+                sentAck: false,
+                processedJson: false,
+                processedBinaryKP: false,
+                startedDecode: false,
+                decodingInProgress: processingFrameRef.current,
+                wsMessageCount: wsMessagesSinceLastTickRef.current,
+            };
+            wsMessagesSinceLastTickRef.current = 0;
+
+            // Ack the most-recently-received image frame immediately — before
+            // decode starts. This unblocks the backend's result_consumed_event
+            // ~100-150ms earlier, allowing it to pipeline the next frame.
+            if (pendingAckFrameNumberRef.current !== null) {
+                ws.send({type: 'frameAcknowledgment', frameNumber: pendingAckFrameNumberRef.current});
+                pendingAckFrameNumberRef.current = null;
+                tick.sentAck = true;
             }
 
             // Dispatch buffered JSON payload (keypoints, overlays, rigid bodies).
@@ -362,6 +414,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 const jsonPayload = pendingJsonPayloadRef.current;
                 pendingJsonPayloadRef.current = null;
                 dispatchJsonPayload(jsonPayload);
+                tick.processedJson = true;
             }
 
             // Decode any buffered binary keypoints frame after the JSON
@@ -374,6 +427,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingKeypointsRef.current = null;
                 try {
                     dispatchBinaryKeypoints(buf);
+                    tick.processedBinaryKP = true;
                 } catch (err) {
                     console.error('Error parsing binary keypoints message:', err);
                 }
@@ -384,21 +438,26 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
                 decodeStartTime = performance.now();
+                tick.startedDecode = true;
                 frameProcessorRef.current!.processFramePayload(payload)
                     .then(result => {
                         const decodeMs = performance.now() - decodeStartTime;
                         if (decodeMs > 20) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
-                        return dispatchFrames(result);
+                        dispatchFrames(result);
                     })
                     .catch(err => console.error('Error processing frame:', err))
                     .finally(() => { processingFrameRef.current = false; });
             }
+
+            lastBodyDuration = performance.now() - bodyStart;
+            lastTickRef.current = tick;
             frameLoopRef.current = requestAnimationFrame(processFrameLoop);
         };
 
         frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
         const handleMessage = (event: MessageEvent): void => {
+            wsMessagesSinceLastTickRef.current++;
             // Handle binary frame data: demux on the first byte. Image frames
             // start with MessageType.PAYLOAD_HEADER (0); keypoints messages
             // start with KEYPOINTS_PAYLOAD_HEADER (3). Older unprocessed
@@ -407,6 +466,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 if (isKeypointsMessage(event.data)) {
                     pendingKeypointsRef.current = event.data;
                 } else {
+                    // Extract frame number immediately from the binary header
+                    // (BigInt64 at byte offset 8, little-endian) so we can ack
+                    // at the top of the next rAF — before decode starts.
+                    if (event.data.byteLength >= 16) {
+                        const view = new DataView(event.data);
+                        pendingAckFrameNumberRef.current = Number(view.getBigInt64(8, true));
+                    }
                     pendingPayloadRef.current = event.data;
                 }
             }
@@ -525,18 +591,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return logStoreRef.current;
     }, []);
 
-    const subscribeToKeypointsRaw = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
+    const subscribeToKeypointsRaw = useCallback((cb: KeypointsCallback): () => void => {
         trackedPointsSubscribersRef.current.add(cb);
-        return () => {
-            trackedPointsSubscribersRef.current.delete(cb);
-        };
+        return () => { trackedPointsSubscribersRef.current.delete(cb); };
     }, []);
 
-    const subscribeToKeypointsFiltered = useCallback((cb: (points: Record<string, Point3d>) => void): () => void => {
+    const subscribeToKeypointsFiltered = useCallback((cb: KeypointsCallback): () => void => {
         keypointsFilteredSubscribersRef.current.add(cb);
-        return () => {
-            keypointsFilteredSubscribersRef.current.delete(cb);
-        };
+        return () => { keypointsFilteredSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToRigidBodies = useCallback((cb: (poses: Map<string, RigidBodyPose>) => void): () => void => {
@@ -546,7 +608,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
-    const getLatestKeypointsRaw = useCallback((): Record<string, Point3d> => {
+    const getLatestKeypointsRaw = useCallback((): KeypointsFrame | null => {
         return trackedPointsRef.current;
     }, []);
 

@@ -339,9 +339,9 @@ class RealtimePipeline:
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            keypoints_bytearray: bytearray | None = None
+            keypoints_binary_payload: bytearray | None = None
             if _BINARY_KEYPOINTS_ENABLED:
-                keypoints_bytearray = build_keypoints_payload(
+                keypoints_binary_payload = build_keypoints_payload(
                     frame_number=aggregation_output.frame_number,
                     tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
                     point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
@@ -352,6 +352,6 @@ class RealtimePipeline:
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,
                 frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
-                keypoints_bytearray=keypoints_bytearray,
+                keypoints_binary_payload=keypoints_binary_payload,
             )
         return None

@@ -59,7 +59,7 @@ class FrontendImagePacket:
     frontend_payload: FrontendPayload
     # Optional binary keypoints message. Built when FREEMOCAP_BINARY_KEYPOINTS=1.
     # Format: see freemocap.api.websocket.binary_keypoints_protocol.
-    keypoints_bytearray: bytearray | None = None
+    keypoints_binary_payload: bytearray | None = None
 
     @property
     def frame_number(self) -> FrameNumberInt:

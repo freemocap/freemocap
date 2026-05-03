@@ -1,9 +1,9 @@
 import React, {useEffect, useMemo, useRef} from "react";
 import {parquetRead} from "hyparquet";
 import type {DecodedArray} from "hyparquet";
-import {Point3d} from "./helpers/viewport3d-types";
 import {
     KeypointsCallback,
+    KeypointsFrame,
     KeypointsSource,
     KeypointsSourceProvider,
 } from "./KeypointsSourceContext";
@@ -13,14 +13,14 @@ import {serverUrls} from "@/constants/server-urls";
  * KeypointsSource implementation that reads the recording's long-format
  * `freemocap_data_by_frame.parquet` directly in the browser (via hyparquet),
  * pivots long→wide into per-trajectory Float32Array buffers, and emits
- * per-frame point records in lockstep with the playback slider.
+ * per-frame KeypointsFrame values in lockstep with the playback slider.
  *
  * Design notes:
  *   - Uses parquetRead (columnar API) instead of parquetReadObjects to read column-wise.
  *   - After decode, each trajectory is packed as Float32Array of length
  *     frameCount * K * 3, giving O(1) per-frame indexing.
- *   - Subscribers receive a pre-allocated scratch record whose Point3d slots
- *     are mutated in place each tick (zero GC pressure).
+ *   - Subscribers receive a stable KeypointsFrame whose `scratchInterleaved`
+ *     buffer is mutated in place each tick (zero GC pressure after first frame).
  *   - Driven by `currentFrameRef` from usePlaybackController, polled via our
  *     own rAF loop. React re-renders are not involved in the hot path.
  */
@@ -42,22 +42,25 @@ const ParquetColumnNames = {
 } as const;
 
 interface TrajectoryData {
-    names: string[];
-    buffer: Float32Array;           // length = frameCount * K * 3
+    names: readonly string[];
+    buffer: Float32Array;              // length = frameCount * K * 3 (x, y, z — no vis in parquet)
     frameCount: number;
     keypointCount: number;
-    scratch: Record<string, Point3d>;
+    scratchInterleaved: Float32Array;  // length = K * 4 (x, y, z, vis) — mutated each tick
+    scratchFrame: KeypointsFrame;      // stable reference — interleaved points at scratchInterleaved
     subscribers: Set<KeypointsCallback>;
-    lastEmittedFrame: number;       // -1 means "never emitted"
+    lastEmittedFrame: number;          // -1 means "never emitted"
 }
 
 function emptyTrajectory(): TrajectoryData {
+    const scratchInterleaved = new Float32Array(0);
     return {
         names: [],
         buffer: new Float32Array(0),
         frameCount: 0,
         keypointCount: 0,
-        scratch: {},
+        scratchInterleaved,
+        scratchFrame: { pointNames: [], interleaved: scratchInterleaved },
         subscribers: new Set(),
         lastEmittedFrame: -1,
     };
@@ -92,12 +95,12 @@ function convertBigIntArray(arr: DecodedArray): Float64Array | DecodedArray {
 function concatDecodedArrays(chunks: DecodedArray[]): DecodedArray {
     // First, convert any BigInt arrays to Float64Array
     const converted = chunks.map(c => convertBigIntArray(c));
-    
+
     // Even for a single chunk, check if it was a BigInt array (already converted above)
     if (converted.length === 1) {
         return converted[0];
     }
-    
+
     const total = converted.reduce((s, c) => s + c.length, 0);
     const first = converted[0];
     if (first instanceof Float64Array) {
@@ -166,15 +169,16 @@ function buildTrajectory(
         buffer[off + 2] = zCol[i];
     }
 
-    const scratch: Record<string, Point3d> = {};
-    for (const name of names) scratch[name] = {x: NaN, y: NaN, z: NaN};
+    const scratchInterleaved = new Float32Array(K * 4);
+    const scratchFrame: KeypointsFrame = { pointNames: names, interleaved: scratchInterleaved };
 
     return {
         names,
         buffer,
         frameCount,
         keypointCount: K,
-        scratch,
+        scratchInterleaved,
+        scratchFrame,
         subscribers: new Set(),
         lastEmittedFrame: -1,
     };
@@ -186,21 +190,24 @@ function updateScratch(traj: TrajectoryData, frame: number): void {
     const clamped = Math.max(0, Math.min(frame, traj.frameCount - 1));
     const base = clamped * K * 3;
     const buf = traj.buffer;
-    const names = traj.names;
-    const scratch = traj.scratch;
+    const scratch = traj.scratchInterleaved;
 
     for (let k = 0; k < K; k++) {
-        const off = base + k * 3;
-        const slot = scratch[names[k]];
-        slot.x = buf[off];
-        slot.y = buf[off + 1];
-        slot.z = buf[off + 2];
+        const srcOff = base + k * 3;
+        const dstOff = k * 4;
+        const x = buf[srcOff];
+        const y = buf[srcOff + 1];
+        const z = buf[srcOff + 2];
+        scratch[dstOff]     = x;
+        scratch[dstOff + 1] = y;
+        scratch[dstOff + 2] = z;
+        scratch[dstOff + 3] = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? 1.0 : 0.0;
     }
 }
 
 function fireSubscribers(traj: TrajectoryData): void {
     for (const cb of traj.subscribers) {
-        cb(traj.scratch);
+        cb(traj.scratchFrame);
     }
 }
 
@@ -326,18 +333,19 @@ export const FileKeypointsSourceProvider: React.FC<{
         subscribeToKeypointsRaw: (cb: KeypointsCallback) => {
             rawRef.current.subscribers.add(cb);
             if (rawRef.current.frameCount > 0 && rawRef.current.lastEmittedFrame >= 0) {
-                cb(rawRef.current.scratch);
+                cb(rawRef.current.scratchFrame);
             }
             return () => { rawRef.current.subscribers.delete(cb); };
         },
         subscribeToKeypointsFiltered: (cb: KeypointsCallback) => {
             filteredRef.current.subscribers.add(cb);
             if (filteredRef.current.frameCount > 0 && filteredRef.current.lastEmittedFrame >= 0) {
-                cb(filteredRef.current.scratch);
+                cb(filteredRef.current.scratchFrame);
             }
             return () => { filteredRef.current.subscribers.delete(cb); };
         },
-        getLatestKeypointsRaw: () => rawRef.current.scratch,
+        getLatestKeypointsRaw: () =>
+            rawRef.current.frameCount > 0 ? rawRef.current.scratchFrame : null,
     }), []);
 
     return (

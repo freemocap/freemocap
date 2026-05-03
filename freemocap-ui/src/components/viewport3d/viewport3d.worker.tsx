@@ -122,7 +122,7 @@ async function initRoot(
         dpr: pixelRatio,
         camera: { position: [1500, 1500, 1500], fov: 75, near: 0.1, far: 100000 },
         gl: { antialias: false, logarithmicDepthBuffer: false },
-        frameloop: "always",
+        frameloop: "demand",
         // No event manager — pointer events are dispatched directly to the
         // canvas EventTarget, where CameraControls listens via addEventListener.
         events: undefined,

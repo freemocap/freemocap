@@ -157,15 +157,18 @@ export function ThreeJsCanvas() {
     }, []);
 
     // ── High-frequency streaming data ────────────────────────────────────────
+    // Frames are structured-cloned across the worker boundary. The Float32Array
+    // inside each KeypointsFrame is copied, not transferred, so the main thread
+    // retains access for getLatestKeypointsRaw (camera fit).
     useEffect(() => {
-        return subscribeToKeypointsRaw((pts) => {
-            VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: pts });
+        return subscribeToKeypointsRaw((frame) => {
+            VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: frame });
         });
     }, [subscribeToKeypointsRaw]);
 
     useEffect(() => {
-        return subscribeToKeypointsFiltered((pts) => {
-            VIEWPORT_WORKER.postMessage({ type: "keypointsFiltered", data: pts });
+        return subscribeToKeypointsFiltered((frame) => {
+            VIEWPORT_WORKER.postMessage({ type: "keypointsFiltered", data: frame });
         });
     }, [subscribeToKeypointsFiltered]);
 
@@ -205,6 +208,9 @@ export function ThreeJsCanvas() {
         const ro = new ResizeObserver((entries) => {
             const { width, height } = entries[0].contentRect;
             if (width === 0 && height === 0) return;
+            // Read layout properties BEFORE writing CSS to avoid forced reflow.
+            const top = el.offsetTop;
+            const left = el.offsetLeft;
             // Set CSS size on the visible canvas — the OffscreenCanvas backing
             // store is sized by the worker via root.configure({size}).
             canvas.style.width = `${width}px`;
@@ -214,8 +220,8 @@ export function ThreeJsCanvas() {
                 payload: {
                     width: Math.floor(width),
                     height: Math.floor(height),
-                    top: el.offsetTop,
-                    left: el.offsetLeft,
+                    top,
+                    left,
                 },
             });
         });

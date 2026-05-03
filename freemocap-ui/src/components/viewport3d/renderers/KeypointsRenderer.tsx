@@ -9,11 +9,10 @@ import {
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useWorkerData } from "../WorkerDataContext";
-import { Point3d } from "../helpers/viewport3d-types";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
-import { useKeypointsSource, type KeypointsSource } from "../KeypointsSourceContext";
+import { useKeypointsSource, type KeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 
 const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
@@ -36,9 +35,13 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
     const meshRef = useRef<InstancedMesh>(null);
-    const pointsRef = useRef<Record<string, Point3d>>({});  // plain object, matches wire format
+    const frameRef = useRef<KeypointsFrame | null>(null);
     const dirtyRef = useRef(false);
-    const nameToIdx = useRef<Map<string, number>>(new Map());
+    // name → stable InstancedMesh slot index
+    const nameToInstanceIdx = useRef<Map<string, number>>(new Map());
+    // name → index within the current frame's interleaved array
+    const frameIdxByName = useRef<Map<string, number>>(new Map());
+    const lastPointNamesRef = useRef<readonly string[] | null>(null);
     const nextIdx = useRef(0);
 
     // Low-poly sphere (6×4 = 24 tris vs 8×6 = 48). MeshBasicMaterial skips all
@@ -65,16 +68,23 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
 
     useEffect(() => {
         const subscribeFn = keypointsSource[subscribeKey];
-        return subscribeFn((pts: Record<string, Point3d>) => {
-            pointsRef.current = pts;
+        return subscribeFn((frame: KeypointsFrame) => {
+            frameRef.current = frame;
             dirtyRef.current = true;
             invalidate();
-            for (const name of Object.keys(pts)) {
-                // Face points are rendered by FaceRenderer, not here.
-                if (!nameToIdx.current.has(name)
-                    && nextIdx.current < MAX_POINTS
-                    && classifyPointName(name) !== 'face') {
-                    nameToIdx.current.set(name, nextIdx.current++);
+
+            // Only rebuild index maps when the point-name list changes (e.g. on schema switch).
+            if (frame.pointNames !== lastPointNamesRef.current) {
+                lastPointNamesRef.current = frame.pointNames;
+                frameIdxByName.current.clear();
+                for (let i = 0; i < frame.pointNames.length; i++) {
+                    const name = frame.pointNames[i];
+                    frameIdxByName.current.set(name, i);
+                    if (!nameToInstanceIdx.current.has(name)
+                        && nextIdx.current < MAX_POINTS
+                        && classifyPointName(name) !== 'face') {
+                        nameToInstanceIdx.current.set(name, nextIdx.current++);
+                    }
                 }
             }
         });
@@ -99,28 +109,39 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         const mesh = meshRef.current;
         if (!mesh || !dirtyRef.current) return;
         const t0 = performance.now();
-        const pts = pointsRef.current;
+        const frame = frameRef.current;
+        const interleaved = frame?.interleaved;
         let count = 0;
 
-        for (const [name, idx] of nameToIdx.current) {
-            const pt = pts[name];
-            const visible = pt && Number.isFinite(pt.x) && Number.isFinite(pt.y) && Number.isFinite(pt.z);
+        for (const [name, instanceIdx] of nameToInstanceIdx.current) {
+            const frameIdx = interleaved ? frameIdxByName.current.get(name) : undefined;
+            let visible = false;
+            let x = 0, y = 0, z = 0;
+
+            if (frameIdx !== undefined && interleaved) {
+                const off = frameIdx * 4;
+                const vis = interleaved[off + 3];
+                x = interleaved[off];
+                y = interleaved[off + 1];
+                z = interleaved[off + 2];
+                visible = vis > 0 && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
+            }
+
             if (visible) {
                 const style = colorMode === "byBodyPart" ? getPointStyle(name, colorHints) : null;
                 let scale = style ? style.scale : radius;
-                if (name.includes("hand")) scale *= 0.5; // smaller radius for hand keypoints
-                DUMMY.position.set(pt.x, pt.y, pt.z);
+                if (name.includes("hand")) scale *= 0.5;
+                DUMMY.position.set(x, y, z);
                 DUMMY.scale.setScalar(scale);
-                mesh.setColorAt(idx, style ? style.color : color);
+                mesh.setColorAt(instanceIdx, style ? style.color : color);
                 count++;
             } else {
-                // Not in this packet — hide it
                 DUMMY.position.copy(FAR_AWAY);
                 DUMMY.scale.set(0, 0, 0);
-                mesh.setColorAt(idx, COLORS.hidden);
+                mesh.setColorAt(instanceIdx, COLORS.hidden);
             }
             DUMMY.updateMatrix();
-            mesh.setMatrixAt(idx, DUMMY.matrix);
+            mesh.setMatrixAt(instanceIdx, DUMMY.matrix);
         }
 
         mesh.instanceMatrix.needsUpdate = true;

@@ -8,7 +8,8 @@ import {
     PointsMaterial,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { Point3d } from "../helpers/viewport3d-types";
+import type { Point3d } from "../helpers/viewport3d-types";
+import type { KeypointsFrame } from "../KeypointsSourceContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import {FACE_CONTOUR_GROUPS} from "@/components/viewport3d/helpers/face-contours";
@@ -69,11 +70,18 @@ export function FaceRenderer() {
     }, [dotGeo, dotMat, lineMat, lineGeo]);
 
     useEffect(() => {
-        return subscribeToKeypointsRaw((allPts: Record<string, Point3d>) => {
+        return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
             const face = pointsRef.current;
             face.clear();
-            for (const [name, pt] of Object.entries(allPts)) {
-                if (name.startsWith("face.")) face.set(name, pt);
+            const { pointNames, interleaved } = frame;
+            for (let i = 0; i < pointNames.length; i++) {
+                if (!pointNames[i].startsWith("face.")) continue;
+                const off = i * 4;
+                if (!interleaved[off + 3]) continue;
+                const x = interleaved[off];
+                const y = interleaved[off + 1];
+                const z = interleaved[off + 2];
+                face.set(pointNames[i], { x, y, z });
             }
             dirtyRef.current = true;
 

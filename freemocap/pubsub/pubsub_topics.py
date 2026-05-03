@@ -173,6 +173,23 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
+# Pipeline stage timing (opt-in profiling)
+# ---------------------------------------------------------------------------
+# Each instrumented node batches its per-stage elapsed-ms samples and publishes
+# them periodically. The aggregator runs a reporter thread that subscribes,
+# maintains rolling buffers across all nodes, and prints one consolidated
+# report. Camera-node samples for the same stage collapse across camera_id
+# into ensemble statistics so adding cameras doesn't multiply log volume.
+
+@dataclass
+class PipelineTimingMessage(TopicMessageABC):
+    node_kind: str = ""              # "camera" | "skeleton_inference" | "aggregator"
+    node_label: str = ""             # human-readable label for log section headers
+    camera_id: CameraIdString | None = None  # set only for camera nodes
+    samples: dict[str, list[float]] = field(default_factory=dict)  # stage -> elapsed_ms batch
+
+
+# ---------------------------------------------------------------------------
 # Posthoc progress reporting
 # ---------------------------------------------------------------------------
 
@@ -207,3 +224,4 @@ VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # 
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)
 AggregatorNodeProgressTopic = create_topic(AggregatorNodeProgressMessage)
+PipelineTimingTopic = create_topic(PipelineTimingMessage)

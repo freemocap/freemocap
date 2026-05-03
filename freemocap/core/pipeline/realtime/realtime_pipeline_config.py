@@ -21,7 +21,7 @@ class RealtimePipelineConfig(BaseModel):
     # When False, each camera node runs its own RTMPoseDetector inline (legacy
     # behavior; suitable for CPU-only machines or for A/B comparison).
     use_centralized_gpu_inference: bool = True
-    log_pipeline_times: bool = False
+    log_pipeline_times: bool = True
 
     skeleton_inference_node_config: RealtimeSkeletonInferenceNodeConfig = Field(
         default_factory=RealtimeSkeletonInferenceNodeConfig,

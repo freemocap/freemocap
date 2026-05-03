@@ -69,6 +69,7 @@ from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
     SkeletonInferenceResultMessage,
     SkeletonInferenceResultTopic,
+    PipelineTimingTopic,
 )
 
 logger = logging.getLogger(__name__)
@@ -104,6 +105,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 process_frame_number_sub=pubsub.get_subscription(ProcessFrameNumberTopic),
                 pipeline_config_sub=pubsub.get_subscription(PipelineConfigUpdateTopic),
                 skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
+                timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
             ),
         )
         return cls(
@@ -123,6 +125,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             process_frame_number_sub: TopicSubscriptionQueue,
             pipeline_config_sub: TopicSubscriptionQueue,
             skeleton_result_pub: TopicPublicationQueue,
+            timing_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] initializing")
 
@@ -278,7 +281,10 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     ),
                 )
                 if timer is not None:
-                    timer.maybe_report()
+                    timer.maybe_flush(
+                        publication_queue=timing_pub,
+                        node_kind="skeleton_inference",
+                    )
 
         except Exception as e:
             logger.error(

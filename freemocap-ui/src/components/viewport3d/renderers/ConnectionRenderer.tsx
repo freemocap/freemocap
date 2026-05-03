@@ -7,8 +7,8 @@ import {
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useWorkerData } from "../WorkerDataContext";
-import { Point3d } from "@/components/viewport3d";
-import { useKeypointsSource } from "../KeypointsSourceContext";
+import { Point3d } from "../helpers/viewport3d-types";
+import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import {
     buildSegmentsFromSchema,
@@ -72,11 +72,19 @@ export function ConnectionRenderer() {
     useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
     useEffect(() => {
-        return subscribeToKeypointsFiltered((allPts: Record<string, Point3d>) => {
+        return subscribeToKeypointsFiltered((frame: KeypointsFrame) => {
             const m = pointsRef.current;
             m.clear();
-            for (const [name, pt] of Object.entries(allPts)) {
-                m.set(name, pt);
+            const { pointNames, interleaved } = frame;
+            for (let i = 0; i < pointNames.length; i++) {
+                const off = i * 4;
+                if (!interleaved[off + 3]) continue;
+                const x = interleaved[off];
+                const y = interleaved[off + 1];
+                const z = interleaved[off + 2];
+                if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+                    m.set(pointNames[i], { x, y, z });
+                }
             }
             dirtyRef.current = true;
             invalidate();

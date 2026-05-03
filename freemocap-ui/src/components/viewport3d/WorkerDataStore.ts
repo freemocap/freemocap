@@ -10,8 +10,8 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
-import type { KeypointsSource } from "./KeypointsSourceContext";
+import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
+import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
 // Shared channel primitive
@@ -52,15 +52,15 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     useGroundplane: false,
 };
 
-const rawChan = makeChannel<Record<string, Point3d>>({});
-const filteredChan = makeChannel<Record<string, Point3d>>({});
+const rawChan = makeChannel<KeypointsFrame | null>(null);
+const filteredChan = makeChannel<KeypointsFrame | null>(null);
 const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} });
 const calibChan = makeChannel<LoadedCalibration | null>(null);
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 
 // One-shot command channels (fit/reset camera)
-const fitCameraChan = makeChannel<Record<string, Point3d>>({});
+const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
 const resetCameraChan = makeChannel<null>(null);
 
 // ---------------------------------------------------------------------------
@@ -76,13 +76,13 @@ export const workerDataStore: KeypointsSource & {
     getCalibrationConfig: () => CalibrationConfig;
     subscribeToVisibility: (cb: Listener<ViewportVisibility>) => () => void;
     getVisibility: () => ViewportVisibility;
-    subscribeToFitCamera: (cb: Listener<Record<string, Point3d>>) => () => void;
+    subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
-    // KeypointsSource interface
-    subscribeToKeypointsRaw: rawChan.subscribe,
-    subscribeToKeypointsFiltered: filteredChan.subscribe,
+    // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null
+    subscribeToKeypointsRaw: (cb) => rawChan.subscribe((f) => { if (f) cb(f); }),
+    subscribeToKeypointsFiltered: (cb) => filteredChan.subscribe((f) => { if (f) cb(f); }),
     getLatestKeypointsRaw: rawChan.getLatest,
 
     // Schema state
@@ -108,10 +108,10 @@ export const workerDataStore: KeypointsSource & {
     dispatch(type: string, data: unknown) {
         switch (type) {
             case "keypointsRaw":
-                rawChan.dispatch(data as Record<string, Point3d>);
+                rawChan.dispatch(data as KeypointsFrame);
                 break;
             case "keypointsFiltered":
-                filteredChan.dispatch(data as Record<string, Point3d>);
+                filteredChan.dispatch(data as KeypointsFrame);
                 break;
             case "schemaState":
                 schemaChan.dispatch(data as SchemaState);
@@ -126,7 +126,7 @@ export const workerDataStore: KeypointsSource & {
                 visibilityChan.dispatch(data as ViewportVisibility);
                 break;
             case "fitCamera":
-                fitCameraChan.dispatch(data as Record<string, Point3d>);
+                fitCameraChan.dispatch(data as KeypointsFrame | null);
                 break;
             case "resetCamera":
                 resetCameraChan.dispatch(null);

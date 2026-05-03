@@ -19,6 +19,9 @@ since the coordinate frame may change.
 """
 import logging
 import multiprocessing.synchronize
+import os
+import queue
+import threading
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
@@ -30,13 +33,13 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemoryDTO,
 )
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
-from skellycam.utilities.wait_functions import wait_1ms
 from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
@@ -60,6 +63,7 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     SkeletonInferenceResultMessage,
     SkeletonInferenceResultTopic,
+    PipelineTimingTopic,
 )
 
 # Cap on how many pending skeleton-inference results we hold while waiting for
@@ -71,6 +75,11 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
+
+# Skip Point3d Pydantic object creation when the binary keypoints path is
+# active — the aggregator runs in a subprocess so it reads the env var here
+# at import time, matching the flag check in realtime_pipeline.py.
+_BINARY_KEYPOINTS_ENABLED: bool = os.environ.get("FREEMOCAP_BINARY_KEYPOINTS", "0") == "1"
 
 
 def _merge_triangulated_arrays(
@@ -199,6 +208,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                 aggregation_output_pub=pubsub.get_publication_queue(
                     AggregationNodeOutputTopic,
                 ),
+                timing_pub=pubsub.get_publication_queue(
+                    PipelineTimingTopic,
+                ),
+                timing_sub=pubsub.get_subscription(
+                    PipelineTimingTopic,
+                ) if config.log_pipeline_times else None,
                 result_ready_event=result_ready_event,
                 result_consumed_event=result_consumed_event,
             ),
@@ -222,6 +237,8 @@ class RealtimeAggregatorNode(AggregatorNode):
             pipeline_config_sub: TopicSubscriptionQueue,
             process_frame_number_pub: TopicPublicationQueue,
             aggregation_output_pub: TopicPublicationQueue,
+            timing_pub: TopicPublicationQueue,
+            timing_sub: TopicSubscriptionQueue | None,
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
     ) -> None:
@@ -272,13 +289,27 @@ class RealtimeAggregatorNode(AggregatorNode):
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}") if log_pipeline_times else None
         t_frame_requested: float = time.perf_counter() if timer is not None else 0.0
+        # Skip the first frame_collection_wait / loop_time samples — those
+        # measure aggregator-startup → first-frame-arrival, which is dominated
+        # by camera warmup (~5-7s) and is not a steady-state metric.
+        recorded_first_frame: bool = False
+
+        timing_reporter: PipelineTimingReporter | None = None
+        timing_reporter_stop: threading.Event | None = None
+        if log_pipeline_times and timing_sub is not None:
+            timing_reporter_stop = threading.Event()
+            timing_reporter = PipelineTimingReporter(
+                name=str(camera_group_id),
+                timing_sub=timing_sub,
+                stop_event=timing_reporter_stop,
+                expected_camera_count=len(camera_ids),
+            )
+            timing_reporter.start()
 
         try:
             previous_loop_tik = time.perf_counter() if timer is not None else 0.0
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
-                wait_1ms()
-
                 # ---- Handle config updates ----
                 while not pipeline_config_sub.empty():
                     msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
@@ -348,9 +379,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                     for v in camera_node_outputs.values()
                 )
                 if not all_cam_ready:
-                    if camera_node_sub.empty():
+                    # Block up to 5ms for the next camera output instead of
+                    # busy-polling with empty() + 1ms sleep — cuts CPU waste
+                    # and removes polling overhead from the critical path.
+                    try:
+                        cam_output: CameraNodeOutputMessage = camera_node_sub.get(timeout=0.005)
+                    except queue.Empty:
                         continue
-                    cam_output: CameraNodeOutputMessage = camera_node_sub.get()
                     if cam_output.camera_id not in camera_ids:
                         raise ValueError(
                             f"Camera ID {cam_output.camera_id} not in "
@@ -403,7 +438,7 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                 last_received_frame = latest_requested_frame
                 t_frame_start = time.perf_counter() if timer is not None else 0.0
-                if timer is not None:
+                if timer is not None and recorded_first_frame:
                     timer.record("frame_collection_wait", (t_frame_start - t_frame_requested) * 1e3)
 
                 # ---- Optimistically request next frame before aggregating ----
@@ -524,9 +559,14 @@ class RealtimeAggregatorNode(AggregatorNode):
                 if timer is not None:
                     timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
                     now = time.perf_counter()
-                    timer.record("loop_time", (now - previous_loop_tik) * 1e3)
+                    if recorded_first_frame:
+                        timer.record("loop_time", (now - previous_loop_tik) * 1e3)
                     previous_loop_tik = now
-                    timer.maybe_report()
+                    recorded_first_frame = True
+                    timer.maybe_flush(
+                        publication_queue=timing_pub,
+                        node_kind="aggregator",
+                    )
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(
@@ -536,8 +576,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=frame_n_outputs,
-                        keypoints_raw=_arrays_to_point3d(raw_keypoints),
-                        keypoints_filtered=_arrays_to_point3d(filtered_keypoints),
+                        # When the binary path is active, skip the per-point
+                        # Pydantic object creation — the raw arrays field is
+                        # what the serializer actually reads.
+                        keypoints_raw=(
+                            {} if _BINARY_KEYPOINTS_ENABLED
+                            else _arrays_to_point3d(raw_keypoints)
+                        ),
+                        keypoints_filtered=(
+                            {} if _BINARY_KEYPOINTS_ENABLED
+                            else _arrays_to_point3d(filtered_keypoints)
+                        ),
                         keypoints_raw_arrays=raw_keypoints,
                         keypoints_filtered_arrays=filtered_keypoints,
                         # rigid_body_poses=rigid_body_poses,
@@ -557,4 +606,8 @@ class RealtimeAggregatorNode(AggregatorNode):
             ipc.kill_everything()
             raise
         finally:
+            if timing_reporter_stop is not None:
+                timing_reporter_stop.set()
+            if timing_reporter is not None:
+                timing_reporter.join(timeout=2.0)
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] exiting")

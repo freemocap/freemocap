@@ -6,6 +6,7 @@ import dataclasses
 import json
 import logging
 import time
+from queue import Empty
 from typing import TYPE_CHECKING
 
 import msgspec
@@ -26,10 +27,9 @@ from skellycam.core.recorders.framerate_tracker import FramerateTracker, Current
 
 logger = logging.getLogger(__name__)
 
-BACKPRESSURE_WARNING_THRESHOLD: int = 100
+BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
-# At 30 fps, 30 frames ≈ 1 second of tolerated lag before the aggregator is unblocked.
-BACKPRESSURE_RESET_THRESHOLD: int = 30
+BACKPRESSURE_RESET_THRESHOLD: int = 300
 
 
 def _msgspec_enc_hook(obj: object) -> object:
@@ -237,9 +237,6 @@ class WebsocketServer:
                             framerate_source="Display")
                     self._display_framerate_trackers[packet.camera_group_id].update(time.perf_counter_ns())
 
-                if progress_updates:
-                    logger.info(f"Sending {len(progress_updates)} posthoc progress update(s): "
-                                f"{[f'{m.pipeline_id}/{m.phase}/{m.progress_fraction:.2f}' for m in progress_updates]}")
                 for update_message in progress_updates:
                     await self._send_msgspec_json(update_message)
 
@@ -277,13 +274,16 @@ class WebsocketServer:
         logs_queue = get_websocket_log_queue()
         try:
             while self.should_continue:
-                if not logs_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
+                if self.websocket.client_state == WebSocketState.CONNECTED:
                     try:
                         # Skellycam's WebSocketQueueHandler puts LogRecordModel dicts
                         # into the queue via put_nowait(). On rare occasions a child
                         # process exit (cancel_join_thread) can leave a partial pickle
-                        # in the pipe — the except below handles that gracefully.
+                        # in the pipe — EOFError/OSError handles that gracefully.
                         log_entry: dict = logs_queue.get_nowait()
+                    except Empty:
+                        await await_10ms()
+                        continue
                     except (EOFError, OSError):
                         # Partial write from a dying child process — skip it
                         continue

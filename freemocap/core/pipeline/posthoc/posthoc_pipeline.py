@@ -22,11 +22,14 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorCo
 
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from skellycam.core.types.type_overloads import CameraIdString
+
+from freemocap.core.pipeline.posthoc.pipeline_phases import PosthocPipelineType
 from freemocap.core.pipeline.posthoc.posthoc_aggregation_node import PosthocAggregationNode, \
     PosthocAggregationNodeTaskFn
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoGroupHelper
 from freemocap.core.pipeline.posthoc.video_node import VideoNode
-from freemocap.core.types.type_overloads import PipelineIdString, VideoIdString
+from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
 
@@ -42,8 +45,9 @@ class PosthocPipeline(PipelineABC):
     still running, or subscribe to PosthocProgressTopic for status updates.
     """
     id: PipelineIdString
+    pipeline_type: PosthocPipelineType
     recording_info: RecordingInfo
-    video_nodes: dict[VideoIdString, VideoNode]
+    video_nodes: dict[CameraIdString, VideoNode]
     aggregation_node: PosthocAggregationNode
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
@@ -58,7 +62,7 @@ class PosthocPipeline(PipelineABC):
         return any_alive or self.aggregation_node.is_alive
 
     @property
-    def video_ids(self) -> list[VideoIdString]:
+    def camera_ids(self) -> list[CameraIdString]:
         return list(self.video_nodes.keys())
 
     @classmethod
@@ -68,6 +72,7 @@ class PosthocPipeline(PipelineABC):
         recording_info: RecordingInfo,
         detector_config: BaseDetectorConfig,
         aggregation_task_fn: PosthocAggregationNodeTaskFn,
+        pipeline_type: PosthocPipelineType,
         worker_registry: WorkerRegistry,
         global_kill_flag: Synchronized,
         save_annotated_video: bool = True,
@@ -103,10 +108,10 @@ class PosthocPipeline(PipelineABC):
             global_kill_flag=global_kill_flag,
         )
 
-        video_nodes: dict[VideoIdString, VideoNode] = {}
-        for video_id, video_helper in video_group.videos.items():
-            video_nodes[video_id] = VideoNode.create(
-                video_id=video_id,
+        video_nodes: dict[CameraIdString, VideoNode] = {}
+        for camera_id, video_helper in video_group.videos.items():
+            video_nodes[camera_id] = VideoNode.create(
+                camera_id=camera_id,
                 video_path=video_helper.video_path,
                 detector_config=detector_config,
                 worker_registry=worker_registry,
@@ -115,12 +120,14 @@ class PosthocPipeline(PipelineABC):
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
                 pipeline_id=pipeline_id,
+                pipeline_type=pipeline_type,
             )
 
         aggregation_node = PosthocAggregationNode.create(
             aggregation_task_fn=aggregation_task_fn,
             video_metadata=video_group.video_metadata_by_id,
             pipeline_id=pipeline_id,
+            pipeline_type=pipeline_type,
             recording_info=recording_info,
             worker_registry=worker_registry,
             ipc=ipc,
@@ -131,6 +138,7 @@ class PosthocPipeline(PipelineABC):
 
         return cls(
             id=pipeline_id,
+            pipeline_type=pipeline_type,
             recording_info=recording_info,
             video_nodes=video_nodes,
             aggregation_node=aggregation_node,
@@ -177,3 +185,14 @@ class PosthocPipeline(PipelineABC):
             progress_messages.extend(node.get_progress_messages())
         progress_messages.extend(self.aggregation_node.get_progress_messages())
         return progress_messages
+
+    def drain_and_get_messages(self) -> list[PipelineProgressMessage]:
+        """Flush the relay (pub→sub) then drain all subscription queues.
+
+        Call this instead of get_progress_messages() when the pipeline workers
+        have already exited — the relay may not have had a chance to move
+        the terminal COMPLETE/FAILED message from the publication queue to
+        the subscription queue yet.
+        """
+        self.pubsub.drain()
+        return self.get_progress_messages()

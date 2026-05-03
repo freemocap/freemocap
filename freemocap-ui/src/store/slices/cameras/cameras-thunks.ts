@@ -84,6 +84,10 @@ export const detectCameras = createAsyncThunk<
                 ?? saved?.selected
                 ?? true;
 
+            const realtimeEnabled: boolean = existing?.realtimeEnabled
+                ?? saved?.realtimeEnabled
+                ?? true;
+
             return {
                 id: cameraId,
                 name: serverCamera.name,
@@ -93,6 +97,7 @@ export const detectCameras = createAsyncThunk<
                 hasConfigMismatch: existing?.hasConfigMismatch ?? false,
                 connectionStatus: 'available',
                 selected,
+                realtimeEnabled,
                 deviceInfo: {
                     vendorId: serverCamera.vendor_id,
                     productId: serverCamera.product_id,

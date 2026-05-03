@@ -7,6 +7,7 @@ import { createExtendedTheme } from "@/layout/paperbase-theme";
 import { useAppSelector } from "@/store";
 import { BaseContentRouter } from "@/layout/content/BaseContentRouter";
 import { UpdateBanner } from "@/components/ui-components/UpdateBanner";
+import PipelineProgressSnackbar from "@/components/pipeline-progress/PipelineProgressSnackbar";
 import { AutoUpdateProvider } from "@/hooks/AutoUpdateContext";
 import { PlaybackProvider } from "@/components/playback/PlaybackContext";
 import { useTranslation } from "react-i18next";
@@ -39,6 +40,7 @@ export const AppContent = function () {
                         </BasePanelLayout>
                     </PlaybackProvider>
                     <UpdateBanner />
+                    <PipelineProgressSnackbar />
                 </AutoUpdateProvider>
             </HashRouter>
         </ThemeProvider>

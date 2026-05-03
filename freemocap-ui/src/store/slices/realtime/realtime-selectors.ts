@@ -19,8 +19,8 @@ export const selectAggregatorConfig = (state: RootState) => state.realtime.pipel
 export const selectCanConnectPipeline = createSelector(
     [selectIsPipelineConnected, selectIsPipelineLoading, selectCameras],
     (isConnected, isLoading, cameras) => {
-        const anyCameraSelected = cameras.some(cam => cam.selected);
-        return !isConnected && !isLoading && anyCameraSelected;
+        const anyCameraRealtimeEnabled = cameras.some(cam => cam.selected && cam.realtimeEnabled);
+        return !isConnected && !isLoading && anyCameraRealtimeEnabled;
     }
 );
 

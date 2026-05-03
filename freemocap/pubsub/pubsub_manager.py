@@ -102,6 +102,17 @@ class PubSubTopicManager:
             )
         self.topics[topic_type].publish(message)
 
+    def drain(self) -> None:
+        """Flush pending messages from publication queues to subscription queues.
+
+        Safe to call while the relay thread is running — both this method and
+        the relay loop acquire the subscriptions lock before touching queues,
+        so they never race. Use this to capture messages that a worker process
+        put into a publication queue just before exiting.
+        """
+        if self._relay is not None:
+            self._relay._drain()
+
     def close(self) -> None:
         """Stop the relay thread (draining remaining messages), then close all topics."""
         logger.debug("Closing PubSubTopicManager...")

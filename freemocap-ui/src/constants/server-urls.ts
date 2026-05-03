@@ -83,6 +83,10 @@ class ServerUrls {
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
 
+            // Posthoc pipeline control
+            stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,
+            stopAllPipelines: `${baseUrl}/freemocap/posthoc/pipeline`,
+
             // Blender endpoints
             blenderDetect: `${baseUrl}/freemocap/blender/detect`,
             blenderExport: `${baseUrl}/freemocap/blender/export`,

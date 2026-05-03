@@ -53,6 +53,7 @@ class RealtimePipelineManager(PipelineManagerABC):
         *,
         camera_group: CameraGroup,
         pipeline_config: RealtimePipelineConfig,
+        realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
         with self.lock:
             # Return existing pipeline for this camera set (with updated config)
@@ -69,6 +70,7 @@ class RealtimePipelineManager(PipelineManagerABC):
                 pipeline_config=pipeline_config,
                 camera_group=camera_group,
                 worker_registry=self.worker_registry,
+                realtime_camera_ids=realtime_camera_ids,
             )
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline

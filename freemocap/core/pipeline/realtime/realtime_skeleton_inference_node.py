@@ -30,6 +30,7 @@ import logging
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
+from queue import Empty
 
 import cv2
 import numpy as np
@@ -171,8 +172,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 wait_1ms()
 
                 # ---- Handle config updates (only act on flips that change session shape) ----
-                while not pipeline_config_sub.empty():
-                    msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
+                while True:
+                    try:
+                        msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
+                    except Empty:
+                        break
                     pipeline_config = msg.pipeline_config
                     logger.debug(
                         f"RealtimeSkeletonInferenceNode [{camera_group_id}] "
@@ -183,8 +187,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 # ---- Drain to latest frame number (drop stale) ----
                 latest_frame_msg: ProcessFrameNumberMessage | None = None
                 dropped_count = 0
-                while not process_frame_number_sub.empty():
-                    candidate = process_frame_number_sub.get()
+                while True:
+                    try:
+                        candidate = process_frame_number_sub.get_nowait()
+                    except Empty:
+                        break
                     if latest_frame_msg is not None:
                         dropped_count += 1
                     latest_frame_msg = candidate

@@ -18,7 +18,6 @@ from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
-    VideoIdString,
     TrackedPointNameString,
 )
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
@@ -94,7 +93,7 @@ class SkeletonInferenceResultMessage(TopicMessageABC):
 
 @dataclass
 class VideoNodeOutputMessage(TopicMessageABC):
-    video_id: VideoIdString = ""
+    camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
     observation: BaseObservation = None
 
@@ -197,14 +196,17 @@ class PipelineTimingMessage(TopicMessageABC):
 class PipelineProgressMessage(TopicMessageABC):
     message_type: str = "posthoc_progress"
     pipeline_id: str = ""
-    phase: str = ""  # collecting_frames | detecting_frames | all_frames_collected | running_task | complete | failed
+    pipeline_type: str = ""
+    phase: str = ""
     progress_fraction: float = 0.0
     detail: str = ""
+    recording_name: str = ""
+    recording_path: str = ""
 
 
 @dataclass
 class VideoNodeProgressMessage(PipelineProgressMessage):
-    video_id: str = ""
+    camera_id: CameraIdString = ""
 
 
 @dataclass

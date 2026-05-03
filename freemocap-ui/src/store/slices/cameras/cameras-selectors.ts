@@ -40,6 +40,22 @@ export const selectSelectedCameraConfigs = createSelector(
     }
 );
 
+// Get desired configs for cameras enabled for the realtime pipeline (selected AND realtimeEnabled)
+export const selectRealtimeEnabledCameraConfigs = createSelector(
+    [selectCameras],
+    (cameras): Record<string, CameraConfig> => {
+        return cameras
+            .filter(cam => cam.selected && cam.realtimeEnabled)
+            .reduce(
+                (configs, camera) => ({
+                    ...configs,
+                    [camera.id]: camera.desiredConfig,
+                }),
+                {} as Record<string, CameraConfig>
+            );
+    }
+);
+
 // Get actual configs for all cameras
 export const selectActualCameraConfigs = createSelector(
     [selectCameras],

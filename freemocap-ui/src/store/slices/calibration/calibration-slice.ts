@@ -80,6 +80,11 @@ export const calibrationSlice = createSlice({
         calibrationDirectoryInfoUpdated: (state, action: PayloadAction<CalibrationDirectoryInfo>) => {
             state.directoryInfo = action.payload;
         },
+        calibrationPipelineProgressReceived: (state, action: PayloadAction<{phase: string}>) => {
+            if (action.payload.phase === 'complete' || action.payload.phase === 'failed') {
+                state.isLoading = false;
+            }
+        },
         resetCalibrationState: () => initialState,
     },
     extraReducers: (builder) => {
@@ -198,5 +203,6 @@ export const {
     calibrationProgressUpdated,
     calibrationErrorCleared,
     calibrationDirectoryInfoUpdated,
+    calibrationPipelineProgressReceived,
     resetCalibrationState,
 } = calibrationSlice.actions;

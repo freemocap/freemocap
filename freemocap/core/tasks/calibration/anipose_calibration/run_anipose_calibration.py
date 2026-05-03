@@ -27,7 +27,6 @@ from freemocap.core.tasks.calibration.shared.calibration_result import Calibrati
 from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.charuco_board.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
-from freemocap.core.types.type_overloads import VideoIdString
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +94,8 @@ def run_anipose_calibration(
 
     ground_plane_result: GroundPlaneResult | None = None
     if use_charuco_as_groundplane:
-        observation_recorders_by_video: dict[VideoIdString, BaseRecorder] = {
-            video_id: BaseRecorder() for video_id in charuco_observations_by_frame[0].keys()
+        observation_recorders_by_camera: dict[CameraIdString, BaseRecorder] = {
+            camera_id: BaseRecorder() for camera_id in charuco_observations_by_frame[0].keys()
         }
         for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
             if not all(
@@ -105,11 +104,11 @@ def run_anipose_calibration(
                 raise ValueError(
                     f"Non-CharucoObservation found in frame {frame_number} observations"
                 )
-            for video_id, recorder in observation_recorders_by_video.items():
-                recorder.add_observation(observation=charuco_observations_by_camera[video_id])
+            for camera_id, recorder in observation_recorders_by_camera.items():
+                recorder.add_observation(observation=charuco_observations_by_camera[camera_id])
 
         cameras, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane(
-            observation_recorders=observation_recorders_by_video,
+            observation_recorders=observation_recorders_by_camera,
             cameras=cameras,
             board=board,
             recording_folder_path=Path(recording_info.full_recording_path),

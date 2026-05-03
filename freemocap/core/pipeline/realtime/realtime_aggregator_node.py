@@ -311,8 +311,11 @@ class RealtimeAggregatorNode(AggregatorNode):
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 # ---- Handle config updates ----
-                while not pipeline_config_sub.empty():
-                    msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
+                while True:
+                    try:
+                        msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
+                    except queue.Empty:
+                        break
                     pipeline_config = msg.pipeline_config
                     aggregator_config = pipeline_config.aggregator_config
                     filter_config = aggregator_config.realtime_filter_config
@@ -360,8 +363,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # ---- Collect skeleton inference results (GPU mode) ----
                 # Drained on every iteration so they're available whenever the
                 # corresponding camera-node charuco outputs finish arriving.
-                while not skeleton_inference_sub.empty():
-                    skel_msg: SkeletonInferenceResultMessage = skeleton_inference_sub.get()
+                while True:
+                    try:
+                        skel_msg: SkeletonInferenceResultMessage = skeleton_inference_sub.get_nowait()
+                    except queue.Empty:
+                        break
                     pending_skeleton_results[skel_msg.frame_number] = skel_msg.per_camera_skeleton
                 # Bound the pending dict so a lagging camera can't grow it forever.
                 if len(pending_skeleton_results) > _MAX_PENDING_SKELETON_RESULTS:

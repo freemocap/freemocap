@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -26,52 +25,54 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 # from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.blender.export_to_blender import export_to_blender
+from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
+from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
+from skellycam.core.types.type_overloads import CameraIdString
+
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from freemocap.core.types.type_overloads import VideoIdString
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 logger = logging.getLogger(__name__)
 
 
 def run_posthoc_mocap_aggregator_task(
         *,
-        frame_observations: list[dict[VideoIdString, BaseObservation]],
+        frame_observations: list[dict[CameraIdString, BaseObservation]],
         recording_info: RecordingInfo,
-        video_metadata: dict[VideoIdString, VideoMetadata],
+        video_metadata: dict[CameraIdString, VideoMetadata],
         task_config: PosthocMocapPipelineConfig,
-        report_progress: Callable[[str, float], None] | None = None,
-
+        reporter: TaskProgressReporter | None = None,
 ) -> None:
     """
     Run posthoc motion capture on collected mediapipe observations.
 
     Args:
-        frame_observations: Per-frame dict of {video_id: MediapipeObservation}.
+        frame_observations: Per-frame dict of {camera_id: MediapipeObservation}.
         recording_info: Recording metadata.
-        video_metadata: Per-video metadata.
-        report_progress: Callback for (detail, fraction) progress updates.
+        video_metadata: Per-camera metadata.
+        reporter: Progress reporter for named stage updates.
         task_config: Mocap-specific config (pre-bound via partial).
     """
-    video_ids = list(video_metadata.keys())
+    _reporter = reporter or TaskProgressReporter.noop()
+    camera_ids = list(video_metadata.keys())
 
     # ---- Build observation recorders ----
-    if report_progress is not None:
-        report_progress("Building observation recorders", 0.1)
+    _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail="Building observation recorders")
 
-    observation_recorders: dict[VideoIdString, BaseRecorder] = {
-        vid_id: BaseRecorder() for vid_id in video_ids
+    observation_recorders: dict[CameraIdString, BaseRecorder] = {
+        cam_id: BaseRecorder() for cam_id in camera_ids
     }
 
     for frame_idx, frame_obs in enumerate(frame_observations):
-        for vid_id, obs in frame_obs.items():
+        for cam_id, obs in frame_obs.items():
             if not isinstance(obs, RTMPoseObservation) and not isinstance(obs, MediapipeObservation):
                 raise TypeError(
-                    f"Expected MediapipeObservation for video {vid_id} frame {frame_idx}, "
+                    f"Expected MediapipeObservation for camera {cam_id} frame {frame_idx}, "
                     f"got {type(obs).__name__}"
                 )
-            observation_recorders[vid_id].add_observation(observation=obs)
+            observation_recorders[cam_id].add_observation(observation=obs)
 
     # ---- Get calibration path ----
     if task_config.calibration_source == CalibrationSource.SPECIFIED:
@@ -99,8 +100,7 @@ def run_posthoc_mocap_aggregator_task(
     logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
 
     # ---- Run skeleton triangulation ----
-    if report_progress is not None:
-        report_progress("Triangulating skeleton", 0.3)
+    _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")
     logger.info("Starting skeleton triangulation...")
 
     output_folder = Path(recording_info.full_recording_path) / "output_data"
@@ -114,6 +114,7 @@ def run_posthoc_mocap_aggregator_task(
 
 
     if task_config.export_to_blender:
+        _reporter.report(stage=MocapStage.EXPORTING_BLENDER, detail="Exporting to Blender")
         try:
             export_to_blender(
                 recording_folder_path=str(recording_info.full_recording_path),
@@ -124,8 +125,6 @@ def run_posthoc_mocap_aggregator_task(
             # Don't crash the whole aggregator if blender export fails —
             # mocap outputs are already saved; blender is an optional post-step.
             logger.exception(f"Blender export failed (mocap data still saved): {e}")
-    if report_progress is not None:
-        report_progress("Mocap complete", 1.0)
     logger.info(
         f"Posthoc mocap complete! Output saved to {output_folder}"
     )

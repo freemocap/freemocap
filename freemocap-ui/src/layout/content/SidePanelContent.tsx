@@ -18,7 +18,6 @@ import {useLocation, useNavigate} from 'react-router-dom';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 
 import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper';
-import {ServerConnectionStatus} from '@/components/ServerConnectionStatus';
 import {
     CameraConfigTreeView
 } from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
@@ -26,6 +25,7 @@ import {RecordingInfoPanel} from "@/components/control-panels/recording-info-pan
 import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
+import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
 

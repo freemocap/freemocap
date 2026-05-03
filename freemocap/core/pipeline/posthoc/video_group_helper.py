@@ -366,7 +366,7 @@ class VideoGroupHelper(BaseModel):
     filename_reindex_applied: bool = False
 
     @property
-    def video_ids(self) -> list[CameraIdString]:
+    def camera_ids(self) -> list[CameraIdString]:
         return list(self.videos.keys())
 
     @model_validator(mode="after")

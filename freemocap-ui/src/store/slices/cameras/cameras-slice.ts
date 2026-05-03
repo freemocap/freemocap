@@ -19,7 +19,7 @@ import {
 function persistAllCameraSettings(state: CamerasState): void {
     const settingsMap: PersistedCameraSettingsMap = {};
     for (const camera of state.cameras) {
-        settingsMap[camera.id] = buildPersistedEntry(camera.desiredConfig, camera.selected);
+        settingsMap[camera.id] = buildPersistedEntry(camera.desiredConfig, camera.selected, camera.realtimeEnabled);
     }
     savePersistedCameraSettings(settingsMap);
 }
@@ -42,6 +42,17 @@ export const cameraSlice = createSlice({
             if (camera) {
                 camera.selected = !camera.selected;
                 camera.desiredConfig.use_this_camera = camera.selected;
+                if (!camera.selected) {
+                    camera.realtimeEnabled = false;
+                }
+            }
+            persistAllCameraSettings(state);
+        },
+
+        cameraRealtimeToggled: (state, action: PayloadAction<string>) => {
+            const camera = state.cameras.find(cam => cam.id === action.payload);
+            if (camera) {
+                camera.realtimeEnabled = !camera.realtimeEnabled;
             }
             persistAllCameraSettings(state);
         },
@@ -108,6 +119,7 @@ export const cameraSlice = createSlice({
                 );
                 camera.desiredConfig = defaultConfig;
                 camera.selected = true;
+                camera.realtimeEnabled = true;
                 camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, defaultConfig);
             }
         },
@@ -188,6 +200,7 @@ export const cameraSlice = createSlice({
 
 export const {
     cameraSelectionToggled,
+    cameraRealtimeToggled,
     cameraDesiredConfigUpdated,
     configCopiedToAll,
     recommendExposureForAll,

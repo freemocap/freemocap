@@ -28,7 +28,6 @@ from freemocap.core.tasks.calibration.shared.groundplane_math import (
     find_still_charuco_frame,
 )
 from freemocap.core.tasks.calibration.shared.interpolate_trajectories import interpolate_trajectory_data
-from freemocap.core.types.type_overloads import VideoIdString
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +71,7 @@ def pin_camera_zero_to_origin(cameras: list[CameraModel]) -> list[CameraModel]:
 
 def set_charuco_board_as_groundplane(
     *,
-    observation_recorders: dict[VideoIdString, BaseRecorder],
+    observation_recorders: dict[CameraIdString, BaseRecorder],
     cameras: list[CameraModel],
     board: CharucoBoardDefinition,
     recording_folder_path: "Path | None" = None,
@@ -81,18 +80,18 @@ def set_charuco_board_as_groundplane(
     from freemocap.core.tasks.calibration.anipose_calibration.helpers.bundle_adjust import triangulate
 
     logger.info("Getting 2D Charuco data")
-    data2d_by_video: dict[VideoIdString, np.ndarray] = {}
+    data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
     if len(observation_recorders) == 0:
         raise ValueError("No observation recorders provided to process.")
 
-    for video_id, recorder in observation_recorders.items():
+    for camera_id, recorder in observation_recorders.items():
         if not all(isinstance(observation, CharucoObservation) for observation in recorder.observations):
-            raise TypeError(f"Recorder for video ID {video_id} contains non-Charuco observations.")
+            raise TypeError(f"Recorder for camera ID {camera_id} contains non-Charuco observations.")
         data2d_fr_id_xyc = recorder.to_array.copy()
-        logger.info(f"Processing video ID: {video_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
-        data2d_by_video[video_id] = data2d_fr_id_xyc[..., :2]
+        logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
+        data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 
-    charuco2d_cam_fr_id_xy = np.stack(list(data2d_by_video.values()), axis=0)
+    charuco2d_cam_fr_id_xy = np.stack(list(data2d_by_camera.values()), axis=0)
     logger.info(
         f"Charuco 2d data retrieved with shape (cams, frames, markers, XY): {charuco2d_cam_fr_id_xy.shape}"
     )

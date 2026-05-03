@@ -120,7 +120,7 @@ export const CalibrationPanel: React.FC = () => {
     const statusLabel = isRecording
         ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
-            ? "Processing..."
+            ? "Running"
             : directoryInfo?.cameraCalibrationTomlPath
                 ? "Calibrated"
                 : "Idle";

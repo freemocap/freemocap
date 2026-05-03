@@ -1,7 +1,7 @@
 // freemocap-ui/src/components/ui-components/BottomPanelContent.tsx
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import {LogTerminal} from "@/components/LogTerminal";
+import {LogTerminal} from "@/components/log-terminal";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {useTheme} from "@mui/material/styles";
 import TabbedBottomLeftPanel from "@/components/tabbed-bottom-panel/TabbedBottomLeftPanel";

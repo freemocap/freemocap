@@ -37,7 +37,7 @@ export default function TabbedBottomLeftPanel({isCollapsed = false}: { isCollaps
     return (
         <TabbedContent tabs={[
             {label: 'Framerate', content: <FramerateViewerPanel/>},
-            {label: <PipelineTabLabel/>, content: <PipelineProgressPanel/>},
+            // {label: <PipelineTabLabel/>, content: <PipelineProgressPanel/>},
         ]}/>
     );
 }

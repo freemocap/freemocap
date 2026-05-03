@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Body, HTTPException
 from pydantic import BaseModel, Field
 from skellycam.core.camera_group.camera_group import CameraConfigs
-from skellycam.core.types.type_overloads import CameraGroupIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
@@ -18,6 +18,11 @@ class RealtimePipelineConnectRequest(BaseModel):
     camera_configs: CameraConfigs|None = Field(default=None,
                                                alias="cameraConfigs",
                                                description="Camera configurations for the CameraGroup we're attaching a pipeline to. If None, use existing camera group (or throw if no camera group connected)")
+    realtime_camera_ids: list[CameraIdString] | None = Field(
+        default=None,
+        alias="realtimeCameraIds",
+        description="Subset of camera IDs to attach to pipeline nodes. If None, all cameras in the group are used.",
+    )
     realtime_config: RealtimePipelineConfig = Field(
         default_factory=RealtimePipelineConfig,
         description="Configuration for the realtime processing pipeline",
@@ -76,7 +81,8 @@ async def pipeline_apply_endpoint(
             raise RuntimeError("No valid camera configs found in request or current server state")
 
         pipeline = await app.create_or_update_realtime_pipeline(pipeline_config=request.realtime_config,
-                                                                                camera_configs=camera_configs,)
+                                                                                camera_configs=camera_configs,
+                                                                                realtime_camera_ids=request.realtime_camera_ids,)
         response = RealtimePipelineCreateResponse.from_pipeline(pipeline=pipeline)
         logger.api(f"`pipeline/connect` POST request handled successfully - \n {response.model_dump_json(indent=2)}")
         return response

@@ -182,6 +182,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                     <Tooltip title="Re-check folder">
                         <span>
                             <IconButton
+                                component="span"
                                 size="small"
                                 onClick={(e) => {
                                     e.stopPropagation();

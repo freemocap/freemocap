@@ -15,6 +15,7 @@ import multiprocessing.synchronize
 import os
 import uuid
 from dataclasses import dataclass
+from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
 from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
@@ -107,6 +108,7 @@ class RealtimePipeline:
             camera_group: CameraGroup,
             worker_registry: WorkerRegistry,
             pipeline_config: RealtimePipelineConfig,
+            realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
 
@@ -125,6 +127,15 @@ class RealtimePipeline:
                 worker_mode=WorkerMode.THREAD,
             )
 
+        # Use the realtime subset if provided, otherwise all cameras in the group.
+        # The camera group is always started with all selected cameras so their
+        # shared memory exists; we just choose which ones feed the pipeline nodes.
+        pipeline_camera_ids: list[CameraIdString] = (
+            [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
+            if realtime_camera_ids is not None
+            else list(camera_group.configs.keys())
+        )
+
         camera_nodes = {
             camera_id: CameraNode.create(
                 camera_id=camera_id,
@@ -136,7 +147,7 @@ class RealtimePipeline:
                 skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
-            for camera_id in camera_group.configs.keys()
+            for camera_id in pipeline_camera_ids
         }
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
@@ -144,7 +155,7 @@ class RealtimePipeline:
                 and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
-                camera_ids=camera_group.camera_ids,
+                camera_ids=pipeline_camera_ids,
                 worker_registry=worker_registry,
                 camera_group_shm_dto=camera_group.shm.to_dto(),
                 config=pipeline_config,
@@ -165,7 +176,7 @@ class RealtimePipeline:
 
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
-            camera_ids=camera_group.camera_ids,
+            camera_ids=pipeline_camera_ids,
             worker_registry=worker_registry,
             camera_group_shm_dto=camera_group.shm.to_dto(),
             config=pipeline_config,
@@ -320,8 +331,11 @@ class RealtimePipeline:
             return None
 
         aggregation_output: AggregationNodeOutputMessage | None = None
-        while not self.aggregation_output_subscription.empty():
-            aggregation_output = self.aggregation_output_subscription.get()
+        while True:
+            try:
+                aggregation_output = self.aggregation_output_subscription.get_nowait()
+            except Empty:
+                break
 
         if aggregation_output is None:
             return None

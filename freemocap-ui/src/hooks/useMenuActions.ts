@@ -9,6 +9,7 @@ import {stopRecording} from '@/store/slices/recording';
 import {selectVideoLoadFolder} from '@/store/slices/videos';
 import {activeRecordingCleared, activeRecordingSet} from '@/store/slices/active-recording';
 import {calibrationConfigUpdated} from '@/store/slices/calibration/calibration-slice';
+import {pipelineSnackbarShown} from '@/store/slices/pipelines';
 // import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
 import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
 import {SUPPORTED_LOCALES} from '@/i18n';
@@ -40,6 +41,7 @@ const MENU_LABEL_KEYS = [
     'menuAbout',
     'menuCheckForUpdates',
     'menuPlayback',
+    'menuShowPipelineProgress',
     'home',
     'cameras',
     'settings',
@@ -169,6 +171,9 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                 case 'open-recording-folder':
                     dispatch(selectVideoLoadFolder());
                     navigate('/playback');
+                    break;
+                case 'show-pipeline-progress':
+                    dispatch(pipelineSnackbarShown());
                     break;
 
                 // Data actions

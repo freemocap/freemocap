@@ -14,14 +14,15 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from skellycam.core.types.type_overloads import CameraIdString
+
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
-from freemocap.core.types.type_overloads import VideoIdString
 
 logger = logging.getLogger(__name__)
 
 
 def skeleton_from_mediapipe_observation_recorders(
-    observation_recorders: dict[VideoIdString, BaseRecorder],
+    observation_recorders: dict[CameraIdString, BaseRecorder],
     path_to_calibration_toml: Path | str,
     path_to_output_data_folder: Path | str,
     triangulation_config: TriangulationConfig | None = None,
@@ -30,7 +31,7 @@ def skeleton_from_mediapipe_observation_recorders(
 ) -> Human:
     """Triangulate mediapipe 2D observations into a 3D skeleton.
 
-    Camera matching: observation_recorders keys (VideoIdString, i.e. camera IDs)
+    Camera matching: observation_recorders keys (CameraIdString)
     are matched to calibration camera names. Each key must have an exact match
     in the calibration file's camera names.
     """
@@ -47,11 +48,11 @@ def skeleton_from_mediapipe_observation_recorders(
         raise ValueError("No observation recorders provided to process.")
 
     # Extract 2D data from observation recorders
-    data2d_by_camera: dict[VideoIdString, np.ndarray] = {}
-    for video_id, recorder in observation_recorders.items():
+    data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
+    for camera_id, recorder in observation_recorders.items():
         data2d_fr_id_xyc = recorder.to_array.copy()
-        logger.info(f"Processing camera ID: {video_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
-        data2d_by_camera[video_id] = data2d_fr_id_xyc[..., :2]
+        logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
+        data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 
     # Load calibration and build triangulator matched to our camera IDs
     calibration = CalibrationResult.load_anipose_toml(Path(path_to_calibration_toml))

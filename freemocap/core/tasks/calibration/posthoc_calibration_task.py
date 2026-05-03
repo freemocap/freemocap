@@ -22,6 +22,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
+from freemocap.core.pipeline.posthoc.pipeline_phases import CalibrationStage
+from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.anipose_calibration.run_anipose_calibration import run_anipose_calibration
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig, \
@@ -227,6 +229,7 @@ def run_posthoc_calibration_task(
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
         task_config: PosthocCalibrationPipelineConfig,
+        reporter: TaskProgressReporter | None = None,
 ) -> None:
     """Run posthoc calibration on collected charuco observations.
 
@@ -235,7 +238,10 @@ def run_posthoc_calibration_task(
     that is saved via the same anipose-compatible TOML format.
     """
 
+    _reporter = reporter or TaskProgressReporter.noop()
     camera_ids = list(video_metadata.keys())
+
+    _reporter.report(stage=CalibrationStage.VALIDATING_OBSERVATIONS, detail="Validating charuco observations")
 
     # ---- Validate all observations are CharucoObservation ----
     charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]] = []
@@ -268,6 +274,8 @@ def run_posthoc_calibration_task(
     )
     logger.info(f"Saved {len(all_observations)} charuco observations to {observations_json_path}")
 
+    _reporter.report(stage=CalibrationStage.RUNNING_SOLVER, detail=f"Running {task_config.solver_method.value} solver")
+
     # ---- Route to solver ----
     logger.info(f"Using calibration solver: {task_config.solver_method.value}")
 
@@ -290,6 +298,8 @@ def run_posthoc_calibration_task(
             )
         case _:
             raise ValueError(f"Unknown solver method: {task_config.solver_method}")
+
+    _reporter.report(stage=CalibrationStage.SAVING_CALIBRATION, detail="Saving calibration result")
 
     # ---- Save calibration result (unified for both paths) ----
     _save_result(

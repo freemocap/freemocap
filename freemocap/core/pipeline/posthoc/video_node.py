@@ -24,7 +24,10 @@ from skellytracker.trackers.base_tracker.detector_helpers import create_detector
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
-from freemocap.core.types.type_overloads import VideoIdString, TopicPublicationQueue, PipelineIdString, \
+from skellycam.core.types.type_overloads import CameraIdString
+
+from freemocap.core.pipeline.posthoc.pipeline_phases import VideoNodePhase, PosthocPipelineType
+from freemocap.core.types.type_overloads import TopicPublicationQueue, PipelineIdString, \
     TopicSubscriptionQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import VideoNodeOutputTopic, VideoNodeOutputMessage, VideoNodeProgressTopic, \
@@ -37,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class VideoNode(SourceNode):
-    video_id: VideoIdString
+    camera_id: CameraIdString
     video_path: Path
     progress_subscription: TopicSubscriptionQueue
 
@@ -45,13 +48,14 @@ class VideoNode(SourceNode):
     def create(
         cls,
         *,
-        video_id: VideoIdString,
+        camera_id: CameraIdString,
         video_path: Path,
         detector_config: BaseDetectorConfig,
         worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
         recording_path: Path,
+        pipeline_type: PosthocPipelineType,
         save_annotated_video: bool = True,
         pipeline_id: PipelineIdString | None = None,
     ) -> "VideoNode":
@@ -61,23 +65,24 @@ class VideoNode(SourceNode):
             worker_registry=worker_registry,
             log_queue=ipc.ws_queue,
             kwargs=dict(
-                video_id=video_id,
+                camera_id=camera_id,
                 video_path=video_path,
                 detector_config=detector_config,
                 ipc=ipc,
                 video_output_pub=pubsub.get_publication_queue(
                     VideoNodeOutputTopic,
                 ),
-                video_progress_pub = pubsub.get_publication_queue(
+                video_progress_pub=pubsub.get_publication_queue(
                     VideoNodeProgressTopic
                 ),
                 recording_path=recording_path,
                 save_annotated_video=save_annotated_video,
                 pipeline_id=pipeline_id,
+                pipeline_type=pipeline_type,
             ),
         )
         return cls(
-            video_id=video_id,
+            camera_id=camera_id,
             video_path=video_path,
             shutdown_self_flag=shutdown_self_flag,
             worker=worker,
@@ -125,7 +130,7 @@ class VideoNode(SourceNode):
     @staticmethod
     def _run(
         *,
-        video_id: VideoIdString,
+        camera_id: CameraIdString,
         video_path: Path,
         detector_config: BaseDetectorConfig,
         ipc: PipelineIPC,
@@ -135,21 +140,35 @@ class VideoNode(SourceNode):
         recording_path: Path,
         save_annotated_video: bool,
         pipeline_id: PipelineIdString,
+        pipeline_type: PosthocPipelineType,
     ) -> None:
+        # Compound pipeline_id groups this camera node under the base pipeline on the frontend.
+        node_pipeline_id = f"{pipeline_id}:{camera_id}"
+        # Emit immediately so the frontend shows the pipeline before the (potentially slow) model load.
+        video_progress_pub.put(VideoNodeProgressMessage(
+            camera_id=camera_id,
+            pipeline_id=node_pipeline_id,
+            pipeline_type=str(pipeline_type),
+            phase=VideoNodePhase.SETTING_UP,
+            progress_fraction=0.0,
+            detail="Loading detector...",
+            recording_name=recording_path.name,
+            recording_path=str(recording_path),
+        ))
         detector = create_detector_from_config(detector_config)
         video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
         if not video_reader.isOpened():
             raise RuntimeError(f"Failed to open video file: {video_path}")
         frame_count: int = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
-        # Use a unique pipeline_id per video node so the frontend can show separate progress bars
-        # and group them under the base pipeline_id (everything before the ':').
-        node_pipeline_id = f"{pipeline_id}:{video_id}"
         video_progress_pub.put(VideoNodeProgressMessage(
-            video_id=video_id,
+            camera_id=camera_id,
             pipeline_id=node_pipeline_id,
-            phase="collecting_frames",
+            pipeline_type=str(pipeline_type),
+            phase=VideoNodePhase.SETTING_UP,
             progress_fraction=0.0,
             detail=f"Preparing {frame_count} frames",
+            recording_name=recording_path.name,
+            recording_path=str(recording_path),
         ))
 
         # Set up annotation pipeline if requested
@@ -158,46 +177,43 @@ class VideoNode(SourceNode):
         base_reader: cv2.VideoCapture | None = None
         prev_annotated_path: Path | None = None
 
-
-
-        if save_annotated_video:
-            annotator = create_annotator_from_config(detector_config)
-            annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
-                recording_path=recording_path,
-                video_path=video_path,
-            )
-
-            # Open base reader if we have a previous annotated video to layer on
-            if prev_annotated_path is not None:
-                base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
-                if not base_reader.isOpened():
-                    logger.warning(
-                        f"Failed to open previous annotated video for {video_path.stem} — "
-                        f"will annotate from source frames instead"
-                    )
-                    base_reader = None
-
-            # Create video writer matching source video properties
-            fps = video_reader.get(cv2.CAP_PROP_FPS)
-            width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            video_writer = cv2.VideoWriter(
-                str(annotated_output_path), fourcc, fps, (width, height)
-            )
-            if not video_writer.isOpened():
-                raise RuntimeError(
-                    f"Failed to create video writer for: {annotated_output_path}"
-                )
-
-        logger.info(
-            f"VideoNode started for {video_path.stem}"
-            f"{' (with annotation)' if save_annotated_video else ''}"
-        )
-
         frame_number: int = 0
         _error_occurred = False
         try:
+            if save_annotated_video:
+                annotator = create_annotator_from_config(detector_config)
+                annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
+                    recording_path=recording_path,
+                    video_path=video_path,
+                )
+
+                # Open base reader if we have a previous annotated video to layer on
+                if prev_annotated_path is not None:
+                    base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
+                    if not base_reader.isOpened():
+                        logger.warning(
+                            f"Failed to open previous annotated video for {video_path.stem} — "
+                            f"will annotate from source frames instead"
+                        )
+                        base_reader = None
+
+                # Create video writer matching source video properties
+                fps = video_reader.get(cv2.CAP_PROP_FPS)
+                width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                video_writer = cv2.VideoWriter(
+                    str(annotated_output_path), fourcc, fps, (width, height)
+                )
+                if not video_writer.isOpened():
+                    raise RuntimeError(
+                        f"Failed to create video writer for: {annotated_output_path}"
+                    )
+
+            logger.info(
+                f"VideoNode started for {video_path.stem}"
+                f"{' (with annotation)' if save_annotated_video else ''}"
+            )
             with tqdm(
                 total=frame_count,
                 desc=video_path.stem,
@@ -213,7 +229,7 @@ class VideoNode(SourceNode):
                     )
                     video_output_pub.put(
                         VideoNodeOutputMessage(
-                            video_id=video_id,
+                            camera_id=camera_id,
                             frame_number=frame_number,
                             observation=observation,
                         ),
@@ -246,11 +262,14 @@ class VideoNode(SourceNode):
                     success, image = video_reader.read()
                     frame_number += 1
                     video_progress_pub.put(VideoNodeProgressMessage(
-                        video_id=video_id,
+                        camera_id=camera_id,
                         pipeline_id=node_pipeline_id,
-                        phase="detecting_frames",
+                        pipeline_type=str(pipeline_type),
+                        phase=VideoNodePhase.PROCESSING_IMAGES,
                         progress_fraction=frame_number / frame_count,
-                        detail=f"Video {video_id}: {frame_number}/{frame_count} frames",
+                        detail=f"Camera {camera_id}: {frame_number}/{frame_count} frames",
+                        recording_name=recording_path.name,
+                        recording_path=str(recording_path),
                     ))
                     pbar.update(1)
 
@@ -265,11 +284,14 @@ class VideoNode(SourceNode):
             )
             _error_occurred = True
             video_progress_pub.put(VideoNodeProgressMessage(
-                video_id=video_id,
+                camera_id=camera_id,
                 pipeline_id=node_pipeline_id,
-                phase="failed",
+                pipeline_type=str(pipeline_type),
+                phase=VideoNodePhase.FAILED,
                 progress_fraction=frame_number / frame_count if frame_count > 0 else 0.0,
                 detail=f"{type(e).__name__}: {e}",
+                recording_name=recording_path.name,
+                recording_path=str(recording_path),
             ))
             ipc.shutdown_pipeline()
             # Do NOT re-raise: unhandled exceptions here kill the worker, and the WorkerRegistry
@@ -279,10 +301,13 @@ class VideoNode(SourceNode):
             video_reader.release()
             if not _error_occurred:
                 video_progress_pub.put(VideoNodeProgressMessage(
-                    video_id=video_id,
+                    camera_id=camera_id,
                     pipeline_id=node_pipeline_id,
-                    phase="complete",
+                    pipeline_type=str(pipeline_type),
+                    phase=VideoNodePhase.COMPLETE,
                     progress_fraction=1.0,
+                    recording_name=recording_path.name,
+                    recording_path=str(recording_path),
                 ))
             if video_writer is not None:
                 video_writer.release()
@@ -294,7 +319,11 @@ class VideoNode(SourceNode):
             logger.debug(f"VideoNode for {video_path.stem} exiting")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
+        from queue import Empty
         messages: list[VideoNodeProgressMessage] = []
-        while not self.progress_subscription.empty():
-            messages.append(self.progress_subscription.get())
+        while True:
+            try:
+                messages.append(self.progress_subscription.get_nowait())
+            except Empty:
+                break
         return messages

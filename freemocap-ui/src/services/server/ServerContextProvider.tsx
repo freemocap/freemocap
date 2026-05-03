@@ -69,6 +69,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // Overlay data refs - NO REACT STATE to avoid re-renders!
     const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
     const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
+    // Tracks when each camera last received overlay data; used to evict stale
+    // overlays when the pipeline stops or a camera is removed from it.
+    const OVERLAY_STALE_MS = 500;
+    const lastOverlayTimeRef = useRef<Map<string, number>>(new Map());
 
     // Overlay visibility flags - toggled by UI, applied in dispatchFrames
     const charucoEnabledRef = useRef<boolean>(true);
@@ -78,7 +82,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const serverFpsRef = useRef<number | null>(null);
 
     // Last-dispatched progress per pipeline — skip dispatch when value is unchanged
-    const lastPipelineProgressRef = useRef<Record<string, number>>({});
+    const lastPipelineProgressRef = useRef<Record<string, string>>({});
 
     // 3D data refs and subscriber sets
     const trackedPointsRef = useRef<KeypointsFrame | null>(null);
@@ -179,6 +183,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 keypointsFilteredRef.current = null;
                 latestCharucoRef.current.clear();
                 latestMediapipeRef.current.clear();
+                lastOverlayTimeRef.current.clear();
                 overlayManagerRef.current?.clearAll();
                 trackerSchemasRef.current = {};
                 activeTrackerIdRef.current = null;
@@ -238,10 +243,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             // when it arrives (overwriting any earlier raw frame for that camera).
             const overlayManager = overlayManagerRef.current!;
             for (const frameData of frames) {
-                const charucoObs = charucoEnabledRef.current
+                const overlayAge = performance.now() - (lastOverlayTimeRef.current.get(frameData.cameraId) ?? 0);
+                const overlayFresh = overlayAge <= OVERLAY_STALE_MS;
+                if (!overlayFresh) {
+                    latestCharucoRef.current.delete(frameData.cameraId);
+                    latestMediapipeRef.current.delete(frameData.cameraId);
+                    lastOverlayTimeRef.current.delete(frameData.cameraId);
+                }
+                const charucoObs = (charucoEnabledRef.current && overlayFresh)
                     ? latestCharucoRef.current.get(frameData.cameraId) ?? null
                     : null;
-                const mediapipeObs = skeletonEnabledRef.current
+                const mediapipeObs = (skeletonEnabledRef.current && overlayFresh)
                     ? latestMediapipeRef.current.get(frameData.cameraId) ?? null
                     : null;
 
@@ -295,14 +307,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // Called from the rAF loop (not from the WebSocket handler) so subscriber
         // work happens during the animation frame, not mid-message-storm.
         const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
+            const overlayNow = performance.now();
             if (payload.charuco_overlays) {
                 for (const [cameraId, charuco] of Object.entries(payload.charuco_overlays)) {
                     latestCharucoRef.current.set(cameraId, charuco as CharucoObservation);
+                    lastOverlayTimeRef.current.set(cameraId, overlayNow);
                 }
             }
             if (payload.skeleton_overlays) {
                 for (const [cameraId, skeleton] of Object.entries(payload.skeleton_overlays)) {
                     latestMediapipeRef.current.set(cameraId, skeleton as MediapipeObservation);
+                    lastOverlayTimeRef.current.set(cameraId, overlayNow);
                 }
             }
 
@@ -370,22 +385,22 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             const bodyStart = now;
             lastRafTime = now;
 
-            if (rafGap > 50) {
-                const prev = lastTickRef.current;
-                const decoding = processingFrameRef.current;
-                const tag = decoding
-                    ? `decode-busy (${(now - decodeStartTime).toFixed(0)}ms)`
-                    : 'main-thread jank';
-                console.warn(
-                    `rAF gap: ${rafGap.toFixed(0)}ms [${tag}] prevBody:${lastBodyDuration.toFixed(0)}ms` +
-                    ` | prev: ack=${prev.sentAck} json=${prev.processedJson}` +
-                    ` binKP=${prev.processedBinaryKP} decode=${prev.startedDecode}` +
-                    ` decoding=${prev.decodingInProgress} wsMsg=${prev.wsMessageCount}` +
-                    ` | cur: pendJson=${pendingJsonPayloadRef.current !== null}` +
-                    ` pendBinKP=${pendingKeypointsRef.current !== null}` +
-                    ` pendImg=${pendingPayloadRef.current !== null}`
-                );
-            }
+            // if (rafGap > 50) {
+            //     const prev = lastTickRef.current;
+            //     const decoding = processingFrameRef.current;
+            //     const tag = decoding
+            //         ? `decode-busy (${(now - decodeStartTime).toFixed(0)}ms)`
+            //         : 'main-thread jank';
+            //     console.warn(
+            //         `rAF gap: ${rafGap.toFixed(0)}ms [${tag}] prevBody:${lastBodyDuration.toFixed(0)}ms` +
+            //         ` | prev: ack=${prev.sentAck} json=${prev.processedJson}` +
+            //         ` binKP=${prev.processedBinaryKP} decode=${prev.startedDecode}` +
+            //         ` decoding=${prev.decodingInProgress} wsMsg=${prev.wsMessageCount}` +
+            //         ` | cur: pendJson=${pendingJsonPayloadRef.current !== null}` +
+            //         ` pendBinKP=${pendingKeypointsRef.current !== null}` +
+            //         ` pendImg=${pendingPayloadRef.current !== null}`
+            //     );
+            // }
 
             // Snapshot tick activity for the next jank report
             const tick = {
@@ -512,26 +527,64 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFrontendPayload(jsonData)) {
                         pendingJsonPayloadRef.current = jsonData;
                     } else if (isPosthocProgress(jsonData)) {
+                        // console.debug('[WS:progress] raw msg:', jsonData);
 
-                        const progress = Math.round(jsonData.progress_fraction * 100);
-                        if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== progress) {
-                            lastPipelineProgressRef.current[jsonData.pipeline_id] = progress;
-                            const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
-                                collecting_frames: PipelinePhase.SETTING_UP,
-                                detecting_frames: PipelinePhase.PROCESSING_VIDEOS,
-                                all_frames_collected: PipelinePhase.AGGREGATING,
-                                processing: PipelinePhase.AGGREGATING,
-                                running_task: PipelinePhase.AGGREGATING,
-                                complete: PipelinePhase.COMPLETE,
-                                failed: PipelinePhase.FAILED,
-                            };
-                            store.dispatch(pipelineProgressUpdated({
-                                pipelineId: jsonData.pipeline_id,
-                                pipelineType: PipelineType.MOCAP, // TODO: backend should send type
-                                phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
-                                progress,
-                                detail: jsonData.detail,
-                            }));
+                        const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
+                            calibration: PipelineType.CALIBRATION,
+                            mocap: PipelineType.MOCAP,
+                        };
+                        const pipelineType = PIPELINE_TYPE_MAP[jsonData.pipeline_type];
+                        if (!pipelineType) {
+                            console.error('[WS] Unknown pipeline_type in progress message:', jsonData.pipeline_type, jsonData);
+                        } else {
+                            const progress = Math.round(jsonData.progress_fraction * 100);
+                            const dedupeKey = `${jsonData.phase}:${progress}`;
+                            if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== dedupeKey) {
+                                lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
+                                // console.debug('[WS:progress] dispatching:', jsonData.pipeline_id, jsonData.phase, progress + '%');
+                                const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+                                    // VideoNodePhase
+                                    setting_up: PipelinePhase.SETTING_UP,
+                                    processing_images: PipelinePhase.PROCESSING_VIDEOS,
+                                    // AggregatorPhase
+                                    collecting_camera_output: PipelinePhase.SETTING_UP,
+                                    // MocapStage
+                                    building_recorders: PipelinePhase.AGGREGATING,
+                                    triangulating: PipelinePhase.AGGREGATING,
+                                    exporting_blender: PipelinePhase.FINALIZING,
+                                    // CalibrationStage
+                                    validating_observations: PipelinePhase.AGGREGATING,
+                                    running_solver: PipelinePhase.AGGREGATING,
+                                    saving_calibration: PipelinePhase.FINALIZING,
+                                    // terminal
+                                    complete: PipelinePhase.COMPLETE,
+                                    failed: PipelinePhase.FAILED,
+                                };
+                                store.dispatch(pipelineProgressUpdated({
+                                    pipelineId: jsonData.pipeline_id,
+                                    pipelineType,
+                                    phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+                                    progress,
+                                    detail: jsonData.detail,
+                                    recordingName: jsonData.recording_name,
+                                    recordingPath: jsonData.recording_path,
+                                }));
+                                // Base pipeline (aggregator) messages update the type-specific slice.
+                                // Use raw action type strings to avoid circular imports through @/services barrel.
+                                if (!jsonData.pipeline_id.includes(':')) {
+                                    if (pipelineType === PipelineType.MOCAP) {
+                                        store.dispatch({
+                                            type: 'mocap/posthocProgressReceived',
+                                            payload: {phase: jsonData.phase, progress_fraction: jsonData.progress_fraction, detail: jsonData.detail},
+                                        });
+                                    } else {
+                                        store.dispatch({
+                                            type: 'calibration/calibrationPipelineProgressReceived',
+                                            payload: {phase: jsonData.phase},
+                                        });
+                                    }
+                                }
+                            }
                         }
                     } else {
                         console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);

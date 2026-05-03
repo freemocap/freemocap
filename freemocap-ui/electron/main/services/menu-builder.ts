@@ -18,6 +18,7 @@ export type MenuAction =
     | 'start-recording'
     | 'stop-recording'
     | 'open-recording-folder'
+    | 'show-pipeline-progress'
     | 'load-test-data'
     | 'clear-active-recording'
     | 'toggle-fullscreen'
@@ -56,6 +57,7 @@ export interface MenuLabels {
     menuAbout: string;
     menuCheckForUpdates: string;
     menuPlayback: string;
+    menuShowPipelineProgress: string;
     // Keys reused from the existing i18n
     home: string;
     cameras: string;
@@ -91,6 +93,7 @@ const DEFAULT_LABELS: MenuLabels = {
     menuAbout: 'About FreeMoCap',
     menuCheckForUpdates: 'Check for Updates…',
     menuPlayback: 'Playback',
+    menuShowPipelineProgress: 'Show Pipeline Progress',
     home: 'Home',
     cameras: 'Cameras',
     settings: 'Settings',
@@ -246,6 +249,11 @@ function buildRecordingMenu(t: MenuLabels): MenuItemConstructorOptions {
             {
                 label: t.menuOpenRecordingFolder,
                 click: () => sendMenuAction('open-recording-folder'),
+            },
+            { type: 'separator' },
+            {
+                label: t.menuShowPipelineProgress,
+                click: () => sendMenuAction('show-pipeline-progress'),
             },
         ],
     };

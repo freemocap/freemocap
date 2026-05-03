@@ -12,6 +12,7 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
@@ -82,8 +83,9 @@ class FreemocapApplication:
 
     async def create_or_update_realtime_pipeline(
             self,
-            camera_configs:CameraConfigs,
+            camera_configs: CameraConfigs,
             pipeline_config: RealtimePipelineConfig,
+            realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
 
         for pipeline in self.realtime_pipeline_manager.pipelines.values():
@@ -96,6 +98,7 @@ class FreemocapApplication:
         pipeline = self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
+            realtime_camera_ids=realtime_camera_ids,
         )
         return pipeline
 
@@ -125,6 +128,11 @@ class FreemocapApplication:
         )
         return pipeline
 
+    def stop_posthoc_pipeline(self, pipeline_id: str) -> bool:
+        return self.posthoc_pipeline_manager.stop_pipeline(pipeline_id)
+
+    def stop_all_posthoc_pipelines(self) -> None:
+        self.posthoc_pipeline_manager.stop_all_pipelines()
 
     # ------------------------------------------------------------------
     # Frontend payloads
@@ -141,10 +149,9 @@ class FreemocapApplication:
             self,
             if_newer_than: FrameNumberInt,
     ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
-        self.posthoc_pipeline_manager.evict_completed()
-
-        # Collect posthoc progress regardless of whether a realtime pipeline is running
+        # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
         posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
+        posthoc_progress.extend(self.posthoc_pipeline_manager.evict_completed())
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
         active_pipelines = [p for p in realtime_pipelines.values() if p.alive]

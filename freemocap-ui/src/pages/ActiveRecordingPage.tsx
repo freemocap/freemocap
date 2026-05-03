@@ -189,27 +189,27 @@ const ActiveRecordingPage: React.FC = () => {
                                 </Stack>
                             </Box>
 
-                            {/* Derived-path summary */}
-                            {structure && (
-                                <Box
-                                    sx={{
-                                        p: 2,
-                                        borderRadius: 1,
-                                        border: `1px solid ${theme.palette.divider}`,
-                                    }}
-                                >
-                                    <Typography variant="subtitle2" sx={{mb: 1}}>Canonical layout</Typography>
-                                    <Stack spacing={0.5}>
-                                        <PathRow label="videos/synchronized" value={structure.videosSynchronizedDir}/>
-                                        <PathRow label="videos/annotated" value={structure.videosAnnotatedDir}/>
-                                        <PathRow label="output/" value={structure.outputDir}/>
-                                        <PathRow label="calibration.toml" value={structure.calibrationTomlPath}/>
-                                        <PathRow label="recording_info.json" value={structure.recordingInfoPath}/>
-                                        <PathRow label="data.parquet" value={structure.dataParquetPath}/>
-                                        <PathRow label=".blend" value={structure.blendPath}/>
-                                    </Stack>
-                                </Box>
-                            )}
+                            {/*/!* Derived-path summary *!/*/}
+                            {/*{structure && (*/}
+                            {/*    <Box*/}
+                            {/*        sx={{*/}
+                            {/*            p: 2,*/}
+                            {/*            borderRadius: 1,*/}
+                            {/*            border: `1px solid ${theme.palette.divider}`,*/}
+                            {/*        }}*/}
+                            {/*    >*/}
+                            {/*        <Typography variant="subtitle2" sx={{mb: 1}}>Canonical layout</Typography>*/}
+                            {/*        <Stack spacing={0.5}>*/}
+                            {/*            <PathRow label="videos/synchronized" value={structure.videosSynchronizedDir}/>*/}
+                            {/*            <PathRow label="videos/annotated" value={structure.videosAnnotatedDir}/>*/}
+                            {/*            <PathRow label="output/" value={structure.outputDir}/>*/}
+                            {/*            <PathRow label="calibration.toml" value={structure.calibrationTomlPath}/>*/}
+                            {/*            <PathRow label="recording_info.json" value={structure.recordingInfoPath}/>*/}
+                            {/*            <PathRow label="data.parquet" value={structure.dataParquetPath}/>*/}
+                            {/*            <PathRow label=".blend" value={structure.blendPath}/>*/}
+                            {/*        </Stack>*/}
+                            {/*    </Box>*/}
+                            {/*)}*/}
 
                             {/* Stage checklist */}
                             <Box

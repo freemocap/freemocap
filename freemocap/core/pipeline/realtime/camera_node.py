@@ -145,8 +145,11 @@ class CameraNode(SourceNode):
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
             while ipc.should_continue and not shutdown_self_flag.value:
                 # ---- Handle config updates ----
-                while not pipeline_config_sub.empty():
-                    update_msg: PipelineConfigUpdateMessage = pipeline_config_sub.get()
+                while True:
+                    try:
+                        update_msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
+                    except queue.Empty:
+                        break
                     new_config: CameraNodeConfig = update_msg.pipeline_config.camera_node_config
                     logger.debug(f"RealtimeCameraNode [{camera_id}] received config update")
 

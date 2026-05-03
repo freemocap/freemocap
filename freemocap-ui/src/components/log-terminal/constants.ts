@@ -1,10 +1,10 @@
 export const LOG_POLL_INTERVAL_MS = 500;
 
 /** Height of a single line of monospace text in the log view. */
-export const LINE_HEIGHT = 20;
+export const LINE_HEIGHT = 15;
 
 /** Vertical padding added to each log entry. */
-export const ROW_PADDING = 8;
+export const ROW_PADDING = 1;
 
 /** Extra rows rendered above/below the visible viewport. */
 export const OVERSCAN = 10;

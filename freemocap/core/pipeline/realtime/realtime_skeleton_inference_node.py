@@ -228,9 +228,17 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 t_inf = time.perf_counter() if timer is not None else 0.0
                 try:
                     batch_results = session.predict_batch(images)
-                except MemoryError as mem_err:
+                except Exception as mem_err:
+                    # Catch Python MemoryError (raised by rtmpose_session when it
+                    # detects a BFC Arena OOM) and any ONNX RuntimeException that
+                    # slips through with an OOM message — both indicate GPU VRAM
+                    # exhaustion and should trigger the session restart below.
+                    if not (isinstance(mem_err, MemoryError)
+                            or "BFCArena" in str(mem_err)
+                            or "Available memory" in str(mem_err)):
+                        raise
                     logger.error(
-                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] MemoryError during "
+                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] GPU OOM during "
                         f"inference (restart {session_restart_count + 1}/{_MAX_SESSION_RESTARTS}): "
                         f"{mem_err}"
                     )

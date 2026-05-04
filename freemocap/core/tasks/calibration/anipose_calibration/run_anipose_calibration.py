@@ -44,7 +44,7 @@ def run_anipose_calibration(
 
     Returns a CalibrationResult with optimized camera models.
     """
-    t_start = time.monotonic()
+    t_start = time.perf_counter()
 
     cameras: list[CameraModel] = [
         CameraModel(
@@ -118,7 +118,7 @@ def run_anipose_calibration(
         else:
             logger.warning(f"Failed to set groundplane: {groundplane_success.error}")
 
-    elapsed = time.monotonic() - t_start
+    elapsed = time.perf_counter() - t_start
 
     result = CalibrationResult(
         cameras=cameras,

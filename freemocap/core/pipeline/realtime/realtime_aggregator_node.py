@@ -285,7 +285,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         pending_skeleton_results: dict[int, dict[CameraIdString, object | None]] = {}
         latest_requested_frame: int = -1
         last_received_frame: int = -1
-        last_calibration_poll: float = time.monotonic()
+        last_calibration_poll: float = time.perf_counter()
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}") if log_pipeline_times else None
         t_frame_requested: float = time.perf_counter() if timer is not None else 0.0
@@ -324,7 +324,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Periodically check if calibration file changed on disk ----
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - last_calibration_poll >= CALIBRATION_POLL_INTERVAL_SECONDS:
                     last_calibration_poll = now
                     if calibration.check_for_update():
@@ -521,7 +521,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if raw_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
                         filtered_keypoints = keypoint_filter.filter(
-                            t=time.monotonic(),
+                            t=time.perf_counter(),
                             raw_keypoints=raw_keypoints,
                         )
                         if timer is not None:
@@ -532,7 +532,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if raw_keypoints:
                             t0 = time.perf_counter() if timer is not None else 0.0
                             gate_result: GateResult = point_gate.gate(
-                                t=time.monotonic(),
+                                t=time.perf_counter(),
                                 points=raw_keypoints,
                             )
                             _merge_triangulated_arrays(
@@ -548,7 +548,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             filtered_keypoints = _filter_skeleton_arrays(
                                 point_arrays=filtered_keypoints,
                                 skeleton_filter=skeleton_filter,
-                                t=time.monotonic(),
+                                t=time.perf_counter(),
                             )
                             if timer is not None:
                                 timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)

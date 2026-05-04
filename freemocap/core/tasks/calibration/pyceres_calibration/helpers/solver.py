@@ -136,7 +136,7 @@ def run_pyceres_bundle_adjustment(
     Returns:
         CalibrationResult with optimized camera models.
     """
-    t_start = time.monotonic()
+    t_start = time.perf_counter()
     camera_name_to_idx = {cam.id: idx for idx, cam in enumerate(cameras)}
     board_pts_3d = board.corner_positions_board_frame
 
@@ -442,7 +442,7 @@ def run_pyceres_bundle_adjustment(
             )
         )
 
-    elapsed = time.monotonic() - t_start
+    elapsed = time.perf_counter() - t_start
     n_used = sum(1 for obs in obs_records if not obs.is_outlier)
 
     return CalibrationResult(

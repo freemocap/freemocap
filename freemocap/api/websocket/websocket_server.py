@@ -241,7 +241,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - self._last_framerate_send_time >= 0.25:
                     for camera_group_id, server_calc in self._server_framerate_calculators.items():
                         if camera_group_id not in self._display_framerate_trackers:

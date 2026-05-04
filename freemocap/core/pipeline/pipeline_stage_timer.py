@@ -43,7 +43,7 @@ class PipelineStageTimer:
     ) -> None:
         from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
 
-        now = time.monotonic()
+        now = time.perf_counter()
         if now - self.last_flush < self.flush_interval:
             return
         self.last_flush = now

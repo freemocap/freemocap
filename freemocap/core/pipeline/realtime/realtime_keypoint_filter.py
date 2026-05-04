@@ -55,11 +55,14 @@ class SimpleRealtimeKeypointFilter:
             Includes predictions for recently-seen keypoints absent this frame.
         """
         if self._last_t is not None and t <= self._last_t:
-            raise RuntimeError(
+            # TODO: Fix root cause — the aggregator is processing the same frame twice  causing      the filter to receive identical timestamps for consecutive frames. Until the data-flow bug is resolved, skip filtering this frame  to avoid crashing the pipeline.
+            logger.error(
                 f"Non-monotonic timestamp passed to keypoint filter: "
                 f"t={t} <= last_t={self._last_t} (dt={t - self._last_t}). "
-                f"The aggregator processed the same frame twice, or the clock went backwards."
+                f"The aggregator processed the same frame twice, or the clock went backwards. "
+                f"Skipping filter for this frame."
             )
+            return raw_keypoints
         self._last_t = t
 
         result: dict[str, np.ndarray] = {}

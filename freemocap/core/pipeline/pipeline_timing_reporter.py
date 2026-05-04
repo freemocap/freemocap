@@ -98,7 +98,7 @@ class PipelineTimingReporter:
     def _run(self) -> None:
         from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
 
-        last_report = time.monotonic()
+        last_report = time.perf_counter()
         try:
             while not self.stop_event.is_set():
                 try:
@@ -108,7 +108,7 @@ class PipelineTimingReporter:
                 if msg is not None:
                     self._ingest(msg)
 
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - last_report >= self.report_interval:
                     last_report = now
                     if self._new_data_since_last_report:

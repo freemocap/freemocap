@@ -42,9 +42,9 @@ PIPELINE_TIMEOUT_SECONDS = 600
 
 def _wait_for_pipeline(pipeline: PosthocPipeline, timeout: float = PIPELINE_TIMEOUT_SECONDS) -> None:
     """Poll until the pipeline finishes or timeout is reached."""
-    start = time.monotonic()
+    start = time.perf_counter()
     while pipeline.alive:
-        if time.monotonic() - start > timeout:
+        if time.perf_counter() - start > timeout:
             pipeline.shutdown()
             raise TimeoutError(
                 f"Pipeline [{pipeline.id}] did not complete within {timeout}s"

@@ -75,7 +75,7 @@ export function FaceRenderer() {
             face.clear();
             const { pointNames, interleaved } = frame;
             for (let i = 0; i < pointNames.length; i++) {
-                if (!pointNames[i].startsWith("face.")) continue;
+                if (!pointNames[i].startsWith("face_")) continue;
                 const off = i * 4;
                 if (!interleaved[off + 3]) continue;
                 const x = interleaved[off];

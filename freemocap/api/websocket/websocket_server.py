@@ -173,6 +173,15 @@ class WebsocketServer:
         logger.info("Starting frontend image payload relay...")
         try:
             while self.should_continue:
+                # Always drain and send posthoc progress — never gate this
+                # behind backpressure. Progress messages are small JSON
+                # payloads that don't cause the queue-growth problem that
+                # backpressure is designed to prevent.
+                posthoc_progress = self._app.posthoc_pipeline_manager.get_progress_updates()
+                posthoc_progress.extend(self._app.posthoc_pipeline_manager.evict_completed())
+                for update_message in posthoc_progress:
+                    await self._send_msgspec_json(update_message)
+
                 if not self.last_frame_acknowledged():
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure >= BACKPRESSURE_RESET_THRESHOLD:

@@ -85,6 +85,9 @@ export const calibrationSlice = createSlice({
                 state.isLoading = false;
             }
         },
+        calibrationLoadedFromBundle: (state, action: PayloadAction<LoadedCalibration | null>) => {
+            state.loadedCalibration = action.payload;
+        },
         resetCalibrationState: () => initialState,
     },
     extraReducers: (builder) => {
@@ -204,5 +207,6 @@ export const {
     calibrationErrorCleared,
     calibrationDirectoryInfoUpdated,
     calibrationPipelineProgressReceived,
+    calibrationLoadedFromBundle,
     resetCalibrationState,
 } = calibrationSlice.actions;

@@ -48,6 +48,9 @@ interface PlaybackControlsProps {
     onSeekToEnd: () => void;
     isLooping: boolean;
     onToggleLoop: () => void;
+    availableSources?: Record<string, { available: boolean; valid: boolean }> | null;
+    selectedSource?: string | null;
+    onSourceChange?: (source: string) => void;
 }
 
 const PLAYBACK_RATES = [0.1, 0.25, 0.5, 1, 1.5, 2, 4, 8];
@@ -79,6 +82,9 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     onSeekToEnd,
     isLooping,
     onToggleLoop,
+    availableSources,
+    selectedSource,
+    onSourceChange,
 }) => {
     const theme = useTheme();
     const { t } = useTranslation();
@@ -272,6 +278,45 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                         <RepeatIcon fontSize="small" />
                     </IconButton>
                 </Tooltip>
+
+                {/* Video source toggle — only when 2+ valid sources available */}
+                {availableSources && selectedSource && onSourceChange && (() => {
+                    const validSources = Object.entries(availableSources)
+                        .filter(([, s]) => s.available && s.valid)
+                        .map(([key]) => key);
+                    if (validSources.length < 2) return null;
+                    return (
+                        <ToggleButtonGroup
+                            value={selectedSource}
+                            exclusive
+                            onChange={(_, val) => { if (val) onSourceChange(val); }}
+                            size="small"
+                            sx={{
+                                ml: 2,
+                                '& .MuiToggleButton-root': {
+                                    fontSize: '0.7rem',
+                                    fontFamily: monoFont,
+                                    py: 0.3,
+                                    px: 1,
+                                    textTransform: 'capitalize',
+                                    color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
+                                    borderColor: isDark ? 'rgba(255,255,255,0.2)' : theme.palette.divider,
+                                    '&.Mui-selected': {
+                                        color: '#fff',
+                                        backgroundColor: isDark ? 'rgba(41,182,246,0.25)' : theme.palette.primary.main,
+                                        borderColor: accentBlue,
+                                        '&:hover': {
+                                            backgroundColor: isDark ? 'rgba(41,182,246,0.35)' : theme.palette.primary.dark,
+                                        },
+                                    },
+                                },
+                            }}
+                        >
+                            <ToggleButton value="annotated">Annotated</ToggleButton>
+                            <ToggleButton value="synchronized">Synchronized</ToggleButton>
+                        </ToggleButtonGroup>
+                    );
+                })()}
 
                 {/* Right: speed selector + settings */}
                 <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1 }}>

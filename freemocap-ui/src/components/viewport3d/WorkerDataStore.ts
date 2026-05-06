@@ -80,9 +80,22 @@ export const workerDataStore: KeypointsSource & {
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
-    // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null
-    subscribeToKeypointsRaw: (cb) => rawChan.subscribe((f) => { if (f) cb(f); }),
-    subscribeToKeypointsFiltered: (cb) => filteredChan.subscribe((f) => { if (f) cb(f); }),
+    // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null.
+    // Replay the latest value on subscribe so the 3D viewport shows frame 0 immediately on load
+    // instead of staying blank until the user presses play (the first frame dispatch races ahead
+    // of React effects, which haven't mounted the KeypointsRenderer subscriber yet).
+    subscribeToKeypointsRaw: (cb) => {
+        const unsub = rawChan.subscribe((f) => { if (f) cb(f); });
+        const latest = rawChan.getLatest();
+        if (latest) cb(latest);
+        return unsub;
+    },
+    subscribeToKeypointsFiltered: (cb) => {
+        const unsub = filteredChan.subscribe((f) => { if (f) cb(f); });
+        const latest = filteredChan.getLatest();
+        if (latest) cb(latest);
+        return unsub;
+    },
     getLatestKeypointsRaw: rawChan.getLatest,
 
     // Schema state

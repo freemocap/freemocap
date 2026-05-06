@@ -35,7 +35,7 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
-from skellytracker.trackers.mediapipe_tracker.names_and_connections import MEDIAPIPE_BODY_DEFINITION
+from skellytracker.trackers.mediapipe_tracker.names_and_connections import MEDIAPIPE_HOLISTIC_DEFINITION
 from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,7 @@ def run_posthoc_mocap_aggregator_task(
     # ---- Save tracker schema alongside outputs ----
     first_obs = next(iter(frame_observations[0].values()))
     if isinstance(first_obs, MediapipeObservation):
-        definition = MEDIAPIPE_BODY_DEFINITION
+        definition = MEDIAPIPE_HOLISTIC_DEFINITION
     else:
         definition = RTMPOSE_WHOLEBODY_DEFINITION
 

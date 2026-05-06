@@ -543,6 +543,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                 lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
                                 // console.debug('[WS:progress] dispatching:', jsonData.pipeline_id, jsonData.phase, progress + '%');
                                 const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+                                    // Queued (emitted at pipeline creation time, before workers start)
+                                    queued: PipelinePhase.QUEUED,
                                     // VideoNodePhase
                                     setting_up: PipelinePhase.SETTING_UP,
                                     processing_images: PipelinePhase.PROCESSING_VIDEOS,

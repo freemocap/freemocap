@@ -82,12 +82,10 @@ def export_to_blender(
 
     blender_process = run_subprocess(command_list=command_list)
 
-    while True:
-        output = blender_process.stdout.readline()
-        if blender_process.poll() is not None:
-            break
-        if output:
-            logging.debug(output.strip().decode())
+    stdout, _ = blender_process.communicate()
+    if stdout:
+        for line in stdout.decode().splitlines():
+            logging.debug(line)
 
     if blender_process.returncode != 0:
         logging.error(f"Blender subprocess exited with non-zero return code: {blender_process.returncode}")

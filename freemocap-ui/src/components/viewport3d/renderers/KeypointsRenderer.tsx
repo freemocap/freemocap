@@ -18,9 +18,36 @@ const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
 const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
-const RAW_RADIUS = 0.04;
-const FILTERED_RADIUS = 0.04;
+// ---------------------------------------------------------------------------
+// Per‑category keypoint radii.
+//
+// The sphere geometry has radius 50, so the visual world‑space radius is
+// roughly <constant> × 50.  Tweak these to taste — the filtered (colored‑by‑
+// body‑part) layer uses the per‑category values, while the raw layer uses
+// RAW_KEYPOINT_RADIUS uniformly.
+// ---------------------------------------------------------------------------
+const RAW_KEYPOINT_RADIUS = 0.07;
 
+const BODY_KEYPOINT_RADIUS = 0.12;
+const HAND_KEYPOINT_RADIUS = 0.05;
+const FACE_KEYPOINT_RADIUS = 0.02;
+const UNSPECIFIED_KEYPOINT_RADIUS = 0.1;
+
+function getKeypointRadius(name: string): number {
+    switch (classifyPointName(name)) {
+        case "face":        return FACE_KEYPOINT_RADIUS;
+        case "left_hand":
+        case "right_hand":  return HAND_KEYPOINT_RADIUS;
+        case "left":
+        case "right":
+        case "center":      return BODY_KEYPOINT_RADIUS;
+        default:            return UNSPECIFIED_KEYPOINT_RADIUS;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// KeypointLayer — one instanced‑mesh pass (raw or filtered).
+// ---------------------------------------------------------------------------
 interface KeypointLayerProps {
     subscribeKey: "subscribeToKeypointsRaw" | "subscribeToKeypointsFiltered";
     color: Color;
@@ -37,9 +64,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const meshRef = useRef<InstancedMesh>(null);
     const frameRef = useRef<KeypointsFrame | null>(null);
     const dirtyRef = useRef(false);
-    // name → stable InstancedMesh slot index
     const nameToInstanceIdx = useRef<Map<string, number>>(new Map());
-    // name → index within the current frame's interleaved array
     const frameIdxByName = useRef<Map<string, number>>(new Map());
     const lastPointNamesRef = useRef<readonly string[] | null>(null);
     const nextIdx = useRef(0);
@@ -128,12 +153,16 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
             }
 
             if (visible) {
-                const style = colorMode === "byBodyPart" ? getPointStyle(name, colorHints) : null;
-                let scale = style ? style.scale : radius;
-                if (name.includes("hand")) scale *= 0.5;
+                const scale = colorMode === "byBodyPart"
+                    ? getKeypointRadius(name)
+                    : radius;
+                const pointColor = colorMode === "byBodyPart"
+                    ? getPointStyle(name, colorHints).color
+                    : color;
+
                 DUMMY.position.set(x, y, z);
                 DUMMY.scale.setScalar(scale);
-                mesh.setColorAt(instanceIdx, style ? style.color : color);
+                mesh.setColorAt(instanceIdx, pointColor);
                 count++;
             } else {
                 DUMMY.position.copy(FAR_AWAY);
@@ -166,7 +195,7 @@ export function KeypointsRenderer() {
                 <KeypointLayer
                     subscribeKey="subscribeToKeypointsRaw"
                     color={COLORS.raw}
-                    radius={RAW_RADIUS}
+                    radius={RAW_KEYPOINT_RADIUS}
                     statsKey="keypointsRaw"
                 />
             )}
@@ -174,7 +203,7 @@ export function KeypointsRenderer() {
                 <KeypointLayer
                     subscribeKey="subscribeToKeypointsFiltered"
                     color={COLORS.filtered}
-                    radius={FILTERED_RADIUS}
+                    radius={RAW_KEYPOINT_RADIUS}
                     statsKey="keypointsFiltered"
                     colorMode="byBodyPart"
                 />

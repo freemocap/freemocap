@@ -5,6 +5,7 @@ import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
 import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import type {LoadedCalibration} from "./calibration-slice";
+import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 
 export const loadCalibrationForRecording = createAsyncThunk<
     LoadedCalibration | null,
@@ -106,12 +107,12 @@ export const startCalibrationRecording = createAsyncThunk<
 );
 
 export const stopCalibrationRecording = createAsyncThunk<
-    { success: boolean },
+    { success: boolean; pipeline_id?: string; recording_name?: string; recording_path?: string },
     void,
     { state: RootState; rejectValue: string }
 >(
     'calibration/stopRecording',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const calibrationTaskConfig = state.calibration.config;
@@ -133,6 +134,17 @@ export const stopCalibrationRecording = createAsyncThunk<
 
             const result = await response.json();
             console.log('✅ Stopped calibration recording:', result);
+            if (result.pipeline_id) {
+                dispatch(pipelineProgressUpdated({
+                    pipelineId: result.pipeline_id,
+                    pipelineType: PipelineType.CALIBRATION,
+                    phase: PipelinePhase.QUEUED,
+                    progress: 0,
+                    detail: 'Pipeline queued, starting workers...',
+                    recordingName: result.recording_name ?? '',
+                    recordingPath: result.recording_path ?? '',
+                }));
+            }
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -143,12 +155,12 @@ export const stopCalibrationRecording = createAsyncThunk<
 );
 
 export const calibrateRecording = createAsyncThunk<
-    { success: boolean; message?: string; results?: unknown },
+    { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
     void,
     { state: RootState; rejectValue: string }
 >(
     'calibration/calibrateRecording',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const calibrationTaskConfig = state.calibration.config;
@@ -176,6 +188,17 @@ export const calibrateRecording = createAsyncThunk<
 
             const result = await response.json();
             console.log('✅ Calibration completed:', result);
+            if (result.pipeline_id) {
+                dispatch(pipelineProgressUpdated({
+                    pipelineId: result.pipeline_id,
+                    pipelineType: PipelineType.CALIBRATION,
+                    phase: PipelinePhase.QUEUED,
+                    progress: 0,
+                    detail: 'Pipeline queued, starting workers...',
+                    recordingName: calibrationRecordingDirectory?.split(/[/\\]/).pop() ?? '',
+                    recordingPath: calibrationRecordingDirectory ?? '',
+                }));
+            }
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

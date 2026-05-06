@@ -112,12 +112,21 @@ async function initRoot(
     height: number,
     pixelRatio: number,
 ) {
+    // If a previous root is still alive (e.g. from a prior mount before a tab
+    // switch), tear it down first so we don't leak WebGL contexts.
+    if (root) {
+        console.log("[viewport3d worker] tearing down previous root before re-init");
+        root.unmount();
+        root = null;
+    }
+
     canvas = offscreen;
     canvasSize = { width, height, top: 0, left: 0 };
     enhanceOffscreenCanvas(offscreen);
 
-    root = createRoot<OffscreenCanvas>(offscreen);
-    await root.configure({
+    const newRoot = createRoot<OffscreenCanvas>(offscreen);
+    root = newRoot;
+    await newRoot.configure({
         size: { width, height, top: 0, left: 0 },
         dpr: pixelRatio,
         camera: { position: [1500, 1500, 1500], fov: 75, near: 0.1, far: 100000 },
@@ -127,7 +136,11 @@ async function initRoot(
         // canvas EventTarget, where CameraControls listens via addEventListener.
         events: undefined,
     });
-    root.render(<WorkerScene />);
+
+    // If teardown was called while we were awaiting configure, abort.
+    if (root !== newRoot) return;
+
+    newRoot.render(<WorkerScene />);
     console.log("[viewport3d worker] root created and rendering");
 }
 
@@ -160,6 +173,15 @@ self.addEventListener("message", (event: MessageEvent) => {
         case "resize": {
             const p = msg.payload as { width: number; height: number; top: number; left: number };
             resizeRoot(p.width, p.height, p.top, p.left);
+            break;
+        }
+        case "teardown": {
+            if (root) {
+                console.log("[viewport3d worker] tearing down root");
+                root.unmount();
+                root = null;
+            }
+            canvas = null;
             break;
         }
         case "domEvent": {

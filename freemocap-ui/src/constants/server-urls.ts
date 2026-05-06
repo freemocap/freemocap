@@ -67,6 +67,8 @@ class ServerUrls {
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
             playbackRecordingStatus: (recordingId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/status`,
+            playbackBundle: (recordingId: string) =>
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/bundle`,
 
 
             // Realtime pipeline endpoints

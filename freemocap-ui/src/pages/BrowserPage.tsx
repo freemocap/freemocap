@@ -33,8 +33,8 @@ const BrowserPage: React.FC = () => {
                 <ErrorBoundary>
                     <RecordingBrowser
                         activeRecordingPath={activeRecordingPath}
-                        onRecordingLoaded={(videos, recPath, recFps) => {
-                            ctx?.onRecordingLoaded(videos, recPath, recFps);
+                        onRecordingLoaded={(videos, recPath, recFps, sources, preferred) => {
+                            ctx?.onRecordingLoaded(videos, recPath, recFps, sources, preferred);
                             navigate('/playback');
                         }}
                     />

@@ -47,6 +47,14 @@ export const KeypointsSourceProvider: React.FC<{
 );
 
 /**
+ * Returns true when a KeypointsSourceProvider is mounted above the consumer
+ * (i.e. during playback mode), false when keypoints come from the live server.
+ */
+export function useHasKeypointsSourceProvider(): boolean {
+    return useContext(KeypointsSourceContext) !== null;
+}
+
+/**
  * Returns the active keypoints source. Falls back to the live server if no
  * provider is mounted above the consumer.
  */

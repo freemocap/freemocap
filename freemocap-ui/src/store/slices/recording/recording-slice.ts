@@ -204,7 +204,6 @@ export const recordingSlice = createSlice({
             .addCase(startRecording.fulfilled, (state, action) => {
                 state.isRecording = true;
                 state.recordingName = action.meta.arg.recordingName;
-                state.recordingDirectory = action.meta.arg.recordingDirectory;
                 state.startedAt = new Date().toISOString();
                 state.duration = 0;
                 state.pendingOperation = null;

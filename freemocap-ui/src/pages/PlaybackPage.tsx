@@ -18,8 +18,7 @@ import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
-import {useAppDispatch, useAppSelector} from "@/store";
-import {loadCalibrationForRecording} from "@/store/slices/calibration/calibration-thunks";
+import {useAppSelector} from "@/store";
 import {
     selectActiveRecordingBaseDirectory,
     selectActiveRecordingFullPath,
@@ -34,18 +33,9 @@ const PlaybackPage: React.FC = () => {
     const isDark = theme.palette.mode === 'dark';
 
     const ctx = usePlaybackContext();
-    const dispatch = useAppDispatch();
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
     const activeRecordingName = useAppSelector(selectActiveRecordingName);
     const activeRecordingBaseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
-
-    useEffect(() => {
-        if (!activeRecordingName) return;
-        dispatch(loadCalibrationForRecording({
-            recordingId: activeRecordingName,
-            recordingParentDirectory: activeRecordingBaseDirectory,
-        }));
-    }, [dispatch, activeRecordingName, activeRecordingBaseDirectory]);
 
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
@@ -61,6 +51,9 @@ const PlaybackPage: React.FC = () => {
     const recordingFps = ctx?.recordingFps;
     const frameTimestamps = ctx?.frameTimestamps ?? null;
     const onFrameChange = ctx?.onFrameChange;
+    const availableSources = ctx?.availableSources ?? null;
+    const selectedSource = ctx?.selectedSource ?? null;
+    const setSelectedSource = ctx?.setSelectedSource;
 
     const handleOpenFolder = useCallback(async () => {
         if (!recordingPath) return;
@@ -353,6 +346,9 @@ const PlaybackPage: React.FC = () => {
                             onSeekToEnd={controller.handleSeekToEnd}
                             isLooping={controller.isLooping}
                             onToggleLoop={controller.handleToggleLoop}
+                            availableSources={availableSources}
+                            selectedSource={selectedSource}
+                            onSourceChange={setSelectedSource}
                         />
                     </Box>
                 </ErrorBoundary>

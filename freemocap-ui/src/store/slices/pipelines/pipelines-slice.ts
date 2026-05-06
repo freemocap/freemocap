@@ -11,6 +11,7 @@ export const PipelineType = {
 export type PipelineType = (typeof PipelineType)[keyof typeof PipelineType];
 
 export const PipelinePhase = {
+    QUEUED: 'queued',
     SETTING_UP: 'setting_up',
     PROCESSING_VIDEOS: 'processing_videos',
     AGGREGATING: 'aggregating',
@@ -31,6 +32,7 @@ export const PIPELINE_TYPE_CONFIG: Record<PipelineType, PipelineTypeConfig> = {
 };
 
 export const PHASE_LABELS: Record<PipelinePhase, string> = {
+    [PipelinePhase.QUEUED]: 'Queued',
     [PipelinePhase.SETTING_UP]: 'Setting Up',
     [PipelinePhase.PROCESSING_VIDEOS]: 'Processing Videos',
     [PipelinePhase.AGGREGATING]: 'Aggregating',

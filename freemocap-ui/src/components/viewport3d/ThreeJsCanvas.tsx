@@ -3,7 +3,7 @@ import { Box } from "@mui/material";
 import { Object3D } from "three";
 import { ViewportStateProvider, useViewportState } from "./scene/ViewportStateContext";
 import { ViewportOverlay } from "./scene/ViewportOverlay";
-import { useKeypointsSource } from "./KeypointsSourceContext";
+import { useHasKeypointsSourceProvider, useKeypointsSource } from "./KeypointsSourceContext";
 import { useServer } from "@/services";
 import { useAppSelector } from "@/store";
 import {
@@ -34,9 +34,13 @@ VIEWPORT_WORKER.addEventListener("messageerror", (e) =>
 );
 
 // transferControlToOffscreen() can only be called once per HTMLCanvasElement.
-// React 19 StrictMode double-mounts components in dev; track init globally so
-// the second mount is a no-op.
-let canvasTransferred = false;
+// React 19 StrictMode double-mounts components in dev; it reuses the same DOM
+// element across the mount→unmount→remount cycle, so a module-level flag that
+// gets reset in a cleanup function will still double-transfer the same element.
+//
+// Instead we mark the DOM element itself via a data attribute. This survives
+// StrictMode's double-mount (same element, attribute persists) but naturally
+// expires on tab switches (old element destroyed, new element is clean).
 
 // ---------------------------------------------------------------------------
 // Helper components rendered inside ViewportStateProvider
@@ -129,17 +133,30 @@ export function ThreeJsCanvas() {
     const loadedCalibration = useAppSelector(selectLoadedCalibration);
     const { subscribeToKeypointsRaw, subscribeToKeypointsFiltered, getLatestKeypointsRaw } =
         useKeypointsSource();
+    const isPlayback = useHasKeypointsSourceProvider();
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useCalibrationTomlLoader();
 
     // ── OffscreenCanvas transfer + worker init ────────────────────────────
+    // Uses a data-attribute on the DOM element itself (not a module-level flag)
+    // to prevent double-transfer. React StrictMode reuses the same canvas DOM
+    // element across its mount→unmount→remount cycle, so the attribute survives
+    // the cleanup/remount and correctly blocks the second transfer. On a real
+    // tab switch the old element is destroyed — the new element has no attribute.
+    //
+    // No cleanup teardown message: on a real unmount the worker's existing root
+    // may briefly become orphaned (rendering to a now-detached OffscreenCanvas),
+    // but the next mount's "init" triggers initRoot() which tears down any stale
+    // root before creating a new one. This avoids the StrictMode false-positive
+    // where cleanup→reinit would race with the async root.configure().
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
-        if (!canvas || !container || canvasTransferred) return;
-        canvasTransferred = true;
+        if (!canvas || !container) return;
+        if (canvas.dataset.offscreenTransferred === "true") return;
+        canvas.dataset.offscreenTransferred = "true";
 
         const rect = container.getBoundingClientRect();
         const width = Math.max(1, Math.floor(rect.width));
@@ -173,7 +190,11 @@ export function ThreeJsCanvas() {
     }, [subscribeToKeypointsFiltered]);
 
     // ── Low-frequency config data ─────────────────────────────────────────────
+    // During playback, FileKeypointsSourceProvider owns the schema (fetched from
+    // the recording's tracker_schema.json). Pushing the live-server schema here
+    // would overwrite it with rtmpose_wholebody, breaking hand/face connections.
     useEffect(() => {
+        if (isPlayback) return;
         VIEWPORT_WORKER.postMessage({
             type: "schemaState",
             data: {
@@ -181,7 +202,7 @@ export function ThreeJsCanvas() {
                 trackerSchemas: server.trackerSchemas,
             },
         });
-    }, [server.activeTrackerId, server.trackerSchemas]);
+    }, [isPlayback, server.activeTrackerId, server.trackerSchemas]);
 
     useEffect(() => {
         VIEWPORT_WORKER.postMessage({ type: "calibrationConfig", data: calibrationConfig });

@@ -34,6 +34,7 @@ async def main(force_preferred_port:bool=True) -> None:
         format_port_sentinel,
     )
     from freemocap.app.app import create_fastapi_app
+    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
 
 
     if force_preferred_port:
@@ -44,6 +45,8 @@ async def main(force_preferred_port:bool=True) -> None:
     # Print the port sentinel to stdout so the Electron main process can discover it.
     # flush=True ensures it arrives immediately even when stdout is buffered.
     print(format_port_sentinel(port=port), flush=True)
+
+    suppress_proactor_connection_reset(asyncio.get_running_loop())
 
     global_kill_flag = multiprocessing.Value("b", False)
     worker_registry = WorkerRegistry(

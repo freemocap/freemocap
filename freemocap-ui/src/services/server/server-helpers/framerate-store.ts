@@ -204,8 +204,13 @@ export class FramerateStore {
     private _frontendStats = new WindowedStats(this._recentFrontendDurations, MAX_DURATION_HISTORY);
     private _backendStats = new WindowedStats(this._recentBackendDurations, MAX_DURATION_HISTORY);
 
+    private _writeVersion = 0;
+    private _snapshotVersion = -1;
+    private _cachedSnapshot: FramerateSnapshot | null = null;
+
     updateBackend(data: DetailedFramerate): void {
         this.currentBackendFramerate = data;
+        this._writeVersion++;
         if (data.mean_frame_duration_ms > 0) {
             this._recentBackendDurations.push(Date.now(), data.mean_frame_duration_ms);
         }
@@ -213,14 +218,20 @@ export class FramerateStore {
 
     updateFrontend(data: DetailedFramerate): void {
         this.currentFrontendFramerate = data;
+        this._writeVersion++;
         if (data.mean_frame_duration_ms > 0) {
             this._recentFrontendDurations.push(Date.now(), data.mean_frame_duration_ms);
         }
     }
 
-    /** Returns a snapshot for React components to read during render. */
+    /** Returns a snapshot for React components to read during render.
+     *  Cached until the next update so polling callers get the same object. */
     getSnapshot(): FramerateSnapshot {
-        return {
+        if (this._cachedSnapshot && this._snapshotVersion === this._writeVersion) {
+            return this._cachedSnapshot;
+        }
+
+        this._cachedSnapshot = {
             currentBackendFramerate: this.currentBackendFramerate,
             currentFrontendFramerate: this.currentFrontendFramerate,
             aggregateBackendFramerate: this._backendStats.computeAggregate(
@@ -232,6 +243,8 @@ export class FramerateStore {
             recentFrontendDurations: this._recentFrontendDurations.toArray(),
             recentBackendDurations: this._recentBackendDurations.toArray(),
         };
+        this._snapshotVersion = this._writeVersion;
+        return this._cachedSnapshot;
     }
 
     clear(): void {
@@ -239,5 +252,8 @@ export class FramerateStore {
         this.currentFrontendFramerate = null;
         this._recentFrontendDurations.clear();
         this._recentBackendDurations.clear();
+        this._writeVersion++;
+        this._cachedSnapshot = null;
+        this._snapshotVersion = -1;
     }
 }

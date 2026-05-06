@@ -7,6 +7,7 @@ import {
     PlayArrow as PlayArrowIcon,
     Save as SaveIcon,
     SaveAlt as ScrollToBottomIcon,
+    FilterList as FilterListIcon,
     Search as SearchIcon,
     Warning as WarningIcon,
 } from '@mui/icons-material';
@@ -19,6 +20,7 @@ interface Props {
     isPaused: boolean;
     copyFeedback: boolean;
     showSearch: boolean;
+    showLevelFilters: boolean;
     selectedLevels: string[];
     onLevelToggle: (e: React.MouseEvent<HTMLElement>, newLevels: string[]) => void;
     onPauseToggle: () => void;
@@ -27,6 +29,7 @@ interface Props {
     onSaveToDisk: () => void;
     onScrollToBottom: () => void;
     onToggleSearch: () => void;
+    onToggleLevelFilters: () => void;
 }
 
 export const LogToolbar = memo(function LogToolbar({
@@ -34,6 +37,7 @@ export const LogToolbar = memo(function LogToolbar({
     isPaused,
     copyFeedback,
     showSearch,
+    showLevelFilters,
     selectedLevels,
     onLevelToggle,
     onPauseToggle,
@@ -42,6 +46,7 @@ export const LogToolbar = memo(function LogToolbar({
     onSaveToDisk,
     onScrollToBottom,
     onToggleSearch,
+    onToggleLevelFilters,
 }: Props) {
     const theme = useTheme();
     const {t} = useTranslation();
@@ -78,50 +83,52 @@ export const LogToolbar = memo(function LogToolbar({
                 </Tooltip>
             )}
 
-            <ToggleButtonGroup
-                size="small"
-                value={selectedLevels}
-                onChange={onLevelToggle}
-                sx={{
-                    '.MuiToggleButtonGroup-grouped': {
-                        border: `1px solid ${theme.palette.divider} !important`,
-                        mx: '1px',
-                        '&:not(:first-of-type)': {borderRadius: '2px'},
-                        '&:first-of-type': {borderRadius: '2px'},
-                    },
-                }}
-            >
-                {Object.entries(LOG_COLORS).map(([level, color]) => {
-                    const count = snapshot.countsByLevel[level] || 0;
-                    return (
-                        <ToggleButton
-                            key={level}
-                            value={level.toLowerCase()}
-                            sx={{
-                                py: 0.25,
-                                px: 1,
-                                minWidth: 0,
-                                fontSize: '0.75em',
-                                position: 'relative',
-                                color: alpha(color, 0.7),
-                                '&.Mui-selected': {
-                                    backgroundColor: alpha(color, 0.15),
-                                    color: color,
-                                    '&:hover': {backgroundColor: alpha(color, 0.2)},
-                                },
-                                '&:hover': {backgroundColor: alpha(color, 0.1)},
-                            }}
-                        >
-                            {level}
-                            {count > 0 && (
-                                <span style={{marginLeft: '4px', fontSize: '0.8em', opacity: 0.7}}>
-                                    ({count})
-                                </span>
-                            )}
-                        </ToggleButton>
-                    );
-                })}
-            </ToggleButtonGroup>
+            {showLevelFilters && (
+                <ToggleButtonGroup
+                    size="small"
+                    value={selectedLevels}
+                    onChange={onLevelToggle}
+                    sx={{
+                        '.MuiToggleButtonGroup-grouped': {
+                            border: `1px solid ${theme.palette.divider} !important`,
+                            mx: '1px',
+                            '&:not(:first-of-type)': {borderRadius: '2px'},
+                            '&:first-of-type': {borderRadius: '2px'},
+                        },
+                    }}
+                >
+                    {Object.entries(LOG_COLORS).map(([level, color]) => {
+                        const count = snapshot.countsByLevel[level] || 0;
+                        return (
+                            <ToggleButton
+                                key={level}
+                                value={level.toLowerCase()}
+                                sx={{
+                                    py: 0.25,
+                                    px: 1,
+                                    minWidth: 0,
+                                    fontSize: '0.75em',
+                                    position: 'relative',
+                                    color: alpha(color, 0.7),
+                                    '&.Mui-selected': {
+                                        backgroundColor: alpha(color, 0.15),
+                                        color: color,
+                                        '&:hover': {backgroundColor: alpha(color, 0.2)},
+                                    },
+                                    '&:hover': {backgroundColor: alpha(color, 0.1)},
+                                }}
+                            >
+                                {level}
+                                {count > 0 && (
+                                    <span style={{marginLeft: '4px', fontSize: '0.8em', opacity: 0.7}}>
+                                        ({count})
+                                    </span>
+                                )}
+                            </ToggleButton>
+                        );
+                    })}
+                </ToggleButtonGroup>
+            )}
 
             <Box sx={{ml: 'auto', display: 'flex', gap: 0.5}}>
                 <Tooltip title={copyFeedback ? t('copied') : t('copyLogsToClipboard')}>
@@ -145,6 +152,14 @@ export const LogToolbar = memo(function LogToolbar({
                         <ScrollToBottomIcon fontSize="small"/>
                     </IconButton>
                 </Tooltip>
+
+                <IconButton
+                    size="small"
+                    onClick={onToggleLevelFilters}
+                    sx={{color: showLevelFilters ? theme.palette.primary.main : theme.palette.text.secondary}}
+                >
+                    <FilterListIcon fontSize="small"/>
+                </IconButton>
 
                 <IconButton
                     size="small"
@@ -173,5 +188,6 @@ export const LogToolbar = memo(function LogToolbar({
     prev.isPaused          === next.isPaused         &&
     prev.copyFeedback      === next.copyFeedback     &&
     prev.showSearch        === next.showSearch       &&
+    prev.showLevelFilters  === next.showLevelFilters &&
     prev.selectedLevels    === next.selectedLevels,
 );

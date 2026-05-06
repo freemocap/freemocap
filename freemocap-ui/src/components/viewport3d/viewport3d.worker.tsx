@@ -15,7 +15,7 @@ import { Object3D } from "three";
 // R3F v9's createRoot does NOT auto-register THREE intrinsics the way <Canvas> does.
 // Without this, <ambientLight/>, <mesh/>, <group/>, etc. throw "not part of the
 // THREE namespace" at reconcile time. Must run before any render.
-extend(THREE);
+extend(THREE as any);
 import type CameraControlsImpl from "camera-controls";
 
 import { workerDataStore } from "./WorkerDataStore";

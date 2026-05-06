@@ -9,7 +9,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import SyncDisabledIcon from '@mui/icons-material/SyncDisabled';
 import CheckIcon from '@mui/icons-material/Check';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
-import {selectCameraById, selectIsLoading, selectAutoApply} from '@/store/slices/cameras/cameras-selectors';
+import {selectCameraById} from '@/store/slices/cameras/cameras-selectors';
 import {cameraDesiredConfigUpdated, autoApplyToggled} from '@/store/slices/cameras/cameras-slice';
 import {camerasConnectOrUpdate} from '@/store/slices/cameras/cameras-thunks';
 import {ROTATION_DEGREE_LABELS, ROTATION_OPTIONS, RotationValue} from '@/store/slices/cameras/cameras-types';
@@ -21,15 +21,15 @@ const EXPOSURE_MAX = -4;
 interface CameraViewWithOverlayProps {
     cameraIndex: number;
     cameraId: string;
+    isLoading: boolean;
+    isAutoApply: boolean;
 }
 
-export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cameraIndex, cameraId}) => {
+export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cameraIndex, cameraId, isLoading, isAutoApply}) => {
     const dispatch = useAppDispatch();
     const [hovered, setHovered] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
     const camera = useAppSelector(state => selectCameraById(state, cameraId));
-    const isLoading = useAppSelector(selectIsLoading);
-    const isAutoApply = useAppSelector(selectAutoApply);
     const desiredConfig = camera?.desiredConfig;
 
     const rotation = desiredConfig?.rotation as RotationValue ?? -1;

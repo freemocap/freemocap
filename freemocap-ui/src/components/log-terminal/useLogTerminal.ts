@@ -76,7 +76,10 @@ export function useLogTerminal(): LogTerminalState {
         return () => clearInterval(interval);
     }, [getLogStore, isPaused]);
 
-    const filteredLogs = applyFilters(snapshot.entries, selectedLevels, searchText);
+    const filteredLogs = useMemo(
+        () => applyFilters(snapshot.entries, selectedLevels, searchText),
+        [snapshot.entries, selectedLevels, searchText]
+    );
 
     const prefixHeights = useMemo(() => buildPrefixHeights(filteredLogs), [filteredLogs]);
     const totalHeight = prefixHeights[filteredLogs.length] || 0;

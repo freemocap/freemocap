@@ -20,43 +20,83 @@ hiddenimports = ["encodings.idna"]
 binaries.extend(collect_dynamic_libs('cv2'))
 hiddenimports.extend(collect_submodules('cv2'))
 
-# ── scipy (uses lazy loading that breaks in frozen envs) ──
-scipy_datas, scipy_binaries, scipy_hidden = collect_all('scipy')
-datas.extend(scipy_datas)
-binaries.extend(scipy_binaries)
-hiddenimports.extend(scipy_hidden)
+# ── scipy (targeted: only submodules actually imported at runtime) ──
+binaries.extend(collect_dynamic_libs('scipy'))
+hiddenimports.extend([
+    'scipy.optimize',
+    'scipy.sparse',
+    'scipy.linalg',
+    'scipy.spatial.transform',
+    'scipy.interpolate',
+    'scipy.cluster.hierarchy',
+    'scipy.cluster.vq',
+    'scipy.signal',
+])
 
-# ── pandas (newer versions ship _cyutility that default hook misses) ──
-pandas_datas, pandas_binaries, pandas_hidden = collect_all('pandas')
-datas.extend(pandas_datas)
-binaries.extend(pandas_binaries)
-hiddenimports.extend(pandas_hidden)
+# ── pandas (standard hook handles most; _cyutility missed by default hook) ──
+binaries.extend(collect_dynamic_libs('pandas'))
+hiddenimports.append('pandas._libs._cyutility')
 
-# ── mediapipe (needs .tflite model files at runtime) ──
+# ── mediapipe (needs .tflite model files at runtime; only solutions/vision/formats) ──
 import mediapipe
 mp_path = os.path.dirname(mediapipe.__file__)
 datas.append((os.path.join(mp_path, 'modules'), 'mediapipe/modules'))
-hiddenimports.extend(collect_submodules('mediapipe'))
+hiddenimports.extend([
+    'mediapipe',
+    'mediapipe.python.solutions',
+    'mediapipe.python.solutions.holistic',
+    'mediapipe.python.solutions.drawing_utils',
+    'mediapipe.python.solutions.face_mesh',
+    'mediapipe.python.solutions.face_mesh_connections',
+    'mediapipe.framework.formats',
+    'mediapipe.framework.formats.landmark_pb2',
+    'mediapipe.tasks.python',
+    'mediapipe.tasks.python.vision',
+])
 
 # ── skellyforge (yaml config files needed at runtime) ──
 import skellyforge
 sf_path = os.path.dirname(skellyforge.__file__)
 datas.append((os.path.join(sf_path, 'skellymodels', 'tracker_info', '*.yaml'), 'skellyforge/skellymodels/tracker_info'))
 
-# ── skellytracker (recursive: all YAMLs under the package, any tracker) ──
+# ── skellytracker (active trackers only; exclude v1 legacy, tests, scripts) ──
 datas.extend(collect_data_files('skellytracker', includes=['**/*.yaml']))
-hiddenimports.extend(collect_submodules('skellytracker'))
+hiddenimports.extend([
+    'skellytracker',
+    'skellytracker.system',
+    'skellytracker.system.logging_configuration',
+    'skellytracker.system.logging_configuration.handlers',
+    'skellytracker.system.logging_configuration.handlers.websocket_log_queue_handler',
+    'skellytracker.io',
+    'skellytracker.io.process_videos',
+    'skellytracker.io.process_videos.process_single_video',
+    'skellytracker.utilities',
+    'skellytracker.tracked_object_definition',
+    'skellytracker.trackers.mediapipe_tracker',
+    'skellytracker.trackers.rtmpose_tracker',
+    'skellytracker.trackers.rtmpose_tracker.__rtmpose_tracker',
+    'skellytracker.trackers.rtmpose_tracker.run_rtmpose',
+    'skellytracker.trackers.charuco_tracker',
+    'skellytracker.trackers.brightest_point_tracker',
+])
 
 # ── NVIDIA CUDA runtime (bundled so users don't need a system CUDA install) ──
 # skellytracker's rtmpose_detector does `find_spec("nvidia")` +
-# `nvidia_root.glob("*/bin")` at runtime, so the full tree must be preserved.
+# `nvidia_root.glob("*/bin")` at runtime to discover CUDA libraries.
+#
+# Included — required by ONNX Runtime CUDA execution provider:
+#   nvidia.cublas       (737 MB) — GEMM/BLAS for GPU tensor ops
+#   nvidia.cuda_runtime  (11 MB) — core CUDA runtime (cudart)
+#   nvidia.cudnn       (1006 MB) — cuDNN: primitives for deep neural network inference
+#
+# Excluded — only needed by TensorRT EP (not currently functional):
+#   nvidia.cufft        (275 MB) — FFT library, not used by ONNX inference
+#   nvidia.cuda_nvrtc   (179 MB) — runtime compilation, TensorRT-only
+#   nvidia.nvjitlink     (84 MB) — JIT linker, TensorRT-only
 for nvidia_subpkg in [
     'nvidia.cublas',
     'nvidia.cuda_runtime',
-    'nvidia.cuda_nvrtc',
     'nvidia.cudnn',
-    'nvidia.cufft',
-    'nvidia.nvjitlink',
 ]:
     try:
         nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
@@ -67,11 +107,9 @@ for nvidia_subpkg in [
         print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
               f"— GPU acceleration may not work in the frozen build. ({e})")
 
-# ── onnxruntime (GPU build — needs provider DLLs bundled explicitly) ──
-ort_datas, ort_binaries, ort_hidden = collect_all('onnxruntime')
-datas.extend(ort_datas)
-binaries.extend(ort_binaries)
-hiddenimports.extend(ort_hidden)
+# ── onnxruntime (GPU build — only DLLs + capi bindings; exclude dev tools) ──
+binaries.extend(collect_dynamic_libs('onnxruntime'))
+hiddenimports.extend(['onnxruntime', 'onnxruntime.capi'])
 
 # ── rtmlib (model registry + configs) ──
 rtm_datas, rtm_binaries, rtm_hidden = collect_all('rtmlib')
@@ -79,12 +117,11 @@ datas.extend(rtm_datas)
 binaries.extend(rtm_binaries)
 hiddenimports.extend(rtm_hidden)
 
-# ── setuptools (needed by some vendored deps at runtime) ──
-setuptools_datas, _, setuptools_hidden = collect_all('setuptools')
-datas.extend(setuptools_datas)
-hiddenimports.extend(setuptools_hidden)
+# ── onnx (used by rtmpose_session for model loading; separate from onnxruntime) ──
+hiddenimports.append('onnx')
 
-# Ensure jaraco.text lorem ipsum file is included
+# ── setuptools (_vendor only — jaraco, packaging, etc. needed by vendored deps) ──
+hiddenimports.extend(collect_submodules('setuptools._vendor'))
 jaraco_text_path = os.path.join(
     os.path.dirname(__import__('setuptools', fromlist=['_vendor']).__file__),
     '_vendor', 'jaraco', 'text'
@@ -125,6 +162,40 @@ a = Analysis(
         'pdb',
         'cProfile',
         'profile',
+
+        # ── Dependencies in pyproject.toml but never imported ──
+        'numba',
+        'llvmlite',
+        'libsass',
+        'sass',
+        'sklearn',
+        'numpydantic',
+
+        # ── onnxruntime dev tools (not needed at runtime) ──
+        'onnxruntime.transformers',
+        'onnxruntime.tools',
+        'onnxruntime.quantization',
+        'onnxruntime.backend',
+        'onnxruntime.datasets',
+
+        # ── mediapipe dev/bundled tools ──
+        'mediapipe.tasks.python.test',
+        'mediapipe.tasks.python.metadata',
+        'mediapipe.tasks.python.benchmark',
+
+        # ── skellytracker legacy/unused ──
+        'skellytracker.tests',
+        'skellytracker.trackers.v1',
+        'skellytracker.trackers.vitpose_tracker',
+        'skellytracker.trackers.legacy_mediapipe_tracker',
+        'skellytracker.scripts',
+        'skellytracker.__main__',
+
+        # ── setuptools cruft ──
+        'setuptools.tests',
+        'setuptools.command',
+        'setuptools._distutils.command',
+        'setuptools._distutils.tests',
     ],
     noarchive=False,
 )
@@ -142,8 +213,8 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=False,
-    upx_exclude=[],
+    upx=True,
+    upx_exclude=['nvcuda', 'nvrtc', 'cudnn', 'cublas', 'cufft', 'cudart'],
     runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,

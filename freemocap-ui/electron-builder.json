@@ -16,7 +16,7 @@
     "**/freemocap_server*",
     "**/freemocap-logo.png"
   ],
-  "compression": "maximum",
+  "compression": "normal",
 
   "win": {
     "icon": "../shared/freemocap-logo/freemocap-favicon.ico",

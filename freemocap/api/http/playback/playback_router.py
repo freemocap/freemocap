@@ -603,6 +603,37 @@ def get_recording_calibration(
 
 
 @playback_router.get(
+    "/{recording_id}/tracker-schema",
+    summary="Return the tracker schema (tracked points + connections) for a recording",
+)
+def get_tracker_schema(
+    recording_id: str,
+    recording_parent_directory: str | None = Query(
+        default=None,
+        description="Override the default recordings directory",
+    ),
+) -> dict[str, Any]:
+    """Serve the tracker_schema.json saved alongside the mocap outputs.
+
+    Returns the TrackedObjectDefinition (name, tracker_type, landmark_schema,
+    tracked_points, connections) so the frontend can render skeleton lines
+    without hardcoding any tracker schema.
+
+    Returns 404 for older recordings that predate schema saving.
+    """
+    import json
+
+    recording_path = _resolve_recording_path(recording_id, recording_parent_directory)
+    schema_path = recording_path / "tracker_schema.json"
+    if not schema_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"No tracker schema found in recording: {recording_path}",
+        )
+    return json.loads(schema_path.read_text(encoding="utf-8"))
+
+
+@playback_router.get(
     "/{recording_id}/timestamps",
     summary="Get timestamps for all videos in a recording",
 )

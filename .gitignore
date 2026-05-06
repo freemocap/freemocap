@@ -161,6 +161,10 @@ pyapp.zip
 .vite
 *.zip
 
+upx.exe
+
 .docusaurus/
 */.claude/*
 /.claude/
+/CLAUDE.md
+.aider*

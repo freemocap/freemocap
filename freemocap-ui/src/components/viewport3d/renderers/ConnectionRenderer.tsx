@@ -37,6 +37,7 @@ export function ConnectionRenderer() {
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
     const arucoMarkersRef = useRef<Map<number, (Point3d | undefined)[]>>(new Map());
     const prevArucoNamesRef = useRef<Set<string>>(new Set());
+    const arucoNameCacheRef = useRef<Map<string, {markerId: number; cornerIdx: number}>>(new Map());
     const dirtyRef = useRef(false);
 
     // Build the segment list whenever the active schema changes.
@@ -191,6 +192,7 @@ export function ConnectionRenderer() {
         if (arucoChanged) {
             arucoMarkers.clear();
             prevNames.clear();
+            arucoNameCacheRef.current.clear();
             for (const [name, pt] of pts.entries()) {
                 if (!name.startsWith(ARUCO_PREFIX)) continue;
                 prevNames.add(name);
@@ -199,22 +201,21 @@ export function ConnectionRenderer() {
                 if (sep === -1) continue;
                 const markerId = parseInt(rest.slice(0, sep));
                 const cornerIdx = parseInt(rest.slice(sep + 1));
+                arucoNameCacheRef.current.set(name, {markerId, cornerIdx});
                 if (!arucoMarkers.has(markerId)) {
                     arucoMarkers.set(markerId, [undefined, undefined, undefined, undefined]);
                 }
                 arucoMarkers.get(markerId)![cornerIdx] = pt;
             }
         } else {
-            // Names unchanged — just refresh the Point3d references in-place.
+            // Names unchanged — use cached (markerId, cornerIdx) lookups.
+            const nameCache = arucoNameCacheRef.current;
             for (const [name, pt] of pts.entries()) {
                 if (!name.startsWith(ARUCO_PREFIX)) continue;
-                const rest = name.slice(ARUCO_PREFIX.length);
-                const sep = rest.indexOf("-");
-                if (sep === -1) continue;
-                const markerId = parseInt(rest.slice(0, sep));
-                const cornerIdx = parseInt(rest.slice(sep + 1));
-                const corners = arucoMarkers.get(markerId);
-                if (corners) corners[cornerIdx] = pt;
+                const cached = nameCache.get(name);
+                if (!cached) continue;
+                const corners = arucoMarkers.get(cached.markerId);
+                if (corners) corners[cached.cornerIdx] = pt;
             }
         }
 

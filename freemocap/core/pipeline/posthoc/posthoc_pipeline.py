@@ -52,6 +52,7 @@ class PosthocPipeline(PipelineABC):
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
     started: bool = False
+    queued_progress_message: PipelineProgressMessage | None = None
 
     @property
     def alive(self) -> bool:
@@ -181,6 +182,9 @@ class PosthocPipeline(PipelineABC):
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
         progress_messages: list[PipelineProgressMessage] = []
+        if self.queued_progress_message is not None:
+            progress_messages.append(self.queued_progress_message)
+            self.queued_progress_message = None
         for node in list(self.video_nodes.values()):
             progress_messages.extend(node.get_progress_messages())
         progress_messages.extend(self.aggregation_node.get_progress_messages())

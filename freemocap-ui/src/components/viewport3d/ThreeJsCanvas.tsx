@@ -21,7 +21,7 @@ Object3D.DEFAULT_UP.set(0, 0, 1);
 // ---------------------------------------------------------------------------
 
 console.log("[ThreeJsCanvas] creating viewport3d worker");
-const VIEWPORT_WORKER = new Worker(
+export const VIEWPORT_WORKER = new Worker(
     new URL("./viewport3d.worker.tsx", import.meta.url),
     { type: "module" },
 );

@@ -111,6 +111,15 @@ class PosthocPipelineManager(PipelineManagerABC):
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
         )
+        pipeline.queued_progress_message = PipelineProgressMessage(
+            pipeline_id=pipeline.id,
+            pipeline_type=str(PosthocPipelineType.CALIBRATION),
+            phase="queued",
+            progress_fraction=0.0,
+            detail="Pipeline queued, starting workers...",
+            recording_name=recording_info.recording_name,
+            recording_path=str(recording_info.full_recording_path),
+        )
         pipeline.start()
         with self.lock:
             self._evict_dead()
@@ -139,6 +148,15 @@ class PosthocPipelineManager(PipelineManagerABC):
             pipeline_type=PosthocPipelineType.MOCAP,
             worker_registry=self.worker_registry,
             global_kill_flag=self.global_kill_flag,
+        )
+        pipeline.queued_progress_message = PipelineProgressMessage(
+            pipeline_id=pipeline.id,
+            pipeline_type=str(PosthocPipelineType.MOCAP),
+            phase="queued",
+            progress_fraction=0.0,
+            detail="Pipeline queued, starting workers...",
+            recording_name=recording_info.recording_name,
+            recording_path=str(recording_info.full_recording_path),
         )
         if start_pipeline:
             pipeline.start()

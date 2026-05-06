@@ -214,76 +214,10 @@ export interface PipelineGroup {
     recordingPath: string;
 }
 
-export const selectGroupedPipelines = createSelector(
-    [selectActivePipelines, selectShowCompleted, selectFilterText],
-    (pipelines, showCompleted, filterText) => {
-        const needle = filterText.toLowerCase();
-        const groups = new Map<string, PipelineGroup>();
-
-        for (const p of Object.values(pipelines)) {
-            const colonIdx = p.pipelineId.indexOf(':');
-            const basePipelineId = colonIdx !== -1 ? p.pipelineId.slice(0, colonIdx) : p.pipelineId;
-
-            if (!groups.has(basePipelineId)) {
-                groups.set(basePipelineId, {
-                    basePipelineId,
-                    pipelineType: null,
-                    videoNodes: [],
-                    aggregator: null,
-                    isActive: false,
-                    isFailed: false,
-                    isComplete: false,
-                    recordingName: '',
-                    recordingPath: '',
-                });
-            }
-            const group = groups.get(basePipelineId)!;
-            if (colonIdx !== -1) {
-                group.videoNodes.push(p);
-            } else {
-                group.aggregator = p;
-            }
-        }
-
-        const isTerminalPhase = (p: PipelineProgress) =>
-            p.phase === PipelinePhase.COMPLETE || p.phase === PipelinePhase.FAILED;
-
-        const result: PipelineGroup[] = [];
-        for (const group of groups.values()) {
-            const allMembers = [...group.videoNodes, ...(group.aggregator ? [group.aggregator] : [])];
-
-            group.isFailed = allMembers.some((p) => p.phase === PipelinePhase.FAILED);
-            group.isComplete = !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
-            group.isActive = allMembers.some((p) => !isTerminalPhase(p));
-            group.recordingName = group.aggregator?.recordingName || group.videoNodes[0]?.recordingName || '';
-            group.recordingPath = group.aggregator?.recordingPath || group.videoNodes[0]?.recordingPath || '';
-            group.pipelineType = group.aggregator?.pipelineType ?? group.videoNodes[0]?.pipelineType ?? null;
-
-            if (!group.isActive && !showCompleted) continue;
-
-            if (needle) {
-                const match =
-                    group.basePipelineId.toLowerCase().includes(needle) ||
-                    allMembers.some(
-                        (p) =>
-                            p.detail.toLowerCase().includes(needle) ||
-                            p.pipelineId.toLowerCase().includes(needle)
-                    );
-                if (!match) continue;
-            }
-
-            group.videoNodes.sort((a, b) => a.pipelineId.localeCompare(b.pipelineId));
-            result.push(group);
-        }
-
-        return result.sort((a, b) => {
-            if (a.isActive !== b.isActive) return a.isActive ? -1 : 1;
-            return a.basePipelineId.localeCompare(b.basePipelineId);
-        });
-    }
-);
-
-export const selectGroupedPipelinesAll = createSelector(
+// Shared base: groups all pipelines into PipelineGroup objects without filtering.
+// Both selectGroupedPipelines and selectGroupedPipelinesAll derive from this
+// so grouping + flag computation runs only once per pipeline state change.
+const selectAllGroupsUnfiltered = createSelector(
     [selectActivePipelines],
     (pipelines) => {
         const groups = new Map<string, PipelineGroup>();
@@ -319,12 +253,14 @@ export const selectGroupedPipelinesAll = createSelector(
         const result: PipelineGroup[] = [];
         for (const group of groups.values()) {
             const allMembers = [...group.videoNodes, ...(group.aggregator ? [group.aggregator] : [])];
+
             group.isFailed = allMembers.some((p) => p.phase === PipelinePhase.FAILED);
             group.isComplete = !!group.aggregator && group.aggregator.phase === PipelinePhase.COMPLETE;
             group.isActive = allMembers.some((p) => !isTerminalPhase(p));
             group.recordingName = group.aggregator?.recordingName || group.videoNodes[0]?.recordingName || '';
             group.recordingPath = group.aggregator?.recordingPath || group.videoNodes[0]?.recordingPath || '';
             group.pipelineType = group.aggregator?.pipelineType ?? group.videoNodes[0]?.pipelineType ?? null;
+
             group.videoNodes.sort((a, b) => a.pipelineId.localeCompare(b.pipelineId));
             result.push(group);
         }
@@ -335,6 +271,33 @@ export const selectGroupedPipelinesAll = createSelector(
         });
     }
 );
+
+export const selectGroupedPipelines = createSelector(
+    [selectAllGroupsUnfiltered, selectShowCompleted, selectFilterText],
+    (allGroups, showCompleted, filterText) => {
+        const needle = filterText.toLowerCase();
+
+        return allGroups.filter(group => {
+            if (!group.isActive && !showCompleted) return false;
+
+            if (needle) {
+                const allMembers = [...group.videoNodes, ...(group.aggregator ? [group.aggregator] : [])];
+                const match =
+                    group.basePipelineId.toLowerCase().includes(needle) ||
+                    allMembers.some(
+                        (p) =>
+                            p.detail.toLowerCase().includes(needle) ||
+                            p.pipelineId.toLowerCase().includes(needle)
+                    );
+                if (!match) return false;
+            }
+
+            return true;
+        });
+    }
+);
+
+export const selectGroupedPipelinesAll = selectAllGroupsUnfiltered;
 
 export const selectActiveBasePipelineCount = createSelector(
     [selectActivePipelines],

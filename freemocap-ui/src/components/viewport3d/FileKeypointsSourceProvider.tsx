@@ -8,6 +8,7 @@ import {
     KeypointsSourceProvider,
 } from "./KeypointsSourceContext";
 import {serverUrls} from "@/constants/server-urls";
+import {VIEWPORT_WORKER} from "./ThreeJsCanvas";
 
 /**
  * KeypointsSource implementation that reads the recording's long-format
@@ -295,6 +296,29 @@ export const FileKeypointsSourceProvider: React.FC<{
                     `raw K=${rawTraj.keypointCount}, filtered K=${filteredTraj.keypointCount} ` +
                     `(fetch ${(tFetched - t0) | 0}ms, decode ${(tDecoded - tFetched) | 0}ms, pivot ${(tBuilt - tDecoded) | 0}ms)`
                 );
+
+                // Fetch tracker schema so ConnectionRenderer can draw skeleton lines
+                try {
+                    const schemaUrl = `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/tracker-schema${qs ? `?${qs}` : ''}`;
+                    const schemaResp = await fetch(schemaUrl, {signal: controller.signal});
+                    if (schemaResp.ok) {
+                        const schema = await schemaResp.json();
+                        const schemaName: string = schema.name || "playback_schema";
+                        VIEWPORT_WORKER.postMessage({
+                            type: "schemaState",
+                            data: {
+                                activeTrackerId: schemaName,
+                                trackerSchemas: { [schemaName]: schema },
+                            },
+                        });
+                        console.info(`[FileKeypointsSource] tracker schema loaded: ${schemaName}`);
+                    }
+                } catch (schemaErr) {
+                    // Older recordings predate schema saving — connections just won't render
+                    if ((schemaErr as any)?.name !== "AbortError") {
+                        console.warn("[FileKeypointsSource] tracker schema not available (older recording, no connections will render)", schemaErr);
+                    }
+                }
             } catch (err) {
                 if ((err as any)?.name !== "AbortError") {
                     console.warn("[FileKeypointsSource] load error", err);

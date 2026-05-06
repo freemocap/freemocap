@@ -166,7 +166,7 @@ export default function PipelineProgressSnackbar() {
 
     if (!open) return null;
 
-    const positionSx = dragPos
+    const positionSx: React.CSSProperties = dragPos
         ? {position: 'fixed', left: dragPos.left, top: dragPos.top, zIndex: 1400}
         : {position: 'fixed', bottom: 8, right: 8, zIndex: 1400};
 

@@ -8,6 +8,7 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 """
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -34,6 +35,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
+from skellytracker.trackers.mediapipe_tracker.names_and_connections import MEDIAPIPE_BODY_DEFINITION
+from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +114,16 @@ def run_posthoc_mocap_aggregator_task(
         path_to_output_data_folder=output_folder,
     )
 
+    # ---- Save tracker schema alongside outputs ----
+    first_obs = next(iter(frame_observations[0].values()))
+    if isinstance(first_obs, MediapipeObservation):
+        definition = MEDIAPIPE_BODY_DEFINITION
+    else:
+        definition = RTMPOSE_WHOLEBODY_DEFINITION
+
+    schema_path = recording_folder / "tracker_schema.json"
+    schema_path.write_text(json.dumps(definition.model_dump(), indent=2))
+    logger.info(f"Saved tracker schema ({definition.name}) to {schema_path}")
 
 
     if task_config.export_to_blender:

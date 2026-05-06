@@ -8,7 +8,7 @@ import {CameraViewWithOverlay} from "./CameraViewWithOverlay";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from "react-i18next";
 import {useAppSelector} from "@/store/hooks";
-import {selectCameras} from "@/store/slices/cameras/cameras-selectors";
+import {selectAutoApply, selectCameras, selectIsLoading} from "@/store/slices/cameras/cameras-selectors";
 
 const recordingBorderPulse = keyframes`
     0% { border-color: #ff2020; box-shadow: 0 0 4px rgba(255, 32, 32, 0.4); }
@@ -144,6 +144,8 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     const { connectedCameraIds } = useServer();
     const { t } = useTranslation();
     const isRecording = useAppSelector(state => state.recording.isRecording);
+    const isLoading = useAppSelector(selectIsLoading);
+    const isAutoApply = useAppSelector(selectAutoApply);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState<number>(800);
     const [containerHeight, setContainerHeight] = useState<number>(600);
@@ -169,9 +171,13 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     const cameras = useAppSelector(selectCameras);
 
     const sortedCameraIds = useMemo(() => {
+        const indexByCameraId = new Map<string, number>();
+        for (const cam of cameras) {
+            indexByCameraId.set(cam.id, cam.index);
+        }
         return [...connectedCameraIds].sort((a, b) => {
-            const idxA = cameras.find(c => c.id === a)?.index ?? Infinity;
-            const idxB = cameras.find(c => c.id === b)?.index ?? Infinity;
+            const idxA = indexByCameraId.get(a) ?? Infinity;
+            const idxB = indexByCameraId.get(b) ?? Infinity;
             return idxA - idxB;
         });
     }, [connectedCameraIds, cameras]);
@@ -200,13 +206,18 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
         return candidate;
     }, [sortedCameraIds.length, containerWidth, containerHeight, manualColumns]);
 
-    const [layout, setLayout] = useState<LayoutItem[]>(() =>
-        buildLayout(sortedCameraIds, tiling),
-    );
+    // Separate user-driven layout from auto-computed layout to avoid
+    // double renders on config changes (setLayout in useEffect).
+    const [userLayout, setUserLayout] = useState<LayoutItem[] | null>(null);
 
-    // Re-tile when cameras, tiling, config, or reset changes
+    const layout = useMemo(() => {
+        if (userLayout !== null) return userLayout;
+        return buildLayout(sortedCameraIds, tiling);
+    }, [sortedCameraIds, tiling, userLayout]);
+
+    // Clear user overrides when the auto layout would change
     useEffect(() => {
-        setLayout(buildLayout(sortedCameraIds, tiling));
+        setUserLayout(null);
     }, [sortedCameraIds, tiling, resetKey, configFingerprint]);
 
     // Snapshot layout before drag for swap detection
@@ -240,7 +251,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                 }
                 return l;
             });
-            setLayout(swapped);
+            setUserLayout(swapped);
         } else {
             // Dropped in empty space — clamp to grid bounds
             const maxX = GRID_COLS - newItem.w;
@@ -255,14 +266,14 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                 }
                 return l;
             });
-            setLayout(updated);
+            setUserLayout(updated);
         }
     }, [tiling.rows]);
 
     const handleLayoutChange = useCallback((_newLayout: Layout) => {}, []);
 
     const handleResizeStop = useCallback((newLayout: Layout) => {
-        setLayout([...newLayout]);
+        setUserLayout([...newLayout]);
     }, []);
 
     const rowHeight = useMemo(() => {
@@ -362,7 +373,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                                 }),
                             }}
                         >
-                            <CameraViewWithOverlay cameraIndex={cam?.index ?? -1} cameraId={cameraId} />
+                            <CameraViewWithOverlay cameraIndex={cam?.index ?? -1} cameraId={cameraId} isLoading={isLoading} isAutoApply={isAutoApply} />
                         </Box>
                     );
                 })}

@@ -79,6 +79,7 @@ class CalibrateRecordingResponse(BaseModel):
     success: bool
     message: str | None = None
     results: dict | None = None
+    pipeline_id: str | None = None
 
 
 # ==================== Endpoints ====================
@@ -102,7 +103,7 @@ async def start_calibration_recording(
 @calibration_router.post("/recording/stop")
 async def stop_calibration_recording(
         request: StopCalibrationRecordingRequest,
-) -> dict[str, bool]:
+) -> dict:
     """Stop current calibration recording and launch posthoc calibration pipeline."""
     app = get_freemocap_app()
     try:
@@ -111,12 +112,17 @@ async def stop_calibration_recording(
             logger.warning("No active recording to stop")
             return {"success": True}
         logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
-        await app.create_posthoc_calibration_pipeline(
+        pipeline = await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=request.calibration_config,
         )
         logger.info("Calibration recording stopped, posthoc calibration pipeline launched")
-        return {"success": True}
+        return {
+            "success": True,
+            "pipeline_id": pipeline.id,
+            "recording_name": recording_info.recording_name,
+            "recording_path": str(recording_info.full_recording_path),
+        }
     except Exception as e:
         logger.exception(f"Error stopping calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -129,7 +135,7 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
     try:
 
         recording_info = request.to_recording_info()
-        await app.create_posthoc_calibration_pipeline(
+        pipeline = await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=request.calibration_config,
         )
@@ -138,6 +144,7 @@ async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRe
             success=True,
             message="Calibration pipeline launched",
             results={},
+            pipeline_id=pipeline.id,
         )
     except Exception as e:
         logger.exception(f"Error calibrating recording: {e}")

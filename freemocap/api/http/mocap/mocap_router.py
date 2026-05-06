@@ -89,6 +89,7 @@ class MocapRecordingResponse(BaseModel):
     success: bool
     message: str | None = None
     results: dict | None = None
+    pipeline_id: str | None = None
 
 
 # ==================== Endpoints ====================
@@ -117,12 +118,17 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
         recording_info = await app.stop_recording_all()
         if recording_info is None:
             raise RuntimeError("No active recording to stop")
-        await app.create_posthoc_mocap_pipeline(
+        pipeline = await app.create_posthoc_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=request.mocap_config,
         )
         logger.info("Mocap recording stopped, posthoc mocap pipeline launched")
-        return {"success": True}
+        return {
+            "success": True,
+            "pipeline_id": pipeline.id,
+            "recording_name": recording_info.recording_name,
+            "recording_path": str(recording_info.full_recording_path),
+        }
     except Exception as e:
         logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -134,7 +140,7 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
-        await app.create_posthoc_mocap_pipeline(
+        pipeline = await app.create_posthoc_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=request.mocap_config,
         )
@@ -143,6 +149,7 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
             success=True,
             message="Mocap processing pipeline launched",
             results={},
+            pipeline_id=pipeline.id,
         )
     except Exception as e:
         logger.exception(f"Error processing mocap recording: {e}")

@@ -55,7 +55,7 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 > For  detailed installation instructions, see our [official documentation's Installation page](https://freemocap.github.io/documentation/installation.html#detailed-pip-installation-instructions)
 
 
-#### 0. Create a a Python 3.10 through 3.12 environment (python3.12 recommended)
+#### 0. Create a Python 3.10 through 3.12 environment (python3.12 recommended)
 #### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
 ```

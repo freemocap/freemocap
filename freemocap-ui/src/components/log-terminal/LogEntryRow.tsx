@@ -10,6 +10,50 @@ interface Props {
 }
 
 export const LogEntryRow = React.memo(({log, style}: Props) => {
+    // ── Divider entry: session boundary marker ───────────────────────────
+    if (log.type === 'divider') {
+        return (
+            <div
+                style={{
+                    ...style,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingLeft: 16,
+                    paddingRight: 16,
+                }}
+            >
+                <div
+                    style={{
+                        flex: 1,
+                        height: 1,
+                        backgroundColor: 'rgba(255,255,255,0.12)',
+                    }}
+                />
+                <span
+                    style={{
+                        flexShrink: 0,
+                        padding: '0 12px',
+                        fontSize: '0.7em',
+                        fontFamily: 'monospace',
+                        color: 'rgba(255,255,255,0.25)',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {log.message}
+                </span>
+                <div
+                    style={{
+                        flex: 1,
+                        height: 1,
+                        backgroundColor: 'rgba(255,255,255,0.12)',
+                    }}
+                />
+            </div>
+        );
+    }
+
+    // ── Normal log entry ─────────────────────────────────────────────────
     const [expanded, setExpanded] = useState(false);
     const rowRef = useRef<HTMLDivElement>(null);
     const color = LOG_COLORS[log.levelname.toUpperCase()] || '#ccc';

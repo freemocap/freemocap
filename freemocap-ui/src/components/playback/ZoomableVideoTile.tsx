@@ -51,8 +51,6 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                 overflow: 'hidden',
                 backgroundColor: '#000',
                 position: 'relative',
-                borderRadius: '4px',
-                border: '1px solid rgba(255,255,255,0.15)',
                 cursor,
             }}
             {...containerHandlers}

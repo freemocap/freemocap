@@ -13,6 +13,10 @@ export const countLines = (text: string): number => {
 
 /** Compute the pixel height of a log entry based on its line count. */
 export const getRowHeight = (log: LogRecord): number => {
+    // Divider entries get a compact fixed height (short horizontal rule).
+    if (log.type === 'divider') {
+        return LINE_HEIGHT + 8;
+    }
     const lines = countLines(log.message);
     if (lines === 1) {
         return LINE_HEIGHT + ROW_PADDING;

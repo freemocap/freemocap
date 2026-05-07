@@ -34,7 +34,9 @@ export const LogRecordSchema = z.object({
 
 export type LogRecord = z.infer<typeof LogRecordSchema>;
 
-const MAX_ENTRIES = 1000;
+const MAX_ENTRIES = 10_000;
+const STORAGE_KEY = 'freemocap_log_store';
+const AUTO_SAVE_INTERVAL_MS = 5_000;
 
 export type LogSnapshot = {
     entries: LogRecord[];
@@ -51,6 +53,11 @@ export type LogSnapshot = {
  * Uses a version counter to avoid copying the entries array when nothing has
  * changed since the last snapshot. The snapshot's entries array is only
  * reallocated when new logs have arrived.
+ *
+ * Persists log entries to localStorage so logs survive page refreshes / app
+ * restarts. A divider entry is inserted on each mount to visually separate
+ * sessions. Persistence uses a dirty flag + periodic save to avoid serializing
+ * the full entries array on every incoming log message.
  */
 export class LogStore {
     private entries: LogRecord[] = [];
@@ -66,6 +73,26 @@ export class LogStore {
     /** Cached snapshot entries — reused when version hasn't changed. */
     private cachedEntries: LogRecord[] = [];
     private cachedCountsByLevel: Record<string, number> = {};
+
+    /** Set when entries change since the last persist. */
+    private dirty: boolean = false;
+
+    /** Periodic save timer handle. */
+    private saveInterval: ReturnType<typeof setInterval> | null = null;
+
+    constructor() {
+        this.restoreFromLocalStorage();
+        this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
+    }
+
+    /** Stop the auto-save timer and flush one last time. Call on teardown. */
+    dispose(): void {
+        if (this.saveInterval !== null) {
+            clearInterval(this.saveInterval);
+            this.saveInterval = null;
+        }
+        this.persistToLocalStorage();
+    }
 
     add(record: LogRecord): void {
         this.entries.push(record);
@@ -92,6 +119,8 @@ export class LogStore {
             this.hasErrors = (this.countsByLevel['ERROR'] ?? 0) > 0
                 || (this.countsByLevel['CRITICAL'] ?? 0) > 0;
         }
+
+        this.dirty = true;
     }
 
     /**
@@ -118,9 +147,120 @@ export class LogStore {
         this.entries = [];
         this.countsByLevel = {};
         this.hasErrors = false;
+        this.dirty = false;
         this.version++;
         this.cachedEntries = [];
         this.cachedCountsByLevel = {};
         this.lastSnapshotVersion = this.version;
+        this.clearLocalStorage();
+    }
+
+    /** Force an immediate persist (used for beforeunload). */
+    persistNow(): void {
+        this.persistToLocalStorage();
+    }
+
+    // ── private persistence helpers ──────────────────────────────────────
+
+    private persistIfDirty(): void {
+        if (this.dirty) {
+            this.persistToLocalStorage();
+        }
+    }
+
+    private persistToLocalStorage(): void {
+        try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
+            this.dirty = false;
+        } catch {
+            // localStorage full or unavailable — silently ignore
+        }
+    }
+
+    private restoreFromLocalStorage(): void {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed) || parsed.length === 0) return;
+
+            // Validate each entry (schema-safe against future changes)
+            const restored: LogRecord[] = [];
+            for (const item of parsed) {
+                const result = LogRecordSchema.safeParse(item);
+                if (result.success) {
+                    restored.push(result.data);
+                }
+            }
+
+            if (restored.length === 0) return;
+
+            // Truncate to capacity, leaving room for the divider + new logs
+            if (restored.length >= MAX_ENTRIES) {
+                restored.splice(0, restored.length - MAX_ENTRIES + 1);
+            }
+
+            this.entries = restored;
+
+            // Recalculate aggregate state from restored entries
+            this.countsByLevel = {};
+            this.hasErrors = false;
+            for (const entry of this.entries) {
+                if (entry.type === 'divider') continue;
+                const lvl = entry.levelname;
+                this.countsByLevel[lvl] = (this.countsByLevel[lvl] || 0) + 1;
+                if (lvl === 'ERROR' || lvl === 'CRITICAL') {
+                    this.hasErrors = true;
+                }
+            }
+
+            this.addDivider();
+            this.version++;
+        } catch {
+            // Corrupted data — start fresh
+        }
+    }
+
+    private addDivider(): void {
+        const now = new Date();
+        const divider: LogRecord = {
+            name: '',
+            msg: '',
+            args: [],
+            levelname: 'DIVIDER',
+            levelno: -1,
+            pathname: '',
+            filename: '',
+            module: '',
+            exc_info: null,
+            exc_text: null,
+            stack_info: null,
+            lineno: 0,
+            funcName: '',
+            created: now.getTime() / 1000,
+            msecs: now.getMilliseconds(),
+            relativeCreated: 0,
+            thread: 0,
+            threadName: '',
+            processName: '',
+            process: 0,
+            delta_t: '',
+            message: '────── App restarted ──────',
+            asctime: now.toLocaleString(),
+            formatted_message: '',
+            type: 'divider',
+            source: 'system',
+        };
+        this.entries.push(divider);
+        this.dirty = true;
+    }
+
+    private clearLocalStorage(): void {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch {
+            // ignore
+        }
     }
 }

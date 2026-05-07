@@ -255,8 +255,18 @@ def _get_total_size(video_folder: Path) -> int:
     return total
 
 
-def _get_recording_stats(recording_path: Path, video_folder: Path) -> dict:
-    """Try to extract frame count, duration, and fps from timestamp CSV files."""
+def _get_recording_stats(
+    recording_path: Path,
+    video_folder: Path,
+    *,
+    use_cv2_fallback: bool = True,
+) -> dict:
+    """Try to extract frame count, duration, and fps from timestamp CSV files.
+
+    When *use_cv2_fallback* is False the cv2 VideoCapture path is skipped
+    entirely. Callers that iterate many recordings (e.g. the listing endpoint)
+    should pass False to avoid opening video files for every recording on disk.
+    """
     stats: dict = {
         "total_frames": None,
         "duration_seconds": None,
@@ -320,6 +330,9 @@ def _get_recording_stats(recording_path: Path, video_folder: Path) -> dict:
                     return stats
             except (OSError, csv.Error):
                 continue
+
+    if not use_cv2_fallback:
+        return stats
 
     # No timestamp CSV found — fall back to reading video metadata with cv2
     logger.warning(
@@ -466,7 +479,7 @@ def list_recordings(
             if video_count > 0:
                 total_size = _get_total_size(video_folder)
                 created_ts = _get_created_timestamp(child)
-                stats = _get_recording_stats(child, video_folder)
+                stats = _get_recording_stats(child, video_folder, use_cv2_fallback=False)
                 status = compute_recording_status(child)
                 layout_validation = RecordingStructure(
                     base_directory=child.parent,
@@ -579,8 +592,9 @@ def list_videos(
         )
 
     preferred = (
-        "synchronized" if (synchronized.available and synchronized.valid)
-        else "annotated" if (annotated.available and annotated.valid)
+        "annotated" if (annotated.available and annotated.valid)
+        else "synchronized" if (synchronized.available and synchronized.valid)
+        else "annotated" if annotated.available
         else "synchronized"
     )
 
@@ -970,8 +984,9 @@ def get_recording_bundle(
             )
     else:
         preferred = (
-            "synchronized" if (synchronized.available and synchronized.valid)
-            else "annotated" if (annotated.available and annotated.valid)
+            "annotated" if (annotated.available and annotated.valid)
+            else "synchronized" if (synchronized.available and synchronized.valid)
+            else "annotated" if annotated.available
             else "synchronized"
         )
         videos_response = VideoSourcesResponse(

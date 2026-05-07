@@ -1,18 +1,12 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import React, {useMemo} from 'react';
 import {Box, Typography, useTheme} from '@mui/material';
-import type {Layout, LayoutItem} from 'react-grid-layout';
 import ReactGridLayout, {noCompactor} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import {useTranslation} from 'react-i18next';
 import type {PlaybackController} from './usePlaybackController';
 import {ZoomableVideoTile} from './ZoomableVideoTile';
-import {
-    type Tiling,
-    computeOptimalTiling,
-    tilingFromColumns,
-    buildLayout,
-} from '@/utils/gridTiling';
+import {useGridLayout} from '@/hooks/useGridLayout';
 
 interface VideoEntry {
     videoId: string;
@@ -91,95 +85,31 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     // -----------------------------------------------------------------------
     // Grid layout
     // -----------------------------------------------------------------------
-    const GRID_COLS = 12;
-    const GRID_MARGIN: [number, number] = [2, 2];
+    const videoIds = useMemo(() => videos.map(v => v.videoId), [videos]);
 
-    const gridContainerRef = useRef<HTMLDivElement>(null);
-    const [gridWidth, setGridWidth] = useState<number>(800);
-    const [gridHeight, setGridHeight] = useState<number>(400);
-
-    useEffect(() => {
-        const el = gridContainerRef.current;
-        if (!el) return;
-        const measure = () => {
-            const rect = el.getBoundingClientRect();
-            setGridWidth(rect.width);
-            setGridHeight(rect.height);
-        };
-        measure();
-        const observer = new ResizeObserver(() => measure());
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-
-    const prevTilingRef = useRef<Tiling>({cols: 1, rows: 1});
-    const tiling = useMemo(() => {
-        const candidate = manualColumns !== null
-            ? tilingFromColumns(videos.length, manualColumns)
-            : computeOptimalTiling(videos.length, gridWidth, gridHeight, GRID_MARGIN);
-        const prev = prevTilingRef.current;
-        if (candidate.cols === prev.cols && candidate.rows === prev.rows) return prev;
-        prevTilingRef.current = candidate;
-        return candidate;
-    }, [videos.length, gridWidth, gridHeight, manualColumns]);
-
-    const [gridLayout, setGridLayout] = useState<LayoutItem[]>(() =>
-        buildLayout(videos.map(v => v.videoId), tiling, GRID_COLS));
-
-    useEffect(() => {
-        setGridLayout(buildLayout(videos.map(v => v.videoId), tiling, GRID_COLS));
-    }, [videos, tiling, resetKey]);
-
-    const gridLayoutBeforeDragRef = useRef<LayoutItem[]>(gridLayout);
-
-    const handleGridDragStart = useCallback(() => {
-        gridLayoutBeforeDragRef.current = gridLayout;
-    }, [gridLayout]);
-
-    const handleGridDragStop = useCallback((_newLayout: Layout, _oldItem: LayoutItem | null, newItem: LayoutItem | null) => {
-        if (!newItem) return;
-        const preDrag = gridLayoutBeforeDragRef.current;
-        const draggedBefore = preDrag.find((l) => l.i === newItem.i);
-        if (!draggedBefore) return;
-
-        const swapTarget = preDrag.find((l) => {
-            if (l.i === newItem.i) return false;
-            return newItem.x < l.x + l.w && newItem.x + newItem.w > l.x
-                && newItem.y < l.y + l.h && newItem.y + newItem.h > l.y;
-        });
-
-        if (swapTarget) {
-            setGridLayout(preDrag.map((l) => {
-                if (l.i === newItem.i) return {...l, x: swapTarget.x, y: swapTarget.y};
-                if (l.i === swapTarget.i) return {...l, x: draggedBefore.x, y: draggedBefore.y};
-                return l;
-            }));
-        } else {
-            const maxX = GRID_COLS - newItem.w;
-            const maxY = tiling.rows - newItem.h;
-            setGridLayout(preDrag.map((l) => {
-                if (l.i === newItem.i) {
-                    return {...l, x: Math.max(0, Math.min(newItem.x, maxX)), y: Math.max(0, Math.min(newItem.y, maxY))};
-                }
-                return l;
-            }));
-        }
-    }, [tiling.rows]);
-
-    const handleGridLayoutChange = useCallback((_: Layout) => {}, []);
-    const handleGridResizeStop = useCallback((newLayout: Layout) => { setGridLayout([...newLayout]); }, []);
-
-    const gridRowHeight = useMemo(() => {
-        const totalMargin = (tiling.rows - 1) * GRID_MARGIN[1];
-        return Math.max(30, (gridHeight - totalMargin) / tiling.rows);
-    }, [gridHeight, tiling.rows]);
+    const {
+        containerRef,
+        width,
+        layout,
+        gridHandlers,
+        gridConfig,
+    } = useGridLayout({
+        itemIds: videoIds,
+        margin: [2, 2],
+        manualColumns,
+        resetKey,
+        measureParent: true,
+    });
 
     // -----------------------------------------------------------------------
     // Render
     // -----------------------------------------------------------------------
     if (videos.length === 0) {
         return (
-            <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary'}}>
+            <Box
+                ref={containerRef}
+                sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary'}}
+            >
                 <Typography>{t("noVideosLoaded")}</Typography>
             </Box>
         );
@@ -188,7 +118,6 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     const framePadLen = Math.max(String(totalFrames).length, 1);
     const initialFrameText = 'F' + String(currentFrame).padStart(framePadLen, '0');
 
-    // Compute initial time text for overlay SSR
     let initialTimeText: string;
     let timestampsAreReal = false;
     const frameTimestamps = frameTimestampsRef.current;
@@ -213,46 +142,43 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     }
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', width: '100%'}}>
-            {/* Video grid */}
-            <Box
-                ref={gridContainerRef}
-                sx={{
-                    flex: 1,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    backgroundColor: '#0a0a0a',
-                    minHeight: 0,
-                    '& .react-grid-placeholder': {
-                        backgroundColor: 'primary.main',
-                        opacity: 0.15,
-                        borderRadius: '4px',
-                    },
-                    '& .react-resizable-handle': {
-                        zIndex: 10,
-                    },
-                }}
+        <Box
+            ref={containerRef}
+            sx={{
+                position: 'relative',
+                width: '100%',
+                height: '100%',
+                overflow: 'hidden',
+                backgroundColor: '#0a0a0a',
+                '& .react-grid-placeholder': {
+                    backgroundColor: 'primary.main',
+                    opacity: 0.15,
+                    borderRadius: '4px',
+                },
+                '& .react-resizable-handle': {
+                    zIndex: 10,
+                },
+            }}
+        >
+            <ReactGridLayout
+                width={width}
+                layout={layout}
+                gridConfig={gridConfig}
+                dragConfig={{enabled: true}}
+                resizeConfig={{enabled: true}}
+                compactor={noCompactor}
+                {...gridHandlers}
             >
-                <ReactGridLayout
-                    width={gridWidth}
-                    layout={gridLayout}
-                    gridConfig={{
-                        cols: GRID_COLS,
-                        rowHeight: gridRowHeight,
-                        margin: GRID_MARGIN,
-                        containerPadding: [0, 0] as [number, number],
-                    }}
-                    dragConfig={{enabled: true}}
-                    resizeConfig={{enabled: true}}
-                    compactor={noCompactor}
-                    onLayoutChange={handleGridLayoutChange}
-                    onDragStart={handleGridDragStart}
-                    onDragStop={handleGridDragStop}
-                    onResizeStop={handleGridResizeStop}
-                >
-                    {videos.map((video) => (
+                {videos.map((video) => (
+                    <Box
+                        key={video.videoId}
+                        sx={{
+                            overflow: 'hidden',
+                            borderRadius: '4px',
+                            border: '1px solid rgba(255,255,255,0.15)',
+                        }}
+                    >
                         <ZoomableVideoTile
-                            key={video.videoId}
                             videoId={video.videoId}
                             streamUrl={video.streamUrl}
                             filename={video.filename}
@@ -266,12 +192,22 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             setTimeOverlayRef={setTimeOverlayRef}
                             handleLoadedMetadata={handleLoadedMetadata}
                         />
-                    ))}
-                </ReactGridLayout>
-            </Box>
+                    </Box>
+                ))}
+            </ReactGridLayout>
 
             {!allReady && videos.length > 0 && (
-                <Box sx={{textAlign: 'center', py: 0.5, backgroundColor: theme.palette.warning.dark, color: '#fff'}}>
+                <Box sx={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 10,
+                    textAlign: 'center',
+                    py: 0.5,
+                    backgroundColor: theme.palette.warning.dark,
+                    color: '#fff',
+                }}>
                     <Typography variant="caption">{t("loadingVideos", {ready: videosReady, total: videos.length})}</Typography>
                 </Box>
             )}

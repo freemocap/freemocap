@@ -141,9 +141,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         canvasManagerRef.current = new CanvasManager();
         overlayManagerRef.current = new OverlayManager();
 
+        // Persist logs on tab close / navigation so the last batch isn't lost.
+        const handleBeforeUnload = (): void => {
+            logStoreRef.current?.persistNow();
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
         // const uninstallConsoleBridge = installConsoleLogBridge(logStoreRef.current);
 
         return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            logStoreRef.current?.dispose();
             // uninstallConsoleBridge();
             if (wsConnectionRef.current) {
                 wsConnectionRef.current.disconnect();

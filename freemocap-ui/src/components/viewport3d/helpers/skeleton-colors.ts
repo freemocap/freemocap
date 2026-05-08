@@ -9,4 +9,5 @@ export const SKELETON_COLORS = {
     face:       new Color('#FFD700'),
     hidden:     new Color('#000000'),
     charuco:    new Color('#00FF00'),
+    aruco:      new Color('#FF6400'),
 } as const;

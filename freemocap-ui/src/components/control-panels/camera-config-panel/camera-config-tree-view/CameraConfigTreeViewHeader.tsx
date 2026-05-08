@@ -7,15 +7,18 @@ import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import SyncIcon from "@mui/icons-material/Sync";
+import SyncDisabledIcon from "@mui/icons-material/SyncDisabled";
 
-import {useAppDispatch} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     camerasConnectOrUpdate,
     closeCameras,
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
+import {autoApplyToggled, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
+import {selectAutoApply} from "@/store/slices/cameras/cameras-selectors";
 import {useTranslation} from 'react-i18next';
 
 interface CameraConfigTreeViewHeaderProps {
@@ -32,6 +35,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
     const theme = useTheme();
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
+    const isAutoApply = useAppSelector(selectAutoApply);
     const [isActionInProgress, setIsActionInProgress] = React.useState(false);
 
     const handleRefreshCameras = async (e: React.MouseEvent): Promise<void> => {
@@ -113,6 +117,20 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
             </Typography>
 
             <Stack direction="row" spacing={1} sx={{mr: 2}}>
+                {/* Auto-apply toggle */}
+                <Tooltip title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — use apply button to send'}>
+                    <IconButton
+                        size="small"
+                        onClick={() => dispatch(autoApplyToggled())}
+                        sx={{
+                            color: isAutoApply ? theme.palette.secondary.light : 'inherit',
+                            opacity: isAutoApply ? 1 : 0.5,
+                        }}
+                    >
+                        {isAutoApply ? <SyncIcon/> : <SyncDisabledIcon/>}
+                    </IconButton>
+                </Tooltip>
+
                 {/* Connect/Apply Button - Always visible, changes icon and behavior */}
                 <Tooltip title={t("connectCameras")}>
                     <span>

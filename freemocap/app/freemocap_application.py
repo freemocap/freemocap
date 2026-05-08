@@ -12,6 +12,7 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
@@ -22,7 +23,7 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
-from freemocap.pubsub.pubsub_topics import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +83,9 @@ class FreemocapApplication:
 
     async def create_or_update_realtime_pipeline(
             self,
-            camera_configs:CameraConfigs,
+            camera_configs: CameraConfigs,
             pipeline_config: RealtimePipelineConfig,
+            realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
 
         for pipeline in self.realtime_pipeline_manager.pipelines.values():
@@ -96,6 +98,7 @@ class FreemocapApplication:
         pipeline = self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
+            realtime_camera_ids=realtime_camera_ids,
         )
         return pipeline
 
@@ -125,22 +128,36 @@ class FreemocapApplication:
         )
         return pipeline
 
+    def stop_posthoc_pipeline(self, pipeline_id: str) -> bool:
+        return self.posthoc_pipeline_manager.stop_pipeline(pipeline_id)
+
+    def stop_all_posthoc_pipelines(self) -> None:
+        self.posthoc_pipeline_manager.stop_all_pipelines()
 
     # ------------------------------------------------------------------
     # Frontend payloads
     # ------------------------------------------------------------------
 
+    async def wait_for_realtime_result(self, timeout: float = 0.5) -> None:
+        """Yield until at least one realtime pipeline has a processed frame ready.
+
+        Used by the websocket relay for an event-driven wake-up. Falls back immediately when no pipeline is alive (camera-only or idle mode).
+        """
+        await self.realtime_pipeline_manager.wait_for_any_result_ready(timeout=timeout)
+
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
-    ) ->tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
-        self.posthoc_pipeline_manager.evict_completed()
+    ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
+        # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
+        posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
+        posthoc_progress.extend(self.posthoc_pipeline_manager.evict_completed())
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
         active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
 
         if not active_pipelines:
-            # Camera-only path
+            # Camera-only / posthoc-only path
             results: list[FrontendImagePacket] = []
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
                     if_newer_than=if_newer_than
@@ -149,18 +166,16 @@ class FreemocapApplication:
                 results.append(FrontendImagePacket(
                     images_bytearray=image_bytes,
                     multiframe_timestamp=mf_timestamp,
-                    frontend_payload=FrontendPayload(camera_group_id=cg_id,frame_number=frame_number),
+                    frontend_payload=FrontendPayload(camera_group_id=cg_id, frame_number=frame_number),
                 ))
-            return results, []
+            return results, posthoc_progress
 
-        # Pipeline path — delegate to manager, which also returns FrontendImagePacket
-        realtime_pipeline_packets =  self.realtime_pipeline_manager.get_latest_frontend_payloads(
+        # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
+        realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
             if_newer_than=if_newer_than
         )
 
-        posthoc_pipeline_progress_messages = self.posthoc_pipeline_manager.get_progress_updates()
-
-        return realtime_pipeline_packets, posthoc_pipeline_progress_messages
+        return realtime_pipeline_packets, posthoc_progress
 
     # ------------------------------------------------------------------
     # Lifecycle

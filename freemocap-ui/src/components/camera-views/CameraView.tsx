@@ -1,8 +1,10 @@
 import React, {memo, useEffect, useMemo, useRef} from 'react';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {backendColor, frontendColor} from '@/components/framerate-viewer/FrameRateViewer';
+import {useZoomTransform} from '@/hooks/useZoomTransform';
 
 interface CameraViewProps {
+    cameraIndex: number;
     cameraId: string;
     scale?: number;
     maxWidth?: boolean;
@@ -16,12 +18,17 @@ const FPS_UPDATE_INTERVAL_MS = 250;
  * Wrapped in memo to prevent re-renders when props haven't changed.
  * FPS display uses direct DOM manipulation via a low-frequency setInterval
  * instead of a per-component requestAnimationFrame loop.
+ *
+ * Zoom is provided by useZoomTransform (scroll-to-zoom, drag-to-pan, pinch-to-zoom).
  */
-export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, maxWidth }) => {
+export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraId, scale, maxWidth }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const displayFpsRef = useRef<HTMLSpanElement>(null);
     const serverFpsRef = useRef<HTMLSpanElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
     const { setCanvasForCamera, getFps, getServerFps } = useServer();
+
+    const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -64,6 +71,7 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
 
     return (
         <div
+            ref={containerRef}
             style={{
                 width: '100%',
                 height: '100%',
@@ -73,13 +81,17 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                 justifyContent: 'center',
                 backgroundColor: '#000',
                 position: 'relative',
-                overflow: 'hidden'
+                overflow: 'hidden',
+                cursor,
             }}
+            {...containerHandlers}
         >
-            <canvas
-                ref={canvasRef}
-                style={canvasStyle}
-            />
+            <div style={zoomWrapperStyle}>
+                <canvas
+                    ref={canvasRef}
+                    style={canvasStyle}
+                />
+            </div>
             <div
                 style={{
                     position: 'absolute',
@@ -94,8 +106,8 @@ export const CameraView: React.FC<CameraViewProps> = memo(({ cameraId, scale, ma
                     lineHeight: 1.4,
                 }}
             >
-                <div>{cameraId}</div>
                 <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                    <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
                     <span style={{ color: frontendColor }}>
                         D:<span ref={displayFpsRef}>--</span>
                     </span>

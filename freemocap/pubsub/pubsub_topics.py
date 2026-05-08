@@ -6,8 +6,9 @@ via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING
 
+import numpy as np
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
@@ -17,7 +18,6 @@ from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
-    VideoIdString,
     TrackedPointNameString,
 )
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
@@ -69,12 +69,31 @@ class CameraNodeOutputMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
+# Centralized GPU skeleton inference results
+# ---------------------------------------------------------------------------
+# Published by RealtimeSkeletonInferenceNode when GPU mode is on. One message
+# per processed multi-camera frame, holding per-camera skeleton observations
+# from a single batched ONNX call. Aggregator merges this with per-camera
+# CameraNodeOutputMessage (which carries charuco only in this mode) by
+# (frame_number).
+
+@dataclass
+class SkeletonInferenceResultMessage(TopicMessageABC):
+    frame_number: FrameNumberInt = 0
+    per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.frame_number < 0:
+            raise ValueError(f"frame_number must be >= 0, got {self.frame_number}")
+
+
+# ---------------------------------------------------------------------------
 # Video (posthoc) node outputs
 # ---------------------------------------------------------------------------
 
 @dataclass
 class VideoNodeOutputMessage(TopicMessageABC):
-    video_id: VideoIdString = ""
+    camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
     observation: BaseObservation = None
 
@@ -96,6 +115,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
     keypoints_raw: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
     keypoints_filtered: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
+    # Pre-Point3d numpy form of the same data, kept around so the websocket
+    # binary serializer can ship raw bytes without re-unwrapping each
+    # Pydantic model. Each value is a (3,) float array. Sparse — only points
+    # that triangulated successfully are present.
+    keypoints_raw_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
+    keypoints_filtered_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -147,47 +172,20 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
-# Posthoc progress reporting
+# Pipeline stage timing (opt-in profiling)
 # ---------------------------------------------------------------------------
+# Each instrumented node batches its per-stage elapsed-ms samples and publishes
+# them periodically. The aggregator runs a reporter thread that subscribes,
+# maintains rolling buffers across all nodes, and prints one consolidated
+# report. Camera-node samples for the same stage collapse across camera_id
+# into ensemble statistics so adding cameras doesn't multiply log volume.
 
 @dataclass
-class PipelineProgressMessage(TopicMessageABC):
-    pipeline_id: PipelineIdString = ""
-    frame_count: int = 0
-    last_processed: FrameNumberInt = -1
-    working: bool = False
-    complete: bool = False
-    error: bool = False
-    error_message: str | None = None
-
-    def __post_init__(self) -> None:
-        if self.frame_count < 0:
-            raise ValueError(f"frame_count must be >= 0, got {self.frame_count}")
-
-    def increment(self) -> Self:
-        if not self.working:
-            self.working = True
-        if self.last_processed + 1 >= self.frame_count:
-            self.complete = True
-            self.working = False
-        if self.last_processed > self.frame_count:
-            raise ValueError(
-                f"Cannot increment last_processed beyond frame_count: "
-                f"{self.last_processed} + 1 > {self.frame_count}"
-            )
-        self.last_processed += 1
-        return self
-
-
-
-@dataclass
-class VideoNodeProgressMessage(PipelineProgressMessage):
-    video_id: VideoIdString = ""
-
-
-@dataclass
-class AggregatorNodeProgressMessage(PipelineProgressMessage):
-    running_aggregation_task: bool = False
+class PipelineTimingMessage(TopicMessageABC):
+    node_kind: str = ""              # "camera" | "skeleton_inference" | "aggregator"
+    node_label: str = ""             # human-readable label for log section headers
+    camera_id: CameraIdString | None = None  # set only for camera nodes
+    samples: dict[str, list[float]] = field(default_factory=dict)  # stage -> elapsed_ms batch
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +195,7 @@ class AggregatorNodeProgressMessage(PipelineProgressMessage):
 ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
-VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage)
+SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
+VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
-VideoNodeProgressTopic = create_topic(VideoNodeProgressMessage)
-AggregatorNodeProgressTopic = create_topic(AggregatorNodeProgressMessage)
+PipelineTimingTopic = create_topic(PipelineTimingMessage)

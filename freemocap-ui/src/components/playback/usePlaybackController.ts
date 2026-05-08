@@ -105,8 +105,21 @@ export function usePlaybackController({
         if (recordingFps && recordingFps > 0) fpsRef.current = recordingFps;
     }, [recordingFps]);
 
-    // Elect leader whenever video list changes
+    // Track the previous set of video IDs so we only reset state when the
+    // actual composition changes. The `videos` prop is a fresh array on every
+    // render (from loadedVideos.map() in PlaybackPage), so we can't use
+    // array reference equality.
+    const prevVideoIdsRef = useRef<string>('');
+
+    // Elect leader and reset per-video-set state only when video IDs change
     useEffect(() => {
+        const currentIds = videos.map(v => v.videoId).sort().join('|');
+        if (currentIds !== prevVideoIdsRef.current) {
+            prevVideoIdsRef.current = currentIds;
+            setVideosReady(0);
+            totalFramesRef.current = 0;
+            didSeekInitialRef.current = false;
+        }
         leaderIdRef.current = videos.length > 0 ? videos[0].videoId : null;
     }, [videos]);
 

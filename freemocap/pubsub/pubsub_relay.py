@@ -131,10 +131,10 @@ class PubSubRelay:
         Drain all remaining messages from publication queues to subscribers.
         Called during shutdown to ensure no messages are lost.
         """
-        deadline = time.monotonic() + RELAY_DRAIN_TIMEOUT_SECONDS
+        deadline = time.perf_counter() + RELAY_DRAIN_TIMEOUT_SECONDS
         total_drained = 0
 
-        while time.monotonic() < deadline:
+        while time.perf_counter() < deadline:
             drained_this_pass = 0
             with self._subscriptions_lock:
                 for topic in self.topics.values():

@@ -5,7 +5,7 @@ import Tab from '@mui/material/Tab';
 import type {SxProps, Theme} from '@mui/material/styles';
 
 export interface TabDef {
-    label: string;
+    label: React.ReactNode;
     content: React.ReactNode;
 }
 

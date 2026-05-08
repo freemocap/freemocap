@@ -1,5 +1,5 @@
 import React from "react";
-import {FormControl, InputLabel, MenuItem, Select, SxProps, Theme} from "@mui/material";
+import {Box, FormControl, InputLabel, MenuItem, Select, SxProps, Theme} from "@mui/material";
 
 interface PresetOption<T extends string> {
     value: T;
@@ -30,6 +30,7 @@ export function PresetPicker<T extends string>({
     const labelId = label ? `preset-picker-${label.toLowerCase().replace(/\s+/g, "-")}-label` : undefined;
 
     return (
+        <Box >
         <FormControl size={size} sx={{minWidth, ...sx}}>
             {label && <InputLabel id={labelId}>{label}</InputLabel>}
             <Select
@@ -46,5 +47,6 @@ export function PresetPicker<T extends string>({
                 ))}
             </Select>
         </FormControl>
+            </Box>
     );
 }

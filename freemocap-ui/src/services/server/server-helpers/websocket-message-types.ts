@@ -1,3 +1,4 @@
+import {z} from 'zod';
 import {
     CharucoObservation,
     CharucoOverlayDataMessage,
@@ -88,18 +89,23 @@ export function isTrackerSchemas(data: any): data is TrackerSchemasMessage {
     );
 }
 
-export interface PosthocProgressMessage {
-    message_type: 'posthoc_progress';
-    pipeline_id: string;
-    phase: string;
-    progress_fraction: number;
-    detail: string;
-}
+export const PosthocProgressSchema = z.object({
+    message_type: z.literal('posthoc_progress'),
+    pipeline_id: z.string(),
+    pipeline_type: z.string(),
+    phase: z.string(),
+    progress_fraction: z.number().min(0).max(1),
+    detail: z.string().default(''),
+    recording_name: z.string().default(''),
+    recording_path: z.string().default(''),
+});
+
+export type PosthocProgressMessage = z.infer<typeof PosthocProgressSchema>;
 
 export function isPosthocProgress(data: unknown): data is PosthocProgressMessage {
-    return (
-        typeof data === 'object' &&
-        data !== null &&
-        (data as PosthocProgressMessage).message_type === 'posthoc_progress'
-    );
+    const result = PosthocProgressSchema.safeParse(data);
+    if (!result.success && typeof data === 'object' && data !== null && (data as Record<string, unknown>).message_type === 'posthoc_progress') {
+        console.error('[WS] posthoc_progress message failed schema validation:', result.error.format(), data);
+    }
+    return result.success;
 }

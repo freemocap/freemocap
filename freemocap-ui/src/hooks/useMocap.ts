@@ -1,13 +1,12 @@
 import {useCallback} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
+import {store} from '@/store';
 import {useElectronIPC} from '@/services';
 import {
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,
-    lastMocapRecordingPathCleared,
-    manualMocapRecordingPathChanged,
-    manualMocapRecordingPathCleared,
     MediapipeDetectorConfig,
+    MocapDirectoryInfo,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,
     mocapDirectoryInfoUpdated,
@@ -28,7 +27,26 @@ import {
     startMocapRecording,
     stopMocapRecording,
 } from "@/store/slices/mocap";
+
+function mocapDirectoryInfoEqual(a: MocapDirectoryInfo | null, b: MocapDirectoryInfo): boolean {
+    if (!a) return false;
+    return (
+        a.exists === b.exists &&
+        a.canRecord === b.canRecord &&
+        a.canCalibrate === b.canCalibrate &&
+        a.hasSynchronizedVideos === b.hasSynchronizedVideos &&
+        a.hasVideos === b.hasVideos &&
+        a.cameraMocapTomlPath === b.cameraMocapTomlPath &&
+        a.lastSuccessfulCalibrationTomlPath === b.lastSuccessfulCalibrationTomlPath &&
+        a.errorMessage === b.errorMessage
+    );
+}
 import {pathRecomputed} from "@/store/slices/recording";
+import {
+    activeRecordingCleared,
+    activeRecordingSet,
+    splitParentAndName,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 export function useMocap() {
     const dispatch = useAppDispatch();
@@ -110,7 +128,10 @@ export function useMocap() {
 
             try {
                 const info = await api.fileSystem.validateMocapDirectory.query({directoryPath});
-                dispatch(mocapDirectoryInfoUpdated(info));
+                const current = store.getState().mocap.directoryInfo;
+                if (!mocapDirectoryInfoEqual(current, info)) {
+                    dispatch(mocapDirectoryInfoUpdated(info));
+                }
             } catch (error) {
                 console.error('Failed to validate mocap directory:', error);
             }
@@ -120,15 +141,21 @@ export function useMocap() {
 
     const setManualRecordingPath = useCallback(
         async (path: string) => {
-            dispatch(manualMocapRecordingPathChanged(path));
+            const parsed = splitParentAndName(path);
+            if (parsed) {
+                dispatch(activeRecordingSet({
+                    recordingName: parsed.recordingName,
+                    baseDirectory: parsed.baseDirectory,
+                    origin: 'browsed',
+                }));
+            }
             await validateDirectory(path);
         },
         [dispatch, validateDirectory]
     );
 
     const clearManualRecordingPath = useCallback(() => {
-        dispatch(manualMocapRecordingPathCleared());
-        dispatch(lastMocapRecordingPathCleared());
+        dispatch(activeRecordingCleared());
         dispatch(pathRecomputed());
     }, [dispatch]);
 

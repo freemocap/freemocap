@@ -1,7 +1,8 @@
-import {createAsyncThunk, createSelector} from "@reduxjs/toolkit";
-import {RootState, selectSelectedCameraConfigs} from "@/store";
+import {createAsyncThunk} from "@reduxjs/toolkit";
+import {RootState, selectRealtimeEnabledCameraConfigs, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
 import {PipelineApplyResponse, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
+import {selectCalibrationConfig} from "@/store/slices/calibration/calibration-slice";
 
 export const applyRealtimePipeline = createAsyncThunk<
     PipelineApplyResponse,
@@ -11,14 +12,26 @@ export const applyRealtimePipeline = createAsyncThunk<
     'realtime/apply',
     async (realtimeConfig, {getState}) => {
         const cameraConfigs = selectSelectedCameraConfigs(getState());
+        const realtimeCameraIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
+        const calibrationConfig = selectCalibrationConfig(getState());
 
+        const configWithBoard: RealtimePipelineConfig = {
+            ...realtimeConfig,
+            camera_node_config: {
+                ...realtimeConfig.camera_node_config,
+                charuco_detector_config: {
+                    board: calibrationConfig.charucoBoard,
+                },
+            },
+        };
 
         const response = await fetch(serverUrls.endpoints.realtimeConnectOrUpdate, {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                realtimeConfig,
-                cameraConfigs
+                realtimeConfig: configWithBoard,
+                cameraConfigs,
+                realtimeCameraIds,
             }),
         });
 

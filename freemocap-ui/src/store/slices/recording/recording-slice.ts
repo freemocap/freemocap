@@ -1,6 +1,8 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {ComputedRecordingPath, RecordingConfig, RecordingInfo} from './recording-types';
+import {RootState} from '@/store/types';
+import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo, RecordingTypePreset} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
+import {loadFromStorage} from '@/store/persistence';
 
 const getTimestampString = (): string => {
     const now = new Date();
@@ -64,29 +66,41 @@ const computeRecordingPath = (
     };
 };
 
+const DEFAULT_RECORDING_DIRECTORY = '~/freemocap_data/recordings';
+
+const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
+    useDelayStart: false,
+    delaySeconds: 3,
+    useTimestamp: true,
+    useIncrement: false,
+    currentIncrement: 1,
+    baseName: 'recording',
+    recordingTag: '',
+    createSubfolder: false,
+    customSubfolderName: '',
+    micDeviceIndex: -1,
+    recordingTypePreset: 'none',
+    autoProcess: true,
+};
+
+const _persistedConfig = loadFromStorage<RecordingConfig | null>('recording.config', null);
+const _persistedDirectory = loadFromStorage<string | null>('recording.directory', null);
+
 const initialState: RecordingInfo = {
     isRecording: false,
-    recordingDirectory: '~/freemocap_data/recordings',
+    recordingDirectory: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
     recordingName: null,
     startedAt: null,
     duration: 0,
     completionData: null,
-    config: {
-        useDelayStart: false,
-        delaySeconds: 3,
-        useTimestamp: true,
-        useIncrement: false,
-        currentIncrement: 1,
-        baseName: 'recording',
-        recordingTag: '',
-        createSubfolder: false,
-        customSubfolderName: '',
-    },
+    config: _persistedConfig ?? { ...DEFAULT_RECORDING_CONFIG },
     computed: {
         recordingName: '',
         subfolderName: '',
-        fullRecordingPath: '~/freemocap_data/recordings',
+        fullRecordingPath: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
     },
+    pendingOperation: null,
+    countdown: null,
 };
 
 // Initialize computed values
@@ -158,10 +172,31 @@ export const recordingSlice = createSlice({
         },
         // Force recomputation of path (useful for timestamp updates)
         pathRecomputed: (state) => {
-            state.computed = computeRecordingPath(state.recordingDirectory, state.config);
+            const next = computeRecordingPath(state.recordingDirectory, state.config);
+            if (
+                next.recordingName === state.computed.recordingName &&
+                next.subfolderName === state.computed.subfolderName &&
+                next.fullRecordingPath === state.computed.fullRecordingPath
+            ) return;
+            state.computed = next;
         },
         recordingCompletionDismissed: (state) => {
             state.completionData = null;
+        },
+        micDeviceIndexChanged: (state, action: PayloadAction<number>) => {
+            state.config.micDeviceIndex = action.payload;
+        },
+        recordingTypePresetChanged: (state, action: PayloadAction<RecordingTypePreset>) => {
+            state.config.recordingTypePreset = action.payload;
+        },
+        autoProcessToggled: (state, action: PayloadAction<boolean>) => {
+            state.config.autoProcess = action.payload;
+        },
+        pendingOperationSet: (state, action: PayloadAction<PendingOperation | null>) => {
+            state.pendingOperation = action.payload;
+        },
+        countdownSet: (state, action: PayloadAction<number | null>) => {
+            state.countdown = action.payload;
         },
     },
     extraReducers: (builder) => {
@@ -169,9 +204,9 @@ export const recordingSlice = createSlice({
             .addCase(startRecording.fulfilled, (state, action) => {
                 state.isRecording = true;
                 state.recordingName = action.meta.arg.recordingName;
-                state.recordingDirectory = action.meta.arg.recordingDirectory;
                 state.startedAt = new Date().toISOString();
                 state.duration = 0;
+                state.pendingOperation = null;
             })
             .addCase(stopRecording.fulfilled, (state, action) => {
                 state.isRecording = false;
@@ -179,6 +214,7 @@ export const recordingSlice = createSlice({
                 state.startedAt = null;
                 state.duration = 0;
                 state.completionData = action.payload;
+                state.pendingOperation = null;
             });
     },
 });
@@ -199,5 +235,11 @@ export const {
     createSubfolderToggled,
     customSubfolderNameChanged,
     pathRecomputed,
-    recordingCompletionDismissed
+    recordingCompletionDismissed,
+    micDeviceIndexChanged,
+    recordingTypePresetChanged,
+    autoProcessToggled,
+    pendingOperationSet,
+    countdownSet,
 } = recordingSlice.actions;
+

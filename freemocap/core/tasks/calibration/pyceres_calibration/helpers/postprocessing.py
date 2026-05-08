@@ -10,8 +10,11 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
-from freemocap.core.tasks.calibration.shared.calibration_models import CameraModel, CameraExtrinsics, \
-    CharucoCornersObservation, CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, \
     apply_groundplane_to_cameras
 from freemocap.core.tasks.calibration.shared.groundplane_math import find_still_charuco_frame, \
@@ -28,7 +31,7 @@ logger = logging.getLogger(__name__)
 def pin_camera_to_origin(
     *,
     cameras: list[CameraModel],
-    camera_index: int = 0,
+    camera_id: str,
 ) -> list[CameraModel]:
     """Re-express all camera extrinsics relative to the specified camera.
 
@@ -37,17 +40,18 @@ def pin_camera_to_origin(
 
     Args:
         cameras: List of camera models with extrinsics.
-        camera_index: Index of the camera to place at the origin.
+        camera_id: ID of the camera to place at the origin. Resolved against
+            the camera list using the shared fallback ladder (exact id
+            equality, then heuristic index match).
 
     Returns:
         New list of CameraModel with adjusted extrinsics.
     """
-    if camera_index < 0 or camera_index >= len(cameras):
-        raise IndexError(
-            f"camera_index {camera_index} out of range for {len(cameras)} cameras"
-        )
-
-    ref_cam = cameras[camera_index]
+    candidate_ids = [cam.id for cam in cameras]
+    resolved_id = resolve_camera_id_or_raise(
+        camera_id, candidate_ids, context="pin_camera_to_origin",
+    )
+    ref_cam = next(cam for cam in cameras if cam.id == resolved_id)
     R0 = ref_cam.extrinsics.rotation_matrix
     t0 = ref_cam.extrinsics.translation
 
@@ -76,7 +80,7 @@ def pin_camera_to_origin(
 
         result.append(
             CameraModel(
-                name=cam.name,
+                id=cam.id,
                 image_size=cam.image_size,
                 intrinsics=cam.intrinsics,
                 extrinsics=new_extrinsics,
@@ -84,7 +88,7 @@ def pin_camera_to_origin(
         )
 
     logger.info(
-        f"Pinned camera '{cameras[camera_index].name}' to origin. "
+        f"Pinned camera '{ref_cam.id}' to origin. "
         f"Adjusted {len(cameras)} camera extrinsics."
     )
 
@@ -111,7 +115,7 @@ def _triangulate_charuco_corners(
         (n_frames, n_corners, 3) array of triangulated 3D positions.
     """
     # Group observations by frame
-    cam_name_to_model = {cam.name: cam for cam in cameras}
+    cam_name_to_model = {cam.id: cam for cam in cameras}
     frame_groups: dict[int, dict[str, CharucoCornersObservation]] = {}
     for obs in all_observations:
         if obs.frame_index not in frame_groups:

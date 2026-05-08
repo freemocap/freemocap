@@ -3,6 +3,7 @@ import {Box} from '@mui/material';
 import {CameraView} from './CameraView';
 
 interface ResizableCameraViewProps {
+    cameraIndex: number;
     cameraId: string;
     /** Initial position/size from the auto-layout */
     initialX: number;
@@ -28,6 +29,7 @@ type DragMode = 'none' | 'move' | 'resize';
  * and resized (by a bottom-right handle) within an absolute-positioned container.
  */
 export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
+    cameraIndex,
     cameraId,
     initialX,
     initialY,
@@ -169,7 +171,7 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
                     cursor: dragMode === 'move' ? 'grabbing' : 'grab',
                 }}
             >
-                <CameraView cameraId={cameraId} />
+                <CameraView cameraIndex={cameraIndex} cameraId={cameraId} />
             </Box>
 
             {/* Resize handle in the bottom-right corner */}

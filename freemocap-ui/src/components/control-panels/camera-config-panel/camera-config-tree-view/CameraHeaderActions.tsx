@@ -7,6 +7,7 @@ import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import WbIncandescentIcon from "@mui/icons-material/WbIncandescent";
 
 import {useAppDispatch} from "@/store";
 import {
@@ -15,7 +16,7 @@ import {
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
+import {recommendExposureForAll, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
 import {useTranslation} from 'react-i18next';
 
 interface CameraHeaderActionsProps {
@@ -81,6 +82,11 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
         }
     };
 
+    const handleRecommendExposureAll = (e: React.MouseEvent): void => {
+        e.stopPropagation();
+        dispatch(recommendExposureForAll());
+    };
+
     const handleClearSavedSettings = (e: React.MouseEvent): void => {
         e.stopPropagation();
         dispatch(savedSettingsCleared());
@@ -130,6 +136,19 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
                                     }}
                                 />
                         </Box>
+                    </IconButton>
+                </span>
+            </Tooltip>
+
+            {/* Recommend Exposure for All Button */}
+            <Tooltip title="Auto-recommend exposure for all cameras">
+                <span>
+                    <IconButton
+                        size="small"
+                        onClick={handleRecommendExposureAll}
+                        sx={{color: "inherit", padding: "4px"}}
+                    >
+                        <WbIncandescentIcon sx={{fontSize: 24}}/>
                     </IconButton>
                 </span>
             </Tooltip>

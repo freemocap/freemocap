@@ -6,7 +6,6 @@ import msgspec
 PointIndex = int
 PipelineIdString = str
 TrackedPointNameString = str
-VideoIdString = str
 
 TopicPublicationQueue = multiprocessing.queues.Queue
 TopicSubscriptionQueue = multiprocessing.queues.Queue

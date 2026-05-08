@@ -7,17 +7,14 @@ import {
     Quaternion,
     Vector3,
 } from "three";
-import { useAppSelector } from "@/store";
-import {
-    CalibrationCameraData,
-    selectLoadedCalibration,
-} from "@/store/slices/calibration/calibration-slice";
+import type { CalibrationCameraData } from "@/store/slices/calibration/calibration-slice";
+import { useWorkerData } from "../WorkerDataContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 
 const FRUSTUM_DEPTH_MM = 75;
 const BODY_SIZE_MM = 20;
-const FRUSTUM_COLOR = "#106995";
-const BODY_COLOR = "#2080b0";
+const FRUSTUM_COLOR = "#08855e";
+const BODY_COLOR = "#08855e";
 
 interface CameraPose {
     position: Vector3;
@@ -102,7 +99,7 @@ function MocapCameraInstance({ cam }: { cam: CalibrationCameraData }) {
 }
 
 export function MocapCameraRenderer() {
-    const loaded = useAppSelector(selectLoadedCalibration);
+    const { loadedCalibration: loaded } = useWorkerData();
     const { statsRef } = useViewportState();
 
     useEffect(() => {

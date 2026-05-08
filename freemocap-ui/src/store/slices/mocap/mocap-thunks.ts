@@ -3,6 +3,7 @@ import {RootState} from "@/store";
 import {selectMocapRecordingPath} from "./mocap-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
+import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 
 export const startMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; mocapRecordingPath?: string },
@@ -61,12 +62,12 @@ export const startMocapRecording = createAsyncThunk<
 );
 
 export const stopMocapRecording = createAsyncThunk<
-    { success: boolean },
+    { success: boolean; pipeline_id?: string; recording_name?: string; recording_path?: string },
     void,
     { state: RootState; rejectValue: string }
 >(
     'mocap/stopRecording',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const mocapTaskConfig = state.mocap.config;
@@ -97,6 +98,17 @@ export const stopMocapRecording = createAsyncThunk<
 
             const result = await response.json();
             console.log('✅ Stopped mocap recording:', result);
+            if (result.pipeline_id) {
+                dispatch(pipelineProgressUpdated({
+                    pipelineId: result.pipeline_id,
+                    pipelineType: PipelineType.MOCAP,
+                    phase: PipelinePhase.QUEUED,
+                    progress: 0,
+                    detail: 'Pipeline queued, starting workers...',
+                    recordingName: result.recording_name ?? '',
+                    recordingPath: result.recording_path ?? '',
+                }));
+            }
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -107,12 +119,12 @@ export const stopMocapRecording = createAsyncThunk<
 );
 
 export const processMocapRecording = createAsyncThunk<
-    { success: boolean; message?: string; results?: unknown },
+    { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
     void,
     { state: RootState; rejectValue: string }
 >(
     'mocap/processMocapRecording',
-    async (_, { getState, rejectWithValue }) => {
+    async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
             const mocapTaskConfig = state.mocap.config;
@@ -153,6 +165,17 @@ export const processMocapRecording = createAsyncThunk<
 
             const result = await response.json();
             console.log('✅ Mocap completed:', result);
+            if (result.pipeline_id) {
+                dispatch(pipelineProgressUpdated({
+                    pipelineId: result.pipeline_id,
+                    pipelineType: PipelineType.MOCAP,
+                    phase: PipelinePhase.QUEUED,
+                    progress: 0,
+                    detail: 'Pipeline queued, starting workers...',
+                    recordingName: mocapRecordingDirectory?.split(/[/\\]/).pop() ?? '',
+                    recordingPath: mocapRecordingDirectory ?? '',
+                }));
+            }
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

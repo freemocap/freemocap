@@ -1,8 +1,15 @@
 export type CalibrationSource = 'most_recent' | 'specified';
 
+export interface CharucoBoardConfigForPipeline {
+    squares_x: number;
+    squares_y: number;
+    square_length_mm: number;
+}
+
 export interface CameraNodeConfig {
     charuco_tracking_enabled: boolean;
     skeleton_tracking_enabled: boolean;
+    charuco_detector_config?: { board: CharucoBoardConfigForPipeline } | null;
 }
 
 export interface RealtimeAggregatorNodeConfig {

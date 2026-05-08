@@ -1,5 +1,5 @@
 // src/components/framerate-viewer/FrameRateViewer.tsx
-import {useState} from "react"
+import {useEffect, useRef, useState} from "react"
 import {Box, IconButton, Paper, Stack, Tooltip, Typography} from "@mui/material"
 import {BarChart, ShowChart, TableChart} from "@mui/icons-material"
 import {alpha, useTheme} from "@mui/material/styles"
@@ -7,11 +7,54 @@ import FramerateTimeseriesView from "./FramerateTimeseriesView"
 import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
 import {useTranslation} from "react-i18next";
+import {useServer} from "@/services/server/ServerContextProvider";
+import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 
 export const frontendColor: string = "#1976D2"
 export const backendColor: string = "#ff4d00"
 
-export const FramerateViewerPanel = () => {
+const fmtFps = (fr: DetailedFramerate | null): string => {
+    if (!fr || !fr.frame_duration_mean || fr.frame_duration_mean <= 0) return "-- fps";
+    return `${(1000 / fr.frame_duration_mean).toFixed(1)} fps ±${fr.frame_duration_stddev.toFixed(1)}ms`;
+};
+
+const FramerateCollapsedView = () => {
+    const {getFramerateStore} = useServer();
+    const backendRef = useRef<HTMLSpanElement>(null);
+    const frontendRef = useRef<HTMLSpanElement>(null);
+
+    useEffect(() => {
+        const tick = () => {
+            const snap = getFramerateStore().getSnapshot();
+            if (backendRef.current) backendRef.current.textContent = fmtFps(snap.aggregateBackendFramerate);
+            if (frontendRef.current) frontendRef.current.textContent = fmtFps(snap.aggregateFrontendFramerate);
+        };
+        tick();
+        const id = setInterval(tick, 500);
+        return () => clearInterval(id);
+    }, [getFramerateStore]);
+
+    return (
+        <Box sx={{height: '100%', display: 'flex', alignItems: 'center', gap: 1.5, px: 1, overflow: 'hidden'}}>
+            <Typography noWrap sx={{fontSize: '0.75rem', fontWeight: 'bold', color: 'text.secondary', flexShrink: 0}}>
+                Camera Performance
+            </Typography>
+            <Typography noWrap sx={{fontSize: '0.75rem', color: backendColor, flexShrink: 0}}>
+                Server: <span ref={backendRef}>-- fps</span>
+            </Typography>
+            <Typography noWrap sx={{fontSize: '0.75rem', color: frontendColor, flexShrink: 0}}>
+                Display: <span ref={frontendRef}>-- fps</span>
+            </Typography>
+        </Box>
+    );
+};
+
+export const FramerateViewerPanel = ({isCollapsed = false}: { isCollapsed?: boolean }) => {
+    if (isCollapsed) return <FramerateCollapsedView/>;
+    return <FramerateViewerPanelExpanded/>;
+};
+
+const FramerateViewerPanelExpanded = () => {
     const theme = useTheme()
     const { t } = useTranslation();
     const [showStats, setShowStats] = useState(true)

@@ -72,6 +72,7 @@ export interface Camera {
     hasConfigMismatch: boolean;     // Whether actual differs from desired
     connectionStatus: 'available' | 'connected' | 'error';  // Connection state
     selected: boolean;              // UI selection state
+    realtimeEnabled: boolean;       // Whether to include in realtime pipeline
 
     // Device info (from detection)
     deviceInfo: {
@@ -93,6 +94,7 @@ export interface CamerasState {
     cameras: Camera[];
     isPaused: boolean;
     isLoading: boolean;
+    autoApply: boolean;
     error: string | null;
 }
 
@@ -103,6 +105,7 @@ export interface DetectCamerasRequest {
 
 export interface DetectCamerasResponse {
     cameras: Array<{
+        camera_id: string;
         index: number;
         name: string;
         vendor_id?: string;

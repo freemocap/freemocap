@@ -5,17 +5,17 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {
-    selectFilteredPipelines,
+    selectGroupedPipelines,
     selectHasCompletedPipelines,
     selectShowCompleted,
     selectFilterText,
     toggleShowCompleted,
     filterTextChanged,
 } from '@/store/slices/pipelines';
-import PipelineProgressBar from './PipelineProgressBar';
+import PipelineGroupCard from './PipelineGroupCard';
 
 export default function PipelineProgressPanel() {
-    const pipelines = useAppSelector(selectFilteredPipelines);
+    const groups = useAppSelector(selectGroupedPipelines);
     const hasCompleted = useAppSelector(selectHasCompletedPipelines);
     const showCompleted = useAppSelector(selectShowCompleted);
     const filterText = useAppSelector(selectFilterText);
@@ -51,15 +51,15 @@ export default function PipelineProgressPanel() {
             </Box>
 
             <Box sx={{flex: 1, overflow: 'auto'}}>
-                {pipelines.length === 0 ? (
+                {groups.length === 0 ? (
                     <Box sx={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                         <Typography variant="caption" color="text.secondary">
                             No active pipelines
                         </Typography>
                     </Box>
                 ) : (
-                    pipelines.map((p) => (
-                        <PipelineProgressBar key={p.pipelineId} pipeline={p}/>
+                    groups.map((group) => (
+                        <PipelineGroupCard key={group.basePipelineId} group={group}/>
                     ))
                 )}
             </Box>

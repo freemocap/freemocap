@@ -3,10 +3,10 @@ import {
     Alert,
     Box,
     Button,
-    Chip,
+    Chip, FormControlLabel,
     IconButton,
     InputAdornment,
-    Stack,
+    Stack, Switch,
     TextField,
     Tooltip,
     Typography,
@@ -26,18 +26,21 @@ import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
 import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
+import {useAppSelector} from "@/store";
 
 export const CalibrationPanel: React.FC = () => {
     const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
-    const {api} = useElectronIPC();
+    const {api, isElectron} = useElectronIPC();
 
     const {
         error,
+        config,
         isLoading,
         isRecording,
         recordingProgress,
-        canStartRecording,
+        updateCalibrationConfig,
         canCalibrate,
         calibrationRecordingPath,
         directoryInfo,
@@ -50,6 +53,9 @@ export const CalibrationPanel: React.FC = () => {
         calibrateSelectedRecording,
         clearError,
     } = useCalibration();
+
+    // Effective path: actual activeRecording if any, otherwise the planned path
+    const effectiveCalibrationPath = useAppSelector(selectEffectiveRecordingPath);
 
     // Auto-poll directory status instead of requiring manual refresh
     const {triggerRefresh, isWatching} = useDirectoryWatcher(
@@ -64,7 +70,7 @@ export const CalibrationPanel: React.FC = () => {
     }, [clearError]);
 
     const handleSelectDirectory = async (): Promise<void> => {
-        if (!api) return;
+        if (!isElectron || !api) return;
         try {
             const result: string | null = await api.fileSystem.selectDirectory.mutate();
             if (result) {
@@ -77,9 +83,9 @@ export const CalibrationPanel: React.FC = () => {
     };
 
     const handleOpenFolder = async (): Promise<void> => {
-        if (!api || !calibrationRecordingPath) return;
+        if (!isElectron || !api || !effectiveCalibrationPath) return;
         try {
-            await api.fileSystem.openFolder.mutate({path: calibrationRecordingPath});
+            await api.fileSystem.openFolder.mutate({path: effectiveCalibrationPath});
         } catch (err) {
             console.error("Failed to open folder:", err);
             setLocalError("Failed to open folder in file explorer");
@@ -93,7 +99,7 @@ export const CalibrationPanel: React.FC = () => {
         if (newPath.includes("~") && api) {
             try {
                 const home: string = await api.fileSystem.getHomeDirectory.query();
-                const expanded: string = newPath.replace(/^~([/\\])?/, home ? `${home}$1` : "");
+                const expanded: string = newPath.replace(/^~([\/])?/, home ? home + '$1' : "");
                 await setManualRecordingPath(expanded);
             } catch {
                 await setManualRecordingPath(newPath);
@@ -112,9 +118,9 @@ export const CalibrationPanel: React.FC = () => {
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const statusLabel = isRecording
-        ? `Recording ${recordingProgress.toFixed(0)}%`
+        ? "Recording " + recordingProgress.toFixed(0) + "%"
         : isLoading
-            ? "Processing..."
+            ? "Running"
             : directoryInfo?.cameraCalibrationTomlPath
                 ? "Calibrated"
                 : "Idle";
@@ -154,49 +160,38 @@ export const CalibrationPanel: React.FC = () => {
                         </Alert>
                     )}
 
-                    {/*<FormControlLabel*/}
-                    {/*    control={*/}
-                    {/*        <Checkbox*/}
-                    {/*            checked={config.liveTrackCharuco}*/}
-                    {/*            onChange={(e) =>*/}
-                    {/*                updateCalibrationConfig({liveTrackCharuco: e.target.checked})*/}
-                    {/*            }*/}
-                    {/*            disabled={isLoading}*/}
-                    {/*        />*/}
-                    {/*    }*/}
-                    {/*    label="Live Track Charuco Board"*/}
-                    {/*/>*/}
-
                     {/* Recording Controls */}
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayArrowIcon/>}
-                            onClick={dispatchStartCalibrationRecording}
-                            disabled={!canStartRecording || isLoading}
-                            fullWidth
-                        >
-                            Start Calibration Recording
-                        </Button>
-                        {isRecording && (
-                            <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<StopIcon/>}
-                                onClick={dispatchStopCalibrationRecording}
-                                disabled={isLoading}
-                                fullWidth
-                            >
-                                Stop Recording
-                            </Button>
-                        )}
-                    </Stack>
+                    {/* TODO - Wire up these recording buttons to the EXACT same workflow as the recording panel  - current wiring has slop*/}
+                    {/*<Stack direction="row" spacing={2}>*/}
+                    {/*    <Button*/}
+                    {/*        variant="contained"*/}
+                    {/*        color="primary"*/}
+                    {/*        startIcon={<PlayArrowIcon/>}*/}
+                    {/*        onClick={dispatchStartCalibrationRecording}*/}
+                    {/*        // disabled={!canStartRecording || isLoading}*/}
+                    {/*        disabled={ isLoading}*/}
+                    {/*        fullWidth*/}
+                    {/*    >*/}
+                    {/*        Start Calibration Recording*/}
+                    {/*    </Button>*/}
+                    {/*    {isRecording && (*/}
+                    {/*        <Button*/}
+                    {/*            variant="contained"*/}
+                    {/*            color="error"*/}
+                    {/*            startIcon={<StopIcon/>}*/}
+                    {/*            onClick={dispatchStopCalibrationRecording}*/}
+                    {/*            disabled={isLoading}*/}
+                    {/*            fullWidth*/}
+                    {/*        >*/}
+                    {/*            Stop Recording*/}
+                    {/*        </Button>*/}
+                    {/*    )}*/}
+                    {/*</Stack>*/}
 
                     {/* Recording Path Input */}
                     <TextField
                         label="Calibration Recording Path"
-                        value={calibrationRecordingPath}
+                        value={effectiveCalibrationPath || ''}
                         onChange={handlePathInputChange}
                         fullWidth
                         size="small"
@@ -229,14 +224,14 @@ export const CalibrationPanel: React.FC = () => {
                                                 onClick={handleOpenFolder}
                                                 edge="end"
                                                 size="small"
-                                                disabled={!calibrationRecordingPath}
+                                                disabled={!isElectron || !effectiveCalibrationPath}
                                             >
                                                 <LaunchIcon fontSize="small"/>
                                             </IconButton>
                                         </span>
                                     </Tooltip>
                                     <Tooltip title="Select directory">
-                                        <IconButton onClick={handleSelectDirectory} edge="end">
+                                        <IconButton onClick={handleSelectDirectory} edge="end" disabled={!isElectron}>
                                             <FolderOpenIcon/>
                                         </IconButton>
                                     </Tooltip>
@@ -244,6 +239,7 @@ export const CalibrationPanel: React.FC = () => {
                             ),
                         }}
                     />
+                    
                     <Button
                         variant="contained"
                         color="secondary"
@@ -267,6 +263,24 @@ export const CalibrationPanel: React.FC = () => {
                         isRefreshing={false}
                     />
 
+                    {/* Groundplane */}
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                size="small"
+                                checked={config.useGroundplane}
+                                onChange={(_, checked) =>
+                                    updateCalibrationConfig({useGroundplane: checked})
+                                }
+                                disabled={isLoading}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2">
+                                Align to ground plane to initial charuco position
+                            </Typography>
+                        }
+                    />
                     <CharucoBoardConfigSection />
 
                     <CalibrationSolverSection/>
@@ -287,7 +301,7 @@ export const CalibrationPanel: React.FC = () => {
                             >
                                 <Box
                                     sx={{
-                                        width: `${recordingProgress}%`,
+                                        width: recordingProgress + "%",
                                         height: "100%",
                                         bgcolor: theme.palette.primary.main,
                                         transition: "width 0.3s",

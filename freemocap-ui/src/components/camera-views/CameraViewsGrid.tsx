@@ -1,137 +1,20 @@
-import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import React, {useMemo} from "react";
 import {Box, keyframes} from "@mui/material";
-import type {Layout, LayoutItem} from "react-grid-layout";
 import ReactGridLayout, {noCompactor} from "react-grid-layout";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
-import {CameraView} from "./CameraView";
+import {CameraViewWithOverlay} from "./CameraViewWithOverlay";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from "react-i18next";
 import {useAppSelector} from "@/store/hooks";
-import {selectConnectedCameras} from "@/store/slices/cameras/cameras-selectors";
+import {selectAutoApply, selectCameras, selectIsLoading} from "@/store/slices/cameras/cameras-selectors";
+import {useGridLayout} from "@/hooks/useGridLayout";
 
 const recordingBorderPulse = keyframes`
     0% { border-color: #ff2020; box-shadow: 0 0 4px rgba(255, 32, 32, 0.4); }
     50% { border-color: #aa1010; box-shadow: 0 0 8px rgba(255, 32, 32, 0.15); }
     100% { border-color: #ff2020; box-shadow: 0 0 4px rgba(255, 32, 32, 0.4); }
 `;
-
-/** Number of abstract grid columns. More columns = finer positioning granularity. */
-const GRID_COLS = 12;
-const MARGIN: [number, number] = [4, 4];
-
-interface Tiling {
-    cols: number;
-    rows: number;
-}
-
-/**
- * Get the preferred number of columns based on camera count.
- * This uses the "old version" heuristic for determining a good initial layout.
- * - 1 camera → 1 column
- * - 2-4 cameras → 2 columns
- * - 5-9 cameras → 3 columns
- * - 10+ cameras → 4 columns
- */
-function getPreferredColumns(n: number): number {
-    if (n <= 1) return 1;
-    if (n <= 4) return 2;
-    if (n <= 9) return 3;
-    return 4;
-}
-
-/**
- * Compute optimal tiling combining the best of both approaches:
- * 1. Uses the old heuristic to determine ideal column count bounds
- * 2. Within those bounds, maximizes area and prefers square-ish cells
- * 3. Respects container dimensions
- */
-function computeOptimalTiling(
-    n: number,
-    containerWidth: number,
-    containerHeight: number,
-): Tiling {
-    if (n === 0) return { cols: 1, rows: 1 };
-    if (n === 1) return { cols: 1, rows: 1 };
-
-    // Get the heuristic-preferred columns (from old version logic)
-    const preferredCols = getPreferredColumns(n);
-    
-    // Also compute the "ideal" square-ish layout
-    const sqrtN = Math.sqrt(n);
-    const idealCols = Math.round(sqrtN);
-    
-    // Allow some flexibility around the preferred columns
-    // We'll search within a range: minCols to maxCols
-    const minCols = Math.max(1, Math.floor(sqrtN) - 1);
-    const maxCols = Math.min(n, Math.ceil(sqrtN) + 2, preferredCols + 1);
-    
-    let bestCols = preferredCols;
-    let bestScore = -Infinity;
-
-    for (let cols = minCols; cols <= maxCols; cols++) {
-        const rows = Math.ceil(n / cols);
-        const cellW = (containerWidth - MARGIN[0] * (cols - 1)) / cols;
-        const cellH = (containerHeight - MARGIN[1] * (rows - 1)) / rows;
-
-        if (cellW < 80 || cellH < 60) continue;
-
-        // Calculate area
-        const totalArea = n * cellW * cellH;
-        
-        // Calculate aspect ratio penalty (prefer cells closer to square)
-        const aspectRatio = cellW / cellH;
-        const aspectPenalty = Math.abs(Math.log(aspectRatio)) * 0.3;
-        
-        // Calculate balance penalty (prefer more even distribution across rows)
-        const itemsInLastRow = n % cols || cols;
-        const balancePenalty = (cols - itemsInLastRow) / cols * 0.5;
-        
-        // Combined score: maximize area, minimize penalties
-        const score = totalArea * (1 - aspectPenalty - balancePenalty);
-        
-        // Bonus for matching the preferred column count
-        const preferredBonus = cols === preferredCols ? totalArea * 0.1 : 0;
-        
-        const finalScore = score + preferredBonus;
-        
-        if (finalScore > bestScore) {
-            bestScore = finalScore;
-            bestCols = cols;
-        }
-    }
-
-    return { cols: bestCols, rows: Math.ceil(n / bestCols) };
-}
-
-/**
- * Build a tiling from a manual column count.
- */
-function tilingFromColumns(n: number, cols: number): Tiling {
-    if (n === 0) return { cols: 1, rows: 1 };
-    const clamped = Math.max(1, Math.min(cols, n));
-    return { cols: clamped, rows: Math.ceil(n / clamped) };
-}
-
-/**
- * Build a react-grid-layout layout from a tiling.
- */
-function buildLayout(cameraIds: string[], tiling: Tiling): LayoutItem[] {
-    const n = cameraIds.length;
-    if (n === 0) return [];
-
-    const colSpan = Math.floor(GRID_COLS / tiling.cols);
-
-    return cameraIds.map((id, i) => ({
-        i: id,
-        x: (i % tiling.cols) * colSpan,
-        y: Math.floor(i / tiling.cols),
-        w: colSpan,
-        h: 1,
-        minW: 1,
-        minH: 1,
-    }));
-}
 
 interface CameraViewsGridProps {
     /** null = auto-optimize, number = manual column count */
@@ -144,124 +27,48 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     const { connectedCameraIds } = useServer();
     const { t } = useTranslation();
     const isRecording = useAppSelector(state => state.recording.isRecording);
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [containerWidth, setContainerWidth] = useState<number>(800);
-    const [containerHeight, setContainerHeight] = useState<number>(600);
-
-    // Measure the container's parent to avoid feedback loops
-    useEffect(() => {
-        const el = containerRef.current?.parentElement;
-        if (!el) return;
-
-        const measure = () => {
-            const rect = el.getBoundingClientRect();
-            setContainerWidth(rect.width);
-            setContainerHeight(rect.height);
-        };
-
-        measure();
-        const observer = new ResizeObserver(() => measure());
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-
+    const isLoading = useAppSelector(selectIsLoading);
+    const isAutoApply = useAppSelector(selectAutoApply);
     // Watch camera configs for rotation/resolution changes
-    const connectedCameras = useAppSelector(selectConnectedCameras);
+    const cameras = useAppSelector(selectCameras);
+
+    const sortedCameraIds = useMemo(() => {
+        const indexByCameraId = new Map<string, number>();
+        for (const cam of cameras) {
+            indexByCameraId.set(cam.id, cam.index);
+        }
+        return [...connectedCameraIds].sort((a, b) => {
+            const idxA = indexByCameraId.get(a) ?? Infinity;
+            const idxB = indexByCameraId.get(b) ?? Infinity;
+            return idxA - idxB;
+        });
+    }, [connectedCameraIds, cameras]);
+
     const configFingerprint = useMemo(() => {
-        return connectedCameras
+        return cameras
             .map((cam) => {
                 const cfg = cam.actualConfig;
                 return `${cam.id}:${cfg.rotation}:${cfg.resolution.width}x${cfg.resolution.height}`;
             })
             .join("|");
-    }, [connectedCameras]);
+    }, [cameras]);
 
-    // Compute tiling: manual column count overrides auto-optimal.
-    // Stabilized with a ref to prevent flip-flop.
-    const prevTilingRef = useRef<Tiling>({ cols: 1, rows: 1 });
-    const tiling = useMemo(() => {
-        const candidate = manualColumns !== null
-            ? tilingFromColumns(connectedCameraIds.length, manualColumns)
-            : computeOptimalTiling(connectedCameraIds.length, containerWidth, containerHeight);
-        const prev = prevTilingRef.current;
-        if (candidate.cols === prev.cols && candidate.rows === prev.rows) {
-            return prev;
-        }
-        prevTilingRef.current = candidate;
-        return candidate;
-    }, [connectedCameraIds.length, containerWidth, containerHeight, manualColumns]);
+    const {
+        containerRef,
+        width,
+        layout,
+        gridHandlers,
+        gridConfig,
+    } = useGridLayout({
+        itemIds: sortedCameraIds,
+        margin: [4, 4],
+        manualColumns,
+        resetKey,
+        measureParent: true,
+        extraResetDeps: [configFingerprint],
+    });
 
-    const [layout, setLayout] = useState<LayoutItem[]>(() =>
-        buildLayout(connectedCameraIds, tiling),
-    );
-
-    // Re-tile when cameras, tiling, config, or reset changes
-    useEffect(() => {
-        setLayout(buildLayout(connectedCameraIds, tiling));
-    }, [connectedCameraIds, tiling, resetKey, configFingerprint]);
-
-    // Snapshot layout before drag for swap detection
-    const layoutBeforeDragRef = useRef<LayoutItem[]>(layout);
-
-    const handleDragStart = useCallback(() => {
-        layoutBeforeDragRef.current = layout;
-    }, [layout]);
-
-    const handleDragStop = useCallback((_newLayout: Layout, _oldItem: LayoutItem | null, newItem: LayoutItem | null) => {
-        if (!newItem) return;
-        const preDrag = layoutBeforeDragRef.current;
-        const draggedBefore = preDrag.find((l) => l.i === newItem.i);
-        if (!draggedBefore) return;
-
-        // Check if we landed on another item
-        const swapTarget = preDrag.find((l) => {
-            if (l.i === newItem.i) return false;
-            const overlapX = newItem.x < l.x + l.w && newItem.x + newItem.w > l.x;
-            const overlapY = newItem.y < l.y + l.h && newItem.y + newItem.h > l.y;
-            return overlapX && overlapY;
-        });
-
-        if (swapTarget) {
-            const swapped = preDrag.map((l) => {
-                if (l.i === newItem.i) {
-                    return { ...l, x: swapTarget.x, y: swapTarget.y };
-                }
-                if (l.i === swapTarget.i) {
-                    return { ...l, x: draggedBefore.x, y: draggedBefore.y };
-                }
-                return l;
-            });
-            setLayout(swapped);
-        } else {
-            // Dropped in empty space — clamp to grid bounds
-            const maxX = GRID_COLS - newItem.w;
-            const maxY = tiling.rows - newItem.h;
-            const updated = preDrag.map((l) => {
-                if (l.i === newItem.i) {
-                    return {
-                        ...l,
-                        x: Math.max(0, Math.min(newItem.x, maxX)),
-                        y: Math.max(0, Math.min(newItem.y, maxY)),
-                    };
-                }
-                return l;
-            });
-            setLayout(updated);
-        }
-    }, [tiling.rows]);
-
-    const handleLayoutChange = useCallback((_newLayout: Layout) => {}, []);
-
-    const handleResizeStop = useCallback((newLayout: Layout) => {
-        setLayout([...newLayout]);
-    }, []);
-
-    const rowHeight = useMemo(() => {
-        const totalMargin = (tiling.rows - 1) * MARGIN[1];
-        return Math.max(30, (containerHeight - totalMargin) / tiling.rows);
-    }, [containerHeight, tiling.rows]);
-
-    if (connectedCameraIds.length === 0) {
+    if (sortedCameraIds.length === 0) {
         return (
             <Box
                 ref={containerRef}
@@ -320,40 +127,35 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
             }}
         >
             <ReactGridLayout
-                width={containerWidth}
+                width={width}
                 layout={layout}
-                gridConfig={{
-                    cols: GRID_COLS,
-                    rowHeight,
-                    margin: MARGIN,
-                    containerPadding: [0, 0] as [number, number],
-                }}
+                gridConfig={gridConfig}
                 dragConfig={{ enabled: true }}
                 resizeConfig={{ enabled: true }}
                 compactor={noCompactor}
-                onLayoutChange={handleLayoutChange}
-                onDragStart={handleDragStart}
-                onDragStop={handleDragStop}
-                onResizeStop={handleResizeStop}
+                {...gridHandlers}
             >
-                {connectedCameraIds.map((cameraId) => (
-                    <Box
-                        key={cameraId}
-                        sx={{
-                            overflow: "hidden",
-                            borderRadius: "4px",
-                            border: isRecording
-                                ? "2px solid #ff2020"
-                                : "1px solid rgba(255,255,255,0.15)",
-                            transition: "border 0.3s ease, box-shadow 0.3s ease",
-                            ...(isRecording && {
-                                animation: `${recordingBorderPulse} 3s infinite ease-in-out`,
-                            }),
-                        }}
-                    >
-                        <CameraView cameraId={cameraId} />
-                    </Box>
-                ))}
+                {sortedCameraIds.map((cameraId) => {
+                    const cam = cameras.find(c => c.id === cameraId);
+                    return (
+                        <Box
+                            key={cameraId}
+                            sx={{
+                                overflow: "hidden",
+                                borderRadius: "4px",
+                                border: isRecording
+                                    ? "2px solid #ff2020"
+                                    : "1px solid rgba(255,255,255,0.15)",
+                                transition: "border 0.3s ease, box-shadow 0.3s ease",
+                                ...(isRecording && {
+                                    animation: `${recordingBorderPulse} 3s infinite ease-in-out`,
+                                }),
+                            }}
+                        >
+                            <CameraViewWithOverlay cameraIndex={cam?.index ?? -1} cameraId={cameraId} isLoading={isLoading} isAutoApply={isAutoApply} />
+                        </Box>
+                    );
+                })}
             </ReactGridLayout>
         </Box>
     );

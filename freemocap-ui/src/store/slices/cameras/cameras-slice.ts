@@ -7,7 +7,7 @@ import {
     createDefaultCameraConfig,
     extractConfigSettings,
 } from './cameras-types';
-import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras,} from './cameras-thunks';
+import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras, recommendExposureSent,} from './cameras-thunks';
 import {
     buildPersistedEntry,
     clearPersistedCameraSettings,
@@ -19,7 +19,7 @@ import {
 function persistAllCameraSettings(state: CamerasState): void {
     const settingsMap: PersistedCameraSettingsMap = {};
     for (const camera of state.cameras) {
-        settingsMap[camera.id] = buildPersistedEntry(camera.desiredConfig, camera.selected);
+        settingsMap[camera.id] = buildPersistedEntry(camera.desiredConfig, camera.selected, camera.realtimeEnabled);
     }
     savePersistedCameraSettings(settingsMap);
 }
@@ -28,6 +28,7 @@ const initialState: CamerasState = {
     cameras: [],
     isPaused: false,
     isLoading: false,
+    autoApply: true,
     error: null,
 };
 
@@ -41,6 +42,17 @@ export const cameraSlice = createSlice({
             if (camera) {
                 camera.selected = !camera.selected;
                 camera.desiredConfig.use_this_camera = camera.selected;
+                if (!camera.selected) {
+                    camera.realtimeEnabled = false;
+                }
+            }
+            persistAllCameraSettings(state);
+        },
+
+        cameraRealtimeToggled: (state, action: PayloadAction<string>) => {
+            const camera = state.cameras.find(cam => cam.id === action.payload);
+            if (camera) {
+                camera.realtimeEnabled = !camera.realtimeEnabled;
             }
             persistAllCameraSettings(state);
         },
@@ -85,6 +97,18 @@ export const cameraSlice = createSlice({
             persistAllCameraSettings(state);
         },
 
+        recommendExposureForAll: (state) => {
+            state.cameras.forEach(camera => {
+                camera.desiredConfig = { ...camera.desiredConfig, exposure_mode: 'RECOMMEND' };
+                camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, camera.desiredConfig);
+            });
+            persistAllCameraSettings(state);
+        },
+
+        autoApplyToggled: (state) => {
+            state.autoApply = !state.autoApply;
+        },
+
         savedSettingsCleared: (state) => {
             clearPersistedCameraSettings();
             for (const camera of state.cameras) {
@@ -95,6 +119,7 @@ export const cameraSlice = createSlice({
                 );
                 camera.desiredConfig = defaultConfig;
                 camera.selected = true;
+                camera.realtimeEnabled = true;
                 camera.hasConfigMismatch = !areConfigsEqual(camera.actualConfig, defaultConfig);
             }
         },
@@ -117,6 +142,16 @@ export const cameraSlice = createSlice({
             .addCase(detectCameras.rejected, (state, action) => {
                 state.isLoading = false;
                 state.error = action.error.message || 'Failed to detect cameras';
+            })
+
+            // ========== Recommend Exposure Sent ==========
+            .addCase(recommendExposureSent, (state) => {
+                state.cameras.forEach(camera => {
+                    if (camera.desiredConfig.exposure_mode === 'RECOMMEND') {
+                        camera.desiredConfig = { ...camera.desiredConfig, exposure_mode: 'MANUAL' };
+                    }
+                });
+                persistAllCameraSettings(state);
             })
 
             // ========== Connect Cameras ==========
@@ -165,7 +200,10 @@ export const cameraSlice = createSlice({
 
 export const {
     cameraSelectionToggled,
+    cameraRealtimeToggled,
     cameraDesiredConfigUpdated,
     configCopiedToAll,
+    recommendExposureForAll,
+    autoApplyToggled,
     savedSettingsCleared,
 } = cameraSlice.actions;

@@ -1,15 +1,16 @@
 import React from "react";
-import {Box, Chip, IconButton, Typography, useTheme} from "@mui/material";
+import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from "@mui/material";
 import {TreeItem} from "@mui/x-tree-view/TreeItem";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
-import VideocamIcon from "@mui/icons-material/Videocam";
 import SettingsIcon from "@mui/icons-material/Settings";
+import VideoCameraFrontIcon from "@mui/icons-material/VideoCameraFront";
+import VideoCameraFrontOutlinedIcon from "@mui/icons-material/VideoCameraFrontOutlined";
 import {useTranslation} from "react-i18next";
 
 import {CameraConfigTreeSection} from "./CameraConfigTreeSection";
 import {ROTATION_DEGREE_LABELS, RotationValue, useAppDispatch} from "@/store";
-import {cameraSelectionToggled} from "@/store/slices/cameras/cameras-slice";
+import {cameraRealtimeToggled, cameraSelectionToggled} from "@/store/slices/cameras/cameras-slice";
 import {Camera} from "@/store/slices/cameras/cameras-types";
 
 interface CameraTreeItemProps {
@@ -69,6 +70,11 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpande
         dispatch(cameraSelectionToggled(camera.id));
     };
 
+    const handleToggleRealtime = (e: React.MouseEvent): void => {
+        e.stopPropagation();
+        dispatch(cameraRealtimeToggled(camera.id));
+    };
+
     const getStatusColor = (): string => {
         switch (camera.connectionStatus) {
             case "connected":
@@ -98,21 +104,38 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpande
                         minHeight: 32,
                     }}
                 >
-                    {/* Selection checkbox */}
-                    <IconButton
-                        size="small"
-                        onClick={handleToggleSelection}
-                        sx={{mr: 1, flexShrink: 0}}
-                    >
-                        {camera.selected ? (
-                            <CheckCircleIcon color="info"/>
-                        ) : (
-                            <RadioButtonUncheckedIcon color="info"/>
-                        )}
-                    </IconButton>
+                    {/* Camera group selection */}
+                    <Tooltip title={camera.selected ? "In camera group" : "Not in camera group"} enterDelay={600} disableInteractive>
+                        <IconButton
+                            size="small"
+                            onClick={handleToggleSelection}
+                            sx={{mr: 0.5, flexShrink: 0}}
+                        >
+                            {camera.selected ? (
+                                <CheckCircleIcon color="primary"/>
+                            ) : (
+                                <RadioButtonUncheckedIcon color="disabled"/>
+                            )}
+                        </IconButton>
+                    </Tooltip>
 
-                    {/* Camera icon */}
-                    <VideocamIcon sx={{mr: 1, color: getStatusColor(), flexShrink: 0}}/>
+                    {/* Realtime pipeline toggle */}
+                    <Tooltip title={camera.realtimeEnabled ? "In realtime pipeline" : "Not in realtime pipeline"} enterDelay={600} disableInteractive>
+                        <span>
+                            <IconButton
+                                size="small"
+                                onClick={handleToggleRealtime}
+                                disabled={!camera.selected}
+                                sx={{mr: 1, flexShrink: 0}}
+                            >
+                                {camera.realtimeEnabled ? (
+                                    <VideoCameraFrontIcon color="primary"/>
+                                ) : (
+                                    <VideoCameraFrontOutlinedIcon color="disabled"/>
+                                )}
+                            </IconButton>
+                        </span>
+                    </Tooltip>
 
                     {/* Camera name and config summary container */}
                     <Box sx={{

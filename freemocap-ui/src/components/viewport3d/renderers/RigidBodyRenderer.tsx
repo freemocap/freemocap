@@ -66,6 +66,14 @@ export function RigidBodyRenderer() {
     const xMat = useMemo(() => new MeshStandardMaterial({ color: COLORS.rigidBodyX }), []);
     const yMat = useMemo(() => new MeshStandardMaterial({ color: COLORS.rigidBodyY }), []);
 
+    useEffect(() => () => {
+        shaftGeo.dispose();
+        crossbarGeo.dispose();
+        shaftMat.dispose();
+        xMat.dispose();
+        yMat.dispose();
+    }, [shaftGeo, crossbarGeo, shaftMat, xMat, yMat]);
+
     useEffect(() => {
         return subscribeToRigidBodies((newPoses: Map<string, RigidBodyPose>) => {
             posesRef.current = newPoses;

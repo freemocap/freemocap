@@ -1,26 +1,30 @@
 import React, {useEffect, useMemo, useRef} from "react";
 import {parquetRead} from "hyparquet";
 import type {DecodedArray} from "hyparquet";
-import {Point3d} from "./helpers/viewport3d-types";
 import {
     KeypointsCallback,
+    KeypointsFrame,
     KeypointsSource,
     KeypointsSourceProvider,
 } from "./KeypointsSourceContext";
 import {serverUrls} from "@/constants/server-urls";
+import {VIEWPORT_WORKER} from "./ThreeJsCanvas";
+import {useAppDispatch, useAppSelector} from "@/store";
+import {fetchPlaybackBundle, selectPlaybackBundle} from "@/store/slices/playback-data/playback-data-slice";
+import {calibrationLoadedFromBundle} from "@/store/slices/calibration/calibration-slice";
 
 /**
  * KeypointsSource implementation that reads the recording's long-format
  * `freemocap_data_by_frame.parquet` directly in the browser (via hyparquet),
  * pivots long→wide into per-trajectory Float32Array buffers, and emits
- * per-frame point records in lockstep with the playback slider.
+ * per-frame KeypointsFrame values in lockstep with the playback slider.
  *
  * Design notes:
  *   - Uses parquetRead (columnar API) instead of parquetReadObjects to read column-wise.
  *   - After decode, each trajectory is packed as Float32Array of length
  *     frameCount * K * 3, giving O(1) per-frame indexing.
- *   - Subscribers receive a pre-allocated scratch record whose Point3d slots
- *     are mutated in place each tick (zero GC pressure).
+ *   - Subscribers receive a stable KeypointsFrame whose `scratchInterleaved`
+ *     buffer is mutated in place each tick (zero GC pressure after first frame).
  *   - Driven by `currentFrameRef` from usePlaybackController, polled via our
  *     own rAF loop. React re-renders are not involved in the hot path.
  */
@@ -35,6 +39,7 @@ const TRAJECTORY_PARQUET_VALUE: Record<TrajectoryAlias, string> = {
 const ParquetColumnNames = {
     frame:      "frame",
     keypoint:   "keypoint",
+    model:      "model",
     x:          "x",
     y:          "y",
     z:          "z",
@@ -42,22 +47,25 @@ const ParquetColumnNames = {
 } as const;
 
 interface TrajectoryData {
-    names: string[];
-    buffer: Float32Array;           // length = frameCount * K * 3
+    names: readonly string[];
+    buffer: Float32Array;              // length = frameCount * K * 3 (x, y, z — no vis in parquet)
     frameCount: number;
     keypointCount: number;
-    scratch: Record<string, Point3d>;
+    scratchInterleaved: Float32Array;  // length = K * 4 (x, y, z, vis) — mutated each tick
+    scratchFrame: KeypointsFrame;      // stable reference — interleaved points at scratchInterleaved
     subscribers: Set<KeypointsCallback>;
-    lastEmittedFrame: number;       // -1 means "never emitted"
+    lastEmittedFrame: number;          // -1 means "never emitted"
 }
 
 function emptyTrajectory(): TrajectoryData {
+    const scratchInterleaved = new Float32Array(0);
     return {
         names: [],
         buffer: new Float32Array(0),
         frameCount: 0,
         keypointCount: 0,
-        scratch: {},
+        scratchInterleaved,
+        scratchFrame: { pointNames: [], interleaved: scratchInterleaved },
         subscribers: new Set(),
         lastEmittedFrame: -1,
     };
@@ -92,12 +100,12 @@ function convertBigIntArray(arr: DecodedArray): Float64Array | DecodedArray {
 function concatDecodedArrays(chunks: DecodedArray[]): DecodedArray {
     // First, convert any BigInt arrays to Float64Array
     const converted = chunks.map(c => convertBigIntArray(c));
-    
+
     // Even for a single chunk, check if it was a BigInt array (already converted above)
     if (converted.length === 1) {
         return converted[0];
     }
-    
+
     const total = converted.reduce((s, c) => s + c.length, 0);
     const first = converted[0];
     if (first instanceof Float64Array) {
@@ -124,6 +132,25 @@ function concatDecodedArrays(chunks: DecodedArray[]): DecodedArray {
     return out;
 }
 
+/**
+ * Prefix hand keypoint names with their side so they match the holistic schema's
+ * connection endpoint names. Body and face names are returned unchanged — they
+ * already carry any needed prefix baked into the landmark name itself.
+ *
+ *   mediapipe.right_hand + wrist → right_hand_wrist
+ *   mediapipe.left_hand  + wrist → left_hand_wrist
+ *   mediapipe.body       + nose  → nose
+ */
+function prefixKeypointName(keypoint: string, model: string): string {
+    const dot = model.indexOf(".");
+    if (dot === -1) return keypoint;
+    const aspect = model.slice(dot + 1);
+    if (aspect === "right_hand" || aspect === "left_hand") {
+        return `${aspect}_${keypoint}`;
+    }
+    return keypoint;
+}
+
 function buildTrajectory(
     cols: Record<string, DecodedArray>,
     parquetValue: string,
@@ -132,6 +159,7 @@ function buildTrajectory(
     // Frame column may be Int32Array or Float64Array (if converted from BigInt)
     const frameCol = cols[ParquetColumnNames.frame] as Int32Array | Float64Array;
     const keypointCol = cols[ParquetColumnNames.keypoint] as string[];
+    const modelCol = cols[ParquetColumnNames.model] as string[];
     const xCol = cols[ParquetColumnNames.x] as Float64Array;
     const yCol = cols[ParquetColumnNames.y] as Float64Array;
     const zCol = cols[ParquetColumnNames.z] as Float64Array;
@@ -139,9 +167,14 @@ function buildTrajectory(
     const rowCount = frameCol.length;
 
     // First pass: collect unique keypoint names for this trajectory.
+    // Hand keypoints are prefixed with their side (right_hand_ / left_hand_)
+    // so left and right don't collide in the flat name set and so the names
+    // match the holistic schema's connection endpoint names.
     const nameSet = new Set<string>();
     for (let i = 0; i < rowCount; i++) {
-        if (trajCol[i] === parquetValue) nameSet.add(keypointCol[i]);
+        if (trajCol[i] === parquetValue) {
+            nameSet.add(prefixKeypointName(keypointCol[i], modelCol[i]));
+        }
     }
     if (nameSet.size === 0) return emptyTrajectory();
 
@@ -158,7 +191,7 @@ function buildTrajectory(
         if (trajCol[i] !== parquetValue) continue;
         const f = frameCol[i];
         if (f < 0 || f >= frameCount) continue;
-        const k = nameToIdx.get(keypointCol[i]);
+        const k = nameToIdx.get(prefixKeypointName(keypointCol[i], modelCol[i]));
         if (k === undefined) continue;
         const off = (f * K + k) * 3;
         buffer[off]     = xCol[i];
@@ -166,17 +199,57 @@ function buildTrajectory(
         buffer[off + 2] = zCol[i];
     }
 
-    const scratch: Record<string, Point3d> = {};
-    for (const name of names) scratch[name] = {x: NaN, y: NaN, z: NaN};
+    const scratchInterleaved = new Float32Array(K * 4);
+    const scratchFrame: KeypointsFrame = { pointNames: names, interleaved: scratchInterleaved };
 
     return {
         names,
         buffer,
         frameCount,
         keypointCount: K,
-        scratch,
+        scratchInterleaved,
+        scratchFrame,
         subscribers: new Set(),
         lastEmittedFrame: -1,
+    };
+}
+
+/**
+ * Rewrite sequential face_XXXX names produced by skellyforge's model_info
+ * (face_0000…face_0135) into the non-contiguous MediaPipe contour-index names
+ * from the tracker schema (face_0000, face_0007, face_0010…).  The buffer is
+ * indexed by position, not name, so only the name list changes — per-frame data
+ * stays correct. After this, the schema's face-connection endpoint names match
+ * the trajectory's point names and ConnectionRenderer can draw them.
+ */
+function remapTrajectoryFaceNames(
+    traj: TrajectoryData,
+    contourNames: string[],
+): void {
+    if (traj.frameCount === 0 || contourNames.length === 0) return;
+
+    // Collect current face-name slots sorted by their sequential number.
+    const slots: { idx: number; seq: number }[] = [];
+    const names = traj.names as string[];
+    for (let i = 0; i < names.length; i++) {
+        if (names[i].startsWith("face_")) {
+            const seq = parseInt(names[i].slice(5), 10);
+            if (!Number.isNaN(seq)) slots.push({ idx: i, seq });
+        }
+    }
+    slots.sort((a, b) => a.seq - b.seq);
+
+    // Replace each sequential slot with the matching contour name.
+    const newNames = [...names];
+    for (let i = 0; i < slots.length && i < contourNames.length; i++) {
+        newNames[slots[i].idx] = contourNames[i];
+    }
+
+    // Mutate in-place so existing refs pick up the new names.
+    (traj as { names: readonly string[] }).names = newNames;
+    (traj as { scratchFrame: KeypointsFrame }).scratchFrame = {
+        pointNames: newNames,
+        interleaved: traj.scratchInterleaved,
     };
 }
 
@@ -186,32 +259,86 @@ function updateScratch(traj: TrajectoryData, frame: number): void {
     const clamped = Math.max(0, Math.min(frame, traj.frameCount - 1));
     const base = clamped * K * 3;
     const buf = traj.buffer;
-    const names = traj.names;
-    const scratch = traj.scratch;
+    const scratch = traj.scratchInterleaved;
 
     for (let k = 0; k < K; k++) {
-        const off = base + k * 3;
-        const slot = scratch[names[k]];
-        slot.x = buf[off];
-        slot.y = buf[off + 1];
-        slot.z = buf[off + 2];
+        const srcOff = base + k * 3;
+        const dstOff = k * 4;
+        const x = buf[srcOff];
+        const y = buf[srcOff + 1];
+        const z = buf[srcOff + 2];
+        scratch[dstOff]     = x;
+        scratch[dstOff + 1] = y;
+        scratch[dstOff + 2] = z;
+        scratch[dstOff + 3] = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? 1.0 : 0.0;
     }
 }
 
 function fireSubscribers(traj: TrajectoryData): void {
     for (const cb of traj.subscribers) {
-        cb(traj.scratch);
+        cb(traj.scratchFrame);
     }
 }
 
 export const FileKeypointsSourceProvider: React.FC<{
     recordingId: string | null;
+    recordingParentDirectory?: string | null;
     currentFrameRef: React.RefObject<number>;
     children: React.ReactNode;
-}> = ({recordingId, currentFrameRef, children}) => {
+}> = ({recordingId, recordingParentDirectory, currentFrameRef, children}) => {
 
     const rawRef = useRef<TrajectoryData>(emptyTrajectory());
     const filteredRef = useRef<TrajectoryData>(emptyTrajectory());
+    const faceContourNamesRef = useRef<string[]>([]);
+    const dispatch = useAppDispatch();
+
+    // Fetch the playback bundle (calibration + tracker-schema + status) via
+    // Redux thunk. The `condition` guard prevents duplicate requests when
+    // StrictMode remounts the component.
+    useEffect(() => {
+        if (!recordingId) return;
+        dispatch(fetchPlaybackBundle({
+            recordingId,
+            recordingParentDirectory,
+        }));
+    }, [recordingId, recordingParentDirectory, dispatch]);
+
+    // When the bundle arrives from Redux, forward calibration + tracker-schema
+    // to the viewport3d worker and populate the calibration Redux slice so
+    // ThreeJsCanvas can also consume it.
+    const bundle = useAppSelector(selectPlaybackBundle(recordingId));
+
+    useEffect(() => {
+        if (!bundle) return;
+
+        // Forward tracker schema to the worker so ConnectionRenderer draws skeleton lines.
+        const schemaName: string = (bundle.trackerSchema as any)?.name || "playback_schema";
+        VIEWPORT_WORKER.postMessage({
+            type: "schemaState",
+            data: {
+                activeTrackerId: schemaName,
+                trackerSchemas: {[schemaName]: bundle.trackerSchema},
+            },
+        });
+
+        // Remap sequential face_XXXX names to contour YAML names so schema
+        // connections match the trajectory's point names.
+        const tp: string[] = (bundle.trackerSchema as any)?.tracked_points ?? [];
+        faceContourNamesRef.current = tp.filter((n: string) => n.startsWith("face_"));
+        if (faceContourNamesRef.current.length > 0) {
+            remapTrajectoryFaceNames(rawRef.current, faceContourNamesRef.current);
+            remapTrajectoryFaceNames(filteredRef.current, faceContourNamesRef.current);
+            if (rawRef.current.lastEmittedFrame >= 0) {
+                fireSubscribers(rawRef.current);
+            }
+            if (filteredRef.current.lastEmittedFrame >= 0) {
+                fireSubscribers(filteredRef.current);
+            }
+        }
+
+        // Populate the calibration Redux slice so ThreeJsCanvas consumes it.
+        dispatch(calibrationLoadedFromBundle(bundle.calibration));
+    }, [bundle, dispatch]);
 
     // Load + decode the parquet whenever recordingId changes.
     useEffect(() => {
@@ -226,7 +353,12 @@ export const FileKeypointsSourceProvider: React.FC<{
         (async () => {
             try {
                 const baseUrl = serverUrls.getHttpUrl();
-                const url = `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/parquet`;
+                const params = new URLSearchParams();
+                if (recordingParentDirectory) {
+                    params.set('recording_parent_directory', recordingParentDirectory);
+                }
+                const qs = params.toString();
+                const url = `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/parquet${qs ? `?${qs}` : ''}`;
 
                 const t0 = performance.now();
                 const resp = await fetch(url, {signal: controller.signal});
@@ -276,12 +408,21 @@ export const FileKeypointsSourceProvider: React.FC<{
                 rawRef.current = rawTraj;
                 filteredRef.current = filteredTraj;
 
+                // If the playback-bundle schema arrived before the parquet finished
+                // loading, remap face names now so the first emitted frame already has
+                // correct contour-index names.
+                if (faceContourNamesRef.current.length > 0) {
+                    remapTrajectoryFaceNames(rawTraj, faceContourNamesRef.current);
+                    remapTrajectoryFaceNames(filteredTraj, faceContourNamesRef.current);
+                }
+
                 const tBuilt = performance.now();
                 console.info(
                     `[FileKeypointsSource] parquet ready: ${frameCol.length} rows, ${frameCount} frames, ` +
                     `raw K=${rawTraj.keypointCount}, filtered K=${filteredTraj.keypointCount} ` +
                     `(fetch ${(tFetched - t0) | 0}ms, decode ${(tDecoded - tFetched) | 0}ms, pivot ${(tBuilt - tDecoded) | 0}ms)`
                 );
+
             } catch (err) {
                 if ((err as any)?.name !== "AbortError") {
                     console.warn("[FileKeypointsSource] load error", err);
@@ -290,7 +431,7 @@ export const FileKeypointsSourceProvider: React.FC<{
         })();
 
         return () => controller.abort();
-    }, [recordingId]);
+    }, [recordingId, recordingParentDirectory]);
 
     // rAF loop: poll the controller's frame ref and push updates when the
     // integer frame changes.
@@ -320,18 +461,19 @@ export const FileKeypointsSourceProvider: React.FC<{
         subscribeToKeypointsRaw: (cb: KeypointsCallback) => {
             rawRef.current.subscribers.add(cb);
             if (rawRef.current.frameCount > 0 && rawRef.current.lastEmittedFrame >= 0) {
-                cb(rawRef.current.scratch);
+                cb(rawRef.current.scratchFrame);
             }
             return () => { rawRef.current.subscribers.delete(cb); };
         },
         subscribeToKeypointsFiltered: (cb: KeypointsCallback) => {
             filteredRef.current.subscribers.add(cb);
             if (filteredRef.current.frameCount > 0 && filteredRef.current.lastEmittedFrame >= 0) {
-                cb(filteredRef.current.scratch);
+                cb(filteredRef.current.scratchFrame);
             }
             return () => { filteredRef.current.subscribers.delete(cb); };
         },
-        getLatestKeypointsRaw: () => rawRef.current.scratch,
+        getLatestKeypointsRaw: () =>
+            rawRef.current.frameCount > 0 ? rawRef.current.scratchFrame : null,
     }), []);
 
     return (

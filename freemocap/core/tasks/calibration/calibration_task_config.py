@@ -4,7 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
 
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
-from freemocap.core.tasks.calibration.shared.calibration_models import CharucoBoardDefinition
+from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
 class CalibrationSolverMethod(str, Enum):
@@ -47,10 +48,15 @@ class PosthocCalibrationPipelineConfig(BaseModel):
         description="Align world frame to charuco board plane after calibration.",
     )
 
+    triangulation_config: TriangulationConfig = Field(
+        default_factory=TriangulationConfig,
+        alias="triangulationConfig",
+        description=(
+            "Configuration for the post-calibration triangulator: simple DLT "
+            "vs. subset-ensemble outlier rejection, plus the outlier-rejection knobs."
+        ),
+    )
+
     @property
     def detector_config(self) -> CharucoDetectorConfig:
-        return CharucoDetectorConfig(
-            squares_x=self.charuco_board.squares_x,
-            squares_y=self.charuco_board.squares_y,
-            square_length=self.charuco_board.square_length_mm,
-        )
+        return CharucoDetectorConfig(board=self.charuco_board)

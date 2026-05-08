@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
     Box,
     Checkbox,
@@ -26,9 +26,23 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     const [stats, setStats] = useState<ViewportStats>({ keypointsRaw: 0, keypointsFiltered: 0, rigidBodies: 0, facePoints: 0, connections: 0, cameras: 0 });
     const [expanded, setExpanded] = useState(false);
 
-    // Poll stats from the mutable ref at ~4 Hz (no re-render coupling to the frame loop)
+    // Poll stats from the mutable ref at ~2 Hz. Use functional setState with shallow
+    // equality so we only trigger a re-render when a count actually changed.
     useEffect(() => {
-        const id = setInterval(() => setStats({ ...statsRef.current }), 250);
+        const id = setInterval(() => {
+            setStats(prev => {
+                const next = statsRef.current;
+                if (
+                    prev.keypointsRaw      === next.keypointsRaw &&
+                    prev.keypointsFiltered === next.keypointsFiltered &&
+                    prev.rigidBodies       === next.rigidBodies &&
+                    prev.facePoints        === next.facePoints &&
+                    prev.connections       === next.connections &&
+                    prev.cameras           === next.cameras
+                ) return prev;
+                return { ...next };
+            });
+        }, 500);
         return () => clearInterval(id);
     }, [statsRef]);
 
@@ -96,7 +110,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     );
 }
 
-function VisToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+const VisToggle = memo(function VisToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
     return (
         <FormControlLabel
             sx={{ m: 0, ml: -0.5, "& .MuiTypography-root": { fontSize: "0.7rem" } }}
@@ -104,7 +118,7 @@ function VisToggle({ label, checked, onChange }: { label: string; checked: boole
             label={label}
         />
     );
-}
+});
 
 const btnSx = {
     bgcolor: "rgba(0,0,0,0.6)",

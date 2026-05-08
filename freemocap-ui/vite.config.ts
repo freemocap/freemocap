@@ -20,7 +20,9 @@ export default defineConfig(({command}) => {
             },
         },
         plugins: [
-            react(),
+            // Exclude worker files from React fast-refresh — the @react-refresh
+            // preamble references `window` which doesn't exist in worker scope.
+            react({ exclude: [/\.worker\.[jt]sx?$/] }),
             electron({
                 main: {
                     // Shortcut of `build.lib.entry`
@@ -64,6 +66,11 @@ export default defineConfig(({command}) => {
                 renderer: {},
             }),
         ],
+        worker: {
+            format: "es",
+            // Apply React JSX transform in workers without fast-refresh (no window).
+            plugins: () => [react({ fastRefresh: false })],
+        },
         optimizeDeps: {},
         server: process.env.VSCODE_DEBUG
             ? (() => {

@@ -6,6 +6,7 @@ import dataclasses
 import json
 import logging
 import time
+from queue import Empty
 from typing import TYPE_CHECKING
 
 import msgspec
@@ -26,7 +27,9 @@ from skellycam.core.recorders.framerate_tracker import FramerateTracker, Current
 
 logger = logging.getLogger(__name__)
 
-BACKPRESSURE_WARNING_THRESHOLD: int = 100
+BACKPRESSURE_WARNING_THRESHOLD: int = 300
+# When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
+BACKPRESSURE_RESET_THRESHOLD: int = 300
 
 
 def _msgspec_enc_hook(obj: object) -> object:
@@ -146,10 +149,6 @@ class WebsocketServer:
                 self._logs_relay(),
                 name="WebsocketLogsRelay",
             ),
-            # asyncio.create_task(
-            #     self._posthoc_progress_relay(),
-            #     name="WebsocketPosthocProgressRelay",
-            # ),
             asyncio.create_task(
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
@@ -173,22 +172,42 @@ class WebsocketServer:
     async def _frontend_image_relay(self) -> None:
         logger.info("Starting frontend image payload relay...")
         try:
-            skipped_previous = False
             while self.should_continue:
-                await await_10ms()
-                if not self.last_frame_acknowledged():
-                    skipped_previous = True
-                    backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
-                    if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
-                        logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
-                    continue
+                # Always drain and send posthoc progress — never gate this
+                # behind backpressure. Progress messages are small JSON
+                # payloads that don't cause the queue-growth problem that
+                # backpressure is designed to prevent.
+                posthoc_progress = self._app.posthoc_pipeline_manager.get_progress_updates()
+                posthoc_progress.extend(self._app.posthoc_pipeline_manager.evict_completed())
+                for update_message in posthoc_progress:
+                    await self._send_msgspec_json(update_message)
 
-                if skipped_previous:
-                    skipped_previous = False
-                    continue
+                if not self.last_frame_acknowledged():
+                    backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
+                    if backpressure >= BACKPRESSURE_RESET_THRESHOLD:
+                        # Frontend is too far behind. Reset rather than stalling the aggregator
+                        # indefinitely — a stalled aggregator causes camera-node queues to grow
+                        # without bound and eventually OOM the process.
+                        logger.warning(
+                            f"Frontend ack lag reached {backpressure} frames "
+                            f"(threshold={BACKPRESSURE_RESET_THRESHOLD}) — resetting ack counter"
+                        )
+                        self.last_received_frontend_confirmation = self.last_sent_frame_number
+                        # Fall through to send the next frame.
+                    else:
+                        # Still within tolerable lag — yield and wait for the ack.
+                        await await_10ms()
+                        if backpressure > BACKPRESSURE_WARNING_THRESHOLD and backpressure % BACKPRESSURE_WARNING_THRESHOLD == 0:
+                            logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
+                        continue
+
+                # Ack received — block (off the event loop) until the
+                # aggregator signals a processed frame is ready, then pull
+                # and send immediately
+                await self._app.wait_for_realtime_result(timeout=0.5)
 
                 try:
-                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=self.last_sent_frame_number)
+                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=int(self.last_sent_frame_number))
                 except IndexError:
                     logger.warning("Ring buffer overwrite — resetting to latest frame")
                     self.last_sent_frame_number = -1
@@ -197,6 +216,10 @@ class WebsocketServer:
                 for packet in packets:
                     if packet.frontend_payload is not None:
                         await self._send_msgspec_json(packet.frontend_payload)
+
+                    if packet.keypoints_binary_payload is not None:
+                        async with self._send_lock:
+                            await self.websocket.send_bytes(packet.keypoints_binary_payload)
 
                     if packet.images_bytearray is not None:
                         async with self._send_lock:
@@ -227,7 +250,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - self._last_framerate_send_time >= 0.25:
                     for camera_group_id, server_calc in self._server_framerate_calculators.items():
                         if camera_group_id not in self._display_framerate_trackers:
@@ -255,18 +278,21 @@ class WebsocketServer:
             self._websocket_should_continue = False
             raise
 
-    async def _logs_relay(self, ws_log_level: int = MIN_LOG_LEVEL_FOR_WEBSOCKET):
+    async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
         logger.info("Starting websocket log relay listener...")
         logs_queue = get_websocket_log_queue()
         try:
             while self.should_continue:
-                if not logs_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
+                if self.websocket.client_state == WebSocketState.CONNECTED:
                     try:
                         # Skellycam's WebSocketQueueHandler puts LogRecordModel dicts
                         # into the queue via put_nowait(). On rare occasions a child
                         # process exit (cancel_join_thread) can leave a partial pickle
-                        # in the pipe — the except below handles that gracefully.
+                        # in the pipe — EOFError/OSError handles that gracefully.
                         log_entry: dict = logs_queue.get_nowait()
+                    except Empty:
+                        await await_10ms()
+                        continue
                     except (EOFError, OSError):
                         # Partial write from a dying child process — skip it
                         continue
@@ -289,36 +315,6 @@ class WebsocketServer:
             )
             self._websocket_should_continue = False
             raise
-
-    # async def _posthoc_progress_relay(self) -> None:
-    #     logger.info("Starting posthoc progress relay...")
-    #     try:
-    #         while self.should_continue:
-    #             if not progress_queue.empty() and self.websocket.client_state == WebSocketState.CONNECTED:
-    #                 try:
-    #                     msg = progress_queue.get_nowait()
-    #                 except Exception:
-    #                     continue
-    #                 payload = {
-    #                     "message_type": WebsocketMessageType.POSTHOC_PROGRESS,
-    #                     "pipeline_id": msg.pipeline_id,
-    #                     "phase": msg.phase,
-    #                     "progress_fraction": msg.progress_fraction,
-    #                     "detail": msg.detail,
-    #                 }
-    #                 await self._send_msgspec_json(payload)
-    #             else:
-    #                 await await_10ms()
-    #     except asyncio.CancelledError:
-    #         logger.debug("Posthoc progress relay task cancelled")
-    #     except WebSocketDisconnect:
-    #         logger.info("Client disconnected, ending posthoc progress relay task...")
-    #     except Exception as e:
-    #         logger.exception(
-    #             f"Error in posthoc progress relay: {e.__class__.__name__}: {e}"
-    #         )
-    #         self._websocket_should_continue = False
-    #         raise
 
     async def _client_message_handler(self):
         """Handle messages from the client, including settings messages."""

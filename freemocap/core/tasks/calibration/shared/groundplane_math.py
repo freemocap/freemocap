@@ -92,6 +92,8 @@ def find_still_charuco_frame(
     squares_y: int,
     search_start: int = 0,
     search_range: int = 120,
+    max_allowed_velocity:float=1.0
+
 ) -> int:
     """Find the frame where the charuco board is most stationary.
 
@@ -133,10 +135,9 @@ def find_still_charuco_frame(
 
     max_velocity_per_frame = np.nanmax(velocity[visible], axis=1)
 
-    MAX_ALLOWED_VELOCITY = 1.0
-    if np.nanmin(max_velocity_per_frame) > MAX_ALLOWED_VELOCITY:
+    if np.nanmin(max_velocity_per_frame) > max_allowed_velocity:
         raise CharucoVelocityError(
-            f"All frames have ChArUco corner velocity > {MAX_ALLOWED_VELOCITY:.2f} — "
+            f"All frames have ChArUco corner velocity > {max_allowed_velocity:.2f} — "
             f"check that the board is stationary."
         )
 

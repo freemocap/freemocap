@@ -18,6 +18,9 @@ export type MenuAction =
     | 'start-recording'
     | 'stop-recording'
     | 'open-recording-folder'
+    | 'show-pipeline-progress'
+    | 'load-test-data'
+    | 'clear-active-recording'
     | 'toggle-fullscreen'
     | 'toggle-locale'
     | 'check-for-updates'
@@ -34,6 +37,9 @@ export interface MenuLabels {
     menuView: string;
     menuCamera: string;
     menuRecording: string;
+    menuData: string;
+    menuLoadTestData: string;
+    menuClearActiveRecording: string;
     menuHelp: string;
     menuDetectCameras: string;
     menuConnectCameras: string;
@@ -51,6 +57,7 @@ export interface MenuLabels {
     menuAbout: string;
     menuCheckForUpdates: string;
     menuPlayback: string;
+    menuShowPipelineProgress: string;
     // Keys reused from the existing i18n
     home: string;
     cameras: string;
@@ -66,6 +73,9 @@ const DEFAULT_LABELS: MenuLabels = {
     menuView: 'View',
     menuCamera: 'Camera',
     menuRecording: 'Recording',
+    menuData: 'Data',
+    menuLoadTestData: 'Load Test Data',
+    menuClearActiveRecording: 'Clear Active Recording',
     menuHelp: 'Help',
     menuDetectCameras: 'Detect Cameras',
     menuConnectCameras: 'Connect Cameras',
@@ -83,6 +93,7 @@ const DEFAULT_LABELS: MenuLabels = {
     menuAbout: 'About FreeMoCap',
     menuCheckForUpdates: 'Check for Updates…',
     menuPlayback: 'Playback',
+    menuShowPipelineProgress: 'Show Pipeline Progress',
     home: 'Home',
     cameras: 'Cameras',
     settings: 'Settings',
@@ -239,6 +250,28 @@ function buildRecordingMenu(t: MenuLabels): MenuItemConstructorOptions {
                 label: t.menuOpenRecordingFolder,
                 click: () => sendMenuAction('open-recording-folder'),
             },
+            { type: 'separator' },
+            {
+                label: t.menuShowPipelineProgress,
+                click: () => sendMenuAction('show-pipeline-progress'),
+            },
+        ],
+    };
+}
+
+function buildDataMenu(t: MenuLabels): MenuItemConstructorOptions {
+    return {
+        label: t.menuData,
+        submenu: [
+            {
+                label: t.menuLoadTestData,
+                accelerator: 'CmdOrCtrl+T',
+                click: () => sendMenuAction('load-test-data'),
+            },
+            {
+                label: t.menuClearActiveRecording,
+                click: () => sendMenuAction('clear-active-recording'),
+            },
         ],
     };
 }
@@ -326,6 +359,7 @@ export function buildApplicationMenu(params: MenuBuildParams = {}): void {
     template.push(buildViewMenu(t));
     template.push(buildCameraMenu(t));
     template.push(buildRecordingMenu(t));
+    template.push(buildDataMenu(t));
 
     // macOS window menu
     if (isMac) {

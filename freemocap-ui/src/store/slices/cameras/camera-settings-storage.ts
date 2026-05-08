@@ -5,6 +5,7 @@ const STORAGE_KEY = 'freemocap-camera-settings';
 // What we persist per camera: the user-tunable settings + selection state
 export interface PersistedCameraSettings {
     selected: boolean;
+    realtimeEnabled: boolean;
     desiredConfig: Partial<CameraConfig>;
 }
 
@@ -40,9 +41,11 @@ export function clearPersistedCameraSettings(): void {
 export function buildPersistedEntry(
     desiredConfig: CameraConfig,
     selected: boolean,
+    realtimeEnabled: boolean,
 ): PersistedCameraSettings {
     return {
         selected,
+        realtimeEnabled,
         desiredConfig: extractConfigSettings(desiredConfig),
     };
 }

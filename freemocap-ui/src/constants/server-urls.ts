@@ -51,6 +51,9 @@ class ServerUrls {
             updateConfigs: `${baseUrl}/skellycam/camera/update`,
             pauseUnpauseCameras: `${baseUrl}/skellycam/camera/group/all/pause_unpause`,
             detectMicrophones: `${baseUrl}/skellycam/camera/microphone/detect`,
+            // Recording endpoints
+            startRecording: `${baseUrl}/skellycam/camera/group/all/record/start`,
+            stopRecording: `${baseUrl}/skellycam/camera/group/all/record/stop`,
 
             // Playback endpoints
             playbackRecordings: `${baseUrl}/freemocap/playback/recordings`,
@@ -64,10 +67,9 @@ class ServerUrls {
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/videos/${encodeURIComponent(videoId)}/timestamps`,
             playbackRecordingStatus: (recordingId: string) =>
                 `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/status`,
+            playbackBundle: (recordingId: string) =>
+                `${baseUrl}/freemocap/playback/${encodeURIComponent(recordingId)}/bundle`,
 
-            // Recording endpoints
-            startRecording: `${baseUrl}/freemocap/camera/group/all/record/start`,
-            stopRecording: `${baseUrl}/freemocap/camera/group/all/record/stop`,
 
             // Realtime pipeline endpoints
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
@@ -82,6 +84,10 @@ class ServerUrls {
             mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
+
+            // Posthoc pipeline control
+            stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,
+            stopAllPipelines: `${baseUrl}/freemocap/posthoc/pipeline`,
 
             // Blender endpoints
             blenderDetect: `${baseUrl}/freemocap/blender/detect`,

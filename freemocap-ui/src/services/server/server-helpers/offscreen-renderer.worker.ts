@@ -10,6 +10,15 @@ let stats = {
     totalRenderTime: 0
 };
 
+let renderLoopScheduled = false;
+
+function scheduleRenderLoop() {
+    if (!renderLoopScheduled) {
+        renderLoopScheduled = true;
+        requestAnimationFrame(renderLoop);
+    }
+}
+
 self.onmessage = (e) => {
     const { type } = e.data;
     
@@ -33,10 +42,7 @@ function initCanvas(data) {
     
     // Use ImageBitmapRenderingContext - fastest for bitmap streaming
     ctx = offscreenCanvas.getContext('bitmaprenderer');
-    
-    // Start render loop
-    renderLoop();
-    
+
     self.postMessage({ type: 'initialized' });
 }
 
@@ -64,9 +70,13 @@ function handleFrame(data) {
         stats.framesDropped++;
     }
     pendingFrame = bitmap;
+
+    // Wake up the render loop if it is idle.
+    scheduleRenderLoop();
 }
 
 function renderLoop() {
+    renderLoopScheduled = false;
     const startTime = performance.now();
     
     if (pendingFrame && !isRendering) {
@@ -92,9 +102,11 @@ function renderLoop() {
         
         isRendering = false;
         lastRenderTime = performance.now();
+
+        // If another frame arrived while we were rendering, keep going.
+        if (pendingFrame) {
+            scheduleRenderLoop();
+        }
     }
-    
-    // Use requestAnimationFrame in worker for smooth rendering
-    requestAnimationFrame(renderLoop);
 }
 `;

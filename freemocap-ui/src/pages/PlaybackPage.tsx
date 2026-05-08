@@ -12,38 +12,30 @@ import {usePlaybackController} from '@/components/playback/usePlaybackController
 import {usePlaybackContext} from '@/components/playback/PlaybackContext';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
-import {useLocation, useNavigate} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
-import {useAppDispatch} from "@/store";
-import {loadCalibrationForRecording} from "@/store/slices/calibration/calibration-thunks";
+import {useAppSelector} from "@/store";
+import {
+    selectActiveRecordingBaseDirectory,
+    selectActiveRecordingFullPath,
+    selectActiveRecordingName,
+} from "@/store/slices/active-recording/active-recording-slice";
 
 const PlaybackPage: React.FC = () => {
     const theme = useTheme();
     const {t} = useTranslation();
     const {api} = useElectronIPC();
-    const location = useLocation();
     const navigate = useNavigate();
     const isDark = theme.palette.mode === 'dark';
-    const locationState = location.state as { loadRecordingPath?: string } | null;
 
     const ctx = usePlaybackContext();
-    const dispatch = useAppDispatch();
-
-    // Pass initialLoadPath from route state to the context
-    useEffect(() => {
-        const path = locationState?.loadRecordingPath ?? null;
-        if (path) ctx?.setInitialLoadPath(path);
-    }, [locationState?.loadRecordingPath]);
-
-    const recordingPathForCalibration = ctx?.recordingPath ?? null;
-    useEffect(() => {
-        if (!recordingPathForCalibration) return;
-        dispatch(loadCalibrationForRecording(recordingPathForCalibration));
-    }, [dispatch, recordingPathForCalibration]);
+    const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
+    const activeRecordingName = useAppSelector(selectActiveRecordingName);
+    const activeRecordingBaseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
 
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
@@ -55,10 +47,13 @@ const PlaybackPage: React.FC = () => {
     const isHorizontal = settings.layoutDirection === 'horizontal';
 
     const loadedVideos = ctx?.loadedVideos ?? [];
-    const recordingPath = ctx?.recordingPath ?? null;
+    const recordingPath = activeRecordingPath;
     const recordingFps = ctx?.recordingFps;
     const frameTimestamps = ctx?.frameTimestamps ?? null;
     const onFrameChange = ctx?.onFrameChange;
+    const availableSources = ctx?.availableSources ?? null;
+    const selectedSource = ctx?.selectedSource ?? null;
+    const setSelectedSource = ctx?.setSelectedSource;
 
     const handleOpenFolder = useCallback(async () => {
         if (!recordingPath) return;
@@ -311,7 +306,8 @@ const PlaybackPage: React.FC = () => {
                                     <Panel defaultSize={40} minSize={10}>
                                         <Box sx={{height: '100%'}}>
                                             <FileKeypointsSourceProvider
-                                                recordingId={recordingPath}
+                                                recordingId={activeRecordingName}
+                                                recordingParentDirectory={activeRecordingBaseDirectory}
                                                 currentFrameRef={controller.currentFrameRef}
                                             >
                                                 <ThreeJsCanvas/>
@@ -350,6 +346,9 @@ const PlaybackPage: React.FC = () => {
                             onSeekToEnd={controller.handleSeekToEnd}
                             isLooping={controller.isLooping}
                             onToggleLoop={controller.handleToggleLoop}
+                            availableSources={availableSources}
+                            selectedSource={selectedSource}
+                            onSourceChange={setSelectedSource}
                         />
                     </Box>
                 </ErrorBoundary>

@@ -64,7 +64,7 @@ class RealtimeFilterConfig(BaseModel):
 
     # One Euro Filter params
     # min_cutoff: minimum cutoff frequency (Hz). Lower = more smoothing, higher = more responsive.
-    min_cutoff: float = 0.005
+    min_cutoff: float = 0.01#0.005
     # beta: speed coefficient. Higher = less lag during fast motion, but more jitter at rest.
     beta: float = 0.3
     # d_cutoff: cutoff frequency for the derivative (speed estimate) filter.

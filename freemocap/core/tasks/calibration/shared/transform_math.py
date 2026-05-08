@@ -15,11 +15,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.cluster.vq import whiten
+from skellycam.core.types.type_overloads import CameraIdString
 
 logger = logging.getLogger(__name__)
 
 
-def make_M(rvec: NDArray[np.float64], tvec: NDArray[np.float64]) -> NDArray[np.float64]:
+def build_transformation_matrix(rvec: NDArray[np.float64], tvec: NDArray[np.float64]) -> NDArray[np.float64]:
     """Build a 4x4 rigid transformation matrix from a Rodrigues rotation vector and translation.
 
     Args:
@@ -123,7 +124,7 @@ def mean_transform(matrices: list[NDArray[np.float64]]) -> NDArray[np.float64]:
     if np.any(np.isnan(mean_tvec)):
         raise ValueError(f"NaN in mean tvec: {mean_tvec}")
 
-    return make_M(mean_rvec, mean_tvec)
+    return build_transformation_matrix(mean_rvec, mean_tvec)
 
 
 def mean_transform_robust(
@@ -227,34 +228,33 @@ def robust_average_transforms(transforms: list[NDArray[np.float64]]) -> NDArray[
 
 
 def build_maximum_spanning_tree(
-    connection_counts: dict[tuple[int, int], int],
+    connection_counts: dict[tuple[CameraIdString, CameraIdString], int],
     n_nodes: int,
-    node_labels: list[str] | None = None,
-) -> dict[int, list[int]]:
+    node_ids: list[str] ,
+) -> dict[CameraIdString, list[CameraIdString]]:
     """Build a maximum spanning tree from weighted edges via greedy Kruskal.
 
     Args:
         connection_counts: Mapping of (node_a, node_b) → weight for all pairs
             (both directions, i.e. (a,b) and (b,a)).
         n_nodes: Total number of nodes.
-        node_labels: Human-readable labels for error messages.
+        node_ids: Human-readable labels for error messages.
 
     Returns:
-        Adjacency list representation of the spanning tree.
+        Adjacency list representation of the spanning tree
 
     Raises:
         ValueError: If the graph cannot be connected.
     """
-    if node_labels is None:
-        node_labels = [str(i) for i in range(n_nodes)]
 
-    components = {i: i for i in range(n_nodes)}
+
+    components = {node_id: node_id for node_id in node_ids}
     edges = set(connection_counts.items())
-    graph: dict[int, list[int]] = defaultdict(list)
+    graph: dict[CameraIdString, list[CameraIdString]] = defaultdict(list)
 
     for _ in range(n_nodes - 1):
         if len(edges) == 0:
-            comp_map = {node_labels[k]: v for k, v in components.items()}
+            comp_map = {node_ids[k]: v for k, v in components.items()}
             raise ValueError(
                 f"Cannot build connected calibration graph. "
                 f"Some cameras have no shared board observations. "
@@ -280,9 +280,9 @@ def build_maximum_spanning_tree(
 
 
 def find_spanning_tree_pairs(
-    graph: dict[int, list[int]],
-    root: int = 0,
-) -> list[tuple[int, int]]:
+    graph: dict[CameraIdString, list[CameraIdString]],
+    root: CameraIdString|None = None,
+) -> list[tuple[CameraIdString, CameraIdString]]:
     """BFS from root to produce (parent, child) pairs for the spanning tree.
 
     Args:
@@ -292,9 +292,11 @@ def find_spanning_tree_pairs(
     Returns:
         List of (parent, child) tuples in BFS order.
     """
-    pairs: list[tuple[int, int]] = []
-    visited: set[int] = set()
-    q: queue.Queue[int] = queue.Queue()
+    if root is None:
+        root = list(graph.keys())[0]
+    pairs: list[tuple[CameraIdString, CameraIdString]] = []
+    visited: set[CameraIdString] = set()
+    q: queue.Queue[CameraIdString] = queue.Queue()
     q.put(root)
     visited.add(root)
 

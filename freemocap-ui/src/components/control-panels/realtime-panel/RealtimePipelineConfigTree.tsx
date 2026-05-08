@@ -240,6 +240,9 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     </Box>
                 </RealtimePipelineStageTreeItem>
             </RealtimePipelineStageTreeItem>
+
         </SimpleTreeView>
-    );
+
+)
+    ;
 };

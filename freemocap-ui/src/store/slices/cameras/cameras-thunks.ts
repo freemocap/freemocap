@@ -1,5 +1,5 @@
 // cameras-thunks.ts
-import {createAsyncThunk} from '@reduxjs/toolkit';
+import {createAction, createAsyncThunk} from '@reduxjs/toolkit';
 import {RootState} from '../../types';
 import {serverUrls} from '@/services';
 import {
@@ -17,6 +17,11 @@ import {
     PersistedCameraSettingsMap,
     savePersistedCameraSettings,
 } from './camera-settings-storage';
+
+// Dispatched before a connect request that includes RECOMMEND mode cameras.
+// Handled by the slice to optimistically flip RECOMMEND → MANUAL so the UI
+// clears immediately and the listener doesn't re-trigger during the long request.
+export const recommendExposureSent = createAction('cameras/recommendExposureSent');
 
 export const detectCameras = createAsyncThunk<
     Camera[],
@@ -48,9 +53,10 @@ export const detectCameras = createAsyncThunk<
             // Storage was corrupted and has been cleared — proceed with defaults
         }
 
-        const detectedIds = new Set(data.cameras.map(c => c.index.toString()));
+        const detectedIds = new Set(data.cameras.map(c => c.camera_id));
 
-        // Prune persisted entries for cameras that are no longer detected
+        // Prune persisted entries for cameras that are no longer detected.
+
         const prunedPersisted: PersistedCameraSettingsMap = {};
         for (const [id, settings] of Object.entries(persisted)) {
             if (detectedIds.has(id)) {
@@ -60,7 +66,7 @@ export const detectCameras = createAsyncThunk<
         savePersistedCameraSettings(prunedPersisted);
 
         return data.cameras.map((serverCamera): Camera => {
-            const cameraId = serverCamera.index.toString();
+            const cameraId = serverCamera.camera_id;
             const existing = existingCameras.find(cam => cam.id === cameraId);
             const saved = prunedPersisted[cameraId];
 
@@ -78,6 +84,10 @@ export const detectCameras = createAsyncThunk<
                 ?? saved?.selected
                 ?? true;
 
+            const realtimeEnabled: boolean = existing?.realtimeEnabled
+                ?? saved?.realtimeEnabled
+                ?? true;
+
             return {
                 id: cameraId,
                 name: serverCamera.name,
@@ -87,6 +97,7 @@ export const detectCameras = createAsyncThunk<
                 hasConfigMismatch: existing?.hasConfigMismatch ?? false,
                 connectionStatus: 'available',
                 selected,
+                realtimeEnabled,
                 deviceInfo: {
                     vendorId: serverCamera.vendor_id,
                     productId: serverCamera.product_id,
@@ -103,7 +114,7 @@ export const camerasConnectOrUpdate = createAsyncThunk<
     { state: RootState }
 >(
     'cameras/connect',
-    async (_, { getState }) => {
+    async (_, { getState, dispatch }) => {
         const state = getState();
         const cameraConfigs = selectSelectedCameraConfigs(state);
 
@@ -111,13 +122,33 @@ export const camerasConnectOrUpdate = createAsyncThunk<
             throw new Error('No cameras selected for connection');
         }
 
+        const hasRecommend = Object.values(cameraConfigs).some(
+            c => c.exposure_mode === 'RECOMMEND'
+        );
+
         const request: CamerasConnectOrUpdateRequest = { camera_configs: cameraConfigs };
 
-        const response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(request),
-        });
+        // Optimistically flip RECOMMEND → MANUAL before the request goes out so
+        // the UI clears immediately and the listener won't queue another call.
+        if (hasRecommend) {
+            dispatch(recommendExposureSent());
+        }
+
+        // RECOMMEND triggers a slow backend algorithm; give it enough time.
+        const timeoutMs = hasRecommend ? 60_000 : 3_000;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        let response: Response;
+        try {
+            response = await fetch(serverUrls.endpoints.camerasConnectOrUpdate, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(request),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeout);
+        }
 
         if (!response.ok) {
             const error = await response.json();

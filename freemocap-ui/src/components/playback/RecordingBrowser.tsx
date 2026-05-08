@@ -2,7 +2,9 @@
  * RecordingBrowser — lists available recording sessions from the server,
  * with search filtering, multi-field sorting, and rich per-recording metadata.
  *
- * Standalone component: only depends on MUI + server URL helper.
+ * Uses a Redux-cached batch response (fetchAllRecordings) so expanding a row
+ * doesn't trigger individual HTTP requests. The cache is populated on app
+ * startup and refreshed when the user navigates to the recordings tab.
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {
@@ -38,26 +40,29 @@ import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
 import {serverUrls} from '@/constants/server-urls';
 import {useTranslation} from 'react-i18next';
-import {RecordingStatusSummary} from '@/types/recording-status';
 import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
 import {useRecordingStatus} from '@/hooks/useRecordingStatus';
+import {useAppDispatch, useAppSelector} from '@/store';
+import {
+    activeRecordingSet,
+    splitParentAndName,
+} from '@/store/slices/active-recording/active-recording-slice';
+import {
+    detectLayoutPreset,
+    listDetectedLegacyMarkers,
+} from '@/store/slices/active-recording/recording-structure';
+import {
+    fetchAllRecordings,
+    type RecordingListEntry,
+} from '@/store/slices/recording-status/recording-status-thunks';
+import {
+    selectRecordingsList,
+    selectRecordingsFetchedAt,
+    selectRecordingsIsLoading,
+} from '@/store/slices/recording-status/recording-status-slice';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Shape returned by GET /freemocap/playback/recordings */
-interface RecordingEntry {
-    name: string;
-    path: string;
-    video_count: number;
-    total_size_bytes?: number;
-    created_timestamp?: string;
-    total_frames?: number;
-    duration_seconds?: number;
-    fps?: number;
-    status_summary?: RecordingStatusSummary;
-}
+/** Re-exported for PlaybackContext / PlaybackPage consumers. */
+export type RecordingEntry = RecordingListEntry;
 
 /** Shape passed up to the parent when a recording is loaded */
 export interface LoadedVideo {
@@ -68,9 +73,13 @@ export interface LoadedVideo {
 }
 
 interface RecordingBrowserProps {
-    onRecordingLoaded: (videos: LoadedVideo[], recordingPath: string, recordingFps?: number) => void;
-    /** If set, automatically load this recording path on mount. */
-    initialLoadPath?: string | null;
+    onRecordingLoaded: (
+        videos: LoadedVideo[],
+        recordingPath: string,
+        recordingFps?: number,
+        sources?: Record<string, { available: boolean; valid: boolean; video_count: number; videos: LoadedVideo[] }>,
+        preferred?: string,
+    ) => void;
     /** Name/path of the recording currently loaded into the Playback view — highlighted in the list. */
     activeRecordingPath?: string | null;
 }
@@ -206,14 +215,17 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
 // Component
 // ---------------------------------------------------------------------------
 
-export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, initialLoadPath, activeRecordingPath }) => {
+export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, activeRecordingPath }) => {
     const theme = useTheme();
     const { t } = useTranslation();
     const isDark = theme.palette.mode === 'dark';
+    const dispatch = useAppDispatch();
 
-    // Data state
-    const [recordings, setRecordings] = useState<RecordingEntry[]>([]);
-    const [isLoadingList, setIsLoadingList] = useState(false);
+    // Data from Redux cache (prefetched on app startup)
+    const recordings = useAppSelector(selectRecordingsList);
+    const recordingsFetchedAt = useAppSelector(selectRecordingsFetchedAt);
+    const isLoadingList = useAppSelector(selectRecordingsIsLoading);
+
     const [isLoadingRecording, setIsLoadingRecording] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loadingPath, setLoadingPath] = useState<string | null>(null);
@@ -227,28 +239,26 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
     // -----------------------------------------------------------------------
-    // Fetch the list of recordings from the server
+    // Fetch the list of recordings from the server (cache-aware)
     // -----------------------------------------------------------------------
-    const fetchRecordings = useCallback(async () => {
-        setIsLoadingList(true);
-        setError(null);
+    const fetchRecordings = useCallback(async (force = false) => {
+        const MAX_CACHE_AGE_MS = 30_000;
+        if (!force && recordingsFetchedAt && Date.now() - recordingsFetchedAt < MAX_CACHE_AGE_MS) {
+            return;
+        }
         try {
-            const response = await fetch(serverUrls.endpoints.playbackRecordings);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch recordings: ${response.statusText}`);
-            }
-            const data: RecordingEntry[] = await response.json();
-            setRecordings(data);
+            await dispatch(fetchAllRecordings()).unwrap();
         } catch (e) {
             setError(e instanceof Error ? e.message : t('failedToFetch'));
-        } finally {
-            setIsLoadingList(false);
         }
-    }, []);
+    }, [dispatch, recordingsFetchedAt]);
 
     useEffect(() => {
-        fetchRecordings();
-    }, [fetchRecordings]);
+        // Fetch on mount if cache is empty (belt-and-suspenders with AppContent prefetch)
+        if (recordings.length === 0) {
+            fetchRecordings();
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // -----------------------------------------------------------------------
     // Apply filter + sort
@@ -276,11 +286,18 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
             setError(null);
 
             try {
-                // Determine recording ID (name)
+                // Determine recording ID (name) and parent directory
                 const rec = recordings.find((r) => r.path === recordingPath);
                 const recName = rec ? rec.name : recordingPath.split(/[\\/]/).pop() || recordingPath;
+                const parsed = rec?.path ? splitParentAndName(rec.path) : null;
+                const parentDir = parsed?.baseDirectory;
 
-                const response = await fetch(serverUrls.endpoints.playbackVideos(recName));
+                const videosUrl = serverUrls.endpoints.playbackVideos(recName);
+                const url = parentDir
+                    ? `${videosUrl}?recording_parent_directory=${encodeURIComponent(parentDir)}`
+                    : videosUrl;
+
+                const response = await fetch(url);
 
                 if (!response.ok) {
                     const detail = await response
@@ -292,24 +309,61 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                 const data = await response.json();
                 const baseUrl = serverUrls.getHttpUrl();
 
-                const videos: LoadedVideo[] = data.map(
-                    (v: {
-                        video_id: string;
-                        filename: string;
-                        stream_url: string;
-                        size_bytes: number;
-                    }) => ({
-                        videoId: v.video_id,
-                        filename: v.filename,
-                        streamUrl: `${baseUrl}${v.stream_url}`,
-                        sizeBytes: v.size_bytes,
-                    }),
-                );
+                let videos: LoadedVideo[];
+                let sources: Record<string, {available: boolean; valid: boolean; video_count: number; videos: LoadedVideo[]}> | undefined;
+                let preferred: string | undefined;
+
+                // New structured response: { preferred_source, sources: { annotated, synchronized } }
+                if (data.sources) {
+                    sources = {};
+                    for (const [key, src] of Object.entries(data.sources) as [string, any][]) {
+                        sources[key] = {
+                            available: src.available,
+                            valid: src.valid,
+                            video_count: src.video_count,
+                            videos: (src.videos || []).map((v: any) => ({
+                                videoId: v.video_id,
+                                filename: v.filename,
+                                streamUrl: `${baseUrl}${v.stream_url}`,
+                                sizeBytes: v.size_bytes,
+                            })),
+                        };
+                    }
+                    const resolvedPreferred: string = data.preferred_source || 'synchronized';
+                    preferred = resolvedPreferred;
+                    videos = sources[resolvedPreferred]?.videos ?? [];
+                } else {
+                    // Fallback: old flat-array response
+                    videos = data.map(
+                        (v: {
+                            video_id: string;
+                            filename: string;
+                            stream_url: string;
+                            size_bytes: number;
+                        }) => ({
+                            videoId: v.video_id,
+                            filename: v.filename,
+                            streamUrl: `${baseUrl}${v.stream_url}`,
+                            sizeBytes: v.size_bytes,
+                        }),
+                    );
+                }
 
                 const recFps = rec?.fps ?? undefined;
 
-                // Send recName as the recording path to identify it successfully in playbackpage
-                onRecordingLoaded(videos, recName, recFps);
+                // Promote this recording to the app-wide active recording.
+                const layoutPreset = rec?.layout_validation
+                    ? detectLayoutPreset(rec.layout_validation)
+                    : undefined;
+                dispatch(activeRecordingSet({
+                    recordingName: parsed?.recordingName ?? recName,
+                    baseDirectory: parsed?.baseDirectory,
+                    origin: 'browsed',
+                    layoutPreset,
+                }));
+
+                // Context callback is view-model only (loadedVideos/fps/sources).
+                onRecordingLoaded(videos, recName, recFps, sources, preferred);
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Failed to load recording');
             } finally {
@@ -317,17 +371,8 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                 setLoadingPath(null);
             }
         },
-        [onRecordingLoaded, recordings],
+        [onRecordingLoaded, recordings, dispatch],
     );
-
-    // Auto-load a recording if initialLoadPath is provided
-    const [didAutoLoad, setDidAutoLoad] = useState(false);
-    useEffect(() => {
-        if (initialLoadPath && !didAutoLoad) {
-            setDidAutoLoad(true);
-            loadRecording(initialLoadPath);
-        }
-    }, [initialLoadPath, didAutoLoad, loadRecording]);
 
     const handleLoadManualPath = useCallback(() => {
         const trimmed = manualPath.trim();
@@ -528,7 +573,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                     <Button
                         size="small"
                         startIcon={<RefreshIcon />}
-                        onClick={fetchRecordings}
+                        onClick={() => fetchRecordings(true)}
                         disabled={isLoadingList}
                         sx={{ color: isDark ? '#b3b9c6' : undefined }}
                     >
@@ -619,6 +664,14 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
         const stagesComplete = summary?.stages_complete ?? 0;
         const stagesTotal = summary?.stages_total ?? 0;
 
+        const layoutPreset = rec.layout_validation
+            ? detectLayoutPreset(rec.layout_validation)
+            : 'canonical';
+        const isLegacyLayout = layoutPreset === 'legacy_v1';
+        const legacyMarkers = rec.layout_validation
+            ? listDetectedLegacyMarkers(rec.layout_validation)
+            : [];
+
         const toggleExpand = (e: React.MouseEvent): void => {
             e.stopPropagation();
             setExpanded((v) => !v);
@@ -696,6 +749,37 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                         '& .MuiChip-label': {px: 0.75},
                                     }}
                                 />
+                            )}
+                            {isLegacyLayout && (
+                                <Tooltip
+                                    title={
+                                        <Box sx={{fontFamily: MONO_FONT, fontSize: '0.7rem'}}>
+                                            <div>Legacy folder layout (legacy_v1)</div>
+                                            {legacyMarkers.length > 0 && (
+                                                <ul style={{margin: '4px 0 0 16px', padding: 0}}>
+                                                    {legacyMarkers.map((marker) => (
+                                                        <li key={marker}>{marker}</li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </Box>
+                                    }
+                                    arrow
+                                >
+                                    <Chip
+                                        size="small"
+                                        label="Legacy"
+                                        sx={{
+                                            height: 18,
+                                            fontSize: '0.65rem',
+                                            fontFamily: MONO_FONT,
+                                            backgroundColor: isDark ? 'rgba(255,167,38,0.18)' : 'rgba(255,167,38,0.15)',
+                                            color: isDark ? '#ffb74d' : '#e65100',
+                                            border: `1px solid ${isDark ? 'rgba(255,167,38,0.5)' : 'rgba(230,81,0,0.4)'}`,
+                                            '& .MuiChip-label': {px: 0.75},
+                                        }}
+                                    />
+                                </Tooltip>
                             )}
                         </Box>
                     }

@@ -30,6 +30,7 @@ export const VersionChip: React.FC<VersionChipProps> = ({ variant = 'full' }) =>
 
     // Brief success state on the chip itself
     const [showSuccess, setShowSuccess] = useState(false);
+    const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => {
         const prev = prevStatusRef.current;
@@ -41,7 +42,8 @@ export const VersionChip: React.FC<VersionChipProps> = ({ variant = 'full' }) =>
         if (status === 'up-to-date') {
             setSnackbar({ open: true, severity: 'success', message: t('upToDate') });
             setShowSuccess(true);
-            setTimeout(() => setShowSuccess(false), 3000);
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+            successTimerRef.current = setTimeout(() => setShowSuccess(false), 3000);
         } else if (status === 'available') {
             setSnackbar({
                 open: true,
@@ -55,6 +57,10 @@ export const VersionChip: React.FC<VersionChipProps> = ({ variant = 'full' }) =>
                 message: errorMessage ? `${t('updateError')}: ${errorMessage}` : t('updateError'),
             });
         }
+
+        return () => {
+            if (successTimerRef.current) clearTimeout(successTimerRef.current);
+        };
     }, [status, updateVersion, errorMessage, t]);
 
     if (!version) return null;

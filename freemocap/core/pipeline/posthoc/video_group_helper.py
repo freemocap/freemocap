@@ -3,6 +3,8 @@ Simplified VideoHelper with OpenCV best practices.
 Includes smart frame reading and caching.
 """
 
+import json
+import logging
 from collections import OrderedDict
 from pathlib import Path
 
@@ -10,8 +12,10 @@ import cv2
 import numpy as np
 from pydantic import BaseModel, Field, ConfigDict, model_validator
 
-from freemocap.core.tasks.calibration.shared.camera_to_video_identity_matcher import camera_ids_from_video_paths
-from freemocap.core.types.type_overloads import VideoIdString
+from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
+from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
+
+logger = logging.getLogger(__name__)
 
 # Module level constants
 DEFAULT_CACHE_SIZE_MB = 500
@@ -20,6 +24,7 @@ SEQUENTIAL_READ_THRESHOLD = 5  # If reading within 5 frames ahead, use sequentia
 
 class VideoMetadata(BaseModel):
     """Video metadata container"""
+    file_path: Path
     width: int
     height: int
     fps: float
@@ -45,6 +50,21 @@ class VideoMetadata(BaseModel):
                     f"end_frame ({end_frame}) exceeds total frame_count ({total_frame_count})"
                 )
         return values
+
+    @property
+    def parsed_filename(self) -> ParsedVideoFilename:
+        return ParsedVideoFilename.from_path(self.file_path)
+
+    @property
+    def recording_name(self) -> str:
+        return self.parsed_filename.recording_name
+
+    @property
+    def camera_id(self) -> CameraIdString:
+        return self.parsed_filename.camera_id
+    @property
+    def camera_index(self) -> CameraIndexInt:
+        return self.parsed_filename.camera_index
 
 
 
@@ -104,6 +124,7 @@ class VideoHelper(BaseModel):
     # Reading optimization state
     last_read_frame: int = Field(default=-1)
     sequential_threshold: int = Field(default=SEQUENTIAL_READ_THRESHOLD)
+
     @property
     def has_frames(self) -> bool:
         """Check if video has frames."""
@@ -145,6 +166,7 @@ class VideoHelper(BaseModel):
         duration_seconds = frame_count / fps if fps > 0 else 0.0
 
         metadata = VideoMetadata(
+            file_path = video_path,
             width=width,
             height=height,
             fps=fps,
@@ -215,10 +237,10 @@ class VideoHelper(BaseModel):
         """Check if sequential reading would be more efficient."""
         if self.last_read_frame < 0:
             return False
-
-        # If we're reading nearby frames forward, use sequential
-        distance = frame_number - self.last_read_frame
-        return 0 < distance <= self.sequential_threshold
+        return True # Always use sequential read when not wrapping around to avoid frame slippage
+        # # If we're reading nearby frames forward, use sequential
+        # distance = frame_number - self.last_read_frame
+        # return 0 < distance <= self.sequential_threshold
 
     def _read_sequential(self, frame_number: int) -> np.ndarray:
         """Read frame using sequential access (grab/retrieve)."""
@@ -333,11 +355,18 @@ class VideoGroupHelper(BaseModel):
         extra="forbid",
         frozen=True
     )
-    videos: dict[VideoIdString, VideoHelper]
-    video_metadata_by_id: dict[VideoIdString, VideoMetadata]
+    videos: dict[CameraIdString, VideoHelper]
+    video_metadata_by_id: dict[CameraIdString, VideoMetadata]
+    # True if camera_id keys came from the recording manifest (authoritative).
+    # False if they came from filename parsing (best-effort).
+    keyed_from_manifest: bool = False
+    # True if filename parsing had to fall back to alphabetical reindex
+    # because indices were missing or colliding. Operator should verify
+    # the camera assignment is correct. Always False when keyed_from_manifest.
+    filename_reindex_applied: bool = False
 
     @property
-    def video_ids(self) -> list[VideoIdString]:
+    def camera_ids(self) -> list[CameraIdString]:
         return list(self.videos.keys())
 
     @model_validator(mode="after")
@@ -349,23 +378,69 @@ class VideoGroupHelper(BaseModel):
         return self
 
     @classmethod
-    def from_video_paths(cls, video_paths: list[str], close_videos: bool = True) -> "VideoGroupHelper":
+    def from_video_paths(cls, video_paths: list[str | Path], close_videos: bool = True) -> "VideoGroupHelper":
         """Create VideoGroupHelper from a list of video file paths.
 
-        Camera IDs are extracted from video filenames when possible.
-        Falls back to sorted positional indices if extraction fails.
+        Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
+        which tries the canonical SkellyCam format first then falls back to
+        heuristic extraction (cam-prefix, trailing-int, alphabetical ordering).
         """
-        id_to_path = camera_ids_from_video_paths(
-            video_paths=[Path(p) for p in video_paths],
-        )
+        paths = sorted(Path(p) for p in video_paths)
+        parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
 
-        videos: dict[VideoIdString, VideoHelper] = {}
-        for camera_id, video_path in id_to_path.items():
+        # Detect collisions or unknown indices (-1 sentinel) and re-assign
+        indices = [pv.camera_index for pv in parsed_list]
+        reindex_applied = -1 in indices or len(set(indices)) < len(indices)
+        if reindex_applied:
+            logger.warning(
+                f"Camera indices are ambiguous or colliding ({indices}); "
+                f"re-assigning by alphabetical filename order. "
+                f"Verify the camera_id → video mapping is correct."
+            )
+            for i, pv in enumerate(parsed_list):
+                pv.camera_index = i
+
+        # Sort by camera_index and build VideoHelper map keyed by camera_id
+        pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
+
+        videos: dict[CameraIdString, VideoHelper] = {}
+        for pv, path in pairs:
+            videos[pv.camera_id] = VideoHelper.from_video_path(path)
+
+        instance = cls(
+            videos=videos,
+            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+            keyed_from_manifest=False,
+            filename_reindex_applied=reindex_applied,
+        )
+        if close_videos:
+            instance.close()
+        return instance
+
+    @classmethod
+    def from_manifest_videos(
+        cls,
+        *,
+        manifest_videos: dict[str, str],
+        videos_dir: Path,
+        close_videos: bool = True,
+    ) -> "VideoGroupHelper":
+        """Build from an authoritative camera_id → relative-filename mapping."""
+        videos: dict[CameraIdString, VideoHelper] = {}
+        for camera_id, filename in manifest_videos.items():
+            video_path = videos_dir / filename
+            if not video_path.exists():
+                raise FileNotFoundError(
+                    f"Manifest references video '{filename}' for camera '{camera_id}' "
+                    f"but the file does not exist at {video_path}"
+                )
             videos[camera_id] = VideoHelper.from_video_path(video_path)
 
         instance = cls(
             videos=videos,
             video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+            keyed_from_manifest=True,
+            filename_reindex_applied=False,
         )
         if close_videos:
             instance.close()
@@ -373,19 +448,63 @@ class VideoGroupHelper(BaseModel):
 
     @classmethod
     def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":
-        video_paths = sorted(
-            [str(p) for p in video_folder_path.iterdir() if p.suffix.lower() in {'.mp4', '.avi', '.mov', '.mkv'}])
-
-        return cls.from_video_paths(video_paths)
+        paths = sorted(
+            p for p in video_folder_path.glob("*")
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        )
+        if not paths:
+            raise FileNotFoundError(f"No video files found in {video_folder_path}")
+        return cls.from_video_paths(paths)
 
     @classmethod
     def from_recording_path(cls, recording_path: str,
                             video_subfolder_name: str = 'synchronized_videos') -> "VideoGroupHelper":
-        return cls.from_video_folder_path(Path(recording_path) / video_subfolder_name)
+        """Build a VideoGroup for a recording.
+
+        Prefers the manifest's `videos` map (camera_id → filename) when
+        present; falls back to filename parsing of the synchronized-videos
+        folder when the manifest is missing or has no videos map.
+        """
+        recording_path_obj = Path(recording_path)
+        videos_dir = recording_path_obj / video_subfolder_name
+
+        manifest_videos = _load_manifest_videos(recording_path_obj)
+        if manifest_videos:
+            return cls.from_manifest_videos(
+                manifest_videos=manifest_videos,
+                videos_dir=videos_dir,
+            )
+        return cls.from_video_folder_path(videos_dir)
 
     def close(self):
         for video in self.videos.values():
             video.close()
+
+
+def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:
+    """Return the manifest's `videos` map if present, else None.
+
+    The manifest is `{recording_name}_recording_info.json` (or the legacy
+    `{recording_name}_info.json` from SkellyCam). A missing or unreadable
+    manifest, or a manifest without a populated `videos` field, returns None.
+    """
+    candidates = [
+        recording_path / f"{recording_path.name}_recording_info.json",
+        recording_path / f"{recording_path.name}_info.json",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Failed to read recording manifest at {path}: {e}")
+            continue
+        videos = data.get("videos")
+        if isinstance(videos, dict) and videos:
+            return {str(k): str(v) for k, v in videos.items()}
+    return None
 
 # Example usage
 if __name__ == "__main__":

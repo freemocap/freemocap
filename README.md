@@ -1,5 +1,5 @@
 
-# SPECIAL INSTRUCTIONS FOR THE `jon/development` BRANCH 
+# SPECIAL INSTRUCTIONS FOR THE `/development` BRANCH 
 
 ## Installation
 ### Python server
@@ -199,4 +199,3 @@ This project is licensed under the APGL License - see the [LICENSE](LICENSE) fil
 If the AGPL does not work for your needs, we are happy to discuss terms to license this software to you with a different
 agreement at a price point that increases exponentially as you
 move [spiritually](https://www.gnu.org/philosophy/open-source-misses-the-point.en.html) away from the `AGPL`
-

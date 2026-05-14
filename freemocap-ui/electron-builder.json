@@ -22,7 +22,7 @@
     "icon": "../shared/freemocap-logo/freemocap-favicon.ico",
     "target": [
       {
-        "target": "nsis",
+        "target": "zip",
         "arch": ["x64"]
       }
     ],

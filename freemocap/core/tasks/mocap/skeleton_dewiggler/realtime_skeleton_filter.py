@@ -60,14 +60,41 @@ class FilterResult:
 
 
 class RealtimeFilterConfig(BaseModel):
-    """Tunable parameters for the realtime filtering pipeline."""
+    """Tunable parameters for the realtime filtering pipeline.
 
-    # One Euro Filter params
-    # min_cutoff: minimum cutoff frequency (Hz). Lower = more smoothing, higher = more responsive.
-    min_cutoff: float = 0.01#0.005
-    # beta: speed coefficient. Higher = less lag during fast motion, but more jitter at rest.
-    beta: float = 0.3
-    # d_cutoff: cutoff frequency for the derivative (speed estimate) filter.
+    Coordinate-space assumptions
+    ----------------------------
+    Triangulated 3D positions arrive in **millimeters** (the charuco board
+    used for calibration is defined with ``square_length_mm``, so the
+    calibration extrinsics and all downstream triangulation output are in mm).
+
+    The One Euro filter's adaptive cutoff formula is::
+
+        cutoff(Hz) = min_cutoff + beta * |velocity(mm/s)|
+
+    Because velocity is in mm/s, **beta has units of 1/mm**.  Tuning beta as
+    if the data were in meters (i.e. ~0.3) will produce a filter that is
+    ~1000× too responsive — passing nearly all noise through at any non-zero
+    velocity.  The defaults here assume millimeter-space coordinates.
+    """
+
+    # ---- One Euro Filter ----
+    # Minimum cutoff frequency applied when velocity ≈ 0.
+    #   0.01 Hz → half-life ~16 s at rest (very heavy smoothing).
+    #   Lower = more aggressive jitter removal on static / slow-moving points.
+    #   Raise this (e.g. 0.05–0.2) if the filtered skeleton feels "floaty."
+    min_cutoff: float = 0.05
+    # Speed coefficient.  Together with the measured velocity (mm/s) it
+    # determines how much the cutoff rises above min_cutoff during motion.
+    #   cutoff = min_cutoff + beta * |velocity|
+    #   beta = 0.001  →  1 m/s (1000 mm/s) adds 1 Hz to the cutoff.
+    #   Lower  = stays smoother during slow movement (less jitter, more lag).
+    #   Higher = opens up faster during fast movement (less lag, more jitter).
+    beta: float = 0.001
+    # Cutoff frequency for the derivative (velocity-estimate) filter.
+    # Lower = velocity estimate is smoother → cutoff adapts more gradually.
+    #   1.0 Hz is a reasonable default; reduce to 0.3–0.5 if triangulation
+    #   noise creates spurious velocity spikes that open the filter too much.
     d_cutoff: float = 1.0
 
     # FABRIK params
@@ -76,9 +103,13 @@ class RealtimeFilterConfig(BaseModel):
 
     # Bone length estimation params
     # height_meters: assumed subject height, used to scale anthropometric bone length priors.
+    # NOTE: prior returns bone lengths in *meters*, but observed inter-keypoint distances
+    # are in *mm*.  The BoneLengthEstimator blends these directly, so there is a 1000×
+    # unit mismatch that must be resolved before enabling skeleton_enabled + filter_enabled.
     height_meters: float = 1.75
-    # noise_sigma: expected measurement noise (meters). Higher = trust raw measurements less.
-    noise_sigma: float = 0.015
+    # Expected per-keypoint position noise std-dev (mm).  Calibrate from a static capture.
+    # 15 mm is a reasonable triangulation noise floor; lower = trust raw measurements more.
+    noise_sigma: float = 15.0
     estimator_config: EstimatorConfig = EstimatorConfig()
 
     # Reprojection error gate: reject triangulated points whose mean
@@ -86,11 +117,12 @@ class RealtimeFilterConfig(BaseModel):
     # Higher = more permissive (keeps noisier triangulations).
     max_reprojection_error_px: float = 60.0
 
-    # Velocity gate: reject points that jump faster than this (meters/second).
-    # Human body parts rarely exceed ~15 m/s even during fast movements,
-    # but noisy triangulation can produce brief spikes. Keep generous to
-    # avoid rejecting real fast motions.
-    max_velocity_m_per_s: float = 50.0
+    # Velocity gate: reject points that jump faster than this.
+    # Despite the field name, positions are in mm so velocity is in mm/s.
+    # 50000 mm/s = 50 m/s.  Human body parts rarely exceed ~15 m/s even
+    # during fast movements, but noisy triangulation can produce brief
+    # spikes. Keep generous to avoid rejecting real fast motions.
+    max_velocity_m_per_s: float = 50000.0
 
     # Velocity gate: after this many consecutive rejections, accept
     # unconditionally to prevent permanent lockout. Lower = recover faster.

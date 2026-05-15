@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
     Box,
     Checkbox,
@@ -13,7 +13,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import HomeIcon from "@mui/icons-material/Home";
-import { ViewportStats, ViewportVisibility } from "../helpers/viewport3d-types";
+import { ViewportVisibility } from "../helpers/viewport3d-types";
 import { useViewportState } from "./ViewportStateContext";
 
 interface ViewportOverlayProps {
@@ -23,25 +23,29 @@ interface ViewportOverlayProps {
 
 export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayProps) {
     const { visibility, setVisibility, statsRef } = useViewportState();
-    const [stats, setStats] = useState<ViewportStats>({ keypointsRaw: 0, keypointsFiltered: 0, rigidBodies: 0, facePoints: 0, connections: 0, cameras: 0 });
     const [expanded, setExpanded] = useState(false);
 
-    // Poll stats from the mutable ref at ~2 Hz. Use functional setState with shallow
-    // equality so we only trigger a re-render when a count actually changed.
+    // DOM refs for count spans — mutated directly so stats never trigger React re-renders.
+    const rawCountRef         = useRef<HTMLSpanElement | null>(null);
+    const filteredCountRef    = useRef<HTMLSpanElement | null>(null);
+    const rigidBodiesCountRef = useRef<HTMLSpanElement | null>(null);
+    const facePointsCountRef  = useRef<HTMLSpanElement | null>(null);
+    const connectionsCountRef = useRef<HTMLSpanElement | null>(null);
+    const camerasCountRef     = useRef<HTMLSpanElement | null>(null);
+    const totalPointsRef      = useRef<HTMLSpanElement | null>(null);
+    const totalBodiesRef      = useRef<HTMLSpanElement | null>(null);
+
     useEffect(() => {
         const id = setInterval(() => {
-            setStats(prev => {
-                const next = statsRef.current;
-                if (
-                    prev.keypointsRaw      === next.keypointsRaw &&
-                    prev.keypointsFiltered === next.keypointsFiltered &&
-                    prev.rigidBodies       === next.rigidBodies &&
-                    prev.facePoints        === next.facePoints &&
-                    prev.connections       === next.connections &&
-                    prev.cameras           === next.cameras
-                ) return prev;
-                return { ...next };
-            });
+            const s = statsRef.current;
+            if (rawCountRef.current)          rawCountRef.current.textContent         = String(s.keypointsRaw);
+            if (filteredCountRef.current)     filteredCountRef.current.textContent    = String(s.keypointsFiltered);
+            if (rigidBodiesCountRef.current)  rigidBodiesCountRef.current.textContent = String(s.rigidBodies);
+            if (facePointsCountRef.current)   facePointsCountRef.current.textContent  = String(s.facePoints);
+            if (connectionsCountRef.current)  connectionsCountRef.current.textContent = String(s.connections);
+            if (camerasCountRef.current)      camerasCountRef.current.textContent     = String(s.cameras);
+            if (totalPointsRef.current)       totalPointsRef.current.textContent      = String(s.keypointsRaw + s.keypointsFiltered + s.facePoints);
+            if (totalBodiesRef.current)       totalBodiesRef.current.textContent      = String(s.rigidBodies);
         }, 500);
         return () => clearInterval(id);
     }, [statsRef]);
@@ -49,6 +53,14 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     const toggle = useCallback((key: keyof ViewportVisibility) => {
         setVisibility(prev => ({ ...prev, [key]: !prev[key] }));
     }, [setVisibility]);
+
+    const toggleEnvironment  = useCallback(() => toggle("environment"),       [toggle]);
+    const toggleKeypointsRaw = useCallback(() => toggle("keypointsRaw"),      [toggle]);
+    const toggleFiltered     = useCallback(() => toggle("keypointsFiltered"), [toggle]);
+    const toggleRigidBodies  = useCallback(() => toggle("rigidBodies"),       [toggle]);
+    const toggleFace         = useCallback(() => toggle("face"),              [toggle]);
+    const toggleConnections  = useCallback(() => toggle("connections"),       [toggle]);
+    const toggleCameras      = useCallback(() => toggle("cameras"),           [toggle]);
 
     return (
         <>
@@ -68,19 +80,19 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                     </IconButton>
                 </Box>
 
-                <VisToggle label="Environment" checked={visibility.environment} onChange={() => toggle("environment")} />
-                <VisToggle label={`Raw (${stats.keypointsRaw})`} checked={visibility.keypointsRaw} onChange={() => toggle("keypointsRaw")} />
-                <VisToggle label={`Filtered (${stats.keypointsFiltered})`} checked={visibility.keypointsFiltered} onChange={() => toggle("keypointsFiltered")} />
-                <VisToggle label={`Rigid bodies (${stats.rigidBodies})`} checked={visibility.rigidBodies} onChange={() => toggle("rigidBodies")} />
-                <VisToggle label={`Face (${stats.facePoints})`} checked={visibility.face} onChange={() => toggle("face")} />
-                <VisToggle label={`Connections (${stats.connections})`} checked={visibility.connections} onChange={() => toggle("connections")} />
-                <VisToggle label={`Cameras (${stats.cameras})`} checked={visibility.cameras} onChange={() => toggle("cameras")} />
+                <VisToggle label="Environment"  checked={visibility.environment}      onChange={toggleEnvironment} />
+                <VisToggle label="Raw"          countRef={rawCountRef}                checked={visibility.keypointsRaw}      onChange={toggleKeypointsRaw} />
+                <VisToggle label="Filtered"     countRef={filteredCountRef}           checked={visibility.keypointsFiltered} onChange={toggleFiltered} />
+                <VisToggle label="Rigid bodies" countRef={rigidBodiesCountRef}        checked={visibility.rigidBodies}       onChange={toggleRigidBodies} />
+                <VisToggle label="Face"         countRef={facePointsCountRef}         checked={visibility.face}              onChange={toggleFace} />
+                <VisToggle label="Connections"  countRef={connectionsCountRef}        checked={visibility.connections}       onChange={toggleConnections} />
+                <VisToggle label="Cameras"      countRef={camerasCountRef}            checked={visibility.cameras}           onChange={toggleCameras} />
 
                 <Collapse in={expanded}>
                     <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#888" }}>
-                        Total points: {stats.keypointsRaw + stats.keypointsFiltered + stats.facePoints}
+                        Total points: <span ref={totalPointsRef}>0</span>
                         <br />
-                        Total bodies: {stats.rigidBodies}
+                        Total bodies: <span ref={totalBodiesRef}>0</span>
                     </Typography>
                 </Collapse>
             </Paper>
@@ -110,12 +122,25 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     );
 }
 
-const VisToggle = memo(function VisToggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
+const VisToggle = memo(function VisToggle({
+    label,
+    countRef,
+    checked,
+    onChange,
+}: {
+    label: string;
+    countRef?: React.RefObject<HTMLSpanElement | null>;
+    checked: boolean;
+    onChange: () => void;
+}) {
+    const labelNode = countRef
+        ? <span>{ label } (<span ref={countRef}>0</span>)</span>
+        : label;
     return (
         <FormControlLabel
             sx={{ m: 0, ml: -0.5, "& .MuiTypography-root": { fontSize: "0.7rem" } }}
             control={<Checkbox size="small" checked={checked} onChange={onChange} sx={{ p: 0.3, color: "#888", "&.Mui-checked": { color: "#aaa" } }} />}
-            label={label}
+            label={labelNode}
         />
     );
 });

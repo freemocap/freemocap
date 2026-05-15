@@ -30,10 +30,25 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SimpleRealtimeKeypointFilter:
-    """One Euro filter applied per-keypoint with velocity-decay gap filling."""
+    """One Euro filter applied per-keypoint with velocity-decay gap filling.
 
+    Coordinate-space assumptions
+    ----------------------------
+    Input positions are in **millimeters** (triangulated from charuco-board
+    calibration).  The One Euro cutoff formula is::
+
+        cutoff(Hz) = min_cutoff + beta * |velocity(mm/s)|
+
+    so **beta has units of 1/mm**.  Tuning beta for meter-space (e.g. 0.3)
+    makes the filter ~1000× too responsive — effectively a near-pass-through
+    for any non-zero velocity.  The defaults assume mm-space coordinates.
+    """
+
+    # Minimum cutoff at rest (Hz). 0.005 → half-life ~32 s at zero velocity.
     min_cutoff: float = 0.005
-    beta: float = 0.3
+    # Speed coefficient (1/mm).  0.001 → 1 m/s velocity adds 1 Hz to cutoff.
+    beta: float = 0.001
+    # Cutoff for derivative (velocity-estimate) filter (Hz).
     d_cutoff: float = 1.0
     max_prediction_frames: int = 3
     prediction_velocity_decay: float = 0.5

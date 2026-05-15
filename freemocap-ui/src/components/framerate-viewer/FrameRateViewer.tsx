@@ -30,7 +30,7 @@ const FramerateCollapsedView = () => {
             if (frontendRef.current) frontendRef.current.textContent = fmtFps(snap.aggregateFrontendFramerate);
         };
         tick();
-        const id = setInterval(tick, 500);
+        const id = setInterval(tick, 1000);
         return () => clearInterval(id);
     }, [getFramerateStore]);
 

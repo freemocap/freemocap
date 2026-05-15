@@ -250,12 +250,12 @@ class TestRealtimeFilterConfigSchema:
         }
 
     def test_default_min_cutoff_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has min_cutoff: 0.005."""
-        assert RealtimeFilterConfig().min_cutoff == 0.005
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has min_cutoff: 0.01."""
+        assert RealtimeFilterConfig().min_cutoff == 0.01
 
     def test_default_beta_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has beta: 0.3."""
-        assert RealtimeFilterConfig().beta == 0.3
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has beta: 0.001 (mm-space)."""
+        assert RealtimeFilterConfig().beta == 0.001
 
     def test_default_d_cutoff_matches_frontend(self) -> None:
         """Frontend DEFAULT_REALTIME_FILTER_CONFIG has d_cutoff: 1.0."""
@@ -274,16 +274,16 @@ class TestRealtimeFilterConfigSchema:
         assert RealtimeFilterConfig().height_meters == 1.75
 
     def test_default_noise_sigma_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has noise_sigma: 0.015."""
-        assert RealtimeFilterConfig().noise_sigma == 0.015
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has noise_sigma: 15.0 (mm)."""
+        assert RealtimeFilterConfig().noise_sigma == 15.0
 
     def test_default_max_reprojection_error_matches_frontend(self) -> None:
         """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_reprojection_error_px: 60.0."""
         assert RealtimeFilterConfig().max_reprojection_error_px == 60.0
 
     def test_default_max_velocity_matches_frontend(self) -> None:
-        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_velocity_m_per_s: 50.0."""
-        assert RealtimeFilterConfig().max_velocity_m_per_s == 50.0
+        """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_velocity_m_per_s: 50000.0 (mm/s)."""
+        assert RealtimeFilterConfig().max_velocity_m_per_s == 50000.0
 
     def test_default_max_rejected_streak_matches_frontend(self) -> None:
         """Frontend DEFAULT_REALTIME_FILTER_CONFIG has max_rejected_streak: 5."""

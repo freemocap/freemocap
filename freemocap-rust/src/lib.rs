@@ -4,6 +4,7 @@ pub mod pipeline_manager;
 pub mod triangulation;
 pub mod filtering;
 pub mod pyo3_bridge;
+pub mod video_reader;
 
 /// Default log level for the entire process.
 /// `RUST_LOG` env var overrides this if set.

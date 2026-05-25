@@ -83,14 +83,14 @@ class RealtimeFilterConfig(BaseModel):
     #   0.01 Hz → half-life ~16 s at rest (very heavy smoothing).
     #   Lower = more aggressive jitter removal on static / slow-moving points.
     #   Raise this (e.g. 0.05–0.2) if the filtered skeleton feels "floaty."
-    min_cutoff: float = 0.05
+    min_cutoff: float = 0.075
     # Speed coefficient.  Together with the measured velocity (mm/s) it
     # determines how much the cutoff rises above min_cutoff during motion.
     #   cutoff = min_cutoff + beta * |velocity|
     #   beta = 0.001  →  1 m/s (1000 mm/s) adds 1 Hz to the cutoff.
     #   Lower  = stays smoother during slow movement (less jitter, more lag).
     #   Higher = opens up faster during fast movement (less lag, more jitter).
-    beta: float = 0.001
+    beta: float = 0.005
     # Cutoff frequency for the derivative (velocity-estimate) filter.
     # Lower = velocity estimate is smoother → cutoff adapts more gradually.
     #   1.0 Hz is a reasonable default; reduce to 0.3–0.5 if triangulation

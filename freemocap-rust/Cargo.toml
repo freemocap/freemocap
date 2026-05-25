@@ -1,0 +1,61 @@
+[package]
+name = "freemocap"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "freemocap"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "freemocap-rust"
+path = "src/main.rs"
+
+[features]
+default = ["python-bindings"]
+python-bindings = ["pyo3/extension-module"]
+
+[dependencies]
+# ── Sibling crates ──
+skellycam = { path = "../../skellycam/skellycam-rust" }
+skellytracker = { path = "../../skellytracker/skellytracker-rust" }
+
+# ── PyO3 ──
+pyo3 = "0.28"
+
+# ── Serialization ──
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# ── Math (match skellytracker version) ──
+ndarray = "0.17"
+nalgebra = "0.33"
+
+# ── OpenCV (JPEG decode in camera nodes) ──
+opencv = "0.98"
+
+# ── Error handling ──
+anyhow = "1"
+thiserror = "2"
+
+# ── Logging ──
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# ── Calibration parsing ──
+toml = "0.8"
+
+# ── UUID ──
+uuid = { version = "1", features = ["v4"] }
+
+# ── Async runtime (binary path) ──
+tokio = { version = "1", features = ["full"] }
+
+# ── HTTP + WebSocket (binary path) ──
+axum = { version = "0.7", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors"] }
+
+[profile.release]
+opt-level = 3
+lto = true

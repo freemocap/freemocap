@@ -1,7 +1,7 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicI64, Ordering},
     mpsc::{self, Receiver},
-    Arc, RwLock,
+    Arc, Mutex, RwLock,
 };
 
 use skellycam::camera_group::sync_utils::BreakableBarrier;
@@ -9,7 +9,10 @@ use skellycam::camera_group::FrameSlots;
 use skellycam::timestamps::performance::performance_counter_nanoseconds;
 
 use super::config::PipelineConfig;
-use super::types::{DistributorSlot, PerCameraFrameData, PipelineTimestamps};
+use super::types::{
+    DistributorSlot, PerCameraFrameData, PipelineTimestamps, SourceFrameTimestamps,
+    VideoFrameTimestamps,
+};
 
 /// Commands the distributor can receive from the pipeline manager.
 #[derive(Debug, Clone)]
@@ -29,6 +32,16 @@ pub struct Distributor {
     /// Shared frame slots from the CameraGroup's dispatcher.
     /// The distributor polls these directly — same Arc that the CameraGroup uses.
     pub frame_slots: FrameSlots,
+    /// Optional video timestamps slot — written by VideoGroup's dispatcher,
+    /// read by the distributor alongside FrameSlots.
+    /// `None` when the source is a live CameraGroup.
+    pub video_timestamps_slot: Option<Arc<Mutex<Option<VideoFrameTimestamps>>>>,
+    /// Optional pacing signal — when present, the distributor writes the
+    /// last consumed frame_number here after writing DistributorSlot.
+    /// The VideoGroup dispatcher reads this to implement backpressure:
+    /// it won't write frame N+1 until the distributor has consumed frame N.
+    /// `None` when the source is a live CameraGroup (no pacing needed).
+    pub last_consumed_frame: Option<Arc<AtomicI64>>,
     /// Shutdown flag — set by main thread.
     pub shutdown_flag: Arc<AtomicBool>,
 }
@@ -39,6 +52,8 @@ impl Distributor {
         slot: Arc<RwLock<DistributorSlot>>,
         cmd_rx: Receiver<PipelineCommand>,
         frame_slots: FrameSlots,
+        video_timestamps_slot: Option<Arc<Mutex<Option<VideoFrameTimestamps>>>>,
+        last_consumed_frame: Option<Arc<AtomicI64>>,
         shutdown_flag: Arc<AtomicBool>,
     ) -> Self {
         Self {
@@ -46,6 +61,8 @@ impl Distributor {
             slot,
             cmd_rx,
             frame_slots,
+            video_timestamps_slot,
+            last_consumed_frame,
             shutdown_flag,
         }
     }
@@ -100,6 +117,7 @@ pub fn run_distributor(distributor: Distributor) {
 
         // ── Guard ──
         if raw_frames.is_empty() {
+            tracing::trace!("[freemocap::distributor] raw_frames empty, sleeping");
             continue;
         }
         let frame_number = raw_frames[0].frame_number;
@@ -117,6 +135,13 @@ pub fn run_distributor(distributor: Distributor) {
             continue;
         }
 
+        // ── Read video timestamps (if VideoGroup source) ──
+        let video_ts = distributor
+            .video_timestamps_slot
+            .as_ref()
+            .and_then(|slot| slot.lock().ok())
+            .and_then(|guard| guard.clone());
+
         // ── Write shared slot ──
         let distributor_slot_write_ns = performance_counter_nanoseconds();
         {
@@ -127,17 +152,41 @@ pub fn run_distributor(distributor: Distributor) {
             slot.frontend_payload_bytes = frontend_payload.jpeg_bytes.clone();
             slot.per_camera_data = raw_frames
                 .iter()
-                .map(|rf| PerCameraFrameData {
-                    camera_id: rf.camera_id.clone(),
-                    jpeg_bytes: rf.jpeg_bytes.to_vec(),
-                    skellycam_timestamps: rf.timestamps.clone(),
+                .map(|rf| {
+                    let source_ts = match &video_ts {
+                        Some(_vt) => {
+                            // Video source: timestamps come from the video
+                            // dispatcher, not from RawFrame.timestamps.
+                            // Each camera gets the same multiframe-level
+                            // video timestamps.
+                            SourceFrameTimestamps::Video(video_ts.clone().unwrap())
+                        }
+                        None => {
+                            // Camera source: use skellycam's per-camera
+                            // lifecycle timestamps from RawFrame.
+                            SourceFrameTimestamps::Camera(rf.timestamps.clone())
+                        }
+                    };
+                    PerCameraFrameData {
+                        camera_id: rf.camera_id.clone(),
+                        jpeg_bytes: rf.jpeg_bytes.to_vec(),
+                        source_timestamps: source_ts,
+                    }
                 })
                 .collect();
         }
 
+        tracing::trace!(
+            "[freemocap::distributor] wrote slot frame={} n_cameras={}",
+            frame_number,
+            raw_frames.len(),
+        );
+
         // ── Release camera nodes ──
         let distributor_barrier_release_ns = performance_counter_nanoseconds();
+        tracing::trace!("[freemocap::distributor] releasing barrier frame={}", frame_number);
         if !distributor.barrier.wait() {
+            tracing::info!("[freemocap::distributor] barrier broken, shutting down");
             break;
         }
 
@@ -151,8 +200,20 @@ pub fn run_distributor(distributor: Distributor) {
             };
         }
 
+        tracing::debug!(
+            "[freemocap::distributor] cycle frame={} n_cameras={}",
+            frame_number,
+            raw_frames.len(),
+        );
+
+        // Signal consumption for dispatcher pacing (video source only).
+        if let Some(ref consumed) = distributor.last_consumed_frame {
+            consumed.store(frame_number, Ordering::SeqCst);
+        }
+
         last_distributed = frame_number;
     }
 
+    tracing::info!("[freemocap::distributor] shutting down");
     distributor.barrier.break_barrier();
 }

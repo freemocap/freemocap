@@ -1,4 +1,7 @@
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
 
 use uuid::Uuid;
 
@@ -146,7 +149,3 @@ impl Drop for PipelineManager {
         self.shutdown_all();
     }
 }
-
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;

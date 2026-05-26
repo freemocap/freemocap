@@ -139,10 +139,21 @@ pub fn triangulate_charuco_corners(
         }
     }
 
+    tracing::debug!(
+        "[freemocap::triangulation] {} corners across {} cameras",
+        corner_group.len(),
+        corner_observations.len(),
+    );
+
     let mut result = HashMap::new();
+    let mut rejected = 0usize;
 
     for (&corner_id, observations) in &corner_group {
         if observations.len() < 2 {
+            tracing::trace!(
+                "[freemocap::triangulation] corner {}: only {} cams (need ≥2), skipping",
+                corner_id, observations.len(),
+            );
             continue;
         }
 
@@ -194,12 +205,34 @@ pub fn triangulate_charuco_corners(
         if pixel_error_count > 0 {
             let mean_pixel_error = pixel_error_sum / pixel_error_count as f64;
             if mean_pixel_error > max_reprojection_error_px {
+                tracing::trace!(
+                    "[freemocap::triangulation] corner {} rejected: mean_pixel_error={:.1}px > max={:.0}px",
+                    corner_id, mean_pixel_error, max_reprojection_error_px,
+                );
+                rejected += 1;
                 continue;
             }
         }
 
+        tracing::trace!(
+            "[freemocap::triangulation] corner {}: {} cams → [{:.1}, {:.1}, {:.1}]",
+            corner_id,
+            observations.len(),
+            tri_result.point_3d[0],
+            tri_result.point_3d[1],
+            tri_result.point_3d[2],
+        );
+
         result.insert(corner_id, tri_result.point_3d);
     }
+
+    tracing::debug!(
+        "[freemocap::triangulation] {} corners across {} cams: triangulated {} points, rejected {}",
+        corner_group.len(),
+        corner_observations.len(),
+        result.len(),
+        rejected,
+    );
 
     result
 }

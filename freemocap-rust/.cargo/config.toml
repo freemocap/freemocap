@@ -1,17 +1,11 @@
-# Auto-detected OpenCV (chocolatey, standard path).
-# `opencv` crate reads these for its "environment" probe.
-# Variable names MUST be OPENCV_LINK_PATHS / OPENCV_INCLUDE_PATHS (plural).
+# OpenCV via vcpkg (x64-windows-static triplet — static CRT /MT).
+# opencv crate auto-detects vcpkg via VCPKG_ROOT.
+# VCPKGRS_TRIPLET forces the static triplet (default is x64-windows-static-md which uses /MD).
+# +crt-static makes Rust use /MT to match vcpkg's static CRT.
 [env]
-OPENCV_LINK_LIBS = "opencv_world4130"
-OPENCV_LINK_PATHS = "C:\\tools\\opencv\\build\\x64\\vc16\\lib"
-OPENCV_INCLUDE_PATHS = "C:\\tools\\opencv\\build\\include"
-OPENCV_DISABLE_PROBES = "cmake,pkg_config,vcpkg_cmake,vcpkg"
+VCPKG_ROOT = "C:\\tools\\vcpkg"
+VCPKGRS_TRIPLET = "x64-windows-static"
+OPENCV_DISABLE_PROBES = "cmake,pkg_config"
 
-# Match OpenCV DLL runtime (MD_DynamicRelease).
-# The opencv crate rlib uses /MD; Rust test binaries default to /MT.
-# Using +crt-static for the lib crate avoids this, but tests need the linker flag.
 [target.x86_64-pc-windows-msvc]
-rustflags = [
-    "-C", "target-feature=+crt-static",
-    "-C", "link-args=/NODEFAULTLIB:libcpmt.lib",
-]
+rustflags = ["-C", "target-feature=+crt-static"]

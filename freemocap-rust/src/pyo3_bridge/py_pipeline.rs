@@ -124,6 +124,8 @@ impl PyPipeline {
             slot,
             dist_cmd_rx,
             self.frame_slots.clone(),
+            None, // video_timestamps_slot — None for camera source
+            None, // last_consumed_frame — None for camera source
             self.shutdown_flag.clone(),
         );
         let dist_handle = std::thread::Builder::new()
@@ -197,6 +199,10 @@ impl PyPipeline {
             output_slot: self.output_slot.clone(),
             shutdown_flag: self.shutdown_flag.clone(),
             distributor_slot: slot_for_agg,
+            calibration: None,
+            triangulation_enabled: false,
+            rejection_config: Default::default(),
+            max_reprojection_error_px: 60.0,
         };
 
         let agg_handle = std::thread::Builder::new()

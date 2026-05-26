@@ -29,12 +29,18 @@
 | **Timestamps** | ✅ Complete | Full chain: skellycam → distributor → camera node → aggregator stages |
 | **Module READMEs** | ✅ Complete | Top-level + per-module docs |
 | **Python adapter + Manager integration** | ✅ Complete | RustRealtimePipeline adapter, USE_RUST_BACKEND in manager |
-| **Charuco triangulation** | ✅ Complete | DLT + outlier rejection + reprojection gate. Verified: 1023 points, 2.1m scale ✅ |
-| **Synchronized video reader** | ⬜ Next | Multi-video frame reader with sync guarantee |
-| **Filter implementations** | ⬜ Next | Real One Euro, velocity gate (currently pass-through stubs) |
+| **Charuco triangulation** | ✅ Complete | DLT + outlier rejection + reprojection gate. Verified: 1023 points, 2.1m scale |
+| **One Euro filter + velocity gate** | ✅ Complete | Adaptive low-pass + teleportation spike rejection |
+| **Synchronized video reader** | ✅ Complete | `VideoGroup` — N videos, sequential read, frame count verification |
+| **Tests** | ✅ Complete | 10 tests pass (DLT, calibration loader, integration, video reader, E2E pipeline) |
+| Calibration → aggregator wiring | ✅ Complete | Aggregator holds calibration models, calls triangulate_charuco_corners(), feeds results into filter chain |
+| **End-to-end pipeline test** | ✅ Complete | VideoGroup feeds 30 frames through full thread topology (distributor→barrier→camera nodes→aggregator) — 400 3D points at 1892mm scale |
+| **Tracing logs** | ✅ Complete | TRACE/DEBUG/INFO/WARN logs throughout pipeline, SkellyFormat-compatible |
+| `maturin develop` + Python import | ⬜ Next | Build .pyd, verify `import _freemocap_rust` |
+| **Posthoc Pipeline** | 🔜 Next | Build proper posthoc processing pipeline around VideoGroup (multi-video reader + detection + triangulation) |
 | Skeleton Inference (CPU) | 🔜 Later | Per-camera RTMPose in camera nodes |
 | GPU Batched Inference | 🔜 Later | Centralized node, batched ONNX |
-| Posthoc Pipeline | 🔜 Later | Separate from real-time work |
+| Real-time server smoke test | 🔜 Later | Camera group + real-time pipeline + frontend payload |
 
 ## Upstream Changes
 
@@ -43,7 +49,8 @@ These were fixed in sibling crates as prerequisites:
 | Crate | Change | Spec |
 |-------|--------|------|
 | skellycam | `RawFrame` now carries `frame_number` + `timestamps` | [spec](../skellycam-architecture/10-rawframe-metadata.md) |
-| skellytracker | Bumped pyo3 0.23 → 0.28, fixed two borrow-checker issues | done |
+| skellytracker | Bumped pyo3 0.23 → 0.28; switched to vcpkg OpenCV (x64-windows-static, +crt-static) | done |
+| OpenCV | Migrated from chocolatey to vcpkg x64-windows-static triplet; unified CRT across all crates | done |
 
 ## Key Design Decisions
 

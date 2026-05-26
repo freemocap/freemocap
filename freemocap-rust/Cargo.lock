@@ -3050,6 +3050,7 @@ dependencies = [
  "opencv",
  "ort",
  "pyo3",
+ "rayon",
  "serde",
  "serde_json",
  "ureq 2.12.1",

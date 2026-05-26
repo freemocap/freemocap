@@ -1,6 +1,8 @@
 # Aggregator
 
 > Step 4 (Design Rust Architecture) — fan-in collection, triangulation, and filtering.
+>
+> **Status: Implemented** (2026-05-26) — the aggregator in `src/pipeline/aggregator.rs` follows this design closely. Key diffs: (1) `calibration` is `Option<HashMap<String, CameraModel>>` (no hot-reload yet — open feature), (2) triangulation calls the standalone `triangulate_charuco_corners()` function rather than a method, (3) shutdown uses channel disconnection via sender drops instead of explicit `Shutdown` command.
 
 ## The Problem
 

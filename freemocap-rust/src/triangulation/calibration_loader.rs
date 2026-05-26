@@ -42,7 +42,11 @@ pub fn load_calibration(path: &Path) -> Result<HashMap<String, CameraModel>, Str
         };
 
         let name = get("name")?.as_str().unwrap_or(key).to_string();
-        let _size = get_arr3("size")?;
+        // size is [height, width] — 2-element array, not 3
+        let size_arr = get("size")?.as_array()
+            .ok_or_else(|| format!("[{key}].size is not an array"))?;
+        let _height = size_arr[0].as_float().unwrap_or(0.0) as u32;
+        let _width = size_arr[1].as_float().unwrap_or(0.0) as u32;
 
         // Parse 3x3 camera matrix
         let matrix = get("matrix")?.as_array()

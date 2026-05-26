@@ -10,7 +10,7 @@ use skellycam::timestamps::performance::performance_counter_nanoseconds;
 use skellytracker::trackers::charuco::CharucoTracker;
 
 use super::distributor::PipelineCommand;
-use super::types::{CameraNodeOutput, CameraPipelineTimestamps, DistributorSlot};
+use super::types::{CameraNodeOutput, DetectionTimestamps, DistributorSlot};
 
 /// State for a single camera node thread.
 pub struct CameraNode {
@@ -59,12 +59,24 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) {
         }
 
         // ── Sync with distributor ──
+        tracing::trace!(
+            "[freemocap::camera_node] waiting at barrier cam={}",
+            node.camera_id
+        );
         if !node.barrier.wait() {
+            tracing::info!(
+                "[freemocap::camera_node] barrier broken cam={}, shutting down",
+                node.camera_id
+            );
             break;
         }
+        tracing::trace!(
+            "[freemocap::camera_node] barrier released cam={}",
+            node.camera_id
+        );
 
-        // ── Read frame + skellycam timestamps from shared slot ──
-        let (frame_number, jpeg_bytes, skellycam_timestamps) = {
+        // ── Read frame + source timestamps from shared slot ──
+        let (frame_number, jpeg_bytes, source_timestamps) = {
             let slot = node.slot.read().unwrap();
             let frame_data = slot
                 .per_camera_data
@@ -72,10 +84,10 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) {
                 .find(|d| d.camera_id == node.camera_id)
                 .cloned();
             match frame_data {
-                Some(data) => (slot.frame_number, data.jpeg_bytes, data.skellycam_timestamps),
+                Some(data) => (slot.frame_number, data.jpeg_bytes, data.source_timestamps),
                 None => {
-                    eprintln!(
-                        "[freemocap] CameraNode[{}]: no frame data in slot",
+                    tracing::warn!(
+                        "[freemocap::camera_node] no frame data in slot cam={}",
                         node.camera_id
                     );
                     continue;
@@ -92,8 +104,8 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) {
         ) {
             Ok(img) => img,
             Err(e) => {
-                eprintln!(
-                    "[freemocap] CameraNode[{}]: JPEG decode error: {:?}",
+                tracing::warn!(
+                    "[freemocap::camera_node] JPEG decode error cam={}: {:?}",
                     node.camera_id, e
                 );
                 continue;
@@ -101,11 +113,23 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) {
         };
 
         let camera_post_jpeg_decode_ns = performance_counter_nanoseconds();
+        let decode_us = (camera_post_jpeg_decode_ns - camera_dequeue_ns) / 1000;
 
         // ── Charuco detection ──
         let observation = detector.detect(frame_number as u64, &image);
 
         let camera_post_detection_ns = performance_counter_nanoseconds();
+        let detect_us = (camera_post_detection_ns - camera_post_jpeg_decode_ns) / 1000;
+        let n_detected = observation.detected_charuco_corner_ids.len();
+
+        tracing::trace!(
+            "[freemocap::camera_node] cam={} frame={} decode={}us detect={}us corners={}",
+            node.camera_id,
+            frame_number,
+            decode_us,
+            detect_us,
+            n_detected,
+        );
 
         // ── Assemble output with full timestamp chain ──
         let camera_pre_send_ns = performance_counter_nanoseconds();
@@ -114,17 +138,35 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) {
             camera_id: node.camera_id.clone(),
             frame_number,
             charuco_observation: Some(Box::new(observation)),
-            timestamps: CameraPipelineTimestamps {
-                skellycam: skellycam_timestamps,
-                camera_dequeue_ns,
-                camera_post_jpeg_decode_ns,
-                camera_post_detection_ns,
-                camera_pre_send_ns,
+            timestamps: DetectionTimestamps {
+                source: source_timestamps,
+                dequeue_ns: camera_dequeue_ns,
+                post_jpeg_decode_ns: camera_post_jpeg_decode_ns,
+                post_detection_ns: camera_post_detection_ns,
+                pre_send_ns: camera_pre_send_ns,
             },
         };
 
+        tracing::debug!(
+            "[freemocap::camera_node] cam={} frame={} corners={} decode={}us detect={}us",
+            node.camera_id,
+            frame_number,
+            n_detected,
+            decode_us,
+            detect_us,
+        );
+
         if node.output_tx.send(output).is_err() {
+            tracing::info!(
+                "[freemocap::camera_node] aggregator channel closed cam={}, shutting down",
+                node.camera_id
+            );
             break;
         }
     }
+
+    tracing::info!(
+        "[freemocap::camera_node] shutting down cam={}",
+        node.camera_id
+    );
 }

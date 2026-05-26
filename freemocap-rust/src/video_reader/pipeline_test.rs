@@ -22,6 +22,7 @@ mod tests {
     use crate::pipeline::aggregator::{self, Aggregator};
     use crate::pipeline::camera_node::{self, CameraNode};
     use crate::pipeline::distributor::{self, Distributor, PipelineCommand};
+    use crate::pipeline::stats::{self, PipelineStats, print_pipeline_stats};
     use crate::pipeline::types::DistributorSlot;
     use crate::triangulation::calibration_loader;
     use crate::triangulation::outlier_rejection::OutlierRejectionConfig;
@@ -49,6 +50,7 @@ mod tests {
 
         // ── Pacing signal: shared between dispatcher and distributor ────────
         let pacing_signal = Arc::new(AtomicI64::new(-1));
+        let dispatcher_stats_out = Arc::new(Mutex::new(None));
 
         // ── Open synchronized videos via new VideoGroup API ──────────────────
         let videos = [
@@ -71,7 +73,11 @@ mod tests {
 
         // ── Start dispatcher (paced, limited frames for test) ────────────────
         video_group
-            .start(Some(pacing_signal.clone()), Some(MAX_FRAMES))
+            .start(
+                Some(pacing_signal.clone()),
+                Some(MAX_FRAMES),
+                dispatcher_stats_out.clone(),
+            )
             .expect("Failed to start video dispatcher");
         let frame_slots = video_group.frame_slots();
         let video_ts_slot = video_group.video_timestamps_slot_arc();
@@ -134,7 +140,8 @@ mod tests {
             .expect("Failed to spawn distributor");
 
         // ── Spawn camera nodes ────────────────────────────────────────────────
-        let mut cam_handles = Vec::with_capacity(n_cameras);
+        let mut cam_handles: Vec<std::thread::JoinHandle<stats::CameraNodeStats>> =
+            Vec::with_capacity(n_cameras);
         let mut cam_cmd_txs: Vec<mpsc::Sender<PipelineCommand>> = Vec::with_capacity(n_cameras);
 
         for i in 0..n_cameras {
@@ -253,12 +260,30 @@ mod tests {
         drop(agg_cmd_tx);
         drop(cam_cmd_txs);
         drop(cam_output_txs);
-        let _ = dist_handle.join();
-        for h in cam_handles {
-            let _ = h.join();
-        }
-        let _ = agg_handle.join();
+
+        // Collect per-thread stats from JoinHandles
+        let distributor_stats = dist_handle.join().unwrap_or_default();
+        let camera_stats: Vec<stats::CameraNodeStats> = cam_handles
+            .into_iter()
+            .map(|h| h.join().unwrap_or_default())
+            .collect();
+        let aggregator_stats = agg_handle.join().unwrap_or_default();
         video_group.shutdown();
+        let dispatcher_stats = dispatcher_stats_out
+            .lock()
+            .ok()
+            .and_then(|g| g.clone());
+
+        // ── Print comprehensive pipeline statistics ─────────────────────────
+        let pipeline_stats = PipelineStats {
+            n_frames: total_frames_processed,
+            wall_time_secs: collect_elapsed.as_secs_f64(),
+            dispatcher: dispatcher_stats,
+            distributor: distributor_stats,
+            cameras: camera_stats,
+            aggregator: aggregator_stats,
+        };
+        print_pipeline_stats(&pipeline_stats);
 
         // ═══════════════════════════════════════════════════════════════════════
         // Verify results

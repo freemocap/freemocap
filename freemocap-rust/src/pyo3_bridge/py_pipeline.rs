@@ -130,7 +130,9 @@ impl PyPipeline {
         );
         let dist_handle = std::thread::Builder::new()
             .name("freemocap-distributor".into())
-            .spawn(move || distributor::run_distributor(distributor))
+            .spawn(move || {
+                distributor::run_distributor(distributor);
+            })
             .map_err(|e| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
                     "Failed to spawn distributor thread: {e}"
@@ -174,7 +176,7 @@ impl PyPipeline {
 
             let cam_handle = std::thread::Builder::new()
                 .name(format!("freemocap-camera-{cam_id}"))
-                .spawn(move || camera_node::run_camera_node(cam_node, detector))
+                .spawn(move || { camera_node::run_camera_node(cam_node, detector); })
                 .map_err(|e| {
                     pyo3::exceptions::PyRuntimeError::new_err(format!(
                         "Failed to spawn camera node thread for {cam_id}: {e}"
@@ -207,7 +209,7 @@ impl PyPipeline {
 
         let agg_handle = std::thread::Builder::new()
             .name("freemocap-aggregator".into())
-            .spawn(move || aggregator::run_aggregator(agg))
+            .spawn(move || { aggregator::run_aggregator(agg); })
             .map_err(|e| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
                     "Failed to spawn aggregator thread: {e}"

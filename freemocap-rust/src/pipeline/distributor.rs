@@ -9,6 +9,7 @@ use skellycam::camera_group::FrameSlots;
 use skellycam::timestamps::performance::performance_counter_nanoseconds;
 
 use super::config::PipelineConfig;
+use super::stats::DistributorStats;
 use super::types::{
     DistributorSlot, PerCameraFrameData, PipelineTimestamps, SourceFrameTimestamps,
     VideoFrameTimestamps,
@@ -70,11 +71,9 @@ impl Distributor {
 
 /// Main loop for the distributor thread.
 ///
-/// Polls the CameraGroup's shared frame slots (same `Arc<Mutex<Option<T>>>`
-/// that the dispatcher thread writes to), snapshots them, writes the
-/// distributor slot, and releases camera nodes via the BreakableBarrier.
-/// Zero Python in the frame path.
-pub fn run_distributor(distributor: Distributor) {
+/// Returns per-frame timing statistics.
+pub fn run_distributor(distributor: Distributor) -> DistributorStats {
+    let mut stats = DistributorStats::default();
     let mut last_distributed: i64 = -1;
 
     loop {
@@ -89,6 +88,8 @@ pub fn run_distributor(distributor: Distributor) {
         if distributor.shutdown_flag.load(Ordering::Relaxed) {
             break;
         }
+
+        let cycle_start_ns = performance_counter_nanoseconds();
 
         // ── Poll CameraGroup's shared slots directly ──
         let raw_frames = {
@@ -184,11 +185,11 @@ pub fn run_distributor(distributor: Distributor) {
 
         // ── Release camera nodes ──
         let distributor_barrier_release_ns = performance_counter_nanoseconds();
-        tracing::trace!("[freemocap::distributor] releasing barrier frame={}", frame_number);
         if !distributor.barrier.wait() {
             tracing::info!("[freemocap::distributor] barrier broken, shutting down");
             break;
         }
+        let post_barrier_ns = performance_counter_nanoseconds();
 
         // ── Stamp distributor timestamps ──
         {
@@ -200,11 +201,10 @@ pub fn run_distributor(distributor: Distributor) {
             };
         }
 
-        tracing::debug!(
-            "[freemocap::distributor] cycle frame={} n_cameras={}",
-            frame_number,
-            raw_frames.len(),
-        );
+        // ── Record stats ──
+        stats.slot_work_ns.push((distributor_slot_write_ns - cycle_start_ns) as f64);
+        stats.barrier_wait_ns.push((post_barrier_ns - distributor_barrier_release_ns) as f64);
+        stats.total_ns.push((post_barrier_ns - cycle_start_ns) as f64);
 
         // Signal consumption for dispatcher pacing (video source only).
         if let Some(ref consumed) = distributor.last_consumed_frame {
@@ -214,6 +214,10 @@ pub fn run_distributor(distributor: Distributor) {
         last_distributed = frame_number;
     }
 
-    tracing::info!("[freemocap::distributor] shutting down");
+    tracing::info!(
+        "[freemocap::distributor] shutting down ({} frames)",
+        stats.total_ns.len()
+    );
     distributor.barrier.break_barrier();
+    stats
 }

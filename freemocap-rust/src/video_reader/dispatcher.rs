@@ -32,6 +32,7 @@ use skellycam::camera::types::FrameLifecycleTimestamps;
 use skellycam::camera_group::dispatcher::{FrontendPayload, RawFrame};
 use skellycam::timestamps::performance::performance_counter_nanoseconds;
 
+use crate::pipeline::stats::VideoDispatcherStats;
 use crate::pipeline::types::VideoFrameTimestamps;
 
 use super::reader::VideoReader;
@@ -53,6 +54,7 @@ use super::reader::VideoReader;
 ///   The distributor writes the last consumed frame_number; the dispatcher
 ///   checks it to avoid overwriting unprocessed frames.
 /// * `max_frames` — optional cap for test runs (None = process all frames).
+/// * `stats_out` — written with per-frame timing data before thread exit.
 pub fn spawn_video_dispatcher(
     mut readers: Vec<VideoReader>,
     camera_ids: Vec<String>,
@@ -62,6 +64,7 @@ pub fn spawn_video_dispatcher(
     shutdown_flag: Arc<AtomicBool>,
     pacing_signal: Option<Arc<AtomicI64>>,
     max_frames: Option<usize>,
+    stats_out: Arc<Mutex<Option<crate::pipeline::stats::VideoDispatcherStats>>>,
 ) -> JoinHandle<()> {
     assert_eq!(
         readers.len(),
@@ -80,6 +83,7 @@ pub fn spawn_video_dispatcher(
     thread::Builder::new()
         .name("video-dispatcher".into())
         .spawn(move || {
+            let mut stats = VideoDispatcherStats::default();
             let mut frame_number: i64 = 0;
 
             loop {
@@ -231,7 +235,19 @@ pub fn spawn_video_dispatcher(
                     });
                 }
 
+                // ── Record stats ──
+                stats.read_ns.push((video_read_done_ns - video_read_start_ns) as f64);
+                stats.encode_ns.push((video_encode_done_ns - video_read_done_ns) as f64);
+                stats.payload_build_ns.push((video_payload_built_ns - video_encode_done_ns) as f64);
+                stats.slots_write_ns.push((video_slots_written_ns - video_payload_built_ns) as f64);
+                stats.total_ns.push((video_slots_written_ns - video_read_start_ns) as f64);
+
                 frame_number += 1;
+            }
+
+            // ── Publish stats ──
+            if let Ok(mut guard) = stats_out.lock() {
+                *guard = Some(stats);
             }
 
             tracing::info!(

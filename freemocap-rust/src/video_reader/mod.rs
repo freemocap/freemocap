@@ -38,6 +38,7 @@ use std::thread::JoinHandle;
 use skellycam::camera_group::dispatcher::{FrontendPayload, RawFrame};
 use skellycam::camera_group::FrameSlots;
 
+use crate::pipeline::stats::VideoDispatcherStats;
 use crate::pipeline::types::VideoFrameTimestamps;
 
 use reader::VideoReader;
@@ -172,6 +173,7 @@ impl VideoGroup {
         &mut self,
         pacing_signal: Option<Arc<AtomicI64>>,
         max_frames: Option<usize>,
+        stats_out: Arc<Mutex<Option<VideoDispatcherStats>>>,
     ) -> Result<(), String> {
         if self.state != VideoGroupState::Created {
             return Err(format!(
@@ -202,6 +204,7 @@ impl VideoGroup {
             self.shutdown_flag.clone(),
             pacing_signal,
             max_frames,
+            stats_out,
         );
 
         self.dispatcher_handle = Some(handle);
@@ -354,8 +357,9 @@ mod tests {
         let mut group = VideoGroup::open(&paths, &cam_ids).expect("Failed to open");
         assert_eq!(group.state, VideoGroupState::Created);
 
+        let stats_out = Arc::new(Mutex::new(None));
         // Start with pacing=None (no pipeline attached), max_frames=5
-        group.start(None, Some(5)).expect("Failed to start");
+        group.start(None, Some(5), stats_out).expect("Failed to start");
         assert_eq!(group.state, VideoGroupState::Streaming);
 
         // Give dispatcher time to push frames

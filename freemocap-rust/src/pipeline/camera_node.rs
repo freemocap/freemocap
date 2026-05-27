@@ -66,7 +66,7 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) -> Camera
         }
 
         // ── Read frame + source timestamps from shared slot ──
-        let (_frame_number, jpeg_bytes, source_timestamps) = {
+        let (frame_number, jpeg_bytes, source_timestamps) = {
             let slot = node.slot.read().unwrap();
             let frame_data = slot
                 .per_camera_data
@@ -106,7 +106,7 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) -> Camera
         let decode_ns = camera_post_jpeg_decode_ns - camera_dequeue_ns;
 
         // ── Charuco detection ──
-        let observation = detector.detect(0, &image);
+        let observation = detector.detect(frame_number as u64, &image);
 
         let camera_post_detection_ns = performance_counter_nanoseconds();
         let detect_ns = camera_post_detection_ns - camera_post_jpeg_decode_ns;
@@ -118,7 +118,7 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) -> Camera
 
         let output = CameraNodeOutput {
             camera_id: camera_id.clone(),
-            frame_number: _frame_number,
+            frame_number,
             charuco_observation: Some(Box::new(observation)),
             timestamps: CameraNodeTimestamps {
                 source: source_timestamps,

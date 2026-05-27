@@ -3,6 +3,15 @@
 //! Boots a Tokio runtime, builds the Axum router with `AppState`,
 //! and serves HTTP endpoints for camera group and pipeline management.
 //!
+//! The server manages:
+//! - **Camera groups** (via skellycam's `CameraGroupManager`) — create, list,
+//!   close camera groups. Each group synchronizes N USB cameras.
+//! - **Pipelines** (via `PipelineManager`) — create, list, delete real-time
+//!   pipelines. Each pipeline attaches to a camera group's `FrameSlots` and
+//!   runs the distributor→camera nodes→aggregator thread topology.
+//! - **Posthoc pipelines** — deferred. VideoGroup already supports mpsc-channel
+//!   based frame delivery for posthoc processing (see `video_reader` module).
+//!
 //! Usage: `cargo run` (starts server on port 53118 unconditionally).
 //! CLI argument parsing (--port, --serve, etc.) deferred to next milestone.
 

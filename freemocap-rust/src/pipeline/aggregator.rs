@@ -14,7 +14,9 @@ use crate::triangulation::outlier_rejection::OutlierRejectionConfig;
 use super::config::PipelineConfig;
 use super::distributor::PipelineCommand;
 use super::stats::AggregatorStats;
-use super::types::{AggregatorOutput, CameraNodeOutput, PipelineTimestamps};
+use super::types::{
+    AggregatorOutput, AggregatorTimestamps, CameraNodeOutput, PipelineCycleTimestamps,
+};
 
 /// State for the aggregator thread.
 pub struct Aggregator {
@@ -159,7 +161,7 @@ pub fn run_aggregator(agg: Aggregator) -> AggregatorStats {
         let aggregator_post_filter_ns = performance_counter_nanoseconds();
 
         // ── Extract frontend payload + distributor timestamps ──
-        let (frontend_payload_bytes, timestamp_ns, camera_fps, distributor_timestamps) = {
+        let (frontend_payload_bytes, timestamp_ns, camera_fps, distributor_ts) = {
             let slot = agg.distributor_slot.read().unwrap();
             (
                 slot.frontend_payload_bytes.clone(),
@@ -171,12 +173,34 @@ pub fn run_aggregator(agg: Aggregator) -> AggregatorStats {
 
         let aggregator_output_published_ns = performance_counter_nanoseconds();
 
+        // ── Build aggregator timestamps ──
+        let agg_ts = AggregatorTimestamps {
+            collection_start_ns: aggregator_collection_start_ns,
+            all_received_ns: aggregator_all_received_ns,
+            post_triangulation_ns: aggregator_post_triangulation_ns,
+            post_filtering_ns: aggregator_post_filter_ns,
+            output_published_ns: aggregator_output_published_ns,
+        };
+
+        // ── Build per-camera timestamps map ──
+        let camera_ts_map: std::collections::HashMap<String, _> = camera_outputs
+            .iter()
+            .map(|co| (co.camera_id.clone(), co.timestamps.clone()))
+            .collect();
+
+        // ── Build composite cycle timestamps ──
+        let cycle_ts = PipelineCycleTimestamps {
+            distributor: distributor_ts,
+            cameras: camera_ts_map,
+            aggregator: agg_ts.clone(),
+        };
+
         // ── Record stats ──
-        stats.collection_ns.push((aggregator_all_received_ns - aggregator_collection_start_ns) as f64);
-        stats.triangulation_ns.push((aggregator_post_triangulation_ns - aggregator_all_received_ns) as f64);
-        stats.filtering_ns.push((aggregator_post_filter_ns - aggregator_post_triangulation_ns) as f64);
-        stats.output_publish_ns.push((aggregator_output_published_ns - aggregator_post_filter_ns) as f64);
-        stats.total_ns.push((aggregator_output_published_ns - aggregator_collection_start_ns) as f64);
+        stats.collection_ns.push(agg_ts.collection_ns() as f64);
+        stats.triangulation_ns.push(agg_ts.triangulation_ns() as f64);
+        stats.filtering_ns.push(agg_ts.filtering_ns() as f64);
+        stats.output_publish_ns.push(agg_ts.output_publish_ns() as f64);
+        stats.total_ns.push(agg_ts.total_ns() as f64);
         stats.points_triangulated.push(raw_keypoints.len());
 
         // ── Publish output ──
@@ -188,16 +212,7 @@ pub fn run_aggregator(agg: Aggregator) -> AggregatorStats {
             frontend_payload_bytes,
             timestamp_ns,
             camera_fps,
-            pipeline_timestamps: PipelineTimestamps {
-                distributor_slot_write_ns: distributor_timestamps.distributor_slot_write_ns,
-                distributor_barrier_release_ns: distributor_timestamps
-                    .distributor_barrier_release_ns,
-                aggregator_collection_start_ns,
-                aggregator_all_received_ns,
-                aggregator_post_triangulation_ns,
-                aggregator_post_filter_ns,
-                aggregator_output_published_ns,
-            },
+            cycle_timestamps: cycle_ts,
         };
 
         *agg.output_slot.lock().unwrap() = Some(output);

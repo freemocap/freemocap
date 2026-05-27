@@ -66,6 +66,21 @@ Distributor: polls slots directly, writes DistributorSlot, Barrier.wait()
 WebSocket relay (Axum) or Python polling
 ```
 
+## Prerequisites
+
+OpenCV with FFmpeg support, installed via vcpkg (static linking):
+
+```bash
+vcpkg install opencv4[ffmpeg]:x64-windows-static --recurse
+```
+
+This pulls in FFmpeg (avcodec, avformat, avutil, swscale) and rebuilds OpenCV
+with `CAP_FFMPEG` enabled. The `x64-windows-static` triplet statically links
+everything — no DLLs to bundle at runtime.
+
+The `.cargo/config.toml` expects `VCPKG_ROOT=C:\tools\vcpkg` and the
+`x64-windows-static` triplet. Adjust if your vcpkg is installed elsewhere.
+
 ## Install & Run
 
 ### Binary (standalone server)

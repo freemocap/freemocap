@@ -11,12 +11,11 @@
 #[cfg(test)]
 mod tests {
     use std::path::Path;
-    use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{mpsc, Arc, Mutex, RwLock};
     use std::time::Instant;
 
     use skellycam::camera_group::sync_utils::BreakableBarrier;
-    use skellycam::camera_group::FrameSlots;
     use skellytracker::trackers::charuco::CharucoTracker;
 
     use crate::pipeline::aggregator::{self, Aggregator};
@@ -48,8 +47,6 @@ mod tests {
             return;
         }
 
-        // ── Pacing signal: shared between dispatcher and distributor ────────
-        let pacing_signal = Arc::new(AtomicI64::new(-1));
         let dispatcher_stats_out = Arc::new(Mutex::new(None));
 
         // ── Open synchronized videos via new VideoGroup API ──────────────────
@@ -71,15 +68,13 @@ mod tests {
         let n_cameras = video_group.n_cameras();
         let n_frames = video_group.frame_count();
 
-        // ── Start dispatcher (paced, limited frames for test) ────────────────
+        // ── Start dispatcher (limited frames for test) ──────────────────────
         video_group
-            .start(
-                Some(pacing_signal.clone()),
-                Some(MAX_FRAMES),
-                dispatcher_stats_out.clone(),
-            )
+            .start(Some(MAX_FRAMES), dispatcher_stats_out.clone())
             .expect("Failed to start video dispatcher");
-        let frame_slots = video_group.frame_slots();
+        let video_rx = video_group
+            .take_video_receiver()
+            .expect("Should have video receiver");
         let video_ts_slot = video_group.video_timestamps_slot_arc();
 
         tracing::info!(
@@ -124,13 +119,20 @@ mod tests {
         let dist_slot_for_agg = distributor_slot.clone();
 
         // ── Spawn distributor (with video_timestamps_slot) ────────────────────
+        // Create dummy FrameSlots for camera path (unused when video_rx is set)
+        let dummy_slots = skellycam::camera_group::FrameSlots {
+            raw_frames: Arc::new(Mutex::new(None)),
+            frontend_payload: Arc::new(Mutex::new(None)),
+        };
+
         let dist = Distributor::new(
             barrier.clone(),
             distributor_slot.clone(),
             dist_cmd_rx,
-            frame_slots,
+            dummy_slots,
             Some(video_ts_slot),
-            Some(pacing_signal),
+            None, // last_consumed_frame — not needed with channel backpressure
+            Some(video_rx),
             shutdown_flag.clone(),
         );
 

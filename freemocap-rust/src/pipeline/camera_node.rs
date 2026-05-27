@@ -11,7 +11,7 @@ use skellytracker::trackers::charuco::CharucoTracker;
 
 use super::distributor::PipelineCommand;
 use super::stats::CameraNodeStats;
-use super::types::{CameraNodeOutput, DetectionTimestamps, DistributorSlot};
+use super::types::{CameraNodeOutput, CameraNodeTimestamps, DistributorSlot};
 
 /// State for a single camera node thread.
 pub struct CameraNode {
@@ -120,7 +120,7 @@ pub fn run_camera_node(node: CameraNode, mut detector: CharucoTracker) -> Camera
             camera_id: camera_id.clone(),
             frame_number: _frame_number,
             charuco_observation: Some(Box::new(observation)),
-            timestamps: DetectionTimestamps {
+            timestamps: CameraNodeTimestamps {
                 source: source_timestamps,
                 dequeue_ns: camera_dequeue_ns,
                 post_jpeg_decode_ns: camera_post_jpeg_decode_ns,

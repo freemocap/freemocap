@@ -1,25 +1,30 @@
-//! Synchronized multi-camera video playback — a CameraGroup-compatible data
-//! source for the real-time pipeline.
+//! Synchronized multi-camera video playback — feeds the real-time pipeline
+//! via an unbounded mpsc channel.
 //!
-//! `VideoGroup` opens N video files and produces `FrameSlots` output
-//! isomorphic to `CameraGroup`, so the pipeline distributor can consume
-//! video files without knowing whether frames come from live cameras or disk.
+//! `VideoGroup` opens N video files and produces `MultiFramePayload` messages
+//! (the same type skellycam's gatherer produces) on an `mpsc::Sender`. The
+//! pipeline distributor receives from `mpsc::Receiver<MultiFramePayload>` —
+//! no FrameSlots polling, no pacing signal, no spin-waits.
 //!
 //! ## Architecture
 //!
 //! ```text
-//! VideoReader[0..N] ──→ VideoDispatcher (thread) ──→ FrameSlots
-//!                           │                            │
-//!                           │ BGR→JPEG encode            │ Same Arc<Mutex<Option<T>>>
-//!                           │ build RawFrame +           │ as CameraGroup
-//!                           │ FrontendPayload            │
-//!                           │                            │
-//!                           └──→ video_timestamps_slot   │
+//! VideoReader[0..N] ──→ VideoDispatcher (thread) ──→ mpsc::Sender<MultiFramePayload>
+//!                           │                                    │
+//!                           │ BGR→JPEG encode                    │ Unbounded channel
+//!                           │ build FramePacket per camera       │ (natural backpressure
+//!                           │ build MultiFramePayload            │  via recv() blocking)
+//!                           │                                    │
+//!                           └──→ video_timestamps_slot           │
+//!                                                                │
+//!                                          Pipeline Distributor ←┘
+//!                                          (recv() on video_rx)
 //! ```
 //!
 //! The dispatcher reads frames from all videos in lockstep, JPEG-encodes,
-//! and writes to `FrameSlots` — the exact same output type that skellycam's
-//! dispatcher produces. The pipeline distributor polls these slots identically.
+//! builds `FramePacket`s with the JPEG bytes, assembles a `MultiFramePayload`,
+//! and sends it downstream. The distributor blocks on `recv()` — no polling,
+//! no frame dropping.
 //!
 //! ## Sync Guarantee
 //!
@@ -31,12 +36,12 @@
 pub mod dispatcher;
 pub mod reader;
 
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use skellycam::camera_group::dispatcher::{FrontendPayload, RawFrame};
-use skellycam::camera_group::FrameSlots;
+use skellycam::camera::types::MultiFramePayload;
 
 use crate::pipeline::stats::VideoDispatcherStats;
 use crate::pipeline::types::VideoFrameTimestamps;
@@ -59,7 +64,10 @@ pub enum VideoGroupState {
 
 // ── VideoGroup handle ────────────────────────────────────────────────────
 
-/// A synchronized group of video files producing `FrameSlots` output.
+/// A synchronized group of video files producing `MultiFramePayload` via
+/// an unbounded mpsc channel — the same message type skellycam's gatherer
+/// produces. The pipeline distributor receives from this channel identically
+/// to how it would receive from a live CameraGroup.
 ///
 /// # State lifecycle
 ///
@@ -70,14 +78,11 @@ pub enum VideoGroupState {
 /// # Example
 ///
 /// ```ignore
-/// let mut group = VideoGroup::open(
-///     &["cam1.mp4", "cam2.mp4", "cam3.mp4"],
-///     &["Cam1", "Cam2", "Cam3"],
-/// )?;
-/// group.start(true, None)?;  // paced, all frames
-/// let slots = group.frame_slots();
-/// // ... pass slots to pipeline distributor ...
-/// group.shutdown()?;
+/// let mut group = VideoGroup::open(&["cam1.mp4"], &["Cam1"])?;
+/// group.start(None)?;
+/// let rx = group.take_video_receiver().unwrap();
+/// // ... pass rx to pipeline distributor as video_rx ...
+/// group.shutdown();
 /// ```
 pub struct VideoGroup {
     group_id: String,
@@ -90,13 +95,11 @@ pub struct VideoGroup {
     dispatcher_handle: Option<JoinHandle<()>>,
     shutdown_flag: Arc<AtomicBool>,
 
-    // Output slots — same types as CameraGroup
-    latest_raw_frames: Arc<Mutex<Option<Vec<RawFrame>>>>,
-    latest_frontend_payload: Arc<Mutex<Option<FrontendPayload>>>,
+    // Channel
+    multi_frame_tx: Option<mpsc::Sender<MultiFramePayload>>,
+    video_rx: Option<mpsc::Receiver<MultiFramePayload>>,
 
     /// Per-multiframe video-read timestamps for observability.
-    /// Written by the dispatcher, read by the distributor (via
-    /// `Distributor.video_timestamps_slot`).
     video_timestamps_slot: Arc<Mutex<Option<VideoFrameTimestamps>>>,
 }
 
@@ -151,27 +154,25 @@ impl VideoGroup {
             frame_count: fc,
             dispatcher_handle: None,
             shutdown_flag: Arc::new(AtomicBool::new(false)),
-            latest_raw_frames: Arc::new(Mutex::new(None)),
-            latest_frontend_payload: Arc::new(Mutex::new(None)),
+            multi_frame_tx: None,
+            video_rx: None,
             video_timestamps_slot: Arc::new(Mutex::new(None)),
         })
     }
 
-    /// Start the dispatcher thread. Frames begin flowing to `FrameSlots`.
+    /// Start the dispatcher thread. Frames begin flowing on the mpsc channel.
     ///
     /// # Arguments
-    /// * `pacing_signal` — optional shared atomic for backpressure. The
-    ///   distributor writes the last consumed frame_number here. When
-    ///   provided, the dispatcher waits for the distributor to consume
-    ///   each frame before writing the next (no frame dropping). When
-    ///   `None`, frames are written as fast as possible.
     /// * `max_frames` — optional cap (useful for tests). `None` = process all.
+    /// * `stats_out` — written with per-frame timing data before thread exit.
+    ///
+    /// After calling `start()`, use `take_video_receiver()` to get the
+    /// `mpsc::Receiver<MultiFramePayload>` for the pipeline distributor.
     ///
     /// # Errors
     /// Returns an error if not in the `Created` state.
     pub fn start(
         &mut self,
-        pacing_signal: Option<Arc<AtomicI64>>,
         max_frames: Option<usize>,
         stats_out: Arc<Mutex<Option<VideoDispatcherStats>>>,
     ) -> Result<(), String> {
@@ -188,30 +189,45 @@ impl VideoGroup {
             return Err("No readers — VideoGroup may have already been started".into());
         }
 
+        // Create unbounded channel — dispatcher sends, distributor receives
+        let (tx, rx) = mpsc::channel();
+
         tracing::info!(
             "[VideoGroup {}] starting dispatcher for {} camera(s), {} frames",
-            self.group_id,
-            camera_ids.len(),
-            self.frame_count,
+            self.group_id, camera_ids.len(), self.frame_count,
         );
 
         let handle = dispatcher::spawn_video_dispatcher(
             readers,
             camera_ids,
-            self.latest_raw_frames.clone(),
-            self.latest_frontend_payload.clone(),
+            tx,
             self.video_timestamps_slot.clone(),
             self.shutdown_flag.clone(),
-            pacing_signal,
             max_frames,
             stats_out,
         );
 
+        self.multi_frame_tx = None; // sender moved into dispatcher
+        self.video_rx = Some(rx);
         self.dispatcher_handle = Some(handle);
         self.state = VideoGroupState::Streaming;
 
         tracing::info!("[VideoGroup {}] dispatcher started", self.group_id);
         Ok(())
+    }
+
+    /// Take the video receiver for the pipeline distributor.
+    ///
+    /// Returns `None` if the group hasn't been started yet or has already
+    /// been taken. The receiver gets `MultiFramePayload` messages from the
+    /// video dispatcher — pass it to `Distributor.video_rx`.
+    pub fn take_video_receiver(&mut self) -> Option<mpsc::Receiver<MultiFramePayload>> {
+        self.video_rx.take()
+    }
+
+    /// Clone of the video timestamps slot for the distributor.
+    pub fn video_timestamps_slot_arc(&self) -> Arc<Mutex<Option<VideoFrameTimestamps>>> {
+        self.video_timestamps_slot.clone()
     }
 
     /// Shut down the dispatcher thread and transition to `Stopped`.
@@ -239,26 +255,6 @@ impl VideoGroup {
     }
 
     // ── Public accessors ──────────────────────────────────────────────────
-
-    /// Return clones of the shared frame slots for external consumers.
-    ///
-    /// The dispatcher thread writes into these slots every multiframe. The
-    /// pipeline distributor polls the same `Arc` slots. Each clone is a
-    /// cheap `Arc` ref bump — same pattern as `CameraGroup::frame_slots()`.
-    pub fn frame_slots(&self) -> FrameSlots {
-        FrameSlots {
-            raw_frames: self.latest_raw_frames.clone(),
-            frontend_payload: self.latest_frontend_payload.clone(),
-        }
-    }
-
-    /// Return a clone of the video timestamps slot.
-    ///
-    /// The distributor passes this to `Distributor.video_timestamps_slot`
-    /// so it can populate `SourceFrameTimestamps::Video(...)` for each frame.
-    pub fn video_timestamps_slot_arc(&self) -> Arc<Mutex<Option<VideoFrameTimestamps>>> {
-        self.video_timestamps_slot.clone()
-    }
 
     /// Whether the dispatcher is still running.
     pub fn is_alive(&self) -> bool {
@@ -358,21 +354,14 @@ mod tests {
         assert_eq!(group.state, VideoGroupState::Created);
 
         let stats_out = Arc::new(Mutex::new(None));
-        // Start with pacing=None (no pipeline attached), max_frames=5
-        group.start(None, Some(5), stats_out).expect("Failed to start");
+        group.start(Some(5), stats_out).expect("Failed to start");
         assert_eq!(group.state, VideoGroupState::Streaming);
 
-        // Give dispatcher time to push frames
-        std::thread::sleep(std::time::Duration::from_millis(500));
-
-        // Verify frames are flowing
-        let raw = {
-            group.latest_raw_frames.lock().unwrap().clone()
-        };
-        assert!(raw.is_some(), "Should have received frames");
-        let raw = raw.unwrap();
-        assert_eq!(raw.len(), 3, "Should have 3 camera frames");
-        assert!(raw[0].frame_number >= 0, "Should have valid frame number");
+        // Read frames from the channel
+        let rx = group.take_video_receiver().expect("Should have receiver");
+        let payload = rx.recv().expect("Should receive a frame");
+        assert_eq!(payload.frames.len(), 3, "Should have 3 camera frames");
+        assert!(payload.frame_number >= 0, "Should have valid frame number");
 
         group.shutdown();
         assert_eq!(group.state, VideoGroupState::Stopped);

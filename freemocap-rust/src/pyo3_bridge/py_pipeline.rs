@@ -11,7 +11,7 @@ use crate::pipeline::camera_node::{self, CameraNode};
 use crate::pipeline::config::PipelineConfig;
 use crate::pipeline::distributor::{self, Distributor, PipelineCommand};
 use crate::pipeline::types::{
-    AggregatorOutput, CameraNodeOutput, DistributorSlot, PipelineTimestamps,
+    AggregatorOutput, CameraNodeOutput, DistributorSlot, DistributorTimestamps,
 };
 use skellycam::camera_group::sync_utils::BreakableBarrier;
 use skellycam::camera_group::FrameSlots;
@@ -108,7 +108,12 @@ impl PyPipeline {
             frontend_payload_bytes: Vec::new(),
             timestamp_ns: 0.0,
             camera_fps: 0.0,
-            distributor_timestamps: PipelineTimestamps::default(),
+            distributor_timestamps: DistributorTimestamps {
+                cycle_start_ns: 0,
+                slot_write_done_ns: 0,
+                barrier_release_ns: 0,
+                barrier_return_ns: 0,
+            },
         }));
         let slot_for_agg = slot.clone();
 
@@ -126,6 +131,7 @@ impl PyPipeline {
             self.frame_slots.clone(),
             None, // video_timestamps_slot — None for camera source
             None, // last_consumed_frame — None for camera source
+            None, // video_rx — None for camera source
             self.shutdown_flag.clone(),
         );
         let dist_handle = std::thread::Builder::new()

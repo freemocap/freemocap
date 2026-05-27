@@ -25,7 +25,7 @@ impl VideoReader {
         let path_ref = path.as_ref();
         let path_str = path_ref.to_string_lossy();
 
-        let capture = videoio::VideoCapture::from_file(&path_str, videoio::CAP_ANY)
+        let capture = videoio::VideoCapture::from_file(&path_str, videoio::CAP_FFMPEG)
             .map_err(|e| format!("Failed to open '{}': {:?}", path_str, e))?;
 
         if !capture.is_opened().unwrap_or(false) {

@@ -35,9 +35,13 @@
 | **VideoGroup (first-class)** | ✅ Complete | `VideoReader` + dispatcher thread + unbounded mpsc channel → `MultiFramePayload`; lifecycle: open→start→shutdown; 11 tests pass |
 | **Tests** | ✅ Complete | 11 tests pass (DLT, calibration loader, integration, video reader, E2E pipeline) |
 | Calibration → aggregator wiring | ✅ Complete | Aggregator holds calibration models, calls `triangulate_charuco_corners()`, feeds results into filter chain |
-| **End-to-end pipeline test** | ✅ Complete | VideoGroup feeds 30 frames through full thread topology → 402 3D points at 1892mm scale, 23.5 fps (release) |
+| **End-to-end pipeline test** | ✅ Complete | VideoGroup feeds 30 frames → 397 3D points, **36.9 fps** (release) |
 | **Tracing logs** | ✅ Complete | TRACE/DEBUG/INFO/WARN logs throughout pipeline, SkellyFormat-compatible |
+| **Video read performance** | ✅ Complete | CAP_FFMPEG backend: 33ms → 3.5ms per 3 frames (9.4×) |
+| **JPEG encode optimization** | ✅ Complete | Quality 95: encode 12ms → 8ms, decode 5ms → 3ms |
+| **Single-call charuco detect** | ✅ Complete | detect_board handles markers+charuco in one C++ call (matches Python) |
 | `maturin develop` + Python import | ⬜ Next | Build .pyd, verify `import _freemocap_rust` |
+| **PyO3 bridge integration** | ⬜ Next | PyPipeline thread sigs out of sync, calibration not wired, video path missing |
 | **Posthoc Pipeline** | 🔜 Next | VideoGroup + channel infrastructure ready; next: posthoc processing mode, result export |
 | Skeleton Inference (CPU) | 🔜 Later | Per-camera RTMPose in camera nodes |
 | GPU Batched Inference | 🔜 Later | Centralized node, batched ONNX |
@@ -51,8 +55,8 @@ These were fixed in sibling crates as prerequisites:
 |-------|--------|------|
 | skellycam | `RawFrame` now carries `frame_number` + `timestamps` | [spec](../skellycam-architecture/10-rawframe-metadata.md) |
 | skellycam | `MultiFramePayload` wraps `GathererTimestamps` instead of bare `i64` fields | composable timestamp consistency |
-| skellytracker | Bumped pyo3 0.23 → 0.28; switched to vcpkg OpenCV (x64-windows-static, +crt-static) | done |
-| OpenCV | Migrated from chocolatey to vcpkg x64-windows-static triplet; unified CRT across all crates | done |
+| skellytracker | Bumped pyo3 0.23 → 0.28; single-call detect_board (removed per-frame ArucoDetector allocs) | done |
+| OpenCV | Migrated from chocolatey to vcpkg x64-windows-static with ffmpeg feature; unified CRT | done |
 
 ## Key Design Decisions
 
@@ -64,3 +68,6 @@ These were fixed in sibling crates as prerequisites:
 6. **VideoGroup uses MultiFramePayload channel** — video dispatcher sends skellycam's `MultiFramePayload` on an unbounded mpsc channel. Natural backpressure via `recv()` blocking. No FrameSlots, no pacing signal, no spin-waits for video sources.
 7. **Frontend payload rides through** — distributor snapshots both raw frames AND the pre-encoded frontend payload in one atomic read, so the final output always pairs the correct images with the correct processed data.
 8. **Manager-level backend switch** — `USE_RUST_BACKEND` flag lives in `RealtimePipelineManager`, not in individual pipeline factories. Same pattern as skellycam's `CameraGroupManager`.
+9. **Single-call charuco detection** — `detect_board()` is called with empty marker containers, letting OpenCV handle marker detection + charuco interpolation in one C++ call. Matches Python's `detectBoard()` exactly. No per-frame `ArucoDetector` allocations.
+10. **JPEG quality 95 for posthoc** — the video dispatcher encodes BGR frames at quality 95 (not 100). The ~1% pixel difference is below charuco detection threshold, but encode time nearly halves.
+11. **FFmpeg for video read** — `CAP_FFMPEG` instead of `CAP_ANY` avoids Windows MSMF overhead. Requires `opencv4[ffmpeg]:x64-windows-static` from vcpkg.

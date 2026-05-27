@@ -67,13 +67,10 @@ fn camera_node_loop(
         };
 
         // ── Charuco detection ──
-        let observation = match detector.process_image(frame_number, &image) {
-            Ok(obs) => obs,
-            Err(e) => {
-                eprintln!("[freemocap] CameraNode[{camera_id}]: detection error: {e}");
-                Box::new(CharucoObservation::empty(frame_number))
-            }
-        };
+        // Uses single-call detect_board — matches Python's detectBoard().
+        // Empty marker containers are passed; detect_board runs internal
+        // marker detection + charuco interpolation in one C++ call.
+        let observation = detector.detect(frame_number, &image);
 
         // ── Send downstream ──
         output_tx.send(CameraNodeOutput {

@@ -1,197 +1,222 @@
-# FreeMoCap Rust — Handoff (2026-05-27)
+# FreeMoCap Rust — Handoff (2026-05-27, session 2)
 
 ## Session Summary
 
-Two major architectural changes landed:
+Performance optimization session. Fixed the three largest bottlenecks in the
+posthoc pipeline path, taking the E2E test from 23.5 fps to 36.9 fps (57%
+improvement). Cleaned up dead code in skellytracker. Updated build docs for
+FFmpeg-enabled OpenCV.
 
-1. **Composable per-loop timestamp architecture** — `PipelineTimestamps` was a flat
-   struct mixing distributor and aggregator stages. It's now split into four
-   composable structs: `DistributorTimestamps`, `CameraNodeTimestamps`,
-   `AggregatorTimestamps`, and the composite `PipelineCycleTimestamps`. Every
-   thread loop gets its own `Timestamps` struct with named stage boundaries and
-   `end − start` duration helpers. The same pattern was applied upstream in
-   skellycam: `MultiFramePayload` now wraps `GathererTimestamps` instead of
-   carrying bare `i64` fields.
+### What changed
 
-2. **VideoGroup uses mpsc channel instead of FrameSlots** — The video path no
-   longer polls `FrameSlots` (which was designed for live cameras where you
-   always want the latest frame). Instead, the video dispatcher sends
-   `MultiFramePayload` (skellycam's type) on an unbounded `mpsc` channel. The
-   distributor receives via `recv()` — no pacing signal, no spin-waits, no
-   frame dropping. The distributor checks `video_rx.is_some()` to decide
-   between channel (video) and FrameSlots (live camera) input.
+1. **Video read: CAP_ANY → CAP_FFMPEG** — OpenCV's MSMF backend was taking
+   ~10ms per 720×1280 frame. Switched to FFmpeg backend (now 0.9-1.2ms per
+   frame). Required rebuilding OpenCV via vcpkg with the `[ffmpeg]` feature.
+   Setup instructions updated in both repos.
 
-## What Changed This Session
+2. **JPEG quality: 100 → 95** — The dispatcher was encoding BGR frames at
+   quality 100 (essentially lossless). Dropping to 95 cuts encode time nearly
+   in half (12ms → 8ms for 3 frames) and decode time by ~35% (5ms → 3ms) with
+   zero impact on charuco detection accuracy.
 
-### Composable per-loop timestamps
+3. **Single-call detect_board** — skellytracker's `CharucoTracker::detect()`
+   was running marker detection twice: once explicitly in
+   `detect_aruco_markers_raw()` (which created a new `ArucoDetector` per
+   frame), then again inside `detect_board()` when the pre-detected markers
+   didn't match the board. Now `detect_board()` is called with empty containers
+   and handles everything in one C++ call — matching Python's `detectBoard()`
+   exactly. Removed the dead `detect_aruco_markers_raw` method and the cached
+   aruco fields from `CharucoTracker`.
 
-**freemocap** (`src/pipeline/types.rs`):
-- `PipelineTimestamps` (flat, 7 mixed fields) → 4 composable structs:
-  - `DistributorTimestamps`: `cycle_start`, `slot_write_done`, `barrier_release`, `barrier_return`
-  - `CameraNodeTimestamps` (was `DetectionTimestamps`): `source: SourceFrameTimestamps`, `dequeue`, `post_jpeg_decode`, `post_detection`, `pre_send`
-  - `AggregatorTimestamps`: `collection_start`, `all_received`, `post_triangulation`, `post_filtering`, `output_published`
-  - `PipelineCycleTimestamps`: composite of `distributor: DistributorTimestamps` + `cameras: HashMap<String, CameraNodeTimestamps>` + `aggregator: AggregatorTimestamps`
-- Each struct has duration helpers (`slot_work_ns()`, `triangulation_ns()`, etc.)
-- `AggregatorOutput.pipeline_timestamps` → `cycle_timestamps: PipelineCycleTimestamps`
+4. **Fixed frame number** — `camera_node.rs` was passing `0` to
+   `detector.detect(0, &image)` instead of the actual frame number from the
+   distributor slot. Fixed.
 
-**skellycam** (`camera/types.rs`, `camera_group/`):
-- `GathererTimestamps` moved from `camera_group` to `camera::types`
-- `MultiFramePayload` now has `gatherer_timestamps: GathererTimestamps` instead of three bare `i64` fields (`all_frames_received_ns`, `payload_assembled_ns`, `pre_send_downstream_ns`)
-- Updated `gatherer.rs`, `recording_stats.rs`, `camera_group.rs`, `camera_group/mod.rs`
+5. **Investigated charuco thread contention** — Confirmed that 3 parallel
+   `detect_board` calls share OpenCV's global thread pool, causing alternating
+   fast (13ms) / slow (25ms) frames. Tried `set_num_threads(1)` (uniform but
+   slower at 14-18ms per call) and `set_num_threads(n_cpus/3)` (no measurable
+   improvement over default). Reverted both — the single-call detect_board
+   change was the real win. The remaining ~20ms/camera charuco time is within
+   expected range for 1280×720 at 3-way parallel.
 
-### VideoGroup: FrameSlots → mpsc channel
+6. **Fixed pre-existing typo** — `c//!` → `//!` in skellytracker's
+   `composite_gpu/observation.rs`.
 
-**`src/video_reader/`**:
-- `reader.rs` (new): `VideoReader` wraps OpenCV `VideoCapture` with metadata (FPS, dims, frame count)
-- `dispatcher.rs` (rewritten): Reads frames sequentially, JPEG-encodes, builds `FramePacket`s, assembles `MultiFramePayload`, sends on `mpsc::Sender<MultiFramePayload>`. No FrameSlots, no pacing signal.
-- `mod.rs` (rewritten): `VideoGroup` with `Created→Streaming→Stopped` lifecycle. `open()` → `start()` creates channel + spawns dispatcher → `take_video_receiver()` returns `mpsc::Receiver<MultiFramePayload>` → `shutdown()`.
-
-**`src/pipeline/distributor.rs`**:
-- `Distributor` has new `video_rx: Option<Receiver<MultiFramePayload>>` field
-- When `video_rx.is_some()`: blocks on `recv()`, converts `FramePacket` → `RawFrame` data
-- When `video_rx.is_none()`: polls `FrameSlots` as before (live camera path)
-- Removed pacing signal dependency for video path
-
-### Pipeline timing statistics
-
-**`src/pipeline/stats.rs`** (new): Per-stage, per-camera, per-thread timing statistics with skellycam-format output:
-- `VideoDispatcherStats`: read, encode, payload build, slots write
-- `DistributorStats`: slot poll+write, barrier wait
-- `CameraNodeStats`: JPEG decode, charuco detect, total (per camera)
-- `AggregatorStats`: collection, triangulation, filtering, output publish
-- `print_pipeline_stats()`: prints tables with median/mean/std/CV%/min/max/n, per-camera breakdowns, mean/median camera summaries, across-camera spread — matching skellycam's gatherer output format
-
-All thread functions (`run_distributor`, `run_camera_node`, `run_aggregator`, `spawn_video_dispatcher`) now return their stats structs. The E2E test collects them and prints the full block.
-
-### E2E test results
+### Performance
 
 ```
 cargo test --release --lib video_reader::pipeline_test -- --nocapture
 
-Pipeline FPS:    23.5 fps (release build, 30 frames, 3 cameras, 720×1280)
-Frame duration:  43.0 ms median
+Pipeline FPS (median):  36.9 fps  (was 23.5, +57%)
+Frame duration (median): 27.5 ms  (was 43.0, -36%)
 
-Time breakdown (median):
-  Video read (3 cams):     33.1 ms   ← OpenCV CAP_ANY/MSMF backend bottleneck
-  JPEG encode (3 cams):    12.4 ms   ← quality 100 at 720×1280
-  Distributor:             <1 ms
-  JPEG decode (median cam): 4.6 ms   ← per camera, parallel
-  Charuco detect (median): 23.9 ms   ← 3× expected (~8ms in skellytracker demo)
-  Triangulation + filter:  <1 ms
+Video dispatcher (median):
+  Read 3 frames:          3.5 ms  (was 33.1,  9.4× faster)
+  JPEG encode 3 frames:   7.8 ms  (was 12.4,  1.6× faster)
+
+Camera nodes (median per camera, 3 parallel):
+  JPEG decode:            3.0 ms  (was  4.6,  1.5× faster)
+  Charuco detect:        20.8 ms  (was 23.9,  1.1× faster)
+  Camera total:          24.1 ms
+
+Aggregator (median):
+  Triangulation:          0.12 ms
+  Filtering:              0.01 ms
+  Output publish:        <0.01 ms
+
+Total triangulated 3D points: 397 (30 frames, 3 cameras)
 ```
-
-The 33ms video read is the dominant dispatcher cost — likely the MSMF backend
-selected by `CAP_ANY` on Windows. Switching to `CAP_FFMPEG` should improve this.
 
 ## Current State
 
-### What Works (real, tested — 11 tests pass)
+### What Works (11 tests pass, 36.9 fps release)
 
-| Component | File |
-|-----------|------|
-| DLT triangulation (SVD) | `src/triangulation/dlt.rs` |
-| Outlier rejection (weighted ensemble) | `src/triangulation/outlier_rejection.rs` |
-| Charuco corner grouping + undistortion | `src/triangulation/charuco.rs` |
-| Calibration TOML loader | `src/triangulation/calibration_loader.rs` |
-| One Euro filter | `src/filtering/one_euro.rs` |
-| Velocity gate | `src/filtering/velocity_gate.rs` |
-| Distributor (dual-source: FrameSlots or mpsc channel) | `src/pipeline/distributor.rs` |
-| Camera node (JPEG decode + charuco detect) | `src/pipeline/camera_node.rs` |
-| Aggregator (collect + triangulate + filter + publish) | `src/pipeline/aggregator.rs` |
-| VideoGroup (reader + dispatcher + mpsc channel) | `src/video_reader/` |
-| VideoReader (single-file reader with metadata) | `src/video_reader/reader.rs` |
-| Composable per-loop timestamps | `src/pipeline/types.rs` |
-| Pipeline timing statistics | `src/pipeline/stats.rs` |
-| E2E pipeline test (VideoGroup → channel → full pipeline) | `src/video_reader/pipeline_test.rs` |
-| Upstream: `MultiFramePayload` wraps `GathererTimestamps` | skellycam `camera/types.rs` |
+| Component | File | Notes |
+|-----------|------|-------|
+| DLT triangulation (SVD) | `src/triangulation/dlt.rs` | |
+| Outlier rejection (weighted ensemble) | `src/triangulation/outlier_rejection.rs` | |
+| Charuco corner grouping + undistortion | `src/triangulation/charuco.rs` | |
+| Calibration TOML loader | `src/triangulation/calibration_loader.rs` | |
+| One Euro filter | `src/filtering/one_euro.rs` | |
+| Velocity gate | `src/filtering/velocity_gate.rs` | |
+| Distributor (FrameSlots + mpsc channel) | `src/pipeline/distributor.rs` | Dual-source |
+| Camera node (JPEG decode + charuco) | `src/pipeline/camera_node.rs` | Single-call detect_board |
+| Aggregator (collect + triangulate + filter) | `src/pipeline/aggregator.rs` | |
+| VideoGroup (reader + dispatcher + channel) | `src/video_reader/` | mpsc-based |
+| VideoReader (FFmpeg backend) | `src/video_reader/reader.rs` | CAP_FFMPEG |
+| Composable per-loop timestamps | `src/pipeline/types.rs` | 4 structs |
+| Pipeline timing statistics | `src/pipeline/stats.rs` | Skellycam-format tables |
+| E2E pipeline test | `src/video_reader/pipeline_test.rs` | 397 pts @ 36.9 fps |
+| Single-call charuco detect | skellytracker `charuco/mod.rs` | Matches Python detectBoard |
 
-### What's Stubbed/Deferred
+### What's Broken/Needs Fixing
 
-| Component | Status |
-|-----------|--------|
-| PipelineManager thread spawning (HTTP path) | ❌ Stores config, doesn't spawn |
-| PipelineManager config update | ❌ `let _ = &config;` no-op |
-| Posthoc pipeline (standalone processing mode) | ❌ Infrastructure ready; no `PosthocPipeline` struct yet |
-| Skeleton filter (FABRIK) | ❌ Placeholder comment |
-| `maturin develop` / PyO3 .pyd | ❌ Not built |
-| Real-time server smoke test | ❌ Not tested with live cameras |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| PyO3 bridge (`py_pipeline.rs`) | ❌ Out of sync | Thread spawns discard stats return values; `JoinHandle<()>` needs to become `JoinHandle<Stats>` or stats collected via `Arc<Mutex<>>` |
+| PyPipeline calibration | ❌ hardcoded `calibration: None` | Aggregator runs but doesn't triangulate |
+| PyPipeline video path | ❌ Not implemented | `video_rx: None` — no way to use VideoGroup from Python |
+| PipelineManager thread spawning | ❌ Stores config, doesn't spawn | HTTP path untested |
+| `maturin develop` / PyO3 .pyd | ❌ Not built | Module exists but untested with latest changes |
 
-## Next Steps
+## Next Session: PyO3 Bridge Integration
 
-### Immediate
+The next session should wire the Rust pipeline into the Python FreeMoCap server
+so it can run as a drop-in replacement for the Python backend.
 
-1. **Fix video read performance**: Switch `VideoReader::open()` from `CAP_ANY` →
-   `CAP_FFMPEG`. The current 33ms read for 3 frames (10ms each) is the dominant
-   dispatcher bottleneck. FFmpeg's software decoder should be 3-5× faster.
+### Architecture constraint
 
-2. **Investigate charuco detection speed**: 24ms per camera vs 8ms expected in
-   skellytracker webcam demo. Check whether resolution (720×1280 vs the demo's
-   likely 640×480) accounts for the 3× gap, or whether there's FFI overhead.
+The Rust camera group manager and Rust pipeline manager are a **coupled pair**.
+You can't use one without the other — the pipeline pulls `FrameSlots` directly
+from the camera group via `Arc` clones. There will be a single `USE_RUST_BACKEND`
+flag (module-level constant) that swaps both:
 
-3. **Posthoc pipeline struct**: Build a `PosthocPipeline` that wires VideoGroup →
-   channel → distributor → camera nodes → aggregator into a single `run()` call
-   that returns `PosthocResult` (all frames, all 3D points, stats). The E2E test
-   already does this manually — extract to production code.
+```python
+# freemocap/core/pipeline/realtime/realtime_pipeline_manager.py
+USE_RUST_BACKEND: bool = False  # True = Rust camera group + Rust pipeline
+```
 
-### Medium-term
+When True, the manager imports `_skellycam_rust` and `_freemocap_rust` and
+creates native objects instead of Python multiprocessing wrappers.
 
-4. **Result export**: Serialize triangulated 3D trajectories + per-camera weights
-   + reprojection errors to JSON/CSV matching Python output format.
+### What needs to happen
 
-5. **Batch triangulation mode**: For posthoc, collect all observations first,
-   triangulate once via `triangulate_simple_batch()` (avoids per-frame thread
-   overhead for pure posthoc use).
+1. **Fix PyPipeline thread signatures** (`src/pyo3_bridge/py_pipeline.rs`)
+   - All thread functions now return stats structs
+   - `JoinHandle<()>` needs to become `JoinHandle<StatType>` or the stats need
+     to be collected via `Arc<Mutex<Option<StatType>>>`  
+   - Or: wrap thread functions in a closure that drops stats: `{ fn(args); }`
+     (the handoff doc from last session mentions this pattern)
 
-6. **`maturin develop`**: Build the `.pyd`, verify `import _freemocap_rust` works.
+2. **Wire calibration into PyPipeline**
+   - PyPipeline needs to accept a calibration TOML path or pre-parsed models
+   - Pass `calibration: Some(camera_models)` to Aggregator
+   - Set `triangulation_enabled: true`
+   - Expose triangulated keypoints in `get_latest_output()`
 
-### Later
+3. **Support video (posthoc) path from Python**
+   - Add a `PyPosthocPipeline` class or a `source: "camera" | "video"` parameter
+   - When source is "video": create VideoGroup, pass `video_rx` to Distributor
+   - Need to accept video paths + calibration from Python
 
-7. Skeleton inference (RTMPose per camera or GPU-batched)
-8. Real-time server smoke test with live cameras
-9. FABRIK skeleton constraint filter
+4. **Integrate with Python RealtimePipelineManager**
+   - Add the `USE_RUST_BACKEND` flag
+   - On True: create `PyO3CameraGroupManager` → extract FrameSlots → create PyPipeline
+   - Handle lifecycle: create → start → poll output → shutdown
+   - Match the existing Python manager's API so callers don't need to change
 
-## Key Files
+5. **Build and test the .pyd**
+   - `maturin develop` in the freemocap-rust directory
+   - Verify `import _freemocap_rust` works
+   - Run a smoke test with real cameras or test videos
+   - Check that the Python adapter (`rust_pipeline_adapter.py`) still works
+
+6. **Decide on result format**
+   - Currently `get_latest_output()` returns a PyDict with frame_number,
+     camera_ids, frontend_payload, timestamp_ns, camera_fps
+   - Need to add: triangulated keypoints (keypoints_raw, keypoints_filtered),
+     per-camera charuco observations, pipeline timing stats
+   - Match the Python `AggregatorOutput` format so frontend consumers don't break
+
+### Key files for the PyO3 work
 
 | File | Purpose |
 |------|---------|
-| `freemocap-rust/src/pipeline/types.rs` | Composable timestamp structs + channel message types |
-| `freemocap-rust/src/pipeline/stats.rs` | Per-stage timing statistics + print formatting |
-| `freemocap-rust/src/pipeline/distributor.rs` | Dual-source distributor (FrameSlots + mpsc channel) |
-| `freemocap-rust/src/pipeline/camera_node.rs` | JPEG decode + charuco detection |
-| `freemocap-rust/src/pipeline/aggregator.rs` | Collection + triangulation + filtering + publish |
-| `freemocap-rust/src/video_reader/mod.rs` | VideoGroup lifecycle (open/start/shutdown) |
-| `freemocap-rust/src/video_reader/reader.rs` | Single video file reader |
-| `freemocap-rust/src/video_reader/dispatcher.rs` | BGR→JPEG encode → MultiFramePayload → mpsc channel |
-| `freemocap-rust/src/video_reader/pipeline_test.rs` | E2E test: VideoGroup → channel → pipeline → stats |
-| `freemocap-rust/src/triangulation/charuco.rs` | Corner grouping + triangulation + reprojection gate |
-| `freemocap-rust/src/triangulation/outlier_rejection.rs` | Weighted subset-ensemble algorithm |
-| `freemocap-rust/src/triangulation/dlt.rs` | DLT via SVD |
-| `skellycam-rust/src/camera/types.rs` | `MultiFramePayload` + `GathererTimestamps` |
-| `rearchitecture-docs/freemocap-architecture/README.md` | Architecture status table |
-| `rearchitecture-docs/freemocap-architecture/handoff-posthoc-pipeline.md` | This document |
+| `freemocap-rust/src/pyo3_bridge/mod.rs` | `#[pymodule] _freemocap_rust` |
+| `freemocap-rust/src/pyo3_bridge/py_pipeline.rs` | PyPipeline pyclass |
+| `freemocap/core/pipeline/realtime/rust_pipeline_adapter.py` | Python adapter |
+| `freemocap/core/pipeline/realtime/realtime_pipeline_manager.py` | Manager with USE_RUST_BACKEND |
+| `skellycam-rust/src/pyo3_bridge/py_camera_group_manager.rs` | PyO3CameraGroupManager |
+| `freemocap-rust/src/pipeline/distributor.rs` | Dual-source input (camera/video) |
+| `freemocap-rust/src/pipeline/aggregator.rs` | calibration + triangulation flags |
+| `freemocap-rust/src/video_reader/mod.rs` | VideoGroup lifecycle |
+
+### Open design questions for next session
+
+1. **Stats collection**: Should PyPipeline collect and expose timing stats, or
+   just discard them? The E2E test collects stats from JoinHandles — PyPipeline
+   currently discards them via `{ fn(args); }` closures.
+
+2. **Posthoc API shape**: Should posthoc be a separate `PyPosthocPipeline` class
+   or a mode on PyPipeline (`source="video"` vs `source="camera"`)? The
+   underlying Rust infrastructure is unified (Distributor checks
+   `video_rx.is_some()`).
+
+3. **Calibration format**: Should Python pass a TOML file path (Rust parses it)
+   or pre-parsed camera models (Python parses, passes dicts)? The Rust
+   `calibration_loader` handles TOML parsing. Passing a path is simpler.
+
+4. **Error handling**: What happens when the Rust pipeline panics? PyO3 catches
+   panics at the FFI boundary and converts them to Python exceptions, but the
+   thread JoinHandles in PyPipeline's `Drop` impl need to handle poisoned
+   mutexes gracefully.
 
 ## Quick Reference
 
 ```bash
 cd C:\Users\jonma\code_repos\github\freemocap\freemocap\freemocap-rust
 
+# Prerequisites (one-time):
+#   vcpkg install opencv4[ffmpeg]:x64-windows-static --recurse
+
 # Type checking
 cargo check --lib
 
-# All 11 tests
+# All 11 tests (debug)
 cargo test --lib
 
-# E2E test with stats (debug build — slow, for correctness)
-cargo test --lib video_reader::pipeline_test -- --nocapture
-
-# E2E test with stats (release build — for timing measurements)
+# E2E test with stats (release — for timing measurements)
 cargo test --release --lib video_reader::pipeline_test -- --nocapture
 
-# Also check skellycam (needed after upstream changes)
+# Check sibling crates
 cd ../skellycam/skellycam-rust && cargo check --lib
+cd ../../skellytracker/skellytracker-rust && cargo check --lib
+
+# Build Python module (when ready)
+cd ../../freemocap-rust && maturin develop
 ```
 
 Test data: `C:\Users\jonma\freemocap_data\recordings\freemocap_test_data`
 - 3 synchronized videos (222 frames, 720×1280, 6fps, mpeg4)
 - Calibration TOML: `freemocap_test_data_camera_calibration.toml`
-- Pre-computed charuco observations: `output_data/charuco_observations.json`

@@ -24,10 +24,6 @@ class RealtimeSkeletonInferenceNodeConfig(BaseModel):
     # (slow, 1-5 minutes); subsequent runs are a cache hit and load instantly.
     engine_cache_dir: Path = Field(default_factory=_default_engine_cache_dir)
 
-    # If the requested execution provider isn't available, fall back automatically
-    # (trt -> cuda -> cpu) instead of raising.
-    fallback_on_missing_provider: bool = True
-
     # "trt":  TensorRT EP — 2-5x faster than CUDA EP, requires NVIDIA GPU +
     #         `pip install tensorrt`. Compiles engines on first run (1-5 min),
     #         cached to engine_cache_dir on all subsequent runs.

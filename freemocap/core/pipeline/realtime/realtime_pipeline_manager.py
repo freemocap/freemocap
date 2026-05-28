@@ -29,20 +29,6 @@ from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePa
 
 logger = logging.getLogger(__name__)
 
-# ── Rust backend ─────────────────────────────────────────────────────────
-# Set to True to use the Rust real-time pipeline engine (_freemocap_rust).
-# Falls back to Python RealtimePipeline if the Rust module is not available.
-USE_RUST_BACKEND: bool = True
-
-_RUST_BACKEND_AVAILABLE: bool = False
-_RustPipeline = None
-try:
-    from freemocap.core.pipeline.realtime.rust_pipeline_adapter import RustRealtimePipeline as _RustPipeline
-
-    _RUST_BACKEND_AVAILABLE = True
-except ImportError as e:
-    logger.debug("_freemocap_rust not available — Rust pipeline disabled: %s", e)
-
 
 @dataclass
 class RealtimePipelineManager(PipelineManagerABC):
@@ -80,25 +66,12 @@ class RealtimePipelineManager(PipelineManagerABC):
                     pipeline.update_config(new_config=pipeline_config)
                     return pipeline
 
-            # ── Backend selection ──
-            if USE_RUST_BACKEND and _RUST_BACKEND_AVAILABLE:
-                pipeline = _RustPipeline(
-                    camera_group=camera_group,
-                    pipeline_config=pipeline_config,
-                    realtime_camera_ids=realtime_camera_ids,
-                )
-            else:
-                if USE_RUST_BACKEND and not _RUST_BACKEND_AVAILABLE:
-                    logger.warning(
-                        "USE_RUST_BACKEND=True but _freemocap_rust is not available "
-                        "— falling back to Python RealtimePipeline"
-                    )
-                pipeline = RealtimePipeline.create(
-                    pipeline_config=pipeline_config,
-                    camera_group=camera_group,
-                    worker_registry=self.worker_registry,
-                    realtime_camera_ids=realtime_camera_ids,
-                )
+            pipeline = RealtimePipeline.create(
+                pipeline_config=pipeline_config,
+                camera_group=camera_group,
+                worker_registry=self.worker_registry,
+                realtime_camera_ids=realtime_camera_ids,
+            )
 
             pipeline.start()
             self.pipelines[pipeline.id] = pipeline

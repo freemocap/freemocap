@@ -1,5 +1,52 @@
 # FreeMoCap Rust — Handoff (2026-05-27, session 2)
 
+You're picking up work on the FreeMoCap Rust pipeline. The code is at
+`C:\Users\jonma\code_repos\github\freemocap\freemocap\freemocap-rust`.
+
+## CRITICAL: DO NOT MAKE ASSUMPTIONS. DO NOT GUESS. DO NOT SKIM.
+
+You must actually read the code files, read the rearchitecture docs, and trace
+the data flow before you write a single line. This handoff doc is a MAP, not a
+replacement for reading. Use it to know where to look, then go look.
+
+**Before you do anything else, read ALL of these thoroughly:**
+
+1. **This handoff doc** — context, current state, what changed, what's broken
+2. **The architecture README:**
+   `rearchitecture-docs/freemocap-architecture/README.md` — status table,
+   design decisions, upstream changes
+3. **The actual Rust source code — every file in these directories:**
+   - `src/pipeline/` — distributor, camera_node, aggregator, types, config, stats
+   - `src/pyo3_bridge/` — mod.rs, py_pipeline.rs
+   - `src/video_reader/` — mod.rs, reader.rs, dispatcher.rs, pipeline_test.rs
+   - `src/pipeline_manager/mod.rs`
+4. **The Python adapter:**
+   - `freemocap/core/pipeline/realtime/rust_pipeline_adapter.py`
+   - `freemocap/core/pipeline/realtime/realtime_pipeline_manager.py`
+5. **The skellycam PyO3 bridge** (pattern to follow):
+   - `skellycam-rust/src/pyo3_bridge/py_camera_group_manager.rs`
+   - `skellycam-rust/src/camera/types.rs` — `MultiFramePayload`, `GathererTimestamps`
+
+You need to actually understand:
+- How the pipeline threads are spawned and how they return stats
+- How `PyPipeline` currently works (and how it's out of sync)
+- How the Python `RealtimePipelineManager` creates and manages pipelines
+- How `FrameSlots` are extracted from `PyO3CameraGroupManager`
+- How the dual-source distributor decides between camera and video input
+- How `maturin develop` builds the `.pyd`
+
+**Guardrails:**
+- Do NOT touch the server code, HTTP API, or skeleton_filter unless unavoidable.
+- Focus on the PyO3 bridge (`py_pipeline.rs`) and the Python integration layer.
+- When changing thread function signatures, wrap the call with a closure that
+  discards the return value (`{ fn(args); }`) to keep `JoinHandle<()>` working.
+- Prefer editing existing files over creating new ones.
+- Run `cargo check --tests` after every change. Run `cargo test --lib` before
+  claiming completion.
+- If you change anything in skellycam or skellytracker (sibling crates), check
+  both: `cd ../skellycam/skellycam-rust && cargo check --lib` and
+  `cd ../../skellytracker/skellytracker-rust && cargo check --lib`.
+
 ## Session Summary
 
 Performance optimization session. Fixed the three largest bottlenecks in the
@@ -176,16 +223,16 @@ creates native objects instead of Python multiprocessing wrappers.
 
 1. **Stats collection**: Should PyPipeline collect and expose timing stats, or
    just discard them? The E2E test collects stats from JoinHandles — PyPipeline
-   currently discards them via `{ fn(args); }` closures.
+   currently discards them via `{ fn(args); }` closures. (ANSWER - Print stats in terminal in nicely formated text block)
 
 2. **Posthoc API shape**: Should posthoc be a separate `PyPosthocPipeline` class
    or a mode on PyPipeline (`source="video"` vs `source="camera"`)? The
    underlying Rust infrastructure is unified (Distributor checks
-   `video_rx.is_some()`).
+   `video_rx.is_some()`). (ANSWER - WE will match the current python api eventually, but thats not the focus right now)
 
 3. **Calibration format**: Should Python pass a TOML file path (Rust parses it)
    or pre-parsed camera models (Python parses, passes dicts)? The Rust
-   `calibration_loader` handles TOML parsing. Passing a path is simpler.
+   `calibration_loader` handles TOML parsing. Passing a path is simpler. (ANSWER - Pass a path, you idiot. Minimize python <-> Rust interaction)
 
 4. **Error handling**: What happens when the Rust pipeline panics? PyO3 catches
    panics at the FFI boundary and converts them to Python exceptions, but the

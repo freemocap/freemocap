@@ -15,7 +15,6 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
-# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -114,7 +113,6 @@ class CameraNode(SourceNode):
 
         charuco_detector: CharucoDetector | None = None
         skeleton_detector: RTMPoseDetector | None = None
-        # skeleton_detector: LegacyMediapipeDetector | None = None
 
         if config.charuco_tracking_enabled and config.charuco_detector_config is not None:
             charuco_detector = CharucoDetector.create(
@@ -127,11 +125,8 @@ class CameraNode(SourceNode):
         ):
             # In centralized GPU mode, the dedicated SkeletonInferenceNode owns
             # the ONNX session and serves all cameras via batched inference.
-            # Skipping per-camera construction here is what avoids spawning
-            # N independent CUDA contexts on a single GPU.
-            # skeleton_detector = LegacyMediapipeDetector.create(
-            #     config=config.skeleton_detector_config ,
-            # )
+            # Skipping per-camera construction here avoids spawning N independent
+            # CUDA contexts on a single GPU.
             skeleton_detector = RTMPoseDetector.create(
                 config=config.skeleton_detector_config,
             )

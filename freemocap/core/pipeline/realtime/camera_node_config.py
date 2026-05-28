@@ -12,7 +12,6 @@ class CameraNodeConfig(BaseModel):
     charuco_detector_config: CharucoDetectorConfig|None = Field(default_factory=CharucoDetectorConfig)
     skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="balanced",
                                                                                                                 confidence_threshold=5))
-    # skeleton_detector_config: LegacyMediapipeDetectorConfig|None = Field(default_factory=LegacyMediapipeDetectorConfig)
 
     @property
     def tracking2d_enabled(self) -> bool:

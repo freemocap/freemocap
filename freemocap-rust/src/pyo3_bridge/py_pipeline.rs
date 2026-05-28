@@ -10,16 +10,22 @@ use crate::pipeline::aggregator::{self, Aggregator};
 use crate::pipeline::camera_node::{self, CameraNode};
 use crate::pipeline::config::PipelineConfig;
 use crate::pipeline::distributor::{self, Distributor, PipelineCommand};
+use crate::pipeline::stats::{
+    AggregatorStats, CameraNodeStats, DistributorStats, PipelineStats, print_pipeline_stats,
+};
 use crate::pipeline::types::{
     AggregatorOutput, CameraNodeOutput, DistributorSlot, DistributorTimestamps,
 };
+use crate::triangulation::calibration_loader;
+use std::collections::HashMap;
 use skellycam::camera_group::sync_utils::BreakableBarrier;
 use skellycam::camera_group::FrameSlots;
 use skellycam::pyo3_bridge::py_camera_group_manager::PyO3CameraGroupManager;
 use skellytracker::trackers::charuco::CharucoTracker;
+use crate::triangulation::charuco::CameraModel;
 
 #[pyclass]
-pub struct PyPipeline {
+pub struct PyO3Pipeline {
     #[allow(dead_code)]
     group_id: String,
     camera_ids: Vec<String>,
@@ -37,17 +43,27 @@ pub struct PyPipeline {
     /// Frame slots from the camera group (held for thread spawning).
     #[allow(dead_code)]
     frame_slots: FrameSlots,
+    /// Per-thread stats collected at shutdown (written by threads before exit).
+    distributor_stats: Arc<Mutex<Option<DistributorStats>>>,
+    camera_stats: Arc<Mutex<Vec<CameraNodeStats>>>,
+    aggregator_stats: Arc<Mutex<Option<AggregatorStats>>>,
+    /// Calibration models loaded from TOML (None → triangulation disabled).
+    calibration: Option<HashMap<String, CameraModel>>,
+    /// When start() was called — used for wall-clock elapsed reporting.
+    started_at: Mutex<Option<std::time::Instant>>,
 }
 
 #[pymethods]
-impl PyPipeline {
+impl PyO3Pipeline {
     #[new]
+    #[pyo3(signature = (camera_group_manager, group_id, config_json, camera_ids, calibration_toml_path=None))]
     fn new(
         py: Python<'_>,
         camera_group_manager: Py<PyAny>,
         group_id: String,
         config_json: &str,
         camera_ids: Vec<String>,
+        calibration_toml_path: Option<String>,
     ) -> PyResult<Self> {
         let config: PipelineConfig = serde_json::from_str(config_json).map_err(|e| {
             pyo3::exceptions::PyValueError::new_err(format!(
@@ -73,7 +89,27 @@ impl PyPipeline {
 
         let n_cameras = camera_ids.len();
 
-        Ok(PyPipeline {
+        // Parse calibration if provided (path-based — minimal Python↔Rust interaction)
+        let calibration = match &calibration_toml_path {
+            Some(path) => {
+                let models = calibration_loader::load_calibration(
+                    &std::path::Path::new(path),
+                )
+                .map_err(|e| {
+                    pyo3::exceptions::PyValueError::new_err(format!(
+                        "Failed to load calibration TOML from '{}': {e}", path
+                    ))
+                })?;
+                tracing::info!(
+                    "[PyO3Pipeline] loaded calibration for {} cameras from '{}'",
+                    models.len(), path
+                );
+                Some(models)
+            }
+            None => None,
+        };
+
+        Ok(PyO3Pipeline {
             group_id,
             camera_ids,
             config,
@@ -83,10 +119,17 @@ impl PyPipeline {
             barrier: Arc::new(BreakableBarrier::new(n_cameras + 1)),
             handles: Mutex::new(None),
             frame_slots,
+            distributor_stats: Arc::new(Mutex::new(None)),
+            camera_stats: Arc::new(Mutex::new(Vec::new())),
+            aggregator_stats: Arc::new(Mutex::new(None)),
+            calibration,
+            started_at: Mutex::new(None),
         })
     }
 
     fn start(&mut self, _py: Python<'_>) -> PyResult<()> {
+        *self.started_at.lock().unwrap() = Some(std::time::Instant::now());
+
         let mut handles_guard = self.handles.lock().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Lock poisoned: {e}"))
         })?;
@@ -134,10 +177,14 @@ impl PyPipeline {
             None, // video_rx — None for camera source
             self.shutdown_flag.clone(),
         );
+        let dist_stats = self.distributor_stats.clone();
         let dist_handle = std::thread::Builder::new()
             .name("freemocap-distributor".into())
             .spawn(move || {
-                distributor::run_distributor(distributor);
+                let stats = distributor::run_distributor(distributor);
+                if let Ok(mut guard) = dist_stats.lock() {
+                    *guard = Some(stats);
+                }
             })
             .map_err(|e| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
@@ -180,9 +227,15 @@ impl PyPipeline {
                 shutdown_flag: self.shutdown_flag.clone(),
             };
 
+            let cam_stats = self.camera_stats.clone();
             let cam_handle = std::thread::Builder::new()
                 .name(format!("freemocap-camera-{cam_id}"))
-                .spawn(move || { camera_node::run_camera_node(cam_node, detector); })
+                .spawn(move || {
+                    let stats = camera_node::run_camera_node(cam_node, detector);
+                    if let Ok(mut guard) = cam_stats.lock() {
+                        guard.push(stats);
+                    }
+                })
                 .map_err(|e| {
                     pyo3::exceptions::PyRuntimeError::new_err(format!(
                         "Failed to spawn camera node thread for {cam_id}: {e}"
@@ -201,21 +254,29 @@ impl PyPipeline {
             guard.push(agg_cmd_tx);
         }
 
+        let has_calibration = self.calibration.is_some();
         let agg = Aggregator {
             camera_rxs,
             cmd_rx: agg_cmd_rx,
             output_slot: self.output_slot.clone(),
+            result_ready: Arc::new(AtomicBool::new(false)),
             shutdown_flag: self.shutdown_flag.clone(),
             distributor_slot: slot_for_agg,
-            calibration: None,
-            triangulation_enabled: false,
+            calibration: self.calibration.clone(),
+            triangulation_enabled: has_calibration,
             rejection_config: Default::default(),
             max_reprojection_error_px: 60.0,
         };
 
+        let agg_stats = self.aggregator_stats.clone();
         let agg_handle = std::thread::Builder::new()
             .name("freemocap-aggregator".into())
-            .spawn(move || { aggregator::run_aggregator(agg); })
+            .spawn(move || {
+                let stats = aggregator::run_aggregator(agg);
+                if let Ok(mut guard) = agg_stats.lock() {
+                    *guard = Some(stats);
+                }
+            })
             .map_err(|e| {
                 pyo3::exceptions::PyRuntimeError::new_err(format!(
                     "Failed to spawn aggregator thread: {e}"
@@ -239,6 +300,8 @@ impl PyPipeline {
 
         self.barrier.break_barrier();
 
+        // Join all threads — each writes its stats into the shared slots
+        // before exiting, so stats are available after join returns.
         if let Ok(mut guard) = self.handles.lock() {
             if let Some(handles) = guard.take() {
                 for handle in handles {
@@ -246,6 +309,43 @@ impl PyPipeline {
                 }
             }
         }
+
+        // Collect stats from shared slots (threads have exited by now)
+        let distributor_stats = self
+            .distributor_stats
+            .lock()
+            .ok()
+            .and_then(|g| g.clone())
+            .unwrap_or_default();
+        let camera_stats: Vec<CameraNodeStats> = self
+            .camera_stats
+            .lock()
+            .ok()
+            .map(|g| g.clone())
+            .unwrap_or_default();
+        let aggregator_stats = self
+            .aggregator_stats
+            .lock()
+            .ok()
+            .and_then(|g| g.clone())
+            .unwrap_or_default();
+        let wall_time_secs = self
+            .started_at
+            .lock()
+            .ok()
+            .and_then(|g| g.map(|t| t.elapsed().as_secs_f64()))
+            .unwrap_or(0.0);
+
+        let n_frames = aggregator_stats.total_ns.len();
+        let pipeline_stats = PipelineStats {
+            n_frames,
+            wall_time_secs,
+            dispatcher: None, // No video dispatcher in camera path
+            distributor: distributor_stats,
+            cameras: camera_stats,
+            aggregator: aggregator_stats,
+        };
+        print_pipeline_stats(&pipeline_stats);
 
         Ok(())
     }
@@ -288,6 +388,41 @@ impl PyPipeline {
                 )?;
                 dict.set_item("timestamp_ns", output.timestamp_ns)?;
                 dict.set_item("camera_fps", output.camera_fps)?;
+
+                // Triangulated 3D keypoints
+                let raw_dict = PyDict::new(py);
+                for (name, xyz) in &output.keypoints_raw {
+                    raw_dict.set_item(name, [xyz[0], xyz[1], xyz[2]])?;
+                }
+                dict.set_item("keypoints_raw", raw_dict)?;
+
+                let filtered_dict = PyDict::new(py);
+                for (name, xyz) in &output.keypoints_filtered {
+                    filtered_dict.set_item(name, [xyz[0], xyz[1], xyz[2]])?;
+                }
+                dict.set_item("keypoints_filtered", filtered_dict)?;
+
+                // Per-camera charuco observations (for overlay visualization)
+                let cam_obs = PyDict::new(py);
+                for cam_output in &output.camera_outputs {
+                    if let Some(ref obs) = cam_output.charuco_observation {
+                        let obs_dict = PyDict::new(py);
+                        obs_dict.set_item(
+                            "corner_ids",
+                            obs.detected_charuco_corner_ids.clone(),
+                        )?;
+                        obs_dict.set_item(
+                            "corner_points",
+                            obs.detected_charuco_corners_image_coordinates
+                                .iter()
+                                .map(|pt| [pt[0], pt[1]])
+                                .collect::<Vec<_>>(),
+                        )?;
+                        cam_obs.set_item(&cam_output.camera_id, obs_dict)?;
+                    }
+                }
+                dict.set_item("camera_observations", cam_obs)?;
+
                 Ok(Some(dict.into()))
             }
             None => Ok(None),
@@ -303,7 +438,7 @@ impl PyPipeline {
     }
 }
 
-impl Drop for PyPipeline {
+impl Drop for PyO3Pipeline {
     fn drop(&mut self) {
         if !self.shutdown_flag.load(Ordering::Relaxed) {
             self.shutdown_flag.store(true, Ordering::SeqCst);

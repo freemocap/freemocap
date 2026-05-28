@@ -68,7 +68,7 @@ async def pipeline_apply_endpoint(
     try:
         app = get_freemocap_app()
         if request.camera_configs is None:
-            camera_groups = app.camera_group_manager.camera_groups
+            camera_groups = app.realtime_engine.camera_groups
             if len(camera_groups) == 0:
                 raise RuntimeError("No camera groups currently connected - must provide camera configs to create a new camera group and attach a pipeline")
             elif len(camera_groups) > 1:

@@ -30,6 +30,8 @@ dependencies = [
     "skellylogs",
     "skellypings",
     #    "skellymodels",
+    # --- Rust engine ---
+    "freemocap-rust",
 ]
 
 [tool.uv.sources]
@@ -37,6 +39,7 @@ skellycam = { git = "https://github.com/freemocap/skellycam", branch = "developm
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development" }
+freemocap-rust = { path = "freemocap-rust" }
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }
@@ -130,6 +133,16 @@ dev = [
 # =============================================================================
 
 [tool.poe.tasks]
+# --- Rust engine ---
+# Rebuilds the _freemocap_rust.pyd via maturin (shows full cargo output).
+# Reinstalls both freemocap-rust and freemocap so the new .pyd is picked up.
+rebuild       = { cmd = "uv sync -v --reinstall-package freemocap-rust --reinstall-package freemocap", help = "Rebuild Rust pipeline engine via maturin (full cargo output)" }
+rebuild-quiet = { cmd = "uv sync --reinstall-package freemocap-rust --reinstall-package freemocap", help = "Rebuild Rust pipeline engine (cargo warnings only)" }
+rust-test     = { cmd = "cd freemocap-rust && cargo test --lib", help = "Run Rust-side unit tests" }
+rust-test-release = { cmd = "cd freemocap-rust && cargo test --release --lib -- video_reader::pipeline_test --nocapture", help = "Run E2E pipeline test (release mode, with stats output)" }
+rust-cli      = { cmd = "cd freemocap-rust && cargo run --release -- test all", help = "Run full test CLI suite" }
+
+# --- Type checking ---
 tc-check = { cmd = "ruff check --select TC freemocap/", help = "Preview type-only imports that can move behind TYPE_CHECKING" }
 tc-fix   = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-only imports behind TYPE_CHECKING" }
 tc       = { sequence = ["tc-fix", "test"], help = "Move type-only imports + run tests to verify" }

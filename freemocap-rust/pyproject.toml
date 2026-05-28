@@ -4,7 +4,12 @@ build-backend = "maturin"
 
 [project]
 name = "freemocap-rust"
+version = "0.1.0"
 requires-python = ">=3.10"
 
 [tool.maturin]
+features = ["pyo3/extension-module"]
 module-name = "_freemocap_rust"
+
+[dependency-groups]
+dev = []

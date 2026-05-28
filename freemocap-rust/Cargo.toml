@@ -46,6 +46,9 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # ── Calibration parsing ──
 toml = "0.8"
 
+# ── CLI argument parsing ──
+clap = { version = "4", features = ["derive"] }
+
 # ── UUID ──
 uuid = { version = "1", features = ["v4"] }
 

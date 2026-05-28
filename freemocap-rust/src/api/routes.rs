@@ -42,7 +42,7 @@ pub async fn create_pipeline(
     State(state): State<Arc<AppState>>,
     Json(req): Json<CreatePipelineRequest>,
 ) -> impl IntoResponse {
-    let mut cam_mgr = state.camera_manager.lock().await;
+    let cam_mgr = state.camera_manager.lock().await;
     let group = match cam_mgr.get_group(&req.group_id) {
         Some(g) => g,
         None => {
@@ -68,10 +68,15 @@ pub async fn create_pipeline(
     drop(cam_mgr); // release lock before locking pipeline manager
 
     let mut pipe_mgr = state.pipeline_manager.lock().await;
-    let pipeline_id =
-        pipe_mgr.create_realtime_pipeline(frame_slots, config, req.camera_ids);
-
-    (StatusCode::CREATED, Json(serde_json::json!(CreatePipelineResponse { pipeline_id })))
+    match pipe_mgr.create_pipeline(frame_slots, config, &req.group_id, req.camera_ids, None) {
+        Ok(pipeline_id) => {
+            (StatusCode::CREATED, Json(serde_json::json!(CreatePipelineResponse { pipeline_id })))
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"detail": format!("Pipeline creation failed: {e}")})),
+        ),
+    }
 }
 
 /// GET /freemocap/pipeline/list
@@ -79,8 +84,8 @@ pub async fn list_pipelines(
     State(state): State<Arc<AppState>>,
 ) -> impl IntoResponse {
     let pipe_mgr = state.pipeline_manager.lock().await;
-    let ids = pipe_mgr.list_realtime_pipelines();
-    let count = pipe_mgr.realtime_pipeline_count();
+    let ids = pipe_mgr.list();
+    let count = pipe_mgr.count();
 
     Json(serde_json::json!(PipelineListResponse {
         pipeline_ids: ids,
@@ -94,7 +99,7 @@ pub async fn remove_pipeline(
     Path(pipeline_id): Path<String>,
 ) -> impl IntoResponse {
     let mut pipe_mgr = state.pipeline_manager.lock().await;
-    if pipe_mgr.remove_realtime_pipeline(&pipeline_id) {
+    if pipe_mgr.shutdown_pipeline(&pipeline_id) {
         (StatusCode::NO_CONTENT, Json(serde_json::json!({})))
     } else {
         (
@@ -120,13 +125,12 @@ pub async fn update_pipeline_config(
         }
     };
 
-    let mut pipe_mgr = state.pipeline_manager.lock().await;
-    if pipe_mgr.update_realtime_pipeline_config(&pipeline_id, config).is_some() {
-        (StatusCode::OK, Json(serde_json::json!({})))
-    } else {
-        (
+    let pipe_mgr = state.pipeline_manager.lock().await;
+    match pipe_mgr.update_config(&pipeline_id, config) {
+        Ok(()) => (StatusCode::OK, Json(serde_json::json!({}))),
+        Err(e) => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"detail": format!("Pipeline '{}' not found", pipeline_id)})),
-        )
+            Json(serde_json::json!({"detail": format!("{}", e)})),
+        ),
     }
 }

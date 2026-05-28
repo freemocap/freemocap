@@ -5,7 +5,7 @@
 //!
 //! Reference: Hartley & Zisserman, Multiple View Geometry, 2nd ed., §12.2
 
-use nalgebra::{Matrix3x4, SVD, Vector4, U4};
+use nalgebra::{Matrix3x4, SVD, Vector4};
 
 /// Triangulate a single 3D point from N ≥ 2 normalized camera observations.
 ///

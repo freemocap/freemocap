@@ -16,6 +16,7 @@
 | 08 | [PyO3 Bridge](./08-pyo3-bridge.md) | Module layout, pyclass wrappers, Python adapter |
 | 09 | [Crate Structure](./09-crate-structure.md) | Directory layout, Cargo.toml, path dependencies |
 | 10 | [Implementation Plan](./10-implementation-plan.md) | Step-by-step build plan with code |
+| 11 | [RealtimeEngine Abstraction](./11-realtime-engine-abstraction.md) | Unified camera + pipeline interface, Python/Rust swap via module-level constant |
 
 ## Status
 
@@ -29,7 +30,7 @@
 | **Composable timestamps** | ✅ Complete | `DistributorTimestamps` + `CameraNodeTimestamps` + `AggregatorTimestamps` → composite `PipelineCycleTimestamps`; every loop gets its own struct with duration helpers |
 | **Pipeline timing statistics** | ✅ Complete | Per-stage, per-camera stats block (median/mean/std/CV%/min/max/n) matching skellycam gatherer format |
 | **Module docs** | ✅ Complete | Top-level lib.rs + per-module doc strings |
-| **Python adapter + Manager integration** | ✅ Complete | RustRealtimePipeline adapter, USE_RUST_BACKEND in manager |
+| **Python adapter + Manager integration** | ✅ Complete | RustRealtimePipeline adapter, USE_RUST_BACKEND in freemocap_application.py |
 | **Charuco triangulation** | ✅ Complete | DLT + outlier rejection + reprojection gate. Verified: 1023 points, 2.1m scale |
 | **One Euro filter + velocity gate** | ✅ Complete | Adaptive low-pass + teleportation spike rejection |
 | **VideoGroup (first-class)** | ✅ Complete | `VideoReader` + dispatcher thread + unbounded mpsc channel → `MultiFramePayload`; lifecycle: open→start→shutdown; 11 tests pass |
@@ -41,7 +42,14 @@
 | **JPEG encode optimization** | ✅ Complete | Quality 95: encode 12ms → 8ms, decode 5ms → 3ms |
 | **Single-call charuco detect** | ✅ Complete | detect_board handles markers+charuco in one C++ call (matches Python) |
 | `maturin develop` + Python import | ⬜ Next | Build .pyd, verify `import _freemocap_rust` |
-| **PyO3 bridge integration** | ⬜ Next | PyPipeline thread sigs out of sync, calibration not wired, video path missing |
+| **PyO3 bridge — stats + calibration** | ✅ Complete | PyPipeline collects per-thread stats (printed on shutdown), calibration TOML loaded by Rust from path |
+| **PyO3 bridge — `get_latest_output()`** | ✅ Complete | Returns keypoints_raw, keypoints_filtered, camera_observations (charuco corner IDs + coords) |
+| **Test CLI** | ✅ Complete | clap-based CLI following skellycam pattern: `cargo run -- test {all,detect,pipeline,calibration,charuco,video,filtering}` |
+| **PythonRealtimeEngine** (refactor) | ✅ Complete | CameraGroupManager + RealtimePipelineManager wrapped as private internals behind unified RealtimeEngine interface |
+| **PyRealtimeEngine** (Rust PyO3) | ✅ Complete | Single `#[pyclass]` bundling camera management + pipeline threads; `result_ready` signaling for websocket relay |
+| **RustRealtimeEngine adapter** | ✅ Complete | Thin Python wrapper around `_freemocap_rust.RealtimeEngine`, matching PythonRealtimeEngine interface |
+| **USE_RUST_BACKEND swap** | ✅ Complete | Module-level bool in freemocap_application.py, swaps between Python/Rust implementations at construction time |
+| **Frontend smoke test** | ⬜ Next | Human test: connect frontend, verify camera feed + charuco overlay + triangulated 3D keypoints |
 | **Posthoc Pipeline** | 🔜 Next | VideoGroup + channel infrastructure ready; next: posthoc processing mode, result export |
 | Skeleton Inference (CPU) | 🔜 Later | Per-camera RTMPose in camera nodes |
 | GPU Batched Inference | 🔜 Later | Centralized node, batched ONNX |
@@ -67,7 +75,7 @@ These were fixed in sibling crates as prerequisites:
 5. **Composable per-loop timestamps** — every thread loop gets its own `Timestamps` struct with named stage boundaries. `PipelineCycleTimestamps` composes `DistributorTimestamps` + `HashMap<String, CameraNodeTimestamps>` + `AggregatorTimestamps`. Duration helpers (`slot_work_ns()`, `triangulation_ns()`) compute `end − start` inline.
 6. **VideoGroup uses MultiFramePayload channel** — video dispatcher sends skellycam's `MultiFramePayload` on an unbounded mpsc channel. Natural backpressure via `recv()` blocking. No FrameSlots, no pacing signal, no spin-waits for video sources.
 7. **Frontend payload rides through** — distributor snapshots both raw frames AND the pre-encoded frontend payload in one atomic read, so the final output always pairs the correct images with the correct processed data.
-8. **Manager-level backend switch** — `USE_RUST_BACKEND` flag lives in `RealtimePipelineManager`, not in individual pipeline factories. Same pattern as skellycam's `CameraGroupManager`.
+8. **Engine-level backend switch** — `USE_RUST_BACKEND` flag lives in `freemocap_application.py`. `FreemocapApplication.create()` picks `PythonRealtimeEngine` or `RustRealtimeEngine` at construction time. The managers (`CameraGroupManager`, `RealtimePipelineManager`) are private implementation details inside `PythonRealtimeEngine` — no external code accesses them directly.
 9. **Single-call charuco detection** — `detect_board()` is called with empty marker containers, letting OpenCV handle marker detection + charuco interpolation in one C++ call. Matches Python's `detectBoard()` exactly. No per-frame `ArucoDetector` allocations.
 10. **JPEG quality 95 for posthoc** — the video dispatcher encodes BGR frames at quality 95 (not 100). The ~1% pixel difference is below charuco detection threshold, but encode time nearly halves.
 11. **FFmpeg for video read** — `CAP_FFMPEG` instead of `CAP_ANY` avoids Windows MSMF overhead. Requires `opencv4[ffmpeg]:x64-windows-static` from vcpkg.

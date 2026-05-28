@@ -2,18 +2,16 @@
 RealtimeSkeletonInferenceNode: dedicated GPU worker that owns one ONNX session
 for skeleton detection and serves all cameras via batched inference.
 
-Why this exists:
-  Per-camera RTMPoseDetector construction (the legacy path) creates one CUDA
-  context per camera process. On consumer Windows GPUs there is no cooperative
-  context scheduling (no MPS), so N processes hammering one GPU serialize
-  kernel-by-kernel and pay per-context overhead. This node centralizes
-  inference: one CUDA context, one batched ONNX call per multi-camera frame.
+Per-camera RTMPoseDetector construction creates one CUDA context per camera
+process. On consumer Windows GPUs there is no cooperative context scheduling
+(no MPS), so N processes hammering one GPU serialize kernel-by-kernel and pay
+per-context overhead. This node centralizes inference: one CUDA context, one
+batched ONNX call per multi-camera frame.
 
 Topology:
   - Subscribes to ProcessFrameNumberTopic (the same topic the camera nodes
     use as their "process frame N" trigger).
-  - Reads frame N's image directly from each camera's shared-memory ring buffer
-    (the same DTO the aggregator already gets).
+  - Reads frame N's image directly from each camera's shared-memory ring buffer.
   - Calls RTMPoseSession.predict_batch(images) — one session.run for all cameras.
   - Publishes a single SkeletonInferenceResultMessage per frame, keyed by
     frame_number, with per-camera RTMPoseObservation.
@@ -146,13 +144,6 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         }
 
         session = _build_session(pipeline_config)
-        if session is None:
-            logger.error(
-                f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
-                f"construct RTMPoseSession; exiting."
-            )
-            ipc.kill_everything()
-            return
 
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}") if log_pipeline_times else None
@@ -252,13 +243,6 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     del session
                     gc.collect()
                     session = _build_session(pipeline_config)
-                    if session is None:
-                        logger.error(
-                            f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
-                            f"session after MemoryError — giving up."
-                        )
-                        ipc.kill_everything()
-                        return
                     session_restart_count += 1
                     logger.info(
                         f"RealtimeSkeletonInferenceNode [{camera_group_id}] session rebuilt "
@@ -268,7 +252,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 if timer is not None:
                     inf_ms = (time.perf_counter() - t_inf) * 1e3
                     timer.record("predict_batch", inf_ms)
-                    # Per-camera-equivalent latency, for comparing with the legacy
+                    # Per-camera-equivalent latency for comparison with
                     # per-camera `skeleton_detection` timer in camera_node logs.
                     timer.record("predict_per_camera", inf_ms / max(len(images), 1))
 
@@ -317,48 +301,31 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 # ---------------------------------------------------------------------------
 
 
-def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | None:
+def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession:
     """Construct the centralized RTMPoseSession from the pipeline config.
 
     Reads model size / mode from `camera_node_config.skeleton_detector_config`
     so a single source of truth governs which model is used in either pipeline
     mode. Reads provider / cache settings from `skeleton_inference_node_config`.
-    Returns None if the skeleton detector isn't an RTMPose config (caller
-    should treat this as a fatal misconfiguration in GPU mode).
     """
     skel_config = pipeline_config.camera_node_config.skeleton_detector_config
     if not isinstance(skel_config, RTMPoseDetectorConfig):
-        logger.warning(
-            f"Centralized GPU inference is enabled but the skeleton detector "
-            f"config is not RTMPoseDetectorConfig (got {type(skel_config).__name__}). "
-            f"Falling back to legacy per-camera inference."
+        raise TypeError(
+            f"Centralized GPU inference requires an RTMPoseDetectorConfig, "
+            f"got {type(skel_config).__name__}"
         )
-        return None
 
     inf_config = pipeline_config.skeleton_inference_node_config
-    #TODO - this is dumb, I think? WE should be able to just use the inference node config directly  without this nonsense?
-
-    # Pick mode safely. RTMPoseSessionConfig accepts a Literal of three values;
-    # other strings (e.g. legacy values) get coerced to "balanced" rather than
-    # failing pydantic validation — keeps the pipeline alive on weird configs.
-    mode = skel_config.mode if skel_config.mode in ("performance", "lightweight", "balanced") else "balanced"
 
     session_config = RTMPoseSessionConfig(
-        mode=mode,
+        mode=skel_config.mode,
         execution_provider=inf_config.execution_provider,
         engine_cache_dir=inf_config.engine_cache_dir,
         max_batch_size=inf_config.max_batch_size,
-        on_provider_missing="fallback" if inf_config.fallback_on_missing_provider else "raise",
+        on_provider_missing="raise",
     )
 
-    try:
-        return RTMPoseSession.create(session_config)
-    except Exception as e:
-        logger.error(
-            f"Failed to construct RTMPoseSession with provider={inf_config.execution_provider!r}: {e!r}",
-            exc_info=True,
-        )
-        return None
+    return RTMPoseSession.create(session_config)
 
 
 def _read_frames(
@@ -375,9 +342,8 @@ def _read_frames(
     overwritten or whose frame metadata mismatched are silently skipped (the
     aggregator already tolerates missing per-camera observations on a frame).
 
-    Mirrors the rotation-handling logic from `camera_node.py:171-178` so the
-    image fed to ONNX is identical to what the legacy per-camera path would
-    have inferred over.
+    Matches the rotation-handling logic from `camera_node.py` so the image
+    fed to ONNX is identical regardless of which pipeline path is active.
     """
     images: list[NDArray[np.uint8]] = []
     ordered_camera_ids: list[CameraIdString] = []

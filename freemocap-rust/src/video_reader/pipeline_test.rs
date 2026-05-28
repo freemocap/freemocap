@@ -174,6 +174,7 @@ mod tests {
             camera_rxs: cam_rxs_for_agg,
             cmd_rx: agg_cmd_rx,
             output_slot: output_slot.clone(),
+            result_ready: Arc::new(AtomicBool::new(false)),
             shutdown_flag: shutdown_flag.clone(),
             distributor_slot: dist_slot_for_agg,
             calibration: Some(camera_models),

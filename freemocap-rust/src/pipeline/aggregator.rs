@@ -23,6 +23,7 @@ pub struct Aggregator {
     pub camera_rxs: Vec<(String, Receiver<CameraNodeOutput>)>,
     pub cmd_rx: Receiver<PipelineCommand>,
     pub output_slot: Arc<Mutex<Option<AggregatorOutput>>>,
+    pub result_ready: Arc<AtomicBool>,
     pub shutdown_flag: Arc<AtomicBool>,
     pub distributor_slot: Arc<std::sync::RwLock<super::types::DistributorSlot>>,
     pub calibration: Option<HashMap<String, CameraModel>>,
@@ -126,7 +127,7 @@ pub fn run_aggregator(agg: Aggregator) -> AggregatorStats {
                         &agg.rejection_config,
                         agg.max_reprojection_error_px,
                     );
-                    let n_points = tri_result.len();
+                    let _n_points = tri_result.len();
                     tri_result
                         .into_iter()
                         .map(|(id, xyz)| (id.to_string(), xyz))
@@ -216,6 +217,7 @@ pub fn run_aggregator(agg: Aggregator) -> AggregatorStats {
         };
 
         *agg.output_slot.lock().unwrap() = Some(output);
+        agg.result_ready.store(true, Ordering::SeqCst);
     }
 
     tracing::info!(

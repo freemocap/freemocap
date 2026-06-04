@@ -1,33 +1,24 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Box} from '@mui/material';
 import {CameraView} from './CameraView';
 
 interface ResizableCameraViewProps {
     cameraIndex: number;
     cameraId: string;
-    /** Initial position/size from the auto-layout */
     initialX: number;
     initialY: number;
     initialWidth: number;
     initialHeight: number;
-    /** Called when the user finishes moving or resizing this view */
     onLayoutChange: (cameraId: string, x: number, y: number, w: number, h: number) => void;
-    /** Bring this camera to front when interacted with */
     onFocus: (cameraId: string) => void;
     zIndex: number;
 }
 
 const MIN_WIDTH = 120;
 const MIN_HEIGHT = 90;
-
 const HANDLE_SIZE = 16;
 
 type DragMode = 'none' | 'move' | 'resize';
 
-/**
- * A single camera view window that can be freely dragged (by its body)
- * and resized (by a bottom-right handle) within an absolute-positioned container.
- */
 export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
     cameraIndex,
     cameraId,
@@ -45,7 +36,6 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
     const [height, setHeight] = useState<number>(initialHeight);
     const [dragMode, setDragMode] = useState<DragMode>('none');
 
-    // Sync when parent resets layout
     useEffect(() => {
         setX(initialX);
         setY(initialY);
@@ -126,7 +116,6 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
         (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     }, [dragMode, cameraId, onLayoutChange]);
 
-    // Suppress text selection during drag
     useEffect(() => {
         if (dragMode !== 'none') {
             document.body.style.userSelect = 'none';
@@ -141,45 +130,39 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
     const isActive = dragMode !== 'none';
 
     return (
-        <Box
-            sx={{
+        <div
+            style={{
                 position: 'absolute',
                 left: x,
                 top: y,
                 width,
                 height,
                 zIndex,
-                border: '1px solid',
-                borderColor: isActive ? 'primary.main' : 'rgba(255,255,255,0.15)',
+                border: `1px solid ${isActive ? 'var(--color-info)' : 'rgba(255,255,255,0.15)'}`,
                 borderRadius: '4px',
                 overflow: 'hidden',
-                boxShadow: isActive ? 4 : 1,
+                boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.2)',
                 transition: isActive ? 'none' : 'border-color 0.15s ease, box-shadow 0.15s ease',
-                '&:hover': {
-                    borderColor: 'rgba(255,255,255,0.4)',
-                },
             }}
         >
-            {/* Draggable move area covers the entire camera view */}
-            <Box
+            <div
                 onPointerDown={(e) => handlePointerDown(e, 'move')}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
-                sx={{
+                style={{
                     width: '100%',
                     height: '100%',
                     cursor: dragMode === 'move' ? 'grabbing' : 'grab',
                 }}
             >
                 <CameraView cameraIndex={cameraIndex} cameraId={cameraId} />
-            </Box>
+            </div>
 
-            {/* Resize handle in the bottom-right corner */}
-            <Box
+            <div
                 onPointerDown={(e) => handlePointerDown(e, 'resize')}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
-                sx={{
+                style={{
                     position: 'absolute',
                     bottom: 0,
                     right: 0,
@@ -187,22 +170,8 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
                     height: HANDLE_SIZE,
                     cursor: 'nwse-resize',
                     zIndex: 2,
-                    '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        bottom: 2,
-                        right: 2,
-                        width: 8,
-                        height: 8,
-                        borderRight: '2px solid',
-                        borderBottom: '2px solid',
-                        borderColor: isActive ? 'primary.main' : 'rgba(255,255,255,0.45)',
-                    },
-                    '&:hover::after': {
-                        borderColor: 'primary.main',
-                    },
                 }}
             />
-        </Box>
+        </div>
     );
 };

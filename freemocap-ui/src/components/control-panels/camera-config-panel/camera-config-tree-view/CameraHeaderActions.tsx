@@ -1,13 +1,4 @@
 import React, {useState} from "react";
-import {Box, CircularProgress, IconButton, Tooltip, useTheme} from "@mui/material";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
-import PauseIcon from "@mui/icons-material/Pause";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
-import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import WbIncandescentIcon from "@mui/icons-material/WbIncandescent";
 
 import {useAppDispatch} from "@/store";
 import {
@@ -30,7 +21,6 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
 }) => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
-    const theme = useTheme();
 
     const [isActionInProgress, setIsActionInProgress] = useState(false);
 
@@ -96,124 +86,70 @@ export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
 
     return (
         <>
-            {/* Connect/Apply Button - Keep pink/magenta color with border */}
-            <Tooltip title={t("connectCameras")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleConnectOrApply}
-                        sx={{
-                            color: "secondary.main",
-                            padding: "4px",
-                            border: `2px solid ${theme.palette.secondary.main}`,
-                            borderRadius: '8px',
-                            "&:hover": {
-                                color: "secondary.light",
-                                border: `2px solid ${theme.palette.secondary.light}`,
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            }
-                        }}
-                    >
-                        <Box sx={{ position: 'relative', display: 'inline-flex', width: 28, height: 28 }}>
-                            <VideocamIcon
-                                sx={{
-                                    color: 'secondary.main',
-                                    fontSize: 24,
-                                }}
-                            />
-                            <ArrowDownwardIcon
-                                    sx={{
-                                        position: 'absolute',
-                                        top: -6,
-                                        left: '50%',
-                                        transform: 'translateX(-50%)',
-                                        fontSize: 14,
-                                        color: theme.palette.secondary.light,
-                                        fontWeight: 'bold',
-                                        strokeWidth: 3,
-                                        stroke: theme.palette.secondary.dark,
-                                        filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
-                                    }}
-                                />
-                        </Box>
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handleConnectOrApply}
+                title={t("connectCameras")}
+                style={{
+                    padding: "4px",
+                    color: 'var(--color-accent)',
+                    border: '2px solid var(--color-accent)',
+                    borderRadius: 8,
+                }}
+            >
+                <span className="icon videocam-icon icon-size-20" style={{position: 'relative', display: 'inline-flex', width: 28, height: 28}} />
+            </button>
 
-            {/* Recommend Exposure for All Button */}
-            <Tooltip title="Auto-recommend exposure for all cameras">
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleRecommendExposureAll}
-                        sx={{color: "inherit", padding: "4px"}}
-                    >
-                        <WbIncandescentIcon sx={{fontSize: 24}}/>
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handleRecommendExposureAll}
+                title="Auto-recommend exposure for all cameras"
+                style={{padding: "4px"}}
+            >
+                <span className="icon bulb-icon icon-size-20" />
+            </button>
 
-            {/* Pause/Play Button */}
-            <Tooltip title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handlePauseUnpause}
-                        sx={{
-                            color: "inherit",
-                            padding: "4px",
-                        }}
-                    >
-                        {isPaused ? <PlayArrowIcon sx={{ fontSize: 24 }} /> : <PauseIcon sx={{ fontSize: 24 }} />}
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handlePauseUnpause}
+                title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}
+                style={{padding: "4px"}}
+            >
+                {isPaused
+                    ? <span className="icon play-icon icon-size-20" />
+                    : <span className="icon pause-icon icon-size-20" />
+                }
+            </button>
 
-            {/* Close Button */}
-            <Tooltip title={t("closeAllCameras")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleCloseCameras}
-                        sx={{
-                            color: "inherit",
-                            padding: "4px",
-                        }}
-                    >
-                        <VideocamOffIcon sx={{ fontSize: 24 }} />
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handleCloseCameras}
+                title={t("closeAllCameras")}
+                style={{padding: "4px"}}
+            >
+                <span className="icon videocam-off-icon icon-size-20" />
+            </button>
 
-            {/* Refresh/Detect Button */}
-            <Tooltip title={t("detectCameras")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleRefreshCameras}
-                        sx={{ color: "inherit", padding: "4px" }}
-                    >
-                        {busy ? (
-                            <CircularProgress size={20} sx={{ color: "inherit" }} />
-                        ) : (
-                            <YoutubeSearchedForIcon sx={{ fontSize: 24 }} />
-                        )}
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handleRefreshCameras}
+                title={t("detectCameras")}
+                style={{padding: "4px"}}
+            >
+                {busy
+                    ? <span className="icon loader-icon icon-size-20" />
+                    : <span className="icon refresh-icon icon-size-20" />
+                }
+            </button>
 
-            {/* Clear Saved Settings Button */}
-            <Tooltip title={t("clearCameraSettings")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleClearSavedSettings}
-                        sx={{ color: "inherit", padding: "4px" }}
-                    >
-                        <DeleteSweepIcon sx={{ fontSize: 24 }} />
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={handleClearSavedSettings}
+                title={t("clearCameraSettings")}
+                style={{padding: "4px"}}
+            >
+                <span className="icon clear-icon icon-size-20" />
+            </button>
         </>
     );
 };

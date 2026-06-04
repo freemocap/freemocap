@@ -1,7 +1,5 @@
 import React, {useEffect, useState} from "react";
 import {useTranslation} from "react-i18next";
-import {Box, FormControl, IconButton, MenuItem, Select, Tooltip, Typography,} from "@mui/material";
-import {Mic, MicOff, Refresh} from "@mui/icons-material";
 import {serverUrls} from "@/services";
 
 type MicrophoneSelectorProps = {
@@ -54,59 +52,47 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
     const isActive = selectedMicIndex >= 0;
 
     return (
-        <Box sx={{display: "flex", alignItems: "center", gap: 0.5, minWidth: 0}}>
-            <Tooltip title={isActive ? t("audioRecordingEnabled") : t("noMicrophoneSelected")}>
-                {isActive ? (
-                    <Mic sx={{fontSize: 16, color: "success.main", flexShrink: 0}}/>
-                ) : (
-                    <MicOff sx={{fontSize: 16, color: "text.disabled", flexShrink: 0}}/>
-                )}
-            </Tooltip>
+        <div className="flex flex-row items-center gap-1" style={{minWidth: 0}}>
+            <span
+                className="icon icon-size-20"
+                title={isActive ? t("audioRecordingEnabled") : t("noMicrophoneSelected")}
+                style={{
+                    flexShrink: 0,
+                    color: isActive ? 'var(--color-success)' : 'var(--color-text-disabled)',
+                    fontSize: 16,
+                }}
+            >
+                {isActive ? '🎤' : '🔇'}
+            </span>
 
-            <FormControl size="small" sx={{minWidth: 120, flex: 1}} disabled={disabled || loading}>
-                <Select
-                    value={selectedMicIndex}
-                    onChange={(e) => onMicSelected(Number(e.target.value))}
-                    displayEmpty
-                    sx={{
-                        fontSize: "0.75rem",
-                        height: 28,
-                        "& .MuiSelect-select": {py: 0.25},
-                    }}
-                >
-                    <MenuItem value={-1}>
-                        <Typography variant="caption" color="text.secondary">
-                            {t('noMicrophone')}
-                        </Typography>
-                    </MenuItem>
-                    {micEntries.map(({id, name}) => (
-                        <MenuItem key={id} value={id}>
-                            <Typography variant="caption" noWrap>
-                                {name}
-                            </Typography>
-                        </MenuItem>
-                    ))}
-                </Select>
-            </FormControl>
+            <select
+                className="input-field text md"
+                value={selectedMicIndex}
+                onChange={(e) => onMicSelected(Number(e.target.value))}
+                disabled={disabled || loading}
+                style={{fontSize: '0.75rem', height: 28, flex: 1, minWidth: 120}}
+            >
+                <option value={-1}>{t('noMicrophone')}</option>
+                {micEntries.map(({id, name}) => (
+                    <option key={id} value={id}>{name}</option>
+                ))}
+            </select>
 
-            <Tooltip title={t("refreshMicrophoneList")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={detectMicrophones}
-                        disabled={disabled || loading}
-                        sx={{p: 0.25, flexShrink: 0}}
-                    >
-                        <Refresh sx={{fontSize: 14}}/>
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <button
+                className="button icon-button br-1"
+                onClick={detectMicrophones}
+                disabled={disabled || loading}
+                title={t("refreshMicrophoneList")}
+                style={{flexShrink: 0}}
+            >
+                <span className="icon save-icon icon-size-12" />
+            </button>
 
             {error && (
-                <Typography variant="caption" color="error" noWrap sx={{fontSize: "0.65rem"}}>
+                <p className="text sm text-error text-nowrap" style={{fontSize: '0.65rem'}}>
                     {error}
-                </Typography>
+                </p>
             )}
-        </Box>
+        </div>
     );
 };

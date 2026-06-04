@@ -1,5 +1,4 @@
 import React from 'react';
-import {Box, useTheme} from '@mui/material';
 import {useNavigate} from 'react-router-dom';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -9,27 +8,13 @@ import {useAppSelector} from '@/store';
 import {selectActiveRecordingFullPath} from '@/store/slices/active-recording/active-recording-slice';
 
 const BrowserPage: React.FC = () => {
-    const theme = useTheme();
     const navigate = useNavigate();
     const ctx = usePlaybackContext();
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
 
     return (
-        <Box
-            sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                backgroundColor: theme.palette.mode === 'dark'
-                    ? theme.palette.background.default
-                    : theme.palette.background.paper,
-                borderStyle: 'solid',
-                borderWidth: '1px',
-                borderColor: theme.palette.divider,
-            }}
-        >
-            <Box sx={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
+        <div className="flex flex-col flex-1 bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>
+            <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
                     <RecordingBrowser
                         activeRecordingPath={activeRecordingPath}
@@ -39,11 +24,11 @@ const BrowserPage: React.FC = () => {
                         }}
                     />
                 </ErrorBoundary>
-            </Box>
-            <Box component="footer" sx={{p: 0.5}}>
+            </div>
+            <footer style={{padding: 4}}>
                 <Footer/>
-            </Box>
-        </Box>
+            </footer>
+        </div>
     );
 };
 

@@ -1,6 +1,4 @@
 import React from "react";
-import {Box} from "@mui/material";
-import LanIcon from "@mui/icons-material/Lan";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {RealtimePipelineSummary} from "@/components/control-panels/realtime-panel/RealtimePipelineSummary";
@@ -64,13 +62,13 @@ export const RealtimePipelinePanel: React.FC = () => {
 
     return (
         <CollapsibleSidebarSection
-            icon={<LanIcon sx={{transform: "scaleY(-1.05)", color: "inherit"}} />}
+            icon={<span className="icon streaming-icon icon-size-20" />}
             title="Realtime Pipeline"
             summaryContent={<RealtimePipelineSummary />}
             primaryControl={<RealtimePipelineConnectionToggle />}
             defaultExpanded={false}
         >
-            <Box sx={{p: 2}}>
+            <div className="p-2">
                 <RealtimePipelineConfigTree
                     context="realtime"
                     charucoEnabled={cameraNodeConfig.charuco_tracking_enabled}
@@ -84,7 +82,7 @@ export const RealtimePipelinePanel: React.FC = () => {
                     rigidBodyEnabled={aggregatorConfig.skeleton_enabled}
                     onRigidBodyToggle={handleRigidBodyToggle}
                 />
-            </Box>
+            </div>
         </CollapsibleSidebarSection>
     );
 };

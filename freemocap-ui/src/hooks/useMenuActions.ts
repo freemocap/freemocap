@@ -3,7 +3,6 @@ import {useEffect} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {useAppDispatch, useAppSelector} from '@/store';
-import {themeModeToggled} from '@/store/slices/theme';
 import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras} from '@/store/slices/cameras';
 import {stopRecording} from '@/store/slices/recording';
 import {selectVideoLoadFolder} from '@/store/slices/videos';
@@ -116,9 +115,6 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                     break;
 
                 // View
-                case 'toggle-theme':
-                    dispatch(themeModeToggled());
-                    break;
                 case 'toggle-sidebar':
                     onToggleSidebar();
                     break;

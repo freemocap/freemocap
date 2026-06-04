@@ -1,7 +1,5 @@
 import React from 'react';
 import {useTranslation} from 'react-i18next';
-import {IconButton, InputAdornment, TextField} from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import {useAppDispatch} from '@/store';
 import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
 import {useElectronIPC} from '@/services';
@@ -54,25 +52,22 @@ export const BaseRecordingDirectoryInput: React.FC<DirectoryInputProps> = ({ val
     };
 
     return (
-        <TextField
-            label={t("recordingDirectory")}
-            value={value}
-            onChange={handleInputChange}
-            fullWidth
-            size="small"
-            InputProps={{
-                endAdornment: (
-                    <InputAdornment position="end">
-                        <IconButton
-                            onClick={handleSelectDirectory}
-                            edge="end"
-                            disabled={!isElectron}
-                        >
-                            <FolderOpenIcon />
-                        </IconButton>
-                    </InputAdornment>
-                ),
-            }}
-        />
+        <div className="input-with-string pos-rel w-full">
+            <input
+                className="input-field text md w-full"
+                value={value}
+                onChange={handleInputChange}
+                placeholder={t("recordingDirectory")}
+            />
+            <button
+                className="button icon-button br-1"
+                onClick={handleSelectDirectory}
+                disabled={!isElectron}
+                title={t("recordingDirectory")}
+                style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}
+            >
+                <span className="icon download-icon icon-size-20" />
+            </button>
+        </div>
     );
 };

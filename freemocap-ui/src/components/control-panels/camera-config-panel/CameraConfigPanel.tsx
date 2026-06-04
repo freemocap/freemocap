@@ -1,6 +1,4 @@
 import React from "react";
-import {Box, Collapse, IconButton, Tooltip, useTheme,} from "@mui/material";
-import MediationIcon from "@mui/icons-material/Mediation";
 import {CameraConfigResolution} from "./CameraConfigResolution";
 import {CameraConfigExposure} from "./CameraConfigExposure";
 import {CameraConfigRotation} from "./CameraConfigRotation";
@@ -20,9 +18,8 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
     onConfigChange,
     isExpanded,
 }) => {
-    const theme = useTheme();
     const dispatch = useAppDispatch();
-    const { t } = useTranslation();
+    const {t} = useTranslation();
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
 
@@ -56,82 +53,62 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
         handleChange("exposure", value);
     };
 
+    if (!isExpanded) return null;
+
     return (
-        <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-            <Box
-                sx={{
-                    px: 1.5,
-                    py: 1,
-                    ml: 5,
-                    mr: 1,
-                    mb: 0.5,
-                    borderRadius: 1,
-                    border: `1px solid ${theme.palette.divider}`,
-                    backgroundColor: theme.palette.background.paper,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1,
-                }}
-            >
-                {/* Top row: Resolution, Rotation, then Copy to All pushed right */}
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap'}}>
-                    <CameraConfigResolution
-                        resolution={config.resolution}
-                        onChange={handleResolutionChange}
-                    />
+        <div
+            className="flex flex-col gap-1 br-1"
+            style={{
+                paddingLeft: 12,
+                paddingRight: 8,
+                paddingTop: 8,
+                paddingBottom: 4,
+                marginLeft: 20,
+                marginRight: 4,
+                marginBottom: 4,
+                border: '1px solid var(--color-border-secondary)',
+                backgroundColor: 'var(--color-bg-paper)',
+            }}
+        >
+            <div className="flex flex-row items-center gap-2" style={{flexWrap: 'wrap'}}>
+                <CameraConfigResolution
+                    resolution={config.resolution}
+                    onChange={handleResolutionChange}
+                />
 
-                    <CameraConfigRotation
-                        rotation={config.rotation}
-                        onChange={handleRotationChange}
-                    />
+                <CameraConfigRotation
+                    rotation={config.rotation}
+                    onChange={handleRotationChange}
+                />
 
-                    {/* Spacer pushes Copy to All to the right */}
-                    <Box sx={{flex: 1}}/>
+                <div style={{flex: 1}} />
 
-                    <Tooltip
-                        title={
-                            otherCamerasCount > 0
-                                ? `Copy settings to ${otherCamerasCount} other camera${
-                                    otherCamerasCount > 1 ? "s" : ""
-                                }`
-                                : "No other cameras to copy to"
-                        }
-                    >
-                        <span>
-                            <IconButton
-                                size="small"
-                                onClick={handleCopyToAllCameras}
-                                disabled={otherCamerasCount === 0}
-                                aria-label={t("copySettingsToAll")}
-                                sx={{
-                                    color: theme.palette.primary.contrastText,
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    '&:hover': {
-                                        backgroundColor: theme.palette.primary.dark,
-                                        color: theme.palette.primary.contrastText,
-                                        borderColor: theme.palette.primary.dark,
-                                    },
-                                    '&:disabled': {
-                                        color: theme.palette.action.disabled,
-                                    },
-                                }}
-                            >
-                                <MediationIcon fontSize="small"/>
-                            </IconButton>
-                        </span>
-                    </Tooltip>
-                </Box>
+                <button
+                    className="button icon-button br-1"
+                    onClick={handleCopyToAllCameras}
+                    disabled={otherCamerasCount === 0}
+                    aria-label={t("copySettingsToAll")}
+                    title={
+                        otherCamerasCount > 0
+                            ? `Copy settings to ${otherCamerasCount} other camera${otherCamerasCount > 1 ? "s" : ""}`
+                            : "No other cameras to copy to"
+                    }
+                    style={{
+                        border: '1px solid var(--color-border-secondary)',
+                    }}
+                >
+                    <span className="icon mediation-icon icon-size-20" />
+                </button>
+            </div>
 
-                {/* Exposure controls */}
-                <Box sx={{pt: 0.5, borderTop: `1px solid ${theme.palette.divider}`}}>
-                    <CameraConfigExposure
-                        exposureMode={config.exposure_mode}
-                        exposure={config.exposure}
-                        onExposureModeChange={handleExposureModeChange}
-                        onExposureValueChange={handleExposureValueChange}
-                    />
-                </Box>
-            </Box>
-        </Collapse>
+            <div style={{paddingTop: 4, borderTop: '1px solid var(--color-border-secondary)'}}>
+                <CameraConfigExposure
+                    exposureMode={config.exposure_mode}
+                    exposure={config.exposure}
+                    onExposureModeChange={handleExposureModeChange}
+                    onExposureValueChange={handleExposureValueChange}
+                />
+            </div>
+        </div>
     );
 };

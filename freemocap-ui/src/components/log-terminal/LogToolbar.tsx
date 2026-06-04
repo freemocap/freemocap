@@ -1,16 +1,4 @@
 import React, {memo} from 'react';
-import {alpha, Box, IconButton, ToggleButton, ToggleButtonGroup, Tooltip, useTheme} from '@mui/material';
-import {
-    ContentCopy as ContentCopyIcon,
-    DeleteSweep as DeleteSweepIcon,
-    Pause as PauseIcon,
-    PlayArrow as PlayArrowIcon,
-    Save as SaveIcon,
-    SaveAlt as ScrollToBottomIcon,
-    FilterList as FilterListIcon,
-    Search as SearchIcon,
-    Warning as WarningIcon,
-} from '@mui/icons-material';
 import {useTranslation} from 'react-i18next';
 import {LogSnapshot} from '@/services/server/server-helpers/log-store';
 import {LOG_COLORS} from './constants';
@@ -48,74 +36,36 @@ export const LogToolbar = memo(function LogToolbar({
     onToggleSearch,
     onToggleLevelFilters,
 }: Props) {
-    const theme = useTheme();
     const {t} = useTranslation();
 
     return (
-        <Box
-            sx={{
-                p: 0.5,
-                borderBottom: '1px solid',
-                borderColor: theme.palette.divider,
-                display: 'flex',
-                gap: 1,
-                alignItems: 'center',
-                flexWrap: 'wrap',
-            }}
-        >
-            <span style={{color: theme.palette.text.primary, fontSize: '0.9em', fontWeight: 'bold'}}>
+        <div className="log-toolbar flex flex-row items-center gap-1" style={{flexWrap: 'wrap'}}>
+            <span style={{color: 'var(--color-text-primary)', fontSize: '0.9em', fontWeight: 'bold'}}>
                 {t('serverLogs')}
             </span>
 
             {snapshot.hasErrors && (
-                <Tooltip title={t('errorsDetected')}>
-                    <WarningIcon
-                        sx={{
-                            color: LOG_COLORS.ERROR,
-                            fontSize: '1.2em',
-                            animation: 'pulse 2s infinite',
-                            '@keyframes pulse': {
-                                '0%, 100%': {opacity: 1},
-                                '50%': {opacity: 0.5},
-                            },
-                        }}
-                    />
-                </Tooltip>
+                <span
+                    title={t('errorsDetected')}
+                    className="icon warning-icon icon-size-20"
+                />
             )}
 
             {showLevelFilters && (
-                <ToggleButtonGroup
-                    size="small"
-                    value={selectedLevels}
-                    onChange={onLevelToggle}
-                    sx={{
-                        '.MuiToggleButtonGroup-grouped': {
-                            border: `1px solid ${theme.palette.divider} !important`,
-                            mx: '1px',
-                            '&:not(:first-of-type)': {borderRadius: '2px'},
-                            '&:first-of-type': {borderRadius: '2px'},
-                        },
-                    }}
-                >
+                <div className="log-level-filter flex flex-row gap-1" style={{flexWrap: 'wrap'}}>
                     {Object.entries(LOG_COLORS).map(([level, color]) => {
                         const count = snapshot.countsByLevel[level] || 0;
+                        const isSelected = selectedLevels.includes(level.toLowerCase());
                         return (
-                            <ToggleButton
+                            <button
                                 key={level}
-                                value={level.toLowerCase()}
-                                sx={{
-                                    py: 0.25,
-                                    px: 1,
-                                    minWidth: 0,
-                                    fontSize: '0.75em',
-                                    position: 'relative',
-                                    color: alpha(color, 0.7),
-                                    '&.Mui-selected': {
-                                        backgroundColor: alpha(color, 0.15),
-                                        color: color,
-                                        '&:hover': {backgroundColor: alpha(color, 0.2)},
-                                    },
-                                    '&:hover': {backgroundColor: alpha(color, 0.1)},
+                                className={`button sm ${isSelected ? 'primary' : 'secondary'}`}
+                                style={{fontSize: '0.75em', color: isSelected ? undefined : color}}
+                                onClick={(e) => {
+                                    const newLevels = isSelected
+                                        ? selectedLevels.filter(l => l !== level.toLowerCase())
+                                        : [...selectedLevels, level.toLowerCase()];
+                                    onLevelToggle(e as unknown as React.MouseEvent<HTMLElement>, newLevels);
                                 }}
                             >
                                 {level}
@@ -124,64 +74,71 @@ export const LogToolbar = memo(function LogToolbar({
                                         ({count})
                                     </span>
                                 )}
-                            </ToggleButton>
+                            </button>
                         );
                     })}
-                </ToggleButtonGroup>
+                </div>
             )}
 
-            <Box sx={{ml: 'auto', display: 'flex', gap: 0.5}}>
-                <Tooltip title={copyFeedback ? t('copied') : t('copyLogsToClipboard')}>
-                    <IconButton
-                        size="small"
-                        onClick={onCopyToClipboard}
-                        sx={{color: copyFeedback ? theme.palette.success.main : theme.palette.text.secondary}}
-                    >
-                        <ContentCopyIcon fontSize="small"/>
-                    </IconButton>
-                </Tooltip>
+            <div className="log-actions flex flex-row gap-1" style={{marginLeft: 'auto'}}>
+                <button
+                    title={copyFeedback ? t('copied') : t('copyLogsToClipboard')}
+                    className="button icon-button br-1"
+                    onClick={onCopyToClipboard}
+                >
+                    <span className="icon clear-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title={t('saveLogsToFile')}>
-                    <IconButton size="small" onClick={onSaveToDisk} sx={{color: theme.palette.text.secondary}}>
-                        <SaveIcon fontSize="small"/>
-                    </IconButton>
-                </Tooltip>
+                <button
+                    title={t('saveLogsToFile')}
+                    className="button icon-button br-1"
+                    onClick={onSaveToDisk}
+                >
+                    <span className="icon save-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title="Scroll to bottom">
-                    <IconButton size="small" onClick={onScrollToBottom} sx={{color: theme.palette.text.secondary}}>
-                        <ScrollToBottomIcon fontSize="small"/>
-                    </IconButton>
-                </Tooltip>
+                <button
+                    title="Scroll to bottom"
+                    className="button icon-button br-1"
+                    onClick={onScrollToBottom}
+                >
+                    <span className="icon load-icon icon-size-20"/>
+                </button>
 
-                <IconButton
-                    size="small"
+                <button
+                    className="button icon-button br-1"
                     onClick={onToggleLevelFilters}
-                    sx={{color: showLevelFilters ? theme.palette.primary.main : theme.palette.text.secondary}}
+                    style={{color: showLevelFilters ? 'var(--color-info)' : undefined}}
                 >
-                    <FilterListIcon fontSize="small"/>
-                </IconButton>
+                    <span className="icon settings-icon icon-size-20"/>
+                </button>
 
-                <IconButton
-                    size="small"
+                <button
+                    className="button icon-button br-1"
                     onClick={onToggleSearch}
-                    sx={{color: showSearch ? theme.palette.primary.main : theme.palette.text.secondary}}
+                    style={{color: showSearch ? 'var(--color-info)' : undefined}}
                 >
-                    <SearchIcon fontSize="small"/>
-                </IconButton>
+                    <span className="icon search-icon icon-size-20"/>
+                </button>
 
-                <IconButton
-                    size="small"
+                <button
+                    className="button icon-button br-1"
                     onClick={onPauseToggle}
-                    sx={{color: isPaused ? theme.palette.warning.main : theme.palette.text.secondary}}
+                    style={{color: isPaused ? 'var(--color-warning)' : undefined}}
                 >
-                    {isPaused ? <PlayArrowIcon fontSize="small"/> : <PauseIcon fontSize="small"/>}
-                </IconButton>
+                    {isPaused
+                        ? <span className="icon play-icon icon-size-20"/>
+                        : <span className="icon pause-icon icon-size-20"/>}
+                </button>
 
-                <IconButton size="small" onClick={onClear} sx={{color: theme.palette.text.secondary}}>
-                    <DeleteSweepIcon fontSize="small"/>
-                </IconButton>
-            </Box>
-        </Box>
+                <button
+                    className="button icon-button br-1"
+                    onClick={onClear}
+                >
+                    <span className="icon clear-icon icon-size-20"/>
+                </button>
+            </div>
+        </div>
     );
 }, (prev, next) =>
     prev.snapshot.version  === next.snapshot.version &&

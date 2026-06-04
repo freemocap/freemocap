@@ -1,10 +1,4 @@
 import React, {useCallback, useMemo} from "react";
-import {
-    Stack,
-    TextField,
-    Typography,
-    useTheme,
-} from "@mui/material";
 import {useCalibration} from "@/hooks/useCalibration";
 import {PresetPicker} from "@/components/common/PresetPicker";
 
@@ -21,7 +15,6 @@ const BOARD_PRESETS: Record<Exclude<BoardPreset, "custom">, BoardPresetConfig> =
 };
 
 export const CharucoBoardConfigSection: React.FC = () => {
-    const theme = useTheme();
     const {config, updateCalibrationConfig, isLoading} = useCalibration();
     const board = config.charucoBoard;
 
@@ -46,12 +39,9 @@ export const CharucoBoardConfigSection: React.FC = () => {
     );
 
     return (
-        <Stack spacing={2} sx={{p:2}}>
-            <Typography variant="subtitle2" sx={{color: theme.palette.text.secondary, fontWeight: 600}}>
-                Charuco Board
-            </Typography>
+        <div className="flex flex-col gap-2" style={{padding: 8}}>
+            <p className="text sm text-gray" style={{fontWeight: 600}}>Charuco Board</p>
 
-            {/* Preset */}
             <PresetPicker
                 label="Preset"
                 value={currentPreset}
@@ -65,50 +55,57 @@ export const CharucoBoardConfigSection: React.FC = () => {
                 minWidth={140}
             />
 
-            {/* X / Y Squares */}
-            <Stack direction="row" spacing={2}>
-                <TextField
-                    label="X Squares"
-                    type="number"
-                    value={board.squares_x}
-                    onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, squares_x: v}});
-                    }}
-                    disabled={isLoading}
-                    size="small"
-                    sx={{flex: 1}}
-                    inputProps={{min: 2, max: 20}}
-                />
-                <TextField
-                    label="Y Squares"
-                    type="number"
-                    value={board.squares_y}
-                    onChange={(e) => {
-                        const v = parseInt(e.target.value, 10);
-                        if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, squares_y: v}});
-                    }}
-                    disabled={isLoading}
-                    size="small"
-                    sx={{flex: 1}}
-                    inputProps={{min: 2, max: 20}}
-                />
-            </Stack>
+            <div className="flex flex-row gap-2">
+                <div className="input-with-string" style={{flex: 1}}>
+                    <input
+                        className="input-field text md"
+                        type="number"
+                        placeholder="X Squares"
+                        value={board.squares_x}
+                        onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, squares_x: v}});
+                        }}
+                        disabled={isLoading}
+                        min={2}
+                        max={20}
+                        style={{width: '100%'}}
+                    />
+                </div>
+                <div className="input-with-string" style={{flex: 1}}>
+                    <input
+                        className="input-field text md"
+                        type="number"
+                        placeholder="Y Squares"
+                        value={board.squares_y}
+                        onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, squares_y: v}});
+                        }}
+                        disabled={isLoading}
+                        min={2}
+                        max={20}
+                        style={{width: '100%'}}
+                    />
+                </div>
+            </div>
 
-            {/* Square Length */}
-            <TextField
-                label="Square Length (mm)"
-                type="number"
-                value={board.square_length_mm}
-                onChange={(e) => {
-                    const v = parseFloat(e.target.value);
-                    if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, square_length_mm: v}});
-                }}
-                disabled={isLoading}
-                size="small"
-                fullWidth
-                inputProps={{min: 1, step: 0.1}}
-            />
-        </Stack>
+            <div className="input-with-string">
+                <input
+                    className="input-field text md"
+                    type="number"
+                    placeholder="Square Length (mm)"
+                    value={board.square_length_mm}
+                    onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v) && v > 0) updateCalibrationConfig({charucoBoard: {...board, square_length_mm: v}});
+                    }}
+                    disabled={isLoading}
+                    min={1}
+                    step={0.1}
+                    style={{width: '100%'}}
+                />
+            </div>
+        </div>
     );
 };

@@ -1,11 +1,4 @@
-import React from "react";
-import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from "@mui/material";
-import {TreeItem} from "@mui/x-tree-view/TreeItem";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
-import SettingsIcon from "@mui/icons-material/Settings";
-import VideoCameraFrontIcon from "@mui/icons-material/VideoCameraFront";
-import VideoCameraFrontOutlinedIcon from "@mui/icons-material/VideoCameraFrontOutlined";
+import React, {useState} from "react";
 import {useTranslation} from "react-i18next";
 
 import {CameraConfigTreeSection} from "./CameraConfigTreeSection";
@@ -18,13 +11,11 @@ interface CameraTreeItemProps {
     isExpanded?: boolean;
 }
 
-// Helper function to format config summary
 const getConfigSummary = (config: any): string[] => {
     const summary: string[] = [];
 
     if (!config) return summary;
 
-    // Add resolution if available
     if (config.resolution?.width && config.resolution?.height) {
         summary.push(`${config.resolution.width}×${config.resolution.height}`);
     }
@@ -33,12 +24,10 @@ const getConfigSummary = (config: any): string[] => {
         summary.push(`${parseFloat(config.framerate).toFixed(2)}fps`);
     }
 
-    // Add exposure if available and not AUTO
     if (config.exposure !== undefined && config.exposure_mode === 'MANUAL') {
         summary.push(`E:${config.exposure}`);
     }
 
-    // Add pixel format if available and not default
     if (config.pixel_format && config.pixel_format !== 'RGB') {
         summary.push(config.pixel_format);
     }
@@ -46,18 +35,31 @@ const getConfigSummary = (config: any): string[] => {
     if (config.rotation) {
         summary.push(ROTATION_DEGREE_LABELS[config.rotation as RotationValue]);
     }
-    // Add capture format if different from default
+
     if (config.capture_fourcc) {
         summary.push(config.capture_fourcc);
     }
 
-    return summary.filter(item => item); // Remove empty strings
+    return summary.filter(item => item);
+};
+
+const getStatusColor = (connectionStatus: string): string => {
+    switch (connectionStatus) {
+        case "connected":
+            return 'var(--color-success)';
+        case "available":
+            return 'var(--color-info)';
+        case "error":
+            return 'var(--color-danger)';
+        default:
+            return 'var(--color-text-muted)';
+    }
 };
 
 export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpanded = false}) => {
     const dispatch = useAppDispatch();
-    const theme = useTheme();
-    const { t } = useTranslation();
+    const {t} = useTranslation();
+    const [expanded, setExpanded] = useState(isExpanded);
 
     const statusLabelMap: Record<string, string> = {
         connected: t('connected'),
@@ -75,159 +77,100 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpande
         dispatch(cameraRealtimeToggled(camera.id));
     };
 
-    const getStatusColor = (): string => {
-        switch (camera.connectionStatus) {
-            case "connected":
-                return theme.palette.success.main;
-            case "available":
-                return theme.palette.info.main;
-            case "error":
-                return theme.palette.error.main;
-            default:
-                return theme.palette.grey[500];
-        }
-    };
-
     const configSummary = getConfigSummary(camera.desiredConfig);
-    const showConfigSummary = !isExpanded && configSummary.length > 0;
+    const showConfigSummary = !expanded && configSummary.length > 0;
 
     return (
-        <TreeItem
-            itemId={`camera-${camera.id}`}
-            label={
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        py: 0.2,
-                        pr: 1,
-                        minHeight: 32,
+        <div>
+            <div
+                className="flex flex-row items-center gap-1 p-1"
+                style={{minHeight: 32, paddingRight: 8, cursor: 'pointer', userSelect: 'none'}}
+                onClick={() => setExpanded((prev) => !prev)}
+            >
+                <span
+                    className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`}
+                    style={{transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0}}
+                />
+
+                <button
+                    className="button icon-button br-1"
+                    onClick={handleToggleSelection}
+                    title={camera.selected ? "In camera group" : "Not in camera group"}
+                    style={{marginRight: 2, flexShrink: 0}}
+                >
+                    {camera.selected
+                        ? <span className="icon check-circle-icon icon-size-20" style={{color: 'var(--color-info)'}} />
+                        : <span className="icon radio-unchecked-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
+                    }
+                </button>
+
+                <button
+                    className="button icon-button br-1"
+                    onClick={handleToggleRealtime}
+                    disabled={!camera.selected}
+                    title={camera.realtimeEnabled ? "In realtime pipeline" : "Not in realtime pipeline"}
+                    style={{marginRight: 4, flexShrink: 0}}
+                >
+                    {camera.realtimeEnabled
+                        ? <span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-info)'}} />
+                        : <span className="icon videocam-outlined-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
+                    }
+                </button>
+
+                <div className="flex flex-row items-center flex-1 gap-1" style={{minWidth: 0}}>
+                    <div style={{flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200}}>
+                        <span style={{fontSize: '0.75rem', color: 'var(--color-text-primary)', display: 'block', whiteSpace: 'nowrap'}}>
+                            Camera {camera.index}
+                        </span>
+                        <span style={{fontSize: '0.6rem', color: 'var(--color-text-muted)', display: 'block', whiteSpace: 'nowrap'}}>
+                            {camera.name} (id: {camera.id})
+                        </span>
+                    </div>
+
+                    {showConfigSummary && (
+                        <div className="flex flex-row items-center gap-1" style={{flexGrow: 1, minWidth: 0, overflow: 'hidden'}}>
+                            <span className="icon settings-icon icon-size-12" style={{color: 'var(--color-text-muted)', flexShrink: 0}} />
+                            <div className="flex flex-row gap-1" style={{flexWrap: 'wrap', overflow: 'hidden'}}>
+                                {configSummary.slice(0, 5).map((item, index) => (
+                                    <span
+                                        key={index}
+                                        className="tag text sm"
+                                        style={{
+                                            height: 10,
+                                            fontSize: 8,
+                                            padding: '0 6px',
+                                            borderColor: 'var(--color-border-secondary)',
+                                            color: 'var(--color-text-muted)',
+                                        }}
+                                    >
+                                        {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <span
+                    className="tag text sm"
+                    style={{
+                        marginLeft: 4,
+                        flexShrink: 0,
+                        backgroundColor: getStatusColor(camera.connectionStatus),
+                        color: '#fff',
+                        fontSize: 10,
+                        height: 20,
                     }}
                 >
-                    {/* Camera group selection */}
-                    <Tooltip title={camera.selected ? "In camera group" : "Not in camera group"} enterDelay={600} disableInteractive>
-                        <IconButton
-                            size="small"
-                            onClick={handleToggleSelection}
-                            sx={{mr: 0.5, flexShrink: 0}}
-                        >
-                            {camera.selected ? (
-                                <CheckCircleIcon color="primary"/>
-                            ) : (
-                                <RadioButtonUncheckedIcon color="disabled"/>
-                            )}
-                        </IconButton>
-                    </Tooltip>
+                    {statusLabelMap[camera.connectionStatus] ?? camera.connectionStatus.toUpperCase()}
+                </span>
+            </div>
 
-                    {/* Realtime pipeline toggle */}
-                    <Tooltip title={camera.realtimeEnabled ? "In realtime pipeline" : "Not in realtime pipeline"} enterDelay={600} disableInteractive>
-                        <span>
-                            <IconButton
-                                size="small"
-                                onClick={handleToggleRealtime}
-                                disabled={!camera.selected}
-                                sx={{mr: 1, flexShrink: 0}}
-                            >
-                                {camera.realtimeEnabled ? (
-                                    <VideoCameraFrontIcon color="primary"/>
-                                ) : (
-                                    <VideoCameraFrontOutlinedIcon color="disabled"/>
-                                )}
-                            </IconButton>
-                        </span>
-                    </Tooltip>
-
-                    {/* Camera name and config summary container */}
-                    <Box sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        flexGrow: 1,
-                        minWidth: 0, // Allow shrinking
-                        gap: 1
-                    }}>
-                        {/* Camera name */}
-                        <Typography
-                            variant="body2"
-                            sx={{
-                                flexShrink: 0,
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                maxWidth: "200px" // Limit name width
-                            }}
-                        >
-                            <span style={{fontSize: '0.75rem'}}>
-
-                            Camera {camera.index}
-                            </span>
-                            <br/>
-                            <span style={{fontSize: '0.6rem'}}>
-                                {camera.name} (id: {camera.id})
-                            </span>
-                        </Typography>
-
-                        {/* Config summary - only show when collapsed */}
-                        {showConfigSummary && (
-                            <Box sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 0.25,
-                                flexGrow: 1,
-                                minWidth: 0,
-                                overflow: "hidden"
-                            }}>
-                                <SettingsIcon
-                                    sx={{
-                                        fontSize: 14,
-                                        color: theme.palette.text.secondary,
-                                        flexShrink: 0
-                                    }}
-                                />
-                                <Box sx={{
-                                    display: "flex",
-                                    gap: 0.5,
-                                    flexWrap: "wrap",
-                                    overflow: "hidden"
-                                }}>
-                                    {configSummary.slice(0, 5).map((item, index) => (
-                                        <Chip
-                                            key={index}
-                                            label={item}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{
-                                                height: 10,
-                                                fontSize: 8,
-                                                '& .MuiChip-label': {
-                                                    px: 0.75,
-                                                },
-                                                borderColor: theme.palette.divider,
-                                                color: theme.palette.text.secondary,
-                                            }}
-                                        />
-                                    ))}
-                                </Box>
-                            </Box>
-                        )}
-                    </Box>
-
-                    {/* Status chip */}
-                    <Chip
-                        label={statusLabelMap[camera.connectionStatus] ?? camera.connectionStatus.toUpperCase()}
-                        size="small"
-                        sx={{
-                            ml: 1,
-                            flexShrink: 0,
-                            backgroundColor: getStatusColor(),
-                            color: theme.palette.getContrastText(getStatusColor()),
-                            fontSize: 10,
-                            height: 20,
-                        }}
-                    />
-                </Box>
-            }
-        >
-            <CameraConfigTreeSection camera={camera}/>
-        </TreeItem>
+            {expanded && (
+                <div style={{paddingLeft: 8}}>
+                    <CameraConfigTreeSection camera={camera} />
+                </div>
+            )}
+        </div>
     );
 };

@@ -1,58 +1,28 @@
 import React from "react";
-import {
-    FormControl,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Select,
-    Stack,
-    Switch,
-    Typography,
-    useTheme,
-} from "@mui/material";
 import {useCalibration} from "@/hooks/useCalibration";
 import {CalibrationSolverMethod} from "@/store/slices/calibration";
 
-/**
- * Calibration solver method and groundplane controls.
- *
- * Drop this into CalibrationControlPanel's Stack, after the
- * square length TextField and before the recording progress section.
- */
 export const CalibrationSolverSection: React.FC = () => {
-    const theme = useTheme();
     const {config, updateCalibrationConfig, isLoading} = useCalibration();
 
     return (
-        <Stack spacing={2}>
-            <Typography
-                variant="subtitle2"
-                sx={{color: theme.palette.text.secondary, fontWeight: 600}}
+        <div className="flex flex-col gap-2">
+            <p className="text sm text-gray" style={{fontWeight: 600}}>Solver Settings</p>
+
+            <select
+                className="input-field text md"
+                value={config.solverMethod}
+                onChange={(e) =>
+                    updateCalibrationConfig({
+                        solverMethod: e.target.value as CalibrationSolverMethod,
+                    })
+                }
+                disabled={isLoading}
+                style={{width: '100%'}}
             >
-                Solver Settings
-            </Typography>
-
-            {/* Solver Method */}
-            <FormControl size="small" fullWidth>
-                <InputLabel id="solver-method-label">Solver Method</InputLabel>
-                <Select
-                    labelId="solver-method-label"
-                    value={config.solverMethod}
-                    label="Solver Method"
-                    onChange={(e) =>
-                        updateCalibrationConfig({
-                            solverMethod: e.target.value as CalibrationSolverMethod,
-                        })
-                    }
-                    disabled={isLoading}
-                    sx={{color: theme.palette.text.primary}}
-                >
-                    <MenuItem value="anipose">Anipose (legacy)</MenuItem>
-                    <MenuItem value="pyceres">Pyceres (bundle adjustment)</MenuItem>
-                </Select>
-            </FormControl>
-
-
-        </Stack>
+                <option value="anipose">Anipose (legacy)</option>
+                <option value="pyceres">Pyceres (bundle adjustment)</option>
+            </select>
+        </div>
     );
 };

@@ -1,18 +1,4 @@
 import React, {useCallback} from "react";
-import {
-    Box,
-    Chip,
-    FormControl,
-    FormControlLabel,
-    InputLabel,
-    MenuItem,
-    Select,
-    Slider,
-    Stack,
-    Switch,
-    Typography,
-    useTheme,
-} from "@mui/material";
 import {useMocap} from "@/hooks/useMocap";
 import {
     MEDIAPIPE_POSTHOC_PRESET,
@@ -45,19 +31,6 @@ function detectPreset(
     return "custom";
 }
 
-/** Shared slider sx that matches the camera config panel style. */
-const useSliderSx = () => {
-    const theme = useTheme();
-    return {
-        color: theme.palette.primary.light,
-        "& .MuiSlider-thumb": {
-            "&:hover, &.Mui-focusVisible": {
-                boxShadow: `0px 0px 0px 8px ${theme.palette.primary.light}33`,
-            },
-        },
-    } as const;
-};
-
 interface MediapipeConfigPanelProps {
     updateDetectorConfig?: (updates: Partial<MediapipeDetectorConfig>) => void;
     replaceDetectorConfig?: (config: MediapipeDetectorConfig) => void;
@@ -67,8 +40,6 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
     updateDetectorConfig: updateDetectorConfigProp,
     replaceDetectorConfig: replaceDetectorConfigProp,
 }) => {
-    const theme = useTheme();
-    const sliderSx = useSliderSx();
     const {
         detectorConfig,
         updateDetectorConfig: updateDetectorConfigHook,
@@ -89,157 +60,134 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
     );
 
     return (
-        <Stack spacing={2}>
-            <Typography variant="subtitle2" sx={{color: theme.palette.text.secondary, fontWeight: 600}}>
-                MediaPipe Detector
-            </Typography>
+        <div className="flex flex-col gap-2">
+            <p className="text sm text-gray" style={{fontWeight: 600}}>MediaPipe Detector</p>
 
             {/* Preset selector */}
-            <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="caption" sx={{color: theme.palette.text.secondary, minWidth: 48}}>
-                    Preset
-                </Typography>
-                <Chip
-                    label="Realtime"
-                    size="small"
-                    variant={currentPreset === "realtime" ? "filled" : "outlined"}
-                    color={currentPreset === "realtime" ? "primary" : "default"}
+            <div className="flex flex-row items-center gap-1">
+                <p className="text sm text-gray" style={{minWidth: 48}}>Preset</p>
+                <button
+                    className={`button sm ${currentPreset === "realtime" ? "primary" : "secondary"}`}
                     onClick={() => handlePresetChange("realtime")}
                     disabled={isLoading}
-                    sx={{cursor: "pointer"}}
-                />
-                <Chip
-                    label="Posthoc"
-                    size="small"
-                    variant={currentPreset === "posthoc" ? "filled" : "outlined"}
-                    color={currentPreset === "posthoc" ? "primary" : "default"}
+                >
+                    Realtime
+                </button>
+                <button
+                    className={`button sm ${currentPreset === "posthoc" ? "primary" : "secondary"}`}
                     onClick={() => handlePresetChange("posthoc")}
                     disabled={isLoading}
-                    sx={{cursor: "pointer"}}
-                />
+                >
+                    Posthoc
+                </button>
                 {currentPreset === "custom" && (
-                    <Chip label="Custom" size="small" variant="outlined" color="warning" />
+                    <span className="tag text sm">Custom</span>
                 )}
-            </Stack>
+            </div>
 
             {/* Model complexity */}
-            <FormControl size="small" fullWidth>
-                <InputLabel id="model-complexity-label">Model Complexity</InputLabel>
-                <Select
-                    labelId="model-complexity-label"
+            <div className="flex flex-col gap-1">
+                <p className="text sm text-gray">Model Complexity</p>
+                <select
+                    className="input-field text md"
                     value={detectorConfig.model_complexity}
-                    label="Model Complexity"
                     onChange={(e) =>
                         updateDetectorConfig({
-                            model_complexity: e.target.value as MediapipeModelComplexity,
+                            model_complexity: Number(e.target.value) as MediapipeModelComplexity,
                         })
                     }
                     disabled={isLoading}
-                    sx={{color: theme.palette.text.primary}}
                 >
-                    <MenuItem value={0}>{MODEL_COMPLEXITY_LABELS[0]}</MenuItem>
-                    <MenuItem value={1}>{MODEL_COMPLEXITY_LABELS[1]}</MenuItem>
-                    <MenuItem value={2}>{MODEL_COMPLEXITY_LABELS[2]}</MenuItem>
-                </Select>
-            </FormControl>
+                    <option value={0}>{MODEL_COMPLEXITY_LABELS[0]}</option>
+                    <option value={1}>{MODEL_COMPLEXITY_LABELS[1]}</option>
+                    <option value={2}>{MODEL_COMPLEXITY_LABELS[2]}</option>
+                </select>
+            </div>
 
             {/* Confidence sliders */}
-            <Box>
-                <Typography variant="caption" color="text.secondary">
+            <div>
+                <p className="text sm text-gray">
                     Min Detection Confidence: {detectorConfig.min_detection_confidence.toFixed(2)}
-                </Typography>
-                <Slider
+                </p>
+                <input
+                    type="range"
                     value={detectorConfig.min_detection_confidence}
-                    onChange={(_ , value) =>
-                        updateDetectorConfig({min_detection_confidence: value as number})
+                    onChange={(e) =>
+                        updateDetectorConfig({min_detection_confidence: parseFloat(e.target.value)})
                     }
-                    min={0} max={1} step={0.05} size="small" disabled={isLoading}
-                    sx={sliderSx}
+                    min={0} max={1} step={0.05} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
                 />
-            </Box>
+            </div>
 
-            <Box>
-                <Typography variant="caption" color="text.secondary">
+            <div>
+                <p className="text sm text-gray">
                     Min Tracking Confidence: {detectorConfig.min_tracking_confidence.toFixed(2)}
-                </Typography>
-                <Slider
+                </p>
+                <input
+                    type="range"
                     value={detectorConfig.min_tracking_confidence}
-                    onChange={(_, value) =>
-                        updateDetectorConfig({min_tracking_confidence: value as number})
+                    onChange={(e) =>
+                        updateDetectorConfig({min_tracking_confidence: parseFloat(e.target.value)})
                     }
-                    min={0} max={1} step={0.05} size="small" disabled={isLoading}
-                    sx={sliderSx}
+                    min={0} max={1} step={0.05} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
                 />
-            </Box>
+            </div>
 
             {/* Boolean toggles */}
-            <Stack spacing={0}>
-                <FormControlLabel
-                    control={
-                        <Switch
-                            size="small"
-                            checked={detectorConfig.smooth_landmarks}
-                            onChange={(_, checked) =>
-                                updateDetectorConfig({smooth_landmarks: checked})
-                            }
-                            disabled={isLoading}
-                        />
-                    }
-                    label={<Typography variant="body2">Smooth Landmarks</Typography>}
-                />
-                <FormControlLabel
-                    control={
-                        <Switch
-                            size="small"
-                            checked={detectorConfig.enable_segmentation}
-                            onChange={(_, checked) =>
-                                updateDetectorConfig({enable_segmentation: checked})
-                            }
-                            disabled={isLoading}
-                        />
-                    }
-                    label={<Typography variant="body2">Enable Segmentation</Typography>}
-                />
-                <FormControlLabel
-                    control={
-                        <Switch
-                            size="small"
-                            checked={detectorConfig.smooth_segmentation}
-                            onChange={(_, checked) =>
-                                updateDetectorConfig({smooth_segmentation: checked})
-                            }
-                            disabled={isLoading || !detectorConfig.enable_segmentation}
-                        />
-                    }
-                    label={<Typography variant="body2">Smooth Segmentation</Typography>}
-                />
-                <FormControlLabel
-                    control={
-                        <Switch
-                            size="small"
-                            checked={detectorConfig.refine_face_landmarks}
-                            onChange={(_, checked) =>
-                                updateDetectorConfig({refine_face_landmarks: checked})
-                            }
-                            disabled={isLoading}
-                        />
-                    }
-                    label={<Typography variant="body2">Refine Face Landmarks</Typography>}
-                />
-                <FormControlLabel
-                    control={
-                        <Switch
-                            size="small"
-                            checked={detectorConfig.static_image_mode}
-                            onChange={(_, checked) =>
-                                updateDetectorConfig({static_image_mode: checked})
-                            }
-                            disabled={isLoading}
-                        />
-                    }
-                    label={<Typography variant="body2">Static Image Mode</Typography>}
-                />
-            </Stack>
-        </Stack>
+            <div className="flex flex-col">
+                <label className="flex flex-row items-center gap-1">
+                    <input
+                        type="checkbox"
+                        checked={detectorConfig.smooth_landmarks}
+                        onChange={(e) => updateDetectorConfig({smooth_landmarks: e.target.checked})}
+                        disabled={isLoading}
+                        style={{accentColor: 'var(--color-info)'}}
+                    />
+                    <span className="text sm text-gray">Smooth Landmarks</span>
+                </label>
+                <label className="flex flex-row items-center gap-1">
+                    <input
+                        type="checkbox"
+                        checked={detectorConfig.enable_segmentation}
+                        onChange={(e) => updateDetectorConfig({enable_segmentation: e.target.checked})}
+                        disabled={isLoading}
+                        style={{accentColor: 'var(--color-info)'}}
+                    />
+                    <span className="text sm text-gray">Enable Segmentation</span>
+                </label>
+                <label className="flex flex-row items-center gap-1">
+                    <input
+                        type="checkbox"
+                        checked={detectorConfig.smooth_segmentation}
+                        onChange={(e) => updateDetectorConfig({smooth_segmentation: e.target.checked})}
+                        disabled={isLoading || !detectorConfig.enable_segmentation}
+                        style={{accentColor: 'var(--color-info)'}}
+                    />
+                    <span className="text sm text-gray">Smooth Segmentation</span>
+                </label>
+                <label className="flex flex-row items-center gap-1">
+                    <input
+                        type="checkbox"
+                        checked={detectorConfig.refine_face_landmarks}
+                        onChange={(e) => updateDetectorConfig({refine_face_landmarks: e.target.checked})}
+                        disabled={isLoading}
+                        style={{accentColor: 'var(--color-info)'}}
+                    />
+                    <span className="text sm text-gray">Refine Face Landmarks</span>
+                </label>
+                <label className="flex flex-row items-center gap-1">
+                    <input
+                        type="checkbox"
+                        checked={detectorConfig.static_image_mode}
+                        onChange={(e) => updateDetectorConfig({static_image_mode: e.target.checked})}
+                        disabled={isLoading}
+                        style={{accentColor: 'var(--color-info)'}}
+                    />
+                    <span className="text sm text-gray">Static Image Mode</span>
+                </label>
+            </div>
+        </div>
     );
 };

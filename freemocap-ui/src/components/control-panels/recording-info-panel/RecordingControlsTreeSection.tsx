@@ -1,5 +1,4 @@
 import React from 'react';
-import {Box} from '@mui/material';
 import {
     DelayRecordingStartControl
 } from "@/components/control-panels/recording-info-panel/recording-subcomponents/DelayRecordingStartControl";
@@ -38,30 +37,30 @@ interface RecordingControlsSectionProps {
 }
 
 export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> = ({
-                                                                                      recordingDirectory,
-                                                                                      recordingName,
-                                                                                      recordingTag,
-                                                                                      useDelayStart,
-                                                                                      delaySeconds,
-                                                                                      useTimestamp,
-                                                                                      baseName,
-                                                                                      useIncrement,
-                                                                                      currentIncrement,
-                                                                                      createSubfolder,
-                                                                                      customSubfolderName,
-                                                                                      isRecording,
-                                                                                      onDelayToggle,
-                                                                                      onDelayChange,
-                                                                                      onTagChange,
-                                                                                      onUseTimestampChange,
-                                                                                      onBaseNameChange,
-                                                                                      onUseIncrementChange,
-                                                                                      onIncrementChange,
-                                                                                      onCreateSubfolderChange,
-                                                                                      onCustomSubfolderNameChange
-                                                                                  }) => {
+    recordingDirectory,
+    recordingName,
+    recordingTag,
+    useDelayStart,
+    delaySeconds,
+    useTimestamp,
+    baseName,
+    useIncrement,
+    currentIncrement,
+    createSubfolder,
+    customSubfolderName,
+    isRecording,
+    onDelayToggle,
+    onDelayChange,
+    onTagChange,
+    onUseTimestampChange,
+    onBaseNameChange,
+    onUseIncrementChange,
+    onIncrementChange,
+    onCreateSubfolderChange,
+    onCustomSubfolderNameChange
+}) => {
     return (
-        <Box sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}>
+        <div className="flex flex-col gap-2" style={{paddingLeft: 8, paddingTop: 8}}>
             <DelayRecordingStartControl
                 useDelay={useDelayStart}
                 delaySeconds={delaySeconds}
@@ -94,6 +93,6 @@ export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> =
                 onCreateSubfolderChange={onCreateSubfolderChange}
                 onCustomSubfolderNameChange={onCustomSubfolderNameChange}
             />
-        </Box>
+        </div>
     );
 };

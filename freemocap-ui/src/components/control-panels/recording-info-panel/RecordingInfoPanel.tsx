@@ -1,9 +1,4 @@
 import React, {useEffect} from "react";
-import {Box, Checkbox, FormControlLabel, useTheme} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
 import {
     autoProcessToggled,
@@ -47,7 +42,6 @@ export const RECORDING_TYPE_OPTIONS: { value: RecordingTypePreset; label: string
 ];
 
 export const RecordingInfoPanel: React.FC = () => {
-    const theme = useTheme();
     const dispatch = useAppDispatch();
     const recordingInfo = useAppSelector((state) => state.recording);
     const {config, pendingOperation, countdown} = recordingInfo;
@@ -186,7 +180,7 @@ export const RecordingInfoPanel: React.FC = () => {
 
     return (
         <CollapsibleSidebarSection
-            icon={<FiberManualRecordIcon sx={{color: "inherit"}}/>}
+            icon={<span className="icon record-icon icon-size-20" />}
             title={"Recording"}
             summaryContent={
                 <RecordingSummary
@@ -203,105 +197,69 @@ export const RecordingInfoPanel: React.FC = () => {
                 />
             }
             secondaryControls={
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5}}>
+                <div className="flex flex-row items-center gap-1">
                     <PresetPicker
                         value={recordingTypePreset}
                         options={RECORDING_TYPE_OPTIONS}
                         onChange={(v) => dispatch(recordingTypePresetChanged(v))}
                         disabled={recordingInfo.isRecording}
-                        size="small"
                         minWidth={70}
-                        sx={{
-                            '& .MuiSelect-select': {py: 0.25, fontSize: 11, color: 'inherit'},
-                            '& .MuiOutlinedInput-notchedOutline': {borderColor: 'rgba(255,255,255,0.3)'},
-                            '& .MuiSvgIcon-root': {color: 'inherit', fontSize: 14},
-                        }}
                     />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                checked={autoProcess}
-                                onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
-                                disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
-                                size="small"
-                                sx={{py: 0, '& .MuiSvgIcon-root': {fontSize: 14}}}
-                            />
-                        }
-                        label="Auto Process"
-                        sx={{
-                            ml: 0,
-                            mr: 0,
-                            '& .MuiFormControlLabel-label': {
+                    <label className="flex flex-row items-center gap-1">
+                        <input
+                            type="checkbox"
+                            checked={autoProcess}
+                            onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
+                            disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
+                            style={{accentColor: 'var(--color-info)'}}
+                        />
+                        <span
+                            className="text sm text-gray"
+                            style={{
                                 fontSize: 10,
                                 opacity: recordingTypePreset === "none" ? 0.5 : 1,
-                            },
-                        }}
-                    />
-                </Box>
+                            }}
+                        >
+                            Auto Process
+                        </span>
+                    </label>
+                </div>
             }
             defaultExpanded={false}
         >
-            <Box
-                sx={{
-                    color: "text.primary",
-                    backgroundColor: theme.palette.background.paper,
-                    borderRadius: 1,
-                    mx: 1,
-                    my: 0.5,
-                }}
-            >
-                <SimpleTreeView
-                    defaultExpandedItems={["recording-settings"]}
-                    slots={{
-                        collapseIcon: ExpandMoreIcon,
-                        expandIcon: ChevronRightIcon,
-                    }}
-                    sx={{
-                        flexGrow: 1,
-                        '& .MuiTreeItem-content': {
-                            padding: '2px 4px',
-                            margin: '1px 0',
-                        },
-                        '& .MuiTreeItem-label': {
-                            fontSize: 13,
-                            padding: '1px 0',
-                        },
-                    }}
-                >
-                    <Box sx={{px: 1, py: 1}}>
-                        <MicrophoneSelector
-                            selectedMicIndex={micDeviceIndex}
-                            onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
-                            disabled={recordingInfo.isRecording}
-                        />
-                    </Box>
-
-                    <RecordingPathTreeItem
-                        recordingDirectory={recordingInfo.recordingDirectory}
-                        countdown={countdown}
-                        recordingTag={recordingTag}
-                        useDelayStart={useDelayStart}
-                        delaySeconds={delaySeconds}
-                        useTimestamp={useTimestamp}
-                        baseName={baseName}
-                        recordingTypePreset={recordingTypePreset}
-                        useIncrement={useIncrement}
-                        currentIncrement={currentIncrement}
-                        createSubfolder={createSubfolder}
-                        customSubfolderName={customSubfolderName}
-                        isRecording={recordingInfo.isRecording}
-                        onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
-                        onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
-                        onTagChange={(v) => dispatch(recordingTagChanged(v))}
-                        onUseTimestampChange={(v) => dispatch(useTimestampToggled(v))}
-                        onBaseNameChange={(v) => dispatch(baseNameChanged(v))}
-                        onUseIncrementChange={(v) => dispatch(useIncrementToggled(v))}
-                        onIncrementChange={(v) => dispatch(currentIncrementChanged(v))}
-                        onCreateSubfolderChange={(v) => dispatch(createSubfolderToggled(v))}
-                        onCustomSubfolderNameChange={(v) => dispatch(customSubfolderNameChanged(v))}
+            <div className="br-1 bg-middark" style={{margin: '4px 8px'}}>
+                <div className="p-1">
+                    <MicrophoneSelector
+                        selectedMicIndex={micDeviceIndex}
+                        onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
+                        disabled={recordingInfo.isRecording}
                     />
-                </SimpleTreeView>
-            </Box>
+                </div>
+                <RecordingPathTreeItem
+                    recordingDirectory={recordingInfo.recordingDirectory}
+                    countdown={countdown}
+                    recordingTag={recordingTag}
+                    useDelayStart={useDelayStart}
+                    delaySeconds={delaySeconds}
+                    useTimestamp={useTimestamp}
+                    baseName={baseName}
+                    recordingTypePreset={recordingTypePreset}
+                    useIncrement={useIncrement}
+                    currentIncrement={currentIncrement}
+                    createSubfolder={createSubfolder}
+                    customSubfolderName={customSubfolderName}
+                    isRecording={recordingInfo.isRecording}
+                    onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
+                    onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
+                    onTagChange={(v) => dispatch(recordingTagChanged(v))}
+                    onUseTimestampChange={(v) => dispatch(useTimestampToggled(v))}
+                    onBaseNameChange={(v) => dispatch(baseNameChanged(v))}
+                    onUseIncrementChange={(v) => dispatch(useIncrementToggled(v))}
+                    onIncrementChange={(v) => dispatch(currentIncrementChanged(v))}
+                    onCreateSubfolderChange={(v) => dispatch(createSubfolderToggled(v))}
+                    onCustomSubfolderNameChange={(v) => dispatch(customSubfolderNameChanged(v))}
+                />
+            </div>
         </CollapsibleSidebarSection>
     );
 };

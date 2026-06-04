@@ -1,9 +1,4 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {Box, Chip, IconButton, Tooltip, Typography, useTheme} from '@mui/material';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import StorageIcon from '@mui/icons-material/Storage';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
@@ -26,11 +21,9 @@ import {
 } from "@/store/slices/active-recording/active-recording-slice";
 
 const PlaybackPage: React.FC = () => {
-    const theme = useTheme();
     const {t} = useTranslation();
     const {api} = useElectronIPC();
     const navigate = useNavigate();
-    const isDark = theme.palette.mode === 'dark';
 
     const ctx = usePlaybackContext();
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
@@ -82,7 +75,6 @@ const PlaybackPage: React.FC = () => {
         streamUrl: v.streamUrl,
     }));
 
-    // Playback controller — owns all playback state/logic
     const controller = usePlaybackController({
         videos: videoEntries,
         recordingFps,
@@ -92,219 +84,108 @@ const PlaybackPage: React.FC = () => {
     });
 
     return (
-        <Box
-            sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                backgroundColor: theme.palette.mode === 'dark'
-                    ? theme.palette.background.default
-                    : theme.palette.background.paper,
-                borderStyle: 'solid',
-                borderWidth: '1px',
-                borderColor: theme.palette.divider,
-            }}
-        >
-            <Box sx={{flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden'}}>
+        <div className="flex flex-col flex-1 bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>
+            <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
-                    <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', position: 'relative'}}>
-                        {/* Settings overlay for grid columns */}
+                    <div className="flex flex-col pos-rel" style={{height: '100%'}}>
                         <SettingsOverlay
                             settings={settings}
                             onSettingsChange={handleSettingsChange}
                             onResetLayout={handleResetLayout}
                         />
 
-                        {/* Recording header bar */}
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1.5,
-                                px: 1.5,
-                                py: 0.75,
-                                borderBottom: `1px solid ${theme.palette.divider}`,
-                                backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                minHeight: 40,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            {/* Recording name */}
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    fontFamily: monoFont,
-                                    fontWeight: 600,
-                                    color: theme.palette.text.primary,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
+                        <div className="flex flex-row items-center gap-1" style={{
+                            padding: '6px 12px',
+                            borderBottom: '1px solid var(--color-border-secondary)',
+                            backgroundColor: 'rgba(255,255,255,0.03)',
+                            minHeight: 40,
+                            flexWrap: 'wrap',
+                        }}>
+                            <p className="text md text-white text-nowrap" style={{fontFamily: monoFont, fontWeight: 600, margin: 0}}>
                                 {recordingName}
-                            </Typography>
+                            </p>
 
-                            {/* Browse Recordings button — navigates to the Browse tab */}
-                            <Tooltip title="Browse recordings">
-                                <IconButton
-                                    size="small"
-                                    onClick={() => navigate('/browse')}
-                                    sx={{
-                                        color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : theme.palette.divider}`,
-                                        borderRadius: '6px',
-                                        px: 1,
-                                        gap: 0.5,
-                                        fontSize: '0.75rem',
-                                        fontFamily: monoFont,
-                                        '&:hover': {
-                                            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                                        },
-                                    }}
-                                >
-                                    <VideoLibraryIcon sx={{fontSize: 16}}/>
-                                    Browse
-                                </IconButton>
-                            </Tooltip>
+                            <button
+                                title="Browse recordings"
+                                className="button icon-button br-1"
+                                onClick={() => navigate('/browse')}
+                                style={{border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0 8px', gap: 4, fontSize: '0.75rem', fontFamily: monoFont}}
+                            >
+                                <span className="icon load-icon icon-size-20"/>
+                                Browse
+                            </button>
 
-                            {/* Open Folder button */}
-                            <Tooltip title={t('openFolder')}>
-                                <IconButton
-                                    size="small"
-                                    onClick={handleOpenFolder}
-                                    sx={{
-                                        color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                                        border: `1px solid ${isDark ? 'rgba(255,204,128,0.3)' : theme.palette.warning.light}`,
-                                        borderRadius: '6px',
-                                        px: 1,
-                                        gap: 0.5,
-                                        fontSize: '0.75rem',
-                                        fontFamily: monoFont,
-                                        '&:hover': {
-                                            backgroundColor: isDark ? 'rgba(255,204,128,0.1)' : 'rgba(255,152,0,0.08)',
-                                        },
-                                    }}
-                                >
-                                    <FolderOpenIcon sx={{fontSize: 16}}/>
-                                </IconButton>
-                            </Tooltip>
+                            <button
+                                title={t('openFolder')}
+                                className="button icon-button br-1"
+                                onClick={handleOpenFolder}
+                                style={{color: '#ffcc80', border: '1px solid rgba(255,204,128,0.3)', borderRadius: '6px', padding: '0 8px'}}
+                            >
+                                <span className="icon load-icon icon-size-20"/>
+                            </button>
 
-                            {/* Spacer */}
-                            <Box sx={{flex: 1}}/>
+                            <div style={{flex: 1}}/>
 
-                            {/* Stats chips */}
-                            <Tooltip title={t('cameraStreams')}>
-                                <Chip
-                                    icon={<VideocamIcon sx={{fontSize: '14px !important'}}/>}
-                                    label={t('cameraCount', {count: loadedVideos.length})}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{
-                                        fontFamily: monoFont,
-                                        fontSize: '0.75rem',
-                                        height: 24,
-                                        borderColor: isDark ? 'rgba(41,182,246,0.3)' : undefined,
-                                        color: isDark ? '#29b6f6' : theme.palette.info.main,
-                                        '& .MuiChip-icon': {color: 'inherit'},
-                                    }}
-                                />
-                            </Tooltip>
+                            <span title={t('cameraStreams')} className="tag text sm" style={{fontFamily: monoFont, color: '#29b6f6', borderColor: 'rgba(41,182,246,0.3)'}}>
+                                {t('cameraCount', {count: loadedVideos.length})}
+                            </span>
 
                             {totalSize > 0 && (
-                                <Tooltip title={t('totalRecordingSize')}>
-                                    <Chip
-                                        icon={<StorageIcon sx={{fontSize: '14px !important'}}/>}
-                                        label={formatBytes(totalSize)}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{
-                                            fontFamily: monoFont,
-                                            fontSize: '0.75rem',
-                                            height: 24,
-                                            borderColor: isDark ? 'rgba(255,255,255,0.15)' : undefined,
-                                            color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                                            '& .MuiChip-icon': {color: 'inherit'},
-                                        }}
-                                    />
-                                </Tooltip>
+                                <span title={t('totalRecordingSize')} className="tag text sm" style={{fontFamily: monoFont}}>
+                                    {formatBytes(totalSize)}
+                                </span>
                             )}
 
                             {recordingFps != null && recordingFps > 0 && (
-                                <Tooltip title={t('recordingCaptureFps')}>
-                                    <Chip
-                                        label={`rec: ${recordingFps} fps`}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{
-                                            fontFamily: monoFont,
-                                            fontSize: '0.75rem',
-                                            height: 24,
-                                            borderColor: isDark ? 'rgba(255,204,128,0.3)' : undefined,
-                                            color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                                        }}
-                                    />
-                                </Tooltip>
+                                <span title={t('recordingCaptureFps')} className="tag text sm" style={{fontFamily: monoFont, color: '#ffcc80', borderColor: 'rgba(255,204,128,0.3)'}}>
+                                    rec: {recordingFps} fps
+                                </span>
                             )}
-                        </Box>
+                        </div>
 
-                        {/* Video + 3D viewport area */}
-                        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                        <div className="flex flex-col flex-1" style={{minHeight: 0}}>
                             {settings.show3dView ? (
                                 <PanelGroup
                                     key={`main-panels-${resetKey}-${settings.layoutDirection}`}
                                     direction={settings.layoutDirection}
                                 >
                                     <Panel defaultSize={60} minSize={20}>
-                                        <Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
+                                        <div className="flex flex-col" style={{height: '100%'}}>
                                             <SyncedVideoPlayer
                                                 videos={videoEntries}
                                                 manualColumns={settings.columns}
                                                 resetKey={resetKey}
                                                 controller={controller}
                                             />
-                                        </Box>
+                                        </div>
                                     </Panel>
 
                                     <PanelResizeHandle>
-                                        <Box
-                                            sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                backgroundColor: theme.palette.divider,
-                                                transition: 'background-color 0.15s ease',
-                                                cursor: isHorizontal ? 'col-resize' : 'row-resize',
-                                                ...(isHorizontal
-                                                    ? {width: '6px', height: '100%', flexDirection: 'column'}
-                                                    : {height: '6px', width: '100%', flexDirection: 'row'}
-                                                ),
-                                                '&:hover': {
-                                                    backgroundColor: theme.palette.primary.main,
-                                                },
-                                                '&:active': {
-                                                    backgroundColor: theme.palette.primary.dark,
-                                                },
-                                            }}
-                                        >
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            backgroundColor: 'var(--color-border-secondary)',
+                                            transition: 'background-color 0.15s ease',
+                                            cursor: isHorizontal ? 'col-resize' : 'row-resize',
+                                            ...(isHorizontal
+                                                ? {width: '6px', height: '100%', flexDirection: 'column' as const}
+                                                : {height: '6px', width: '100%', flexDirection: 'row' as const}
+                                            ),
+                                        }}>
                                             {[0, 1, 2].map((i) => (
-                                                <Box
-                                                    key={i}
-                                                    sx={{
-                                                        width: 4,
-                                                        height: 4,
-                                                        borderRadius: '50%',
-                                                        backgroundColor: theme.palette.text.disabled,
-                                                        m: isHorizontal ? '2px 0' : '0 2px',
-                                                        flexShrink: 0,
-                                                    }}
-                                                />
+                                                <div key={i} style={{
+                                                    width: 4, height: 4, borderRadius: '50%',
+                                                    backgroundColor: 'var(--color-text-disabled)',
+                                                    margin: isHorizontal ? '2px 0' : '0 2px',
+                                                    flexShrink: 0,
+                                                }}/>
                                             ))}
-                                        </Box>
+                                        </div>
                                     </PanelResizeHandle>
 
                                     <Panel defaultSize={40} minSize={10}>
-                                        <Box sx={{height: '100%'}}>
+                                        <div style={{height: '100%'}}>
                                             <FileKeypointsSourceProvider
                                                 recordingId={activeRecordingName}
                                                 recordingParentDirectory={activeRecordingBaseDirectory}
@@ -312,7 +193,7 @@ const PlaybackPage: React.FC = () => {
                                             >
                                                 <ThreeJsCanvas/>
                                             </FileKeypointsSourceProvider>
-                                        </Box>
+                                        </div>
                                     </Panel>
                                 </PanelGroup>
                             ) : (
@@ -323,9 +204,8 @@ const PlaybackPage: React.FC = () => {
                                     controller={controller}
                                 />
                             )}
-                        </Box>
-                        
-                        {/* Playback controls — full width below video + 3D area */}
+                        </div>
+
                         <PlaybackControls
                             isPlaying={controller.isPlaying}
                             currentTime={controller.currentTime}
@@ -350,14 +230,14 @@ const PlaybackPage: React.FC = () => {
                             selectedSource={selectedSource}
                             onSourceChange={setSelectedSource}
                         />
-                    </Box>
+                    </div>
                 </ErrorBoundary>
-            </Box>
+            </div>
 
-            <Box component="footer" sx={{p: 0.5}}>
+            <footer style={{padding: 4}}>
                 <Footer/>
-            </Box>
-        </Box>
+            </footer>
+        </div>
     );
 };
 

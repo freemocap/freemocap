@@ -1,8 +1,5 @@
 // src/components/framerate-viewer/FrameRateViewer.tsx
 import {useEffect, useRef, useState} from "react"
-import {Box, IconButton, Paper, Stack, Tooltip, Typography} from "@mui/material"
-import {BarChart, ShowChart, TableChart} from "@mui/icons-material"
-import {alpha, useTheme} from "@mui/material/styles"
 import FramerateTimeseriesView from "./FramerateTimeseriesView"
 import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
@@ -35,17 +32,17 @@ const FramerateCollapsedView = () => {
     }, [getFramerateStore]);
 
     return (
-        <Box sx={{height: '100%', display: 'flex', alignItems: 'center', gap: 1.5, px: 1, overflow: 'hidden'}}>
-            <Typography noWrap sx={{fontSize: '0.75rem', fontWeight: 'bold', color: 'text.secondary', flexShrink: 0}}>
+        <div className="flex flex-row items-center gap-1" style={{height: '100%', overflow: 'hidden', paddingLeft: 8, paddingRight: 8}}>
+            <p className="text sm text-gray text-nowrap" style={{flexShrink: 0, margin: 0, fontWeight: 'bold'}}>
                 Camera Performance
-            </Typography>
-            <Typography noWrap sx={{fontSize: '0.75rem', color: backendColor, flexShrink: 0}}>
+            </p>
+            <p className="text sm text-nowrap" style={{color: backendColor, flexShrink: 0, margin: 0}}>
                 Server: <span ref={backendRef}>-- fps</span>
-            </Typography>
-            <Typography noWrap sx={{fontSize: '0.75rem', color: frontendColor, flexShrink: 0}}>
+            </p>
+            <p className="text sm text-nowrap" style={{color: frontendColor, flexShrink: 0, margin: 0}}>
                 Display: <span ref={frontendRef}>-- fps</span>
-            </Typography>
-        </Box>
+            </p>
+        </div>
     );
 };
 
@@ -55,135 +52,76 @@ export const FramerateViewerPanel = ({isCollapsed = false}: { isCollapsed?: bool
 };
 
 const FramerateViewerPanelExpanded = () => {
-    const theme = useTheme()
     const { t } = useTranslation();
     const [showStats, setShowStats] = useState(true)
     const [showTimeseries, setShowTimeseries] = useState(true)
     const [showHistogram, setShowHistogram] = useState(true)
 
     return (
-        <Box sx={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: theme.palette.background.default,
-            p: 0.5,
-            overflow: 'hidden'
-        }}>
-            {/* Ultra-compact header with controls */}
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 0.25,
-                px: 0.5
-            }}>
-                <Typography variant="body2" fontWeight="medium" noWrap sx={{fontSize: '0.75rem'}}>
+        <div className="flex flex-col overflow-hidden bg-dark" style={{height: '100%', padding: 4}}>
+            <div className="flex flex-row items-center justify-content-space-between" style={{marginBottom: 2, paddingLeft: 4, paddingRight: 4}}>
+                <p className="text sm text-white text-nowrap" style={{margin: 0}}>
                     {t('cameraPerformanceMetrics')}
-                </Typography>
+                </p>
 
-                {/* View type selector as icon buttons */}
-                <Stack direction="row" spacing={0.25}>
-                    <Tooltip title={t("statisticsView")}>
-                        <IconButton
-                            size="small"
-                            onClick={() => setShowStats((v) => !v)}
-                            sx={{padding: '2px', opacity: showStats ? 1 : 0.3}}
-                        >
-                            <TableChart sx={{fontSize: '1rem'}}/>
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title={t("timelineView")}>
-                        <IconButton
-                            size="small"
-                            onClick={() => setShowTimeseries((v) => !v)}
-                            sx={{padding: '2px', opacity: showTimeseries ? 1 : 0.3}}
-                        >
-                            <ShowChart sx={{fontSize: '1rem'}}/>
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title={t("distributionView")}>
-                        <IconButton
-                            size="small"
-                            onClick={() => setShowHistogram((v) => !v)}
-                            sx={{padding: '2px', opacity: showHistogram ? 1 : 0.3}}
-                        >
-                            <BarChart sx={{fontSize: '1rem'}}/>
-                        </IconButton>
-                    </Tooltip>
-                </Stack>
-            </Box>
+                <div className="flex flex-row" style={{gap: 2}}>
+                    <button
+                        title={t("statisticsView")}
+                        className="button icon-button br-1"
+                        onClick={() => setShowStats((v) => !v)}
+                        style={{opacity: showStats ? 1 : 0.3, padding: 2}}
+                    >
+                        <span className="icon settings-icon icon-size-20"/>
+                    </button>
+                    <button
+                        title={t("timelineView")}
+                        className="button icon-button br-1"
+                        onClick={() => setShowTimeseries((v) => !v)}
+                        style={{opacity: showTimeseries ? 1 : 0.3, padding: 2}}
+                    >
+                        <span className="icon play-icon icon-size-20"/>
+                    </button>
+                    <button
+                        title={t("distributionView")}
+                        className="button icon-button br-1"
+                        onClick={() => setShowHistogram((v) => !v)}
+                        style={{opacity: showHistogram ? 1 : 0.3, padding: 2}}
+                    >
+                        <span className="icon frameforward-icon icon-size-20"/>
+                    </button>
+                </div>
+            </div>
 
-            {/* Stats section - ultra compact */}
             {showStats && (
-            <Box sx={{
-                px: 0.25,
-                mb: 0.25,
-            }}>
-                <Paper
-                    elevation={0}
-                    sx={{
-                        p: 0.25,
-                        bgcolor: alpha(theme.palette.background.paper, theme.palette.mode === 'dark' ? 0.15 : 0.05),
-                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
-                    }}
-                >
-                    <FramerateStatisticsView
-                        compact={true}
-                    />
-                </Paper>
-            </Box>
+                <div style={{paddingLeft: 2, paddingRight: 2, marginBottom: 2}}>
+                    <div className="bg-middark br-1 border-1 border-mid-black" style={{padding: 2}}>
+                        <FramerateStatisticsView compact={true} />
+                    </div>
+                </div>
             )}
 
-            {/* Main visualization area with flex-based layout */}
-            <Box sx={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: (showTimeseries && showHistogram) ? 'row' : 'column',
-                gap: 0.25,
-                overflow: 'hidden'
-            }}>
+            <div className="flex overflow-hidden" style={{flex: 1, flexDirection: (showTimeseries && showHistogram) ? 'row' : 'column', gap: 2}}>
                 {showTimeseries && (
-                    <Paper
-                        elevation={0}
-                        sx={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            border: '1px solid',
-                            borderColor: alpha(theme.palette.divider, 0.2),
-                            overflow: 'hidden'
-                        }}
-                    >
+                    <div className="flex flex-col flex-1 border-1 border-mid-black overflow-hidden">
                         <FramerateTimeseriesView
                             frontendColor={frontendColor}
                             backendColor={backendColor}
                             title={t("framerateTimeline")}
                         />
-                    </Paper>
+                    </div>
                 )}
 
                 {showHistogram && (
-                    <Paper
-                        elevation={0}
-                        sx={{
-                            flex: 1,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            border: '1px solid',
-                            borderColor: alpha(theme.palette.divider, 0.2),
-                            overflow: 'hidden'
-                        }}
-                    >
+                    <div className="flex flex-col flex-1 border-1 border-mid-black overflow-hidden">
                         <FramerateHistogramView
                             frontendColor={frontendColor}
                             backendColor={backendColor}
                             title={t("framerateDistribution")}
                         />
-                    </Paper>
+                    </div>
                 )}
-            </Box>
-        </Box>
+            </div>
+        </div>
     )
 }
 

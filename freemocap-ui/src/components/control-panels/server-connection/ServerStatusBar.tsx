@@ -1,18 +1,9 @@
 import React from 'react';
-import {Box, Chip, IconButton, Tooltip, Typography} from '@mui/material';
-import {CircularProgress} from '@mui/material';
-import WifiIcon from '@mui/icons-material/Wifi';
-import WifiOffIcon from '@mui/icons-material/WifiOff';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import {useTranslation} from 'react-i18next';
 import {ServerPanelState} from './useServerPanel';
 
 type Props = Pick<
     ServerPanelState,
-    | 'theme'
     | 'isConnected'
     | 'connectedCameraIds'
     | 'isElectron'
@@ -28,7 +19,6 @@ type Props = Pick<
 >;
 
 export const ServerStatusBar: React.FC<Props> = ({
-    theme,
     isConnected,
     connectedCameraIds,
     isElectron,
@@ -45,90 +35,73 @@ export const ServerStatusBar: React.FC<Props> = ({
     const {t} = useTranslation();
 
     return (
-        <Box
+        <div
             onClick={() => setExpanded((prev) => !prev)}
-            sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                px: 1.5,
-                py: 0.5,
-                cursor: 'pointer',
-                '&:hover': {backgroundColor: 'rgba(255,255,255,0.03)'},
-            }}
+            className="flex flex-row items-center"
+            style={{gap: 4, padding: '4px 12px', cursor: 'pointer'}}
         >
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, flex: 1, minWidth: 0}}>
-                <Tooltip title={isConnected ? t('disconnectWebSocket') : t('connectWebSocket')}>
-                    <IconButton
-                        size="small"
-                        onClick={handleToggleWsConnected}
-                        sx={{p: 0.25, color: wsStatusColor}}
-                    >
-                        {isConnected ? (
-                            <WifiIcon sx={{fontSize: 16}}/>
-                        ) : (
-                            <WifiOffIcon sx={{fontSize: 16}}/>
-                        )}
-                    </IconButton>
-                </Tooltip>
-
-                <Typography
-                    variant="caption"
-                    sx={{fontWeight: 500, color: wsStatusColor, whiteSpace: 'nowrap', fontSize: '0.7rem'}}
+            <div className="flex flex-row items-center" style={{gap: 4, flex: 1, minWidth: 0}}>
+                <button
+                    className="button icon-button"
+                    onClick={handleToggleWsConnected}
+                    title={isConnected ? t('disconnectWebSocket') : t('connectWebSocket')}
+                    style={{padding: 2, color: wsStatusColor}}
                 >
+                    <span
+                        className="icon icon-size-20"
+                        style={{
+                            backgroundImage: isConnected
+                                ? 'var(--wifi-icon, none)'
+                                : 'var(--wifi-off-icon, none)',
+                            backgroundColor: wsStatusColor,
+                            WebkitMaskImage: isConnected
+                                ? 'var(--wifi-icon, none)'
+                                : 'var(--wifi-off-icon, none)',
+                        }}
+                    />
+                </button>
+
+                <p className="text sm" style={{fontWeight: 500, color: wsStatusColor, whiteSpace: 'nowrap', fontSize: '0.7rem'}}>
                     {isConnected ? t('connected') : autoConnectWs ? t('connecting') : t('off')}
-                </Typography>
+                </p>
 
                 {isElectron && (
                     <>
-                        <Box sx={{mx: 0.25, color: theme.palette.text.disabled, fontSize: '0.7rem'}}>|</Box>
+                        <span style={{color: 'var(--color-text-muted)', fontSize: '0.7rem'}}>|</span>
 
-                        <Tooltip title={serverRunning ? t('stopServer') : t('launchServer')}>
-                            <IconButton
-                                size="small"
-                                onClick={handleToggleServerRunning}
-                                disabled={serverLoading}
-                                sx={{p: 0.25, color: serverStatusColor}}
-                            >
-                                {serverLoading ? (
-                                    <CircularProgress size={14}/>
-                                ) : serverRunning ? (
-                                    <StopIcon sx={{fontSize: 16}}/>
-                                ) : (
-                                    <PlayArrowIcon sx={{fontSize: 16}}/>
-                                )}
-                            </IconButton>
-                        </Tooltip>
-
-                        <Typography
-                            variant="caption"
-                            sx={{fontWeight: 500, color: serverStatusColor, whiteSpace: 'nowrap', fontSize: '0.7rem'}}
+                        <button
+                            className="button icon-button"
+                            onClick={handleToggleServerRunning}
+                            disabled={serverLoading}
+                            title={serverRunning ? t('stopServer') : t('launchServer')}
+                            style={{padding: 2, color: serverStatusColor}}
                         >
+                            {serverLoading ? (
+                                <span className="icon loader-icon icon-size-20"/>
+                            ) : serverRunning ? (
+                                <span className="icon icon-size-20" style={{backgroundColor: serverStatusColor}}/>
+                            ) : (
+                                <span className="icon record-icon icon-size-20" style={{backgroundColor: serverStatusColor}}/>
+                            )}
+                        </button>
+
+                        <p className="text sm" style={{fontWeight: 500, color: serverStatusColor, whiteSpace: 'nowrap', fontSize: '0.7rem'}}>
                             {serverLoading ? t('working') : serverRunning ? t('running') : t('stopped')}
-                        </Typography>
+                        </p>
                     </>
                 )}
 
                 {isConnected && connectedCameraIds.length > 0 && (
-                    <Chip
-                        label={`${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''}`}
-                        size="small"
-                        sx={{
-                            height: 18,
-                            fontSize: '0.6rem',
-                            ml: 0.5,
-                            backgroundColor: 'rgba(0, 255, 255, 0.1)',
-                            color: '#00ffff',
-                        }}
-                    />
+                    <span className="tag text sm" style={{marginLeft: 4, fontSize: '0.6rem', backgroundColor: 'rgba(0,255,255,0.1)', color: '#00ffff'}}>
+                        {`${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''}`}
+                    </span>
                 )}
-            </Box>
+            </div>
 
-            {expanded ? (
-                <ExpandLessIcon sx={{fontSize: 16, color: theme.palette.text.secondary}}/>
-            ) : (
-                <ExpandMoreIcon sx={{fontSize: 16, color: theme.palette.text.secondary}}/>
-            )}
-        </Box>
+            <span
+                className="icon icon-size-20"
+                style={{color: 'var(--color-text-muted)', backgroundImage: expanded ? 'var(--collapse-icon)' : 'var(--expand-icon)'}}
+            />
+        </div>
     );
 };

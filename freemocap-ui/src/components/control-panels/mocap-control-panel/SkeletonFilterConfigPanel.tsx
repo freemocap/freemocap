@@ -1,23 +1,9 @@
 import React, {useCallback} from "react";
-import {Box, Button, Divider, Slider, Stack, TextField, Tooltip, Typography, useTheme,} from "@mui/material";
 import {useMocap} from "@/hooks/useMocap";
 import {DEFAULT_REALTIME_FILTER_CONFIG, RealtimeFilterConfig} from "@/store/slices/mocap";
 
 /** Warm amber for section headings — visible on dark backgrounds. */
 const SECTION_COLOR = "#ffb74d";
-
-/** Shared slider sx that matches the camera config panel style. */
-const useSliderSx = () => {
-    const theme = useTheme();
-    return {
-        color: theme.palette.primary.light,
-        "& .MuiSlider-thumb": {
-            "&:hover, &.Mui-focusVisible": {
-                boxShadow: `0px 0px 0px 8px ${theme.palette.primary.light}33`,
-            },
-        },
-    } as const;
-};
 
 interface SkeletonFilterConfigPanelProps {
     updateSkeletonFilterConfig?: (updates: Partial<RealtimeFilterConfig>) => void;
@@ -28,8 +14,6 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
     updateSkeletonFilterConfig: updateSkeletonFilterConfigProp,
     replaceSkeletonFilterConfig: replaceSkeletonFilterConfigProp,
 }) => {
-    const theme = useTheme();
-    const sliderSx = useSliderSx();
     const {
         skeletonFilterConfig,
         updateSkeletonFilterConfig: updateSkeletonFilterConfigHook,
@@ -44,151 +28,135 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
     }, [replaceSkeletonFilterConfig]);
 
     return (
-        <Stack spacing={1}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography variant="subtitle2" sx={{color: theme.palette.text.secondary, fontWeight: 600}}>
-                    Skeleton Filter
-                </Typography>
-                <Button
-                    size="small"
-                    variant="text"
+        <div className="flex flex-col gap-1">
+            <div className="flex flex-row justify-content-space-between items-center">
+                <p className="text sm text-gray" style={{fontWeight: 600}}>Skeleton Filter</p>
+                <button
+                    className="button sm secondary"
                     onClick={handleResetDefaults}
                     disabled={isLoading}
-                    sx={{fontSize: 11, textTransform: "none"}}
+                    style={{fontSize: 11}}
                 >
                     Reset Defaults
-                </Button>
-            </Stack>
+                </button>
+            </div>
 
             {/* === Point Gate === */}
-            <Typography variant="caption" sx={{color: SECTION_COLOR, fontWeight: 600}}>
-                Point Gate
-            </Typography>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>Point Gate</p>
 
-            <Tooltip title="Reject triangulated points whose mean reprojection error exceeds this. Higher = keep more (noisier) points." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Max Reproj Error: {skeletonFilterConfig.max_reprojection_error_px.toFixed(0)} px
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.max_reprojection_error_px}
-                        onChange={(_, v) => updateSkeletonFilterConfig({max_reprojection_error_px: v as number})}
-                        min={5} max={200} step={1} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Reject triangulated points whose mean reprojection error exceeds this. Higher = keep more (noisier) points.">
+                <p className="text sm text-gray">
+                    Max Reproj Error: {skeletonFilterConfig.max_reprojection_error_px.toFixed(0)} px
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.max_reprojection_error_px}
+                    onChange={(e) => updateSkeletonFilterConfig({max_reprojection_error_px: parseFloat(e.target.value)})}
+                    min={5} max={200} step={1} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Tooltip title="Reject points moving faster than this between frames. Catches teleportation spikes. Human limbs rarely exceed ~15 m/s." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Max Velocity: {skeletonFilterConfig.max_velocity_m_per_s.toFixed(0)} m/s
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.max_velocity_m_per_s}
-                        onChange={(_, v) => updateSkeletonFilterConfig({max_velocity_m_per_s: v as number})}
-                        min={5} max={200} step={1} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Reject points moving faster than this between frames. Catches teleportation spikes. Human limbs rarely exceed ~15 m/s.">
+                <p className="text sm text-gray">
+                    Max Velocity: {skeletonFilterConfig.max_velocity_m_per_s.toFixed(0)} m/s
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.max_velocity_m_per_s}
+                    onChange={(e) => updateSkeletonFilterConfig({max_velocity_m_per_s: parseFloat(e.target.value)})}
+                    min={5} max={200} step={1} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Tooltip title="After this many consecutive velocity rejections, accept unconditionally to prevent permanent lockout." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Max Rejected Streak: {skeletonFilterConfig.max_rejected_streak}
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.max_rejected_streak}
-                        onChange={(_, v) => updateSkeletonFilterConfig({max_rejected_streak: v as number})}
-                        min={1} max={30} step={1} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="After this many consecutive velocity rejections, accept unconditionally to prevent permanent lockout.">
+                <p className="text sm text-gray">
+                    Max Rejected Streak: {skeletonFilterConfig.max_rejected_streak}
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.max_rejected_streak}
+                    onChange={(e) => updateSkeletonFilterConfig({max_rejected_streak: parseInt(e.target.value)})}
+                    min={1} max={30} step={1} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Divider />
+            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
 
             {/* === One Euro Filter === */}
-            <Typography variant="caption" sx={{color: SECTION_COLOR, fontWeight: 600}}>
-                One Euro Filter
-            </Typography>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>One Euro Filter</p>
 
-            <Tooltip title="Minimum cutoff frequency (Hz). Lower = heavier smoothing (less jitter, more lag). Higher = more responsive." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Min Cutoff: {skeletonFilterConfig.min_cutoff.toFixed(4)}
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.min_cutoff}
-                        onChange={(_, v) => updateSkeletonFilterConfig({min_cutoff: v as number})}
-                        min={0.0001} max={0.1} step={0.0005} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Minimum cutoff frequency (Hz). Lower = heavier smoothing (less jitter, more lag). Higher = more responsive.">
+                <p className="text sm text-gray">
+                    Min Cutoff: {skeletonFilterConfig.min_cutoff.toFixed(4)}
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.min_cutoff}
+                    onChange={(e) => updateSkeletonFilterConfig({min_cutoff: parseFloat(e.target.value)})}
+                    min={0.0001} max={0.1} step={0.0005} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Tooltip title="Speed coefficient. Higher = less lag during fast motion but more jitter. Zero = constant smoothing regardless of speed." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Beta: {skeletonFilterConfig.beta.toFixed(2)}
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.beta}
-                        onChange={(_, v) => updateSkeletonFilterConfig({beta: v as number})}
-                        min={0} max={5} step={0.05} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Speed coefficient. Higher = less lag during fast motion but more jitter. Zero = constant smoothing regardless of speed.">
+                <p className="text sm text-gray">
+                    Beta: {skeletonFilterConfig.beta.toFixed(2)}
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.beta}
+                    onChange={(e) => updateSkeletonFilterConfig({beta: parseFloat(e.target.value)})}
+                    min={0} max={5} step={0.05} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Tooltip title="Cutoff frequency for the speed estimator. Controls how quickly the filter reacts to speed changes. Usually fine at 1.0." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        D Cutoff: {skeletonFilterConfig.d_cutoff.toFixed(2)}
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.d_cutoff}
-                        onChange={(_, v) => updateSkeletonFilterConfig({d_cutoff: v as number})}
-                        min={0.1} max={5} step={0.1} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Cutoff frequency for the speed estimator. Controls how quickly the filter reacts to speed changes. Usually fine at 1.0.">
+                <p className="text sm text-gray">
+                    D Cutoff: {skeletonFilterConfig.d_cutoff.toFixed(2)}
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.d_cutoff}
+                    onChange={(e) => updateSkeletonFilterConfig({d_cutoff: parseFloat(e.target.value)})}
+                    min={0.1} max={5} step={0.1} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Divider />
+            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
 
             {/* === FABRIK === */}
-            <Typography variant="caption" sx={{color: SECTION_COLOR, fontWeight: 600}}>
-                FABRIK
-            </Typography>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>FABRIK</p>
 
-            <Tooltip title="Max solver iterations per frame for bone length constraint enforcement. 10–30 is usually plenty." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Max Iterations: {skeletonFilterConfig.fabrik_max_iterations}
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.fabrik_max_iterations}
-                        onChange={(_, v) => updateSkeletonFilterConfig({fabrik_max_iterations: v as number})}
-                        min={1} max={100} step={1} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
+            <div title="Max solver iterations per frame for bone length constraint enforcement. 10–30 is usually plenty.">
+                <p className="text sm text-gray">
+                    Max Iterations: {skeletonFilterConfig.fabrik_max_iterations}
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.fabrik_max_iterations}
+                    onChange={(e) => updateSkeletonFilterConfig({fabrik_max_iterations: parseInt(e.target.value)})}
+                    min={1} max={100} step={1} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
 
-            <Divider />
+            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
 
             {/* === Body Model === */}
-            <Typography variant="caption" sx={{color: SECTION_COLOR, fontWeight: 600}}>
-                Body Model
-            </Typography>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>Body Model</p>
 
-            <Tooltip title="Subject's approximate height. Scales the anthropometric bone length prior. Doesn't need to be exact." placement="right" arrow>
-                <TextField
-                    label="Height (m)"
+            <div
+                className="input-with-string"
+                title="Subject's approximate height. Scales the anthropometric bone length prior. Doesn't need to be exact."
+            >
+                <input
+                    className="input-field text md"
                     type="number"
-                    size="small"
                     value={skeletonFilterConfig.height_meters}
                     onChange={(e) => {
                         const val = parseFloat(e.target.value);
@@ -196,25 +164,24 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                             updateSkeletonFilterConfig({height_meters: val});
                         }
                     }}
-                    inputProps={{step: 0.01, min: 0.5, max: 3.0}}
+                    step={0.01} min={0.5} max={3.0}
                     disabled={isLoading}
-                    fullWidth
+                    placeholder="Height (m)"
                 />
-            </Tooltip>
+            </div>
 
-            <Tooltip title="Expected measurement noise (meters). Higher = trust raw positions less, rely more on prior estimates." placement="right" arrow>
-                <Box>
-                    <Typography variant="caption" color="text.secondary">
-                        Noise Sigma: {skeletonFilterConfig.noise_sigma.toFixed(4)} m
-                    </Typography>
-                    <Slider
-                        value={skeletonFilterConfig.noise_sigma}
-                        onChange={(_, v) => updateSkeletonFilterConfig({noise_sigma: v as number})}
-                        min={0.001} max={0.05} step={0.001} size="small" disabled={isLoading}
-                        sx={sliderSx}
-                    />
-                </Box>
-            </Tooltip>
-        </Stack>
+            <div title="Expected measurement noise (meters). Higher = trust raw positions less, rely more on prior estimates.">
+                <p className="text sm text-gray">
+                    Noise Sigma: {skeletonFilterConfig.noise_sigma.toFixed(4)} m
+                </p>
+                <input
+                    type="range"
+                    value={skeletonFilterConfig.noise_sigma}
+                    onChange={(e) => updateSkeletonFilterConfig({noise_sigma: parseFloat(e.target.value)})}
+                    min={0.001} max={0.05} step={0.001} disabled={isLoading}
+                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                />
+            </div>
+        </div>
     );
 };

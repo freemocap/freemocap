@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef } from "react";
-import { Box } from "@mui/material";
 import { Object3D } from "three";
 import { ViewportStateProvider, useViewportState } from "./scene/ViewportStateContext";
 import { ViewportOverlay } from "./scene/ViewportOverlay";
@@ -13,12 +12,7 @@ import {
 import { useCalibrationTomlLoader } from "./hooks/useCalibrationTomlLoader";
 import { type ViewportStats } from "./helpers/viewport3d-types";
 
-// FreeMoCap's world is Z-up — set once before any Three.js objects are created.
 Object3D.DEFAULT_UP.set(0, 0, 1);
-
-// ---------------------------------------------------------------------------
-// Worker (module-level singleton — survives React re-renders / StrictMode)
-// ---------------------------------------------------------------------------
 
 console.log("[ThreeJsCanvas] creating viewport3d worker");
 export const VIEWPORT_WORKER = new Worker(
@@ -33,20 +27,6 @@ VIEWPORT_WORKER.addEventListener("messageerror", (e) =>
     console.error("[ThreeJsCanvas] worker messageerror", e),
 );
 
-// transferControlToOffscreen() can only be called once per HTMLCanvasElement.
-// React 19 StrictMode double-mounts components in dev; it reuses the same DOM
-// element across the mount→unmount→remount cycle, so a module-level flag that
-// gets reset in a cleanup function will still double-transfer the same element.
-//
-// Instead we mark the DOM element itself via a data attribute. This survives
-// StrictMode's double-mount (same element, attribute persists) but naturally
-// expires on tab switches (old element destroyed, new element is clean).
-
-// ---------------------------------------------------------------------------
-// Helper components rendered inside ViewportStateProvider
-// ---------------------------------------------------------------------------
-
-/** Forwards visibility changes to the worker so the scene shows/hides layers. */
 function VisibilityForwarder() {
     const { visibility } = useViewportState();
     useEffect(() => {
@@ -55,7 +35,6 @@ function VisibilityForwarder() {
     return null;
 }
 
-/** Receives stats from the worker and writes them into the main-thread statsRef. */
 function WorkerStatsReceiver() {
     const { statsRef } = useViewportState();
     useEffect(() => {
@@ -69,14 +48,6 @@ function WorkerStatsReceiver() {
     }, [statsRef]);
     return null;
 }
-
-// ---------------------------------------------------------------------------
-// DOM-event serialization for forwarding to the worker
-//
-// CameraControls reads these fields off the events it receives. Stripping the
-// rest avoids sending non-cloneable structures (target, view, etc.) over
-// postMessage and keeps the payload small enough to forward at full input rate.
-// ---------------------------------------------------------------------------
 
 function serializePointerEvent(e: PointerEvent, rect: DOMRect) {
     return {
@@ -123,10 +94,6 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
     };
 }
 
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
-
 export function ThreeJsCanvas() {
     const server = useServer();
     const calibrationConfig = useAppSelector(selectCalibrationConfig);
@@ -139,18 +106,6 @@ export function ThreeJsCanvas() {
 
     useCalibrationTomlLoader();
 
-    // ── OffscreenCanvas transfer + worker init ────────────────────────────
-    // Uses a data-attribute on the DOM element itself (not a module-level flag)
-    // to prevent double-transfer. React StrictMode reuses the same canvas DOM
-    // element across its mount→unmount→remount cycle, so the attribute survives
-    // the cleanup/remount and correctly blocks the second transfer. On a real
-    // tab switch the old element is destroyed — the new element has no attribute.
-    //
-    // No cleanup teardown message: on a real unmount the worker's existing root
-    // may briefly become orphaned (rendering to a now-detached OffscreenCanvas),
-    // but the next mount's "init" triggers initRoot() which tears down any stale
-    // root before creating a new one. This avoids the StrictMode false-positive
-    // where cleanup→reinit would race with the async root.configure().
     useEffect(() => {
         const canvas = canvasRef.current;
         const container = containerRef.current;
@@ -173,10 +128,6 @@ export function ThreeJsCanvas() {
         );
     }, []);
 
-    // ── High-frequency streaming data ────────────────────────────────────────
-    // Frames are structured-cloned across the worker boundary. The Float32Array
-    // inside each KeypointsFrame is copied, not transferred, so the main thread
-    // retains access for getLatestKeypointsRaw (camera fit).
     useEffect(() => {
         return subscribeToKeypointsRaw((frame) => {
             VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: frame });
@@ -189,10 +140,6 @@ export function ThreeJsCanvas() {
         });
     }, [subscribeToKeypointsFiltered]);
 
-    // ── Low-frequency config data ─────────────────────────────────────────────
-    // During playback, FileKeypointsSourceProvider owns the schema (fetched from
-    // the recording's tracker_schema.json). Pushing the live-server schema here
-    // would overwrite it with rtmpose_wholebody, breaking hand/face connections.
     useEffect(() => {
         if (isPlayback) return;
         VIEWPORT_WORKER.postMessage({
@@ -212,7 +159,6 @@ export function ThreeJsCanvas() {
         VIEWPORT_WORKER.postMessage({ type: "calibration", data: loadedCalibration });
     }, [loadedCalibration]);
 
-    // ── Camera commands ───────────────────────────────────────────────────────
     const handleFit = useCallback(() => {
         VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: getLatestKeypointsRaw() });
     }, [getLatestKeypointsRaw]);
@@ -221,7 +167,6 @@ export function ThreeJsCanvas() {
         VIEWPORT_WORKER.postMessage({ type: "resetCamera" });
     }, []);
 
-    // ── Resize ───────────────────────────────────────────────────────────────
     useEffect(() => {
         const el = containerRef.current;
         const canvas = canvasRef.current;
@@ -229,11 +174,8 @@ export function ThreeJsCanvas() {
         const ro = new ResizeObserver((entries) => {
             const { width, height } = entries[0].contentRect;
             if (width === 0 && height === 0) return;
-            // Read layout properties BEFORE writing CSS to avoid forced reflow.
             const top = el.offsetTop;
             const left = el.offsetLeft;
-            // Set CSS size on the visible canvas — the OffscreenCanvas backing
-            // store is sized by the worker via root.configure({size}).
             canvas.style.width = `${width}px`;
             canvas.style.height = `${height}px`;
             VIEWPORT_WORKER.postMessage({
@@ -250,13 +192,11 @@ export function ThreeJsCanvas() {
         return () => ro.disconnect();
     }, []);
 
-    // ── Pointer / wheel event forwarding ─────────────────────────────────────
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
 
         const onPointer = (e: PointerEvent) => {
-            // capture pointer on the visible element so move/up still fire after leaving the canvas
             if (e.type === "pointerdown") {
                 try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
             }
@@ -297,7 +237,6 @@ export function ThreeJsCanvas() {
         };
     }, []);
 
-    // ── "F" key shortcut ─────────────────────────────────────────────────────
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -315,10 +254,11 @@ export function ThreeJsCanvas() {
         <ViewportStateProvider>
             <VisibilityForwarder />
             <WorkerStatsReceiver />
-            <Box
+            <div
                 ref={containerRef}
                 tabIndex={0}
-                sx={{ width: "100%", height: "100%", position: "relative", outline: "none" }}
+                className="pos-rel"
+                style={{width: "100%", height: "100%", outline: "none"}}
             >
                 <canvas
                     ref={canvasRef}
@@ -330,7 +270,7 @@ export function ThreeJsCanvas() {
                     }}
                 />
                 <ViewportOverlay onFitCamera={handleFit} onResetCamera={handleReset} />
-            </Box>
+            </div>
         </ViewportStateProvider>
     );
 }

@@ -1,6 +1,5 @@
 import React from 'react';
 import {useTranslation} from 'react-i18next';
-import {Box, Checkbox, FormControlLabel, TextField, Typography, useTheme} from '@mui/material';
 
 interface RecordingSettingsProps {
     useTimestamp: boolean;
@@ -24,102 +23,76 @@ const SettingRow: React.FC<{
     onCheck: (value: boolean) => void;
     children?: React.ReactNode;
 }> = ({checked, label, onCheck, children}) => (
-    <Box sx={{display: 'flex', alignItems: 'center', gap: 0.5, minHeight: 32}}>
-        <FormControlLabel
-            control={
-                <Checkbox
-                    checked={checked}
-                    onChange={(e) => onCheck(e.target.checked)}
-                    size="small"
-                    sx={{p: 0.25}}
-                />
-            }
-            label={label}
-            sx={{
-                mr: 0,
-                flexShrink: 0,
-                whiteSpace: 'nowrap',
-                '& .MuiFormControlLabel-label': {fontSize: 12},
-            }}
-        />
+    <div className="flex flex-row items-center gap-1" style={{minHeight: 32}}>
+        <label className="flex flex-row items-center gap-1" style={{flexShrink: 0, whiteSpace: 'nowrap'}}>
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => onCheck(e.target.checked)}
+                style={{accentColor: 'var(--color-info)'}}
+            />
+            <span className="text sm text-gray" style={{fontSize: 12}}>{label}</span>
+        </label>
         {children && (
-            <Box sx={{flex: 1, minWidth: 0}}>
+            <div style={{flex: 1, minWidth: 0}}>
                 {children}
-            </Box>
+            </div>
         )}
-    </Box>
+    </div>
 );
 
-/** Compact text field that aligns vertically with checkboxes (no floating label). */
-const CompactTextField: React.FC<{
+/** Compact input that aligns vertically with checkboxes (no floating label). */
+const CompactInput: React.FC<{
     value: string | number;
     onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
     placeholder: string;
     disabled: boolean;
     type?: string;
-    inputProps?: React.InputHTMLAttributes<HTMLInputElement>;
-    fullWidth?: boolean;
-    sx?: object;
-}> = ({value, onChange, placeholder, disabled, type, inputProps, fullWidth = true, sx}) => (
-    <TextField
+    min?: number;
+    step?: number;
+    style?: React.CSSProperties;
+}> = ({value, onChange, placeholder, disabled, type, min, step, style}) => (
+    <input
+        className="input-field text md"
         value={value}
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
         type={type}
-        inputProps={inputProps}
-        size="small"
-        fullWidth={fullWidth}
-        sx={{
-            '& .MuiOutlinedInput-root': {
-                height: 28,
-                fontSize: 12,
-            },
-            '& .MuiOutlinedInput-input': {
-                py: 0.5,
-                px: 1,
-            },
-            ...sx,
-        }}
+        min={min}
+        step={step}
+        style={{height: 28, fontSize: 12, ...style}}
     />
 );
 
 export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
-                                                                             useTimestamp,
-                                                                             baseName,
-                                                                             useIncrement,
-                                                                             currentIncrement,
-                                                                             createSubfolder,
-                                                                             customSubfolderName,
-                                                                             onUseTimestampChange,
-                                                                             onBaseNameChange,
-                                                                             onUseIncrementChange,
-                                                                             onIncrementChange,
-                                                                             onCreateSubfolderChange,
-                                                                             onCustomSubfolderNameChange,
-                                                                         }) => {
-    const theme = useTheme();
+    useTimestamp,
+    baseName,
+    useIncrement,
+    currentIncrement,
+    createSubfolder,
+    customSubfolderName,
+    onUseTimestampChange,
+    onBaseNameChange,
+    onUseIncrementChange,
+    onIncrementChange,
+    onCreateSubfolderChange,
+    onCustomSubfolderNameChange,
+}) => {
     const { t } = useTranslation();
 
     return (
-        <Box sx={{
-            mt: 1,
-            p: 1.5,
-            bgcolor: theme.palette.mode === 'dark'
-                ? 'rgba(255, 255, 255, 0.05)'
-                : 'rgba(0, 0, 0, 0.04)',
-            borderRadius: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 0.5,
-        }}>
-            <Typography variant="subtitle2" sx={{mb: 0.5, fontSize: 13, fontWeight: 600}}>
+        <div
+            className="flex flex-col gap-1 br-1 bg-middark"
+            style={{marginTop: 8, padding: 12}}
+        >
+            <p className="text sm text-gray" style={{marginBottom: 4, fontSize: 13, fontWeight: 600}}>
                 {t('recordingSettings')}
-            </Typography>
+            </p>
 
             {/* Timestamp toggle + base name input */}
             <SettingRow checked={useTimestamp} label={t("timestamp")} onCheck={onUseTimestampChange}>
-                <CompactTextField
+                <CompactInput
                     value={baseName}
                     onChange={(e) => onBaseNameChange(e.target.value)}
                     placeholder={t("baseName")}
@@ -129,7 +102,7 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
 
             {/* Subfolder toggle + custom name input */}
             <SettingRow checked={createSubfolder} label={t("subfolder")} onCheck={onCreateSubfolderChange}>
-                <CompactTextField
+                <CompactInput
                     value={customSubfolderName}
                     onChange={(e) => onCustomSubfolderNameChange(e.target.value)}
                     placeholder={t("subfolderPlaceholder")}
@@ -139,17 +112,17 @@ export const RecordingSettingsSection: React.FC<RecordingSettingsProps> = ({
 
             {/* Auto-increment toggle + number input */}
             <SettingRow checked={useIncrement} label={t("increment")} onCheck={onUseIncrementChange}>
-                <CompactTextField
+                <CompactInput
                     value={currentIncrement}
                     onChange={(e) => onIncrementChange(parseInt(e.target.value) || 1)}
                     placeholder="#"
                     disabled={!useIncrement}
                     type="number"
-                    inputProps={{min: 1, step: 1}}
-                    fullWidth={false}
-                    sx={{maxWidth: 64}}
+                    min={1}
+                    step={1}
+                    style={{maxWidth: 64}}
                 />
             </SettingRow>
-        </Box>
+        </div>
     );
 };

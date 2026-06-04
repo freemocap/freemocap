@@ -1,5 +1,4 @@
 import React, {useRef} from 'react';
-import {Box, Tooltip} from '@mui/material';
 import {useTranslation} from 'react-i18next';
 import {useZoomTransform} from '@/hooks/useZoomTransform';
 import type {PlaybackController} from './usePlaybackController';
@@ -19,13 +18,6 @@ interface ZoomableVideoTileProps {
     handleLoadedMetadata: PlaybackController['handleLoadedMetadata'];
 }
 
-/**
- * Renders a single video tile with scroll-to-zoom, drag-to-pan,
- * and pinch-to-zoom. Can be used as a direct child of ReactGridLayout
- * because the root div has no ref — GridItem's cloneElement safely
- * adds its own ref for drag/resize without clobbering containerRef.
- * The inner div handles zoom coordinate calculations.
- */
 export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     videoId,
     streamUrl,
@@ -77,14 +69,13 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
 
             {showOverlays && (
                 <>
-                    {/* FRAME NUMBER */}
-                    <Box
+                    <div
                         ref={(el: HTMLElement | null) => setFrameOverlayRef(videoId, el)}
-                        sx={{
+                        style={{
                             position: 'absolute', top: 6, right: 6,
                             backgroundColor: 'rgba(0, 0, 0, 0.88)',
                             color: '#00ff88',
-                            px: 1.25, py: 0.4, borderRadius: '4px',
+                            padding: '4px 10px', borderRadius: '4px',
                             fontSize: '14px', fontWeight: 700,
                             fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace',
                             letterSpacing: '0.5px', lineHeight: 1,
@@ -95,36 +86,33 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                         }}
                     >
                         {initialFrameText}
-                    </Box>
+                    </div>
 
-                    {/* CAMERA ID */}
-                    <Box sx={{
+                    <div style={{
                         position: 'absolute', bottom: 6, left: 6,
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                        color: '#ccc', px: 1, py: 0.25, borderRadius: '3px',
+                        color: '#ccc', padding: '2px 8px', borderRadius: '3px',
                         fontSize: '11px',
                         fontFamily: '"JetBrains Mono", "Fira Code", monospace',
                         userSelect: 'none', pointerEvents: 'none', zIndex: 10,
                     }}>
                         {filename}
-                    </Box>
+                    </div>
 
-                    {/* TIMECODE */}
-                    <Tooltip title={timestampsAreReal ? t("timestampFromRecording") : t("estimatedFromFrameNumber")} placement="top-end">
-                        <Box
-                            ref={(el: HTMLElement | null) => setTimeOverlayRef(videoId, el)}
-                            sx={{
-                                position: 'absolute', bottom: 6, right: 6,
-                                backgroundColor: 'rgba(0, 0, 0, 0.75)',
-                                color: '#aaa', px: 0.75, py: 0.25, borderRadius: '3px',
-                                fontSize: '10px',
-                                fontFamily: '"JetBrains Mono", "Fira Code", monospace',
-                                userSelect: 'none', zIndex: 10,
-                            }}
-                        >
-                            {initialTimeText}
-                        </Box>
-                    </Tooltip>
+                    <div
+                        ref={(el: HTMLElement | null) => setTimeOverlayRef(videoId, el)}
+                        title={timestampsAreReal ? t("timestampFromRecording") : t("estimatedFromFrameNumber")}
+                        style={{
+                            position: 'absolute', bottom: 6, right: 6,
+                            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+                            color: '#aaa', padding: '2px 6px', borderRadius: '3px',
+                            fontSize: '10px',
+                            fontFamily: '"JetBrains Mono", "Fira Code", monospace',
+                            userSelect: 'none', zIndex: 10,
+                        }}
+                    >
+                        {initialTimeText}
+                    </div>
                 </>
             )}
         </div>

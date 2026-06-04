@@ -1,30 +1,4 @@
-import React, {useMemo, useState} from 'react';
-import {
-    Box,
-    Checkbox,
-    Collapse,
-    FormControlLabel,
-    IconButton,
-    MenuItem,
-    Popover,
-    Select,
-    Slider,
-    ToggleButton,
-    ToggleButtonGroup,
-    Tooltip,
-    Typography,
-    useTheme,
-} from '@mui/material';
-import {createTheme, ThemeProvider} from '@mui/material/styles';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import FirstPageIcon from '@mui/icons-material/FirstPage';
-import LastPageIcon from '@mui/icons-material/LastPage';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import RepeatIcon from '@mui/icons-material/Repeat';
-import SettingsIcon from '@mui/icons-material/Settings';
+import React, {useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
 import {useTranslation} from 'react-i18next';
 
@@ -86,416 +60,204 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     selectedSource,
     onSourceChange,
 }) => {
-    const theme = useTheme();
     const { t } = useTranslation();
     const monoFont = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
-    const isDark = theme.palette.mode === 'dark';
 
-    // MUI Slider reads direction from the theme, not CSS.
-    // Force LTR so the playback slider never reverses in RTL locales.
-    const ltrTheme = useMemo(() => createTheme({ ...theme, direction: 'ltr' }), [theme]);
-
-    // Visible accent colors that work on dark backgrounds
-    const accentGreen = '#00ff88';
-    const accentBlue = '#29b6f6'; // info.main from theme
-    const sliderColor = isDark ? accentBlue : theme.palette.primary.main;
-    const playBtnColor = isDark ? '#4caf50' : theme.palette.primary.main;
-
-    // Settings popover
-    const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null);
-    const settingsOpen = Boolean(settingsAnchor);
-
-    // Sync info collapse
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const [syncInfoOpen, setSyncInfoOpen] = useState(true);
 
     const updateSetting = <K extends keyof PlaybackSettings>(key: K, value: PlaybackSettings[K]) => {
         onSettingsChange({ ...settings, [key]: value });
     };
 
+    const validSources = availableSources && selectedSource && onSourceChange
+        ? Object.entries(availableSources).filter(([, s]) => s.available && s.valid).map(([key]) => key)
+        : [];
+
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 0.5,
-                px: 2,
-                py: 1,
-                backgroundColor: theme.palette.background.paper,
-                borderTop: `1px solid ${theme.palette.divider}`,
-            }}
-        >
-            {/* Frame-based slider */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Tooltip title={t("estimatedTime")} placement="top">
-                    <Typography variant="caption" sx={{
-                        fontFamily: monoFont, minWidth: 70, textAlign: 'right',
-                        color: accentGreen, fontWeight: 600, fontSize: '0.8rem',
-                    }}>
-                        ~{formatTime(currentTime)}
-                    </Typography>
-                </Tooltip>
-                <ThemeProvider theme={ltrTheme}>
-                <Slider
+        <div className="flex flex-col gap-1 bg-middark" style={{padding: '8px 16px', borderTop: '1px solid var(--color-border-secondary)'}}>
+            <div className="flex flex-row items-center gap-1">
+                <span
+                    title={t("estimatedTime")}
+                    className="text sm"
+                    style={{fontFamily: monoFont, minWidth: 70, textAlign: 'right', color: '#00ff88', fontWeight: 600, fontSize: '0.8rem'}}
+                >
+                    ~{formatTime(currentTime)}
+                </span>
+                <input
+                    type="range"
                     value={currentFrame}
                     min={0}
                     max={Math.max(totalFrames - 1, 1)}
                     step={1}
-                    onChange={(_, value) => onSeekDrag(value as number)}
-                    onChangeCommitted={(_, value) => onSeekCommit(value as number)}
-                    sx={{
-                        flex: 1,
-                        color: sliderColor,
-                        '& .MuiSlider-thumb': {
-                            width: 14, height: 14,
-                            transition: 'none',
-                            backgroundColor: sliderColor,
-                            '&:hover, &.Mui-focusVisible': {
-                                boxShadow: `0 0 0 8px ${isDark ? 'rgba(41, 182, 246, 0.16)' : 'rgba(25, 118, 210, 0.16)'}`,
-                            },
-                        },
-                        '& .MuiSlider-track': { transition: 'none', backgroundColor: sliderColor },
-                        '& .MuiSlider-rail': { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)' },
-                    }}
-                    size="small"
+                    onChange={(e) => onSeekDrag(Number(e.target.value))}
+                    onMouseUp={(e) => onSeekCommit(Number((e.target as HTMLInputElement).value))}
+                    style={{flex: 1, accentColor: 'var(--color-info)', width: '100%'}}
                 />
-                </ThemeProvider>
-                <Tooltip title={t("estimatedDuration")} placement="top">
-                    <Typography variant="caption" sx={{
-                        fontFamily: monoFont, minWidth: 70,
-                        color: theme.palette.text.secondary,
-                    }}>
-                        ~{formatTime(duration)}
-                    </Typography>
-                </Tooltip>
-            </Box>
+                <span
+                    title={t("estimatedDuration")}
+                    className="text sm text-gray"
+                    style={{fontFamily: monoFont, minWidth: 70}}
+                >
+                    ~{formatTime(duration)}
+                </span>
+            </div>
 
-            {/* Transport controls */}
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-                {/* Left: frame info + recording stats */}
-                <Box sx={{ minWidth: 240, textAlign: 'right', mr: 2, display: 'flex', alignItems: 'center', gap: 1.5, justifyContent: 'flex-end' }}>
-                    {/* Frame counter badge */}
-                    <Typography
-                        component="span"
-                        sx={{
-                            fontFamily: monoFont,
-                            fontSize: '0.85rem',
-                            fontWeight: 700,
-                            color: accentGreen,
-                            backgroundColor: 'rgba(0,255,136,0.08)',
-                            px: 1, py: 0.25, borderRadius: 1,
-                            border: '1px solid rgba(0,255,136,0.2)',
-                        }}
+            <div className="flex flex-row items-center justify-center gap-1">
+                <div className="flex flex-row items-center gap-1" style={{minWidth: 240, justifyContent: 'flex-end', marginRight: 8}}>
+                    <span
+                        className="tag text sm"
+                        style={{fontFamily: monoFont, fontSize: '0.85rem', fontWeight: 700, color: '#00ff88', backgroundColor: 'rgba(0,255,136,0.08)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,255,136,0.2)'}}
                     >
                         Frame {currentFrame} / {totalFrames}
-                    </Typography>
+                    </span>
 
-                    {/* Recording FPS badge — clearly labeled */}
                     {recordingFps != null && recordingFps > 0 && (
-                        <Tooltip title={t("recordingCaptureFps")}>
-                            <Typography
-                                component="span"
-                                sx={{
-                                    fontFamily: monoFont,
-                                    fontSize: '0.7rem',
-                                    color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                                    backgroundColor: isDark ? 'rgba(255,204,128,0.08)' : 'rgba(255,152,0,0.08)',
-                                    px: 0.75, py: 0.2, borderRadius: 1,
-                                    border: `1px solid ${isDark ? 'rgba(255,204,128,0.2)' : 'rgba(255,152,0,0.2)'}`,
-                                    whiteSpace: 'nowrap',
-                                }}
-                            >
-                                rec: {recordingFps} fps
-                            </Typography>
-                        </Tooltip>
+                        <span
+                            title={t("recordingCaptureFps")}
+                            className="tag text sm"
+                            style={{fontFamily: monoFont, fontSize: '0.7rem', color: '#ffcc80', backgroundColor: 'rgba(255,204,128,0.08)', padding: '1px 6px', borderRadius: 4, border: 'rgba(255,204,128,0.2)', whiteSpace: 'nowrap'}}
+                        >
+                            rec: {recordingFps} fps
+                        </span>
                     )}
-                </Box>
+                </div>
 
-                {/* Center: transport buttons — bright colors for visibility */}
-                <Tooltip title={t("jumpToStart")}>
-                    <IconButton size="small" onClick={onSeekToStart}
-                        sx={{ color: isDark ? '#b3b9c6' : undefined }}>
-                        <FirstPageIcon />
-                    </IconButton>
-                </Tooltip>
+                <button title={t("jumpToStart")} className="button icon-button br-1" onClick={onSeekToStart}>
+                    <span className="icon skipbackward-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title={t("previousFrame")}>
-                    <IconButton size="small" onClick={() => onFrameStep(-1)}
-                        sx={{ color: isDark ? '#b3b9c6' : undefined }}>
-                        <SkipPreviousIcon />
-                    </IconButton>
-                </Tooltip>
+                <button title={t("previousFrame")} className="button icon-button br-1" onClick={() => onFrameStep(-1)}>
+                    <span className="icon framebackward-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}>
-                    <IconButton
-                        onClick={onPlayPause}
-                        sx={{
-                            mx: 1,
-                            color: playBtnColor,
-                            border: `2px solid ${playBtnColor}`,
-                            '&:hover': {
-                                backgroundColor: `${playBtnColor}22`,
-                                borderColor: playBtnColor,
-                            },
-                        }}
-                    >
-                        {isPlaying ? <PauseIcon fontSize="large" /> : <PlayArrowIcon fontSize="large" />}
-                    </IconButton>
-                </Tooltip>
+                <button
+                    title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+                    className="button icon-button br-1"
+                    onClick={onPlayPause}
+                    style={{margin: '0 4px', border: '2px solid #4caf50', color: '#4caf50'}}
+                >
+                    {isPlaying
+                        ? <span className="icon pause-icon icon-size-20"/>
+                        : <span className="icon play-icon icon-size-20"/>}
+                </button>
 
-                <Tooltip title={t("nextFrame")}>
-                    <IconButton size="small" onClick={() => onFrameStep(1)}
-                        sx={{ color: isDark ? '#b3b9c6' : undefined }}>
-                        <SkipNextIcon />
-                    </IconButton>
-                </Tooltip>
+                <button title={t("nextFrame")} className="button icon-button br-1" onClick={() => onFrameStep(1)}>
+                    <span className="icon frameforward-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title={t("jumpToEnd")}>
-                    <IconButton size="small" onClick={onSeekToEnd}
-                        sx={{ color: isDark ? '#b3b9c6' : undefined }}>
-                        <LastPageIcon />
-                    </IconButton>
-                </Tooltip>
+                <button title={t("jumpToEnd")} className="button icon-button br-1" onClick={onSeekToEnd}>
+                    <span className="icon skipforward-icon icon-size-20"/>
+                </button>
 
-                <Tooltip title={isLooping ? t("loopOn") : t("loopOff")}>
-                    <IconButton
-                        size="small"
-                        onClick={onToggleLoop}
-                        sx={{
-                            color: isLooping
-                                ? accentBlue
-                                : (isDark ? '#b3b9c6' : undefined),
-                            backgroundColor: isLooping
-                                ? (isDark ? 'rgba(41, 182, 246, 0.15)' : 'rgba(25, 118, 210, 0.1)')
-                                : undefined,
-                            border: isLooping ? `1px solid ${accentBlue}` : '1px solid transparent',
-                            '&:hover': {
-                                backgroundColor: isLooping
-                                    ? (isDark ? 'rgba(41, 182, 246, 0.25)' : 'rgba(25, 118, 210, 0.2)')
-                                    : undefined,
-                            },
-                        }}
-                    >
-                        <RepeatIcon fontSize="small" />
-                    </IconButton>
-                </Tooltip>
+                <button
+                    title={isLooping ? t("loopOn") : t("loopOff")}
+                    className="button icon-button br-1"
+                    onClick={onToggleLoop}
+                    style={{
+                        color: isLooping ? 'var(--color-info)' : undefined,
+                        backgroundColor: isLooping ? 'rgba(41, 182, 246, 0.15)' : undefined,
+                        border: isLooping ? '1px solid var(--color-info)' : '1px solid transparent',
+                    }}
+                >
+                    <span className={`icon icon-size-20 ${isLooping ? 'loopactive-icon' : 'loop-icon'}`}/>
+                </button>
 
-                {/* Video source toggle — only when 2+ valid sources available */}
-                {availableSources && selectedSource && onSourceChange && (() => {
-                    const validSources = Object.entries(availableSources)
-                        .filter(([, s]) => s.available && s.valid)
-                        .map(([key]) => key);
-                    if (validSources.length < 2) return null;
-                    return (
-                        <ToggleButtonGroup
-                            value={selectedSource}
-                            exclusive
-                            onChange={(_, val) => { if (val) onSourceChange(val); }}
-                            size="small"
-                            sx={{
-                                ml: 2,
-                                '& .MuiToggleButton-root': {
-                                    fontSize: '0.7rem',
-                                    fontFamily: monoFont,
-                                    py: 0.3,
-                                    px: 1,
-                                    textTransform: 'capitalize',
-                                    color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                                    borderColor: isDark ? 'rgba(255,255,255,0.2)' : theme.palette.divider,
-                                    '&.Mui-selected': {
-                                        color: '#fff',
-                                        backgroundColor: isDark ? 'rgba(41,182,246,0.25)' : theme.palette.primary.main,
-                                        borderColor: accentBlue,
-                                        '&:hover': {
-                                            backgroundColor: isDark ? 'rgba(41,182,246,0.35)' : theme.palette.primary.dark,
-                                        },
-                                    },
-                                },
-                            }}
-                        >
-                            <ToggleButton value="annotated">Annotated</ToggleButton>
-                            <ToggleButton value="synchronized">Synchronized</ToggleButton>
-                        </ToggleButtonGroup>
-                    );
-                })()}
-
-                {/* Right: speed selector + settings */}
-                <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, gap: 1 }}>
-                    <Tooltip title={t("playbackSpeed")}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                            <Typography variant="caption" sx={{ color: isDark ? '#b3b9c6' : 'text.secondary' }}>
-                                Speed:
-                            </Typography>
-                            <Select
-                                value={playbackRate}
-                                onChange={(e) => onPlaybackRateChange(Number(e.target.value))}
-                                size="small"
-                                variant="outlined"
-                                sx={{
-                                    minWidth: 70,
-                                    '& .MuiSelect-select': {
-                                        py: 0.25, fontSize: '0.8rem', fontFamily: monoFont,
-                                        color: isDark ? '#fff' : undefined,
-                                    },
-                                    '& .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: isDark ? 'rgba(255,255,255,0.25)' : undefined,
-                                    },
-                                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                                        borderColor: isDark ? 'rgba(255,255,255,0.5)' : undefined,
-                                    },
-                                    '& .MuiSvgIcon-root': {
-                                        color: isDark ? 'rgba(255,255,255,0.5)' : undefined,
-                                    },
-                                }}
+                {validSources.length >= 2 && selectedSource && onSourceChange && (
+                    <div className="flex flex-row gap-1" style={{marginLeft: 8}}>
+                        {['annotated', 'synchronized'].map((src) => (
+                            <button
+                                key={src}
+                                className={`button sm ${selectedSource === src ? 'primary' : 'secondary'}`}
+                                onClick={() => onSourceChange(src)}
+                                style={{fontFamily: monoFont, fontSize: '0.7rem', textTransform: 'capitalize'}}
                             >
-                                {PLAYBACK_RATES.map((rate) => (
-                                    <MenuItem key={rate} value={rate}>{rate}×</MenuItem>
-                                ))}
-                            </Select>
-                        </Box>
-                    </Tooltip>
+                                {src}
+                            </button>
+                        ))}
+                    </div>
+                )}
 
-                    {/* Sync info */}
-                    <Tooltip title={t("syncInfo")}>
-                        <IconButton
-                            size="small"
-                            onClick={() => setSyncInfoOpen((prev) => !prev)}
-                            sx={{
-                                color: syncInfoOpen
-                                    ? (isDark ? '#ffcc80' : theme.palette.warning.dark)
-                                    : (isDark ? 'rgba(255,255,255,0.3)' : theme.palette.text.disabled),
-                                fontSize: '0.85rem',
-                            }}
-                        >
-                            <InfoOutlinedIcon sx={{ fontSize: 16 }} />
-                        </IconButton>
-                    </Tooltip>
-
-                    {/* Settings gear */}
-                    <Tooltip title={t("playbackSettings")}>
-                        <IconButton
-                            size="small"
-                            onClick={(e) => setSettingsAnchor(e.currentTarget)}
-                            sx={{
-                                color: settingsOpen
-                                    ? accentBlue
-                                    : (isDark ? '#b3b9c6' : theme.palette.text.secondary),
-                            }}
-                        >
-                            <SettingsIcon fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </Box>
-
-            {/* Settings popover */}
-            <Popover
-                open={settingsOpen}
-                anchorEl={settingsAnchor}
-                onClose={() => setSettingsAnchor(null)}
-                anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                transformOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                slotProps={{
-                    paper: {
-                        sx: {
-                            p: 2,
-                            minWidth: 260,
-                            backgroundColor: theme.palette.background.paper,
-                            border: `1px solid ${theme.palette.divider}`,
-                        },
-                    },
-                }}
-            >
-                <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: theme.palette.text.primary }}>
-                    Display Settings
-                </Typography>
-
-                <FormControlLabel
-                    control={
-                        <Checkbox
-                            checked={settings.showOverlays}
-                            onChange={(e) => updateSetting('showOverlays', e.target.checked)}
-                            size="small"
-                            sx={{
-                                color: isDark ? 'rgba(255,255,255,0.5)' : undefined,
-                                '&.Mui-checked': { color: accentBlue },
-                            }}
-                        />
-                    }
-                    label={
-                        <Typography variant="body2" sx={{ color: theme.palette.text.primary }}>
-                            Show frame overlays
-                        </Typography>
-                    }
-                    sx={{ mb: 1.5, ml: 0 }}
-                />
-
-                <Typography variant="caption" sx={{ mb: 0.75, display: 'block', color: theme.palette.text.secondary }}>
-                    Timestamp format
-                </Typography>
-                <ToggleButtonGroup
-                    value={settings.timestampFormat}
-                    exclusive
-                    onChange={(_, val) => { if (val) updateSetting('timestampFormat', val); }}
-                    size="small"
-                    fullWidth
-                    sx={{
-                        '& .MuiToggleButton-root': {
-                            fontSize: '0.75rem',
-                            fontFamily: monoFont,
-                            py: 0.5,
-                            color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                            borderColor: isDark ? 'rgba(255,255,255,0.2)' : theme.palette.divider,
-                            '&.Mui-selected': {
-                                color: '#fff',
-                                backgroundColor: isDark ? 'rgba(41,182,246,0.25)' : theme.palette.primary.main,
-                                borderColor: accentBlue,
-                                '&:hover': {
-                                    backgroundColor: isDark ? 'rgba(41,182,246,0.35)' : theme.palette.primary.dark,
-                                },
-                            },
-                        },
-                    }}
-                >
-                    <ToggleButton value="seconds">1.234s</ToggleButton>
-                    <ToggleButton value="timecode">HH:MM:SS:FF</ToggleButton>
-                </ToggleButtonGroup>
-            </Popover>
-
-            {/* Sync info panel */}
-            <Collapse in={syncInfoOpen}>
-                <Box
-                    sx={{
-                        px: 2,
-                        py: 1,
-                        mt: 0.5,
-                        borderRadius: 1,
-                        backgroundColor: isDark ? 'rgba(255, 204, 128, 0.06)' : 'rgba(255, 152, 0, 0.05)',
-                        border: `1px solid ${isDark ? 'rgba(255, 204, 128, 0.15)' : 'rgba(255, 152, 0, 0.2)'}`,
-                    }}
-                >
-                    <Typography
-                        variant="caption"
-                        sx={{
-                            display: 'block',
-                            color: isDark ? '#ffcc80' : theme.palette.warning.dark,
-                            fontWeight: 600,
-                            mb: 0.5,
-                        }}
+                <div className="flex flex-row items-center gap-1" style={{marginLeft: 8}}>
+                    <span title={t("playbackSpeed")} className="text sm text-gray" style={{fontSize: '0.8rem'}}>Speed:</span>
+                    <select
+                        className="input-field text md"
+                        value={playbackRate}
+                        onChange={(e) => onPlaybackRateChange(Number(e.target.value))}
+                        style={{minWidth: 70, fontFamily: monoFont, fontSize: '0.8rem'}}
                     >
+                        {PLAYBACK_RATES.map((rate) => (
+                            <option key={rate} value={rate}>{rate}×</option>
+                        ))}
+                    </select>
+
+                    <button
+                        title={t("syncInfo")}
+                        className="button icon-button br-1"
+                        onClick={() => setSyncInfoOpen((prev) => !prev)}
+                        style={{color: syncInfoOpen ? '#ffcc80' : 'rgba(255,255,255,0.3)'}}
+                    >
+                        <span className="icon settings-icon icon-size-20"/>
+                    </button>
+
+                    <button
+                        title={t("playbackSettings")}
+                        className="button icon-button br-1"
+                        onClick={() => setSettingsOpen(v => !v)}
+                        style={{color: settingsOpen ? 'var(--color-info)' : undefined}}
+                    >
+                        <span className="icon settings-icon icon-size-20"/>
+                    </button>
+                </div>
+            </div>
+
+            {settingsOpen && (
+                <div
+                    className="splash-overlay inset-0"
+                    style={{position: 'fixed', zIndex: 100}}
+                    onClick={() => setSettingsOpen(false)}
+                >
+                    <div
+                        className="bg-middark br-2 flex flex-col p-3"
+                        style={{position: 'fixed', bottom: 80, right: 16, minWidth: 260}}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <p className="text md text-white" style={{fontWeight: 600, marginBottom: 12}}>Display Settings</p>
+
+                        <label className="flex flex-row items-center gap-1" style={{marginBottom: 12}}>
+                            <input
+                                type="checkbox"
+                                checked={settings.showOverlays}
+                                onChange={(e) => updateSetting('showOverlays', e.target.checked)}
+                                style={{accentColor: 'var(--color-info)'}}
+                            />
+                            <span className="text sm text-white">Show frame overlays</span>
+                        </label>
+
+                        <p className="text sm text-gray" style={{marginBottom: 6}}>Timestamp format</p>
+                        <div className="flex flex-row gap-1">
+                            {(['seconds', 'timecode'] as const).map(fmt => (
+                                <button
+                                    key={fmt}
+                                    className={`button sm flex-1 ${settings.timestampFormat === fmt ? 'primary' : 'secondary'}`}
+                                    style={{fontFamily: monoFont, fontSize: '0.75rem'}}
+                                    onClick={() => updateSetting('timestampFormat', fmt)}
+                                >
+                                    {fmt === 'seconds' ? '1.234s' : 'HH:MM:SS:FF'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {syncInfoOpen && (
+                <div style={{padding: '8px 16px', marginTop: 4, borderRadius: 4, backgroundColor: 'rgba(255, 204, 128, 0.06)', border: '1px solid rgba(255, 204, 128, 0.15)'}}>
+                    <p className="text sm" style={{color: '#ffcc80', fontWeight: 600, marginBottom: 4}}>
                         {t("syncInfoTitle")}
-                    </Typography>
-                    {/*<Typography*/}
-                    {/*    variant="caption"*/}
-                    {/*    sx={{*/}
-                    {/*        display: 'block',*/}
-                    {/*        color: theme.palette.text.secondary,*/}
-                    {/*        lineHeight: 1.5,*/}
-                    {/*    }}*/}
-                    {/*>*/}
-                    {/*    {t("syncInfoBody")}*/}
-                    {/*</Typography>*/}
-                </Box>
-            </Collapse>
-        </Box>
+                    </p>
+                </div>
+            )}
+        </div>
     );
 };

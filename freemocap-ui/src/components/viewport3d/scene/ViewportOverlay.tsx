@@ -1,18 +1,4 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
-import {
-    Box,
-    Checkbox,
-    Collapse,
-    FormControlLabel,
-    IconButton,
-    Paper,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
-import HomeIcon from "@mui/icons-material/Home";
 import { ViewportVisibility } from "../helpers/viewport3d-types";
 import { useViewportState } from "./ViewportStateContext";
 
@@ -25,7 +11,6 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     const { visibility, setVisibility, statsRef } = useViewportState();
     const [expanded, setExpanded] = useState(false);
 
-    // DOM refs for count spans — mutated directly so stats never trigger React re-renders.
     const rawCountRef         = useRef<HTMLSpanElement | null>(null);
     const filteredCountRef    = useRef<HTMLSpanElement | null>(null);
     const rigidBodiesCountRef = useRef<HTMLSpanElement | null>(null);
@@ -64,21 +49,21 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
 
     return (
         <>
-            {/* Top-left: visibility + stats */}
-            <Paper
-                sx={{
-                    position: "absolute", top: 8, left: 8,
-                    p: 1, bgcolor: "rgba(0,0,0,0.75)", color: "#ccc",
-                    minWidth: 180, userSelect: "none",
-                }}
-                elevation={3}
-            >
-                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Typography variant="caption" fontWeight="bold">Viewport</Typography>
-                    <IconButton size="small" onClick={() => setExpanded(e => !e)} sx={{ color: "#ccc" }}>
-                        {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
-                    </IconButton>
-                </Box>
+            <div style={{
+                position: "absolute", top: 8, left: 8,
+                padding: 8, backgroundColor: "rgba(0,0,0,0.75)", color: "#ccc",
+                minWidth: 180, userSelect: "none", borderRadius: 4,
+            }}>
+                <div className="flex flex-row items-center justify-content-space-between">
+                    <p className="text sm" style={{fontWeight: 'bold', margin: 0}}>Viewport</p>
+                    <button
+                        className="button icon-button br-1"
+                        onClick={() => setExpanded(e => !e)}
+                        style={{color: "#ccc", padding: 2}}
+                    >
+                        <span className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`}/>
+                    </button>
+                </div>
 
                 <VisToggle label="Environment"  checked={visibility.environment}      onChange={toggleEnvironment} />
                 <VisToggle label="Raw"          countRef={rawCountRef}                checked={visibility.keypointsRaw}      onChange={toggleKeypointsRaw} />
@@ -88,36 +73,37 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 <VisToggle label="Connections"  countRef={connectionsCountRef}        checked={visibility.connections}       onChange={toggleConnections} />
                 <VisToggle label="Cameras"      countRef={camerasCountRef}            checked={visibility.cameras}           onChange={toggleCameras} />
 
-                <Collapse in={expanded}>
-                    <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#888" }}>
+                {expanded && (
+                    <p className="text sm" style={{marginTop: 4, color: "#888", display: "block"}}>
                         Total points: <span ref={totalPointsRef}>0</span>
                         <br />
                         Total bodies: <span ref={totalBodiesRef}>0</span>
-                    </Typography>
-                </Collapse>
-            </Paper>
+                    </p>
+                )}
+            </div>
 
-            {/* Bottom-right: camera buttons */}
-            <Box sx={{ position: "absolute", bottom: 8, right: 8, display: "flex", gap: 0.5 }}>
-                <Tooltip title="Fit to skeleton (F)">
-                    <IconButton onClick={onFitCamera} size="small" sx={btnSx}>
-                        <CenterFocusStrongIcon fontSize="small" />
-                    </IconButton>
-                </Tooltip>
-                <Tooltip title="Reset view">
-                    <IconButton onClick={onResetCamera} size="small" sx={btnSx}>
-                        <HomeIcon fontSize="small" />
-                    </IconButton>
-                </Tooltip>
-            </Box>
+            <div className="flex flex-row gap-1" style={{position: "absolute", bottom: 8, right: 8}}>
+                <button
+                    title="Fit to skeleton (F)"
+                    className="button icon-button br-1"
+                    onClick={onFitCamera}
+                    style={{backgroundColor: "rgba(0,0,0,0.6)", color: "#ccc"}}
+                >
+                    <span className="icon search-icon icon-size-20"/>
+                </button>
+                <button
+                    title="Reset view"
+                    className="button icon-button br-1"
+                    onClick={onResetCamera}
+                    style={{backgroundColor: "rgba(0,0,0,0.6)", color: "#ccc"}}
+                >
+                    <span className="icon back-icon icon-size-20"/>
+                </button>
+            </div>
 
-            {/* Bottom-left: hint */}
-            <Typography
-                variant="caption"
-                sx={{ position: "absolute", bottom: 8, left: 8, color: "#666", pointerEvents: "none" }}
-            >
+            <p className="text sm" style={{position: "absolute", bottom: 8, left: 8, color: "#666", pointerEvents: "none", margin: 0}}>
                 Rotate: drag · Zoom: scroll · Pan: right-drag
-            </Typography>
+            </p>
         </>
     );
 }
@@ -137,17 +123,14 @@ const VisToggle = memo(function VisToggle({
         ? <span>{ label } (<span ref={countRef}>0</span>)</span>
         : label;
     return (
-        <FormControlLabel
-            sx={{ m: 0, ml: -0.5, "& .MuiTypography-root": { fontSize: "0.7rem" } }}
-            control={<Checkbox size="small" checked={checked} onChange={onChange} sx={{ p: 0.3, color: "#888", "&.Mui-checked": { color: "#aaa" } }} />}
-            label={labelNode}
-        />
+        <label className="flex flex-row items-center gap-1" style={{margin: '2px 0', marginLeft: -4}}>
+            <input
+                type="checkbox"
+                checked={checked}
+                onChange={onChange}
+                style={{accentColor: '#aaa', padding: 3}}
+            />
+            <span style={{fontSize: '0.7rem', color: '#ccc'}}>{labelNode}</span>
+        </label>
     );
 });
-
-const btnSx = {
-    bgcolor: "rgba(0,0,0,0.6)",
-    color: "#ccc",
-    boxShadow: 2,
-    "&:hover": { bgcolor: "rgba(60,60,60,0.8)" },
-};

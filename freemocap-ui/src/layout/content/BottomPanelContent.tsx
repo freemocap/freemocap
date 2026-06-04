@@ -1,40 +1,27 @@
-// freemocap-ui/src/components/ui-components/BottomPanelContent.tsx
 import * as React from 'react';
-import Box from '@mui/material/Box';
 import {LogTerminal} from "@/components/log-terminal";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
-import {useTheme} from "@mui/material/styles";
 import TabbedBottomLeftPanel from "@/components/tabbed-bottom-panel/TabbedBottomLeftPanel";
 
 export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean }) {
-    const theme = useTheme();
-
     return (
-        <Box sx={{width: '100%', height: '100%'}}>
-            <PanelGroup direction="horizontal" style={{direction: "ltr"}}>
-                {/* Framerate Viewer Panel */}
+        <div className="w-full h-full">
+            <PanelGroup direction="horizontal" style={{ direction: "ltr" }}>
                 <Panel defaultSize={30} minSize={20}>
-                    <Box sx={{height: '100%', overflow: 'auto'}}>
-                        <TabbedBottomLeftPanel isCollapsed={isCollapsed}/>
-                    </Box>
+                    <div className="h-full overflow-y">
+                        <TabbedBottomLeftPanel isCollapsed={isCollapsed} />
+                    </div>
                 </Panel>
-
-                {/* Resize Handle */}
                 <PanelResizeHandle
-                    style={{
-                        width: "4px",
-                        cursor: "col-resize",
-                        backgroundColor: theme.palette.primary.light,
-                    }}
+                    className="resizable-component"
+                    style={{ width: "4px", cursor: "col-resize" }}
                 />
-
-                {/* Logs Terminal Panel */}
                 <Panel defaultSize={70} minSize={20}>
-                    <Box sx={{height: '100%', overflow: 'auto'}}>
-                        <LogTerminal isCollapsed={isCollapsed}/>
-                    </Box>
+                    <div className="h-full overflow-y">
+                        <LogTerminal isCollapsed={isCollapsed} />
+                    </div>
                 </Panel>
             </PanelGroup>
-        </Box>
+        </div>
     );
 }

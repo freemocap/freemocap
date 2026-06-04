@@ -1,28 +1,4 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {
-    Accordion,
-    AccordionDetails,
-    AccordionSummary,
-    Alert,
-    Box,
-    Button,
-    Chip,
-    IconButton,
-    InputAdornment,
-    Stack,
-    TextField,
-    Tooltip,
-    Typography,
-    useTheme,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import StopIcon from "@mui/icons-material/Stop";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import LaunchIcon from "@mui/icons-material/Launch";
-import ClearIcon from "@mui/icons-material/Clear";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import {useMocap} from "@/hooks/useMocap";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
@@ -30,7 +6,6 @@ import {useElectronIPC} from "@/services";
 import {CalibrationTomlPicker} from "@/components/common/CalibrationTomlPicker";
 import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-panel/RealtimePipelineConfigTree";
 import {useServer} from "@/services/server/ServerContextProvider";
-import SquareFootIcon from "@mui/icons-material/SquareFoot";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {BlenderSection} from "@/components/control-panels/mocap-control-panel/BlenderSection";
 import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
@@ -39,7 +14,6 @@ import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/acti
 import {useAppSelector} from "@/store";
 
 export const MocapPanel: React.FC = () => {
-    const theme = useTheme();
     const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
     const {api, isElectron} = useElectronIPC();
@@ -49,7 +23,6 @@ export const MocapPanel: React.FC = () => {
         isLoading,
         isRecording,
         recordingProgress,
-        canStartRecording,
         canProcessMocapRecording,
         mocapRecordingPath,
         directoryInfo,
@@ -87,11 +60,6 @@ export const MocapPanel: React.FC = () => {
         const idx = Math.max(trimmed.lastIndexOf("/"), trimmed.lastIndexOf("\\"));
         return idx > 0 ? trimmed.slice(0, idx) : null;
     }, [mocapRecordingPath]);
-
-    // Blender export is driven by the backend aggregator via config flags
-    // (state.blender.*), which mocap-thunks.ts folds into the process request.
-    // The standalone "Process Recording with Blender" button inside
-    // BlenderSection remains available for manual re-exports.
 
     // Auto-poll directory status
     const {triggerRefresh} = useDirectoryWatcher(
@@ -186,12 +154,6 @@ export const MocapPanel: React.FC = () => {
         return "auto" as const;
     }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath, directoryInfo?.lastSuccessfulCalibrationTomlPath]);
 
-    const mocapStatus: "ok" | "none" | "bad" = useMemo(() => {
-        if (effectiveCalibrationTomlPath) return "ok";
-        if (!mocapRecordingPath || !directoryInfo) return "none";
-        return "bad";
-    }, [effectiveCalibrationTomlPath, mocapRecordingPath, directoryInfo]);
-
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const {
@@ -211,152 +173,101 @@ export const MocapPanel: React.FC = () => {
                 ? "Ready"
                 : "Idle";
 
-    const statusColor = isRecording
-        ? theme.palette.error.main
-        : isLoading
-            ? theme.palette.warning.main
-            : effectiveCalibrationTomlPath
-                ? theme.palette.success.main
-                : theme.palette.grey[600];
-
     return (
         <CollapsibleSidebarSection
-            icon={<DirectionsRunIcon sx={{color: "inherit"}}/>}
+            icon={<span className="icon processmocap-icon icon-size-20" />}
             title="Motion Capture"
-            summaryContent={<Chip
-                label={statusLabel}
-                size="small"
-                sx={{
-                    ml: "auto",
-                    height: 20,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    backgroundColor: statusColor,
-                    color: theme.palette.getContrastText(statusColor),
-                }}
-            />}
+            summaryContent={
+                <span className="tag text sm">{statusLabel}</span>
+            }
             defaultExpanded={false}
         >
-
-            <Box sx={{p: 2}}>
-                <Stack spacing={2}>
+            <div className="p-2">
+                <div className="flex flex-col gap-2">
                     {/* Process button at TOP per requirements */}
-                    <Button
-                        variant="contained"
-                        color="secondary"
+                    <button
+                        className="button sm secondary w-full"
                         onClick={dispatchProcessMocapRecording}
                         disabled={!canProcessMocapRecording || isLoading}
-                        fullWidth
                     >
                         Process Selected Recording
-                    </Button>
+                    </button>
 
                     {displayError && (
-                        <Alert severity="error" onClose={handleClearError}>
-                            {displayError}
-                        </Alert>
+                        <div className="toast-notification error">
+                            <div className="flex flex-row items-center justify-content-space-between">
+                                <p className="text sm">{displayError}</p>
+                                <button className="button icon-button br-1" onClick={handleClearError} title="Dismiss">
+                                    <span className="icon clear-icon icon-size-12" />
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                     {/* Recording ID — prominent at top level */}
                     {recordingId && (
-                        <Box sx={{
-                            p: 1,
-                            borderRadius: 1,
-                            bgcolor: theme.palette.action.hover,
-                        }}>
-                            <Stack direction="row" spacing={1} alignItems="center">
-                                <Typography variant="caption" color="text.secondary">
-                                    Recording ID
-                                </Typography>
-                            </Stack>
-                            <Typography variant="body2" sx={{fontFamily: "monospace", fontWeight: 600}}>
+                        <div className="p-1 br-1 bg-middark">
+                            <div className="flex flex-row gap-1 items-center">
+                                <p className="text sm text-gray">Recording ID</p>
+                            </div>
+                            <p className="text md text-white" style={{fontFamily: "monospace", fontWeight: 600}}>
                                 {recordingId}
-                            </Typography>
-                        </Box>
+                            </p>
+                        </div>
                     )}
 
-                    {/*/!* Recording Controls *!/*/}
-                    {/* TODO - Wire up these recording buttons to the EXACT same workflow as the recording panel  - current wiring has slop*/}
-                    {/*<Stack direction="row" spacing={2}>*/}
-                    {/*    <Button*/}
-                    {/*        variant="contained"*/}
-                    {/*        color="primary"*/}
-                    {/*        startIcon={<PlayArrowIcon />}*/}
-                    {/*        onClick={dispatchStartMocapRecording}*/}
-                    {/*        // disabled={!canStartRecording || isLoading}*/}
-                    {/*        disabled={isLoading}*/}
-                    {/*        fullWidth*/}
-                    {/*    >*/}
-                    {/*        Start Mocap Recording*/}
-                    {/*    </Button>*/}
-                    {/*    {isRecording && (*/}
-                    {/*        <Button*/}
-                    {/*            variant="contained"*/}
-                    {/*            color="error"*/}
-                    {/*            startIcon={<StopIcon />}*/}
-                    {/*            onClick={dispatchStopMocapRecording}*/}
-                    {/*            disabled={isLoading}*/}
-                    {/*            fullWidth*/}
-                    {/*        >*/}
-                    {/*            Stop Recording*/}
-                    {/*        </Button>*/}
-                    {/*    )}*/}
-                    {/*</Stack>*/}
-
                     {/* Recording Path Input */}
-                    <TextField
-                        label="Mocap Recording Path"
-                        value={effectiveMocapPath || ''}
-                        onChange={handlePathInputChange}
-                        fullWidth
-                        size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    {isUsingManualPath && (
-                                        <Tooltip title="Clear manual path (revert to default)">
-                                            <IconButton onClick={clearManualRecordingPath} edge="end" size="small">
-                                                <ClearIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                    <Tooltip title="Re-check folder">
-                                        <span>
-                                            <IconButton
-                                                onClick={() => {
-                                                    triggerRefresh();
-                                                    refreshRecordingStatus();
-                                                }}
-                                                edge="end"
-                                                size="small"
-                                                disabled={!mocapRecordingPath || isLoading}
-                                            >
-                                                <RefreshIcon fontSize="small" />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Open folder in file explorer">
-                                        <span>
-                                            <IconButton
-                                                onClick={handleOpenFolder}
-                                                edge="end"
-                                                size="small"
-                                                disabled={!isElectron || !effectiveMocapPath}
-                                            >
-                                                <LaunchIcon fontSize="small" />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Select directory">
-                                        <IconButton onClick={handleSelectDirectory} edge="end" disabled={!isElectron}>
-                                            <FolderOpenIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
+                    <div className="flex flex-col gap-1">
+                        <div className="input-with-string pos-rel">
+                            <input
+                                className="input-field text md"
+                                value={effectiveMocapPath || ''}
+                                onChange={handlePathInputChange}
+                                placeholder="Mocap Recording Path"
+                            />
+                            <div className="flex flex-row" style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}>
+                                {isUsingManualPath && (
+                                    <button
+                                        className="button icon-button br-1"
+                                        onClick={clearManualRecordingPath}
+                                        title="Clear manual path (revert to default)"
+                                    >
+                                        <span className="icon clear-icon icon-size-20" />
+                                    </button>
+                                )}
+                                <button
+                                    className="button icon-button br-1"
+                                    onClick={() => {
+                                        triggerRefresh();
+                                        refreshRecordingStatus();
+                                    }}
+                                    disabled={!mocapRecordingPath || isLoading}
+                                    title="Re-check folder"
+                                >
+                                    <span className="icon save-icon icon-size-20" />
+                                </button>
+                                <button
+                                    className="button icon-button br-1"
+                                    onClick={handleOpenFolder}
+                                    disabled={!isElectron || !effectiveMocapPath}
+                                    title="Open folder in file explorer"
+                                >
+                                    <span className="icon streaming-icon icon-size-20" />
+                                </button>
+                                <button
+                                    className="button icon-button br-1"
+                                    onClick={handleSelectDirectory}
+                                    disabled={!isElectron}
+                                    title="Select directory"
+                                >
+                                    <span className="icon download-icon icon-size-20" />
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text sm text-gray">
+                            {isUsingManualPath ? "Using custom path" : "Using default recording directory"}
+                        </p>
+                    </div>
 
                     {/* Recording folder status (collapsed by default) */}
                     {recordingId && (
@@ -369,7 +280,6 @@ export const MocapPanel: React.FC = () => {
                                 refreshRecordingStatus();
                             }}
                             activeCalibrationTomlPath={effectiveCalibrationTomlPath}
-                            // folderExists={directoryExists}
                             recordingFolderPath={mocapRecordingPath}
                         />
                     )}
@@ -385,32 +295,20 @@ export const MocapPanel: React.FC = () => {
 
                     {/* Recording Progress */}
                     {isRecording && (
-                        <Box sx={{width: "100%"}}>
-                            <Typography variant="caption" color="text.secondary" gutterBottom>
+                        <div className="w-full">
+                            <p className="text sm text-gray">
                                 Recording in Progress: {recordingProgress.toFixed(0)}%
-                            </Typography>
-                            <Box
-                                sx={{
-                                    width: "100%",
-                                    height: 8,
-                                    bgcolor: "grey.300",
-                                    borderRadius: 1,
-                                    overflow: "hidden",
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        width: recordingProgress + "%",
-                                        height: "100%",
-                                        bgcolor: theme.palette.primary.main,
-                                        transition: "width 0.3s",
-                                    }}
+                            </p>
+                            <div className="update-progress-track">
+                                <div
+                                    className="update-progress-fill"
+                                    style={{width: `${recordingProgress}%`, transition: 'width 0.3s'}}
                                 />
-                            </Box>
-                        </Box>
+                            </div>
+                        </div>
                     )}
 
-                    {/* Hierarchical pipeline config (replaces flat MediapipeConfigPanel + SkeletonFilterConfigPanel) */}
+                    {/* Hierarchical pipeline config */}
                     <RealtimePipelineConfigTree
                         context="posthoc"
                         charucoEnabled={charucoEnabled}
@@ -430,8 +328,8 @@ export const MocapPanel: React.FC = () => {
                         disabled={isLoading}
                         hasBlendFile={recordingStatus?.has_blend_file}
                     />
-                </Stack>
-            </Box>
+                </div>
+            </div>
         </CollapsibleSidebarSection>
     );
 };

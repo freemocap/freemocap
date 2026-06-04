@@ -1,13 +1,4 @@
 import React, {useState} from 'react';
-import {Box, CircularProgress, IconButton, Tooltip, Typography} from '@mui/material';
-import RotateRightIcon from '@mui/icons-material/RotateRight';
-import BrightnessHighIcon from '@mui/icons-material/BrightnessHigh';
-import BrightnessLowIcon from '@mui/icons-material/BrightnessLow';
-import WbIncandescentIcon from '@mui/icons-material/WbIncandescent';
-import BrightnessAutoIcon from '@mui/icons-material/BrightnessAuto';
-import SyncIcon from '@mui/icons-material/Sync';
-import SyncDisabledIcon from '@mui/icons-material/SyncDisabled';
-import CheckIcon from '@mui/icons-material/Check';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {selectCameraById} from '@/store/slices/cameras/cameras-selectors';
 import {cameraDesiredConfigUpdated, autoApplyToggled} from '@/store/slices/cameras/cameras-slice';
@@ -60,8 +51,6 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
     };
 
     const handleRecommendExposure = () => {
-        // Server computes recommended exposure and returns MANUAL mode + value in the response.
-        // The fulfilled handler in cameras-slice normalizes desiredConfig from the server response.
         dispatch(cameraDesiredConfigUpdated({cameraId, config: {exposure_mode: 'RECOMMEND'}}));
     };
 
@@ -90,189 +79,142 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
         String(exposure);
 
     return (
-        <Box
-            sx={{position: 'relative', width: '100%', height: '100%'}}
+        <div
+            style={{position: 'relative', width: '100%', height: '100%'}}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             <CameraView cameraIndex={cameraIndex} cameraId={cameraId} maxWidth/>
 
             {hovered && (
-                <Box
-                    sx={{
-                        position: 'absolute',
-                        top: 6,
-                        right: 6,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '5px',
-                        zIndex: 10,
-                        backgroundColor: 'rgba(0,0,0,0.55)',
-                        backdropFilter: 'blur(3px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: '8px',
-                        padding: '6px',
-                    }}
-                >
-                    {/* Rotation row */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: '6px'}}>
-                        <Tooltip title="Rotate 90° clockwise" placement="left" disableInteractive enterDelay={600}>
-                            <IconButton
-                                size="small"
-                                onClick={handleRotate}
-                                disabled={isLoading}
-                                sx={btnSx}
-                            >
-                                <RotateRightIcon sx={{fontSize: 16}}/>
-                            </IconButton>
-                        </Tooltip>
-                        <Typography sx={valueSx}>{ROTATION_DEGREE_LABELS[rotation]}</Typography>
-                    </Box>
+                <div style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '5px',
+                    zIndex: 10,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    backdropFilter: 'blur(3px)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    padding: '6px',
+                }}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                        <button
+                            title="Rotate 90° clockwise"
+                            className="button icon-button"
+                            onClick={handleRotate}
+                            disabled={isLoading}
+                            style={btnStyle}
+                        >
+                            <span className="icon rotate-icon" style={{fontSize: 16}}/>
+                        </button>
+                        <span style={valueStyle}>{ROTATION_DEGREE_LABELS[rotation]}</span>
+                    </div>
 
-                    <Box sx={dividerSx}/>
+                    <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
-                    {/* Exposure +/- row */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                        <Tooltip title="Decrease exposure" placement="left" disableInteractive enterDelay={600}>
-                            <span>
-                                <IconButton
-                                    size="small"
-                                    onClick={handleExposureDown}
-                                    disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
-                                    sx={btnSx}
-                                >
-                                    <BrightnessLowIcon sx={{fontSize: 16}}/>
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                        <Tooltip title="Increase exposure" placement="left" disableInteractive enterDelay={600}>
-                            <span>
-                                <IconButton
-                                    size="small"
-                                    onClick={handleExposureUp}
-                                    disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
-                                    sx={btnSx}
-                                >
-                                    <BrightnessHighIcon sx={{fontSize: 16}}/>
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                        <Typography sx={valueSx}>{exposureLabel}</Typography>
-                    </Box>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                        <button
+                            title="Decrease exposure"
+                            className="button icon-button"
+                            onClick={handleExposureDown}
+                            disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
+                            style={btnStyle}
+                        >
+                            <span className="icon minus-icon" style={{fontSize: 16}}/>
+                        </button>
+                        <button
+                            title="Increase exposure"
+                            className="button icon-button"
+                            onClick={handleExposureUp}
+                            disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
+                            style={btnStyle}
+                        >
+                            <span className="icon plus-icon" style={{fontSize: 16}}/>
+                        </button>
+                        <span style={valueStyle}>{exposureLabel}</span>
+                    </div>
 
-                    {/* Exposure mode row */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                        <Tooltip
+                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                        <button
                             title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
-                            placement="left"
-                            disableInteractive
-                            enterDelay={600}
+                            className="button icon-button"
+                            onClick={handleAutoExposure}
+                            disabled={isLoading}
+                            style={exposureMode === 'AUTO' ? btnActiveStyle : btnStyle}
                         >
-                            <IconButton
-                                size="small"
-                                onClick={handleAutoExposure}
-                                disabled={isLoading}
-                                sx={exposureMode === 'AUTO' ? btnActiveSx : btnSx}
-                            >
-                                <BrightnessAutoIcon sx={{fontSize: 16}}/>
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip
+                            <span className="icon settings-icon" style={{fontSize: 16}}/>
+                        </button>
+                        <button
                             title="Recommend exposure for this camera"
-                            placement="left"
-                            disableInteractive
-                            enterDelay={600}
+                            className="button icon-button"
+                            onClick={handleRecommendExposure}
+                            disabled={isLoading}
+                            style={btnStyle}
                         >
-                            <IconButton
-                                size="small"
-                                onClick={handleRecommendExposure}
-                                disabled={isLoading}
-                                sx={btnSx}
-                            >
-                                <WbIncandescentIcon sx={{fontSize: 16}}/>
-                            </IconButton>
-                        </Tooltip>
-                    </Box>
+                            <span className="icon warning-icon" style={{fontSize: 16}}/>
+                        </button>
+                    </div>
 
-                    <Box sx={dividerSx}/>
+                    <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
-                    {/* Auto-apply row */}
-                    <Box sx={{display: 'flex', alignItems: 'center', gap: '4px'}}>
-                        <Tooltip
+                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                        <button
                             title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
-                            placement="left"
-                            disableInteractive
-                            enterDelay={600}
+                            className="button icon-button"
+                            onClick={() => dispatch(autoApplyToggled())}
+                            style={isAutoApply ? btnActiveStyle : btnStyle}
                         >
-                            <IconButton
-                                size="small"
-                                onClick={() => dispatch(autoApplyToggled())}
-                                sx={isAutoApply ? btnActiveSx : btnSx}
-                            >
-                                {isAutoApply ? <SyncIcon sx={{fontSize: 16}}/> : <SyncDisabledIcon sx={{fontSize: 16}}/>}
-                            </IconButton>
-                        </Tooltip>
+                            <span className="icon loop-icon" style={{fontSize: 16}}/>
+                        </button>
                         {!isAutoApply && (
-                            <Tooltip title="Apply changes to camera" placement="left" disableInteractive enterDelay={600}>
-                                <span>
-                                    <IconButton
-                                        size="small"
-                                        onClick={handleApply}
-                                        disabled={isApplying}
-                                        sx={btnSx}
-                                    >
-                                        {isApplying
-                                            ? <CircularProgress size={16} sx={{color: 'inherit'}}/>
-                                            : <CheckIcon sx={{fontSize: 16}}/>}
-                                    </IconButton>
-                                </span>
-                            </Tooltip>
+                            <button
+                                title="Apply changes to camera"
+                                className="button icon-button"
+                                onClick={handleApply}
+                                disabled={isApplying}
+                                style={btnStyle}
+                            >
+                                {isApplying
+                                    ? <span className="icon loader-icon" style={{fontSize: 16}}/>
+                                    : <span className="icon upToDate-icon" style={{fontSize: 16}}/>}
+                            </button>
                         )}
-                    </Box>
-                </Box>
+                    </div>
+                </div>
             )}
-        </Box>
+        </div>
     );
 };
 
-const btnSx = {
+const btnStyle: React.CSSProperties = {
     width: 24,
     height: 24,
     padding: '3px',
     color: 'rgba(255,255,255,0.8)',
     borderRadius: '5px',
     outline: 'none',
-    '&:hover': {
-        backgroundColor: 'rgba(255,255,255,0.18)',
-        color: '#fff',
-    },
-    '&:focus': {
-        outline: 'none',
-    },
-    '&.Mui-disabled': {
-        color: 'rgba(255,255,255,0.2)',
-    },
-} as const;
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+};
 
-const btnActiveSx = {
-    ...btnSx,
+const btnActiveStyle: React.CSSProperties = {
+    ...btnStyle,
     color: '#fff',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    '&:focus': {
-        outline: 'none',
-    },
-} as const;
+};
 
-const valueSx = {
+const valueStyle: React.CSSProperties = {
     fontSize: 11,
     fontFamily: 'monospace',
     color: 'rgba(255,255,255,0.85)',
     minWidth: '28px',
     lineHeight: 1,
-} as const;
-
-const dividerSx = {
-    height: '1px',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    mx: '-2px',
-} as const;
+};

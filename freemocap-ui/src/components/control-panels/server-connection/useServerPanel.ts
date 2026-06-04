@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Theme, useTheme} from '@mui/material/styles';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
@@ -8,8 +7,6 @@ import {ExecutableCandidate, WS_RECONNECT_INTERVAL_MS} from './types';
 import {STORAGE_KEYS, loadFromStorage, saveToStorage} from './storage';
 
 export interface ServerPanelState {
-    // theme
-    theme: Theme;
     // server context
     isConnected: boolean;
     connectedCameraIds: string[];
@@ -59,7 +56,6 @@ export interface ServerPanelState {
 }
 
 export function useServerPanel(): ServerPanelState {
-    const theme = useTheme();
     const {isConnected, connect, disconnect, connectedCameraIds, updateServerConnection} = useServer();
     const {t} = useTranslation();
     const {isElectron, api} = useElectronIPC();
@@ -322,12 +318,11 @@ export function useServerPanel(): ServerPanelState {
     // ── Derived values ──
 
     const wsStatusColor = isConnected ? '#00ffff' : '#f44336';
-    const serverStatusColor = serverRunning ? theme.palette.success.main : theme.palette.text.disabled;
+    const serverStatusColor = serverRunning ? 'var(--color-success)' : 'var(--color-text-muted)';
     const validCandidates = candidates.filter((c) => c.isValid);
     const invalidCandidates = candidates.filter((c) => !c.isValid);
 
     return {
-        theme,
         isConnected,
         connectedCameraIds,
         isElectron,

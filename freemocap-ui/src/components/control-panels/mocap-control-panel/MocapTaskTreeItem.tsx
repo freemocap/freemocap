@@ -1,29 +1,4 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
-import {
-    Alert,
-    Box,
-    Button,
-    Chip,
-    CircularProgress,
-    IconButton,
-    InputAdornment,
-    Stack,
-    TextField,
-    Tooltip,
-    Typography,
-    useTheme,
-} from "@mui/material";
-import DirectionsRunIcon from "@mui/icons-material/DirectionsRun";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import StopIcon from "@mui/icons-material/Stop";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import ClearIcon from "@mui/icons-material/Clear";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import CancelIcon from "@mui/icons-material/Cancel";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
@@ -33,7 +8,6 @@ import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-contr
 import {useCalibration} from "@/hooks/useCalibration";
 
 export const MocapTaskTreeItem: React.FC = () => {
-    const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const {api, isElectron} = useElectronIPC();
@@ -60,10 +34,8 @@ export const MocapTaskTreeItem: React.FC = () => {
         clearError,
     } = useMocap();
 
-    
     // Get the most recent calibration recording path from calibration state
     const {
-        calibrationRecordingPath: mostRecentCalibrationPath,
         directoryInfo: calibrationDirectoryInfo,
     } = useCalibration();
 
@@ -152,7 +124,7 @@ export const MocapTaskTreeItem: React.FC = () => {
         return "Using default recording directory";
     }, [isUsingManualPath]);
 
-    // ─── Effective calibration path (considers all sources) ────────────────────
+    // Effective calibration path (considers all sources)
     const effectiveCalibrationTomlPath = useMemo(() => {
         if (calibrationTomlPath) return calibrationTomlPath;
         if (directoryInfo?.cameraMocapTomlPath) return directoryInfo.cameraMocapTomlPath;
@@ -160,7 +132,7 @@ export const MocapTaskTreeItem: React.FC = () => {
         return null;
     }, [calibrationTomlPath, directoryInfo?.cameraMocapTomlPath, calibrationDirectoryInfo?.cameraCalibrationTomlPath]);
 
-    // ─── Mocap status derivation ──────────────────────────────────────────────
+    // Mocap status derivation
     const mocapStatus: "ok" | "none" | "bad" = useMemo(() => {
         if (effectiveCalibrationTomlPath) return "ok";
         if (!mocapRecordingPath || !directoryInfo) return "none";
@@ -170,55 +142,41 @@ export const MocapTaskTreeItem: React.FC = () => {
     const mocapStatusIcon = useMemo(() => {
         if (mocapStatus === "ok") {
             return (
-                <Tooltip title="Calibration file found — ready to process">
-                    <CheckCircleIcon fontSize="small" sx={{color: "#00e5ff"}} />
-                </Tooltip>
+                <span title="Calibration file found — ready to process">
+                    <span className="icon upToDate-icon icon-size-20" />
+                </span>
             );
         }
         if (mocapStatus === "bad") {
             return (
-                <Tooltip title="No calibration file found at this path">
-                    <CancelIcon fontSize="small" sx={{color: theme.palette.error.main}} />
-                </Tooltip>
+                <span title="No calibration file found at this path">
+                    <span className="icon close-icon icon-size-20" />
+                </span>
             );
         }
         return (
-            <Tooltip title="No mocap directory selected">
-                <WarningAmberIcon fontSize="small" sx={{color: theme.palette.warning.main}} />
-            </Tooltip>
+            <span title="No mocap directory selected">
+                <span className="icon warning-icon icon-size-20" />
+            </span>
         );
-    }, [mocapStatus, theme]);
+    }, [mocapStatus]);
 
     const refreshButton = (
-        <Tooltip title={mocapRecordingPath ? "Re-check mocap folder" : "No path set"}>
-            <span>
-                <IconButton
-                    size="small"
-                    onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        handleRefresh();
-                    }}
-                    disabled={!mocapRecordingPath || isLoading || isRefreshing}
-                    sx={{
-                        p: 0.5,
-                        color: "inherit",
-                        border: "1.5px solid rgba(255,255,255,0.25)",
-                        borderRadius: 1,
-                        "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
-                        "&.Mui-disabled": {
-                            color: "rgba(255,255,255,0.3)",
-                            borderColor: "rgba(255,255,255,0.1)",
-                        },
-                    }}
-                >
-                    {isRefreshing ? (
-                        <CircularProgress size={16} color="inherit" />
-                    ) : (
-                        <RefreshIcon fontSize="small" />
-                    )}
-                </IconButton>
-            </span>
-        </Tooltip>
+        <button
+            className="button icon-button br-1"
+            onClick={(e: React.MouseEvent) => {
+                e.stopPropagation();
+                handleRefresh();
+            }}
+            disabled={!mocapRecordingPath || isLoading || isRefreshing}
+            title={mocapRecordingPath ? "Re-check mocap folder" : "No path set"}
+        >
+            {isRefreshing ? (
+                <span className="icon loader-icon icon-size-20" />
+            ) : (
+                <span className="icon rotate-icon icon-size-20" />
+            )}
+        </button>
     );
 
     // Derive status for collapsed summary
@@ -230,159 +188,114 @@ export const MocapTaskTreeItem: React.FC = () => {
                 ? "Ready"
                 : "Idle";
 
-    const statusColor = isRecording
-        ? theme.palette.error.main
-        : isLoading
-            ? theme.palette.warning.main
-            : effectiveCalibrationTomlPath
-                ? theme.palette.success.main
-                : theme.palette.grey[600];
-
     // Primary controls: status icon + refresh + record start/stop
     const headerControls = (
-        <Box sx={{display: "flex", alignItems: "center", gap: 0.75}}>
+        <div className="flex flex-row items-center gap-1">
             {mocapStatusIcon}
             {refreshButton}
             {isRecording ? (
-        <Tooltip title="Stop mocap recording">
-            <IconButton
-                size="small"
-                onClick={(e: React.MouseEvent) => {
-                    e.stopPropagation();
-                    dispatchStopMocapRecording();
-                }}
-                disabled={isLoading}
-                sx={{
-                    color: theme.palette.error.light,
-                    border: `1.5px solid ${theme.palette.error.light}`,
-                    borderRadius: 1,
-                    p: 0.5,
-                    "&:hover": {backgroundColor: "rgba(244,67,54,0.15)"},
-                }}
-            >
-                <StopIcon fontSize="small" />
-            </IconButton>
-        </Tooltip>
-    ) : (
-        <Tooltip title={canStartRecording ? "Start mocap recording" : "Cannot record yet"}>
-            <span>
-                <IconButton
-                    size="small"
+                <button
+                    className="button icon-button br-1 btn-danger"
+                    onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        dispatchStopMocapRecording();
+                    }}
+                    disabled={isLoading}
+                    title="Stop mocap recording"
+                >
+                    <span className="icon stopstreaming-icon icon-size-20" />
+                </button>
+            ) : (
+                <button
+                    className="button icon-button br-1"
                     onClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         dispatchStartMocapRecording();
                     }}
                     disabled={!canStartRecording || isLoading}
-                    sx={{
-                        color: "inherit",
-                        border: "1.5px solid rgba(255,255,255,0.25)",
-                        borderRadius: 1,
-                        p: 0.5,
-                        "&:hover": {backgroundColor: "rgba(255,255,255,0.1)"},
-                        "&.Mui-disabled": {
-                            color: "rgba(255,255,255,0.3)",
-                            borderColor: "rgba(255,255,255,0.1)",
-                        },
-                    }}
+                    title={canStartRecording ? "Start mocap recording" : "Cannot record yet"}
                 >
-                    <FiberManualRecordIcon fontSize="small" />
-                </IconButton>
-            </span>
-        </Tooltip>
-    )}
-        </Box>
+                    <span className="icon record-icon icon-size-20" />
+                </button>
+            )}
+        </div>
     );
 
     return (
         <CollapsibleSidebarSection
-            icon={<DirectionsRunIcon sx={{color: "inherit"}} />}
+            icon={<span className="icon processmocap-icon icon-size-20" />}
             title="Motion Capture"
             summaryContent={
-                <Chip
-                    label={statusLabel}
-                    size="small"
-                    sx={{
-                        height: 20,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        backgroundColor: statusColor,
-                        color: theme.palette.getContrastText(statusColor),
-                    }}
-                />
+                <span className="tag text sm">{statusLabel}</span>
             }
             primaryControl={headerControls}
             defaultExpanded={false}
         >
-            <Box sx={{p: 2, bgcolor: "background.paper"}}>
-                <Stack spacing={2}>
+            <div className="p-2">
+                <div className="flex flex-col gap-2">
                     {/* Error Display */}
                     {displayError && (
-                        <Alert severity="error" onClose={handleClearError}>
-                            {displayError}
-                        </Alert>
+                        <div className="toast-notification error">
+                            <div className="flex flex-row items-center justify-content-space-between">
+                                <p className="text sm">{displayError}</p>
+                                <button className="button icon-button br-1" onClick={handleClearError} title="Dismiss">
+                                    <span className="icon clear-icon icon-size-12" />
+                                </button>
+                            </div>
+                        </div>
                     )}
 
                     {/* Recording Controls */}
-                    <Stack direction="row" spacing={2}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<PlayArrowIcon />}
+                    <div className="flex flex-row gap-2">
+                        <button
+                            className="button sm primary flex-1"
                             onClick={dispatchStartMocapRecording}
                             disabled={!canStartRecording || isLoading}
-                            fullWidth
                         >
-                            Start Mocap Recording
-                        </Button>
+                            <span className="icon play-icon icon-size-20" /> Start Mocap Recording
+                        </button>
                         {isRecording && (
-                            <Button
-                                variant="contained"
-                                color="error"
-                                startIcon={<StopIcon />}
+                            <button
+                                className="button sm btn-danger flex-1"
                                 onClick={dispatchStopMocapRecording}
                                 disabled={isLoading}
-                                fullWidth
                             >
-                                Stop Recording
-                            </Button>
+                                <span className="icon stopstreaming-icon icon-size-20" /> Stop Recording
+                            </button>
                         )}
-                    </Stack>
+                    </div>
 
                     {/* Recording Path Input */}
-                    <TextField
-                        label="Mocap Recording Path"
-                        value={mocapRecordingPath}
-                        onChange={handlePathInputChange}
-                        fullWidth
-                        size="small"
-                        helperText={pathHelperText}
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    {isUsingManualPath && (
-                                        <Tooltip title="Clear manual path (revert to default)">
-                                            <IconButton
-                                                onClick={handleClearManualPath}
-                                                edge="end"
-                                                size="small"
-                                            >
-                                                <ClearIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                    <Tooltip title="Select directory">
-                                        <IconButton
-                                            onClick={handleSelectDirectory}
-                                            edge="end"
-                                            disabled={!isElectron}
-                                        >
-                                            <FolderOpenIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
+                    <div className="flex flex-col gap-1">
+                        <div className="input-with-string pos-rel">
+                            <input
+                                className="input-field text md"
+                                value={mocapRecordingPath ?? ''}
+                                onChange={handlePathInputChange}
+                                placeholder="Mocap Recording Path"
+                            />
+                            <div className="flex flex-row" style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}>
+                                {isUsingManualPath && (
+                                    <button
+                                        className="button icon-button br-1"
+                                        onClick={handleClearManualPath}
+                                        title="Clear manual path (revert to default)"
+                                    >
+                                        <span className="icon clear-icon icon-size-20" />
+                                    </button>
+                                )}
+                                <button
+                                    className="button icon-button br-1"
+                                    onClick={handleSelectDirectory}
+                                    disabled={!isElectron}
+                                    title="Select directory"
+                                >
+                                    <span className="icon load-icon icon-size-20" />
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text sm text-gray">{pathHelperText}</p>
+                    </div>
 
                     {/* Directory Status Info */}
                     <DirectoryStatusPanel
@@ -399,87 +312,61 @@ export const MocapTaskTreeItem: React.FC = () => {
                     />
 
                     {/* Calibration TOML Override */}
-                    <Box sx={{p: 1.5, borderRadius: 1, border: `1px solid ${theme.palette.divider}`}}>
-                        <Stack spacing={1}>
-                            <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
-                                <InsertDriveFileIcon fontSize="small" color="info" />
-                                <Typography variant="caption" fontWeight="medium">
-                                    Calibration TOML
-                                </Typography>
-                            </Box>
-                            <Typography variant="caption" color="text.secondary">
+                    <div className="p-2 br-1 border-1 border-mid-black">
+                        <div className="flex flex-col gap-1">
+                            <div className="flex flex-row items-center gap-1">
+                                <span className="icon file-icon icon-size-20" />
+                                <p className="text sm text-gray" style={{fontWeight: 500}}>Calibration TOML</p>
+                            </div>
+                            <p className="text sm text-gray">
                                 {calibrationTomlPath
                                     ? "Using specified calibration file"
                                     : effectiveCalibrationTomlPath
                                         ? "Using auto-detected calibration"
                                         : "No calibration file found"}
-                            </Typography>
+                            </p>
                             {effectiveCalibrationTomlPath && (
-                                <Typography
-                                    variant="caption"
-                                    sx={{
-                                        fontFamily: "monospace",
-                                        display: "block",
-                                        color: "success.main",
-                                        wordBreak: "break-all",
-                                    }}
-                                >
+                                <p className="text sm" style={{
+                                    fontFamily: "monospace",
+                                    display: "block",
+                                    color: 'var(--color-success)',
+                                    wordBreak: "break-all",
+                                }}>
                                     {effectiveCalibrationTomlPath}
-                                </Typography>
+                                </p>
                             )}
-                            <Stack direction="row" spacing={1}>
-                                <Button
-                                    variant={calibrationTomlPath ? "outlined" : "contained"}
-                                    size="small"
+                            <div className="flex flex-row gap-1">
+                                <button
+                                    className={`button sm flex-1 ${calibrationTomlPath ? "secondary" : "primary"}`}
                                     onClick={clearCalibrationTomlPath}
                                     disabled={!calibrationTomlPath}
-                                    sx={{flex: 1}}
                                 >
                                     Use Most Recent
-                                </Button>
-                                <Button
-                                    variant={calibrationTomlPath ? "contained" : "outlined"}
-                                    size="small"
-                                    startIcon={<InsertDriveFileIcon />}
+                                </button>
+                                <button
+                                    className={`button sm flex-1 ${calibrationTomlPath ? "primary" : "secondary"}`}
                                     onClick={handleSelectCalibrationToml}
                                     disabled={!isElectron}
-                                    sx={{flex: 1}}
                                 >
-                                    Select TOML
-                                </Button>
-                            </Stack>
-                        </Stack>
-                    </Box>
+                                    <span className="icon file-icon icon-size-20" /> Select TOML
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Recording Progress */}
                     {isRecording && (
-                        <Box sx={{width: "100%"}}>
-                            <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                gutterBottom
-                            >
+                        <div className="w-full">
+                            <p className="text sm text-gray">
                                 Recording in Progress: {recordingProgress.toFixed(0)}%
-                            </Typography>
-                            <Box
-                                sx={{
-                                    width: "100%",
-                                    height: 8,
-                                    bgcolor: "grey.300",
-                                    borderRadius: 1,
-                                    overflow: "hidden",
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        width: `${recordingProgress}%`,
-                                        height: "100%",
-                                        bgcolor: theme.palette.primary.main,
-                                        transition: "width 0.3s",
-                                    }}
+                            </p>
+                            <div className="update-progress-track">
+                                <div
+                                    className="update-progress-fill"
+                                    style={{width: `${recordingProgress}%`, transition: 'width 0.3s'}}
                                 />
-                            </Box>
-                        </Box>
+                            </div>
+                        </div>
                     )}
 
                     {/* MediaPipe Detector Config */}
@@ -489,17 +376,15 @@ export const MocapTaskTreeItem: React.FC = () => {
                     <SkeletonFilterConfigPanel />
 
                     {/* Process Recording Button */}
-                    <Button
-                        variant="contained"
-                        color="secondary"
+                    <button
+                        className="button sm secondary w-full"
                         onClick={dispatchProcessMocapRecording}
                         disabled={!canProcessMocapRecording || isLoading}
-                        fullWidth
                     >
                         Process Selected Recording
-                    </Button>
-                </Stack>
-            </Box>
+                    </button>
+                </div>
+            </div>
         </CollapsibleSidebarSection>
     );
 };

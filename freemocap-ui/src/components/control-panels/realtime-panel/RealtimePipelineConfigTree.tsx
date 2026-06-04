@@ -1,9 +1,4 @@
-import React, {useCallback, useState} from "react";
-import {Box, Typography, useTheme} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import ChevronRight from "@mui/icons-material/ChevronRight";
-
+import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
@@ -31,19 +26,18 @@ interface PipelineConfigTreeProps {
 }
 
 export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
-                                                                                  context,
-                                                                                  charucoEnabled,
-                                                                                  onCharucoToggle,
-                                                                                  skeletonEnabled,
-                                                                                  onSkeletonToggle,
-                                                                                  triangulateEnabled,
-                                                                                  onTriangulateToggle,
-                                                                                  filterEnabled,
-                                                                                  onFilterToggle,
-                                                                                  rigidBodyEnabled,
-                                                                                  onRigidBodyToggle,
-                                                                              }) => {
-    const theme = useTheme();
+    context,
+    charucoEnabled,
+    onCharucoToggle,
+    skeletonEnabled,
+    onSkeletonToggle,
+    triangulateEnabled,
+    onTriangulateToggle,
+    filterEnabled,
+    onFilterToggle,
+    rigidBodyEnabled,
+    onRigidBodyToggle,
+}) => {
     const dispatch = useAppDispatch();
     const isConnected = useAppSelector(selectIsPipelineConnected);
     const pipelineConfig = useAppSelector(selectPipelineConfig);
@@ -53,8 +47,6 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         updateSkeletonFilterConfigLocalOnly,
         replaceSkeletonFilterConfigLocalOnly,
     } = useMocap();
-    const [expandedItems, setExpandedItems] = useState<string[]>([]);
-
     const triggerRealtimeApply = useCallback(() => {
         if (isConnected) {
             dispatch(applyRealtimePipeline(pipelineConfig));
@@ -93,10 +85,8 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         [replaceSkeletonFilterConfigLocalOnly, context, triggerRealtimeApply]
     );
 
-    const isExpanded = (id: string) => expandedItems.includes(id);
 
     // ── 2D Tracking parent state ──────────────────────────────────────────────
-    // all on → checked; some on → indeterminate; none on → unchecked
     const tracking2dAllOn = charucoEnabled && skeletonEnabled;
     const tracking2dSomeOn = charucoEnabled || skeletonEnabled;
     const tracking2dIndeterminate = tracking2dSomeOn && !tracking2dAllOn;
@@ -108,8 +98,6 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     const recon3dIndeterminate = recon3dSomeOn && !recon3dAllOn;
     const recon3dChecked = recon3dAllOn;
 
-    // Parent handlers receive the resolved newValue from the child
-    // (child already handles indeterminate → true logic before calling up)
     const handleToggle2dTracking = (newValue: boolean) => {
         onCharucoToggle(newValue);
         onSkeletonToggle(newValue);
@@ -122,16 +110,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     };
 
     return (
-        <SimpleTreeView
-            expandedItems={expandedItems}
-            onExpandedItemsChange={(_, items) => setExpandedItems(items)}
-            disableSelection
-            expansionTrigger="iconContainer"
-            slots={{
-                collapseIcon: ExpandMore,
-                expandIcon: ChevronRight,
-            }}
-        >
+        <div className="flex flex-col">
             {/* ── 2D Tracking ── */}
             <RealtimePipelineStageTreeItem
                 itemId="2d-tracking"
@@ -139,7 +118,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 checked={tracking2dChecked}
                 indeterminate={tracking2dIndeterminate}
                 onToggle={handleToggle2dTracking}
-                isExpanded={isExpanded("2d-tracking")}
+                
                 summaryWhenCollapsed={
                     [charucoEnabled && "Charuco", skeletonEnabled && "Skeleton"]
                         .filter(Boolean)
@@ -152,13 +131,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Charuco"
                     checked={charucoEnabled}
                     onToggle={onCharucoToggle}
-                    isExpanded={isExpanded("2d-charuco")}
+                    
                 >
-                    <Box sx={{p: 1, pl: 2}}>
-                        <Typography variant="caption" color="text.secondary">
+                    <div className="p-1" style={{paddingLeft: 16}}>
+                        <p className="text sm text-gray">
                             Settings from `Post Processing::Capture Volume Calibration` section
-                        </Typography>
-                    </Box>
+                        </p>
+                    </div>
                 </RealtimePipelineStageTreeItem>
 
                 {/* Skeleton (MediaPipe) */}
@@ -167,15 +146,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
-                    isExpanded={isExpanded("2d-skeleton")}
+                    
                     summaryWhenCollapsed={context === "realtime" ? "Realtime preset" : "Posthoc preset"}
                 >
-                    <Box sx={{p: 1, pl: 2, borderLeft: `2px solid ${theme.palette.divider}`}}>
+                    <div className="p-1 border-1 border-mid-black" style={{paddingLeft: 16, borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <MediapipeConfigPanel
                             updateDetectorConfig={handleUpdateDetectorConfig}
                             replaceDetectorConfig={handleReplaceDetectorConfig}
                         />
-                    </Box>
+                    </div>
                 </RealtimePipelineStageTreeItem>
             </RealtimePipelineStageTreeItem>
 
@@ -186,7 +165,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 checked={recon3dChecked}
                 indeterminate={recon3dIndeterminate}
                 onToggle={handleToggle3dReconstruction}
-                isExpanded={isExpanded("3d-reconstruction")}
+                
                 summaryWhenCollapsed={
                     [triangulateEnabled && "Triangulate", filterEnabled && "Filter", rigidBodyEnabled && "Skeleton"]
                         .filter(Boolean)
@@ -199,13 +178,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Triangulate"
                     checked={triangulateEnabled}
                     onToggle={onTriangulateToggle}
-                    isExpanded={isExpanded("3d-triangulate")}
+                    
                 >
-                    <Box sx={{p: 1, pl: 2}}>
-                        <Typography variant="caption" color="text.secondary">
+                    <div className="p-1" style={{paddingLeft: 16}}>
+                        <p className="text sm text-gray">
                             Triangulation settings — calibration TOML picker and parameters (placeholder)
-                        </Typography>
-                    </Box>
+                        </p>
+                    </div>
                 </RealtimePipelineStageTreeItem>
 
                 {/* Filter */}
@@ -214,15 +193,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Filter"
                     checked={filterEnabled}
                     onToggle={onFilterToggle}
-                    isExpanded={isExpanded("3d-filter")}
+                    
                     summaryWhenCollapsed="One Euro, FABRIK"
                 >
-                    <Box sx={{p: 1, pl: 2, borderLeft: `2px solid ${theme.palette.divider}`}}>
+                    <div className="p-1" style={{paddingLeft: 16, borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <SkeletonFilterConfigPanel
                             updateSkeletonFilterConfig={handleUpdateSkeletonFilterConfig}
                             replaceSkeletonFilterConfig={handleReplaceSkeletonFilterConfig}
                         />
-                    </Box>
+                    </div>
                 </RealtimePipelineStageTreeItem>
 
                 {/* Skeleton (rigid body) */}
@@ -231,18 +210,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={rigidBodyEnabled}
                     onToggle={onRigidBodyToggle}
-                    isExpanded={isExpanded("3d-skeleton")}
+                    
                 >
-                    <Box sx={{p: 1, pl: 2}}>
-                        <Typography variant="caption" color="text.secondary">
+                    <div className="p-1" style={{paddingLeft: 16}}>
+                        <p className="text sm text-gray">
                             Rigid body and skeleton reconstruction parameters (placeholder)
-                        </Typography>
-                    </Box>
+                        </p>
+                    </div>
                 </RealtimePipelineStageTreeItem>
             </RealtimePipelineStageTreeItem>
-
-        </SimpleTreeView>
-
-)
-    ;
+        </div>
+    );
 };

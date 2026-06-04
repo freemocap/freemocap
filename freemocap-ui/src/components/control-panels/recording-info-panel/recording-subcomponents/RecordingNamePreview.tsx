@@ -1,6 +1,5 @@
 import React from 'react';
 import {useTranslation} from 'react-i18next';
-import {TextField, Typography} from '@mui/material';
 
 interface RecordingNamePreviewProps {
     name: string;
@@ -10,29 +9,30 @@ interface RecordingNamePreviewProps {
 }
 
 export const RecordingNamePreview: React.FC<RecordingNamePreviewProps> = ({
-                                                                              name,
-                                                                              tag,
-                                                                              isRecording,
-                                                                              onTagChange
-                                                                          }) => {
+    name,
+    tag,
+    isRecording,
+    onTagChange
+}) => {
     const { t } = useTranslation();
     return (
         <>
-            <Typography variant="body2" sx={{mb: 1}}>
+            <p className="text sm text-gray" style={{marginBottom: 8}}>
                 {t('recordingName', { name })}
-            </Typography>
+            </p>
             {!isRecording && (
-                <TextField
-                    label={t("recordingTag")}
-                    value={tag}
-                    onChange={(e) => onTagChange(e.target.value)}
-                    onKeyDown={(e) => {
-                        // Stop the TreeView from intercepting keyboard navigation
-                        e.stopPropagation();}}
-                    size="small"
-                    fullWidth
-                    placeholder={t("recordingTagPlaceholder")}
-                />
+                <div className="input-with-string w-full">
+                    <input
+                        className="input-field text md w-full"
+                        value={tag}
+                        onChange={(e) => onTagChange(e.target.value)}
+                        onKeyDown={(e) => {
+                            // Stop the TreeView from intercepting keyboard navigation
+                            e.stopPropagation();
+                        }}
+                        placeholder={t("recordingTagPlaceholder")}
+                    />
+                </div>
             )}
         </>
     );

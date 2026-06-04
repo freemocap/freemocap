@@ -1,11 +1,6 @@
 // freemocap-ui/src/components/recording-info-panel/recording-subcomponents/FullRecordingPathPreview.tsx
 import React from 'react';
-import {Box, IconButton, Paper, Tooltip, Typography, useTheme} from '@mui/material';
-import FolderIcon from '@mui/icons-material/Folder';
-import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
 import {useTranslation} from "react-i18next";
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import {useElectronIPC} from "@/services";
 
 
@@ -16,17 +11,16 @@ interface FullPathPreviewProps {
 }
 
 export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
-                                                                             directory,
-                                                                             filename,
-                                                                             subfolder
-                                                                         }) => {
-    const theme = useTheme();
+    directory,
+    filename,
+    subfolder
+}) => {
     const { t } = useTranslation();
-    const { api } = useElectronIPC()
+    const { api } = useElectronIPC();
     const parts = [
-        {icon: <FolderIcon/>, text: directory},
-        ...(subfolder ? [{icon: <FolderIcon/>, text: subfolder}] : []),
-        {icon: <FolderSpecialIcon/>, text: filename}
+        {text: directory},
+        ...(subfolder ? [{text: subfolder}] : []),
+        {text: filename}
     ];
 
     const fullPath: string = parts.map(p => p.text).join('/');
@@ -35,7 +29,6 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
     const directoryToOpen: string = subfolder
         ? `${directory}/${subfolder}`
         : directory;
-
 
     const handleOpenFolder = async () => {
         try {
@@ -46,98 +39,37 @@ export const FullRecordingPathPreview: React.FC<FullPathPreviewProps> = ({
     };
 
     return (
-        <Paper
-            elevation={0}
-            sx={{
-                p: 1.5,
-                backgroundColor: theme.palette.mode === 'dark'
-                    ? 'rgba(255, 255, 255, 0.05)'
-                    : 'rgba(0, 0, 0, 0.04)',
-                borderRadius: 1,
-                borderStyle: 'solid',
-                borderColor: theme.palette.divider,
-            }}
+        <div
+            className="p-2 br-1 border-1 border-mid-black bg-middark"
         >
-            <Box sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 1
-            }}>
-
-
-                {/* Mobile/Narrow view */}
-                <Box sx={{display: {xs: 'block', md: 'none'}}}>
-                    <Tooltip title={fullPath} placement="bottom-start">
-                        <Typography
-                            noWrap
-                            sx={{
-                                fontFamily: 'monospace',
-                                fontSize: '0.9rem',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {fullPath}
-                        </Typography>
-                    </Tooltip>
-                </Box>
-
-                {/* Desktop view */}
-                <Box
-                    sx={{
-                        display: {xs: 'none', md: 'flex'},
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 0.5
-                    }}
-                >
+            <div className="flex flex-row justify-content-space-between items-center" style={{marginBottom: 8}}>
+                {/* Path display */}
+                <div className="flex flex-row items-center" style={{flexWrap: 'wrap', gap: 4, flex: 1, minWidth: 0}}>
                     {parts.map((part, index) => (
                         <React.Fragment key={index}>
-                            <Box sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                color: 'text.secondary',
-                                // backgroundColor: 'background.paper',
-                                borderRadius: 1,
-                                px: 1,
-                                py: 0.5,
-                            }}>
-                                {part.icon}
-                                <Typography
-                                    sx={{
-                                        ml: 0.5,
-                                        fontFamily: 'monospace',
-                                        fontSize: '0.9rem'
-                                    }}
+                            <div className="flex flex-row items-center" style={{borderRadius: 4, paddingLeft: 4, paddingRight: 4}}>
+                                <p
+                                    className="text sm text-gray"
+                                    style={{fontFamily: 'monospace', fontSize: '0.9rem'}}
                                 >
                                     {part.text}
-                                </Typography>
-                            </Box>
+                                </p>
+                            </div>
                             {index < parts.length - 1 && (
-                                <ChevronRightIcon sx={{color: 'text.secondary'}}/>
+                                <span className="text sm text-gray">›</span>
                             )}
                         </React.Fragment>
                     ))}
-                </Box>
+                </div>
 
-                <Tooltip title={t("openFolder")}>
-                    <IconButton
-                        size="small"
-                        onClick={handleOpenFolder}
-                        sx={{
-                            color: theme.palette.primary.contrastText,
-                            '&:hover': {
-                                backgroundColor: theme.palette.mode === 'dark'
-                                    ? 'rgba(255, 255, 255, 0.08)'
-                                    : 'rgba(0, 0, 0, 0.04)'
-                            }
-                        }}
-                    >
-                        <FolderOpenIcon fontSize="small"/>
-                    </IconButton>
-                </Tooltip>
-            </Box>
-
-        </Paper>
+                <button
+                    className="button icon-button br-1"
+                    onClick={handleOpenFolder}
+                    title={t("openFolder")}
+                >
+                    <span className="icon streaming-icon icon-size-20" />
+                </button>
+            </div>
+        </div>
     );
 };

@@ -1,14 +1,10 @@
 import React, {useCallback, useState} from 'react';
-import Box from "@mui/material/Box";
 import ErrorBoundary from "@/components/common/ErrorBoundary";
 import {Footer} from "@/components/ui-components/Footer";
-import {useTheme} from "@mui/material/styles";
 import {CameraViewsGrid} from "@/components/camera-views/CameraViewsGrid";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
-import {
-    SettingsOverlay
-} from "@/components/ui-components/SettingsOverlay";
+import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 
 export type LayoutDirection = 'vertical' | 'horizontal';
 
@@ -19,7 +15,6 @@ export interface CameraSettings {
 }
 
 export const StreamingViewPage = () => {
-    const theme = useTheme();
     const [resetKey, setResetKey] = useState<number>(0);
     const [settings, setSettings] = useState<CameraSettings>({
         columns: null,
@@ -39,19 +34,11 @@ export const StreamingViewPage = () => {
 
     return (
         <React.Fragment>
-            <Box sx={{
-                py: 1,
-                px: 1,
+            <div className="flex flex-col pos-rel overflow-hidden bg-dark" style={{
+                padding: 8,
                 flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
                 height: '100%',
                 width: '100%',
-                backgroundColor: theme.palette.mode === 'dark'
-                    ? theme.palette.background.default
-                    : theme.palette.background.paper,
-                overflow: "hidden",
-                position: 'relative',
             }}>
                 <SettingsOverlay
                     settings={settings}
@@ -59,80 +46,65 @@ export const StreamingViewPage = () => {
                     onResetLayout={handleResetLayout}
                 />
 
-                <Box sx={{flex: 1, overflow: 'hidden'}}>
+                <div className="flex-1 overflow-hidden">
                     {settings.show3dView ? (
                         <PanelGroup
                             key={`main-panels-${resetKey}-${settings.layoutDirection}`}
                             direction={settings.layoutDirection}
                         >
-                            {/* Camera Grid View Panel */}
                             <Panel defaultSize={60} minSize={20}>
-                                <Box sx={{height: '100%', overflow: 'auto'}}>
+                                <div style={{height: '100%', overflow: 'auto'}}>
                                     <ErrorBoundary>
                                         <CameraViewsGrid manualColumns={settings.columns} resetKey={resetKey}/>
                                     </ErrorBoundary>
-                                </Box>
+                                </div>
                             </Panel>
 
-                            {/* Resize Handle — direction-aware sizing and drag indicator */}
                             <PanelResizeHandle>
-                                <Box
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        backgroundColor: theme.palette.divider,
-                                        transition: 'background-color 0.15s ease',
-                                        cursor: isHorizontal ? 'col-resize' : 'row-resize',
-                                        ...(isHorizontal
-                                            ? {width: '6px', height: '100%', flexDirection: 'column'}
-                                            : {height: '6px', width: '100%', flexDirection: 'row'}
-                                        ),
-                                        '&:hover': {
-                                            backgroundColor: theme.palette.primary.main,
-                                        },
-                                        '&:active': {
-                                            backgroundColor: theme.palette.primary.dark,
-                                        },
-                                    }}
-                                >
-                                    {/* Drag grip dots */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    backgroundColor: 'var(--color-border-secondary)',
+                                    transition: 'background-color 0.15s ease',
+                                    cursor: isHorizontal ? 'col-resize' : 'row-resize',
+                                    ...(isHorizontal
+                                        ? {width: '6px', height: '100%', flexDirection: 'column' as const}
+                                        : {height: '6px', width: '100%', flexDirection: 'row' as const}
+                                    ),
+                                }}>
                                     {[0, 1, 2].map((i) => (
-                                        <Box
-                                            key={i}
-                                            sx={{
-                                                width: isHorizontal ? 4 : 4,
-                                                height: isHorizontal ? 4 : 4,
-                                                borderRadius: '50%',
-                                                backgroundColor: theme.palette.text.disabled,
-                                                m: isHorizontal ? '2px 0' : '0 2px',
-                                                flexShrink: 0,
-                                            }}
-                                        />
+                                        <div key={i} style={{
+                                            width: 4,
+                                            height: 4,
+                                            borderRadius: '50%',
+                                            backgroundColor: 'var(--color-text-disabled)',
+                                            margin: isHorizontal ? '2px 0' : '0 2px',
+                                            flexShrink: 0,
+                                        }}/>
                                     ))}
-                                </Box>
+                                </div>
                             </PanelResizeHandle>
 
-                            {/* 3D View Panel */}
                             <Panel defaultSize={40} minSize={10}>
-                                <Box sx={{height: '100%'}}>
+                                <div style={{height: '100%'}}>
                                     <ThreeJsCanvas/>
-                                </Box>
+                                </div>
                             </Panel>
                         </PanelGroup>
                     ) : (
-                        <Box sx={{height: '100%', overflow: 'auto'}}>
+                        <div style={{height: '100%', overflow: 'auto'}}>
                             <ErrorBoundary>
                                 <CameraViewsGrid manualColumns={settings.columns} resetKey={resetKey}/>
                             </ErrorBoundary>
-                        </Box>
+                        </div>
                     )}
-                </Box>
+                </div>
 
-                <Box component="footer" sx={{p: 1, flexShrink: 0}}>
+                <footer style={{padding: 8, flexShrink: 0}}>
                     <Footer/>
-                </Box>
-            </Box>
+                </footer>
+            </div>
         </React.Fragment>
     );
 };

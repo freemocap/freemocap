@@ -1,6 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {Box, Typography} from '@mui/material';
-import {TreeItem} from '@mui/x-tree-view/TreeItem';
 import {
     FullRecordingPathPreview
 } from "@/components/control-panels/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
@@ -33,31 +31,29 @@ interface RecordingPathTreeItemProps {
 }
 
 export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
-                                                                                recordingDirectory,
-                                                                                countdown,
-                                                                                recordingTag,
-                                                                                useDelayStart,
-                                                                                delaySeconds,
-                                                                                useTimestamp,
-                                                                                baseName,
-                                                                                recordingTypePreset,
-                                                                                useIncrement,
-                                                                                currentIncrement,
-                                                                                createSubfolder,
-                                                                                customSubfolderName,
-                                                                                isRecording,
-                                                                                onDelayToggle,
-                                                                                onDelayChange,
-                                                                                onTagChange,
-                                                                                onUseTimestampChange,
-                                                                                onBaseNameChange,
-                                                                                onUseIncrementChange,
-                                                                                onIncrementChange,
-                                                                                onCreateSubfolderChange,
-                                                                                onCustomSubfolderNameChange
-                                                                            }) => {
-    // Tick once per second while not recording so the name preview stays current.
-    // Isolated here so only this subtree re-renders, not the entire panel.
+    recordingDirectory,
+    countdown,
+    recordingTag,
+    useDelayStart,
+    delaySeconds,
+    useTimestamp,
+    baseName,
+    recordingTypePreset,
+    useIncrement,
+    currentIncrement,
+    createSubfolder,
+    customSubfolderName,
+    isRecording,
+    onDelayToggle,
+    onDelayChange,
+    onTagChange,
+    onUseTimestampChange,
+    onBaseNameChange,
+    onUseIncrementChange,
+    onIncrementChange,
+    onCreateSubfolderChange,
+    onCustomSubfolderNameChange
+}) => {
     const [previewTimestamp, setPreviewTimestamp] = useState<string>(() => getTimestampString());
     useEffect(() => {
         if (isRecording) return;
@@ -77,26 +73,24 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     const subfolder = createSubfolder ? customSubfolderName || previewTimestamp : undefined;
 
     return (
-        <TreeItem
-            itemId="recording-path"
-            label={
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                    <FullRecordingPathPreview
-                        directory={recordingDirectory}
-                        filename={recordingName}
-                        subfolder={subfolder}
-                    />
-                </Box>
-            }
-        >
-            <Box
+        <div>
+            <div className="flex flex-row items-center gap-1 p-1">
+                <FullRecordingPathPreview
+                    directory={recordingDirectory}
+                    filename={recordingName}
+                    subfolder={subfolder}
+                />
+            </div>
+
+            <div
                 onKeyDown={(e) => e.stopPropagation()}
-                sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}
+                className="flex flex-col gap-2"
+                style={{paddingLeft: 8, paddingTop: 8}}
             >
                 {countdown !== null && (
-                    <Typography variant="h4" align="center" color="secondary">
+                    <p className="text bg text-white" style={{textAlign: 'center', color: 'var(--color-accent)'}}>
                         Starting in {countdown}...
-                    </Typography>
+                    </p>
                 )}
 
                 <RecordingControlsSection
@@ -122,7 +116,7 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                     onCreateSubfolderChange={onCreateSubfolderChange}
                     onCustomSubfolderNameChange={onCustomSubfolderNameChange}
                 />
-            </Box>
-        </TreeItem>
+            </div>
+        </div>
     );
 };

@@ -1,6 +1,4 @@
 import React, {useEffect, useState} from 'react';
-import {Box, Button, CircularProgress, keyframes, Typography} from '@mui/material';
-import {styled} from '@mui/system';
 import {useTranslation} from 'react-i18next';
 
 interface StartStopButtonProps {
@@ -11,43 +9,6 @@ interface StartStopButtonProps {
     disabled: boolean;
     onClick: () => void;
 }
-
-const pulseAnimation = keyframes`
-    0% {
-        background-color: #fb1402;
-    }
-    50% {
-        background-color: #711c1c;
-    }
-    100% {
-        background-color: #fb1402;
-    }
-`;
-
-// Use shouldForwardProp to prevent custom props from being passed to the DOM
-const PulsingButton = styled(Button, {
-    shouldForwardProp: (prop) => !['isRecording', 'isPending'].includes(prop as string)
-})<{ isRecording: boolean; isPending: boolean }>(({ isRecording, isPending }) => ({
-    backgroundColor: isRecording ? '#8d0a02' : '#005d94',
-    borderStyle: 'solid',
-    borderWidth: '3px',
-    borderColor: isPending ? '#ffa500' : '#ff55ff',
-    padding: 10,
-    position: 'relative',
-    transition: 'all 0.3s ease',
-    opacity: isPending ? 0.8 : 1,
-    '&:hover': {
-        borderColor: isPending ? '#ffa500' : '#fb1402',
-        borderWidth: '3px',
-    },
-    '&:disabled': {
-        opacity: 0.8,
-        cursor: 'not-allowed',
-    },
-    ...(isRecording && !isPending && {
-        animation: `${pulseAnimation} 3s infinite ease-in-out`,
-    }),
-}));
 
 const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
@@ -101,58 +62,77 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
         // Show countdown if active
         if (countdown !== null && countdown > 0) {
             return (
-                <Box display="flex" alignItems="center" gap={1}>
-                    <Typography variant="h6">
+                <div className="flex flex-row items-center gap-1">
+                    <p className="text bg text-white">
                         {t('startingIn', { countdown })}
-                    </Typography>
-                </Box>
+                    </p>
+                </div>
             );
         }
 
         // Show pending state
         if (isPending) {
             return (
-                <Box display="flex" alignItems="center" gap={1}>
-                    <CircularProgress size={20} color="inherit" />
-                    <Typography variant="h6">
+                <div className="flex flex-row items-center gap-1">
+                    <span className="icon loader-icon icon-size-20" />
+                    <p className="text bg text-white">
                         {isRecording ? t('stopping') : t('starting')}
-                    </Typography>
-                </Box>
+                    </p>
+                </div>
             );
         }
 
         // Show recording state with duration
         if (isRecording) {
             return (
-                <Box display="flex" flexDirection="column" alignItems="center">
-                    <Typography variant="h6">
-                        {t('stopRecordingButton')}
-                    </Typography>
-                    <Typography variant="caption" sx={{ fontSize: '0.9rem', fontFamily: 'monospace' }}>
+                <div className="flex flex-col items-center">
+                    <p className="text bg text-white">{t('stopRecordingButton')}</p>
+                    <p className="text sm text-white" style={{fontSize: '0.9rem', fontFamily: 'monospace'}}>
                         {formatDuration(recordingDuration)}
-                    </Typography>
-                </Box>
+                    </p>
+                </div>
             );
         }
 
         // Default start state
         return (
-            <Typography variant="h6">
-                {t('startRecordingButton')}
-            </Typography>
+            <p className="text bg text-white">{t('startRecordingButton')}</p>
         );
     };
 
+    const buttonStyle: React.CSSProperties = {
+        backgroundColor: isRecording ? '#8d0a02' : '#005d94',
+        borderStyle: 'solid',
+        borderWidth: '3px',
+        borderColor: isPending ? '#ffa500' : '#ff55ff',
+        padding: 10,
+        position: 'relative',
+        transition: 'all 0.3s ease',
+        opacity: isPending ? 0.8 : 1,
+        width: '100%',
+        cursor: disabled || isPending || countdown !== null ? 'not-allowed' : 'pointer',
+        ...(isRecording && !isPending
+            ? {animation: 'pulseBg 3s infinite ease-in-out'}
+            : {}),
+    };
+
     return (
-        <PulsingButton
-            onClick={onClick}
-            variant="contained"
-            isRecording={isRecording}
-            isPending={isPending}
-            disabled={disabled || isPending || countdown !== null}
-            fullWidth
-        >
-            {getButtonContent()}
-        </PulsingButton>
+        <>
+            <style>{`
+                @keyframes pulseBg {
+                    0%   { background-color: #fb1402; }
+                    50%  { background-color: #711c1c; }
+                    100% { background-color: #fb1402; }
+                }
+            `}</style>
+            <button
+                onClick={onClick}
+                disabled={disabled || isPending || countdown !== null}
+                style={buttonStyle}
+                className="button sm"
+            >
+                {getButtonContent()}
+            </button>
+        </>
     );
 };

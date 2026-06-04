@@ -1,5 +1,4 @@
 import React from "react";
-import {Box, FormControl, InputLabel, MenuItem, Select, SxProps, Theme} from "@mui/material";
 
 interface PresetOption<T extends string> {
     value: T;
@@ -12,9 +11,7 @@ interface PresetPickerProps<T extends string> {
     options: PresetOption<T>[];
     onChange: (value: T) => void;
     disabled?: boolean;
-    size?: "small" | "medium";
     minWidth?: number;
-    sx?: SxProps<Theme>;
 }
 
 export function PresetPicker<T extends string>({
@@ -23,30 +20,26 @@ export function PresetPicker<T extends string>({
     options,
     onChange,
     disabled = false,
-    size = "small",
     minWidth = 120,
-    sx,
 }: PresetPickerProps<T>): React.ReactElement {
-    const labelId = label ? `preset-picker-${label.toLowerCase().replace(/\s+/g, "-")}-label` : undefined;
-
     return (
-        <Box >
-        <FormControl size={size} sx={{minWidth, ...sx}}>
-            {label && <InputLabel id={labelId}>{label}</InputLabel>}
-            <Select
-                labelId={labelId}
-                value={value}
-                label={label || undefined}
-                onChange={(e) => onChange(e.target.value as T)}
-                disabled={disabled}
-            >
-                {options.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-            </Box>
+        <div className="flex flex-col gap-1" style={{ minWidth }}>
+            {label && <label className="text sm text-gray">{label}</label>}
+            <div className="input-with-string">
+                <select
+                    className="input-field text md w-full"
+                    value={value}
+                    onChange={(e) => onChange(e.target.value as T)}
+                    disabled={disabled}
+                    style={{ width: '100%', cursor: disabled ? 'not-allowed' : 'pointer' }}
+                >
+                    {options.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </div>
     );
 }

@@ -1,5 +1,4 @@
 import React from 'react';
-import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
 import {CollapsibleSidebarSection} from '@/components/common/CollapsibleSidebarSection';
 import {RecordingBrowser} from './RecordingBrowser';
 import {usePlaybackContext} from './PlaybackContext';
@@ -13,7 +12,7 @@ export const RecordingBrowserSection: React.FC = () => {
 
     return (
         <CollapsibleSidebarSection
-            icon={<VideoLibraryIcon sx={{fontSize: 20}}/>}
+            icon={<span className="icon load-icon icon-size-20"/>}
             title={t('recordings')}
             defaultExpanded
         >

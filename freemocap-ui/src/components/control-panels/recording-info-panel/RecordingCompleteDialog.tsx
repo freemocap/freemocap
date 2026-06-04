@@ -1,24 +1,4 @@
 import React from 'react';
-import {
-    Box,
-    Button,
-    Dialog,
-    DialogActions,
-    DialogContent,
-    DialogTitle,
-    Divider,
-    IconButton,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Typography,
-} from '@mui/material';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {useNavigate} from 'react-router-dom';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {recordingCompletionDismissed} from '@/store/slices/recording/recording-slice';
@@ -41,33 +21,35 @@ function TimingStatsTable({ data }: { data: RecordingCompletionData }) {
         { label: 'Inter-Camera Frame Grab Sync (ms)', stats: data.inter_camera_grab_range_ms_stats },
     ];
 
+    const thStyle: React.CSSProperties = {fontWeight: 'bold', padding: '4px 8px', fontSize: '0.8rem', textAlign: 'left', borderBottom: '1px solid var(--color-border-secondary)'};
+    const tdStyle: React.CSSProperties = {padding: '4px 8px', fontSize: '0.8rem'};
+    const tdRightStyle: React.CSSProperties = {...tdStyle, textAlign: 'right'};
+
     return (
-        <TableContainer>
-            <Table size="small" sx={{ '& td, & th': { py: 0.5, px: 1, fontSize: '0.8rem' } }}>
-                <TableHead>
-                    <TableRow>
-                        <TableCell sx={{ fontWeight: 'bold' }}>Metric</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Median</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Mean</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Std</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Min</TableCell>
-                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>Max</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {rows.map((row) => (
-                        <TableRow key={row.label}>
-                            <TableCell>{row.label}</TableCell>
-                            <TableCell align="right">{formatStat(row.stats.median)}</TableCell>
-                            <TableCell align="right">{formatStat(row.stats.mean)}</TableCell>
-                            <TableCell align="right">{formatStat(row.stats.std)}</TableCell>
-                            <TableCell align="right">{formatStat(row.stats.min)}</TableCell>
-                            <TableCell align="right">{formatStat(row.stats.max)}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
-        </TableContainer>
+        <table style={{width: '100%', borderCollapse: 'collapse'}}>
+            <thead>
+                <tr>
+                    <th style={thStyle}>Metric</th>
+                    <th style={{...thStyle, textAlign: 'right'}}>Median</th>
+                    <th style={{...thStyle, textAlign: 'right'}}>Mean</th>
+                    <th style={{...thStyle, textAlign: 'right'}}>Std</th>
+                    <th style={{...thStyle, textAlign: 'right'}}>Min</th>
+                    <th style={{...thStyle, textAlign: 'right'}}>Max</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows.map((row) => (
+                    <tr key={row.label}>
+                        <td style={tdStyle}>{row.label}</td>
+                        <td style={tdRightStyle}>{formatStat(row.stats.median)}</td>
+                        <td style={tdRightStyle}>{formatStat(row.stats.mean)}</td>
+                        <td style={tdRightStyle}>{formatStat(row.stats.std)}</td>
+                        <td style={tdRightStyle}>{formatStat(row.stats.min)}</td>
+                        <td style={tdRightStyle}>{formatStat(row.stats.max)}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
     );
 }
 
@@ -99,19 +81,32 @@ export const RecordingCompleteDialog: React.FC = () => {
     };
 
     return (
-        <Dialog open onClose={handleClose} maxWidth="md" fullWidth>
-            <DialogTitle sx={{ pb: 1 }}>Recording Complete!</DialogTitle>
-            <DialogContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                    <Typography
-                        variant="body2"
-                        sx={{
+        <div
+            className="splash-overlay inset-0"
+            style={{position: 'fixed', zIndex: 100}}
+            onClick={handleClose}
+        >
+            <div
+                className="pos-rel bg-middark br-2 flex flex-col p-3"
+                style={{minWidth: 480, maxWidth: 720, width: '100%'}}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex flex-row items-center justify-content-space-between" style={{paddingBottom: 8}}>
+                    <p className="text bg text-white">Recording Complete!</p>
+                    <button className="button icon-button br-1" onClick={handleClose} title="Close">
+                        <span className="icon close-icon icon-size-20" />
+                    </button>
+                </div>
+
+                <div className="flex flex-row items-center gap-1" style={{marginBottom: 8}}>
+                    <span
+                        className="text sm text-gray"
+                        style={{
                             fontFamily: 'monospace',
                             fontSize: '0.8rem',
-                            bgcolor: 'action.hover',
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: 1,
+                            backgroundColor: 'var(--color-bg-elevated)',
+                            padding: '4px 8px',
+                            borderRadius: 4,
                             flex: 1,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -119,46 +114,43 @@ export const RecordingCompleteDialog: React.FC = () => {
                         }}
                     >
                         {completionData.recording_path}
-                    </Typography>
-                    <IconButton size="small" onClick={handleCopyPath} title="Copy path">
-                        <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={handleOpenFolder} title="Open folder">
-                        <FolderOpenIcon fontSize="small" />
-                    </IconButton>
-                </Box>
+                    </span>
+                    <button className="button icon-button br-1" onClick={handleCopyPath} title="Copy path">
+                        <span className="icon copy-icon icon-size-20" />
+                    </button>
+                    <button className="button icon-button br-1" onClick={handleOpenFolder} title="Open folder">
+                        <span className="icon folder-icon icon-size-20" />
+                    </button>
+                </div>
 
-                <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                <p className="text sm text-gray" style={{marginBottom: 8}}>
                     {completionData.number_of_cameras} camera{completionData.number_of_cameras !== 1 ? 's' : ''}
-                    {' \u00B7 '}
+                    {' · '}
                     {completionData.number_of_frames} frames
-                    {' \u00B7 '}
+                    {' · '}
                     {completionData.total_duration_sec}s
-                    {' \u00B7 '}
+                    {' · '}
                     {completionData.mean_framerate} Hz avg
-                </Typography>
+                </p>
 
-                <Divider sx={{ mb: 1.5 }} />
+                <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0 8px 0'}} />
 
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                <p className="text sm text-white" style={{marginBottom: 8, fontWeight: 600}}>
                     Frame Timing Statistics
-                </Typography>
+                </p>
 
                 <TimingStatsTable data={completionData} />
-            </DialogContent>
-            <DialogActions>
-                <Button
-                    onClick={handleOpenInPlayback}
-                    variant="outlined"
-                    size="small"
-                    startIcon={<PlayArrowIcon />}
-                >
-                    Open in Playback
-                </Button>
-                <Button onClick={handleClose} variant="contained" size="small">
-                    Close
-                </Button>
-            </DialogActions>
-        </Dialog>
+
+                <div className="flex flex-row gap-1" style={{marginTop: 12, justifyContent: 'flex-end'}}>
+                    <button className="button sm secondary" onClick={handleOpenInPlayback}>
+                        <span className="icon play-icon icon-size-20" style={{marginRight: 4}} />
+                        Open in Playback
+                    </button>
+                    <button className="button sm primary" onClick={handleClose}>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };

@@ -1,24 +1,4 @@
 import React, {useCallback, useMemo, useState} from "react";
-import {
-    Alert,
-    Box,
-    Button,
-    Chip, FormControlLabel,
-    IconButton,
-    InputAdornment,
-    Stack, Switch,
-    TextField,
-    Tooltip,
-    Typography,
-    useTheme,
-} from "@mui/material";
-import SquareFootIcon from "@mui/icons-material/SquareFoot";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import StopIcon from "@mui/icons-material/Stop";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import LaunchIcon from "@mui/icons-material/Launch";
-import ClearIcon from "@mui/icons-material/Clear";
-import RefreshIcon from "@mui/icons-material/Refresh";
 import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useCalibration} from "@/hooks/useCalibration";
 import {useDirectoryWatcher} from "@/hooks/useDirectoryWatcher";
@@ -30,7 +10,6 @@ import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/acti
 import {useAppSelector} from "@/store";
 
 export const CalibrationPanel: React.FC = () => {
-    const theme = useTheme();
     const [localError, setLocalError] = useState<string | null>(null);
     const {api, isElectron} = useElectronIPC();
 
@@ -54,10 +33,8 @@ export const CalibrationPanel: React.FC = () => {
         clearError,
     } = useCalibration();
 
-    // Effective path: actual activeRecording if any, otherwise the planned path
     const effectiveCalibrationPath = useAppSelector(selectEffectiveRecordingPath);
 
-    // Auto-poll directory status instead of requiring manual refresh
     const {triggerRefresh, isWatching} = useDirectoryWatcher(
         calibrationRecordingPath,
         validateDirectory,
@@ -126,130 +103,94 @@ export const CalibrationPanel: React.FC = () => {
                 : "Idle";
 
     const statusColor = isRecording
-        ? theme.palette.error.main
+        ? 'var(--color-danger)'
         : isLoading
-            ? theme.palette.warning.main
+            ? 'var(--color-warning)'
             : directoryInfo?.cameraCalibrationTomlPath
-                ? theme.palette.success.main
-                : theme.palette.grey[600];
+                ? 'var(--color-success)'
+                : 'var(--color-bg-secondary)';
 
     return (
         <CollapsibleSidebarSection
-            icon={<SquareFootIcon sx={{color: "inherit"}}/>}
+            icon={<span className="icon calibrate-icon icon-size-20" style={{color: 'inherit'}}/>}
             title="Capture Volume Calibration"
-            summaryContent={<Chip
-                label={statusLabel}
-                size="small"
-                sx={{
-                    ml: "auto",
-                    height: 20,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    backgroundColor: statusColor,
-                    color: theme.palette.getContrastText(statusColor),
-                }}
-            />}
+            summaryContent={
+                <span
+                    className="tag text sm"
+                    style={{marginLeft: 'auto', height: 20, fontSize: 11, fontWeight: 600, backgroundColor: statusColor, color: '#fff'}}
+                >
+                    {statusLabel}
+                </span>
+            }
             defaultExpanded={false}
         >
-            <Box sx={{p: 2}}>
-
-                <Stack spacing={2}>
+            <div className="p-2">
+                <div className="flex flex-col gap-2">
                     {displayError && (
-                        <Alert severity="error" onClose={handleClearError}>
-                            {displayError}
-                        </Alert>
+                        <div className="toast-notification error" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                            <p className="text sm">{displayError}</p>
+                            <button className="button icon-button" onClick={handleClearError}>
+                                <span className="icon clear-icon icon-size-20"/>
+                            </button>
+                        </div>
                     )}
 
-                    {/* Recording Controls */}
-                    {/* TODO - Wire up these recording buttons to the EXACT same workflow as the recording panel  - current wiring has slop*/}
-                    {/*<Stack direction="row" spacing={2}>*/}
-                    {/*    <Button*/}
-                    {/*        variant="contained"*/}
-                    {/*        color="primary"*/}
-                    {/*        startIcon={<PlayArrowIcon/>}*/}
-                    {/*        onClick={dispatchStartCalibrationRecording}*/}
-                    {/*        // disabled={!canStartRecording || isLoading}*/}
-                    {/*        disabled={ isLoading}*/}
-                    {/*        fullWidth*/}
-                    {/*    >*/}
-                    {/*        Start Calibration Recording*/}
-                    {/*    </Button>*/}
-                    {/*    {isRecording && (*/}
-                    {/*        <Button*/}
-                    {/*            variant="contained"*/}
-                    {/*            color="error"*/}
-                    {/*            startIcon={<StopIcon/>}*/}
-                    {/*            onClick={dispatchStopCalibrationRecording}*/}
-                    {/*            disabled={isLoading}*/}
-                    {/*            fullWidth*/}
-                    {/*        >*/}
-                    {/*            Stop Recording*/}
-                    {/*        </Button>*/}
-                    {/*    )}*/}
-                    {/*</Stack>*/}
-
                     {/* Recording Path Input */}
-                    <TextField
-                        label="Calibration Recording Path"
-                        value={effectiveCalibrationPath || ''}
-                        onChange={handlePathInputChange}
-                        fullWidth
-                        size="small"
-                        helperText={isUsingManualPath ? "Using custom path" : "Using default recording directory"}
-                        InputProps={{
-                            endAdornment: (
-                                <InputAdornment position="end">
-                                    {isUsingManualPath && (
-                                        <Tooltip title="Clear manual path (revert to default)">
-                                            <IconButton onClick={clearManualRecordingPath} edge="end" size="small">
-                                                <ClearIcon fontSize="small"/>
-                                            </IconButton>
-                                        </Tooltip>
-                                    )}
-                                    <Tooltip title="Re-check calibration folder">
-                                        <span>
-                                            <IconButton
-                                                onClick={triggerRefresh}
-                                                edge="end"
-                                                size="small"
-                                                disabled={!calibrationRecordingPath || isLoading}
-                                            >
-                                                <RefreshIcon fontSize="small"/>
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Open folder in file explorer">
-                                        <span>
-                                            <IconButton
-                                                onClick={handleOpenFolder}
-                                                edge="end"
-                                                size="small"
-                                                disabled={!isElectron || !effectiveCalibrationPath}
-                                            >
-                                                <LaunchIcon fontSize="small"/>
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Select directory">
-                                        <IconButton onClick={handleSelectDirectory} edge="end" disabled={!isElectron}>
-                                            <FolderOpenIcon/>
-                                        </IconButton>
-                                    </Tooltip>
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                    
-                    <Button
-                        variant="contained"
-                        color="secondary"
+                    <div className="input-with-string" style={{display: 'flex', alignItems: 'center'}}>
+                        <input
+                            className="input-field text md"
+                            value={effectiveCalibrationPath || ''}
+                            onChange={handlePathInputChange}
+                            placeholder="Calibration Recording Path"
+                            style={{flex: 1, minWidth: 0}}
+                        />
+                        {isUsingManualPath && (
+                            <button
+                                className="button icon-button"
+                                onClick={clearManualRecordingPath}
+                                title="Clear manual path (revert to default)"
+                            >
+                                <span className="icon clear-icon icon-size-20"/>
+                            </button>
+                        )}
+                        <button
+                            className="button icon-button"
+                            onClick={triggerRefresh}
+                            disabled={!calibrationRecordingPath || isLoading}
+                            title="Re-check calibration folder"
+                        >
+                            <span className="icon rotate-icon icon-size-20"/>
+                        </button>
+                        <button
+                            className="button icon-button"
+                            onClick={handleOpenFolder}
+                            disabled={!isElectron || !effectiveCalibrationPath}
+                            title="Open folder in file explorer"
+                        >
+                            <span className="icon icon-size-20" style={{backgroundImage: 'var(--launch-icon, none)'}}/>
+                        </button>
+                        <button
+                            className="button icon-button"
+                            onClick={handleSelectDirectory}
+                            disabled={!isElectron}
+                            title="Select directory"
+                        >
+                            <span className="icon icon-size-20" style={{backgroundImage: 'var(--folder-open-icon, none)'}}/>
+                        </button>
+                    </div>
+                    {isUsingManualPath
+                        ? <p className="text sm text-gray">Using custom path</p>
+                        : <p className="text sm text-gray">Using default recording directory</p>
+                    }
+
+                    <button
+                        className="button sm primary w-full"
                         onClick={calibrateSelectedRecording}
                         disabled={!canCalibrate || isLoading}
-                        fullWidth
                     >
                         Calibrate Selected Recording
-                    </Button>
-                    {/* Directory Status (auto-refreshing via useDirectoryWatcher) */}
+                    </button>
+
                     <DirectoryStatusPanel
                         title="Calibration Folder Status"
                         tomlLabel="Has calibration TOML"
@@ -263,58 +204,40 @@ export const CalibrationPanel: React.FC = () => {
                         isRefreshing={false}
                     />
 
-                    {/* Groundplane */}
-                    <FormControlLabel
-                        control={
-                            <Switch
-                                size="small"
-                                checked={config.useGroundplane}
-                                onChange={(_, checked) =>
-                                    updateCalibrationConfig({useGroundplane: checked})
-                                }
-                                disabled={isLoading}
-                            />
-                        }
-                        label={
-                            <Typography variant="body2">
-                                Align to ground plane to initial charuco position
-                            </Typography>
-                        }
-                    />
-                    <CharucoBoardConfigSection />
+                    <label className="flex flex-row items-center gap-1">
+                        <input
+                            type="checkbox"
+                            checked={config.useGroundplane}
+                            onChange={(e) => updateCalibrationConfig({useGroundplane: e.target.checked})}
+                            disabled={isLoading}
+                            style={{accentColor: 'var(--color-info)'}}
+                        />
+                        <span className="text sm text-gray">Align to ground plane to initial charuco position</span>
+                    </label>
+
+                    <CharucoBoardConfigSection/>
 
                     <CalibrationSolverSection/>
 
                     {isRecording && (
-                        <Box sx={{width: "100%"}}>
-                            <Typography variant="caption" color="text.secondary" gutterBottom>
+                        <div style={{width: '100%'}}>
+                            <p className="text sm text-gray" style={{marginBottom: 4}}>
                                 Recording in Progress: {recordingProgress.toFixed(0)}%
-                            </Typography>
-                            <Box
-                                sx={{
-                                    width: "100%",
-                                    height: 8,
-                                    bgcolor: "grey.300",
-                                    borderRadius: 1,
-                                    overflow: "hidden",
-                                }}
-                            >
-                                <Box
-                                    sx={{
-                                        width: recordingProgress + "%",
-                                        height: "100%",
-                                        bgcolor: theme.palette.primary.main,
-                                        transition: "width 0.3s",
+                            </p>
+                            <div style={{width: '100%', height: 8, backgroundColor: 'var(--color-bg-secondary)', borderRadius: 4, overflow: 'hidden'}}>
+                                <div
+                                    style={{
+                                        width: recordingProgress + '%',
+                                        height: '100%',
+                                        backgroundColor: 'var(--color-info)',
+                                        transition: 'width 0.3s',
                                     }}
                                 />
-                            </Box>
-                        </Box>
+                            </div>
+                        </div>
                     )}
-
-
-                </Stack>
-            </Box>
+                </div>
+            </div>
         </CollapsibleSidebarSection>
-    )
-        ;
+    );
 };

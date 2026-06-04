@@ -1,26 +1,7 @@
-import React, {useState} from 'react';
-import {
-    Box,
-    Checkbox,
-    Divider,
-    FormControlLabel,
-    IconButton,
-    Paper,
-    Switch,
-    TextField,
-    ToggleButton,
-    ToggleButtonGroup,
-    Tooltip,
-} from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import CloseIcon from '@mui/icons-material/Close';
-import GridViewIcon from '@mui/icons-material/GridView';
-import ViewSidebarIcon from '@mui/icons-material/ViewSidebar';
-import SplitscreenIcon from '@mui/icons-material/Splitscreen';
-import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
-import {useServer} from '@/services/server/ServerContextProvider';
-import {useTranslation} from 'react-i18next';
-import type {CameraSettings, LayoutDirection} from '@/pages/StreamingViewPage';
+import React, { useState } from 'react';
+import { useServer } from '@/services/server/ServerContextProvider';
+import { useTranslation } from 'react-i18next';
+import type { CameraSettings, LayoutDirection } from '@/pages/StreamingViewPage';
 
 interface SettingsOverlayProps {
     settings: CameraSettings;
@@ -67,145 +48,105 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         onSettingsChange({ show3dView: event.target.checked });
     };
 
-    const handleLayoutDirectionChange = (
-        _event: React.MouseEvent<HTMLElement>,
-        newDirection: LayoutDirection | null,
-    ) => {
-        if (newDirection !== null) {
-            onSettingsChange({ layoutDirection: newDirection });
-        }
+    const handleLayoutDirectionChange = (newDirection: LayoutDirection) => {
+        onSettingsChange({ layoutDirection: newDirection });
     };
 
     return (
         <>
             {/* Settings toggle button */}
-            <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-                <Tooltip title={isOpen ? t('closeSettings') : t('gridSettings')}>
-                    <IconButton
-                        onClick={() => setIsOpen(!isOpen)}
-                        sx={{
-                            backgroundColor: 'background.paper',
-                            boxShadow: 2,
-                            '&:hover': { backgroundColor: 'action.hover' },
-                        }}
-                    >
-                        {isOpen ? <CloseIcon /> : <SettingsIcon />}
-                    </IconButton>
-                </Tooltip>
-            </Box>
+            <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
+                <button
+                    className="button icon-button br-2 bg-middark elevated-sharp"
+                    onClick={() => setIsOpen(!isOpen)}
+                    title={isOpen ? t('closeSettings') : t('gridSettings')}
+                >
+                    <span className={`icon icon-size-20 ${isOpen ? 'close-icon' : 'settings-icon'}`} />
+                </button>
+            </div>
 
             {/* Settings panel */}
             {isOpen && (
-                <Paper
-                    elevation={8}
-                    sx={{
-                        position: 'absolute',
-                        top: 70,
-                        right: 16,
-                        zIndex: 999,
-                        padding: 2,
-                        minWidth: 260,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                    }}
+                <div
+                    className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
+                    style={{ position: 'absolute', top: 70, right: 16, zIndex: 999, minWidth: 260 }}
                 >
-                    {/* ── Grid columns ──────────────────────────── */}
-                    <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                            <GridViewIcon fontSize="small" />
-                            <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{t('gridColumns')}</Box>
-                        </Box>
-
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={isAuto}
-                                        onChange={handleAutoChange}
-                                        sx={{ '&.Mui-checked': { color: 'text.primary' } }}
-                                    />
-                                }
-                                label={t('auto')}
-                            />
-                            <TextField
-                                type="number"
-                                label={t('columns')}
-                                value={isAuto ? autoColumns : manualColumns}
-                                onChange={handleColumnsChange}
-                                fullWidth
-                                inputProps={{ min: 1, step: 1 }}
-                                helperText={
-                                    isAuto
-                                        ? `Auto-detected: ${autoColumns}`
-                                        : 'Enter any positive number'
-                                }
-                            />
-                        </Box>
-                    </Box>
-
-                    <Divider />
-
-                    {/* ── 3D viewport toggle ────────────────────── */}
-                    <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <ViewSidebarIcon fontSize="small" />
-                            <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>3D Viewport</Box>
-                        </Box>
-
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={settings.show3dView}
-                                    onChange={handle3dViewToggle}
-                                    size="small"
+                    {/* Grid columns */}
+                    <div className="flex flex-col gap-1">
+                        <div className="flex flex-row items-center gap-1">
+                            <span className="icon grid4-icon icon-size-20" />
+                            <p className="text bg text-white">{t('gridColumns')}</p>
+                        </div>
+                        <div className="flex flex-row items-center gap-2">
+                            <label className="flex flex-row items-center gap-1">
+                                <input
+                                    type="checkbox"
+                                    checked={isAuto}
+                                    onChange={handleAutoChange}
+                                    style={{ accentColor: 'var(--color-info)' }}
                                 />
-                            }
-                            label={settings.show3dView ? 'Visible' : 'Hidden'}
-                            sx={{ ml: 0 }}
-                        />
-                    </Box>
+                                <span className="text sm text-gray">{t('auto')}</span>
+                            </label>
+                            <div className="input-with-unit flex-1">
+                                <input
+                                    type="number"
+                                    className="input-field numeric-input text md"
+                                    value={isAuto ? autoColumns : manualColumns}
+                                    onChange={handleColumnsChange}
+                                    min={1}
+                                    step={1}
+                                />
+                                <span className="unit-label text sm text-gray">{t('columns')}</span>
+                            </div>
+                        </div>
+                        <p className="text sm text-gray">
+                            {isAuto ? `Auto-detected: ${autoColumns}` : 'Enter any positive number'}
+                        </p>
+                    </div>
 
-                    {/* ── Layout direction (only when 3D is on) ─── */}
+                    <div style={{ height: 1, backgroundColor: 'var(--color-border-secondary)' }} />
+
+                    {/* 3D viewport toggle */}
+                    <div className="flex flex-col gap-1">
+                        <div className="flex flex-row items-center gap-1">
+                            <span className="icon icon-size-20 streaming-icon" />
+                            <p className="text bg text-white">3D Viewport</p>
+                        </div>
+                        <label className="flex flex-row items-center gap-2">
+                            <input
+                                type="checkbox"
+                                checked={settings.show3dView}
+                                onChange={handle3dViewToggle}
+                                style={{ accentColor: 'var(--color-info)' }}
+                            />
+                            <span className="text sm text-gray">{settings.show3dView ? 'Visible' : 'Hidden'}</span>
+                        </label>
+                    </div>
+
+                    {/* Layout direction (only when 3D is on) */}
                     {settings.show3dView && (
                         <>
-                            <Divider />
-
-                            <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <SplitscreenIcon fontSize="small" />
-                                    <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Layout</Box>
-                                </Box>
-
-                                <ToggleButtonGroup
-                                    value={settings.layoutDirection}
-                                    exclusive
-                                    onChange={handleLayoutDirectionChange}
-                                    size="small"
-                                    fullWidth
-                                >
-                                    <ToggleButton value="horizontal" aria-label="side by side">
-                                        <Tooltip title="Side by side">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                {/* Two vertical panels icon */}
-                                                <ViewSidebarIcon fontSize="small" />
-                                                <Box sx={{ fontSize: '0.75rem' }}>Side by side</Box>
-                                            </Box>
-                                        </Tooltip>
-                                    </ToggleButton>
-                                    <ToggleButton value="vertical" aria-label="stacked">
-                                        <Tooltip title="Stacked">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                <ViewAgendaIcon fontSize="small" />
-                                                <Box sx={{ fontSize: '0.75rem' }}>Stacked</Box>
-                                            </Box>
-                                        </Tooltip>
-                                    </ToggleButton>
-                                </ToggleButtonGroup>
-                            </Box>
+                            <div style={{ height: 1, backgroundColor: 'var(--color-border-secondary)' }} />
+                            <div className="flex flex-col gap-1">
+                                <p className="text bg text-white">Layout</p>
+                                <div className="flex flex-row gap-1">
+                                    <button
+                                        className={`button sm flex-1 ${settings.layoutDirection === 'horizontal' ? 'primary' : 'secondary'}`}
+                                        onClick={() => handleLayoutDirectionChange('horizontal')}
+                                    >
+                                        <p className="text sm">Side by side</p>
+                                    </button>
+                                    <button
+                                        className={`button sm flex-1 ${settings.layoutDirection === 'vertical' ? 'primary' : 'secondary'}`}
+                                        onClick={() => handleLayoutDirectionChange('vertical')}
+                                    >
+                                        <p className="text sm">Stacked</p>
+                                    </button>
+                                </div>
+                            </div>
                         </>
                     )}
-                </Paper>
+                </div>
             )}
         </>
     );

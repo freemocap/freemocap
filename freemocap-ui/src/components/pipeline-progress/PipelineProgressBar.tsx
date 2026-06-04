@@ -1,6 +1,3 @@
-import Box from '@mui/material/Box';
-import LinearProgress from '@mui/material/LinearProgress';
-import Typography from '@mui/material/Typography';
 import {PipelineProgress, PipelinePhase, PHASE_LABELS} from '@/store/slices/pipelines';
 
 function formatTimeAgo(timestamp: number): string {
@@ -22,30 +19,29 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
     const isComplete = pipeline.phase === PipelinePhase.COMPLETE;
     const isTerminal = isComplete || isFailed;
 
+    const progressColor = isFailed ? 'var(--color-error)' : isComplete ? 'var(--color-success)' : 'var(--color-info)';
+
     return (
-        <Box sx={{px: 1, py: 0.5, opacity: isTerminal ? 0.5 : 1}}>
-            <Box sx={{display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 0.25}}>
-                <Typography variant="caption" fontWeight="bold" noWrap sx={{flex: 1, mr: 1}}>
+        <div style={{padding: '4px 8px', opacity: isTerminal ? 0.5 : 1}}>
+            <div className="flex flex-row justify-content-space-between items-center" style={{marginBottom: 2}}>
+                <p className="text sm text-white" style={{fontWeight: 'bold', flex: 1, marginRight: 4, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {pipeline.pipelineType} — {pipeline.pipelineId}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
+                </p>
+                <p className="text sm text-gray" style={{margin: 0, flexShrink: 0}}>
                     {isTerminal && pipeline.completedAt
                         ? `${phaseLabel} ${formatTimeAgo(pipeline.completedAt)}`
                         : `${phaseLabel} ${pipeline.progress}%`
                     }
-                </Typography>
-            </Box>
-            <LinearProgress
-                variant="determinate"
-                value={pipeline.progress}
-                color={isFailed ? 'error' : isComplete ? 'success' : 'primary'}
-                sx={{height: 6, borderRadius: 1}}
-            />
+                </p>
+            </div>
+            <div className="update-progress-track">
+                <div className="update-progress-fill" style={{width: `${pipeline.progress}%`, backgroundColor: progressColor}}/>
+            </div>
             {pipeline.detail && (
-                <Typography variant="caption" color="text.secondary" noWrap sx={{display: 'block', mt: 0.25}}>
+                <p className="text sm text-gray" style={{display: 'block', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0}}>
                     {pipeline.detail}
-                </Typography>
+                </p>
             )}
-        </Box>
+        </div>
     );
 }

@@ -1,8 +1,6 @@
 // src/components/framerate-viewer/BaseD3ChartView.tsx
 import {memo, useCallback, useEffect, useRef, useState} from "react"
 import * as d3 from "d3"
-import {Box, Fade, IconButton, Tooltip, Typography} from "@mui/material"
-import {RestartAlt, ZoomIn, ZoomOut} from "@mui/icons-material"
 import {useTranslation} from "react-i18next"
 
 export type ChartMargins = {
@@ -62,11 +60,9 @@ export default memo(function BaseD3ChartView({
     const [showControls, setShowControls] = useState(false)
     const [containerSize, setContainerSize] = useState<{width: number; height: number}>({width: 0, height: 0})
 
-    // Always holds the latest updateChart without triggering re-renders.
     const updateChartRef = useRef(updateChart)
     updateChartRef.current = updateChart
 
-    // Track container size with ResizeObserver
     useEffect(() => {
         const container = containerRef.current
         if (!container) return
@@ -86,11 +82,9 @@ export default memo(function BaseD3ChartView({
         return () => observer.disconnect()
     }, [])
 
-    // Build chart scaffolding on mount/resize — runs rarely
     useEffect(() => {
         if (!svgRef.current || containerSize.width === 0 || containerSize.height === 0) return
 
-        // Tear down previous scaffolding
         d3.select(svgRef.current).selectAll("*").remove()
         if (chartStateRef.current.cleanup) {
             chartStateRef.current.cleanup()
@@ -131,7 +125,6 @@ export default memo(function BaseD3ChartView({
             chartStateRef.current.onZoom = result.onZoom
         }
 
-        // Set up zoom behavior
         const zoom = d3
             .zoom<SVGSVGElement, unknown>()
             .scaleExtent([0.5, 20])
@@ -151,9 +144,6 @@ export default memo(function BaseD3ChartView({
         }
     }, [initChart, margin, containerSize])
 
-    // Imperative D3 data update on a fixed interval. The updateChart callback
-    // (stored in the ref) reads directly from the FramerateStore each tick,
-    // so no React state or re-renders are involved in the data path.
     useEffect(() => {
         const tick = () => {
             const scaffolding = chartStateRef.current.scaffolding
@@ -183,69 +173,51 @@ export default memo(function BaseD3ChartView({
     }, [])
 
     return (
-        <Box
+        <div
             ref={containerRef}
-            sx={{
-                width: "100%",
-                height: "100%",
-                position: "relative",
-                overflow: "hidden",
-            }}
+            className="pos-rel overflow-hidden"
+            style={{width: "100%", height: "100%"}}
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
         >
             {title && (
-                <Typography
-                    variant="caption"
-                    sx={{
-                        position: "absolute",
-                        top: 2,
-                        left: 8,
-                        fontSize: "0.7rem",
-                        opacity: 0.9,
-                        zIndex: 5,
-                        bgcolor: "background.default",
-                        px: 0.5,
-                        borderRadius: 0.5,
-                        lineHeight: 1.4,
-                    }}
-                >
+                <p className="text sm text-gray" style={{
+                    position: "absolute",
+                    top: 2,
+                    left: 8,
+                    fontSize: "0.7rem",
+                    opacity: 0.9,
+                    zIndex: 5,
+                    backgroundColor: "var(--color-bg-default)",
+                    padding: "0 4px",
+                    borderRadius: 2,
+                    lineHeight: 1.4,
+                    margin: 0,
+                }}>
                     {title}
-                </Typography>
+                </p>
             )}
 
-            <Fade in={showControls}>
-                <Box
-                    sx={{
-                        position: "absolute",
-                        top: "50%",
-                        right: 5,
-                        transform: "translateY(-50%)",
-                        zIndex: 10,
-                        bgcolor: "background.paper",
-                        borderRadius: 1,
-                        boxShadow: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                    }}
-                >
-                    <Tooltip title={t("zoomIn")} placement="right">
-                        <IconButton size="small" onClick={handleZoomIn} sx={{p: 0.5}}>
-                            <ZoomIn fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title={t("zoomOut")} placement="right">
-                        <IconButton size="small" onClick={handleZoomOut} sx={{p: 0.5}}>
-                            <ZoomOut fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                    <Tooltip title={t("resetZoom")} placement="right">
-                        <IconButton size="small" onClick={handleResetZoom} sx={{p: 0.5}}>
-                            <RestartAlt fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                </Box>
-            </Fade>
+            {showControls && (
+                <div className="flex flex-col bg-middark br-1" style={{
+                    position: "absolute",
+                    top: "50%",
+                    right: 5,
+                    transform: "translateY(-50%)",
+                    zIndex: 10,
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
+                }}>
+                    <button title={t("zoomIn")} className="button icon-button br-1" onClick={handleZoomIn}>
+                        <span className="icon plus-icon icon-size-20"/>
+                    </button>
+                    <button title={t("zoomOut")} className="button icon-button br-1" onClick={handleZoomOut}>
+                        <span className="icon minus-icon icon-size-20"/>
+                    </button>
+                    <button title={t("resetZoom")} className="button icon-button br-1" onClick={handleResetZoom}>
+                        <span className="icon back-icon icon-size-20"/>
+                    </button>
+                </div>
+            )}
 
             <svg
                 ref={svgRef}
@@ -253,7 +225,7 @@ export default memo(function BaseD3ChartView({
                 height={containerSize.height}
                 style={{display: "block", overflow: "hidden"}}
             />
-        </Box>
+        </div>
     )
 }, (prev, next) => {
     return prev.title === next.title

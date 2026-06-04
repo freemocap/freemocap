@@ -14,9 +14,11 @@ import {
     useAppDispatch,
     useAppSelector
 } from "@/store";
+import {recommendExposureForAll} from "@/store/slices/cameras/cameras-slice";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from 'react-i18next';
 import {CollapsibleSidebarSection} from "../../../common/CollapsibleSidebarSection";
+import IconButton from "@/components/ui-components/IconButton";
 
 
 export const CameraConfigTreeView: React.FC = () => {
@@ -41,7 +43,7 @@ export const CameraConfigTreeView: React.FC = () => {
 
     return (
         <CollapsibleSidebarSection
-            icon={<span className="icon videocam-icon icon-size-20" style={{color: "inherit"}} />}
+            icon={<span className="icon stream-icon icon-size-20" style={{color: "inherit"}} />}
             title={t('cameras')}
             summaryContent={
                 <CameraSummary
@@ -58,6 +60,19 @@ export const CameraConfigTreeView: React.FC = () => {
             defaultExpanded={false}
         >
             <div className="br-1" style={{margin: '4px 8px'}}>
+                {isConnectedToCameras && (
+                    <div className="flex flex-row items-center gap-1 p-01" style={{paddingBottom: 4}}>
+                        <IconButton
+                            icon="scan-icon"
+                            onClick={() => dispatch(recommendExposureForAll())}
+                            title="Auto-recommend exposure for all cameras"
+                            tooltip
+                            tooltipText="Auto-recommend exposure for all cameras"
+                            tooltipPosition="pos-right"
+                        />
+                        <p className="text sm text-gray">Auto-recommend exposure</p>
+                    </div>
+                )}
                 {cameras.length === 0 ? (
                     <NoCamerasPlaceholder />
                 ) : (
@@ -67,7 +82,7 @@ export const CameraConfigTreeView: React.FC = () => {
                                 groupId="cameras-connected"
                                 title={t("connectedCameras")}
                                 cameras={connectedCameras}
-                                icon={<span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-success)'}} />}
+                                icon={<span className="icon stream-icon icon-size-20" style={{color: 'var(--color-success)'}} />}
                             />
                         )}
 
@@ -76,7 +91,7 @@ export const CameraConfigTreeView: React.FC = () => {
                                 groupId="cameras-available"
                                 title={t("availableCameras")}
                                 cameras={availableCameras}
-                                icon={<span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-info)'}} />}
+                                icon={<span className="icon stream-icon icon-size-20" style={{color: 'var(--color-info)'}} />}
                             />
                         )}
                     </>

@@ -112,8 +112,8 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpande
                     style={{marginRight: 4, flexShrink: 0}}
                 >
                     {camera.realtimeEnabled
-                        ? <span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-info)'}} />
-                        : <span className="icon videocam-outlined-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
+                        ? <span className="icon streaming-icon icon-size-20" style={{color: 'var(--color-info)'}} />
+                        : <span className="icon stopstreaming-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
                     }
                 </button>
 

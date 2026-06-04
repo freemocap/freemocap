@@ -105,7 +105,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                     </div>
 
                     {/* Left column — splash art */}
-                    <div className="splash-image-container flex flex-1" />
+                    <div className="splash-image-container flex flex-1 pos-rel">
+                        <div className="pos-abs bottom-10 left-10 fit-content">
+                            <VersionChip variant="compact" />
+                        </div>
+                    </div>
 
                     {/* Right column — content */}
                     <div className="splash-action-group flex-1 flex flex-col gap-1 p-1 justify-content-space-between">
@@ -145,9 +149,6 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
 
                             <div className="pos-abs top-10 left-10 fit-content">
                                 <LanguageSwitcher />
-                            </div>
-                            <div className="splashmodal-mini-menu-container flex flex-col flex-start pos-rel items-center gap-1 pos-abs bottom-10 left-12 fit-content">
-                                <VersionChip variant="compact" />
                             </div>
                         </div>
 

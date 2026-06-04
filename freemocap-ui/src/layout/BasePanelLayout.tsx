@@ -8,7 +8,7 @@ import {RecordingCompleteDialog} from "@/components/control-panels/recording-inf
 import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
 
 
-export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
+export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.ReactNode; onOpenWelcome?: () => void }) => {
     const leftPanelRef = useRef<ImperativePanelHandle>(null);
     const bottomPanelRef = useRef<ImperativePanelHandle>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -52,7 +52,7 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
                             onCollapse={handlePanelCollapse}
                             onExpand={handlePanelExpand}
                         >
-                            <SidePanelContent />
+                            <SidePanelContent onOpenWelcome={onOpenWelcome} />
                         </Panel>
                         <PanelResizeHandle
                             className="resizable-component"

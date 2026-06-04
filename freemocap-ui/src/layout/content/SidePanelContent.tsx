@@ -19,6 +19,7 @@ import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
+import IconButton from "@/components/ui-components/IconButton";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
@@ -68,7 +69,7 @@ function saveSectionOrder(order: SectionId[]): void {
     }
 }
 
-export const SidePanelContent = () => {
+export const SidePanelContent = ({ onOpenWelcome }: { onOpenWelcome?: () => void }) => {
     const navigate = useNavigate();
     const [sectionOrder, setSectionOrder] = useState<SectionId[]>(loadSectionOrder);
 
@@ -93,21 +94,25 @@ export const SidePanelContent = () => {
 
     return (
         <div className="w-full h-full flex flex-col overflow-y overflow-hidden">
-            {/* Header */}
-            <div className="flex flex-row items-center justify-content-space-between p-2" style={{ minHeight: 40, borderBottom: '1px solid var(--color-border-secondary)' }}>
-                <span className="title text-white">FreeMoCap 💀✨</span>
-                <div className="flex flex-row items-center gap-1">
-                    <button
-                        className="button icon-button br-1"
-                        onClick={() => navigate('/streaming')}
-                        title="Cameras"
-                    >
-                        <span className="icon streaming-icon icon-size-20" />
-                    </button>
+            {/* Header — home + connection button */}
+            <div className="flex flex-row items-center gap-1 p-1" style={{ minHeight: 40 }}>
+                {onOpenWelcome && (
+                    <IconButton
+                        icon="home-icon"
+                        onClick={onOpenWelcome}
+                        tooltip={true}
+                        tooltipText="Home"
+                        tooltipPosition="pos-right"
+                    />
+                )}
+                <div
+                    data-warning="service-unavailable"
+                    className="flex-1 overflow-hidden"
+                    style={{ minWidth: 0 }}
+                >
+                    <ServerConnectionStatus />
                 </div>
             </div>
-
-            <ServerConnectionStatus />
 
             {/* Sidebar Sections — drag-reorderable */}
             <DndContext

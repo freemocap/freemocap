@@ -31,7 +31,7 @@ export const AppContent = function () {
         <HashRouter>
             <AutoUpdateProvider>
                 <PlaybackProvider>
-                    <BasePanelLayout>
+                    <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
                         <BaseContentRouter />
                     </BasePanelLayout>
                     <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />

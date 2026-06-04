@@ -41,10 +41,10 @@ export interface ServerPanelState {
     refreshCandidates: () => Promise<void>;
     browseForExecutable: () => Promise<void>;
     // toggle handlers
-    handleToggleAutoLaunch: (e: React.MouseEvent) => void;
-    handleToggleAutoConnectWs: (e: React.MouseEvent) => void;
-    handleToggleServerRunning: (e: React.MouseEvent) => void;
-    handleToggleWsConnected: (e: React.MouseEvent) => void;
+    handleToggleAutoLaunch: (newState: boolean) => void;
+    handleToggleAutoConnectWs: (newState: boolean) => void;
+    handleToggleServerRunning: () => void;
+    handleToggleWsConnected: () => void;
     // host/port
     applyHostPort: () => void;
     handleHostPortKeyDown: (e: React.KeyboardEvent) => void;
@@ -268,28 +268,21 @@ export function useServerPanel(): ServerPanelState {
 
     // ── Toggle handlers ──
 
-    const handleToggleAutoLaunch = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setAutoLaunchServer((prev) => !prev);
+    const handleToggleAutoLaunch = useCallback((newState: boolean) => {
+        setAutoLaunchServer(newState);
     }, []);
 
-    const handleToggleAutoConnectWs = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setAutoConnectWs((prev) => {
-            const next = !prev;
-            if (!next) disconnect();
-            return next;
-        });
+    const handleToggleAutoConnectWs = useCallback((newState: boolean) => {
+        setAutoConnectWs(newState);
+        if (!newState) disconnect();
     }, [disconnect]);
 
-    const handleToggleServerRunning = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleToggleServerRunning = useCallback(() => {
         if (serverRunning) stopServer();
         else startServer();
     }, [serverRunning, startServer, stopServer]);
 
-    const handleToggleWsConnected = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleToggleWsConnected = useCallback(() => {
         if (isConnected) {
             setAutoConnectWs(false);
             disconnect();

@@ -5,21 +5,14 @@ import TabbedBottomLeftPanel from "@/components/tabbed-bottom-panel/TabbedBottom
 
 export default function BottomPanelContent({isCollapsed}: { isCollapsed: boolean }) {
     return (
-        <div className="w-full h-full">
-            <PanelGroup direction="horizontal" style={{ direction: "ltr" }}>
-                <Panel defaultSize={30} minSize={20}>
-                    <div className="h-full overflow-y">
-                        <TabbedBottomLeftPanel isCollapsed={isCollapsed} />
-                    </div>
+        <div className="bottom-info-container br-2 flex h-full">
+            <PanelGroup className="console-area p-0" direction="horizontal" style={{ direction: "ltr" }}>
+                <Panel className="camera-performance-metric-container bg-middark bg-darkgray p-1 br-1" defaultSize={30} minSize={15}>
+                    <TabbedBottomLeftPanel isCollapsed={isCollapsed} />
                 </Panel>
-                <PanelResizeHandle
-                    className="resizable-component"
-                    style={{ width: "4px", cursor: "col-resize" }}
-                />
-                <Panel defaultSize={70} minSize={20}>
-                    <div className="h-full overflow-y">
-                        <LogTerminal isCollapsed={isCollapsed} />
-                    </div>
+                <PanelResizeHandle className="info-panel-divider resizable-component" />
+                <Panel className="server-logs-container text-nowrap bg-middark bg-darkgray p-1 br-1" defaultSize={70} minSize={20}>
+                    <LogTerminal isCollapsed={isCollapsed} />
                 </Panel>
             </PanelGroup>
         </div>

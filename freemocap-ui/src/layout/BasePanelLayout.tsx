@@ -33,17 +33,17 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
     useKeyboardShortcuts();
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <PanelGroup direction="vertical" style={{ flex: 1 }}>
+        <div className="main-app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            <PanelGroup className="app-container" direction="vertical" style={{ flex: 1 }}>
                 {/* Top section (horizontal panels) */}
-                <Panel defaultSize={87} minSize={20}>
+                <Panel className="app-container-inner" defaultSize={87} minSize={20}>
                     <PanelGroup
-                        className="pos-rel pr-1 pl-1 pt-1 pb-0"
+                        className="pos-rel app-container-sub pr-1 pl-1 pt-1 pb-0"
                         direction="horizontal"
                         style={{ direction: "ltr" }}
                     >
                         <Panel
-                            className="left-side-panel p-1 bg-darkgray br-2 border-mid-black border-1"
+                            className="left-side-panel p-1 action-container bg-darkgray br-2 border-mid-black border-1"
                             ref={leftPanelRef}
                             collapsible
                             defaultSize={24}
@@ -52,11 +52,15 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
                             onCollapse={handlePanelCollapse}
                             onExpand={handlePanelExpand}
                         >
-                            <SidePanelContent onOpenWelcome={onOpenWelcome} />
+                            <SidePanelContent
+                                isCollapsed={isCollapsed}
+                                onToggleCollapse={handleToggleCollapse}
+                                onOpenWelcome={onOpenWelcome}
+                            />
                         </Panel>
                         <PanelResizeHandle
                             className="resizable-component"
-                            style={{ width: "4px", cursor: "col-resize" }}
+                            style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
                         />
                         <Panel className="right-side-panel" defaultSize={76} minSize={10}>
                             <MainNavTabs />
@@ -68,7 +72,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
 
                 <PanelResizeHandle
                     className="resizable-component"
-                    style={{ height: "4px", cursor: "row-resize" }}
+                    style={{ height: "4px", cursor: "row-resize", backgroundColor: "var(--color-surface-active)" }}
                 />
 
                 <Panel

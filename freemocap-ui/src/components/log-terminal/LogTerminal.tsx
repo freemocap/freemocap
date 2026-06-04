@@ -5,7 +5,6 @@ import { useServer } from "@/services/server/ServerContextProvider";
 import { LogRecord, LogSnapshot } from "@/services/server/server-helpers/log-store";
 import { useTranslation } from "react-i18next";
 import ButtonSm from "@/components/ui-components/ButtonSm";
-import IconButton from "@/components/ui-components/IconButton";
 
 const LOG_POLL_INTERVAL_MS = 500;
 const LINE_HEIGHT = 20;
@@ -363,12 +362,7 @@ const LogTerminalFull = ({
                 <p className="text bg text-gray">{t('serverLogs')}</p>
 
                 {snapshot.hasErrors && (
-                    <IconButton
-                        icon="warning-icon"
-                        tooltip={true}
-                        tooltipText={t("errorsDetected")}
-                        tooltipPosition="pos-bottom"
-                    />
+                    <span className="icon warning-icon icon-size-20" title={t("errorsDetected")} />
                 )}
 
                 {/* Level filter buttons */}

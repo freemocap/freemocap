@@ -3,8 +3,9 @@
  * with search filtering, multi-field sorting, and rich per-recording metadata.
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {serverUrls} from '@/constants/server-urls';
+import clsx from 'clsx';
 import {useTranslation} from 'react-i18next';
+import {useElectronIPC} from '@/services';
 import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
 import {useRecordingStatus} from '@/hooks/useRecordingStatus';
 import {useAppDispatch, useAppSelector} from '@/store';
@@ -25,6 +26,9 @@ import {
     selectRecordingsFetchedAt,
     selectRecordingsIsLoading,
 } from '@/store/slices/recording-status/recording-status-slice';
+import {serverUrls} from '@/constants/server-urls';
+import ButtonSm from '@/components/ui-components/ButtonSm';
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
 
 export type RecordingEntry = RecordingListEntry;
 
@@ -139,10 +143,6 @@ function compareRecordings(
     return direction === 'desc' ? -cmp : cmp;
 }
 
-const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace';
-const ACCENT_BLUE = '#29b6f6';
-const ACCENT_GREEN = '#00ff88';
-
 const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
     { value: 'date', labelKey: 'date' },
     { value: 'name', labelKey: 'name' },
@@ -155,6 +155,7 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
 export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, activeRecordingPath }) => {
     const { t } = useTranslation();
     const dispatch = useAppDispatch();
+    const { api, isElectron } = useElectronIPC();
 
     const recordings = useAppSelector(selectRecordingsList);
     const recordingsFetchedAt = useAppSelector(selectRecordingsFetchedAt);
@@ -286,122 +287,121 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
         [onRecordingLoaded, recordings, dispatch],
     );
 
-    const handleLoadManualPath = useCallback(() => {
-        const trimmed = manualPath.trim();
-        if (trimmed) loadRecording(trimmed);
-    }, [manualPath, loadRecording]);
+    const handleBrowseDirectory = useCallback(async () => {
+        if (!isElectron || !api) return;
+        const result: string | null = await api.fileSystem.selectDirectory.mutate();
+        if (!result) return;
+        const trimmed = result.trim().replace(/[\\/]+$/, '');
+        setManualPath(trimmed);
+        loadRecording(trimmed);
+    }, [api, isElectron, loadRecording]);
 
     const toggleSortDir = () => {
         setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
     };
 
     return (
-        <div className="flex flex-col gap-2 p-2 overflow-hidden" style={{height: '100%'}}>
-            <div className="flex flex-row gap-1 items-center">
-                <div className="input-with-string flex-1">
-                    <input
-                        className="input-field text md"
-                        placeholder="~/freemocap_data/recordings/2024-01-01..."
-                        value={manualPath}
-                        onChange={(e) => setManualPath(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleLoadManualPath(); }}
-                        disabled={isLoadingRecording}
-                        style={{fontFamily: MONO_FONT, fontSize: '0.85rem'}}
+        <div className="flex playback-page-content pos-rel flex flex-col gap-1 h-full overflow-hidden">
+            {/* Folder selector */}
+            <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center pb-2">
+                <div className="flex flex-col flex-start gap-1 items-center">
+                    <SubactionHeader text="Folder Directory" />
+                    <ButtonSm
+                        iconClass="subfolder-icon"
+                        text={manualPath || "Select recording folder"}
+                        onClick={handleBrowseDirectory}
+                        title="Click to select recording folder"
+                        disabled={!isElectron}
+                        className="select-path bg-middark flex-1"
+                        textClass="text-wrap flex-1"
                     />
                 </div>
-                <button
-                    className="button sm primary"
-                    onClick={handleLoadManualPath}
-                    disabled={!manualPath.trim() || isLoadingRecording}
-                >
-                    {isLoadingRecording && !loadingPath
-                        ? <span className="icon loader-icon icon-size-20"/>
-                        : <span className="icon play-icon icon-size-20"/>}
-                    {t('load')}
-                </button>
             </div>
 
-            {error && (
-                <p className="text sm text-error" style={{paddingLeft: 4}}>{error}</p>
-            )}
+            {error && <p className="pl-2 flex flex-row text sm text-error">{error}</p>}
 
-            <div className="flex flex-row items-center justify-content-space-between" style={{flexWrap: 'wrap', gap: 8}}>
-                <div className="flex flex-row items-center gap-1">
-                    <p className="text md text-white" style={{fontWeight: 600, margin: 0}}>{t('recordings')}</p>
-                    {recordings.length > 0 && (
-                        <span className="tag text sm">
-                            {filterText
-                                ? `${filteredSorted.length} / ${recordings.length}`
-                                : String(recordings.length)}
-                        </span>
-                    )}
-                </div>
-
-                <div className="flex flex-row items-center gap-1">
-                    <div className="input-with-string" style={{width: 160, display: 'flex', alignItems: 'center', gap: 4}}>
-                        <span className="icon search-icon icon-size-20"/>
-                        <input
-                            className="input-field text md"
-                            placeholder={t("filter")}
-                            value={filterText}
-                            onChange={(e) => setFilterText(e.target.value)}
-                            style={{fontSize: '0.8rem'}}
-                        />
+            {/* Header + list wrapper */}
+            <div className="flex flex-col flex-1 overflow-hidden bg-middark br-1 p-1 gap-2">
+                {/* Header bar */}
+                <div className="recording-group flex flex-row flex-wrap flex-start items-center gap-1 justify-content-space-between">
+                    <div className="flex header-holder-for-recording items-center gap-1">
+                        {recordings.length > 0 && (
+                            <p className="tag camera-status-badge">
+                                {filterText
+                                    ? `${filteredSorted.length} / ${recordings.length}`
+                                    : recordings.length}
+                            </p>
+                        )}
+                        <SubactionHeader text={t("recordings")} />
                     </div>
 
-                    <select
-                        className="input-field text md"
-                        value={sortField}
-                        onChange={(e) => setSortField(e.target.value as SortField)}
-                        style={{minWidth: 100, fontSize: '0.75rem'}}
-                    >
-                        {SORT_OPTIONS.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
-                        ))}
-                    </select>
-
-                    <button
-                        title={`Sort ${sortDir === 'desc' ? 'newest first' : 'oldest first'} — click to toggle`}
-                        className="button icon-button br-1"
-                        onClick={toggleSortDir}
-                    >
-                        <span className="icon sort-icon icon-size-20" style={{transform: sortDir === 'asc' ? 'scaleY(-1)' : 'none', transition: 'transform 0.2s ease'}}/>
-                    </button>
-
-                    <button
-                        className="button sm secondary"
-                        onClick={() => fetchRecordings(true)}
-                        disabled={isLoadingList}
-                    >
-                        <span className="icon load-icon icon-size-20"/>
-                        {t('refresh')}
-                    </button>
-                </div>
-            </div>
-
-            {isLoadingList ? (
-                <div className="flex justify-center" style={{paddingTop: 32, paddingBottom: 32}}>
-                    <span className="icon loader-icon icon-size-20" style={{color: ACCENT_BLUE}}/>
-                </div>
-            ) : filteredSorted.length === 0 ? (
-                <p className="text sm text-gray" style={{textAlign: 'center', paddingTop: 32, paddingBottom: 32}}>
-                    {recordings.length === 0 ? t('noRecordingsFound') : 'No recordings match your filter.'}
-                </p>
-            ) : (
-                <div className="flex-1 overflow-y border-1 border-mid-black br-1">
-                    {filteredSorted.map((rec) => (
-                        <RecordingRow
-                            key={rec.path}
-                            rec={rec}
-                            isLoading={loadingPath === rec.path}
-                            isAnyLoading={isLoadingRecording}
-                            isActive={!!activeRecordingPath && (activeRecordingPath === rec.name || activeRecordingPath === rec.path)}
-                            onClick={() => loadRecording(rec.path)}
-                            recordingsRootPath={rec.path.slice(0, Math.max(rec.path.lastIndexOf('/'), rec.path.lastIndexOf('\\'))) || null}
+                    <div className="flex flex-wrap flex-row items-center gap-1 justify-content-space-between min-w-full">
+                        <div className="input-with-string flex flex-1">
+                            <input
+                                className="input-field"
+                                placeholder={t("filter")}
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
+                            />
+                        </div>
+                        <select
+                            className="sort-select input-field"
+                            value={sortField}
+                            onChange={(e) => setSortField(e.target.value as SortField)}
+                        >
+                            {SORT_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {t(opt.labelKey)}
+                                </option>
+                            ))}
+                        </select>
+                        <ButtonSm
+                            text={sortDir === 'desc' ? '↓' : '↑'}
+                            onClick={toggleSortDir}
+                            tooltip={true}
+                            tooltipText={sortDir === 'desc' ? t('sortDescending') : t('sortAscending')}
+                            tooltipPosition="pos-bottom"
                         />
-                    ))}
+                        <ButtonSm
+                            text={t("refresh")}
+                            onClick={() => fetchRecordings(true)}
+                            disabled={isLoadingList}
+                            iconClass="rotate-icon"
+                            tooltip={true}
+                            tooltipText={t("refresh")}
+                            tooltipPosition="pos-bottom"
+                        />
+                    </div>
                 </div>
-            )}
+
+                {/* List */}
+                {isLoadingList ? (
+                    <div className="flex items-center justify-center py-4">
+                        <span className="icon loader-icon icon-size-20" />
+                    </div>
+                ) : filteredSorted.length === 0 ? (
+                    <div className="recording-warning-container flex flex-col flex-wrap p-2 m-4 text-center gap-1 items-center justify-center br-2">
+                        <span className="icon warning-icon icon-size-32" />
+                        <p className="text md text-white text-center">
+                            {recordings.length === 0 ? t('noRecordingsFound') : 'No recordings match your filter.'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="recording-list flex-1 overflow-y br-2 p-1">
+                        {filteredSorted.map((rec) => (
+                            <RecordingRow
+                                key={rec.path}
+                                rec={rec}
+                                isLoading={loadingPath === rec.path}
+                                isAnyLoading={isLoadingRecording}
+                                isActive={!!activeRecordingPath && (activeRecordingPath === rec.name || activeRecordingPath === rec.path)}
+                                onClick={() => loadRecording(rec.path)}
+                                recordingsRootPath={rec.path.slice(0, Math.max(rec.path.lastIndexOf('/'), rec.path.lastIndexOf('\\'))) || null}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -451,16 +451,14 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
 
         return (
             <div
-                style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    ...(isActive ? {
-                        backgroundColor: 'rgba(41,182,246,0.12)',
-                        borderLeft: `3px solid ${ACCENT_BLUE}`,
-                    } : {}),
-                    borderBottom: '1px solid var(--color-border-secondary)',
-                }}
+                className={clsx(
+                    "br-1 recording-row flex text-white flex-col flex-start",
+                    isAnyLoading && !isLoading && "recording-row-disabled",
+                )}
+                style={isActive ? {
+                    backgroundColor: 'rgba(41,182,246,0.12)',
+                    borderLeft: '3px solid var(--color-info)',
+                } : undefined}
             >
                 <div className="flex flex-row items-center">
                     <button
@@ -478,26 +476,21 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                     >
                         <div style={{minWidth: 36, flexShrink: 0}}>
                             {isLoading
-                                ? <span className="icon loader-icon icon-size-20" style={{color: ACCENT_BLUE}}/>
-                                : <span className="icon load-icon icon-size-20" style={{color: ACCENT_BLUE}}/>}
+                                ? <span className="icon loader-icon icon-size-20" style={{color: 'var(--color-info)'}}/>
+                                : <span className="icon load-icon icon-size-20" style={{color: 'var(--color-info)'}}/>}
                         </div>
 
                         <div style={{flex: 1}}>
                             <div className="flex flex-row items-center gap-1" style={{marginBottom: 4}}>
-                                <p
-                                    className="text md"
-                                    style={{
-                                        fontFamily: MONO_FONT,
-                                        fontWeight: 600,
-                                        fontSize: '0.85rem',
-                                        color: isActive ? ACCENT_BLUE : 'var(--color-text-primary)',
-                                        margin: 0,
-                                    }}
-                                >
+                                <p className="text md text-white recording-name" style={{
+                                    fontWeight: 600,
+                                    color: isActive ? 'var(--color-info)' : undefined,
+                                    margin: 0,
+                                }}>
                                     {rec.name}
                                 </p>
                                 {isActive && (
-                                    <span className="tag text sm" style={{fontSize: '0.65rem', fontFamily: MONO_FONT, backgroundColor: `${ACCENT_BLUE}22`, color: ACCENT_BLUE, border: `1px solid ${ACCENT_BLUE}55`}}>
+                                    <span className="tag text sm" style={{fontSize: '0.65rem', backgroundColor: 'rgba(41,182,246,0.13)', color: 'var(--color-info)', border: '1px solid rgba(41,182,246,0.33)'}}>
                                         loaded in playback
                                     </span>
                                 )}
@@ -505,7 +498,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                     <span
                                         className="tag text sm"
                                         title={`Legacy folder layout (legacy_v1)${legacyMarkers.length > 0 ? ': ' + legacyMarkers.join(', ') : ''}`}
-                                        style={{fontSize: '0.65rem', fontFamily: MONO_FONT, backgroundColor: 'rgba(255,167,38,0.18)', color: '#ffb74d', border: '1px solid rgba(255,167,38,0.5)'}}
+                                        style={{fontSize: '0.65rem', backgroundColor: 'rgba(255,167,38,0.18)', color: '#ffb74d', border: '1px solid rgba(255,167,38,0.5)'}}
                                     >
                                         Legacy
                                     </span>
@@ -513,28 +506,26 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                             </div>
 
                             <div className="flex flex-row items-center" style={{flexWrap: 'wrap', gap: 12}}>
-                                <span className="flex flex-row items-center gap-1" title="Camera streams">
-                                    <span className="icon icon-size-12" style={{fontSize: 14, color: 'var(--color-text-secondary)'}}/>
-                                    <span className="text sm text-gray">{`${rec.video_count} cam${rec.video_count !== 1 ? 's' : ''}`}</span>
+                                <span className="text sm text-gray" title="Camera streams">
+                                    {`${rec.video_count} cam${rec.video_count !== 1 ? 's' : ''}`}
                                 </span>
 
                                 {rec.total_size_bytes != null && rec.total_size_bytes > 0 && (
-                                    <span className="flex flex-row items-center gap-1" title="Total size on disk">
-                                        <span className="text sm text-gray">{formatBytes(rec.total_size_bytes)}</span>
+                                    <span className="text sm text-gray" title="Total size on disk">
+                                        {formatBytes(rec.total_size_bytes)}
                                     </span>
                                 )}
 
                                 {rec.duration_seconds != null && rec.duration_seconds > 0 && (
-                                    <span className="flex flex-row items-center gap-1" title="Recording duration">
-                                        <span className="text sm text-gray">{formatDuration(rec.duration_seconds)}</span>
+                                    <span className="text sm text-gray" title="Recording duration">
+                                        {formatDuration(rec.duration_seconds)}
                                     </span>
                                 )}
 
                                 {rec.total_frames != null && rec.total_frames > 0 && (
                                     <span
                                         title={t("frameCountPerCamera")}
-                                        className="tag text sm"
-                                        style={{fontSize: '0.65rem', fontFamily: MONO_FONT, borderColor: `${ACCENT_GREEN}44`, color: ACCENT_GREEN}}
+                                        className="camera-config-chip text-gray"
                                     >
                                         {`${rec.total_frames.toLocaleString()} frames`}
                                     </span>
@@ -543,8 +534,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                 {rec.fps != null && rec.fps > 0 && (
                                     <span
                                         title={t("recordingCaptureFps")}
-                                        className="tag text sm"
-                                        style={{fontSize: '0.65rem', fontFamily: MONO_FONT, borderColor: `${ACCENT_BLUE}44`, color: ACCENT_BLUE}}
+                                        className="camera-config-chip text-gray"
                                     >
                                         {`${rec.fps} fps`}
                                     </span>
@@ -560,7 +550,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                     <span
                                         title={ready ? 'All pipeline stages complete — ready for Blender' : `${stagesComplete}/${stagesTotal} pipeline stages complete`}
                                         className="tag text sm"
-                                        style={{fontSize: '0.65rem', color: ready ? '#66bb6a' : undefined}}
+                                        style={{fontSize: '0.65rem', color: ready ? 'var(--color-success)' : undefined}}
                                     >
                                         {ready ? 'Blender ready' : `${stagesComplete}/${stagesTotal} stages`}
                                     </span>

@@ -1,6 +1,14 @@
-import React, {useState} from 'react';
-import type {PlaybackSettings} from './SyncedVideoPlayer';
-import {useTranslation} from 'react-i18next';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import clsx from "clsx";
+import SegmentedControl from "@/components/ui-components/SegmentedControl";
+import Checkbox from "@/components/ui-components/Checkbox";
+import type { PlaybackSettings } from "./SyncedVideoPlayer";
+import { useTranslation } from "react-i18next";
+import IconButton from "@/components/ui-components/IconButton";
+import PromptTooltip from "@/components/ui-components/PromptTooltip";
+import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
+import { useDismissibleTooltip } from "@/hooks/useDismissibleTooltip";
 
 interface PlaybackControlsProps {
     isPlaying: boolean;
@@ -29,11 +37,19 @@ interface PlaybackControlsProps {
 
 const PLAYBACK_RATES = [0.1, 0.25, 0.5, 1, 1.5, 2, 4, 8];
 
-function formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
+function formatTimecode(seconds: number, fps: number): string {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    const ms = Math.floor((seconds % 1) * 100);
-    return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`;
+    const frames = Math.floor((seconds % 1) * fps);
+    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}:${frames.toString().padStart(2, "0")}`;
+}
+
+function formatTimestamp(seconds: number, fps: number, format: "seconds" | "timecode"): string {
+    if (format === "timecode") {
+        return formatTimecode(seconds, fps);
+    }
+    return `${seconds.toFixed(3)}s`;
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
@@ -61,116 +77,223 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
     onSourceChange,
 }) => {
     const { t } = useTranslation();
-    const monoFont = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
 
     const [settingsOpen, setSettingsOpen] = useState(false);
-    const [syncInfoOpen, setSyncInfoOpen] = useState(true);
+    const settingsButtonRef = useRef<HTMLButtonElement>(null);
+    const settingsPopupRef = useRef<HTMLDivElement>(null);
+    const [settingsStyle, setSettingsStyle] = useState<React.CSSProperties>({});
+
+    const [speedDropdownOpen, setSpeedDropdownOpen] = useState(false);
+    const speedButtonRef = useRef<HTMLButtonElement>(null);
+    const speedPopupRef = useRef<HTMLDivElement>(null);
+
+    const [syncInfoOpen, openSyncInfo, dismissSyncInfo] = useDismissibleTooltip(
+        "freemocap:tooltip:syncInfo",
+    );
 
     const updateSetting = <K extends keyof PlaybackSettings>(key: K, value: PlaybackSettings[K]) => {
         onSettingsChange({ ...settings, [key]: value });
     };
+
+    const handleOpenSettings = () => {
+        if (!settingsOpen && settingsButtonRef.current) {
+            const rect = settingsButtonRef.current.getBoundingClientRect();
+            setSettingsStyle({
+                position: "fixed",
+                bottom: window.innerHeight - rect.top + 4,
+                right: window.innerWidth - rect.right,
+                zIndex: 200,
+            });
+        }
+        setSettingsOpen((prev) => !prev);
+    };
+
+    const timestampOptions = useMemo(
+        () => [
+            { label: "1.234s", value: "seconds" },
+            { label: "HH:MM:SS:FF", value: "timecode" },
+        ],
+        [],
+    );
+
+    useEffect(() => {
+        if (!settingsOpen && !speedDropdownOpen) return;
+
+        const handleClick = (e: MouseEvent) => {
+            if (
+                settingsPopupRef.current &&
+                !settingsPopupRef.current.contains(e.target as Node) &&
+                settingsButtonRef.current &&
+                !settingsButtonRef.current.contains(e.target as Node)
+            ) {
+                setSettingsOpen(false);
+            }
+            if (
+                speedPopupRef.current &&
+                !speedPopupRef.current.contains(e.target as Node) &&
+                speedButtonRef.current &&
+                !speedButtonRef.current.contains(e.target as Node)
+            ) {
+                setSpeedDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClick);
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [settingsOpen, speedDropdownOpen]);
 
     const validSources = availableSources && selectedSource && onSourceChange
         ? Object.entries(availableSources).filter(([, s]) => s.available && s.valid).map(([key]) => key)
         : [];
 
     return (
-        <div className="flex flex-col gap-1 bg-middark" style={{padding: '8px 16px', borderTop: '1px solid var(--color-border-secondary)'}}>
-            <div className="flex flex-row items-center gap-1">
-                <span
-                    title={t("estimatedTime")}
-                    className="text sm"
-                    style={{fontFamily: monoFont, minWidth: 70, textAlign: 'right', color: '#00ff88', fontWeight: 600, fontSize: '0.8rem'}}
-                >
-                    ~{formatTime(currentTime)}
-                </span>
-                <input
-                    type="range"
-                    value={currentFrame}
-                    min={0}
-                    max={Math.max(totalFrames - 1, 1)}
-                    step={1}
-                    onChange={(e) => onSeekDrag(Number(e.target.value))}
-                    onMouseUp={(e) => onSeekCommit(Number((e.target as HTMLInputElement).value))}
-                    style={{flex: 1, accentColor: 'var(--color-info)', width: '100%'}}
-                />
-                <span
-                    title={t("estimatedDuration")}
-                    className="text sm text-gray"
-                    style={{fontFamily: monoFont, minWidth: 70}}
-                >
-                    ~{formatTime(duration)}
-                </span>
-            </div>
+        <div className="playback-controls bg-dark br-2 flex flex-row flex-wrap row-reverse justify-center gap-2 p-2">
+            {/* Timeline Scrubber */}
+            <div className="playback-timeline-scrubber flex flex-row items-center">
+                <div className="playback-timeline-track flex-1 bg-middark relative">
+                    <input
+                        type="range"
+                        dir="ltr"
+                        className="playback-timeline-input"
+                        min={0}
+                        max={Math.max(totalFrames - 1, 1)}
+                        step={1}
+                        value={currentFrame}
+                        style={
+                            {
+                                "--progress-percent": `${totalFrames > 1 ? (currentFrame / (totalFrames - 1)) * 100 : 0}%`,
+                            } as React.CSSProperties
+                        }
+                        onChange={(e) => onSeekDrag(Number(e.target.value))}
+                        onMouseUp={(e) => onSeekCommit(Number(e.currentTarget.value))}
+                        onTouchEnd={(e) => onSeekCommit(Number(e.currentTarget.value))}
+                    />
 
-            <div className="flex flex-row items-center justify-center gap-1">
-                <div className="flex flex-row items-center gap-1" style={{minWidth: 240, justifyContent: 'flex-end', marginRight: 8}}>
-                    <span
-                        className="tag text sm"
-                        style={{fontFamily: monoFont, fontSize: '0.85rem', fontWeight: 700, color: '#00ff88', backgroundColor: 'rgba(0,255,136,0.08)', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,255,136,0.2)'}}
-                    >
+                    <div className="playback-timeline-frame-counter pos-abs z-2 text-white gap-3 flex flex-row items-center">
                         Frame {currentFrame} / {totalFrames}
+                        {recordingFps != null && recordingFps > 0 && (
+                            <span title={t("recordingCaptureFps")}>
+                                · Rec: {recordingFps} fps
+                            </span>
+                        )}
+                    </div>
+
+                    <span className="playback-timeline-start-time pos-abs z-2 text-white" title={t("estimatedTime")}>
+                        {formatTimestamp(currentTime, fps, settings.timestampFormat)}
                     </span>
 
-                    {recordingFps != null && recordingFps > 0 && (
-                        <span
-                            title={t("recordingCaptureFps")}
-                            className="tag text sm"
-                            style={{fontFamily: monoFont, fontSize: '0.7rem', color: '#ffcc80', backgroundColor: 'rgba(255,204,128,0.08)', padding: '1px 6px', borderRadius: 4, border: 'rgba(255,204,128,0.2)', whiteSpace: 'nowrap'}}
+                    <span className="playback-timeline-end-time pos-abs z-2 text-white" title={t("estimatedDuration")}>
+                        {formatTimestamp(duration, fps, settings.timestampFormat)}
+                    </span>
+                </div>
+            </div>
+
+            {/* Transport Controls Row */}
+            <div className="flex items-center justify-center controls-group-section gap-2 flex-wrap">
+                {/* Loop & Speed Group */}
+                <div className="playback-controls-group-loop-speed flex bg-middark br-2 flex-row p-1 gap-1">
+                    <IconButton
+                        icon={isLooping ? "loopactive-icon" : "loop-icon"}
+                        onClick={onToggleLoop}
+                        title={isLooping ? t("loopOn") : t("loopOff")}
+                        className={clsx("icon-size-28", isLooping && "activated")}
+                        tooltip={true}
+                        tooltipText={isLooping ? t("loopOn") : t("loopOff")}
+                        tooltipPosition="pos-top"
+                    />
+
+                    <div className="playback-speed-button-containter pos-rel">
+                        <button
+                            ref={speedButtonRef}
+                            className="playback-speed-button icon-size-28 button sm fit-content flex-inline items-center gap-1 br-1"
+                            onClick={() => setSpeedDropdownOpen((prev) => !prev)}
+                            title={t("playbackSpeed")}
                         >
-                            rec: {recordingFps} fps
-                        </span>
-                    )}
+                            <span className="text-gray text md text-nowrap">{playbackRate}×</span>
+                        </button>
+
+                        {speedDropdownOpen && (
+                            <div
+                                ref={speedPopupRef}
+                                className="reveal slide-up right-0 z-10 pos-abs bottom-36 playback-speed-settings-popup border-1 border-solid bg-dark border-black br-2 elevated-sharp flex flex-col gap-2 p-1"
+                            >
+                                <div className="bg-middark br-1 flex flex-col gap-1 p-1">
+                                    {PLAYBACK_RATES.map((rate) => (
+                                        <button
+                                            key={rate}
+                                            className={`gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width ${playbackRate === rate ? "selected" : ""}`}
+                                            onClick={() => {
+                                                onPlaybackRateChange(rate);
+                                                setSpeedDropdownOpen(false);
+                                            }}
+                                        >
+                                            <p className="text-gray text md text-align-left text-nowrap">{rate}×</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <button title={t("jumpToStart")} className="button icon-button br-1" onClick={onSeekToStart}>
-                    <span className="icon skipbackward-icon icon-size-20"/>
-                </button>
+                {/* Step & Skip Group */}
+                <div className="playback-controls-group-step-skip bg-middark br-2 gap-1 flex flex-row p-1 items-center">
+                    <IconButton
+                        icon="skipbackward-icon"
+                        onClick={onSeekToStart}
+                        title={t("jumpToStart")}
+                        className="icon-size-28"
+                        tooltip={true}
+                        tooltipText={t("jumpToStart")}
+                        tooltipPosition="pos-top"
+                    />
+                    <IconButton
+                        icon="framebackward-icon"
+                        onClick={() => onFrameStep(-1)}
+                        title={t("previousFrame")}
+                        className="icon-size-28"
+                        tooltip={true}
+                        tooltipText={t("previousFrame")}
+                        tooltipPosition="pos-top"
+                    />
+                    <IconButton
+                        icon={isPlaying ? "pause-icon" : "play-icon"}
+                        onClick={onPlayPause}
+                        title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+                        className={clsx("playback-btn-play", "icon-size-28", isPlaying && "playing")}
+                        tooltip={true}
+                        tooltipText={isPlaying ? t("pause") : t("play")}
+                        tooltipPosition="pos-top"
+                    />
+                    <IconButton
+                        icon="frameforward-icon"
+                        onClick={() => onFrameStep(1)}
+                        title={t("nextFrame")}
+                        className="icon-size-28"
+                        tooltip={true}
+                        tooltipText={t("nextFrame")}
+                        tooltipPosition="pos-top"
+                    />
+                    <IconButton
+                        icon="skipforward-icon"
+                        onClick={onSeekToEnd}
+                        title={t("jumpToEnd")}
+                        className="icon-size-28"
+                        tooltip={true}
+                        tooltipText={t("jumpToEnd")}
+                        tooltipPosition="pos-top"
+                    />
+                </div>
 
-                <button title={t("previousFrame")} className="button icon-button br-1" onClick={() => onFrameStep(-1)}>
-                    <span className="icon framebackward-icon icon-size-20"/>
-                </button>
-
-                <button
-                    title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
-                    className="button icon-button br-1"
-                    onClick={onPlayPause}
-                    style={{margin: '0 4px', border: '2px solid #4caf50', color: '#4caf50'}}
-                >
-                    {isPlaying
-                        ? <span className="icon pause-icon icon-size-20"/>
-                        : <span className="icon play-icon icon-size-20"/>}
-                </button>
-
-                <button title={t("nextFrame")} className="button icon-button br-1" onClick={() => onFrameStep(1)}>
-                    <span className="icon frameforward-icon icon-size-20"/>
-                </button>
-
-                <button title={t("jumpToEnd")} className="button icon-button br-1" onClick={onSeekToEnd}>
-                    <span className="icon skipforward-icon icon-size-20"/>
-                </button>
-
-                <button
-                    title={isLooping ? t("loopOn") : t("loopOff")}
-                    className="button icon-button br-1"
-                    onClick={onToggleLoop}
-                    style={{
-                        color: isLooping ? 'var(--color-info)' : undefined,
-                        backgroundColor: isLooping ? 'rgba(41, 182, 246, 0.15)' : undefined,
-                        border: isLooping ? '1px solid var(--color-info)' : '1px solid transparent',
-                    }}
-                >
-                    <span className={`icon icon-size-20 ${isLooping ? 'loopactive-icon' : 'loop-icon'}`}/>
-                </button>
-
+                {/* Source Switcher (freemocap-only) */}
                 {validSources.length >= 2 && selectedSource && onSourceChange && (
-                    <div className="flex flex-row gap-1" style={{marginLeft: 8}}>
-                        {['annotated', 'synchronized'].map((src) => (
+                    <div className="flex bg-middark br-2 flex-row p-1 gap-1">
+                        {["annotated", "synchronized"].map((src) => (
                             <button
                                 key={src}
-                                className={`button sm ${selectedSource === src ? 'primary' : 'secondary'}`}
+                                className={`button sm br-1 ${selectedSource === src ? "selected" : ""}`}
                                 onClick={() => onSourceChange(src)}
-                                style={{fontFamily: monoFont, fontSize: '0.7rem', textTransform: 'capitalize'}}
+                                style={{textTransform: "capitalize", fontSize: "0.7rem"}}
                             >
                                 {src}
                             </button>
@@ -178,86 +301,72 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     </div>
                 )}
 
-                <div className="flex flex-row items-center gap-1" style={{marginLeft: 8}}>
-                    <span title={t("playbackSpeed")} className="text sm text-gray" style={{fontSize: '0.8rem'}}>Speed:</span>
-                    <select
-                        className="input-field text md"
-                        value={playbackRate}
-                        onChange={(e) => onPlaybackRateChange(Number(e.target.value))}
-                        style={{minWidth: 70, fontFamily: monoFont, fontSize: '0.8rem'}}
-                    >
-                        {PLAYBACK_RATES.map((rate) => (
-                            <option key={rate} value={rate}>{rate}×</option>
-                        ))}
-                    </select>
+                {/* Info & Settings Group */}
+                <div className="playback-controls-group-info-settings flex items-center gap-1 flow-row p-1 bg-middark br-2">
+                    <div className="flex pos-rel items-center onclick-tooltip-wrapper">
+                        <PromptTooltip
+                            show={syncInfoOpen}
+                            title="Recording Playback Timing Issue"
+                            text={t("syncInfoTitle")}
+                            position="pos-top"
+                            variant="warning"
+                            onClose={dismissSyncInfo}
+                        />
+                        <IconButton
+                            icon="warning-icon"
+                            onClick={() => (syncInfoOpen ? dismissSyncInfo() : openSyncInfo())}
+                            title={t("syncInfo")}
+                            className={clsx("icon-size-28", syncInfoOpen && "activated")}
+                            tooltip={true}
+                            tooltipText={t("syncInfo")}
+                            tooltipPosition="pos-top"
+                        />
+                    </div>
 
-                    <button
-                        title={t("syncInfo")}
-                        className="button icon-button br-1"
-                        onClick={() => setSyncInfoOpen((prev) => !prev)}
-                        style={{color: syncInfoOpen ? '#ffcc80' : 'rgba(255,255,255,0.3)'}}
-                    >
-                        <span className="icon settings-icon icon-size-20"/>
-                    </button>
-
-                    <button
-                        title={t("playbackSettings")}
-                        className="button icon-button br-1"
-                        onClick={() => setSettingsOpen(v => !v)}
-                        style={{color: settingsOpen ? 'var(--color-info)' : undefined}}
-                    >
-                        <span className="icon settings-icon icon-size-20"/>
-                    </button>
-                </div>
-            </div>
-
-            {settingsOpen && (
-                <div
-                    className="splash-overlay inset-0"
-                    style={{position: 'fixed', zIndex: 100}}
-                    onClick={() => setSettingsOpen(false)}
-                >
-                    <div
-                        className="bg-middark br-2 flex flex-col p-3"
-                        style={{position: 'fixed', bottom: 80, right: 16, minWidth: 260}}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <p className="text md text-white" style={{fontWeight: 600, marginBottom: 12}}>Display Settings</p>
-
-                        <label className="flex flex-row items-center gap-1" style={{marginBottom: 12}}>
-                            <input
-                                type="checkbox"
-                                checked={settings.showOverlays}
-                                onChange={(e) => updateSetting('showOverlays', e.target.checked)}
-                                style={{accentColor: 'var(--color-info)'}}
-                            />
-                            <span className="text sm text-white">Show frame overlays</span>
-                        </label>
-
-                        <p className="text sm text-gray" style={{marginBottom: 6}}>Timestamp format</p>
-                        <div className="flex flex-row gap-1">
-                            {(['seconds', 'timecode'] as const).map(fmt => (
-                                <button
-                                    key={fmt}
-                                    className={`button sm flex-1 ${settings.timestampFormat === fmt ? 'primary' : 'secondary'}`}
-                                    style={{fontFamily: monoFont, fontSize: '0.75rem'}}
-                                    onClick={() => updateSetting('timestampFormat', fmt)}
-                                >
-                                    {fmt === 'seconds' ? '1.234s' : 'HH:MM:SS:FF'}
-                                </button>
-                            ))}
-                        </div>
+                    <div className="playback-settings-button-opener flex pos-rel items-center onclick-tooltip-wrapper">
+                        <IconButton
+                            icon="settings-icon"
+                            ref={settingsButtonRef}
+                            onClick={handleOpenSettings}
+                            title={t("playbackSettings")}
+                            className={clsx("icon-size-28", settingsOpen && "activated")}
+                            tooltip={true}
+                            tooltipText={t("playbackSettings")}
+                            tooltipPosition="pos-top"
+                        />
+                        {settingsOpen && (
+                            <div
+                                ref={settingsPopupRef}
+                                style={settingsStyle}
+                                className="reveal slide-up right-0 z-10 pos-abs bottom-36 playback-settings-popup border-1 border-solid bg-dark border-black br-2 elevated-sharp flex flex-col gap-2 p-1"
+                            >
+                                <div className="bg-middark br-1 flex flex-col gap-2 p-2">
+                                    <SubactionHeader text="Display settings" />
+                                    <ToggleComponent
+                                        text="Show frame overlays"
+                                        isToggled={settings.showOverlays}
+                                        onToggle={(state) => updateSetting("showOverlays", state)}
+                                    />
+                                    <div className="timestamp-format-section flex flex-col gap-2 p-1">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text sm text-gray">Timestamp format</p>
+                                        </div>
+                                        <SegmentedControl
+                                            options={timestampOptions}
+                                            value={settings.timestampFormat}
+                                            onChange={(val) =>
+                                                updateSetting("timestampFormat", val as "seconds" | "timecode")
+                                            }
+                                            size="sm"
+                                            className="bg-darkgray segmented-control-sm gap-2"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
-
-            {syncInfoOpen && (
-                <div style={{padding: '8px 16px', marginTop: 4, borderRadius: 4, backgroundColor: 'rgba(255, 204, 128, 0.06)', border: '1px solid rgba(255, 204, 128, 0.15)'}}>
-                    <p className="text sm" style={{color: '#ffcc80', fontWeight: 600, marginBottom: 4}}>
-                        {t("syncInfoTitle")}
-                    </p>
-                </div>
-            )}
+            </div>
         </div>
     );
 };

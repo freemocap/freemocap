@@ -119,14 +119,14 @@ const PlaybackPage: React.FC = () => {
                                 title={t('openFolder')}
                                 className="button icon-button br-1"
                                 onClick={handleOpenFolder}
-                                style={{color: '#ffcc80', border: '1px solid rgba(255,204,128,0.3)', borderRadius: '6px', padding: '0 8px'}}
+                                style={{color: 'var(--color-warning)', border: '1px solid rgba(230,73,0,0.3)', borderRadius: '6px', padding: '0 8px'}}
                             >
                                 <span className="icon load-icon icon-size-20"/>
                             </button>
 
                             <div style={{flex: 1}}/>
 
-                            <span title={t('cameraStreams')} className="tag text sm" style={{fontFamily: monoFont, color: '#29b6f6', borderColor: 'rgba(41,182,246,0.3)'}}>
+                            <span title={t('cameraStreams')} className="tag text sm" style={{fontFamily: monoFont, color: 'var(--color-info)', borderColor: 'rgba(43,164,255,0.3)'}}>
                                 {t('cameraCount', {count: loadedVideos.length})}
                             </span>
 
@@ -137,7 +137,7 @@ const PlaybackPage: React.FC = () => {
                             )}
 
                             {recordingFps != null && recordingFps > 0 && (
-                                <span title={t('recordingCaptureFps')} className="tag text sm" style={{fontFamily: monoFont, color: '#ffcc80', borderColor: 'rgba(255,204,128,0.3)'}}>
+                                <span title={t('recordingCaptureFps')} className="tag text sm" style={{fontFamily: monoFont, color: 'var(--color-warning)', borderColor: 'rgba(230,73,0,0.3)'}}>
                                     rec: {recordingFps} fps
                                 </span>
                             )}

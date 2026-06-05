@@ -87,7 +87,7 @@ const PlaybackPage: React.FC = () => {
         <div className="flex flex-col flex-1 bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>
             <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
-                    <div className="flex flex-col pos-rel" style={{height: '100%'}}>
+                    <div className="flex flex-col pos-rel flex-1" style={{minHeight: 0}}>
                         <SettingsOverlay
                             settings={settings}
                             onSettingsChange={handleSettingsChange}
@@ -233,10 +233,6 @@ const PlaybackPage: React.FC = () => {
                     </div>
                 </ErrorBoundary>
             </div>
-
-            <footer style={{padding: 4}}>
-                <Footer/>
-            </footer>
         </div>
     );
 };

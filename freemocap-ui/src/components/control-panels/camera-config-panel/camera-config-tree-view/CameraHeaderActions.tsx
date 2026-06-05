@@ -1,126 +1,92 @@
-import React, {useState} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 
-import {useAppDispatch} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     camerasConnectOrUpdate,
     closeCameras,
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
+import {selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
 import {useTranslation} from 'react-i18next';
 import IconButton from "@/components/ui-components/IconButton";
+import ButtonSm from "@/components/ui-components/ButtonSm";
 
-interface CameraHeaderActionsProps {
-    isLoading: boolean;
-    isPaused: boolean;
-}
-
-export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
-    isLoading,
-    isPaused,
-}) => {
+export const CameraHeaderActions: React.FC = () => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
+    const [isStoppingCameras, setIsStoppingCameras] = useState(false);
 
-    const [isActionInProgress, setIsActionInProgress] = useState(false);
+    const isLoading = useAppSelector(selectIsLoading);
+    const isPaused = useAppSelector(selectIsPaused);
+    const connectedCameras = useAppSelector(selectConnectedCameras);
+    const isRecording = useAppSelector(state => state.recording.isRecording);
 
-    const handleRefreshCameras = async (): Promise<void> => {
-        setIsActionInProgress(true);
-        try {
-            await dispatch(detectCameras({filterVirtual: true})).unwrap();
-        } catch (error) {
-            console.error('Error detecting cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
+    useEffect(() => {
+        if (isStoppingCameras && connectedCameras.length === 0) {
+            setIsStoppingCameras(false);
         }
-    };
+    }, [isStoppingCameras, connectedCameras.length]);
 
-    const handleConnectOrApply = async (): Promise<void> => {
-        setIsActionInProgress(true);
-        try {
-            await dispatch(camerasConnectOrUpdate()).unwrap();
-        } catch (error) {
-            console.error('Error with camera operation:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleDetect = useCallback(() => {
+        dispatch(detectCameras({filterVirtual: true}));
+    }, [dispatch]);
 
-    const handleCloseCameras = async (): Promise<void> => {
-        setIsActionInProgress(true);
-        try {
-            await dispatch(closeCameras()).unwrap();
-        } catch (error) {
-            console.error('Error closing cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleUpdate = useCallback(() => {
+        dispatch(camerasConnectOrUpdate());
+    }, [dispatch]);
 
-    const handlePauseUnpause = async (): Promise<void> => {
-        setIsActionInProgress(true);
-        try {
-            await dispatch(pauseUnpauseCameras()).unwrap();
-        } catch (error) {
-            console.error('Error pausing/unpausing cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleStop = useCallback(() => {
+        setIsStoppingCameras(true);
+        dispatch(closeCameras());
+    }, [dispatch]);
 
-    const handleClearSavedSettings = (): void => {
-        dispatch(savedSettingsCleared());
-    };
-
-    const busy = isLoading || isActionInProgress;
+    const handlePauseUnpause = useCallback(() => {
+        dispatch(pauseUnpauseCameras());
+    }, [dispatch]);
 
     return (
         <>
             <IconButton
-                icon="stream-icon"
-                onClick={handleConnectOrApply}
-                title={t("connectCameras")}
+                icon="scan-icon"
+                onClick={handleDetect}
                 tooltip
-                tooltipText={t("connectCameras")}
-                tooltipPosition="pos-bottom-right"
+                tooltipText={isRecording ? t('stopRecordingFirst') : t('detectCameras')}
+                tooltipPosition="pos-bottom"
+                disabled={isRecording}
             />
 
-            <IconButton
-                icon={isPaused ? "play-icon" : "pause-icon"}
-                onClick={handlePauseUnpause}
-                title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}
-                tooltip
-                tooltipText={isPaused ? t("resumeStreaming") : t("pauseStreaming")}
-                tooltipPosition="pos-bottom"
-            />
-
-            <IconButton
-                icon="stopstreaming-icon"
-                onClick={handleCloseCameras}
-                title={t("closeAllCameras")}
-                tooltip
-                tooltipText={t("closeAllCameras")}
-                tooltipPosition="pos-bottom"
-            />
-
-            <IconButton
-                icon={busy ? "loader-icon" : "rotate-icon"}
-                onClick={handleRefreshCameras}
-                title={t("detectCameras")}
-                tooltip
-                tooltipText={t("detectCameras")}
-                tooltipPosition="pos-bottom"
-            />
-
-            <IconButton
-                icon="clear-icon"
-                onClick={handleClearSavedSettings}
-                title={t("clearCameraSettings")}
-                tooltip
-                tooltipText={t("clearCameraSettings")}
-                tooltipPosition="pos-bottom"
-            />
+            {connectedCameras.length === 0 ? (
+                <ButtonSm
+                    text={isLoading ? t('connecting') : t('connectCameras')}
+                    iconClass={isLoading ? 'loader-icon' : 'stream-icon'}
+                    onClick={handleUpdate}
+                    textColor="text-black"
+                    className={isLoading ? 'disabled primary' : 'primary'}
+                    tooltip
+                    tooltipText={t('connectCameras')}
+                    tooltipPosition="pos-bottom-right"
+                />
+            ) : (
+                <>
+                    <IconButton
+                        icon={isPaused ? 'play-icon' : 'pause-icon'}
+                        onClick={handlePauseUnpause}
+                        tooltip
+                        tooltipText={isRecording ? t('stopRecordingFirst') : isPaused ? t('resumeStreaming') : t('pauseStreaming')}
+                        tooltipPosition="pos-bottom-right"
+                        disabled={isRecording}
+                    />
+                    <IconButton
+                        icon={isStoppingCameras ? 'loader-icon' : 'stopstreaming-icon'}
+                        onClick={handleStop}
+                        tooltip
+                        tooltipText={isRecording ? t('stopRecordingFirst') : t('closeAllCameras')}
+                        tooltipPosition="pos-bottom-right"
+                        disabled={isRecording || isStoppingCameras}
+                    />
+                </>
+            )}
         </>
     );
 };

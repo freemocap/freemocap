@@ -1,5 +1,7 @@
 import React from 'react';
-import {useTranslation} from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import ValueSelector from '@/components/ui-components/ValueSelector';
 
 interface DelayStartControlProps {
     useDelay: boolean;
@@ -9,35 +11,24 @@ interface DelayStartControlProps {
 }
 
 export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
-    useDelay,
-    delaySeconds,
-    onDelayToggle,
-    onDelayChange
+    useDelay, delaySeconds, onDelayToggle, onDelayChange,
 }) => {
     const { t } = useTranslation();
     return (
-        <div className="flex flex-row items-center gap-2">
-            <label className="flex flex-row items-center gap-1">
-                <input
-                    type="checkbox"
-                    checked={useDelay}
-                    onChange={(e) => onDelayToggle(e.target.checked)}
-                    style={{accentColor: 'var(--color-info)'}}
-                />
-                <span className="text sm text-gray">{t("delayStart")}</span>
-            </label>
+        <div className="flex items-center gap-1 flex-wrap align-end">
+            <ToggleComponent
+                text={t("delayStart")}
+                isToggled={useDelay}
+                onToggle={onDelayToggle}
+            />
             {useDelay && (
-                <div className="input-with-string" style={{width: 100}}>
-                    <input
-                        className="input-field text md"
-                        type="number"
-                        value={delaySeconds}
-                        onChange={(e) => onDelayChange(Math.max(1, parseInt(e.target.value) || 1))}
-                        min={1}
-                        step={1}
-                        placeholder={t("seconds")}
-                    />
-                </div>
+                <ValueSelector
+                    value={delaySeconds}
+                    min={1}
+                    max={60}
+                    unit="s"
+                    onChange={onDelayChange}
+                />
             )}
         </div>
     );

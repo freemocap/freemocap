@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useState} from "react";
 import {recordingInfoUpdated, startRecording, stopRecording, useAppDispatch, useAppSelector} from "@/store";
 import {
     autoProcessToggled,
@@ -21,17 +21,15 @@ import type {RecordingTypePreset} from "@/store/slices/recording/recording-types
 import {calibrateRecording} from "@/store/slices/calibration/calibration-thunks";
 import {processMocapRecording} from "@/store/slices/mocap/mocap-thunks";
 import {PresetPicker} from "@/components/common/PresetPicker";
-
-import {
-    MicrophoneSelector
-} from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
-import {RecordingPathTreeItem} from "@/components/control-panels/recording-info-panel/RecordingPathTreeItem";
+import {MicrophoneSelector} from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import {useElectronIPC} from "@/services/electron-ipc/electron-ipc";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {getTimestampString} from "@/components/control-panels/recording-info-panel/getTimestampString";
-import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {RecordingSummary} from "./RecordingSummary";
-import {RecordingHeaderButton} from "./RecordingHeaderButton";
+import {StartStopRecordingButton} from "./recording-subcomponents/StartStopRecordingButton";
+import {RecordingPathModal} from "./RecordingPathModal";
+import TextSelector from "@/components/ui-components/TextSelector";
+import ButtonSm from "@/components/ui-components/ButtonSm";
+import {useTranslation} from "react-i18next";
 
 export type {RecordingTypePreset};
 
@@ -60,12 +58,20 @@ export const RecordingInfoPanel: React.FC = () => {
         autoProcess,
     } = config;
 
+    const [pathModalOpen, setPathModalOpen] = useState(false);
+    const [previewTimestamp, setPreviewTimestamp] = useState(() => getTimestampString());
+
     const {isElectron, api} = useElectronIPC();
     const {connectedCameraIds} = useServer();
+    const {t} = useTranslation();
     const noCamerasConnected = connectedCameraIds.length === 0;
 
+    useEffect(() => {
+        if (recordingInfo.isRecording) return;
+        const id = setInterval(() => setPreviewTimestamp(getTimestampString()), 1000);
+        return () => clearInterval(id);
+    }, [recordingInfo.isRecording]);
 
-    // Timeout fallback - clear pending after 5 seconds if thunk hasn't responded
     useEffect(() => {
         if (!pendingOperation) return;
         const timeoutMs = 5000;
@@ -78,86 +84,58 @@ export const RecordingInfoPanel: React.FC = () => {
         return () => clearTimeout(timer);
     }, [dispatch, pendingOperation]);
 
-
-    // replace ~ with user's home directory
     useEffect(() => {
         if (recordingInfo?.recordingDirectory?.startsWith("~") && isElectron && api) {
             api.fileSystem.getHomeDirectory.query()
                 .then((homePath: string) => {
-                    const updatedDirectory = recordingInfo.recordingDirectory.replace(
-                        "~",
-                        homePath
-                    ).replace(/\\/g, "/");
+                    const updatedDirectory = recordingInfo.recordingDirectory.replace("~", homePath).replace(/\\/g, "/");
                     dispatch(recordingInfoUpdated({recordingDirectory: updatedDirectory}));
                 })
                 .catch((error: unknown) => {
                     console.error("Failed to get home directory:", error);
-                    throw error; // Fail loudly as per preferences
+                    throw error;
                 });
         }
     }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
 
-    // Handle countdown timer
     useEffect(() => {
         if (countdown === null) return;
         if (countdown > 0) {
             const timer = setTimeout(() => dispatch(countdownSet(countdown - 1)), 1000);
             return () => clearTimeout(timer);
         }
-        // countdown === 0
         dispatch(countdownSet(null));
         handleStartRecording();
     }, [countdown]);
 
-
     const handleStartRecording = async (): Promise<void> => {
-        console.log("Starting recording...");
-
         const ts = getTimestampString();
         const nameParts = useTimestamp ? [ts] : [baseName];
         if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
         if (recordingTag) nameParts.push(recordingTag);
         const recordingName = nameParts.join("_");
-        const subfolderName = createSubfolder
-            ? customSubfolderName || getTimestampString()
-            : "";
+        const subfolderName = createSubfolder ? customSubfolderName || getTimestampString() : "";
         const recordingPath = createSubfolder
             ? recordingInfo.recordingDirectory + "/" + subfolderName
             : recordingInfo.recordingDirectory;
 
-        console.log("Recording path:", recordingPath);
-        console.log("Recording name:", recordingName);
-
-        if (useIncrement) {
-            dispatch(currentIncrementIncremented());
-        }
-
+        if (useIncrement) dispatch(currentIncrementIncremented());
         dispatch(pendingOperationSet({type: 'start', timestamp: Date.now()}));
 
         try {
-            await dispatch(
-                startRecording({
-                    recordingName,
-                    recordingDirectory: recordingPath,
-                    micDeviceIndex,
-                })
-            ).unwrap();
+            await dispatch(startRecording({recordingName, recordingDirectory: recordingPath, micDeviceIndex})).unwrap();
         } catch (error) {
             console.error("Failed to start recording:", error);
             dispatch(pendingOperationSet(null));
-            throw error; // Fail loudly as per preferences
+            throw error;
         }
     };
 
     const handleRecordButtonClick = async (): Promise<void> => {
-        if (pendingOperation) {
-            return;
-        }
+        if (pendingOperation) return;
 
         if (recordingInfo.isRecording) {
-            console.log("Stopping recording...");
             dispatch(pendingOperationSet({type: 'stop', timestamp: Date.now()}));
-
             try {
                 const result = await dispatch(stopRecording()).unwrap();
                 if (result && autoProcess && recordingTypePreset === "calibration") {
@@ -168,98 +146,146 @@ export const RecordingInfoPanel: React.FC = () => {
             } catch (error) {
                 console.error("Failed to stop recording:", error);
                 dispatch(pendingOperationSet(null));
-                throw error; // Fail loudly as per preferences
+                throw error;
             }
         } else if (useDelayStart) {
-            console.log("Starting countdown from " + delaySeconds + " seconds");
             dispatch(countdownSet(delaySeconds));
         } else {
             await handleStartRecording();
         }
     };
 
+    // Build display path for the read-only preview
+    const previewNameParts = useTimestamp ? [previewTimestamp] : [baseName];
+    if (recordingTypePreset !== "none") previewNameParts.push(recordingTypePreset);
+    if (recordingTag) previewNameParts.push(recordingTag);
+    if (useIncrement) previewNameParts.push(String(currentIncrement));
+    const previewName = previewNameParts.join("_");
+    const displayPath = createSubfolder && customSubfolderName
+        ? `${recordingInfo.recordingDirectory}/${customSubfolderName}/${previewName}`
+        : `${recordingInfo.recordingDirectory}/${previewName}`;
+
+    const recordingStartTime = recordingInfo.startedAt ? new Date(recordingInfo.startedAt).getTime() : null;
+
+    const modalProps = {
+        recordingDirectory: recordingInfo.recordingDirectory,
+        countdown,
+        recordingTag,
+        useDelayStart,
+        delaySeconds,
+        useTimestamp,
+        baseName,
+        recordingTypePreset,
+        useIncrement,
+        currentIncrement,
+        createSubfolder,
+        customSubfolderName,
+        isRecording: recordingInfo.isRecording,
+        onDelayToggle: (v: boolean) => dispatch(useDelayStartToggled(v)),
+        onDelayChange: (v: number) => dispatch(delaySecondsChanged(v)),
+        onTagChange: (v: string) => dispatch(recordingTagChanged(v)),
+        onNameChange: (v: string) => { dispatch(useTimestampToggled(false)); dispatch(baseNameChanged(v)); },
+        onUseTimestampChange: (v: boolean) => dispatch(useTimestampToggled(v)),
+        onBaseNameChange: (v: string) => dispatch(baseNameChanged(v)),
+        onUseIncrementChange: (v: boolean) => dispatch(useIncrementToggled(v)),
+        onIncrementChange: (v: number) => dispatch(currentIncrementChanged(v)),
+        onCreateSubfolderChange: (v: boolean) => dispatch(createSubfolderToggled(v)),
+        onCustomSubfolderNameChange: (v: string) => dispatch(customSubfolderNameChanged(v)),
+    };
+
     return (
-        <CollapsibleSidebarSection
-            icon={<span className="icon record-icon icon-size-20" />}
-            title={"Recording"}
-            summaryContent={
-                <RecordingSummary
-                    isRecording={recordingInfo.isRecording}
-                    startedAt={recordingInfo.startedAt}
-                />
-            }
-            primaryControl={
-                <RecordingHeaderButton
-                    isRecording={recordingInfo.isRecording}
-                    isPending={pendingOperation !== null}
-                    disabled={noCamerasConnected && !recordingInfo.isRecording}
-                    onClick={handleRecordButtonClick}
-                />
-            }
-            secondaryControls={
-                <div className="flex flex-row items-center gap-1">
-                    <PresetPicker
-                        value={recordingTypePreset}
-                        options={RECORDING_TYPE_OPTIONS}
-                        onChange={(v) => dispatch(recordingTypePresetChanged(v))}
-                        disabled={recordingInfo.isRecording}
-                        minWidth={70}
-                    />
-                    <label className="flex flex-row items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={autoProcess}
-                            onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
-                            disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
-                            style={{accentColor: 'var(--color-info)'}}
+            <div className="main-side-actions flex flex-col gap-1 z-3" style={{margin: '4px 8px'}}>
+
+                {/* File directory group */}
+                <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">
+                    <p className="text-nowrap text-left bg-md text-darkgray p-1">File directory</p>
+
+                    {/* Read-only path preview */}
+                    <div
+                        className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black full-width"
+                        style={{pointerEvents: "none"}}
+                    >
+                        <span className="icon icon-size-20 subfolder-icon" />
+                        <p className="text-gray text-nowrap text md text-align-left flex flex-end">
+                            {displayPath || "Set recording path"}
+                        </p>
+                    </div>
+
+                    {/* Tag + options button */}
+                    <div className="flex flex-row gap-1 items-center">
+                        <TextSelector
+                            value={recordingTag}
+                            onChange={(v) => dispatch(recordingTagChanged(v))}
+                            placeholder={t("recordingTagPlaceholder")}
                         />
-                        <span
-                            className="text sm text-gray"
-                            style={{
-                                fontSize: 10,
-                                opacity: recordingTypePreset === "none" ? 0.5 : 1,
-                            }}
-                        >
-                            Auto Process
-                        </span>
-                    </label>
+                        <ButtonSm
+                            iconClass="settings-icon"
+                            text="Recording Options"
+                            textColor="text-gray"
+                            onClick={() => setPathModalOpen(true)}
+                        />
+                    </div>
+
+                    <RecordingPathModal
+                        open={pathModalOpen}
+                        onClose={() => setPathModalOpen(false)}
+                        {...modalProps}
+                    />
                 </div>
-            }
-            defaultExpanded={false}
-        >
-            <div className="br-1 bg-middark" style={{margin: '4px 8px'}}>
-                <div className="p-1">
+
+                {/* Record group */}
+                <div className="record-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 p-2 pb-2">
+                    <div
+                        className="flex flex-row flex-1 items-center gap-1 w-full"
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <StartStopRecordingButton
+                            isRecording={recordingInfo.isRecording}
+                            isPending={pendingOperation !== null}
+                            countdown={countdown}
+                            recordingStartTime={recordingStartTime}
+                            disabled={noCamerasConnected && !recordingInfo.isRecording}
+                            tooltipText={noCamerasConnected && !recordingInfo.isRecording ? t('connectCamerasToRecord') : undefined}
+                            onClick={handleRecordButtonClick}
+                        />
+                    </div>
+
+                    {/* Preset + auto-process */}
+                    <div className="flex flex-row items-center gap-1">
+                        <PresetPicker
+                            value={recordingTypePreset}
+                            options={RECORDING_TYPE_OPTIONS}
+                            onChange={(v) => dispatch(recordingTypePresetChanged(v))}
+                            disabled={recordingInfo.isRecording}
+                            minWidth={70}
+                        />
+                        <label className="flex flex-row items-center gap-1">
+                            <input
+                                type="checkbox"
+                                checked={autoProcess}
+                                onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
+                                disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
+                                style={{accentColor: 'var(--color-info)'}}
+                            />
+                            <span
+                                className="text sm text-gray"
+                                style={{
+                                    fontSize: 10,
+                                    opacity: recordingTypePreset === "none" ? 0.5 : 1,
+                                }}
+                            >
+                                Auto Process
+                            </span>
+                        </label>
+                    </div>
+
                     <MicrophoneSelector
                         selectedMicIndex={micDeviceIndex}
                         onMicSelected={(idx) => dispatch(micDeviceIndexChanged(idx))}
                         disabled={recordingInfo.isRecording}
                     />
                 </div>
-                <RecordingPathTreeItem
-                    recordingDirectory={recordingInfo.recordingDirectory}
-                    countdown={countdown}
-                    recordingTag={recordingTag}
-                    useDelayStart={useDelayStart}
-                    delaySeconds={delaySeconds}
-                    useTimestamp={useTimestamp}
-                    baseName={baseName}
-                    recordingTypePreset={recordingTypePreset}
-                    useIncrement={useIncrement}
-                    currentIncrement={currentIncrement}
-                    createSubfolder={createSubfolder}
-                    customSubfolderName={customSubfolderName}
-                    isRecording={recordingInfo.isRecording}
-                    onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
-                    onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
-                    onTagChange={(v) => dispatch(recordingTagChanged(v))}
-                    onUseTimestampChange={(v) => dispatch(useTimestampToggled(v))}
-                    onBaseNameChange={(v) => dispatch(baseNameChanged(v))}
-                    onUseIncrementChange={(v) => dispatch(useIncrementToggled(v))}
-                    onIncrementChange={(v) => dispatch(currentIncrementChanged(v))}
-                    onCreateSubfolderChange={(v) => dispatch(createSubfolderToggled(v))}
-                    onCustomSubfolderNameChange={(v) => dispatch(customSubfolderNameChanged(v))}
-                />
             </div>
-        </CollapsibleSidebarSection>
     );
 };

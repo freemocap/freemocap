@@ -45,7 +45,7 @@ export const CameraConfigTreeView: React.FC = () => {
                 )}
                 <div className="flex-1" />
                 <div className="button-group flex items-center gap-1 pos-rel">
-                    <CameraHeaderActions isLoading={isLoading} isPaused={isPaused} />
+                    <CameraHeaderActions />
                 </div>
             </div>
 

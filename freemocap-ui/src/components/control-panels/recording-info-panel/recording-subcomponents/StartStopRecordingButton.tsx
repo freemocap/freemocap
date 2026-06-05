@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import clsx from 'clsx';
 import {useTranslation} from 'react-i18next';
 
 interface StartStopButtonProps {
@@ -8,131 +9,88 @@ interface StartStopButtonProps {
     recordingStartTime: number | null;
     disabled: boolean;
     onClick: () => void;
+    tooltipText?: string;
 }
 
 const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-
     const parts: string[] = [];
-    if (hours > 0) {
-        parts.push(hours.toString().padStart(2, '0'));
-    }
+    if (hours > 0) parts.push(hours.toString().padStart(2, '0'));
     parts.push(minutes.toString().padStart(2, '0'));
     parts.push(secs.toString().padStart(2, '0'));
-
     return parts.join(':');
 };
 
 export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
-    isRecording,
-    isPending,
-    countdown,
-    recordingStartTime,
-    disabled,
-    onClick
+    isRecording, isPending, countdown, recordingStartTime, disabled, onClick, tooltipText,
 }) => {
     const [recordingDuration, setRecordingDuration] = useState<number>(0);
-    const { t } = useTranslation();
+    const {t} = useTranslation();
 
-    // Update recording duration every second
     useEffect(() => {
         if (!isRecording || !recordingStartTime || isPending) {
             setRecordingDuration(0);
             return;
         }
-
-        const updateDuration = (): void => {
-            const now = Date.now();
-            const duration = Math.floor((now - recordingStartTime) / 1000);
-            setRecordingDuration(duration);
-        };
-
-        // Update immediately
-        updateDuration();
-
-        // Then update every second
-        const interval = setInterval(updateDuration, 1000);
-
+        const update = () => setRecordingDuration(Math.floor((Date.now() - recordingStartTime) / 1000));
+        update();
+        const interval = setInterval(update, 1000);
         return () => clearInterval(interval);
     }, [isRecording, recordingStartTime, isPending]);
 
-    const getButtonContent = (): React.ReactNode => {
-        // Show countdown if active
-        if (countdown !== null && countdown > 0) {
-            return (
-                <div className="flex flex-row items-center gap-1">
-                    <p className="text bg text-white">
-                        {t('startingIn', { countdown })}
-                    </p>
-                </div>
-            );
-        }
+    const isDisabled = disabled || isPending || countdown !== null;
 
-        // Show pending state
-        if (isPending) {
-            return (
-                <div className="flex flex-row items-center gap-1">
+    const buttonEl = (
+        <button
+            className={clsx(
+                "accent text-nowrap flex flex-row flex-1 gap-1 br-1 button sm min-w-fit-content flex-inline text-left items-center full-width primary justify-center",
+                isRecording ? "record-button-active" : isPending ? "record-button-pending" : "accent",
+            )}
+            onClick={onClick}
+            disabled={isDisabled}
+            style={isDisabled && tooltipText ? {pointerEvents: "none"} : undefined}
+        >
+            {countdown !== null && countdown > 0 ? (
+                <div className="flex items-center gap-1">
                     <span className="icon loader-icon icon-size-20" />
-                    <p className="text bg text-white">
-                        {isRecording ? t('stopping') : t('starting')}
-                    </p>
+                    <p className="text bg text-white">{t('startingIn', {countdown})}</p>
                 </div>
-            );
-        }
-
-        // Show recording state with duration
-        if (isRecording) {
-            return (
-                <div className="flex flex-col items-center">
-                    <p className="text bg text-white">{t('stopRecordingButton')}</p>
-                    <p className="text sm text-white" style={{fontSize: '0.9rem', fontFamily: 'monospace'}}>
-                        {formatDuration(recordingDuration)}
-                    </p>
+            ) : isPending ? (
+                <div className="flex items-center gap-1">
+                    <span className="icon loader-icon icon-size-20" />
+                    <p className="text bg text-white">{isRecording ? t('stopping') : t('starting')}</p>
                 </div>
-            );
-        }
-
-        // Default start state
-        return (
-            <p className="text bg text-white">{t('startRecordingButton')}</p>
-        );
-    };
-
-    const buttonStyle: React.CSSProperties = {
-        backgroundColor: isRecording ? '#8d0a02' : '#005d94',
-        borderStyle: 'solid',
-        borderWidth: '3px',
-        borderColor: isPending ? '#ffa500' : '#ff55ff',
-        padding: 10,
-        position: 'relative',
-        transition: 'all 0.3s ease',
-        opacity: isPending ? 0.8 : 1,
-        width: '100%',
-        cursor: disabled || isPending || countdown !== null ? 'not-allowed' : 'pointer',
-        ...(isRecording && !isPending
-            ? {animation: 'pulseBg 3s infinite ease-in-out'}
-            : {}),
-    };
-
-    return (
-        <>
-            <style>{`
-                @keyframes pulseBg {
-                    0%   { background-color: #fb1402; }
-                    50%  { background-color: #711c1c; }
-                    100% { background-color: #fb1402; }
-                }
-            `}</style>
-            <button
-                onClick={onClick}
-                disabled={disabled || isPending || countdown !== null}
-                style={buttonStyle}
-                className="button sm"
-            >
-                {getButtonContent()}
-            </button>
-        </>
+            ) : isRecording ? (
+                <div className="flex flex-row items-center gap-1">
+                    <div className="flex items-center gap-1">
+                        <span className="icon stop-icon icon-size-20" />
+                        <p className="text bg text-white">{t('stopRecordingButton')}</p>
+                    </div>
+                    <p className="record-button-duration text bg text-white items-center">{formatDuration(recordingDuration)}</p>
+                </div>
+            ) : (
+                <div className="flex items-center gap-1">
+                    <span className="icon record-icon icon-size-20" />
+                    <p className="text bg text-white">{t('startRecordingButton')}</p>
+                </div>
+            )}
+        </button>
     );
+
+    if (isDisabled && tooltipText) {
+        return (
+            <div className="tooltip-wrapper pos-rel flex flex-1 w-full" style={{opacity: 0.5, cursor: "not-allowed"}}>
+                {buttonEl}
+                <div className={clsx("tooltip-container elevated-sharp pos-top p-01 br-2 bg-dark")}>
+                    <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
+                        <p className="text-white text md">{tooltipText}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return buttonEl;
 };

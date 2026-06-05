@@ -78,21 +78,23 @@ export const MainNavTabs = () => {
 
     return (
         <div className="main-tab-bar">
-            {NAV_TABS.map((tab, idx) => {
-                const isActive = idx === activeIdx;
-                return (
-                    <button
-                        key={tab.path}
-                        className={`segmented-control-button button${isActive ? ' activated' : ''}`}
-                        onClick={() => handleClick(tab.path)}
-                    >
-                        {tab.path === '/active-recording'
-                            ? <ActiveRecordingLabel />
-                            : <p className={`text md${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
-                        }
-                    </button>
-                );
-            })}
+            <div className="segmented-control-container br-1-1 gap-1 p-1 bg-middark flex flex-row">
+                {NAV_TABS.map((tab, idx) => {
+                    const isActive = idx === activeIdx;
+                    return (
+                        <button
+                            key={tab.path}
+                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center${isActive ? ' bg-dark' : ''}`}
+                            onClick={() => handleClick(tab.path)}
+                        >
+                            {tab.path === '/active-recording'
+                                ? <ActiveRecordingLabel />
+                                : <p className={`text md text-center p-1${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
+                            }
+                        </button>
+                    );
+                })}
+            </div>
         </div>
     );
 };

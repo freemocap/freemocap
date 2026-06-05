@@ -1,14 +1,16 @@
-import React, {useState} from "react";
+import React, {useRef, useState} from "react";
+import clsx from "clsx";
 import {useTranslation} from "react-i18next";
 
-import {CameraConfigTreeSection} from "./CameraConfigTreeSection";
+import {CameraSettingsModal} from "./CameraSettingsModal";
 import {ROTATION_DEGREE_LABELS, RotationValue, useAppDispatch} from "@/store";
 import {cameraRealtimeToggled, cameraSelectionToggled} from "@/store/slices/cameras/cameras-slice";
 import {Camera} from "@/store/slices/cameras/cameras-types";
+import Checkbox from "@/components/ui-components/Checkbox";
+import IconButton from "@/components/ui-components/IconButton";
 
 interface CameraTreeItemProps {
     camera: Camera;
-    isExpanded?: boolean;
 }
 
 const getConfigSummary = (config: any): string[] => {
@@ -43,133 +45,105 @@ const getConfigSummary = (config: any): string[] => {
     return summary.filter(item => item);
 };
 
-const getStatusColor = (connectionStatus: string): string => {
-    switch (connectionStatus) {
-        case "connected":
-            return 'var(--color-success)';
-        case "available":
-            return 'var(--color-info)';
-        case "error":
-            return 'var(--color-danger)';
-        default:
-            return 'var(--color-text-muted)';
-    }
-};
-
-export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera, isExpanded = false}) => {
+export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera}) => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
-    const [expanded, setExpanded] = useState(isExpanded);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [modalPos, setModalPos] = useState({top: 80, left: 40});
+    const settingsBtnRef = useRef<HTMLButtonElement>(null);
 
-    const statusLabelMap: Record<string, string> = {
-        connected: t('connected'),
-        available: t('available'),
-        error: t('errorsDetected'),
-    };
-
-    const handleToggleSelection = (e: React.MouseEvent): void => {
+    const handleToggleSelection = (e: React.ChangeEvent<HTMLInputElement>): void => {
         e.stopPropagation();
         dispatch(cameraSelectionToggled(camera.id));
     };
 
-    const handleToggleRealtime = (e: React.MouseEvent): void => {
-        e.stopPropagation();
+    const handleToggleRealtime = (): void => {
         dispatch(cameraRealtimeToggled(camera.id));
     };
 
+    const handleOpenSettings = (e: React.MouseEvent): void => {
+        e.stopPropagation();
+        if (!settingsOpen && settingsBtnRef.current) {
+            const rect = settingsBtnRef.current.getBoundingClientRect();
+            setModalPos({top: rect.bottom + 8, left: rect.right + 8});
+        }
+        setSettingsOpen(prev => !prev);
+    };
+
     const configSummary = getConfigSummary(camera.desiredConfig);
-    const showConfigSummary = !expanded && configSummary.length > 0;
 
     return (
-        <div>
-            <div
-                className="flex flex-row items-center gap-1 p-1"
-                style={{minHeight: 32, paddingRight: 8, cursor: 'pointer', userSelect: 'none'}}
-                onClick={() => setExpanded((prev) => !prev)}
-            >
-                <span
-                    className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`}
-                    style={{transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0}}
-                />
+        <div className="camera-item-row br-1 flex flex-col gap-1 m-1">
+            <div className="camera-row-group flex flex-row gap-0 items-center">
+                {/* Left: selection + realtime toggles */}
+                <div className="flex flex-row checkbox-group">
+                    <div className="tooltip-wrapper pos-rel">
+                        <Checkbox
+                            label=""
+                            checked={camera.selected}
+                            onChange={handleToggleSelection}
+                            inputClassName={camera.connectionStatus === 'connected' ? 'streaming' : ''}
+                        />
+                        <div className="tooltip-container elevated-sharp pos-bottom-left p-01 br-2 bg-dark">
+                            <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
+                                <p className="text-white text md">
+                                    {camera.selected ? 'Remove from capture group' : 'Add to capture group'}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <IconButton
+                        icon={camera.realtimeEnabled ? 'streaming-icon' : 'stopstreaming-icon'}
+                        onClick={handleToggleRealtime}
+                        disabled={!camera.selected}
+                        tooltip
+                        tooltipText={camera.realtimeEnabled ? 'Remove from realtime pipeline' : 'Add to realtime pipeline'}
+                        tooltipPosition="pos-bottom-left"
+                    />
+                </div>
 
-                <button
-                    className="button icon-button br-1"
-                    onClick={handleToggleSelection}
-                    title={camera.selected ? "In camera group" : "Not in camera group"}
-                    style={{marginRight: 2, flexShrink: 0}}
+                {/* Right: camera info + settings toggle */}
+                <div
+                    className={clsx('camera-settings-button button sm br-1 flex flex-col gap-1 flex-1 cursor-pointer p-1', settingsOpen && 'selected-camera-settings')}
+                    onClick={handleOpenSettings}
                 >
-                    {camera.selected
-                        ? <span className="icon check-circle-icon icon-size-20" style={{color: 'var(--color-info)'}} />
-                        : <span className="icon radio-unchecked-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
-                    }
-                </button>
-
-                <button
-                    className="button icon-button br-1"
-                    onClick={handleToggleRealtime}
-                    disabled={!camera.selected}
-                    title={camera.realtimeEnabled ? "In realtime pipeline" : "Not in realtime pipeline"}
-                    style={{marginRight: 4, flexShrink: 0}}
-                >
-                    {camera.realtimeEnabled
-                        ? <span className="icon streaming-icon icon-size-20" style={{color: 'var(--color-info)'}} />
-                        : <span className="icon stopstreaming-icon icon-size-20" style={{color: 'var(--color-text-muted)'}} />
-                    }
-                </button>
-
-                <div className="flex flex-row items-center flex-1 gap-1" style={{minWidth: 0}}>
-                    <div style={{flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200}}>
-                        <span style={{fontSize: '0.75rem', color: 'var(--color-text-primary)', display: 'block', whiteSpace: 'nowrap'}}>
+                    <div className="flex flex-row items-center gap-1">
+                        <p className="text sm text-white text-nowrap" style={{minWidth: 72}}>
                             Camera {camera.index}
-                        </span>
-                        <span style={{fontSize: '0.6rem', color: 'var(--color-text-muted)', display: 'block', whiteSpace: 'nowrap'}}>
-                            {camera.name} (id: {camera.id})
-                        </span>
+                        </p>
+                        <p className="text sm text-gray text-nowrap" style={{flex: '0 1 auto', overflow: 'hidden', textOverflow: 'ellipsis'}}>
+                            {camera.name}
+                        </p>
+                        <div className="flex-1" />
+
+                        {/* Settings open/close button */}
+                        <button
+                            ref={settingsBtnRef}
+                            className={clsx('pos-abs top-50 right-0 button icon-button', settingsOpen && 'activated')}
+                            onClick={handleOpenSettings}
+                            title={settingsOpen ? t('closeSettings') : 'Camera settings'}
+                        >
+                            <span className={clsx('icon icon-size-20', settingsOpen ? 'close-icon' : 'settings-icon')} />
+                        </button>
                     </div>
 
-                    {showConfigSummary && (
-                        <div className="flex flex-row items-center gap-1" style={{flexGrow: 1, minWidth: 0, overflow: 'hidden'}}>
-                            <span className="icon settings-icon icon-size-12" style={{color: 'var(--color-text-muted)', flexShrink: 0}} />
-                            <div className="flex flex-row gap-1" style={{flexWrap: 'wrap', overflow: 'hidden'}}>
-                                {configSummary.slice(0, 5).map((item, index) => (
-                                    <span
-                                        key={index}
-                                        className="tag text sm"
-                                        style={{
-                                            height: 10,
-                                            fontSize: 8,
-                                            padding: '0 6px',
-                                            borderColor: 'var(--color-border-secondary)',
-                                            color: 'var(--color-text-muted)',
-                                        }}
-                                    >
-                                        {item}
-                                    </span>
-                                ))}
-                            </div>
+                    {/* Config chips */}
+                    {configSummary.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {configSummary.map(item => (
+                                <span key={item} className="camera-config-chip">{item}</span>
+                            ))}
                         </div>
                     )}
                 </div>
-
-                <span
-                    className="tag text sm"
-                    style={{
-                        marginLeft: 4,
-                        flexShrink: 0,
-                        backgroundColor: getStatusColor(camera.connectionStatus),
-                        color: '#fff',
-                        fontSize: 10,
-                        height: 20,
-                    }}
-                >
-                    {statusLabelMap[camera.connectionStatus] ?? camera.connectionStatus.toUpperCase()}
-                </span>
             </div>
 
-            {expanded && (
-                <div style={{paddingLeft: 8}}>
-                    <CameraConfigTreeSection camera={camera} />
-                </div>
+            {settingsOpen && (
+                <CameraSettingsModal
+                    camera={camera}
+                    initialPos={modalPos}
+                    onClose={() => setSettingsOpen(false)}
+                />
             )}
         </div>
     );

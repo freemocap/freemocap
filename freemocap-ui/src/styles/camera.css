@@ -251,6 +251,10 @@
   background-color: var(--color-bg-tertiary);
 }
 
+.camera-settings-button {
+  position: relative;
+}
+
 .camera-section-header:hover {
   background-color: var(--color-bg-elevated);
 }

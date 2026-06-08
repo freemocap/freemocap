@@ -33,8 +33,8 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
-skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}
+skellycam = { git = "https://github.com/domisjustanumber/skellycam", branch = "dom/pipeline-metrics" }
+skellytracker = { git = "https://github.com/domisjustanumber/skellytracker", branch = "dom/pipeline-metrics" }
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development" }
 

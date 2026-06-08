@@ -267,6 +267,8 @@
   "pipelineStages_filterCaptureLong": "Stages from camera nodes: grab, rotate, JPEG, and capture-side detection.",
   "pipelineStages_filterTracking": "Tracking",
   "pipelineStages_filterTrackingLong": "Skeleton and board tracking (per-camera and inference nodes).",
+  "pipelineStages_filterAggregation": "Aggregation",
+  "pipelineStages_filterAggregationLong": "Aggregator triangulation, filtering, and end-to-end frame processing.",
   "pipelineStages_filterUiBackend": "UI backend",
   "pipelineStages_filterUiBackendLong": "Server-side preview path: resize, rotate, JPEG encode, and WebSocket payload prep.",
   "pipelineStages_filterUiFrontend": "UI frontend",

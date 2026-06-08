@@ -45,11 +45,25 @@ export class PipelineTimingStore {
     private pruneHiddenBackendRows(): void {
         for (const key of [...this.buffers.keys()]) {
             if (
-                key.startsWith("aggregator:")
-                || key === "skeleton_inference:predict_per_camera"
+                key === "skeleton_inference:predict_per_camera"
                 || (key.startsWith("camera:") && key.endsWith(":total_camera_node"))
                 || (key.startsWith("camera:") && key.endsWith(":total_detection_time"))
             ) {
+                this.buffers.delete(key);
+                this.statsComputers.delete(key);
+                this.recentValues.delete(key);
+                this.lastSampleTimestamps.delete(key);
+            }
+        }
+    }
+
+    /** Remove pubsub-only rows when pipeline timing is disabled on the server. */
+    private prunePubsubRowsWhenDisabled(): void {
+        if (this.logPipelineTimesEnabled) {
+            return;
+        }
+        for (const key of [...this.buffers.keys()]) {
+            if (key.startsWith("skeleton_inference:") || key.startsWith("aggregator:")) {
                 this.buffers.delete(key);
                 this.statsComputers.delete(key);
                 this.recentValues.delete(key);
@@ -66,13 +80,11 @@ export class PipelineTimingStore {
     }): void {
         this.logPipelineTimesEnabled = msg.log_pipeline_times_enabled ?? false;
         this.pruneHiddenBackendRows();
+        this.prunePubsubRowsWhenDisabled();
         const ts = Date.now();
 
         if (msg.per_node) {
             for (const [nodeKind, stages] of Object.entries(msg.per_node)) {
-                if (nodeKind === "aggregator") {
-                    continue;
-                }
                 for (const [stage, samples] of Object.entries(stages)) {
                     if (nodeKind === "skeleton_inference" && stage === "predict_per_camera") {
                         continue;

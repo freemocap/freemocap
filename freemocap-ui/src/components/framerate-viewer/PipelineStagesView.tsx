@@ -88,17 +88,17 @@ const UI_BACKEND_CAMERA_STAGES = new Set([
     "ws_payload_prepare_ms",
 ]);
 
-type PipelineStatCategory = "capture" | "tracking" | "ui_frontend" | "ui_backend" | "other";
+type PipelineStatCategory = "capture" | "tracking" | "aggregation" | "ui_frontend" | "ui_backend" | "other";
 
 /** Classify timing rows for the filter checkboxes. */
 function pipelineStatRowCategory(rowKey: string): PipelineStatCategory {
     if (rowKey.startsWith("ui:")) {
         return "ui_frontend";
     }
-    if (rowKey.startsWith("skeleton_inference:")) {
-        return "tracking";
+    if (rowKey.startsWith("aggregator:")) {
+        return "aggregation";
     }
-    if (rowKey.startsWith("mediapipe_js:")) {
+    if (rowKey.startsWith("skeleton_inference:")) {
         return "tracking";
     }
     if (rowKey.startsWith("multiframe:")) {
@@ -106,6 +106,9 @@ function pipelineStatRowCategory(rowKey: string): PipelineStatCategory {
     }
     if (rowKey.startsWith("camera:")) {
         const stage = rowKey.split(":").slice(2).join(":");
+        if (stage === "capture_to_aggregator_ms") {
+            return "capture";
+        }
         if (stage === "skeleton_detection" || stage === "charuco_detection") {
             return "tracking";
         }
@@ -119,12 +122,19 @@ function pipelineStatRowCategory(rowKey: string): PipelineStatCategory {
 
 function rowMatchesPipelineFilters(
     rowKey: string,
-    filters: {capture: boolean; tracking: boolean; ui_frontend: boolean; ui_backend: boolean},
+    filters: {
+        capture: boolean;
+        tracking: boolean;
+        aggregation: boolean;
+        ui_frontend: boolean;
+        ui_backend: boolean;
+    },
 ): boolean {
     const cat = pipelineStatRowCategory(rowKey);
     if (cat === "ui_frontend") return filters.ui_frontend;
     if (cat === "ui_backend") return filters.ui_backend;
     if (cat === "tracking") return filters.tracking;
+    if (cat === "aggregation") return filters.aggregation;
     if (cat === "capture") return filters.capture;
     return filters.capture;
 }
@@ -132,23 +142,34 @@ function rowMatchesPipelineFilters(
 function rowPriority(key: string): number {
     if (key.startsWith("multiframe:")) return 0;
     if (key.startsWith("skeleton_inference:")) return 1;
-    if (key.startsWith("mediapipe_js:")) return 1;
-    if (key.startsWith("camera:")) return 2;
-    if (key.startsWith("ui:")) return 3;
-    return 4;
+    if (key.startsWith("aggregator:")) return 2;
+    if (key.startsWith("camera:")) return 3;
+    if (key.startsWith("ui:")) return 4;
+    return 5;
 }
 
 function humanizeRowKey(rowKey: string): string {
     const pretty: Record<string, string> = {
         "multiframe:inter_camera_grab_spread_ms": "Inter-camera grab spread (multiframe)",
+        "multiframe:ws_payload_prepare_ms": "WS payload prepare (multiframe)",
         "skeleton_inference:frame_read": "Skeleton GPU: frame read",
-        "skeleton_inference:yolox_detect": "Skeleton GPU: YOLOX detect",
-        "skeleton_inference:rtmpose_estimate": "Skeleton GPU: RTMPose estimate",
+        "skeleton_inference:human_detection_preprocess": "Skeleton GPU: human detection preprocess",
+        "skeleton_inference:human_detection": "Skeleton GPU: human detection",
+        "skeleton_inference:human_detection_postprocess": "Skeleton GPU: human detection postprocess",
+        "skeleton_inference:pose_estimation_preprocess": "Skeleton GPU: pose estimation preprocess",
+        "skeleton_inference:pose_estimation": "Skeleton GPU: pose estimation",
+        "skeleton_inference:pose_estimation_postprocess": "Skeleton GPU: pose estimation postprocess",
         "skeleton_inference:predict_batch": "Skeleton GPU: predict batch",
         "skeleton_inference:dropped_frames": "Skeleton GPU: dropped frames",
-        "mediapipe_js:pose_detect_ms": "MediaPipe (browser): Pose",
-        "mediapipe_js:hand_detect_ms": "MediaPipe (browser): Hands",
-        "mediapipe_js:face_detect_ms": "MediaPipe (browser): Face",
+        "aggregator:capture_to_aggregator_ms": "Capture → aggregator",
+        "aggregator:frame_collection_wait": "Frame collection wait",
+        "aggregator:skeleton_triangulation": "Skeleton triangulation",
+        "aggregator:charuco_triangulation": "Charuco triangulation",
+        "aggregator:keypoint_filter": "Keypoint filter",
+        "aggregator:velocity_gate": "Velocity gate",
+        "aggregator:skeleton_filter": "Skeleton filter",
+        "aggregator:full_frame_processing": "Full frame processing",
+        "aggregator:loop_time": "Aggregator loop time",
         "camera:jpeg_encode_ms": "JPEG encode (server)",
         "camera:jpeg_resize_ms": "JPEG resize (server)",
         "camera:jpeg_rotate_ms": "JPEG rotate (server)",
@@ -173,15 +194,13 @@ function humanizeRowKey(rowKey: string): string {
         "ui:raf_to_rendered_ms": "UI: rAF tick → rendered",
     };
     if (pretty[rowKey]) return pretty[rowKey];
-    if (rowKey.startsWith("mediapipe_js:")) {
-        const rest = rowKey.slice("mediapipe_js:".length);
-        const lastColon = rest.lastIndexOf(":");
-        if (lastColon !== -1) {
-            const cam = rest.slice(0, lastColon);
-            const stage = rest.slice(lastColon + 1);
-            const label = pretty[`mediapipe_js:${stage}`] ?? stage;
-            return `${cam} · ${label}`;
-        }
+    if (rowKey.startsWith("aggregator:")) {
+        const stage = rowKey.slice("aggregator:".length);
+        return pretty[`aggregator:${stage}`] ?? stage;
+    }
+    if (rowKey.startsWith("skeleton_inference:")) {
+        const stage = rowKey.slice("skeleton_inference:".length);
+        return pretty[`skeleton_inference:${stage}`] ?? stage;
     }
     if (rowKey.startsWith("camera:")) {
         const parts = rowKey.split(":");
@@ -386,6 +405,7 @@ export default function PipelineStagesView(): React.ReactElement {
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
     const [filterCapture, setFilterCapture] = useState(true);
     const [filterTracking, setFilterTracking] = useState(true);
+    const [filterAggregation, setFilterAggregation] = useState(true);
     const [filterUiBackend, setFilterUiBackend] = useState(true);
     const [filterUiFrontend, setFilterUiFrontend] = useState(true);
     const [sourceFilterText, setSourceFilterText] = useState("");
@@ -461,11 +481,12 @@ export default function PipelineStagesView(): React.ReactElement {
     const filterState = {
         capture: filterCapture,
         tracking: filterTracking,
+        aggregation: filterAggregation,
         ui_frontend: filterUiFrontend,
         ui_backend: filterUiBackend,
     };
     const hasAnyFilter =
-        filterCapture || filterTracking || filterUiBackend || filterUiFrontend;
+        filterCapture || filterTracking || filterAggregation || filterUiBackend || filterUiFrontend;
     const categoryFiltered = hasAnyFilter
         ? baseRowKeys.filter(k => rowMatchesPipelineFilters(k, filterState))
         : [];
@@ -566,6 +587,21 @@ export default function PipelineStagesView(): React.ReactElement {
                                 />
                             }
                             label={<Typography variant="body2">{t("pipelineStages_filterTracking")}</Typography>}
+                        />
+                    </ProgressiveTooltip>
+                    <ProgressiveTooltip
+                        shortInfo={t("pipelineStages_filterAggregation")}
+                        longInfo={t("pipelineStages_filterAggregationLong")}
+                    >
+                        <FormControlLabel
+                            control={
+                                <Checkbox
+                                    checked={filterAggregation}
+                                    onChange={e => setFilterAggregation(e.target.checked)}
+                                    size="small"
+                                />
+                            }
+                            label={<Typography variant="body2">{t("pipelineStages_filterAggregation")}</Typography>}
                         />
                     </ProgressiveTooltip>
                     <ProgressiveTooltip

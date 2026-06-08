@@ -37,6 +37,7 @@ const DIM_THRESHOLD_MS = 5000;
 
 const METRIC_KEYS = ["recent", "mean", "median", "stdDev", "max", "min"] as const;
 type MetricKey = typeof METRIC_KEYS[number];
+type SortColumnKey = MetricKey | "source";
 
 function formatNumber(num: number | null, precision = 2): string {
     return num !== null ? num.toFixed(precision) : "N/A";
@@ -326,17 +327,23 @@ function getPipelineStageRowTooltip(rowKey: string, t: TFunction): { short: stri
 function sortedRowKeys(
     baseKeys: string[],
     snap: PipelineTimingSnapshot,
-    sortColumn: MetricKey | null,
+    sortColumn: SortColumnKey | null,
     direction: "asc" | "desc",
 ): string[] {
     if (!sortColumn || baseKeys.length === 0) return baseKeys;
+    if (sortColumn === "source") {
+        return [...baseKeys].sort((a, b) => {
+            const cmp = humanizeRowKey(a).localeCompare(humanizeRowKey(b));
+            return direction === "asc" ? cmp : -cmp;
+        });
+    }
     return [...baseKeys].sort((a, b) => {
         const cmp = compareNullableNumeric(
             sortMetricValue(sortColumn, a, snap),
             sortMetricValue(sortColumn, b, snap),
             direction,
         );
-        return cmp !== 0 ? cmp : a.localeCompare(b);
+        return cmp !== 0 ? cmp : humanizeRowKey(a).localeCompare(humanizeRowKey(b));
     });
 }
 
@@ -346,7 +353,7 @@ type SortableMetricHeaderProps = {
     shortInfo: string;
     longInfo: string;
     sortHint: string;
-    sortColumn: MetricKey | null;
+    sortColumn: SortColumnKey | null;
     sortDirection: "asc" | "desc";
     onSort: (metric: MetricKey) => void;
     headerCellStyle: Record<string, unknown>;
@@ -371,10 +378,15 @@ function SortableMetricHeader({
             longInfo={`${longInfo} ${sortHint}`}
             alwaysShowLong
         >
-            <TableCell align="center" sx={{...headerCellStyle, ...cellStyle, cursor: "pointer", userSelect: "none"}}>
+            <TableCell
+                align="center"
+                sortDirection={sortColumn === metric ? sortDirection : false}
+                sx={{...headerCellStyle, ...cellStyle, cursor: "pointer", userSelect: "none"}}
+            >
                 <TableSortLabel
                     active={sortColumn === metric}
-                    direction={sortColumn === metric ? sortDirection : "desc"}
+                    direction={sortColumn === metric ? sortDirection : "asc"}
+                    hideSortIcon={sortColumn !== metric}
                     onClick={() => onSort(metric)}
                     sx={{
                         fontSize: "0.65rem",
@@ -409,7 +421,7 @@ export default function PipelineStagesView(): React.ReactElement {
     };
 
     const [renderTick, setRenderTick] = useState(0);
-    const [sortColumn, setSortColumn] = useState<MetricKey | null>(null);
+    const [sortColumn, setSortColumn] = useState<SortColumnKey | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
     const [filterCapture, setFilterCapture] = useState(true);
     const [filterTracking, setFilterTracking] = useState(true);
@@ -418,20 +430,13 @@ export default function PipelineStagesView(): React.ReactElement {
     const [filterUiFrontend, setFilterUiFrontend] = useState(true);
     const [sourceFilterText, setSourceFilterText] = useState("");
 
-    const handleMetricSort = (metric: MetricKey): void => {
-        setSortColumn(prev => {
-            if (prev !== metric) {
-                setSortDirection("desc");
-                return metric;
-            }
+    const handleSort = (column: SortColumnKey): void => {
+        if (sortColumn === column) {
             setSortDirection(d => (d === "desc" ? "asc" : "desc"));
-            return metric;
-        });
-    };
-
-    const handleResetRowOrder = (): void => {
-        setSortColumn(null);
-        setSortDirection("desc");
+        } else {
+            setSortColumn(column);
+            setSortDirection(column === "source" ? "asc" : "desc");
+        }
     };
 
     useEffect(() => {
@@ -666,27 +671,33 @@ export default function PipelineStagesView(): React.ReactElement {
                     <TableHead>
                         <TableRow>
                             <ProgressiveTooltip
-                                shortInfo={t("pipelineStages_sourceShort")}
-                                longInfo={t("pipelineStages_sourceLong")}
+                                shortInfo={`${t("pipelineStages_sourceShort")} ${sortHint}`}
+                                longInfo={`${t("pipelineStages_sourceLong")} ${sortHint}`}
                                 alwaysShowLong
                             >
                                 <TableCell
                                     align="left"
-                                    onClick={handleResetRowOrder}
+                                    sortDirection={sortColumn === "source" ? sortDirection : false}
                                     sx={{
                                         ...headerCellStyle,
                                         width: "28%",
                                         color: theme.palette.text.primary,
-                                        cursor: sortColumn ? "pointer" : "default",
+                                        cursor: "pointer",
                                         userSelect: "none",
                                     }}
                                 >
-                                    {t("source")}
-                                    {sortColumn ? (
-                                        <Typography component="span" variant="caption" color="text.secondary" sx={{display: "block", fontSize: "0.55rem"}}>
-                                            {t("pipelineStages_restoreOrderHint")}
-                                        </Typography>
-                                    ) : null}
+                                    <TableSortLabel
+                                        active={sortColumn === "source"}
+                                        direction={sortColumn === "source" ? sortDirection : "asc"}
+                                        hideSortIcon={sortColumn !== "source"}
+                                        onClick={() => handleSort("source")}
+                                        sx={{
+                                            fontSize: "0.65rem",
+                                            "& .MuiTableSortLabel-icon": {fontSize: "0.75rem"},
+                                        }}
+                                    >
+                                        {t("source")}
+                                    </TableSortLabel>
                                 </TableCell>
                             </ProgressiveTooltip>
                             <SortableMetricHeader
@@ -697,7 +708,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("recent")}
                             />
@@ -709,7 +720,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("mean")}
                             />
@@ -721,7 +732,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("median")}
                             />
@@ -733,7 +744,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("stdDev")}
                             />
@@ -745,7 +756,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("max")}
                             />
@@ -757,7 +768,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 sortHint={sortHint}
                                 sortColumn={sortColumn}
                                 sortDirection={sortDirection}
-                                onSort={handleMetricSort}
+                                onSort={handleSort}
                                 headerCellStyle={headerCellStyle}
                                 cellStyle={getCellStyle("min")}
                             />

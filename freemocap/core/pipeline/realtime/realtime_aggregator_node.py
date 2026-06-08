@@ -138,9 +138,9 @@ def _create_skeleton_filter(
         *,
         filter_config: RealtimeFilterConfig,
 ) -> RealtimeSkeletonFilter:
-    """FABRIK skeleton matching RTMPose/COCO-WholeBody body joint naming (23)."""
-    skeleton = SkeletonDefinition.rtmpose_coco23_body()
-    prior = AnthropometricPrior.rtmpose_coco23_body()
+    """Create the skeleton filter with mediapipe body skeleton and anthropometric prior."""
+    skeleton = SkeletonDefinition.mediapipe_body()
+    prior = AnthropometricPrior.mediapipe_body()
     return RealtimeSkeletonFilter.create(
         skeleton=skeleton,
         prior=prior,

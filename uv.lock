@@ -2305,7 +2305,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics#b27fa3ff056caeaa347a3f3732bb3e5fdf632cc4" }
+source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics#736b9b4858f089c1ddff30cac210531a9c1a356c" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

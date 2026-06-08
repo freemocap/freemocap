@@ -60,6 +60,7 @@ from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.rtmpose_model_size import rtmpose_mode_for_size
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -154,8 +155,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             ipc.kill_everything()
             return
 
-        log_pipeline_times = pipeline_config.log_pipeline_times
-        timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}") if log_pipeline_times else None
+        timer: PipelineStageTimer | None = None
         _MAX_SESSION_RESTARTS = 3
         session_restart_count = 0
         # Per-camera scratch recarrays (avoids reallocating each frame).
@@ -183,6 +183,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         f"received config update (no hot-reload of session; "
                         f"changes to detector mode require a pipeline restart)"
                     )
+
+                if pipeline_config.log_pipeline_times:
+                    if timer is None:
+                        timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+                else:
+                    timer = None
 
                 # ---- Drain to latest frame number (drop stale) ----
                 latest_frame_msg: ProcessFrameNumberMessage | None = None
@@ -221,7 +227,14 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
 
                 if not images:
-                    # Ring buffer didn't have the frame for any camera; skip.
+                    # Ring buffer race or frame already overwritten — still publish so the
+                    # aggregator never blocks forever waiting for this frame_number.
+                    skeleton_result_pub.put(
+                        SkeletonInferenceResultMessage(
+                            frame_number=requested_frame_number,
+                            per_camera_skeleton={camera_id: None for camera_id in camera_ids},
+                        ),
+                    )
                     continue
 
                 # ---- Batched skeleton inference ----
@@ -268,9 +281,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 if timer is not None:
                     inf_ms = (time.perf_counter() - t_inf) * 1e3
                     timer.record("predict_batch", inf_ms)
-                    # Per-camera-equivalent latency, for comparing with the legacy
-                    # per-camera `skeleton_detection` timer in camera_node logs.
-                    timer.record("predict_per_camera", inf_ms / max(len(images), 1))
+                    timer.record("human_detection_preprocess", session.last_human_detection_preprocess_ms)
+                    timer.record("human_detection", session.last_human_detection_ms)
+                    timer.record("human_detection_postprocess", session.last_human_detection_postprocess_ms)
+                    timer.record("pose_estimation_preprocess", session.last_pose_estimation_preprocess_ms)
+                    timer.record("pose_estimation", session.last_pose_estimation_ms)
+                    timer.record("pose_estimation_postprocess", session.last_pose_estimation_postprocess_ms)
 
                 # ---- Build per-camera observations ----
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
@@ -338,10 +354,8 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
     inf_config = pipeline_config.skeleton_inference_node_config
     #TODO - this is dumb, I think? WE should be able to just use the inference node config directly  without this nonsense?
 
-    # Pick mode safely. RTMPoseSessionConfig accepts a Literal of three values;
-    # other strings (e.g. legacy values) get coerced to "balanced" rather than
-    # failing pydantic validation — keeps the pipeline alive on weird configs.
-    mode = skel_config.mode if skel_config.mode in ("performance", "lightweight", "balanced") else "balanced"
+    # UI ``realtime_model_size`` overrides static config mode for RTMPose.
+    mode = rtmpose_mode_for_size(pipeline_config.realtime_model_size)
 
     session_config = RTMPoseSessionConfig(
         mode=mode,

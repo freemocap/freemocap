@@ -12,17 +12,18 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
+from freemocap.pubsub.pubsub_topics import SkeletonInferenceResultMessage, SkeletonInferenceResultTopic
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
@@ -87,20 +88,14 @@ class FreemocapApplication:
             pipeline_config: RealtimePipelineConfig,
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
-
-        for pipeline in self.realtime_pipeline_manager.pipelines.values():
-            pipeline.update_config(new_config=pipeline_config)
-            return pipeline
-
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=camera_configs,
         )
-        pipeline = self.realtime_pipeline_manager.create_pipeline(
+        return self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
             realtime_camera_ids=realtime_camera_ids,
         )
-        return pipeline
 
     # ------------------------------------------------------------------
     # Posthoc pipeline operations
@@ -176,6 +171,33 @@ class FreemocapApplication:
         )
 
         return realtime_pipeline_packets, posthoc_progress
+
+    def get_realtime_pipeline_for_camera_group(
+        self,
+        camera_group_id: CameraGroupIdString,
+    ) -> RealtimePipeline | None:
+        return self.realtime_pipeline_manager.get_pipeline_by_camera_group_id(camera_group_id)
+
+    def publish_client_skeleton_inference(
+        self,
+        *,
+        camera_group_id: CameraGroupIdString,
+        message: SkeletonInferenceResultMessage,
+    ) -> bool:
+        """Inject browser MediaPipe landmarks into the realtime pub/sub graph."""
+        pipeline = self.get_realtime_pipeline_for_camera_group(camera_group_id)
+        if pipeline is None or not pipeline.alive:
+            return False
+        pipeline.pubsub.publish(SkeletonInferenceResultTopic, message)
+        return True
+
+    def get_pipeline_timing_subscription(
+        self,
+        camera_group_id: CameraGroupIdString,
+    ) -> TopicSubscriptionQueue | None:
+        """Fan-out queue for `PipelineTimingTopic` for this group's realtime pipeline, if any."""
+        pipeline = self.get_realtime_pipeline_for_camera_group(camera_group_id)
+        return pipeline.pipeline_timing_subscription if pipeline else None
 
     # ------------------------------------------------------------------
     # Lifecycle

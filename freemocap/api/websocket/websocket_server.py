@@ -21,6 +21,7 @@ from freemocap.api.websocket.tracker_schema_message import TrackerSchemasMessage
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 
+from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
@@ -42,6 +43,21 @@ logger = logging.getLogger(__name__)
 BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
 BACKPRESSURE_RESET_THRESHOLD: int = 300
+
+
+def _merge_pipeline_timing_sample(
+        per_node: dict[str, dict[str, list[float]]],
+        per_camera: dict[str, dict[str, list[float]]],
+        msg: PipelineTimingMessage,
+) -> None:
+    if msg.node_kind == "camera" and msg.camera_id:
+        cam_bucket = per_camera.setdefault(str(msg.camera_id), {})
+        for stage, vals in msg.samples.items():
+            cam_bucket.setdefault(stage, []).extend(vals)
+    else:
+        node_bucket = per_node.setdefault(msg.node_kind, {})
+        for stage, vals in msg.samples.items():
+            node_bucket.setdefault(stage, []).extend(vals)
 
 
 def _msgspec_enc_hook(obj: object) -> object:
@@ -117,12 +133,26 @@ class WebsocketServer:
             self,
             camera_group_id: CameraGroupIdString,
     ) -> dict[str, object] | None:
-        """Drain skellycam preview JPEG/resize telemetry and multiframe grab spread."""
+        """Drain preview JPEG/resize telemetry and optional pubsub pipeline stages."""
         preview_by_cam = get_and_clear_frontend_preview_timing_samples(str(camera_group_id))
         multiframe_preview = get_and_clear_frontend_preview_multiframe_samples(str(camera_group_id))
+        pipeline = self._app.get_realtime_pipeline_for_camera_group(camera_group_id)
+        want_pubsub_timing = (
+            pipeline is not None and pipeline.config.log_pipeline_times
+        )
 
         per_node: dict[str, dict[str, list[float]]] = {}
         per_camera: dict[str, dict[str, list[float]]] = {}
+
+        if want_pubsub_timing:
+            sub = self._app.get_pipeline_timing_subscription(camera_group_id)
+            if sub is not None:
+                while True:
+                    try:
+                        msg: PipelineTimingMessage = sub.get_nowait()
+                    except Empty:
+                        break
+                    _merge_pipeline_timing_sample(per_node, per_camera, msg)
 
         for cam_id, stages in preview_by_cam.items():
             for stage, samples in stages.items():
@@ -138,7 +168,7 @@ class WebsocketServer:
         return {
             "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
             "camera_group_id": str(camera_group_id),
-            "log_pipeline_times_enabled": False,
+            "log_pipeline_times_enabled": want_pubsub_timing,
             "per_node": per_node,
             "per_camera": per_camera,
         }

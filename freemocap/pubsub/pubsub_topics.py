@@ -153,13 +153,21 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         # from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
         from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
         from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
+        from skellytracker.trackers.mediapipe_tracker.composite.mediapipe_composite_observation import (
+            MediapipeCompositeObservation,
+        )
 
         overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            # if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
-            if cam_output.skeleton_observation is not None and isinstance(cam_output.skeleton_observation, RTMPoseObservation):
-                # overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_observation(
+            if cam_output.skeleton_observation is None:
+                continue
+            if isinstance(cam_output.skeleton_observation, RTMPoseObservation):
                 overlay_data[camera_id] = SkeletonOverlayData.from_rtmpose_observation(
+                    camera_id=camera_id,
+                    observation=cam_output.skeleton_observation,
+                )
+            elif isinstance(cam_output.skeleton_observation, MediapipeCompositeObservation):
+                overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_composite_observation(
                     camera_id=camera_id,
                     observation=cam_output.skeleton_observation,
                 )

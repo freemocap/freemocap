@@ -1,5 +1,24 @@
 import {workerCode} from "@/services/server/server-helpers/offscreen-renderer.worker";
 
+export type FrameTimingMeta = {
+    frameNumber: number;
+    /** Main-thread performance.now() at start of the rAF body that kicked off decode for this frame. */
+    rafCycleStartMs?: number;
+};
+
+/** renderAck is handled on the window thread; completedAt is window performance.now() (not worker time). */
+export type RenderAckPayload = {
+    cameraId: string;
+    frameNumber: number;
+    renderMs: number;
+    completedAt: number;
+    rafCycleStartMs?: number;
+    canvasWorkerRafWaitMs?: number;
+    canvasWorkerReceiveLagMs?: number;
+    /** Main thread only: performance.now() − MessageEvent.timeStamp when the ack is handled (do not subtract worker clocks). */
+    renderAckDeliveryMs?: number;
+};
+
 export interface CanvasWorker {
     worker: Worker;
     canvas: HTMLCanvasElement;
@@ -11,6 +30,11 @@ export class CanvasManager {
     private workerErrors: Map<string, number> = new Map();
     private pendingCanvases: Map<string, HTMLCanvasElement> = new Map();
     private readonly maxWorkerErrors: number = 3;
+    private onRenderAck: ((payload: RenderAckPayload) => void) | null = null;
+
+    setRenderAckHandler(handler: ((payload: RenderAckPayload) => void) | null): void {
+        this.onRenderAck = handler;
+    }
 
     /**
      * Set or update the canvas for a camera.
@@ -37,7 +61,7 @@ export class CanvasManager {
             const offscreen = canvas.transferControlToOffscreen();
 
             worker.postMessage(
-                { type: 'init', canvas: offscreen },
+                { type: 'init', canvas: offscreen, cameraId },
                 [offscreen]
             );
 
@@ -64,7 +88,7 @@ export class CanvasManager {
     /**
      * Send a frame to a worker. Creates the worker if it doesn't exist yet.
      */
-    public sendFrameToWorker(cameraId: string, bitmap: ImageBitmap): boolean {
+    public sendFrameToWorker(cameraId: string, bitmap: ImageBitmap, meta?: FrameTimingMeta): boolean {
         const workerInfo = this.workers.get(cameraId);
 
         if (!workerInfo?.initialized) {
@@ -74,7 +98,7 @@ export class CanvasManager {
                 console.log(`Worker not ready for ${cameraId}, attempting to create from pending canvas`);
                 if (this.setCanvasForCamera(cameraId, pendingCanvas)) {
                     // Try sending again after creation
-                    return this.sendFrameToWorker(cameraId, bitmap);
+                    return this.sendFrameToWorker(cameraId, bitmap, meta);
                 }
             }
 
@@ -84,8 +108,15 @@ export class CanvasManager {
         }
 
         try {
+            const mainSentAtMs = performance.now();
             workerInfo.worker.postMessage(
-                { type: 'frame', bitmap },
+                {
+                    type: 'frame',
+                    bitmap,
+                    frameNumber: meta?.frameNumber ?? -1,
+                    rafCycleStartMs: meta?.rafCycleStartMs ?? 0,
+                    mainSentAtMs,
+                },
                 [bitmap]
             );
             return true;
@@ -149,6 +180,31 @@ export class CanvasManager {
 
         try {
             const worker = new Worker(workerUrl);
+
+            worker.onmessage = (ev: MessageEvent<{ type?: string } & Partial<RenderAckPayload & {
+                workerRafWaitMs?: number;
+                receiveLagMs?: number;
+            }>>): void => {
+                const d = ev.data;
+                if (d?.type === 'renderAck' && this.onRenderAck && typeof d.cameraId === 'string') {
+                    const completedAtMain = performance.now();
+                    const evTs = ev.timeStamp;
+                    const renderAckDeliveryMs =
+                        typeof evTs === 'number' && evTs > 0 && Number.isFinite(evTs)
+                            ? Math.max(0, completedAtMain - evTs)
+                            : undefined;
+                    this.onRenderAck({
+                        cameraId: d.cameraId,
+                        frameNumber: typeof d.frameNumber === 'number' ? d.frameNumber : -1,
+                        renderMs: typeof d.renderMs === 'number' ? d.renderMs : 0,
+                        completedAt: completedAtMain,
+                        rafCycleStartMs: typeof d.rafCycleStartMs === 'number' ? d.rafCycleStartMs : undefined,
+                        canvasWorkerRafWaitMs: typeof d.workerRafWaitMs === 'number' ? d.workerRafWaitMs : undefined,
+                        canvasWorkerReceiveLagMs: typeof d.receiveLagMs === 'number' ? d.receiveLagMs : undefined,
+                        renderAckDeliveryMs,
+                    });
+                }
+            };
 
             // Set up error handling
             worker.onerror = (error) => {

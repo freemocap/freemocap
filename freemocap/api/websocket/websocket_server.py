@@ -24,6 +24,18 @@ from freemocap.app.freemocap_application import FreemocapApplication, get_freemo
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
+try:
+    from skellycam.core.types.frontend_payload_bytearray import (
+        get_and_clear_frontend_preview_multiframe_samples,
+        get_and_clear_frontend_preview_timing_samples,
+    )
+except ImportError:
+    # Older skellycam builds may not expose preview timing drains yet.
+    def get_and_clear_frontend_preview_timing_samples(_camera_group_id: str) -> dict[str, dict[str, list[float]]]:
+        return {}
+
+    def get_and_clear_frontend_preview_multiframe_samples(_camera_group_id: str) -> dict[str, list[float]]:
+        return {}
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +93,7 @@ class WebsocketServer:
         self._server_framerate_calculators: dict[CameraGroupIdString, ServerFramerateCalculator] = {}
         self._display_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
         self._last_framerate_send_time: float = 0.0
+        self._last_pipeline_timing_send_time: float = 0.0
 
         # Serialize all websocket sends — the `websockets` library does not
         # support concurrent writes on the same connection. Without this lock,
@@ -94,6 +107,41 @@ class WebsocketServer:
         async with self._send_lock:
             if self.websocket.client_state == WebSocketState.CONNECTED:
                 await self.websocket.send_text(_ws_json_encoder.encode(data).decode("utf-8"))
+
+    def _camera_group_ids_for_timing(self) -> set[CameraGroupIdString]:
+        ids = set(self._app.camera_group_manager.camera_groups.keys())
+        ids.update(self._server_framerate_calculators.keys())
+        return ids
+
+    def _build_pipeline_timing_payload(
+            self,
+            camera_group_id: CameraGroupIdString,
+    ) -> dict[str, object] | None:
+        """Drain skellycam preview JPEG/resize telemetry and multiframe grab spread."""
+        preview_by_cam = get_and_clear_frontend_preview_timing_samples(str(camera_group_id))
+        multiframe_preview = get_and_clear_frontend_preview_multiframe_samples(str(camera_group_id))
+
+        per_node: dict[str, dict[str, list[float]]] = {}
+        per_camera: dict[str, dict[str, list[float]]] = {}
+
+        for cam_id, stages in preview_by_cam.items():
+            for stage, samples in stages.items():
+                per_camera.setdefault(cam_id, {}).setdefault(stage, []).extend(samples)
+
+        if multiframe_preview:
+            mf_bucket = per_node.setdefault("multiframe", {})
+            for stage, samples in multiframe_preview.items():
+                mf_bucket.setdefault(stage, []).extend(samples)
+
+        if not per_node and not per_camera:
+            return None
+        return {
+            "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
+            "camera_group_id": str(camera_group_id),
+            "log_pipeline_times_enabled": False,
+            "per_node": per_node,
+            "per_camera": per_camera,
+        }
 
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
@@ -181,6 +229,15 @@ class WebsocketServer:
                 posthoc_progress.extend(self._app.posthoc_pipeline_manager.evict_completed())
                 for update_message in posthoc_progress:
                     await self._send_msgspec_json(update_message)
+
+                # Pipeline timing is small JSON — never gate behind frame ack backpressure.
+                now = time.perf_counter()
+                if now - self._last_pipeline_timing_send_time >= 0.25:
+                    for camera_group_id in self._camera_group_ids_for_timing():
+                        timing_payload = self._build_pipeline_timing_payload(camera_group_id)
+                        if timing_payload is not None:
+                            await self._send_msgspec_json(timing_payload)
+                    self._last_pipeline_timing_send_time = now
 
                 if not self.last_frame_acknowledged():
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation

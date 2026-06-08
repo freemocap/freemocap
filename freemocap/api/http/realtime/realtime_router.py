@@ -6,7 +6,7 @@ from skellycam.core.camera_group.camera_group import CameraConfigs
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 
 logger = logging.getLogger(__name__)

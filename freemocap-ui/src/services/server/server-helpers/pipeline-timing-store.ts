@@ -237,6 +237,7 @@ export class PipelineTimingStore {
         const buf = this.ensureBuffer(rowKey);
         buf.push(Date.now(), intervalMs);
         this.recentValues.set(rowKey, intervalMs);
+        this.touch(rowKey);
         this._writeVersion++;
         this._cachedSnapshot = null;
     }
@@ -247,6 +248,7 @@ export class PipelineTimingStore {
         const buf = this.ensureBuffer(rowKey);
         buf.push(Date.now(), lagMs);
         this.recentValues.set(rowKey, lagMs);
+        this.touch(rowKey);
         this._writeVersion++;
         this._cachedSnapshot = null;
     }

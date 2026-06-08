@@ -33,4 +33,4 @@ class RealtimeSkeletonInferenceNodeConfig(BaseModel):
     #         cached to engine_cache_dir on all subsequent runs.
     # "cuda": CUDA EP — requires NVIDIA GPU + onnxruntime-gpu, no extra install.
     # "cpu":  CPU EP — no GPU required, slowest.
-    execution_provider: ExecutionProviderName = "cuda"
+    execution_provider: ExecutionProviderName = "cuda"#"trt"

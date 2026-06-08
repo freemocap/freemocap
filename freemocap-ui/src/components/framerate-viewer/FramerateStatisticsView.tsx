@@ -19,7 +19,7 @@ import {backendColor, frontendColor} from "@/components/framerate-viewer/FrameRa
 import {useTranslation} from "react-i18next";
 import {useServer} from "@/services/server/ServerContextProvider";
 
-const STATS_POLL_INTERVAL_MS = 500;
+const STATS_POLL_INTERVAL_MS = 1000;
 
 type FramerateStatisticsViewProps = {
     compact?: boolean;

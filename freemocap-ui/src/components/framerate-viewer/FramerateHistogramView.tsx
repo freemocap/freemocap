@@ -6,6 +6,7 @@ import {applyAxisStyles} from "./d3ChartUtils"
 import BaseD3ChartView, {ChartLifecycle, ChartScaffolding} from "@/components/framerate-viewer/BaseD3ChartView"
 import {useTranslation} from "react-i18next"
 import {useServer} from "@/services/server/ServerContextProvider"
+import {TimestampedSample} from "@/services/server/server-helpers/framerate-store"
 
 type FramerateHistogramProps = {
     frontendColor: string
@@ -58,6 +59,18 @@ function buildHistogram(fpsValues: number[]): {
 }
 
 /**
+ * Convert duration samples to FPS in-place into a reusable output array.
+ * Avoids allocating a fresh array on every update call.
+ */
+function toFpsInPlace(samples: TimestampedSample[], out: number[]): void {
+    out.length = 0
+    for (let i = 0; i < samples.length; i++) {
+        const v = samples[i].value
+        if (v > 0) out.push(1000 / v)
+    }
+}
+
+/**
  * Persistent mutable state shared between initChart and updateChart.
  */
 type ChartState = {
@@ -66,6 +79,8 @@ type ChartState = {
     xScale: d3.ScaleLinear<number, number>
     yScale: d3.ScaleLinear<number, number>
     height: number
+    frontendFpsBuf: number[]
+    backendFpsBuf: number[]
 }
 
 export default function FramerateHistogramView({
@@ -128,6 +143,8 @@ export default function FramerateHistogramView({
                 xScale,
                 yScale,
                 height,
+                frontendFpsBuf: [],
+                backendFpsBuf: [],
             }
 
             return {
@@ -150,8 +167,10 @@ export default function FramerateHistogramView({
             const recentFrontendDurations = snapshot.recentFrontendDurations
             const recentBackendDurations = snapshot.recentBackendDurations
 
-            const frontendFps = recentFrontendDurations.filter((s) => s.value > 0).map((s) => 1000 / s.value)
-            const backendFps = recentBackendDurations.filter((s) => s.value > 0).map((s) => 1000 / s.value)
+            toFpsInPlace(recentFrontendDurations, state.frontendFpsBuf)
+            toFpsInPlace(recentBackendDurations, state.backendFpsBuf)
+            const frontendFps = state.frontendFpsBuf
+            const backendFps = state.backendFpsBuf
 
             const frontendHist = buildHistogram(frontendFps)
             const backendHist = buildHistogram(backendFps)
@@ -204,12 +223,7 @@ export default function FramerateHistogramView({
                 .ticks(Math.max(2, Math.min(5, Math.floor(height / 30))))
                 .tickSize(-width)
 
-            // Clear old tick elements before redrawing to prevent SVG element accumulation.
-            // The histogram domain shifts as bin ranges change, so unlike the timeseries
-            // (which uses fixed relative-time ticks), we must explicitly remove stale ticks.
-            xAxisG.selectAll("*").remove()
             xAxisG.call(xAxisGen)
-            yAxisG.selectAll("*").remove()
             yAxisG.call(yAxisGen)
             applyAxisStyles(svg, theme)
 

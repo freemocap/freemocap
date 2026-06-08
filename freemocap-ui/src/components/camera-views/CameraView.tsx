@@ -11,7 +11,7 @@ interface CameraViewProps {
 }
 
 /** How often (ms) to update the FPS display text. 4Hz is plenty for a number readout. */
-const FPS_UPDATE_INTERVAL_MS = 250;
+const FPS_UPDATE_INTERVAL_MS = 1000;
 
 /**
  * CameraView component - renders a canvas for a single camera feed.
@@ -106,13 +106,13 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
                     lineHeight: 1.4,
                 }}
             >
-                <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px' }}>
+                <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', whiteSpace: 'nowrap' }}>
                     <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
                     <span style={{ color: frontendColor }}>
-                        D:<span ref={displayFpsRef}>--</span>
+                        D:<span ref={displayFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>
                     </span>
                     <span style={{ color: backendColor }}>
-                        S:<span ref={serverFpsRef}>--</span>
+                        S:<span ref={serverFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>
                     </span>
                     <span style={{ color: '#aaa' }}>fps</span>
                 </div>

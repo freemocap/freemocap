@@ -274,6 +274,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         keypoint_filter = SimpleRealtimeKeypointFilter(
             min_cutoff=filter_config.min_cutoff,
             beta=filter_config.beta,
+            d_cutoff=filter_config.d_cutoff,
         )
 
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {

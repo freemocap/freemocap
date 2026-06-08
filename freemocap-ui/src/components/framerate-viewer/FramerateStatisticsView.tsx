@@ -36,28 +36,36 @@ type ProgressiveTooltipProps = {
     shortInfo: string;
     longInfo: string;
     children: React.ReactElement;
+    /** When true, show longInfo immediately (no click-to-expand). */
+    alwaysShowLong?: boolean;
 };
 
 export const ProgressiveTooltip = ({
     shortInfo,
     longInfo,
     children,
+    alwaysShowLong = false,
 }: ProgressiveTooltipProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const theme = useTheme();
     const {t} = useTranslation();
+    const showLong = alwaysShowLong || isExpanded;
 
     return (
         <Tooltip
             title={
-                <Box onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }} sx={{cursor: "pointer"}}>
-                    <Typography variant="body2">
-                        {isExpanded ? longInfo : shortInfo}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{display: "block", mt: 1, textAlign: "center"}}>
-                        {isExpanded ? t("clickToShowLess") : t("clickToLearnMore")}
-                    </Typography>
-                </Box>
+                alwaysShowLong ? (
+                    <Typography variant="body2">{longInfo}</Typography>
+                ) : (
+                    <Box onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }} sx={{cursor: "pointer"}}>
+                        <Typography variant="body2">
+                            {showLong ? longInfo : shortInfo}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{display: "block", mt: 1, textAlign: "center"}}>
+                            {showLong ? t("clickToShowLess") : t("clickToLearnMore")}
+                        </Typography>
+                    </Box>
+                )
             }
             arrow
             placement="top"
@@ -68,7 +76,7 @@ export const ProgressiveTooltip = ({
                         color: theme.palette.text.primary,
                         border: `1px solid ${theme.palette.divider}`,
                         boxShadow: theme.shadows[3],
-                        maxWidth: isExpanded ? 500 : 300,
+                        maxWidth: showLong ? 500 : 300,
                         p: 1.5,
                     },
                 },

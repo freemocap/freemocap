@@ -80,8 +80,8 @@ function computeCellValues(
     };
 }
 
-/** Server-side preview path stages (recorded under `camera:<id>:…` in the timing store). */
-const UI_BACKEND_CAMERA_STAGES = new Set([
+/** Server-side preview path stages (`camera:<id>:…` or `multiframe:…` in the timing store). */
+const UI_BACKEND_PREVIEW_STAGES = new Set([
     "jpeg_rotate_ms",
     "jpeg_resize_ms",
     "jpeg_encode_ms",
@@ -102,6 +102,10 @@ function pipelineStatRowCategory(rowKey: string): PipelineStatCategory {
         return "tracking";
     }
     if (rowKey.startsWith("multiframe:")) {
+        const stage = rowKey.slice("multiframe:".length);
+        if (UI_BACKEND_PREVIEW_STAGES.has(stage)) {
+            return "ui_backend";
+        }
         return "capture";
     }
     if (rowKey.startsWith("camera:")) {
@@ -109,7 +113,7 @@ function pipelineStatRowCategory(rowKey: string): PipelineStatCategory {
         if (stage === "skeleton_detection" || stage === "charuco_detection") {
             return "tracking";
         }
-        if (UI_BACKEND_CAMERA_STAGES.has(stage)) {
+        if (UI_BACKEND_PREVIEW_STAGES.has(stage)) {
             return "ui_backend";
         }
         return "capture";
@@ -130,7 +134,10 @@ function rowMatchesPipelineFilters(
 }
 
 function rowPriority(key: string): number {
-    if (key.startsWith("multiframe:")) return 0;
+    if (key.startsWith("multiframe:")) {
+        const stage = key.slice("multiframe:".length);
+        return UI_BACKEND_PREVIEW_STAGES.has(stage) ? 2 : 0;
+    }
     if (key.startsWith("skeleton_inference:")) return 1;
     if (key.startsWith("mediapipe_js:")) return 1;
     if (key.startsWith("camera:")) return 2;
@@ -140,7 +147,8 @@ function rowPriority(key: string): number {
 
 function humanizeRowKey(rowKey: string): string {
     const pretty: Record<string, string> = {
-        "multiframe:inter_camera_grab_spread_ms": "Inter-camera grab spread (multiframe)",
+        "multiframe:inter_camera_grab_spread_ms": "Inter-camera grab spread",
+        "multiframe:ws_payload_prepare_ms": "WS payload prepare",
         "skeleton_inference:frame_read": "Skeleton GPU: frame read",
         "skeleton_inference:yolox_detect": "Skeleton GPU: YOLOX detect",
         "skeleton_inference:rtmpose_estimate": "Skeleton GPU: RTMPose estimate",
@@ -342,7 +350,8 @@ function SortableMetricHeader({
     return (
         <ProgressiveTooltip
             shortInfo={`${shortInfo} ${sortHint}`}
-            longInfo={longInfo}
+            longInfo={`${longInfo} ${sortHint}`}
+            alwaysShowLong
         >
             <TableCell align="center" sx={{...headerCellStyle, ...cellStyle, cursor: "pointer", userSelect: "none"}}>
                 <TableSortLabel
@@ -526,6 +535,7 @@ export default function PipelineStagesView(): React.ReactElement {
                     <ProgressiveTooltip
                         shortInfo={t("pipelineStages_filterCapture")}
                         longInfo={t("pipelineStages_filterCaptureLong")}
+                        alwaysShowLong
                     >
                         <FormControlLabel
                             control={
@@ -541,6 +551,7 @@ export default function PipelineStagesView(): React.ReactElement {
                     <ProgressiveTooltip
                         shortInfo={t("pipelineStages_filterUiBackend")}
                         longInfo={t("pipelineStages_filterUiBackendLong")}
+                        alwaysShowLong
                     >
                         <FormControlLabel
                             control={
@@ -556,6 +567,7 @@ export default function PipelineStagesView(): React.ReactElement {
                     <ProgressiveTooltip
                         shortInfo={t("pipelineStages_filterTracking")}
                         longInfo={t("pipelineStages_filterTrackingLong")}
+                        alwaysShowLong
                     >
                         <FormControlLabel
                             control={
@@ -571,6 +583,7 @@ export default function PipelineStagesView(): React.ReactElement {
                     <ProgressiveTooltip
                         shortInfo={t("pipelineStages_filterUiFrontend")}
                         longInfo={t("pipelineStages_filterUiFrontendLong")}
+                        alwaysShowLong
                     >
                         <FormControlLabel
                             control={
@@ -619,6 +632,7 @@ export default function PipelineStagesView(): React.ReactElement {
                             <ProgressiveTooltip
                                 shortInfo={t("pipelineStages_sourceShort")}
                                 longInfo={t("pipelineStages_sourceLong")}
+                                alwaysShowLong
                             >
                                 <TableCell
                                     align="left"
@@ -738,7 +752,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 <TableCell
                                     sx={{fontWeight: "bold", paddingY: 0.5, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis"}}
                                 >
-                                    <ProgressiveTooltip shortInfo={rowTip.short} longInfo={rowTip.long}>
+                                    <ProgressiveTooltip shortInfo={rowTip.short} longInfo={rowTip.long} alwaysShowLong>
                                         <Box component="span" sx={{display: "block", cursor: "help"}}>
                                             {humanizeRowKey(rowKey)}
                                             <Typography variant="caption" display="block" color="text.secondary" sx={{fontSize: "0.55rem"}}>

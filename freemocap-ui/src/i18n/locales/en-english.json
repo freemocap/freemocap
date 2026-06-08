@@ -302,8 +302,8 @@
   "pipelineStages_row_cam_jpeg_rotate_msShort": "JPEG rotate",
   "pipelineStages_row_cam_jpeg_rotate_msLong": "Rotate preview image to match display orientation.",
   "pipelineStages_row_mf_ws_payload_prepare_msShort": "WS payload prep",
-  "pipelineStages_row_mf_ws_payload_prepare_msLong": "Assemble multiplex binary WebSocket payload (all cameras + header/footer).",
+  "pipelineStages_row_mf_ws_payload_prepare_msLong": "Total time for WebSocket payload assembly (JPEG encode all cameras + header/footer).",
   "pipelineStages_row_mf_inter_camera_grab_spread_msShort": "Inter-camera grab spread",
-  "pipelineStages_row_mf_inter_camera_grab_spread_msLong": "max(post_grab) − min(post_grab) across cameras in one multiframe (ms).",
+  "pipelineStages_row_mf_inter_camera_grab_spread_msLong": "max(post_grab) − min(post_grab) across cameras in one frame (ms).",
   "serverNotConnected": "Connect to server to enable controls"
 }

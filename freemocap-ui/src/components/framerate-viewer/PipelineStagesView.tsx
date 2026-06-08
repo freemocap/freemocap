@@ -381,15 +381,17 @@ function SortableMetricHeader({
             <TableCell
                 align="center"
                 sortDirection={sortColumn === metric ? sortDirection : false}
+                onClick={() => onSort(metric)}
                 sx={{...headerCellStyle, ...cellStyle, cursor: "pointer", userSelect: "none"}}
             >
                 <TableSortLabel
                     active={sortColumn === metric}
                     direction={sortColumn === metric ? sortDirection : "asc"}
                     hideSortIcon={sortColumn !== metric}
-                    onClick={() => onSort(metric)}
                     sx={{
                         fontSize: "0.65rem",
+                        width: "100%",
+                        justifyContent: "center",
                         "& .MuiTableSortLabel-icon": {fontSize: "0.75rem"},
                     }}
                 >
@@ -678,6 +680,7 @@ export default function PipelineStagesView(): React.ReactElement {
                                 <TableCell
                                     align="left"
                                     sortDirection={sortColumn === "source" ? sortDirection : false}
+                                    onClick={() => handleSort("source")}
                                     sx={{
                                         ...headerCellStyle,
                                         width: "28%",
@@ -690,9 +693,9 @@ export default function PipelineStagesView(): React.ReactElement {
                                         active={sortColumn === "source"}
                                         direction={sortColumn === "source" ? sortDirection : "asc"}
                                         hideSortIcon={sortColumn !== "source"}
-                                        onClick={() => handleSort("source")}
                                         sx={{
                                             fontSize: "0.65rem",
+                                            width: "100%",
                                             "& .MuiTableSortLabel-icon": {fontSize: "0.75rem"},
                                         }}
                                     >

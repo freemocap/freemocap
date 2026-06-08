@@ -19,7 +19,8 @@ import {backendColor, frontendColor} from "@/components/framerate-viewer/FrameRa
 import {useTranslation} from "react-i18next";
 import {useServer} from "@/services/server/ServerContextProvider";
 
-const STATS_POLL_INTERVAL_MS = 1000;
+const STATS_POLL_INTERVAL_MS = 500;
+const DIM_THRESHOLD_MS = 5000;
 
 type FramerateStatisticsViewProps = {
     compact?: boolean;
@@ -161,6 +162,11 @@ export default function FramerateStatisticsView({
         spanRefs.current[key] = el;
     };
 
+    const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+    const setRowRef = (key: RowKey) => (el: HTMLTableRowElement | null) => {
+        rowRefs.current[key] = el;
+    };
+
     // Poll the store and write to DOM spans — zero React re-renders.
     useEffect(() => {
         const tick = () => {
@@ -180,6 +186,16 @@ export default function FramerateStatisticsView({
                 }
                 const samplesEl = spanRefs.current[`${rowKey}-samples`];
                 if (samplesEl) samplesEl.textContent = `${vals.samples} ${t("samples")}`;
+
+                const lastTs = rowKey === "backend"
+                    ? snapshot.lastBackendSampleTimestamp
+                    : snapshot.lastFrontendSampleTimestamp;
+                const rowEl = rowRefs.current[rowKey];
+                if (rowEl) {
+                    const stale = lastTs === 0 || Date.now() - lastTs > DIM_THRESHOLD_MS;
+                    rowEl.style.opacity = stale ? "0.35" : "1";
+                    rowEl.style.transition = "opacity 0.6s ease";
+                }
             }
         };
         tick();
@@ -230,7 +246,7 @@ export default function FramerateStatisticsView({
     );
 
     const renderRow = (rowKey: RowKey, sourceColor: string, sourceLabel: string, shortTooltip: string, longTooltip: string) => (
-        <TableRow key={rowKey}>
+        <TableRow key={rowKey} ref={setRowRef(rowKey)}>
             <ProgressiveTooltip shortInfo={shortTooltip} longInfo={longTooltip}>
                 <TableCell sx={{fontWeight: "bold", borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, paddingY: 0.5, paddingLeft: 1, color: sourceColor, cursor: "help"}}>
                     {sourceLabel}

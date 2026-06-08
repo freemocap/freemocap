@@ -16,7 +16,8 @@ from freemocap.core.types.type_overloads import TopicPublicationQueue
 
 logger = logging.getLogger(__name__)
 
-FLUSH_INTERVAL_SECONDS: float = 5.0
+# Match websocket pipeline_timing relay (~4 Hz) so the UI receives steady updates.
+FLUSH_INTERVAL_SECONDS: float = 0.25
 ROLLING_WINDOW_FRAMES: int = 500
 
 
@@ -26,7 +27,7 @@ class PipelineStageTimer:
 
     name: str
     flush_interval: float = field(default=FLUSH_INTERVAL_SECONDS)
-    last_flush: float = field(default_factory=time.monotonic)
+    last_flush: float = field(default_factory=time.perf_counter)
     samples: dict[str, list[float]] = field(default_factory=dict)
 
     def record(self, stage: str, elapsed_ms: float) -> None:

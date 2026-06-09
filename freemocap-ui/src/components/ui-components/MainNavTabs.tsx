@@ -11,7 +11,6 @@ import { useElectronIPC } from "@/services";
 const NAV_TABS = [
     { path: '/streaming', label: 'Streaming' },
     { path: '/playback', label: 'Playback' },
-    { path: '/browse', label: 'Recordings' },
     { path: '/active-recording', label: 'Active Recording' },
 ] as const;
 

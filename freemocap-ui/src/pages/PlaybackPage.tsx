@@ -7,7 +7,6 @@ import {usePlaybackController} from '@/components/playback/usePlaybackController
 import {usePlaybackContext} from '@/components/playback/PlaybackContext';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
-import {useNavigate} from 'react-router-dom';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
@@ -23,8 +22,6 @@ import {
 const PlaybackPage: React.FC = () => {
     const {t} = useTranslation();
     const {api} = useElectronIPC();
-    const navigate = useNavigate();
-
     const ctx = usePlaybackContext();
     const activeRecordingPath = useAppSelector(selectActiveRecordingFullPath);
     const activeRecordingName = useAppSelector(selectActiveRecordingName);
@@ -104,16 +101,6 @@ const PlaybackPage: React.FC = () => {
                             <p className="text md text-white text-nowrap" style={{fontFamily: monoFont, fontWeight: 600, margin: 0}}>
                                 {recordingName}
                             </p>
-
-                            <button
-                                title="Browse recordings"
-                                className="button icon-button br-1"
-                                onClick={() => navigate('/browse')}
-                                style={{border: '1px solid rgba(255,255,255,0.15)', borderRadius: '6px', padding: '0 8px', gap: 4, fontSize: '0.75rem', fontFamily: monoFont}}
-                            >
-                                <span className="icon load-icon icon-size-20"/>
-                                Browse
-                            </button>
 
                             <button
                                 title={t('openFolder')}

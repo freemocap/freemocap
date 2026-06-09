@@ -16,9 +16,11 @@ export const RecordingBrowserSection: React.FC = () => {
             title={t('recordings')}
             defaultExpanded
         >
-            <RecordingBrowser
-                onRecordingLoaded={ctx.onRecordingLoaded}
-            />
+            <div style={{ height: '60vh', overflow: 'hidden' }}>
+                <RecordingBrowser
+                    onRecordingLoaded={ctx.onRecordingLoaded}
+                />
+            </div>
         </CollapsibleSidebarSection>
     );
 };

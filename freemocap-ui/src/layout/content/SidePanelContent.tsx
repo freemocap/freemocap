@@ -1,4 +1,5 @@
 import React, {useCallback, useMemo, useState} from 'react';
+import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import IconButton from '@/components/ui-components/IconButton';
 import {
@@ -21,6 +22,7 @@ import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
+import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
 
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
@@ -31,9 +33,13 @@ const DEFAULT_SECTION_ORDER = [
     'realtime',
     'calibration',
     'mocap',
+    'recordings',
 ] as const;
 
 type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
+
+const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording']);
+const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     realtime: RealtimePipelinePanel,
@@ -41,6 +47,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     recording: RecordingInfoPanel,
     calibration: CalibrationPanel,
     mocap: MocapPanel,
+    recordings: RecordingBrowserSection,
 };
 
 function loadSectionOrder(): SectionId[] {
@@ -115,6 +122,17 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
 
     const modifiers = useMemo(() => [restrictToVerticalAxis, restrictToParentElement], []);
 
+    const { pathname } = useLocation();
+    const isStreaming = pathname === '/streaming';
+    const isPlayback = pathname === '/playback';
+    const visibleSections = useMemo(
+        () => sectionOrder.filter(id =>
+            (isStreaming || !STREAMING_ONLY_SECTIONS.has(id)) &&
+            (isPlayback || !PLAYBACK_ONLY_SECTIONS.has(id))
+        ),
+        [sectionOrder, isStreaming, isPlayback],
+    );
+
     const { t } = useTranslation();
 
     return (
@@ -162,9 +180,9 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     modifiers={modifiers}
                     onDragEnd={handleDragEnd}
                 >
-                    <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
+                    <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
                         <div className="flex flex-col gap-1 p-1" style={{ paddingBottom: 16 }}>
-                            {sectionOrder.map((sectionId) => {
+                            {visibleSections.map((sectionId) => {
                                 const Component = SECTION_COMPONENTS[sectionId];
                                 return (
                                     <SortableSectionWrapper key={sectionId} id={sectionId}>

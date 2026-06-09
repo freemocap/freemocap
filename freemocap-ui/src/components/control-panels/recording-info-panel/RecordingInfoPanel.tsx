@@ -258,26 +258,16 @@ export const RecordingInfoPanel: React.FC = () => {
                             options={RECORDING_TYPE_OPTIONS}
                             onChange={(v) => dispatch(recordingTypePresetChanged(v))}
                             disabled={recordingInfo.isRecording}
-                            minWidth={70}
                         />
-                        <label className="flex flex-row items-center gap-1">
-                            <input
-                                type="checkbox"
-                                checked={autoProcess}
-                                onChange={(e) => dispatch(autoProcessToggled(e.target.checked))}
-                                disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
-                                style={{accentColor: 'var(--color-info)'}}
-                            />
-                            <span
-                                className="text sm text-gray"
-                                style={{
-                                    fontSize: 10,
-                                    opacity: recordingTypePreset === "none" ? 0.5 : 1,
-                                }}
-                            >
-                                Auto Process
-                            </span>
-                        </label>
+                        <div
+                            className={`button toggle-button gap-1 p-1 br-1 flex items-center${recordingTypePreset === "none" || recordingInfo.isRecording ? ' disabled' : ''}`}
+                            onClick={() => dispatch(autoProcessToggled(!autoProcess))}
+                        >
+                            <p className={`text text-nowrap text-left md${autoProcess ? ' color-white' : ''}`}>Auto Process</p>
+                            <div className={`icon toggle-container ${autoProcess ? 'on' : 'off'}`}>
+                                <div className="icon toggle-circle" />
+                            </div>
+                        </div>
                     </div>
 
                     <MicrophoneSelector

@@ -17,6 +17,8 @@ class CameraModel(BaseModel, TomlMixin):
     image_size: tuple[int, int]  # (width, height)
     intrinsics: CameraIntrinsics
     extrinsics: CameraExtrinsics
+    world_position: NDArray[np.float64] = np.zeros(3, dtype=np.float64)
+    world_orientation: NDArray[np.float64] = np.eye(3, dtype=np.float64)
 
     @property
     def projection_matrix(self) -> NDArray[np.float64]:

@@ -160,6 +160,9 @@ class CalibrationResult(BaseModel, TomlMixin):
             tvec = np.array(d["translation"], dtype=np.float64).ravel()
             extrinsics = CameraExtrinsics.from_rodrigues(rvec=rvec, tvec=tvec)
 
+            world_position =d.get("world_position", np.array([0.0, 0.0, 0.0]))
+            world_orientation =d.get("world_orientation", np.eye(3))
+
             camera_id = d.get("id", None)
             if camera_id is None:
                 camera_id = d.get("name", None)
@@ -171,6 +174,8 @@ class CalibrationResult(BaseModel, TomlMixin):
                     image_size=size,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics,
+                    world_position=world_position,
+                    world_orientation=world_orientation,
                 )
             )
 

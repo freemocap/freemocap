@@ -68,7 +68,10 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
         if (!open && buttonRef.current) {
             const rect = buttonRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            const style: React.CSSProperties = {};
+            const style: React.CSSProperties = {
+                position: 'fixed',
+                right: window.innerWidth - rect.right,
+            };
             if (spaceBelow < 68) {
                 style.bottom = window.innerHeight - rect.top + 4;
             } else {
@@ -87,7 +90,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
             </button>
 
             {open && (
-                <div className="value-selector-container border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down" style={popupStyle}>
+                <div className="value-selector-container border-1 border-black elevated-sharp flex flex-row p-1 bg-dark br-2 z-1 reveal slide-down" style={popupStyle}>
                     <div className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
                         <IconButton
                             icon="minus-icon"

@@ -146,7 +146,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
               icon="minus-icon"
               onClick={decrement}
               disabled={currentValue <= min}
-              className={`icon-size-28 ${currentValue <= min ? "deactivated" : ""}`}
+              className={`icon-size-25 ${currentValue <= min ? "deactivated" : ""}`}
               iconSize="icon-size-20"
             />
 
@@ -165,7 +165,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
   icon="plus-icon"
   onClick={increment}
   disabled={currentValue >= max}
-  className={`icon-size-28 ${currentValue >= max ? "deactivated" : ""}`}
+  className={`icon-size-25 ${currentValue >= max ? "deactivated" : ""}`}
   iconSize="icon-size-20"
 />
           </div>

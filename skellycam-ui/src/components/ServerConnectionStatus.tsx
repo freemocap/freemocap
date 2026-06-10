@@ -452,7 +452,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     onClick={browseForExecutable}
                                     disabled={serverRunning || serverLoading}
                                     title={t('browseForExecutable')}
-                                    className="icon-size-28"
+                                    className="icon-size-25"
 
                                     tooltip={true}
                                     tooltipText={t('browseForExecutable')}
@@ -463,7 +463,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     onClick={refreshCandidates}
                                     disabled={serverRunning || candidatesLoading}
                                     title={t('refreshCandidates')}
-                                    className={`icon-size-28${candidatesLoading ? ' loader-icon' : ''}`}
+                                    className={`icon-size-25${candidatesLoading ? ' loader-icon' : ''}`}
                                     tooltip={true}
                                     tooltipText={t('refreshCandidates')}
                                     tooltipPosition="pos-bottom"

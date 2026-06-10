@@ -135,7 +135,7 @@ export const LeftSidePanelContent: React.FC<LeftSidePanelContentProps> = ({isCol
                         tooltip={true}
                         tooltipText={t('collapseSidebar')}
                         tooltipPosition="pos-left"
-                        className="icon-size-28"
+                        className="icon-size-25"
                     />
                 </div>
 

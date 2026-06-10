@@ -96,7 +96,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
                             icon="minus-icon"
                             onClick={() => currentValue > min && onChange?.(currentValue - 1)}
                             disabled={currentValue <= min}
-                            className={`icon-size-28 ${currentValue <= min ? "deactivated" : ""}`}
+                            className={`icon-size-25 ${currentValue <= min ? "deactivated" : ""}`}
                             iconSize="icon-size-20"
                         />
                         <InputWithUnit
@@ -111,7 +111,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
                             icon="plus-icon"
                             onClick={() => currentValue < max && onChange?.(currentValue + 1)}
                             disabled={currentValue >= max}
-                            className={`icon-size-28 ${currentValue >= max ? "deactivated" : ""}`}
+                            className={`icon-size-25 ${currentValue >= max ? "deactivated" : ""}`}
                             iconSize="icon-size-20"
                         />
                     </div>

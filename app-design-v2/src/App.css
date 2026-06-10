@@ -276,7 +276,7 @@ q::after {
 
 .button.sm {
   padding: 4px 6px;
-  min-height: 25px;
+  max-height: 25px;
   width: auto;
   /* to fit its content */
   max-width: max-content;

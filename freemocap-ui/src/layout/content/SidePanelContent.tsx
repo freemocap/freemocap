@@ -144,7 +144,8 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
             <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
-                <div className="flex flex-row items-center gap-1 p-1" style={{ minHeight: 40 }}>
+                <div className="flex flex-row items-center gap-1 p-1"
+                >
                     {onOpenWelcome && (
                         <IconButton
                             icon="home-icon"
@@ -168,7 +169,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             tooltip={true}
                             tooltipText={t('collapseSidebar')}
                             tooltipPosition="pos-left"
-                            className="icon-size-28"
+                            className="icon-size-25"
                         />
                     )}
                 </div>
@@ -181,7 +182,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
-                        <div className="flex flex-col gap-1 p-1" style={{ paddingBottom: 16, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                        <div className="flex flex-col gap-1">
                             {visibleSections.map((sectionId) => {
                                 const Component = SECTION_COMPONENTS[sectionId];
                                 return (

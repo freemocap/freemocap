@@ -17,7 +17,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
     const handleToggleCollapse = useCallback(() => {
         const panel = leftPanelRef.current;
         if (!panel) return;
-        if (panel.isCollapsed()) {
+        if (panel.isCollapsed()) {  
             panel.expand();
         } else {
             panel.collapse();
@@ -59,13 +59,13 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
                             />
                         </Panel>
                         <PanelResizeHandle
-                            className="resizable-component"
-                            style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
+                            className="resizable-component left-and-right-panels-resize-handle"
+                            
                         />
                         <Panel className="right-side-panel" defaultSize={76} minSize={10}>
-                            <div className="flex flex-col" style={{height: '100%'}}>
-                                <MainNavTabs />
-                                <div style={{flex: 1, minHeight: 0, overflow: 'hidden'}}>
+                            <div className="right-sidebar-action-container-2 h-full flex flex-col">
+                                <MainNavTabs/>
+                                <div className="bottom-action-pane flex flex-1 min-h-0 overflow-hidden ">
                                     {children}
                                 </div>
                             </div>
@@ -75,7 +75,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
                 </Panel>
 
                 <PanelResizeHandle
-                    className="resizable-component"
+                    className="resizable-component footer-top-resize-handle"
                     style={{ height: "4px", cursor: "row-resize", backgroundColor: "var(--color-surface-active)" }}
                 />
 

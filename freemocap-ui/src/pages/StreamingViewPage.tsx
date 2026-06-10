@@ -34,7 +34,7 @@ export const StreamingViewPage = () => {
 
     return (
         <React.Fragment>
-            <div className="flex flex-col pos-rel overflow-hidden bg-dark" style={{
+            <div className="streaming-page flex flex-col pos-rel overflow-hidden bg-dark" style={{
                 padding: 8,
                 flex: 1,
                 height: '100%',
@@ -46,7 +46,7 @@ export const StreamingViewPage = () => {
                     onResetLayout={handleResetLayout}
                 />
 
-                <div className="flex-1 overflow-hidden">
+                <div className="preview-container-camera-and-3d flex-1 overflow-hidden">
                     {settings.show3dView ? (
                         <PanelGroup
                             key={`main-panels-${resetKey}-${settings.layoutDirection}`}
@@ -61,7 +61,9 @@ export const StreamingViewPage = () => {
                             </Panel>
 
                             <PanelResizeHandle>
-                                <div style={{
+                                <div 
+                                    className="resizable-component"
+                                    style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -86,8 +88,8 @@ export const StreamingViewPage = () => {
                                 </div>
                             </PanelResizeHandle>
 
-                            <Panel defaultSize={40} minSize={10}>
-                                <div style={{height: '100%'}}>
+                            <Panel className='realtime-3d-viewport-container'  defaultSize={40} minSize={10}>
+                                <div className='realtime-3d-viewport' style={{height: '100%'}}>
                                     <ThreeJsCanvas/>
                                 </div>
                             </Panel>

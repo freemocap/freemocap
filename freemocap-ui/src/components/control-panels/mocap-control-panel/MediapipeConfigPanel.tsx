@@ -1,5 +1,6 @@
 import React, {useCallback} from "react";
 import {useMocap} from "@/hooks/useMocap";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {
     MEDIAPIPE_POSTHOC_PRESET,
     MEDIAPIPE_REALTIME_PRESET,
@@ -136,57 +137,37 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
             </div>
 
             {/* Boolean toggles */}
-            <div className="flex flex-col">
-                <label className="flex flex-row items-center gap-1">
-                    <input
-                        type="checkbox"
-                        checked={detectorConfig.smooth_landmarks}
-                        onChange={(e) => updateDetectorConfig({smooth_landmarks: e.target.checked})}
-                        disabled={isLoading}
-                        style={{accentColor: 'var(--color-info)'}}
-                    />
-                    <span className="text sm text-gray">Smooth Landmarks</span>
-                </label>
-                <label className="flex flex-row items-center gap-1">
-                    <input
-                        type="checkbox"
-                        checked={detectorConfig.enable_segmentation}
-                        onChange={(e) => updateDetectorConfig({enable_segmentation: e.target.checked})}
-                        disabled={isLoading}
-                        style={{accentColor: 'var(--color-info)'}}
-                    />
-                    <span className="text sm text-gray">Enable Segmentation</span>
-                </label>
-                <label className="flex flex-row items-center gap-1">
-                    <input
-                        type="checkbox"
-                        checked={detectorConfig.smooth_segmentation}
-                        onChange={(e) => updateDetectorConfig({smooth_segmentation: e.target.checked})}
-                        disabled={isLoading || !detectorConfig.enable_segmentation}
-                        style={{accentColor: 'var(--color-info)'}}
-                    />
-                    <span className="text sm text-gray">Smooth Segmentation</span>
-                </label>
-                <label className="flex flex-row items-center gap-1">
-                    <input
-                        type="checkbox"
-                        checked={detectorConfig.refine_face_landmarks}
-                        onChange={(e) => updateDetectorConfig({refine_face_landmarks: e.target.checked})}
-                        disabled={isLoading}
-                        style={{accentColor: 'var(--color-info)'}}
-                    />
-                    <span className="text sm text-gray">Refine Face Landmarks</span>
-                </label>
-                <label className="flex flex-row items-center gap-1">
-                    <input
-                        type="checkbox"
-                        checked={detectorConfig.static_image_mode}
-                        onChange={(e) => updateDetectorConfig({static_image_mode: e.target.checked})}
-                        disabled={isLoading}
-                        style={{accentColor: 'var(--color-info)'}}
-                    />
-                    <span className="text sm text-gray">Static Image Mode</span>
-                </label>
+            <div className="flex flex-col gap-1">
+                <ToggleComponent
+                    text="Smooth Landmarks"
+                    isToggled={detectorConfig.smooth_landmarks}
+                    onToggle={(checked) => updateDetectorConfig({smooth_landmarks: checked})}
+                    disabled={isLoading}
+                />
+                <ToggleComponent
+                    text="Enable Segmentation"
+                    isToggled={detectorConfig.enable_segmentation}
+                    onToggle={(checked) => updateDetectorConfig({enable_segmentation: checked})}
+                    disabled={isLoading}
+                />
+                <ToggleComponent
+                    text="Smooth Segmentation"
+                    isToggled={detectorConfig.smooth_segmentation}
+                    onToggle={(checked) => updateDetectorConfig({smooth_segmentation: checked})}
+                    disabled={isLoading || !detectorConfig.enable_segmentation}
+                />
+                <ToggleComponent
+                    text="Refine Face Landmarks"
+                    isToggled={detectorConfig.refine_face_landmarks}
+                    onToggle={(checked) => updateDetectorConfig({refine_face_landmarks: checked})}
+                    disabled={isLoading}
+                />
+                <ToggleComponent
+                    text="Static Image Mode"
+                    isToggled={detectorConfig.static_image_mode}
+                    onToggle={(checked) => updateDetectorConfig({static_image_mode: checked})}
+                    disabled={isLoading}
+                />
             </div>
         </div>
     );

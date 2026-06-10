@@ -11,6 +11,7 @@ import { EXTERNAL_URLS } from '@/constants/external-urls';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import ButtonCard from '@/components/ui-components/ButtonCard';
 import IconButton from '@/components/ui-components/IconButton';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 interface WelcomeModalProps {
     open: boolean;
@@ -134,17 +135,15 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                                 />
                             </div>
 
-                            {/* Telemetry checkbox */}
+                            {/* Telemetry toggle */}
                             {telemetryLoaded && (
-                                <label className="flex flex-row items-center gap-2 mt-2 pl-0" style={{ cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={telemetryEnabled}
-                                        onChange={(e) => handleTelemetryToggle(e.target.checked)}
-                                        style={{ accentColor: 'var(--color-info)' }}
+                                <div className="mt-2">
+                                    <ToggleComponent
+                                        text={t('sendAnonymousPings')}
+                                        isToggled={telemetryEnabled}
+                                        onToggle={handleTelemetryToggle}
                                     />
-                                    <span className="text sm text-gray">{t('sendAnonymousPings')}</span>
-                                </label>
+                                </div>
                             )}
 
                             <div className="pos-abs top-10 left-10 fit-content">

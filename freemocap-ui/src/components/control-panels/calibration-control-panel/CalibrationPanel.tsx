@@ -6,6 +6,7 @@ import {useElectronIPC} from "@/services";
 import {CalibrationSolverSection} from "@/components/control-panels/calibration-control-panel/CalibrationSolverSection";
 import {CharucoBoardConfigSection} from "@/components/control-panels/calibration-control-panel/CharucoBoardConfigSection";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 
@@ -204,16 +205,12 @@ export const CalibrationPanel: React.FC = () => {
                         isRefreshing={false}
                     />
 
-                    <label className="flex flex-row items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={config.useGroundplane}
-                            onChange={(e) => updateCalibrationConfig({useGroundplane: e.target.checked})}
-                            disabled={isLoading}
-                            style={{accentColor: 'var(--color-info)'}}
-                        />
-                        <span className="text sm text-gray">Align to ground plane to initial charuco position</span>
-                    </label>
+                    <ToggleComponent
+                        text="Align to ground plane to initial charuco position"
+                        isToggled={config.useGroundplane}
+                        onToggle={(checked) => updateCalibrationConfig({useGroundplane: checked})}
+                        disabled={isLoading}
+                    />
 
                     <CharucoBoardConfigSection/>
 

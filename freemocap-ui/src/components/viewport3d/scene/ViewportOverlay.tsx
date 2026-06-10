@@ -123,14 +123,15 @@ const VisToggle = memo(function VisToggle({
         ? <span>{ label } (<span ref={countRef}>0</span>)</span>
         : label;
     return (
-        <label className="flex flex-row items-center gap-1" style={{margin: '2px 0', marginLeft: -4}}>
-            <input
-                type="checkbox"
-                checked={checked}
-                onChange={onChange}
-                style={{accentColor: '#aaa', padding: 3}}
-            />
+        <div
+            className="flex flex-row items-center justify-content-space-between gap-1"
+            style={{margin: '2px 0', cursor: 'pointer'}}
+            onClick={onChange}
+        >
             <span style={{fontSize: '0.7rem', color: '#ccc'}}>{labelNode}</span>
-        </label>
+            <div className={`icon toggle-container sm ${checked ? "on" : "off"}`}>
+                <div className="icon toggle-circle" />
+            </div>
+        </div>
     );
 });

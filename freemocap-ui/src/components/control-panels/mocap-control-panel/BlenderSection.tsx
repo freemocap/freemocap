@@ -1,6 +1,7 @@
 import React from 'react';
 import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 interface BlenderSectionProps {
     recordingFolderPath: string | null | undefined;
@@ -136,24 +137,16 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="flex flex-row items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={exportToBlenderEnabled}
-                            onChange={(e) => setExportToBlenderEnabled(e.target.checked)}
-                            style={{accentColor: 'var(--color-info)'}}
-                        />
-                        <span className="text sm text-gray">Export to Blender after mocap processing</span>
-                    </label>
-                    <label className="flex flex-row items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={autoOpenBlendFile}
-                            onChange={(e) => setAutoOpenBlendFile(e.target.checked)}
-                            style={{accentColor: 'var(--color-info)'}}
-                        />
-                        <span className="text sm text-gray">Auto-open .blend file in Blender when done</span>
-                    </label>
+                    <ToggleComponent
+                        text="Export to Blender after mocap processing"
+                        isToggled={exportToBlenderEnabled}
+                        onToggle={setExportToBlenderEnabled}
+                    />
+                    <ToggleComponent
+                        text="Auto-open .blend file in Blender when done"
+                        isToggled={autoOpenBlendFile}
+                        onToggle={setAutoOpenBlendFile}
+                    />
                 </div>
 
                 <button

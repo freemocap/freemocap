@@ -54,3 +54,23 @@
   top: 2px;
   background-color: var(--color-bg-quaternary);
 }
+
+/* Small variant, used for compact overlays (e.g. 3D viewport visibility toggles) */
+.icon.toggle-container.sm {
+  min-width: 18px;
+  height: 12px;
+  padding: 1px;
+  border-width: 1.5px;
+}
+
+.icon.toggle-container.sm .toggle-circle {
+  width: 6px;
+  height: 6px;
+  top: 1px;
+  left: 1px;
+}
+
+.icon.toggle-container.sm.on .toggle-circle {
+  left: 9px;
+  top: 1px;
+}

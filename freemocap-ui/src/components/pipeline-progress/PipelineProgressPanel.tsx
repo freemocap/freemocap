@@ -8,6 +8,7 @@ import {
     filterTextChanged,
 } from '@/store/slices/pipelines';
 import PipelineGroupCard from './PipelineGroupCard';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 export default function PipelineProgressPanel() {
     const groups = useAppSelector(selectGroupedPipelines);
@@ -18,8 +19,8 @@ export default function PipelineProgressPanel() {
 
     return (
         <div className="flex flex-col" style={{height: '100%'}}>
-            <div className="flex flex-row items-center gap-1" style={{padding: '4px 8px', flexShrink: 0}}>
-                <div className="input-with-string flex-1">
+            <div className="flex flex-col gap-1" style={{padding: '4px 8px', flexShrink: 0}}>
+                <div className="input-with-string">
                     <input
                         className="input-field text md"
                         placeholder="Filter..."
@@ -29,15 +30,11 @@ export default function PipelineProgressPanel() {
                     />
                 </div>
                 {hasCompleted && (
-                    <label className="flex flex-row items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={showCompleted}
-                            onChange={() => dispatch(toggleShowCompleted())}
-                            style={{accentColor: 'var(--color-info)'}}
-                        />
-                        <span className="text sm text-gray">Show completed</span>
-                    </label>
+                    <ToggleComponent
+                        text="Show completed"
+                        isToggled={showCompleted}
+                        onToggle={() => dispatch(toggleShowCompleted())}
+                    />
                 )}
             </div>
 

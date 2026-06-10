@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useServer } from '@/services/server/ServerContextProvider';
 import { useTranslation } from 'react-i18next';
 import type { CameraSettings, LayoutDirection } from '@/pages/StreamingViewPage';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 interface SettingsOverlayProps {
     settings: CameraSettings;
@@ -29,8 +30,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
     const autoColumns = getAutoColumns(connectedCameraIds.length);
 
-    const handleAutoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const checked = event.target.checked;
+    const handleAutoChange = (checked: boolean) => {
         setIsAuto(checked);
         onSettingsChange({ columns: checked ? null : manualColumns });
     };
@@ -44,8 +44,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         }
     };
 
-    const handle3dViewToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-        onSettingsChange({ show3dView: event.target.checked });
+    const handle3dViewToggle = (checked: boolean) => {
+        onSettingsChange({ show3dView: checked });
     };
 
     const handleLayoutDirectionChange = (newDirection: LayoutDirection) => {
@@ -77,27 +77,21 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                             <span className="icon grid4-icon icon-size-20" />
                             <p className="text bg text-white">{t('gridColumns')}</p>
                         </div>
-                        <div className="flex flex-row items-center gap-2">
-                            <label className="flex flex-row items-center gap-1">
-                                <input
-                                    type="checkbox"
-                                    checked={isAuto}
-                                    onChange={handleAutoChange}
-                                    style={{ accentColor: 'var(--color-info)' }}
-                                />
-                                <span className="text sm text-gray">{t('auto')}</span>
-                            </label>
-                            <div className="input-with-unit flex-1">
-                                <input
-                                    type="number"
-                                    className="input-field numeric-input text md"
-                                    value={isAuto ? autoColumns : manualColumns}
-                                    onChange={handleColumnsChange}
-                                    min={1}
-                                    step={1}
-                                />
-                                <span className="unit-label text sm text-gray">{t('columns')}</span>
-                            </div>
+                        <ToggleComponent
+                            text={t('auto')}
+                            isToggled={isAuto}
+                            onToggle={handleAutoChange}
+                        />
+                        <div className="input-with-unit flex-1">
+                            <input
+                                type="number"
+                                className="input-field numeric-input text md"
+                                value={isAuto ? autoColumns : manualColumns}
+                                onChange={handleColumnsChange}
+                                min={1}
+                                step={1}
+                            />
+                            <span className="unit-label text sm text-gray">{t('columns')}</span>
                         </div>
                         <p className="text sm text-gray">
                             {isAuto ? `Auto-detected: ${autoColumns}` : 'Enter any positive number'}
@@ -108,19 +102,12 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
                     {/* 3D viewport toggle */}
                     <div className="flex flex-col gap-1">
-                        <div className="flex flex-row items-center gap-1">
-                            <span className="icon icon-size-20 streaming-icon" />
-                            <p className="text bg text-white">3D Viewport</p>
-                        </div>
-                        <label className="flex flex-row items-center gap-2">
-                            <input
-                                type="checkbox"
-                                checked={settings.show3dView}
-                                onChange={handle3dViewToggle}
-                                style={{ accentColor: 'var(--color-info)' }}
-                            />
-                            <span className="text sm text-gray">{settings.show3dView ? 'Visible' : 'Hidden'}</span>
-                        </label>
+                        <ToggleComponent
+                            text="3D Viewport"
+                            iconClass="streaming-icon"
+                            isToggled={settings.show3dView}
+                            onToggle={handle3dViewToggle}
+                        />
                     </div>
 
                     {/* Layout direction (only when 3D is on) */}

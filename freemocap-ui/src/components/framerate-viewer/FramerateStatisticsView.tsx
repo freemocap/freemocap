@@ -201,7 +201,7 @@ export default function FramerateStatisticsView({
     const thStyle: React.CSSProperties = {fontWeight: 'bold', padding: '2px 4px', fontSize: '0.65rem', lineHeight: '1.1', whiteSpace: 'nowrap'};
 
     return (
-        <div style={{overflowX: 'auto'}}>
+        <div className="overflow-x">
             <table style={{borderCollapse: 'collapse', width: '100%', fontSize: '0.65rem', lineHeight: '1.1'}}>
                 <thead>
                     <tr>

@@ -31,6 +31,10 @@
   overflow-x: auto;
 }
 
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+
 /* ==========================
    Global Scrollbar Styling
    Applies to all scrollbars

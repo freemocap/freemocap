@@ -228,7 +228,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             icon={isLooping ? "loopactive-icon" : "loop-icon"}
             onClick={onToggleLoop}
             title={isLooping ? t("loopOn") : t("loopOff")}
-            className={clsx("icon-size-28", isLooping && "activated")}
+            className={clsx("icon-size-25", isLooping && "activated")}
             tooltip={true}
             tooltipText={isLooping ? t("loopOn") : t("loopOff")}
             tooltipPosition="pos-top"
@@ -237,7 +237,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
           <div className="playback-speed-button-containter pos-rel">
             <button
               ref={speedButtonRef}
-              className="playback-speed-button icon-size-28 button sm fit-content flex-inline items-center gap-1 br-1"
+              className="playback-speed-button icon-size-25 button sm fit-content flex-inline items-center gap-1 br-1"
               onClick={() => setSpeedDropdownOpen((prev) => !prev)}
               title={t("playbackSpeed")}
             >
@@ -279,7 +279,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             icon="skipbackward-icon"
             onClick={onSeekToStart}
             title={t("jumpToStart")}
-            className="icon-size-28"
+            className="icon-size-25"
             tooltip={true}
             tooltipText={t("jumpToStart")}
             tooltipPosition="pos-top"
@@ -289,7 +289,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             icon="framebackward-icon"
             onClick={() => onFrameStep(-1)}
             title={t("previousFrame")}
-            className="icon-size-28"
+            className="icon-size-25"
             tooltip={true}
             tooltipText={t("previousFrame")}
             tooltipPosition="pos-top"
@@ -301,7 +301,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             title={isPlaying ? "Pause (Space)" : "Play (Space)"}
             className={clsx(
               "playback-btn-play",
-              "icon-size-28",
+              "icon-size-25",
               isPlaying && "playing",
             )}
             tooltip={true}
@@ -313,7 +313,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             icon="frameforward-icon"
             onClick={() => onFrameStep(1)}
             title={t("nextFrame")}
-            className="icon-size-28"
+            className="icon-size-25"
             tooltip={true}
             tooltipText={t("nextFrame")}
             tooltipPosition="pos-top"
@@ -323,7 +323,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
             icon="skipforward-icon"
             onClick={onSeekToEnd}
             title={t("jumpToEnd")}
-            className="icon-size-28"
+            className="icon-size-25"
             tooltip={true}
             tooltipText={t("jumpToEnd")}
             tooltipPosition="pos-top"
@@ -346,7 +346,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
               icon="warning-icon"
               onClick={() => (syncInfoOpen ? dismissSyncInfo() : openSyncInfo())}
               title={t("syncInfo")}
-              className={clsx("icon-size-28", syncInfoOpen && "activated")}
+              className={clsx("icon-size-25", syncInfoOpen && "activated")}
               tooltip={true}
               tooltipText={t("syncInfo")}
               tooltipPosition="pos-top"
@@ -359,7 +359,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
               ref={settingsButtonRef}
               onClick={handleOpenSettings}
               title={t("playbackSettings")}
-              className={clsx("icon-size-28", settingsOpen && "activated")}
+              className={clsx("icon-size-25", settingsOpen && "activated")}
               tooltip={true}
               tooltipText={t("playbackSettings")}
               tooltipPosition="pos-top"

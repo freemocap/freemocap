@@ -40,7 +40,7 @@ const StageRow: React.FC<{ name: string; complete: boolean; present: number; tot
         <div className="border-1 border-mid-black br-1 mb-1">
             <div
                 className="flex flex-row items-center gap-1 p-1"
-                style={{ cursor: 'pointer', minHeight: 32 }}
+                
                 onClick={() => setOpen(v => !v)}
             >
                 <span className={`icon icon-size-20 ${complete ? 'upToDate-icon' : 'close-icon'}`} />
@@ -92,7 +92,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
         <div className="br-1 border-1 border-mid-black overflow-hidden">
             <div
                 className="flex flex-row items-center gap-1 p-1"
-                style={{ minHeight: 40, cursor: 'pointer', backgroundColor: 'var(--color-bg-elevated)' }}
+               
                 onClick={() => setExpanded(v => !v)}
             >
                 <span className="icon info-icon icon-size-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg width=\'16\' height=\'16\' viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3ccircle cx=\'8\' cy=\'8\' r=\'6\' stroke=\'%232ba4ff\' stroke-width=\'1.5\'/%3e%3cpath d=\'M8 7v4M8 5.5v.5\' stroke=\'%232ba4ff\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3e%3c/svg%3e")' }} />

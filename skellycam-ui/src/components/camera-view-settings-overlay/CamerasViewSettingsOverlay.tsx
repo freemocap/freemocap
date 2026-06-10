@@ -103,7 +103,7 @@ export const CamerasViewSettingsOverlay: React.FC<CamerasViewSettingsOverlayProp
             <>
                 <IconButton
                     ref={buttonRef}
-                    className="grid-settings-button icon-size-28"
+                    className="grid-settings-button icon-size-25"
                     icon={isOpen ? "close-icon" : "settings-icon"}
                     onClick={handleToggle}
                     tooltip={true}

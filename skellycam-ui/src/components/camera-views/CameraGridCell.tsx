@@ -54,7 +54,7 @@ export const CameraGridCell: React.FC<CameraGridCellProps> = ({ cameraId }) => {
                     ref={settingsBtnRef}
                     icon={settingsOpen ? 'close-icon' : 'settings-icon'}
                     onClick={handleOpenSettings}
-                    className={clsx('icon-size-28', settingsOpen && 'activated')}
+                    className={clsx('icon-size-25', settingsOpen && 'activated')}
 
                     tooltip={true}
                     tooltipText="Camera settings"

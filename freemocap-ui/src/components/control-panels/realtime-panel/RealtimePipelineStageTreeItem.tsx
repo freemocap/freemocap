@@ -48,7 +48,7 @@ export const RealtimePipelineStageTreeItem: React.FC<PipelineStageTreeItemProps>
         <div className="flex flex-col">
             <div
                 className="flex flex-row items-center gap-1 p-1"
-                style={{ minHeight: 32, cursor: children ? 'pointer' : 'default' }}
+                
                 onClick={() => children && setExpanded(v => !v)}
             >
                 {disabled && disabledReason ? (

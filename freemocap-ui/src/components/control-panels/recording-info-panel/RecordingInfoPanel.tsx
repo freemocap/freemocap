@@ -194,7 +194,7 @@ export const RecordingInfoPanel: React.FC = () => {
     };
 
     return (
-            <div className="main-side-actions flex flex-col gap-1 z-3" style={{margin: '4px 8px'}}>
+            <div className="main-side-actions flex flex-col gap-1 z-3" >
 
                 {/* File directory group */}
                 <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">

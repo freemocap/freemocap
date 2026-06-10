@@ -1,4 +1,5 @@
 import React, {useEffect, useRef} from 'react';
+import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import {RecordingPathTreeItem} from './RecordingPathTreeItem';
 
@@ -31,6 +32,8 @@ interface RecordingPathModalProps {
 }
 
 export const RecordingPathModal: React.FC<RecordingPathModalProps> = ({open, onClose, ...itemProps}) => {
+    useDraggableTooltips();
+    
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {

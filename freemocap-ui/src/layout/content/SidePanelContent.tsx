@@ -182,7 +182,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
-                        <div className="flex flex-col gap-1">
+                        <div className="flex flex-col gap-1 overflow-y">
                             {visibleSections.map((sectionId) => {
                                 const Component = SECTION_COMPONENTS[sectionId];
                                 return (

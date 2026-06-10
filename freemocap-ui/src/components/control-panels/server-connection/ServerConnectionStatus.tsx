@@ -142,8 +142,8 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     {/* Status dot */}
                                     <div className="flex items-center gap-1 p-1">
                                         <div
-                                            className={`${serverStatusColor} br-5`}
-                                            style={{ width: 8, height: 8, flexShrink: 0 }}
+                                            className={`${serverStatusColor} br-5 flex-shrink-0`}
+                                            style={{ width: 8, height: 8 }}
                                         />
                                         <p className="text sm text-gray">
                                             {serverRunning ? t('running') : t('stopped')}

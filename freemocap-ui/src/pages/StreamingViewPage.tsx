@@ -34,12 +34,7 @@ export const StreamingViewPage = () => {
 
     return (
         <React.Fragment>
-            <div className="flex flex-col pos-rel overflow-hidden bg-dark" style={{
-                padding: 8,
-                flex: 1,
-                height: '100%',
-                width: '100%',
-            }}>
+            <div className="flex flex-col pos-rel overflow-hidden bg-dark p-2 flex-1 h-full w-full">
                 <SettingsOverlay
                     settings={settings}
                     onSettingsChange={handleSettingsChange}
@@ -53,7 +48,7 @@ export const StreamingViewPage = () => {
                             direction={settings.layoutDirection}
                         >
                             <Panel defaultSize={60} minSize={20}>
-                                <div style={{height: '100%', overflow: 'auto'}}>
+                                <div className="h-full overflow-y">
                                     <ErrorBoundary>
                                         <CameraViewsGrid manualColumns={settings.columns} resetKey={resetKey}/>
                                     </ErrorBoundary>
@@ -74,26 +69,25 @@ export const StreamingViewPage = () => {
                                     ),
                                 }}>
                                     {[0, 1, 2].map((i) => (
-                                        <div key={i} style={{
+                                        <div key={i} className="flex-shrink-0" style={{
                                             width: 4,
                                             height: 4,
                                             borderRadius: '50%',
                                             backgroundColor: 'var(--color-text-disabled)',
                                             margin: isHorizontal ? '2px 0' : '0 2px',
-                                            flexShrink: 0,
                                         }}/>
                                     ))}
                                 </div>
                             </PanelResizeHandle>
 
                             <Panel defaultSize={40} minSize={10}>
-                                <div style={{height: '100%'}}>
+                                <div className="h-full">
                                     <ThreeJsCanvas/>
                                 </div>
                             </Panel>
                         </PanelGroup>
                     ) : (
-                        <div style={{height: '100%', overflow: 'auto'}}>
+                        <div className="h-full overflow-y">
                             <ErrorBoundary>
                                 <CameraViewsGrid manualColumns={settings.columns} resetKey={resetKey}/>
                             </ErrorBoundary>
@@ -101,7 +95,7 @@ export const StreamingViewPage = () => {
                     )}
                 </div>
 
-                <footer style={{padding: 8, flexShrink: 0}}>
+                <footer className="p-2 flex-shrink-0">
                     <Footer/>
                 </footer>
             </div>

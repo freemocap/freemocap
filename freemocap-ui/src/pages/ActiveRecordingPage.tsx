@@ -65,16 +65,16 @@ const ActiveRecordingPage: React.FC = () => {
     }, [structure?.blendPath, triggerOpenInBlender]);
 
     return (
-        <div className="flex flex-col w-full overflow-y overflow-hidden bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>
+        <div className="flex flex-col w-full overflow-y overflow-hidden bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
             <div className="flex flex-col p-2 gap-2">
                 <ErrorBoundary>
                     {!recordingName ? (
-                        <div style={{paddingTop: 32, paddingLeft: 16, paddingRight: 16}}>
+                        <div className="pl-4 pr-4" style={{paddingTop: 32}}>
                             <div className="flex flex-col gap-2">
                                 <p className="text sm text-gray" style={{fontStyle: 'italic'}}>
                                     No active recording. This folder will be created when you start recording.
                                 </p>
-                                <div className="flex flex-row gap-1" style={{marginTop: 4}}>
+                                <div className="flex flex-row gap-1 mt-1">
                                     <button className="button sm secondary" onClick={() => navigate('/streaming')}>
                                         Go to Streaming
                                     </button>
@@ -88,8 +88,8 @@ const ActiveRecordingPage: React.FC = () => {
                     ) : (
                         <>
                             <div className="p-2 br-1 border-1 border-mid-black">
-                                <div className="flex flex-row items-center gap-1" style={{marginBottom: 4, flexWrap: 'wrap'}}>
-                                    <p className="text bg text-white" style={{fontFamily: MONO_FONT, fontWeight: 600, margin: 0}}>
+                                <div className="flex flex-row items-center gap-1 mb-1 flex-wrap">
+                                    <p className="text bg text-white m-0" style={{fontFamily: MONO_FONT, fontWeight: 600}}>
                                         {recordingName}
                                     </p>
                                     {origin && (
@@ -100,12 +100,12 @@ const ActiveRecordingPage: React.FC = () => {
                                 </div>
                                 <p
                                     title={fullPath ?? ''}
-                                    className="text sm text-gray"
-                                    style={{fontFamily: MONO_FONT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0}}
+                                    className="text sm text-gray m-0 overflow-hidden"
+                                    style={{fontFamily: MONO_FONT, textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
                                 >
                                     {fullPath}
                                 </p>
-                                <div className="flex flex-row gap-1" style={{marginTop: 8, flexWrap: 'wrap'}}>
+                                <div className="flex flex-row gap-1 mt-2 flex-wrap">
                                     <button className="button sm secondary" onClick={handleOpenFolder}>
                                         <span className="icon load-icon icon-size-20"/>
                                         {t('openFolder')}
@@ -126,7 +126,7 @@ const ActiveRecordingPage: React.FC = () => {
                             </div>
 
                             <div className="p-2 br-1 border-1 border-mid-black">
-                                <p className="text md text-white" style={{fontWeight: 600, marginBottom: 4, margin: 0}}>Pipeline stages</p>
+                                <p className="text md text-white m-0" style={{fontWeight: 600}}>Pipeline stages</p>
                                 <RecordingStatusPanel
                                     status={status}
                                     isLoading={statusLoading}
@@ -143,7 +143,7 @@ const ActiveRecordingPage: React.FC = () => {
                     )}
                 </ErrorBoundary>
             </div>
-            <footer style={{padding: 4}}>
+            <footer className="p-1">
                 <Footer/>
             </footer>
         </div>
@@ -154,8 +154,8 @@ const PathRow: React.FC<{ label: string; value: string }> = ({label, value}) => 
     <div className="flex flex-row gap-1 items-center">
         <span className="text sm text-gray" style={{minWidth: 160}}>{label}</span>
         <span
-            className="text sm"
-            style={{fontFamily: MONO_FONT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+            className="text sm overflow-hidden"
+            style={{fontFamily: MONO_FONT, textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
         >
             {value}
         </span>

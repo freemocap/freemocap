@@ -118,37 +118,36 @@ const PlaybackPage: React.FC = () => {
     }, [controller.allReady, controller.erroredVideos, videoEntries.length, availableSources, selectedSource, setSelectedSource]);
 
     return (
-        <div className="flex flex-col flex-1 bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>
+        <div className="flex flex-col flex-1 bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
             <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
-                    <div className="flex flex-col pos-rel flex-1" style={{minHeight: 0}}>
+                    <div className="flex flex-col pos-rel flex-1 min-h-0">
                         <SettingsOverlay
                             settings={settings}
                             onSettingsChange={handleSettingsChange}
                             onResetLayout={handleResetLayout}
                         />
 
-                        <div className="flex flex-row items-center gap-1" style={{
+                        <div className="flex flex-row items-center gap-1 flex-wrap" style={{
                             padding: '6px 12px',
                             borderBottom: '1px solid var(--color-border-secondary)',
                             backgroundColor: 'rgba(255,255,255,0.03)',
                             minHeight: 40,
-                            flexWrap: 'wrap',
                         }}>
-                            <p className="text md text-white text-nowrap" style={{fontFamily: monoFont, fontWeight: 600, margin: 0}}>
+                            <p className="text md text-white text-nowrap m-0" style={{fontFamily: monoFont, fontWeight: 600}}>
                                 {recordingName}
                             </p>
 
                             <button
                                 title={t('openFolder')}
-                                className="button icon-button br-1"
+                                className="button icon-button br-1-1"
                                 onClick={handleOpenFolder}
-                                style={{color: 'var(--color-warning)', border: '1px solid rgba(230,73,0,0.3)', borderRadius: '6px', padding: '0 8px'}}
+                                style={{color: 'var(--color-warning)', border: '1px solid rgba(230,73,0,0.3)', padding: '0 8px'}}
                             >
                                 <span className="icon load-icon icon-size-20"/>
                             </button>
 
-                            <div style={{flex: 1}}/>
+                            <div className="flex-1"/>
 
                             <span title={t('cameraStreams')} className="tag text sm" style={{fontFamily: monoFont, color: 'var(--color-info)', borderColor: 'rgba(43,164,255,0.3)'}}>
                                 {t('cameraCount', {count: loadedVideos.length})}
@@ -167,14 +166,14 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="flex flex-col flex-1" style={{minHeight: 0}}>
+                        <div className="flex flex-col flex-1 min-h-0">
                             {settings.show3dView ? (
                                 <PanelGroup
                                     key={`main-panels-${resetKey}-${settings.layoutDirection}`}
                                     direction={settings.layoutDirection}
                                 >
                                     <Panel defaultSize={60} minSize={20}>
-                                        <div className="flex flex-col" style={{height: '100%'}}>
+                                        <div className="flex flex-col h-full">
                                             <SyncedVideoPlayer
                                                 videos={videoEntries}
                                                 manualColumns={settings.columns}
@@ -198,18 +197,17 @@ const PlaybackPage: React.FC = () => {
                                             ),
                                         }}>
                                             {[0, 1, 2].map((i) => (
-                                                <div key={i} style={{
+                                                <div key={i} className="flex-shrink-0" style={{
                                                     width: 4, height: 4, borderRadius: '50%',
                                                     backgroundColor: 'var(--color-text-disabled)',
                                                     margin: isHorizontal ? '2px 0' : '0 2px',
-                                                    flexShrink: 0,
                                                 }}/>
                                             ))}
                                         </div>
                                     </PanelResizeHandle>
 
                                     <Panel defaultSize={40} minSize={10}>
-                                        <div style={{height: '100%'}}>
+                                        <div className="h-full">
                                             <FileKeypointsSourceProvider
                                                 recordingId={activeRecordingName}
                                                 recordingParentDirectory={activeRecordingBaseDirectory}

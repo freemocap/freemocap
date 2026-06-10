@@ -257,15 +257,13 @@ export function ThreeJsCanvas() {
             <div
                 ref={containerRef}
                 tabIndex={0}
-                className="pos-rel"
-                style={{width: "100%", height: "100%", outline: "none"}}
+                className="pos-rel w-full h-full"
+                style={{outline: "none"}}
             >
                 <canvas
                     ref={canvasRef}
+                    className="w-full h-full block"
                     style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "block",
                         touchAction: "none",
                     }}
                 />

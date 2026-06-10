@@ -40,7 +40,8 @@ export const RealtimePipelineStageTreeItem: React.FC<PipelineStageTreeItemProps>
             onMouseDown={(e) => e.stopPropagation()}
             onClick={handleCheckboxClick}
             onChange={() => {}}
-            style={{ accentColor: 'var(--color-info)', flexShrink: 0 }}
+            className="flex-shrink-0"
+            style={{ accentColor: 'var(--color-info)' }}
         />
     );
 

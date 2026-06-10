@@ -10,8 +10,8 @@ export const RealtimePipelineSummary: React.FC = () => {
     if (error) {
         return (
             <p
-                className="text sm text-error text-nowrap"
-                style={{fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis'}}
+                className="text sm text-error text-nowrap overflow-hidden"
+                style={{fontWeight: 500, textOverflow: 'ellipsis'}}
             >
                 Error
             </p>
@@ -20,10 +20,9 @@ export const RealtimePipelineSummary: React.FC = () => {
 
     return (
         <span
-            className="tag text sm"
+            className="tag text sm overflow-hidden"
             style={{
                 maxWidth: 160,
-                overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: 600,

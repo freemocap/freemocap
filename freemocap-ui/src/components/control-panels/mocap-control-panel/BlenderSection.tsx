@@ -72,9 +72,9 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
         (hasBlendFile === undefined || hasBlendFile);
 
     return (
-        <div style={{marginTop: 8}}>
+        <div className="mt-2">
             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
-            <div className="flex flex-row items-center gap-1" style={{marginBottom: 8}}>
+            <div className="flex flex-row items-center gap-1 mb-2">
                 <span className="icon processmocap-icon icon-size-20" />
                 <p className="text sm text-gray" style={{textTransform: 'uppercase', letterSpacing: 1}}>Blender</p>
             </div>
@@ -99,7 +99,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                             onChange={(e) => setBlenderExePath(e.target.value || null)}
                             placeholder={isDetecting ? 'Detecting…' : 'No Blender found — select manually'}
                         />
-                        <div className="flex flex-row" style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}>
+                        <div className="flex flex-row pos-abs right-4 top-50">
                             {isUsingManualBlenderPath && (
                                 <button
                                     className="button icon-button br-1"

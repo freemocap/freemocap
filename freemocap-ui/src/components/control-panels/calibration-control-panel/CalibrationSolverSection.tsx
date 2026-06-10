@@ -10,7 +10,7 @@ export const CalibrationSolverSection: React.FC = () => {
             <p className="text sm text-gray" style={{fontWeight: 600}}>Solver Settings</p>
 
             <select
-                className="input-field text md"
+                className="input-field text md w-full"
                 value={config.solverMethod}
                 onChange={(e) =>
                     updateCalibrationConfig({
@@ -18,7 +18,6 @@ export const CalibrationSolverSection: React.FC = () => {
                     })
                 }
                 disabled={isLoading}
-                style={{width: '100%'}}
             >
                 <option value="anipose">Anipose (legacy)</option>
                 <option value="pyceres">Pyceres (bundle adjustment)</option>

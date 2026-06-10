@@ -24,10 +24,10 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
     return (
         <div style={{padding: '4px 8px', opacity: isTerminal ? 0.5 : 1}}>
             <div className="flex flex-row justify-content-space-between items-center" style={{marginBottom: 2}}>
-                <p className="text sm text-white" style={{fontWeight: 'bold', flex: 1, marginRight: 4, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                <p className="text sm text-white flex-1 mr-1 m-0" style={{fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {pipeline.pipelineType} — {pipeline.pipelineId}
                 </p>
-                <p className="text sm text-gray" style={{margin: 0, flexShrink: 0}}>
+                <p className="text sm text-gray m-0 flex-shrink-0">
                     {isTerminal && pipeline.completedAt
                         ? `${phaseLabel} ${formatTimeAgo(pipeline.completedAt)}`
                         : `${phaseLabel} ${pipeline.progress}%`
@@ -38,7 +38,7 @@ export default function PipelineProgressBar({pipeline}: PipelineProgressBarProps
                 <div className="update-progress-fill" style={{width: `${pipeline.progress}%`, backgroundColor: progressColor}}/>
             </div>
             {pipeline.detail && (
-                <p className="text sm text-gray" style={{display: 'block', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0}}>
+                <p className="text sm text-gray block m-0" style={{marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {pipeline.detail}
                 </p>
             )}

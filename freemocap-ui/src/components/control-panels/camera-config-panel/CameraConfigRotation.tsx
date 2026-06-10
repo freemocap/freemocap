@@ -15,7 +15,7 @@ export const CameraConfigRotation: React.FC<CameraConfigRotationProps> = ({
 
     return (
         <div title={t("selectCameraRotation")}>
-            <div className="flex flex-row gap-1" style={{flexWrap: 'wrap'}}>
+            <div className="flex flex-row gap-1 flex-wrap">
                 {ROTATION_OPTIONS.map((option: RotationValue) => (
                     <button
                         key={option}

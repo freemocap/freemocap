@@ -26,7 +26,7 @@ function TimingStatsTable({ data }: { data: RecordingCompletionData }) {
     const tdRightStyle: React.CSSProperties = {...tdStyle, textAlign: 'right'};
 
     return (
-        <table style={{width: '100%', borderCollapse: 'collapse'}}>
+        <table className="w-full" style={{borderCollapse: 'collapse'}}>
             <thead>
                 <tr>
                     <th style={thStyle}>Metric</th>
@@ -87,28 +87,25 @@ export const RecordingCompleteDialog: React.FC = () => {
             onClick={handleClose}
         >
             <div
-                className="pos-rel bg-middark br-2 flex flex-col p-3"
-                style={{minWidth: 480, maxWidth: 720, width: '100%'}}
+                className="pos-rel bg-middark br-2 flex flex-col p-3 w-full"
+                style={{minWidth: 480, maxWidth: 720}}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex flex-row items-center justify-content-space-between" style={{paddingBottom: 8}}>
+                <div className="flex flex-row items-center justify-content-space-between pb-2">
                     <p className="text bg text-white">Recording Complete!</p>
                     <button className="button icon-button br-1" onClick={handleClose} title="Close">
                         <span className="icon close-icon icon-size-20" />
                     </button>
                 </div>
 
-                <div className="flex flex-row items-center gap-1" style={{marginBottom: 8}}>
+                <div className="flex flex-row items-center gap-1 mb-2">
                     <span
-                        className="text sm text-gray"
+                        className="text sm text-gray br-1 flex-1 overflow-hidden"
                         style={{
                             fontFamily: 'monospace',
                             fontSize: '0.8rem',
                             backgroundColor: 'var(--color-bg-elevated)',
                             padding: '4px 8px',
-                            borderRadius: 4,
-                            flex: 1,
-                            overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
                         }}
@@ -123,7 +120,7 @@ export const RecordingCompleteDialog: React.FC = () => {
                     </button>
                 </div>
 
-                <p className="text sm text-gray" style={{marginBottom: 8}}>
+                <p className="text sm text-gray mb-2">
                     {completionData.number_of_cameras} camera{completionData.number_of_cameras !== 1 ? 's' : ''}
                     {' · '}
                     {completionData.number_of_frames} frames
@@ -135,15 +132,15 @@ export const RecordingCompleteDialog: React.FC = () => {
 
                 <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0 8px 0'}} />
 
-                <p className="text sm text-white" style={{marginBottom: 8, fontWeight: 600}}>
+                <p className="text sm text-white mb-2" style={{fontWeight: 600}}>
                     Frame Timing Statistics
                 </p>
 
                 <TimingStatsTable data={completionData} />
 
-                <div className="flex flex-row gap-1" style={{marginTop: 12, justifyContent: 'flex-end'}}>
+                <div className="flex flex-row gap-1 mt-3 flex-end">
                     <button className="button sm secondary" onClick={handleOpenInPlayback}>
-                        <span className="icon play-icon icon-size-20" style={{marginRight: 4}} />
+                        <span className="icon play-icon icon-size-20 mr-1" />
                         Open in Playback
                     </button>
                     <button className="button sm primary" onClick={handleClose}>

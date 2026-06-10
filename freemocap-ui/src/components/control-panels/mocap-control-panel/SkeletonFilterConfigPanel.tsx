@@ -53,7 +53,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.max_reprojection_error_px}
                     onChange={(e) => updateSkeletonFilterConfig({max_reprojection_error_px: parseFloat(e.target.value)})}
                     min={5} max={200} step={1} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -66,7 +67,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.max_velocity_m_per_s}
                     onChange={(e) => updateSkeletonFilterConfig({max_velocity_m_per_s: parseFloat(e.target.value)})}
                     min={5} max={200} step={1} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -79,7 +81,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.max_rejected_streak}
                     onChange={(e) => updateSkeletonFilterConfig({max_rejected_streak: parseInt(e.target.value)})}
                     min={1} max={30} step={1} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -97,7 +100,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.min_cutoff}
                     onChange={(e) => updateSkeletonFilterConfig({min_cutoff: parseFloat(e.target.value)})}
                     min={0.0001} max={0.1} step={0.0005} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -110,7 +114,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.beta}
                     onChange={(e) => updateSkeletonFilterConfig({beta: parseFloat(e.target.value)})}
                     min={0} max={5} step={0.05} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -123,7 +128,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.d_cutoff}
                     onChange={(e) => updateSkeletonFilterConfig({d_cutoff: parseFloat(e.target.value)})}
                     min={0.1} max={5} step={0.1} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -141,7 +147,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.fabrik_max_iterations}
                     onChange={(e) => updateSkeletonFilterConfig({fabrik_max_iterations: parseInt(e.target.value)})}
                     min={1} max={100} step={1} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -179,7 +186,8 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     value={skeletonFilterConfig.noise_sigma}
                     onChange={(e) => updateSkeletonFilterConfig({noise_sigma: parseFloat(e.target.value)})}
                     min={0.001} max={0.05} step={0.001} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
         </div>

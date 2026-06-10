@@ -20,12 +20,11 @@ export const RecordingHeaderButton: React.FC<RecordingHeaderButtonProps> = ({
 
     return (
         <button
-            className="button icon-button br-1"
+            className="button icon-button br-1 p-1"
             onClick={handleClick}
             disabled={disabled || isPending}
             title={isRecording ? "Stop Recording" : "Start Recording"}
             style={{
-                padding: "4px",
                 color: isRecording ? 'var(--color-danger)' : 'inherit',
                 opacity: disabled && !isRecording ? 0.4 : 1,
                 transition: "color 0.2s ease",

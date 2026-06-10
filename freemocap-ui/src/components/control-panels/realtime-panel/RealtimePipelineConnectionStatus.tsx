@@ -22,31 +22,24 @@ export const RealtimePipelineConnectionStatus = () => {
 
     return (
         <div
-            className="flex flex-col"
+            className="flex flex-col flex-end br-2"
             style={{
-                justifyContent: 'flex-end',
                 padding: '10px',
                 paddingLeft: 32,
                 border: '4px solid rgb(0, 125, 125)',
                 backgroundColor: isConnected ? '#005d94' : '#395067',
-                borderRadius: '8px',
             }}
         >
             <div className="flex flex-row items-center gap-1">
                 <div
+                    className="mr-2 br-1 flex items-center justify-center p-1"
                     style={{
                         border: `1px solid ${isConnected ? 'rgba(0,255,255,0.5)' : 'rgba(255,0,0,0.5)'}`,
                         width: '24px',
                         height: '24px',
-                        marginRight: '8px',
-                        borderRadius: '4px',
                         transition: 'background-color 0.3s, border-color 0.3s',
                         backgroundColor: isConnected ? 'rgba(0,255,255,0.1)' : 'rgba(255,0,0,0.1)',
                         boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '4px',
-                        justifyContent: 'center',
                     }}
                 >
                     {isLoading ? (
@@ -63,7 +56,7 @@ export const RealtimePipelineConnectionStatus = () => {
                 </p>
 
                 {error && (
-                    <p className="text sm text-error" style={{marginLeft: 8}}>
+                    <p className="text sm text-error ml-2">
                         {error}
                     </p>
                 )}

@@ -57,20 +57,14 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
 
     return (
         <div
-            className="flex flex-col gap-1 br-1"
+            className="flex flex-col gap-1 br-1 pl-3 pr-2 pt-2 pb-1 mr-1 mb-1"
             style={{
-                paddingLeft: 12,
-                paddingRight: 8,
-                paddingTop: 8,
-                paddingBottom: 4,
                 marginLeft: 20,
-                marginRight: 4,
-                marginBottom: 4,
                 border: '1px solid var(--color-border-secondary)',
                 backgroundColor: 'var(--color-bg-paper)',
             }}
         >
-            <div className="flex flex-row items-center gap-2" style={{flexWrap: 'wrap'}}>
+            <div className="flex flex-row items-center gap-2 flex-wrap">
                 <CameraConfigResolution
                     resolution={config.resolution}
                     onChange={handleResolutionChange}
@@ -81,7 +75,7 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
                     onChange={handleRotationChange}
                 />
 
-                <div style={{flex: 1}} />
+                <div className="flex-1" />
 
                 <button
                     className="button icon-button br-1"
@@ -101,7 +95,7 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
                 </button>
             </div>
 
-            <div style={{paddingTop: 4, borderTop: '1px solid var(--color-border-secondary)'}}>
+            <div className="pt-1" style={{borderTop: '1px solid var(--color-border-secondary)'}}>
                 <CameraConfigExposure
                     exposureMode={config.exposure_mode}
                     exposure={config.exposure}

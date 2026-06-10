@@ -131,16 +131,14 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
 
     return (
         <div
+            className="pos-abs overflow-hidden br-1"
             style={{
-                position: 'absolute',
                 left: x,
                 top: y,
                 width,
                 height,
                 zIndex,
                 border: `1px solid ${isActive ? 'var(--color-info)' : 'rgba(255,255,255,0.15)'}`,
-                borderRadius: '4px',
-                overflow: 'hidden',
                 boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.4)' : '0 1px 4px rgba(0,0,0,0.2)',
                 transition: isActive ? 'none' : 'border-color 0.15s ease, box-shadow 0.15s ease',
             }}
@@ -149,9 +147,8 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
                 onPointerDown={(e) => handlePointerDown(e, 'move')}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
+                className="w-full h-full"
                 style={{
-                    width: '100%',
-                    height: '100%',
                     cursor: dragMode === 'move' ? 'grabbing' : 'grab',
                 }}
             >
@@ -162,14 +159,11 @@ export const ResizableCameraView: React.FC<ResizableCameraViewProps> = ({
                 onPointerDown={(e) => handlePointerDown(e, 'resize')}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
+                className="pos-abs bottom-0 right-0 z-2"
                 style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
                     width: HANDLE_SIZE,
                     height: HANDLE_SIZE,
                     cursor: 'nwse-resize',
-                    zIndex: 2,
                 }}
             />
         </div>

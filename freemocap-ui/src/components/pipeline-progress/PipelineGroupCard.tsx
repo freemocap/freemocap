@@ -33,28 +33,28 @@ function SubProgressBar({pipeline, label, isAggregator = false}: {
     const progressColor = isFailed ? 'var(--color-error)' : isComplete ? 'var(--color-success)' : 'var(--color-info)';
 
     return (
-        <div style={{marginBottom: 4, opacity: isTerminal ? 0.6 : 1}}>
+        <div className="mb-1" style={{opacity: isTerminal ? 0.6 : 1}}>
             <div className="flex flex-row justify-content-space-between items-center" style={{marginBottom: 1}}>
-                <p className="text sm text-gray" style={{flex: 1, marginRight: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.68rem', margin: 0}}>
+                <p className="text sm text-gray flex-1 mr-1 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.68rem'}}>
                     {label}
                 </p>
-                <p className="text sm text-gray" style={{fontSize: '0.65rem', flexShrink: 0, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0}}>
+                <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.65rem', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     {rightText}
                 </p>
             </div>
             <div className="update-progress-track" style={{height: 4, borderRadius: 2}}>
                 {!isIndeterminate && (
-                    <div className="update-progress-fill" style={{width: `${pipeline.progress}%`, backgroundColor: progressColor, height: '100%', borderRadius: 2}}/>
+                    <div className="update-progress-fill h-full" style={{width: `${pipeline.progress}%`, backgroundColor: progressColor, borderRadius: 2}}/>
                 )}
                 {isIndeterminate && (
-                    <div style={{width: '40%', backgroundColor: progressColor, height: '100%', borderRadius: 2, animation: 'indeterminateProgress 1.5s infinite ease-in-out'}}/>
+                    <div className="h-full" style={{width: '40%', backgroundColor: progressColor, borderRadius: 2, animation: 'indeterminateProgress 1.5s infinite ease-in-out'}}/>
                 )}
             </div>
             {isFailed && pipeline.detail && (
                 <p
                     title={pipeline.detail}
-                    className="text sm text-error"
-                    style={{display: 'block', fontSize: '0.62rem', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default', margin: 0}}
+                    className="text sm text-error block m-0"
+                    style={{fontSize: '0.62rem', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'default'}}
                 >
                     {pipeline.detail}
                 </p>
@@ -102,57 +102,57 @@ export default function PipelineGroupCard({group, onDismiss}: {
     };
 
     return (
-        <div style={{margin: '6px 8px', padding: 8, border: `1px solid ${borderColor}`, borderRadius: 4, opacity: group.isActive ? 1 : 0.6}}>
-            <div className="flex flex-row items-center" style={{marginBottom: 4}}>
+        <div className="br-1" style={{margin: '6px 8px', padding: 8, border: `1px solid ${borderColor}`, opacity: group.isActive ? 1 : 0.6}}>
+            <div className="flex flex-row items-center mb-1">
                 {typeConfig && (
-                    <div style={{
-                        padding: '1px 6px', marginRight: 6, borderRadius: 4, flexShrink: 0,
+                    <div className="flex-shrink-0 br-1" style={{
+                        padding: '1px 6px', marginRight: 6,
                         backgroundColor: typeConfig.color + '22',
                         border: `1px solid ${typeConfig.color}66`,
                     }}>
-                        <p className="text sm" style={{fontSize: '0.62rem', fontWeight: 600, color: typeConfig.color, lineHeight: 1.4, margin: 0}}>
+                        <p className="text sm m-0" style={{fontSize: '0.62rem', fontWeight: 600, color: typeConfig.color, lineHeight: 1.4}}>
                             {typeConfig.label}
                         </p>
                     </div>
                 )}
-                <p className="text sm" style={{flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0}}>
+                <p className="text sm flex-1 min-w-0 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     <span className="text-gray">Pipeline: </span>
                     <span style={{fontWeight: 'bold'}}>{pipelineId}</span>
                 </p>
 
-                <p className="text sm text-gray" style={{flexShrink: 0, fontSize: '0.7rem', margin: 0}}>
+                <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.7rem'}}>
                     {overallProgress}%
                 </p>
-                <button title="Open folder" className="button icon-button br-1" onClick={handleOpenFolder} disabled={!fullPath} style={{padding: 2}}>
+                <button title="Open folder" className="button icon-button br-1 p-01" onClick={handleOpenFolder} disabled={!fullPath}>
                     <span className="icon load-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
                 </button>
-                <button title="Load in playback" className="button icon-button br-1" onClick={handleLoadPlayback} style={{padding: 2}}>
+                <button title="Load in playback" className="button icon-button br-1 p-01" onClick={handleLoadPlayback}>
                     <span className="icon play-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
                 </button>
                 {group.isActive && (
                     <button
                         title="Stop pipeline"
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 p-01"
                         onClick={() => dispatch(stopPipeline(group.basePipelineId))}
-                        style={{padding: 2, color: 'var(--color-error)'}}
+                        style={{color: 'var(--color-error)'}}
                     >
                         <span className="icon close-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
                     </button>
                 )}
                 {onDismiss && (
-                    <button className="button icon-button br-1" onClick={onDismiss} style={{padding: 2}}>
+                    <button className="button icon-button br-1 p-01" onClick={onDismiss}>
                         <span className="icon close-icon icon-size-20" style={{fontSize: '0.75rem'}}/>
                     </button>
                 )}
             </div>
             <div title={fullPath}>
-                <p className="text sm" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0, margin: 0}}>
+                <p className="text sm flex-1 min-w-0 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                     <span className="text-gray">Recording: </span>
                     <span style={{fontWeight: 'bold'}}>{recordingName}</span>
                 </p>
             </div>
             {group.videoNodes.length > 0 && (
-                <div style={{paddingLeft: 8, borderLeft: '2px solid var(--color-border-secondary)', marginBottom: group.aggregator ? 6 : 0}}>
+                <div className="pl-2" style={{borderLeft: '2px solid var(--color-border-secondary)', marginBottom: group.aggregator ? 6 : 0}}>
                     {group.videoNodes.map((node) => {
                         const cameraId = node.pipelineId.includes(':')
                             ? node.pipelineId.split(':').slice(1).join(':')
@@ -163,7 +163,7 @@ export default function PipelineGroupCard({group, onDismiss}: {
             )}
 
             {group.aggregator && (
-                <div style={{marginTop: 4}}>
+                <div className="mt-1">
                     <SubProgressBar
                         pipeline={group.aggregator}
                         isAggregator={true}

@@ -117,8 +117,8 @@ export const CalibrationPanel: React.FC = () => {
             title="Capture Volume Calibration"
             summaryContent={
                 <span
-                    className="tag text sm"
-                    style={{marginLeft: 'auto', height: 20, fontSize: 11, fontWeight: 600, backgroundColor: statusColor, color: '#fff'}}
+                    className="tag text sm ml-auto"
+                    style={{height: 20, fontSize: 11, fontWeight: 600, backgroundColor: statusColor, color: '#fff'}}
                 >
                     {statusLabel}
                 </span>
@@ -128,7 +128,7 @@ export const CalibrationPanel: React.FC = () => {
             <div className="p-2">
                 <div className="flex flex-col gap-2">
                     {displayError && (
-                        <div className="toast-notification error" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
+                        <div className="toast-notification error flex items-center justify-content-space-between">
                             <p className="text sm">{displayError}</p>
                             <button className="button icon-button" onClick={handleClearError}>
                                 <span className="icon clear-icon icon-size-20"/>
@@ -137,13 +137,12 @@ export const CalibrationPanel: React.FC = () => {
                     )}
 
                     {/* Recording Path Input */}
-                    <div className="input-with-string" style={{display: 'flex', alignItems: 'center'}}>
+                    <div className="input-with-string flex items-center">
                         <input
-                            className="input-field text md"
+                            className="input-field text md flex-1 min-w-0"
                             value={effectiveCalibrationPath || ''}
                             onChange={handlePathInputChange}
                             placeholder="Calibration Recording Path"
-                            style={{flex: 1, minWidth: 0}}
                         />
                         {isUsingManualPath && (
                             <button
@@ -217,11 +216,11 @@ export const CalibrationPanel: React.FC = () => {
                     <CalibrationSolverSection/>
 
                     {isRecording && (
-                        <div style={{width: '100%'}}>
-                            <p className="text sm text-gray" style={{marginBottom: 4}}>
+                        <div className="w-full">
+                            <p className="text sm text-gray mb-1">
                                 Recording in Progress: {recordingProgress.toFixed(0)}%
                             </p>
-                            <div style={{width: '100%', height: 8, backgroundColor: 'var(--color-bg-secondary)', borderRadius: 4, overflow: 'hidden'}}>
+                            <div className="w-full overflow-hidden br-1" style={{height: 8, backgroundColor: 'var(--color-bg-secondary)'}}>
                                 <div
                                     style={{
                                         width: recordingProgress + '%',

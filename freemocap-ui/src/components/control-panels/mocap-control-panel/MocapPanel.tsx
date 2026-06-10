@@ -225,7 +225,7 @@ export const MocapPanel: React.FC = () => {
                                 onChange={handlePathInputChange}
                                 placeholder="Mocap Recording Path"
                             />
-                            <div className="flex flex-row" style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}>
+                            <div className="flex flex-row pos-abs right-4 top-50">
                                 {isUsingManualPath && (
                                     <button
                                         className="button icon-button br-1"

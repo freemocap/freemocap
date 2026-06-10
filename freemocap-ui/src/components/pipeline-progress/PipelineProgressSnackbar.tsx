@@ -160,98 +160,92 @@ export default function PipelineProgressSnackbar() {
                 <div key={h} style={handleStyle(h)} onMouseDown={(e) => startResize(h, e)}/>
             ))}
 
-            <div className="bg-middark flex flex-col" style={{
-                width: '100%',
+            <div className="bg-middark flex flex-col w-full overflow-hidden" style={{
                 height: collapsed ? 'auto' : '100%',
                 borderRadius: 8,
-                overflow: 'hidden',
                 border: `1px solid ${hasRunningVisible ? '#FF00FF' : 'transparent'}`,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
             }}>
                 <div
                     onMouseDown={handleHeaderMouseDown}
-                    className="flex flex-row items-center"
+                    className="flex flex-row items-center flex-shrink-0"
                     style={{
                         padding: '6px 8px',
                         borderBottom: collapsed ? 'none' : '1px solid var(--color-border-secondary)',
-                        flexShrink: 0,
                         cursor: 'grab',
                         userSelect: 'none',
                     }}
                 >
                     {collapsed ? (
-                        <div style={{flex: 1, minWidth: 0, marginRight: 4}}>
+                        <div className="flex-1 min-w-0 mr-1">
                             <div className="flex flex-row items-center justify-content-space-between" style={{marginBottom: 2}}>
-                                <p className="text sm" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem', flex: 1, marginRight: 4, margin: 0}}>
+                                <p className="text sm flex-1 mr-1 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem'}}>
                                     {summaryLabel}
                                 </p>
-                                <p className="text sm text-gray" style={{fontSize: '0.68rem', flexShrink: 0, margin: 0}}>
+                                <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.68rem'}}>
                                     {summaryProgress}%
                                 </p>
                             </div>
                             {summaryGroup?.isActive && (
                                 <div className="update-progress-track" style={{height: 3, borderRadius: 2}}>
-                                    <div className="update-progress-fill" style={{width: `${summaryProgress}%`, height: '100%', borderRadius: 2}}/>
+                                    <div className="update-progress-fill h-full" style={{width: `${summaryProgress}%`, borderRadius: 2}}/>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <p className="text md text-white" style={{flex: 1, fontWeight: 600, margin: 0}}>Pipeline Progress</p>
+                        <p className="text md text-white flex-1 m-0" style={{fontWeight: 600}}>Pipeline Progress</p>
                     )}
 
                     {hasRunningVisible && (
-                        <div style={{
-                            width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-info)', marginRight: 4, flexShrink: 0,
+                        <div className="flex-shrink-0 mr-1" style={{
+                            width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-info)',
                             animation: 'fmcPulse 1.4s ease-in-out infinite',
                         }}/>
                     )}
 
                     <button
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => setCollapsed(c => !c)}
-                        style={{padding: 2}}
                     >
                         <span className={`icon icon-size-20 ${collapsed ? 'expand-icon' : 'collapse-icon'}`}/>
                     </button>
 
                     {hasRunningVisible && (
                         <button
-                            className="button icon-button br-1"
+                            className="button icon-button br-1 p-01"
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
                             title="Stop all pipelines"
-                            style={{padding: 2, color: 'var(--color-error)'}}
+                            style={{color: 'var(--color-error)'}}
                         >
                             <span className="icon close-icon icon-size-20"/>
                         </button>
                     )}
 
                     <button
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(allPipelinesCleared())}
                         disabled={visibleGroups.length === 0}
                         title="Clear all pipelines"
-                        style={{padding: 2}}
                     >
                         <span className="icon clear-icon icon-size-20"/>
                     </button>
 
                     <button
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
-                        style={{padding: 2}}
                     >
                         <span className="icon close-icon icon-size-20"/>
                     </button>
 
-                    <span className="icon settings-icon icon-size-20" style={{color: 'var(--color-text-disabled)', marginLeft: 2, flexShrink: 0, cursor: 'grab'}}/>
+                    <span className="icon settings-icon icon-size-20 flex-shrink-0" style={{color: 'var(--color-text-disabled)', marginLeft: 2, cursor: 'grab'}}/>
                 </div>
 
                 {!collapsed && (
-                    <div className="overflow-y flex-1" style={{minHeight: 0}}>
+                    <div className="overflow-y flex-1 min-h-0">
                         {visibleGroups.length === 0 ? (
                             <div className="flex justify-center" style={{paddingTop: 16, paddingBottom: 16}}>
                                 <p className="text sm text-gray">No active pipelines</p>

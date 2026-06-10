@@ -18,8 +18,8 @@ export default function PipelineProgressPanel() {
     const dispatch = useAppDispatch();
 
     return (
-        <div className="flex flex-col" style={{height: '100%'}}>
-            <div className="flex flex-col gap-1" style={{padding: '4px 8px', flexShrink: 0}}>
+        <div className="flex flex-col h-full">
+            <div className="flex flex-col gap-1 flex-shrink-0" style={{padding: '4px 8px'}}>
                 <div className="input-with-string">
                     <input
                         className="input-field text md"
@@ -40,7 +40,7 @@ export default function PipelineProgressPanel() {
 
             <div className="flex-1 overflow-y">
                 {groups.length === 0 ? (
-                    <div className="flex items-center justify-center" style={{height: '100%'}}>
+                    <div className="flex items-center justify-center h-full">
                         <p className="text sm text-gray">No active pipelines</p>
                     </div>
                 ) : (

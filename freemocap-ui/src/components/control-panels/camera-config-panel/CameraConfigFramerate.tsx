@@ -91,14 +91,14 @@ export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({
 
     return (
         <div>
-            <p className="text sm text-gray" style={{marginBottom: 4}}>{t("framerate")}</p>
+            <p className="text sm text-gray mb-1">{t("framerate")}</p>
             <div className="flex flex-row gap-1" style={{marginBottom: mode === 'MANUAL' ? 4 : 0}} title={t("framerateControl")}>
                 {(['AUTO', 'MANUAL'] as const).map((m) => (
                     <button
                         key={m}
-                        className={`button sm${mode === m ? ' primary' : ' secondary'}`}
+                        className={`button sm flex-1${mode === m ? ' primary' : ' secondary'}`}
                         onClick={() => handleModeChange(m)}
-                        style={{flex: 1, padding: '2px 8px', fontSize: 11}}
+                        style={{padding: '2px 8px', fontSize: 11}}
                     >
                         {m === 'AUTO' ? t("auto") : t("manual")}
                     </button>

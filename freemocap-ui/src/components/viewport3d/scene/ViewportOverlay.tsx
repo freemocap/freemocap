@@ -49,17 +49,16 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
 
     return (
         <>
-            <div style={{
-                position: "absolute", top: 8, left: 8,
-                padding: 8, backgroundColor: "rgba(0,0,0,0.75)", color: "#ccc",
-                minWidth: 180, userSelect: "none", borderRadius: 4,
+            <div className="pos-abs top-8 left-8 p-2 br-1" style={{
+                backgroundColor: "rgba(0,0,0,0.75)", color: "#ccc",
+                minWidth: 180, userSelect: "none",
             }}>
                 <div className="flex flex-row items-center justify-content-space-between">
-                    <p className="text sm" style={{fontWeight: 'bold', margin: 0}}>Viewport</p>
+                    <p className="text sm m-0" style={{fontWeight: 'bold'}}>Viewport</p>
                     <button
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 p-01"
                         onClick={() => setExpanded(e => !e)}
-                        style={{color: "#ccc", padding: 2}}
+                        style={{color: "#ccc"}}
                     >
                         <span className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`}/>
                     </button>
@@ -74,7 +73,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 <VisToggle label="Cameras"      countRef={camerasCountRef}            checked={visibility.cameras}           onChange={toggleCameras} />
 
                 {expanded && (
-                    <p className="text sm" style={{marginTop: 4, color: "#888", display: "block"}}>
+                    <p className="text sm mt-1 block" style={{color: "#888"}}>
                         Total points: <span ref={totalPointsRef}>0</span>
                         <br />
                         Total bodies: <span ref={totalBodiesRef}>0</span>
@@ -82,7 +81,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 )}
             </div>
 
-            <div className="flex flex-row gap-1" style={{position: "absolute", bottom: 8, right: 8}}>
+            <div className="flex flex-row gap-1 pos-abs bottom-8 right-8">
                 <button
                     title="Fit to skeleton (F)"
                     className="button icon-button br-1"
@@ -101,7 +100,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 </button>
             </div>
 
-            <p className="text sm" style={{position: "absolute", bottom: 8, left: 8, color: "#666", pointerEvents: "none", margin: 0}}>
+            <p className="text sm pos-abs bottom-8 left-8 m-0" style={{color: "#666", pointerEvents: "none"}}>
                 Rotate: drag · Zoom: scroll · Pan: right-drag
             </p>
         </>

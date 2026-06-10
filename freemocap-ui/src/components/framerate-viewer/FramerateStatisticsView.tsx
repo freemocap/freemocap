@@ -202,7 +202,7 @@ export default function FramerateStatisticsView({
 
     return (
         <div className="overflow-x">
-            <table style={{borderCollapse: 'collapse', width: '100%', fontSize: '0.65rem', lineHeight: '1.1'}}>
+            <table className="w-full" style={{borderCollapse: 'collapse', fontSize: '0.65rem', lineHeight: '1.1'}}>
                 <thead>
                     <tr>
                         <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...thStyle, width: '12%', color: 'var(--color-text-primary)', textAlign: 'left'}} align="left" />
@@ -214,7 +214,7 @@ export default function FramerateStatisticsView({
                         <HeaderCellWithTooltip label={t("min")} shortInfo={tooltips.min.short} longInfo={tooltips.min.long} style={{...thStyle, ...{backgroundColor: colorMap.min + '22'}}} />
                     </tr>
                     <tr>
-                        <td colSpan={7} style={{padding: 0}}>
+                        <td colSpan={7} className="p-0">
                             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
                         </td>
                     </tr>
@@ -222,7 +222,7 @@ export default function FramerateStatisticsView({
                 <tbody>
                     {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
                     <tr>
-                        <td colSpan={7} style={{padding: 0}}>
+                        <td colSpan={7} className="p-0">
                             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
                         </td>
                     </tr>

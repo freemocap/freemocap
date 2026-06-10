@@ -31,14 +31,13 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
             {/* Header row */}
             <div
                 onClick={handleToggle}
-                className="flex flex-row items-center gap-1 p-1"
+                className="flex flex-row items-center gap-1 p-1 pr-2"
                 style={{
                     minHeight: 40,
                     cursor: 'pointer',
                     userSelect: 'none',
                     backgroundColor: 'var(--color-bg-elevated)',
                     paddingLeft: dragHandle ? 4 : 12,
-                    paddingRight: 8,
                 }}
             >
                 {/* Drag handle */}
@@ -47,20 +46,21 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                         {...dragHandle.attributes}
                         {...dragHandle.listeners}
                         onClick={(e) => e.stopPropagation()}
-                        style={{ cursor: 'grab', opacity: 0.4, display: 'flex', alignItems: 'center', padding: '0 2px' }}
+                        className="flex items-center"
+                        style={{ cursor: 'grab', opacity: 0.4, padding: '0 2px' }}
                     >
                         <span className="icon icon-size-20" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 2px, var(--gray-400) 2px, var(--gray-400) 3px)', backgroundSize: '4px 100%' }} />
                     </div>
                 )}
 
                 {/* Chevron */}
-                <span className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`} style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', flexShrink: 0 }} />
+                <span className={`icon icon-size-20 flex-shrink-0 ${expanded ? 'collapse-icon' : 'expand-icon'}`} style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
 
                 {/* Section icon */}
-                <span className="flex items-center" style={{ flexShrink: 0 }}>{icon}</span>
+                <span className="flex items-center flex-shrink-0">{icon}</span>
 
                 {/* Title */}
-                <span className="text bg text-white" style={{ flexShrink: 0 }}>{title}</span>
+                <span className="text bg text-white flex-shrink-0">{title}</span>
 
                 {/* Summary */}
                 {summaryContent && (
@@ -78,7 +78,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
 
                 {/* Primary control */}
                 {primaryControl && (
-                    <div onClick={handleControlClick} className="flex items-center" style={{ paddingRight: 4 }}>
+                    <div onClick={handleControlClick} className="flex items-center pr-1">
                         {primaryControl}
                     </div>
                 )}

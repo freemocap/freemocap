@@ -33,8 +33,8 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
     useKeyboardShortcuts();
 
     return (
-        <div className="main-app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-            <PanelGroup className="app-container" direction="vertical" style={{ flex: 1 }}>
+        <div className="main-app-container flex flex-col" style={{ height: '100vh' }}>
+            <PanelGroup className="app-container flex-1" direction="vertical">
                 {/* Top section (horizontal panels) */}
                 <Panel className="app-container-inner" defaultSize={87} minSize={20}>
                     <PanelGroup
@@ -63,9 +63,9 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
                             style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
                         />
                         <Panel className="right-side-panel" defaultSize={76} minSize={10}>
-                            <div className="flex flex-col" style={{height: '100%'}}>
+                            <div className="flex flex-col h-full">
                                 <MainNavTabs />
-                                <div style={{flex: 1, minHeight: 0, overflow: 'hidden'}}>
+                                <div className="flex-1 min-h-0 overflow-hidden">
                                     {children}
                                 </div>
                             </div>

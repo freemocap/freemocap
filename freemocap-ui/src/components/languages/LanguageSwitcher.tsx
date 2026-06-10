@@ -15,7 +15,7 @@ const FlagIcon: React.FC<{ countryCode: string }> = ({ countryCode }) => {
     if (countryCode === "YIDDISH") return <YiddishFlag />;
     const Flag = Flags[countryCode as keyof typeof Flags];
     if (!Flag) return null;
-    return <Flag style={{ width: 20, height: 14, borderRadius: 2, flexShrink: 0 }} />;
+    return <Flag className="flex-shrink-0" style={{ width: 20, height: 14, borderRadius: 2 }} />;
 };
 
 export const LanguageSwitcher: React.FC = () => {

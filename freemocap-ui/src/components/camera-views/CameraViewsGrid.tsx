@@ -62,14 +62,11 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
         return (
             <div
                 ref={containerRef}
-                className="flex items-center justify-center"
+                className="flex items-center justify-center h-full w-full text-center"
                 style={{
-                    height: "100%",
-                    width: "100%",
                     color: "var(--color-text-secondary)",
                     fontSize: "1.2rem",
                     padding: 32,
-                    textAlign: "center",
                 }}
             >
                 <div>
@@ -85,8 +82,8 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden"
-            style={{width: "100%", height: "100%", minHeight: 300}}
+            className="pos-rel overflow-hidden w-full h-full"
+            style={{minHeight: 300}}
         >
             <ReactGridLayout
                 width={width}
@@ -102,9 +99,8 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                     return (
                         <div
                             key={cameraId}
+                            className="overflow-hidden br-1"
                             style={{
-                                overflow: "hidden",
-                                borderRadius: "4px",
                                 border: isRecording
                                     ? "2px solid #ff2020"
                                     : "1px solid rgba(255,255,255,0.15)",

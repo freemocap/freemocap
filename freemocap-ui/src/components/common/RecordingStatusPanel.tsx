@@ -126,7 +126,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                         <div className="toast-notification">
                             <p className="text sm text-warning">Recording folder does not exist yet. It will be created when you start recording.</p>
                             {recordingFolderPath && (
-                                <p className="text sm text-gray" style={{ fontFamily: 'monospace', wordBreak: 'break-all', marginTop: 4 }}>
+                                <p className="text sm text-gray mt-1" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                                     {recordingFolderPath}
                                 </p>
                             )}

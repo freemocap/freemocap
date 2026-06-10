@@ -88,20 +88,18 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
     return (
         <div
             onClick={handleHeaderClick}
-            className="flex flex-row items-center p-1"
+            className="flex flex-row items-center p-1 pt-2 pb-2"
             style={{
-                paddingTop: 8,
-                paddingBottom: 8,
                 backgroundColor: 'var(--color-bg-elevated)',
                 color: '#fff',
             }}
         >
-            <span className="icon videocam-icon icon-size-20" style={{marginLeft: 8, marginRight: 4}} />
+            <span className="icon videocam-icon icon-size-20 ml-2 mr-1" />
             <p className="text bg text-white flex-1">
                 {t('camerasCount', {count: cameraCount})}
             </p>
 
-            <div className="flex flex-row items-center gap-1" style={{marginRight: 8}}>
+            <div className="flex flex-row items-center gap-1 mr-2">
                 <button
                     className="button icon-button br-1"
                     onClick={() => dispatch(autoApplyToggled())}
@@ -118,17 +116,15 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                 </button>
 
                 <button
-                    className="button icon-button br-1"
+                    className="button icon-button br-2 p-1"
                     onClick={handleConnectOrApply}
                     title={t("connectCameras")}
                     style={{
                         color: 'var(--color-accent)',
                         border: '2px solid var(--color-accent)',
-                        borderRadius: 8,
-                        padding: 4,
                     }}
                 >
-                    <span style={{position: 'relative', display: 'inline-flex', width: 28, height: 28}}>
+                    <span className="pos-rel flex-inline" style={{width: 28, height: 28}}>
                         <span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-accent)'}} />
                         <span className="icon arrow-down-icon icon-size-12" style={{
                             position: 'absolute',

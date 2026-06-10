@@ -274,7 +274,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                                 onChange={handlePathInputChange}
                                 placeholder="Mocap Recording Path"
                             />
-                            <div className="flex flex-row" style={{position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)'}}>
+                            <div className="flex flex-row pos-abs right-4 top-50">
                                 {isUsingManualPath && (
                                     <button
                                         className="button icon-button br-1"
@@ -326,9 +326,8 @@ export const MocapTaskTreeItem: React.FC = () => {
                                         : "No calibration file found"}
                             </p>
                             {effectiveCalibrationTomlPath && (
-                                <p className="text sm" style={{
+                                <p className="text sm block" style={{
                                     fontFamily: "monospace",
-                                    display: "block",
                                     color: 'var(--color-success)',
                                     wordBreak: "break-all",
                                 }}>

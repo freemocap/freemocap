@@ -47,9 +47,9 @@ const ActiveRecordingLabel: React.FC = () => {
                 >
                     {recordingName}
                     <button
-                        className="button icon-button"
+                        className="button icon-button ml-1"
                         onClick={handleClearRecording}
-                        style={{ marginLeft: 4, lineHeight: 1 }}
+                        style={{ lineHeight: 1 }}
                         title="Clear active recording"
                     >
                         <span className="icon close-icon icon-size-12" />

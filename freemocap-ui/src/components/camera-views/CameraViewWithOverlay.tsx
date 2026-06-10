@@ -80,28 +80,23 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
 
     return (
         <div
-            style={{position: 'relative', width: '100%', height: '100%'}}
+            className="pos-rel w-full h-full"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
             <CameraView cameraIndex={cameraIndex} cameraId={cameraId} maxWidth/>
 
             {hovered && (
-                <div style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '5px',
-                    zIndex: 10,
-                    backgroundColor: 'rgba(0,0,0,0.55)',
-                    backdropFilter: 'blur(3px)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: '8px',
-                    padding: '6px',
-                }}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+                <div
+                    className="pos-abs top-6 right-6 flex flex-col z-10 br-2"
+                    style={{
+                        gap: '5px',
+                        backgroundColor: 'rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(3px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        padding: '6px',
+                    }}>
+                    <div className="flex items-center" style={{gap: '6px'}}>
                         <button
                             title="Rotate 90° clockwise"
                             className="button icon-button"
@@ -116,7 +111,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
 
                     <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
-                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                    <div className="flex items-center gap-1">
                         <button
                             title="Decrease exposure"
                             className="button icon-button"
@@ -138,7 +133,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
                         <span style={valueStyle}>{exposureLabel}</span>
                     </div>
 
-                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                    <div className="flex items-center gap-1">
                         <button
                             title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
                             className="button icon-button"
@@ -161,7 +156,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
 
                     <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
-                    <div style={{display: 'flex', alignItems: 'center', gap: '4px'}}>
+                    <div className="flex items-center gap-1">
                         <button
                             title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
                             className="button icon-button"

@@ -150,7 +150,7 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
             </div>
 
             {selectedValue === 'custom' && (
-                <div className="flex flex-row gap-1" style={{marginTop: 4}}>
+                <div className="flex flex-row gap-1 mt-1">
                     <div className="flex flex-col flex-1">
                         <div className="input-with-string">
                             <input

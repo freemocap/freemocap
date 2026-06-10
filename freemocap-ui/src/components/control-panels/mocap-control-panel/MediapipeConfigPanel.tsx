@@ -117,7 +117,8 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
                         updateDetectorConfig({min_detection_confidence: parseFloat(e.target.value)})
                     }
                     min={0} max={1} step={0.05} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
@@ -132,7 +133,8 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
                         updateDetectorConfig({min_tracking_confidence: parseFloat(e.target.value)})
                     }
                     min={0} max={1} step={0.05} disabled={isLoading}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 

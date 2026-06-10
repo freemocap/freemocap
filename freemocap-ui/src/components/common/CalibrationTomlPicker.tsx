@@ -28,7 +28,7 @@ export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
         <div className="flex flex-row items-center gap-1 p-1 br-1 border-1 border-mid-black" style={{ minHeight: 36 }}>
             <span className={`icon icon-size-20 ${tomlPath ? 'upToDate-icon' : 'warning-icon'}`} />
 
-            <div className="flex-1 flex flex-col" style={{ minWidth: 0, overflow: 'hidden' }}>
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {tomlPath ? (
                     <>
                         <span className="tag text sm">{SOURCE_LABELS[source]}</span>

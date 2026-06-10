@@ -133,7 +133,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     onToggle={onCharucoToggle}
                     
                 >
-                    <div className="p-1" style={{paddingLeft: 16}}>
+                    <div className="p-1 pl-4">
                         <p className="text sm text-gray">
                             Settings from `Post Processing::Capture Volume Calibration` section
                         </p>
@@ -149,7 +149,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     
                     summaryWhenCollapsed={context === "realtime" ? "Realtime preset" : "Posthoc preset"}
                 >
-                    <div className="p-1 border-1 border-mid-black" style={{paddingLeft: 16, borderLeft: '2px solid var(--color-border-secondary)'}}>
+                    <div className="p-1 border-1 border-mid-black pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <MediapipeConfigPanel
                             updateDetectorConfig={handleUpdateDetectorConfig}
                             replaceDetectorConfig={handleReplaceDetectorConfig}
@@ -180,7 +180,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     onToggle={onTriangulateToggle}
                     
                 >
-                    <div className="p-1" style={{paddingLeft: 16}}>
+                    <div className="p-1 pl-4">
                         <p className="text sm text-gray">
                             Triangulation settings — calibration TOML picker and parameters (placeholder)
                         </p>
@@ -196,7 +196,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     
                     summaryWhenCollapsed="One Euro, FABRIK"
                 >
-                    <div className="p-1" style={{paddingLeft: 16, borderLeft: '2px solid var(--color-border-secondary)'}}>
+                    <div className="p-1 pl-4" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <SkeletonFilterConfigPanel
                             updateSkeletonFilterConfig={handleUpdateSkeletonFilterConfig}
                             replaceSkeletonFilterConfig={handleReplaceSkeletonFilterConfig}
@@ -212,7 +212,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     onToggle={onRigidBodyToggle}
                     
                 >
-                    <div className="p-1" style={{paddingLeft: 16}}>
+                    <div className="p-1 pl-4">
                         <p className="text sm text-gray">
                             Rigid body and skeleton reconstruction parameters (placeholder)
                         </p>

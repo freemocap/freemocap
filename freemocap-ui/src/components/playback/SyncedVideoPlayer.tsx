@@ -95,8 +95,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         return (
             <div
                 ref={containerRef}
-                className="flex items-center justify-center"
-                style={{height: '100%', color: 'var(--color-text-secondary)'}}
+                className="flex items-center justify-center h-full"
+                style={{color: 'var(--color-text-secondary)'}}
             >
                 <p className="text md text-gray">{t("noVideosLoaded")}</p>
             </div>
@@ -132,8 +132,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden"
-            style={{width: '100%', height: '100%', backgroundColor: '#0a0a0a'}}
+            className="pos-rel overflow-hidden w-full h-full"
+            style={{backgroundColor: '#0a0a0a'}}
         >
             <ReactGridLayout
                 width={width}
@@ -147,9 +147,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                 {videos.map((video) => (
                     <div
                         key={video.videoId}
+                        className="overflow-hidden br-1"
                         style={{
-                            overflow: 'hidden',
-                            borderRadius: '4px',
                             border: '1px solid rgba(255,255,255,0.15)',
                         }}
                     >
@@ -174,18 +173,12 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
             </ReactGridLayout>
 
             {!allReady && videos.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 10,
-                    textAlign: 'center',
+                <div className="pos-abs bottom-0 left-0 right-0 z-10 text-center" style={{
                     padding: '4px 0',
                     backgroundColor: 'var(--color-warning-dark)',
                     color: '#fff',
                 }}>
-                    <p className="text sm" style={{margin: 0}}>{t("loadingVideos", {ready: videosReady, total: videos.length})}</p>
+                    <p className="text sm m-0">{t("loadingVideos", {ready: videosReady, total: videos.length})}</p>
                 </div>
             )}
         </div>

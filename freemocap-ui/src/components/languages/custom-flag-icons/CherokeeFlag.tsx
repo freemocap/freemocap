@@ -33,7 +33,8 @@ export const CherokeeFlag: React.FC<React.SVGProps<SVGSVGElement>> = (props) => 
       viewBox="0 0 20 14"
       width={20}
       height={14}
-      style={{ borderRadius: 2, flexShrink: 0 }}
+      className="flex-shrink-0"
+      style={{ borderRadius: 2 }}
       {...props}
     >
       <rect width="20" height="14" fill="#CF6924" />

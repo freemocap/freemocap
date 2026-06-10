@@ -462,7 +462,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
             >
                 <div className="flex flex-row items-center">
                     <button
-                        className="flex flex-row flex-1 items-center gap-1"
+                        className="flex flex-row flex-1 items-center gap-1 text-left"
                         onClick={onClick}
                         disabled={isAnyLoading}
                         style={{
@@ -471,21 +471,19 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                             cursor: 'pointer',
                             padding: '10px 16px',
                             opacity: isAnyLoading && !isLoading ? 0.5 : 1,
-                            textAlign: 'left',
                         }}
                     >
-                        <div style={{minWidth: 36, flexShrink: 0}}>
+                        <div className="flex-shrink-0" style={{minWidth: 36}}>
                             {isLoading
                                 ? <span className="icon loader-icon icon-size-20" style={{color: 'var(--color-info)'}}/>
                                 : <span className="icon load-icon icon-size-20" style={{color: 'var(--color-info)'}}/>}
                         </div>
 
-                        <div style={{flex: 1}}>
-                            <div className="flex flex-row items-center gap-1" style={{marginBottom: 4}}>
-                                <p className="text md text-white recording-name" style={{
+                        <div className="flex-1">
+                            <div className="flex flex-row items-center gap-1 mb-1">
+                                <p className="text md text-white recording-name m-0" style={{
                                     fontWeight: 600,
                                     color: isActive ? 'var(--color-info)' : undefined,
-                                    margin: 0,
                                 }}>
                                     {rec.name}
                                 </p>
@@ -505,7 +503,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                                 )}
                             </div>
 
-                            <div className="flex flex-row items-center" style={{flexWrap: 'wrap', gap: 12}}>
+                            <div className="flex flex-row items-center flex-wrap gap-3">
                                 <span className="text sm text-gray" title="Camera streams">
                                     {`${rec.video_count} cam${rec.video_count !== 1 ? 's' : ''}`}
                                 </span>
@@ -561,16 +559,16 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
 
                     <button
                         title={expanded ? 'Hide folder detail' : 'Show folder detail'}
-                        className="button icon-button br-1"
+                        className="button icon-button br-1 mr-2"
                         onClick={toggleExpand}
-                        style={{marginRight: 8, transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', alignSelf: 'center'}}
+                        style={{transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', alignSelf: 'center'}}
                     >
                         <span className="icon expand-icon icon-size-20"/>
                     </button>
                 </div>
 
                 {expanded && (
-                    <div style={{paddingLeft: 16, paddingRight: 16, paddingBottom: 16}}>
+                    <div className="pl-4 pr-4 pb-4">
                         <RecordingStatusPanel
                             status={detailedStatus}
                             isLoading={statusLoading}

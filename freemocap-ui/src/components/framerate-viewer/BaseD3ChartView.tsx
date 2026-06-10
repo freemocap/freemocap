@@ -175,36 +175,26 @@ export default memo(function BaseD3ChartView({
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden"
-            style={{width: "100%", height: "100%"}}
+            className="pos-rel overflow-hidden w-full h-full"
             onMouseEnter={() => setShowControls(true)}
             onMouseLeave={() => setShowControls(false)}
         >
             {title && (
-                <p className="text sm text-gray" style={{
-                    position: "absolute",
-                    top: 2,
-                    left: 8,
+                <p className="text sm text-gray pos-abs top-2 left-8 z-5 m-0" style={{
                     fontSize: "0.7rem",
                     opacity: 0.9,
-                    zIndex: 5,
                     backgroundColor: "var(--color-bg-default)",
                     padding: "0 4px",
                     borderRadius: 2,
                     lineHeight: 1.4,
-                    margin: 0,
                 }}>
                     {title}
                 </p>
             )}
 
             {showControls && (
-                <div className="flex flex-col bg-middark br-1" style={{
-                    position: "absolute",
-                    top: "50%",
+                <div className="flex flex-col bg-middark br-1 pos-abs top-50 z-10" style={{
                     right: 5,
-                    transform: "translateY(-50%)",
-                    zIndex: 10,
                     boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
                 }}>
                     <button title={t("zoomIn")} className="button icon-button br-1" onClick={handleZoomIn}>
@@ -223,7 +213,7 @@ export default memo(function BaseD3ChartView({
                 ref={svgRef}
                 width={containerSize.width}
                 height={containerSize.height}
-                style={{display: "block", overflow: "hidden"}}
+                className="block overflow-hidden"
             />
         </div>
     )

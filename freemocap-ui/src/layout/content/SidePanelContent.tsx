@@ -157,8 +157,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     )}
                     <div
                         data-warning="service-unavailable"
-                        className="flex-1 overflow-hidden"
-                        style={{ minWidth: 0 }}
+                        className="flex-1 overflow-hidden min-w-0"
                     >
                         <ServerConnectionStatus />
                     </div>

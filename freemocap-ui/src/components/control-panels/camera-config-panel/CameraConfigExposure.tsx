@@ -35,7 +35,7 @@ export const CameraConfigExposure: React.FC<CameraConfigExposureProps> = ({
 
     return (
         <div>
-            <div className="flex flex-row items-center gap-2" style={{marginBottom: 4}}>
+            <div className="flex flex-row items-center gap-2 mb-1">
                 <span className="text sm text-gray text-nowrap" style={{fontSize: 12}}>
                     {t("exposure")}
                 </span>
@@ -52,7 +52,7 @@ export const CameraConfigExposure: React.FC<CameraConfigExposureProps> = ({
                     ))}
                 </div>
             </div>
-            <div style={{paddingLeft: 4, paddingRight: 4}} title={isDisabled ? undefined : t("adjustExposure")}>
+            <div className="pl-1 pr-1" title={isDisabled ? undefined : t("adjustExposure")}>
                 <input
                     type="range"
                     value={exposure}
@@ -62,7 +62,8 @@ export const CameraConfigExposure: React.FC<CameraConfigExposureProps> = ({
                     step={1}
                     onChange={handleSliderChange}
                     title={exposureTooltip}
-                    style={{accentColor: 'var(--color-info)', width: '100%'}}
+                    className="w-full"
+                    style={{accentColor: 'var(--color-info)'}}
                 />
                 <div className="flex flex-row justify-content-space-between">
                     <span className="text sm text-gray" style={{fontSize: 11}}>{EXPOSURE_CONSTRAINTS.min}</span>

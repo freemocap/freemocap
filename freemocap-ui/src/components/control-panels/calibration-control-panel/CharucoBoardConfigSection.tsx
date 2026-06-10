@@ -39,7 +39,7 @@ export const CharucoBoardConfigSection: React.FC = () => {
     );
 
     return (
-        <div className="flex flex-col gap-2" style={{padding: 8}}>
+        <div className="flex flex-col gap-2 p-2">
             <p className="text sm text-gray" style={{fontWeight: 600}}>Charuco Board</p>
 
             <PresetPicker
@@ -52,13 +52,12 @@ export const CharucoBoardConfigSection: React.FC = () => {
                 ]}
                 onChange={handlePresetChange}
                 disabled={isLoading}
-                minWidth={140}
             />
 
             <div className="flex flex-row gap-2">
-                <div className="input-with-string" style={{flex: 1}}>
+                <div className="input-with-string flex-1">
                     <input
-                        className="input-field text md"
+                        className="input-field text md w-full"
                         type="number"
                         placeholder="X Squares"
                         value={board.squares_x}
@@ -69,12 +68,11 @@ export const CharucoBoardConfigSection: React.FC = () => {
                         disabled={isLoading}
                         min={2}
                         max={20}
-                        style={{width: '100%'}}
                     />
                 </div>
-                <div className="input-with-string" style={{flex: 1}}>
+                <div className="input-with-string flex-1">
                     <input
-                        className="input-field text md"
+                        className="input-field text md w-full"
                         type="number"
                         placeholder="Y Squares"
                         value={board.squares_y}
@@ -85,14 +83,13 @@ export const CharucoBoardConfigSection: React.FC = () => {
                         disabled={isLoading}
                         min={2}
                         max={20}
-                        style={{width: '100%'}}
                     />
                 </div>
             </div>
 
             <div className="input-with-string">
                 <input
-                    className="input-field text md"
+                    className="input-field text md w-full"
                     type="number"
                     placeholder="Square Length (mm)"
                     value={board.square_length_mm}
@@ -103,7 +100,6 @@ export const CharucoBoardConfigSection: React.FC = () => {
                     disabled={isLoading}
                     min={1}
                     step={0.1}
-                    style={{width: '100%'}}
                 />
             </div>
         </div>

@@ -40,9 +40,9 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
   if (disabled && tooltip && tooltipText) {
     return (
       <div
-        className="tooltip-wrapper pos-rel"
+        className="tooltip-wrapper pos-rel flex-inline"
         title={title}
-        style={{ opacity: 0.5, cursor: "not-allowed", display: "inline-flex" }}
+        style={{ opacity: 0.5, cursor: "not-allowed" }}
       >
         <button
           ref={ref}

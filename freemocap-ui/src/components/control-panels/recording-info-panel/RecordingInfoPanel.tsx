@@ -30,6 +30,7 @@ import {RecordingPathModal} from "./RecordingPathModal";
 import TextSelector from "@/components/ui-components/TextSelector";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import {useTranslation} from "react-i18next";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
 
 export type {RecordingTypePreset};
 
@@ -194,7 +195,7 @@ export const RecordingInfoPanel: React.FC = () => {
     };
 
     return (
-            <div className="main-side-actions flex flex-col gap-1 z-3" style={{margin: '4px 8px'}}>
+            <div className="main-side-actions flex flex-col gap-1 z-3" >
 
                 {/* File directory group */}
                 <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">
@@ -252,22 +253,19 @@ export const RecordingInfoPanel: React.FC = () => {
                     </div>
 
                     {/* Preset + auto-process */}
-                    <div className="flex flex-row items-center gap-1">
+                    <div className="flex flex-start flex-col items-center gap-1">
                         <PresetPicker
                             value={recordingTypePreset}
                             options={RECORDING_TYPE_OPTIONS}
                             onChange={(v) => dispatch(recordingTypePresetChanged(v))}
                             disabled={recordingInfo.isRecording}
                         />
-                        <div
-                            className={`button toggle-button gap-1 p-1 br-1 flex items-center${recordingTypePreset === "none" || recordingInfo.isRecording ? ' disabled' : ''}`}
-                            onClick={() => dispatch(autoProcessToggled(!autoProcess))}
-                        >
-                            <p className={`text text-nowrap text-left md${autoProcess ? ' color-white' : ''}`}>Auto Process</p>
-                            <div className={`icon toggle-container ${autoProcess ? 'on' : 'off'}`}>
-                                <div className="icon toggle-circle" />
-                            </div>
-                        </div>
+                        <ToggleComponent
+                            text="Auto Process"
+                            isToggled={autoProcess}
+                            onToggle={(v) => dispatch(autoProcessToggled(v))}
+                            disabled={recordingTypePreset === "none" || recordingInfo.isRecording}
+                        />
                     </div>
 
                     <MicrophoneSelector

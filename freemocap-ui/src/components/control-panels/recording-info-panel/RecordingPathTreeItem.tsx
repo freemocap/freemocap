@@ -98,7 +98,7 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                     disabled={!isElectron}
                 >
                     <span className="icon subfolder-icon icon-size-20" />
-                    <p className="recording-path-preview text-wrap flex-1 text md">
+                    <p className="recording-path-preview flex text-wrap flex-1 text md">
                         {recordingDirectory}
                     </p>
                 </button>

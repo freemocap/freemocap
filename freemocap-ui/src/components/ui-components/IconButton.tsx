@@ -21,7 +21,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
   onMouseDown,
   disabled = false,
   title,
-  className = "icon-size-28",
+  className = "icon-size-25",
   iconSize = "icon-size-20",
   tooltip = false,
   tooltipText = "",

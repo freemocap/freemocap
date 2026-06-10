@@ -110,7 +110,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     };
 
     return (
-        <div className="flex flex-col">
+        <div className="realtime-pipeline-config-tree flex flex-col">
             {/* ── 2D Tracking ── */}
             <RealtimePipelineStageTreeItem
                 itemId="2d-tracking"

@@ -32,6 +32,16 @@ dependencies = [
     #    "skellymodels",
 ]
 
+[project.optional-dependencies]
+# CUDA runtime libraries required by onnxruntime-gpu for GPU-accelerated realtime inference.
+# Install with: uv sync --extra cuda
+# Without this, RTMPose falls back to CPU (functional but slower).
+cuda = [
+    "nvidia-curand-cu12",
+    "nvidia-cusolver-cu12",
+    "nvidia-cusparse-cu12",
+]
+
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}

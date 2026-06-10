@@ -111,6 +111,10 @@ def run_main() -> None:
     asyncio.run(main())
 if __name__ == "__main__":
     multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows
+    # 'fork' (Linux default) duplicates the server's open sockets into worker
+    # processes, which can leave zombie client connections after the server
+    # closes its end. 'spawn' avoids this and is already required on Windows.
+    multiprocessing.set_start_method("spawn", force=True)
     try:
         run_main()
     except Exception as e:

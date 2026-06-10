@@ -2,6 +2,7 @@
 FreemocapApplication with SettingsManager integration.
 
 """
+import asyncio
 import logging
 import multiprocessing
 from dataclasses import dataclass, field
@@ -95,7 +96,11 @@ class FreemocapApplication:
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=camera_configs,
         )
-        pipeline = self.realtime_pipeline_manager.create_pipeline(
+        # create_pipeline is synchronous (acquires a multiprocessing.Lock and spawns
+        # subprocesses). Running it on a thread keeps the event loop responsive so
+        # uvicorn can continue accepting and logging other requests while it runs.
+        pipeline = await asyncio.to_thread(
+            self.realtime_pipeline_manager.create_pipeline,
             camera_group=camera_group,
             pipeline_config=pipeline_config,
             realtime_camera_ids=realtime_camera_ids,

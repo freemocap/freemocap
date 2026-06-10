@@ -25,15 +25,24 @@ export const applyRealtimePipeline = createAsyncThunk<
             },
         };
 
-        const response = await fetch(serverUrls.endpoints.realtimeConnectOrUpdate, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                realtimeConfig: configWithBoard,
-                cameraConfigs,
-                realtimeCameraIds,
-            }),
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 180_000);
+
+        let response: Response;
+        try {
+            response = await fetch(serverUrls.endpoints.realtimeConnectOrUpdate, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    realtimeConfig: configWithBoard,
+                    cameraConfigs,
+                    realtimeCameraIds,
+                }),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
             const error = await response.json();
@@ -47,9 +56,18 @@ export const applyRealtimePipeline = createAsyncThunk<
 export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
     'realtime/close',
     async () => {
-        const response = await fetch(serverUrls.endpoints.realtimeClose, {
-            method: 'DELETE',
-        });
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 10_000);
+
+        let response: Response;
+        try {
+            response = await fetch(serverUrls.endpoints.realtimeClose, {
+                method: 'DELETE',
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
             throw new Error(`Failed to close realtime: ${response.statusText}`);

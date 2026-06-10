@@ -221,8 +221,13 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
 
                 if not images:
-                    # Ring buffer didn't have the frame for any camera; skip.
-                    continue
+                    # Ring buffer didn't have the frame for any camera; send dummy skeleton
+                    skeleton_result_pub.put(
+                        SkeletonInferenceResultMessage(
+                            frame_number=requested_frame_number,
+                            per_camera_skeleton={cam_id: None for cam_id in camera_ids},
+                        ),
+                    )
 
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter() if timer is not None else 0.0

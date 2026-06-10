@@ -1,26 +1,17 @@
 import React from 'react';
-import {CollapsibleSidebarSection} from '@/components/common/CollapsibleSidebarSection';
 import {RecordingBrowser} from './RecordingBrowser';
 import {usePlaybackContext} from './PlaybackContext';
-import {useTranslation} from 'react-i18next';
 
 export const RecordingBrowserSection: React.FC = () => {
-    const {t} = useTranslation();
     const ctx = usePlaybackContext();
 
     if (!ctx) return null;
 
     return (
-        <CollapsibleSidebarSection
-            icon={<span className="icon load-icon icon-size-20"/>}
-            title={t('recordings')}
-            defaultExpanded
-        >
-            <div className="overflow-hidden" style={{ height: '55vh' }}>
-                <RecordingBrowser
-                    onRecordingLoaded={ctx.onRecordingLoaded}
-                />
-            </div>
-        </CollapsibleSidebarSection>
+        <div className="recording-browser-sidebar-panel flex flex-col flex-1 bg-middark br-2 p-1 min-h-0">
+            <RecordingBrowser
+                onRecordingLoaded={ctx.onRecordingLoaded}
+            />
+        </div>
     );
 };

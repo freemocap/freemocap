@@ -66,10 +66,12 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         settings,
         allReady,
         videosReady,
+        erroredVideos,
         setVideoRef,
         setFrameOverlayRef,
         setTimeOverlayRef,
         handleLoadedMetadata,
+        handleVideoError,
         frameTimestampsRef,
     } = controller;
 
@@ -160,10 +162,12 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             initialFrameText={initialFrameText}
                             initialTimeText={initialTimeText}
                             timestampsAreReal={timestampsAreReal}
+                            hasError={erroredVideos.has(video.videoId)}
                             setVideoRef={setVideoRef}
                             setFrameOverlayRef={setFrameOverlayRef}
                             setTimeOverlayRef={setTimeOverlayRef}
                             handleLoadedMetadata={handleLoadedMetadata}
+                            handleVideoError={handleVideoError}
                         />
                     </div>
                 ))}

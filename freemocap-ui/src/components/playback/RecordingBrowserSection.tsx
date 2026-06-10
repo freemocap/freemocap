@@ -16,7 +16,7 @@ export const RecordingBrowserSection: React.FC = () => {
             title={t('recordings')}
             defaultExpanded
         >
-            <div style={{ height: '60vh', overflow: 'hidden' }}>
+            <div style={{ height: '55vh', overflow: 'hidden' }}>
                 <RecordingBrowser
                     onRecordingLoaded={ctx.onRecordingLoaded}
                 />

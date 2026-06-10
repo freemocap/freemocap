@@ -12,10 +12,12 @@ interface ZoomableVideoTileProps {
     initialFrameText: string;
     initialTimeText: string;
     timestampsAreReal: boolean;
+    hasError: boolean;
     setVideoRef: PlaybackController['setVideoRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
     setTimeOverlayRef: PlaybackController['setTimeOverlayRef'];
     handleLoadedMetadata: PlaybackController['handleLoadedMetadata'];
+    handleVideoError: PlaybackController['handleVideoError'];
 }
 
 export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
@@ -26,10 +28,12 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     initialFrameText,
     initialTimeText,
     timestampsAreReal,
+    hasError,
     setVideoRef,
     setFrameOverlayRef,
     setTimeOverlayRef,
     handleLoadedMetadata,
+    handleVideoError,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
@@ -63,9 +67,30 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                             `[playback] video error for ${videoId}: ` +
                             `code=${err?.code} message="${err?.message ?? 'unknown'}" src=${v.src}`
                         );
+                        handleVideoError(videoId);
                     }}
                 />
             </div>
+
+            {hasError && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'column',
+                    gap: 4,
+                    padding: 16,
+                    textAlign: 'center',
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    color: 'var(--color-error, #ff6b6b)',
+                    zIndex: 5,
+                }}>
+                    <span className="text sm" style={{fontWeight: 600}}>{t("videoPlaybackError")}</span>
+                    <span className="text xs" style={{color: '#aaa', wordBreak: 'break-all'}}>{filename}</span>
+                </div>
+            )}
 
             {showOverlays && (
                 <>

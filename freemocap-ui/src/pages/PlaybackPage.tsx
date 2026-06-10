@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {SyncedVideoPlayer} from '@/components/playback/SyncedVideoPlayer';
@@ -79,6 +79,43 @@ const PlaybackPage: React.FC = () => {
         initialFrame: ctx?.cachedCurrentFrame ?? 0,
         onFrameChange,
     });
+
+    // If every video in the current source fails to play (e.g. annotated videos
+    // encoded with a codec the player doesn't support), fall back to another
+    // available/valid source (e.g. synchronized).
+    const triedFallbackSourcesRef = useRef<Set<string>>(new Set());
+    const fallbackRecordingRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (recordingPath !== fallbackRecordingRef.current) {
+            fallbackRecordingRef.current = recordingPath ?? null;
+            triedFallbackSourcesRef.current = new Set();
+        }
+    }, [recordingPath]);
+
+    useEffect(() => {
+        if (!controller.allReady || videoEntries.length === 0) return;
+        if (controller.erroredVideos.size < videoEntries.length) return;
+        if (!availableSources || !selectedSource || !setSelectedSource) return;
+
+        triedFallbackSourcesRef.current.add(selectedSource);
+
+        const fallback = Object.entries(availableSources).find(
+            ([key, info]) =>
+                key !== selectedSource &&
+                info.available &&
+                info.valid &&
+                info.videos.length > 0 &&
+                !triedFallbackSourcesRef.current.has(key),
+        );
+
+        if (fallback) {
+            console.warn(
+                `[playback] all videos in source '${selectedSource}' failed to play — falling back to '${fallback[0]}'`,
+            );
+            setSelectedSource(fallback[0]);
+        }
+    }, [controller.allReady, controller.erroredVideos, videoEntries.length, availableSources, selectedSource, setSelectedSource]);
 
     return (
         <div className="flex flex-col flex-1 bg-dark" style={{height: '100%', border: '1px solid var(--color-border-secondary)'}}>

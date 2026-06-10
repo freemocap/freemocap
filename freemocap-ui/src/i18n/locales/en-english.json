@@ -85,6 +85,7 @@
   "extractFramesOnLoad": "Extract frames on load",
   "generateThumbnails": "Generate thumbnails",
   "noVideosLoaded": "No videos loaded",
+  "videoPlaybackError": "Video format not supported by this player",
   "filterVideos": "Filter videos...",
   "openVideo": "Open video",
   "openFolder": "Open folder in file explorer",

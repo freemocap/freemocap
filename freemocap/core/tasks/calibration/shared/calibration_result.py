@@ -170,7 +170,7 @@ class CalibrationResult(BaseModel, TomlMixin):
             cameras.append(
                 CameraModel(
                     id=CameraIdString(camera_id),
-                    index=CameraIndexInt(d["index"]),
+                    index=CameraIndexInt(d.get("index", len(cameras))), #If indicies not specified, default to list order
                     image_size=size,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics,

@@ -1,28 +1,55 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
+import { useMocap } from "@/hooks/useMocap";
+import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
+import { DEFAULT_REALTIME_FILTER_CONFIG, RealtimeFilterConfig } from "@/store/slices/mocap";
 
-interface RTPMediaPipeDetectorSettingsProps {
+interface RTPthreeDReconstructionSettingsProps {
   open: boolean;
   onClose: () => void;
 }
 
-const RTPMediaPipeDetectorSettings: React.FC<
-  RTPMediaPipeDetectorSettingsProps
+const RTPthreeDReconstructionSettings: React.FC<
+  RTPthreeDReconstructionSettingsProps
 > = ({ open, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Toggles
-  const [smoothLandmarks, setSmoothLandmarks] = useState(true);
-  const [segmentation, setSegmentation] = useState(true);
-  const [smoothSegmentation, setSmoothSegmentation] = useState(true);
-  const [refineFaceLandmarks, setRefineFaceLandmarks] = useState(true);
-  const [staticImageMode, setStaticImageMode] = useState(true);
+  const {
+    skeletonFilterConfig,
+    updateSkeletonFilterConfigLocalOnly,
+    replaceSkeletonFilterConfigLocalOnly,
+    isLoading,
+  } = useMocap();
+  const {
+    triggerRealtimeApply,
+    applyOrUpdatePipelineConfig,
+    pipelineConfig,
+    aggregatorConfig,
+  } = useRealtimePipelineSync();
 
-  // Dropdown state (IMPORTANT FIX)
-  const [preset, setPreset] = useState("Lite Fastest");
+  const handleUpdateSkeletonFilterConfig = useCallback(
+    (updates: Partial<RealtimeFilterConfig>) => {
+      updateSkeletonFilterConfigLocalOnly(updates);
+      triggerRealtimeApply();
+    },
+    [updateSkeletonFilterConfigLocalOnly, triggerRealtimeApply]
+  );
+
+  const handleResetDefaults = useCallback(() => {
+    replaceSkeletonFilterConfigLocalOnly({ ...DEFAULT_REALTIME_FILTER_CONFIG });
+    triggerRealtimeApply();
+  }, [replaceSkeletonFilterConfigLocalOnly, triggerRealtimeApply]);
+
+  const handleSkeletonToggle = useCallback(
+    (value: boolean) =>
+      applyOrUpdatePipelineConfig({
+        ...pipelineConfig,
+        aggregator_config: { ...aggregatorConfig, skeleton_enabled: value },
+      }),
+    [applyOrUpdatePipelineConfig, pipelineConfig, aggregatorConfig]
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -57,42 +84,55 @@ const RTPMediaPipeDetectorSettings: React.FC<
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Point Gate settings" />
-          <button className="button icon-button" onClick={onClose}>
-            <span className="icon close-icon icon-size-20" />
-          </button>
+          <div className="flex flex-row gap-1 items-center">
+            <button
+              className="button sm secondary"
+              onClick={handleResetDefaults}
+              disabled={isLoading}
+              style={{ fontSize: 11 }}
+            >
+              Reset Defaults
+            </button>
+            <button className="button icon-button" onClick={onClose}>
+              <span className="icon close-icon icon-size-20" />
+            </button>
+          </div>
         </div>
 
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Max Reprok Error</span>
+          <span className="text-sm">Max Reproj Error</span>
 
           <ValueSelector
-            value={39}
-            min={1}
-            max={500}
+            value={skeletonFilterConfig.max_reprojection_error_px}
+            min={5}
+            max={200}
+            step={1}
             unit="px"
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_reprojection_error_px: v })}
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Max Velocity</span>
 
           <ValueSelector
-            value={50}
-            min={1}
-            max={500}
+            value={skeletonFilterConfig.max_velocity_m_per_s}
+            min={5}
+            max={200}
+            step={1}
             unit="m/s"
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_velocity_m_per_s: v })}
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Max Rejected streaks</span>
 
           <ValueSelector
-            value={5}
+            value={skeletonFilterConfig.max_rejected_streak}
             min={1}
-            max={20}
+            max={30}
+            step={1}
             unit=""
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_rejected_streak: v })}
           />
         </div>
 
@@ -100,31 +140,34 @@ const RTPMediaPipeDetectorSettings: React.FC<
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Min Cutoff</span>
           <ValueSelector
-            value={0.005}
-            min={0.00000001}
-            max={20.0}
+            value={skeletonFilterConfig.min_cutoff}
+            min={0.0001}
+            max={0.1}
+            step={0.0005}
             unit=""
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ min_cutoff: v })}
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Beta</span>
           <ValueSelector
-            value={0.3}
-            min={0.01}
-            max={20.0}
+            value={skeletonFilterConfig.beta}
+            min={0}
+            max={5}
+            step={0.05}
             unit=""
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ beta: v })}
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">D Cutoff</span>
           <ValueSelector
-            value={1}
-            min={1}
-            max={100}
+            value={skeletonFilterConfig.d_cutoff}
+            min={0.1}
+            max={5}
+            step={0.1}
             unit=""
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ d_cutoff: v })}
           />
         </div>
 
@@ -132,11 +175,12 @@ const RTPMediaPipeDetectorSettings: React.FC<
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Max iterations</span>
           <ValueSelector
-            value={20}
-            min={0}
-            max={1}
+            value={skeletonFilterConfig.fabrik_max_iterations}
+            min={1}
+            max={100}
+            step={1}
             unit=""
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ fabrik_max_iterations: v })}
           />
         </div>
 
@@ -144,32 +188,35 @@ const RTPMediaPipeDetectorSettings: React.FC<
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Height</span>
           <ValueSelector
-            value={1.75}
-            min={1}
-            max={20}
+            value={skeletonFilterConfig.height_meters}
+            min={0.5}
+            max={3.0}
+            step={0.01}
             unit="m"
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ height_meters: v })}
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Noise sigma</span>
           <ValueSelector
-            value={0.015}
-            min={0.0001}
-            max={9.9999}
+            value={skeletonFilterConfig.noise_sigma}
+            min={0.001}
+            max={0.05}
+            step={0.001}
             unit="m"
-            onChange={() => {}}
+            onChange={(v) => handleUpdateSkeletonFilterConfig({ noise_sigma: v })}
           />
         </div>
 
         <ToggleComponent
           text="Skeleton"
-          isToggled={staticImageMode}
-          onToggle={setStaticImageMode}
+          isToggled={aggregatorConfig.skeleton_enabled}
+          onToggle={handleSkeletonToggle}
+          disabled={isLoading}
         />
       </div>
     </div>
   );
 };
 
-export default RTPMediaPipeDetectorSettings;
+export default RTPthreeDReconstructionSettings;

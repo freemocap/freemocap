@@ -1,61 +1,39 @@
 import React from "react";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
-import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {RealtimePipelineSummary} from "@/components/control-panels/realtime-panel/RealtimePipelineSummary";
 import {RealtimePipelineConnectionToggle} from "@/components/control-panels/realtime-panel/RealtimePipelineConnectionToggle";
 import {RealtimePipelineConfigTree} from "@/components/control-panels/realtime-panel/RealtimePipelineConfigTree";
-import {
-    applyRealtimePipeline,
-    pipelineConfigUpdated,
-    selectAggregatorConfig,
-    selectCameraNodeConfig,
-    selectIsPipelineConnected,
-    selectPipelineConfig,
-} from "@/store/slices/realtime";
-import {RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
+import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
 
 export const RealtimePipelinePanel: React.FC = () => {
-    const dispatch = useAppDispatch();
-
-    const isConnected = useAppSelector(selectIsPipelineConnected);
-    const pipelineConfig = useAppSelector(selectPipelineConfig);
-    const cameraNodeConfig = useAppSelector(selectCameraNodeConfig);
-    const aggregatorConfig = useAppSelector(selectAggregatorConfig);
-
-    const handleConfigChange = (newConfig: RealtimePipelineConfig) => {
-        if (isConnected) {
-            dispatch(applyRealtimePipeline(newConfig));
-        } else {
-            dispatch(pipelineConfigUpdated(newConfig));
-        }
-    };
+    const {pipelineConfig, cameraNodeConfig, aggregatorConfig, applyOrUpdatePipelineConfig} = useRealtimePipelineSync();
 
     const handleCharucoToggle = (value: boolean) =>
-        handleConfigChange({
+        applyOrUpdatePipelineConfig({
             ...pipelineConfig,
             camera_node_config: {...cameraNodeConfig, charuco_tracking_enabled: value},
         });
 
     const handleSkeletonToggle = (value: boolean) =>
-        handleConfigChange({
+        applyOrUpdatePipelineConfig({
             ...pipelineConfig,
             camera_node_config: {...cameraNodeConfig, skeleton_tracking_enabled: value},
         });
 
     const handleTriangulateToggle = (value: boolean) =>
-        handleConfigChange({
+        applyOrUpdatePipelineConfig({
             ...pipelineConfig,
             aggregator_config: {...aggregatorConfig, triangulation_enabled: value},
         });
 
     const handleFilterToggle = (value: boolean) =>
-        handleConfigChange({
+        applyOrUpdatePipelineConfig({
             ...pipelineConfig,
             aggregator_config: {...aggregatorConfig, filter_enabled: value},
         });
 
     const handleRigidBodyToggle = (value: boolean) =>
-        handleConfigChange({
+        applyOrUpdatePipelineConfig({
             ...pipelineConfig,
             aggregator_config: {...aggregatorConfig, skeleton_enabled: value},
         });

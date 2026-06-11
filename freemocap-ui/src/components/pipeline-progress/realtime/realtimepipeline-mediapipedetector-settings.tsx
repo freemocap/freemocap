@@ -1,28 +1,74 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
 import ValueSelector from '@/components/ui-components/ValueSelector';
+import { useMocap } from '@/hooks/useMocap';
+import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
+import {
+    detectPreset,
+    MEDIAPIPE_POSTHOC_PRESET,
+    MEDIAPIPE_REALTIME_PRESET,
+    MediapipeDetectorConfig,
+} from '@/store/slices/mocap';
 
 interface RTPMediaPipeDetectorSettingsProps {
     open: boolean;
     onClose: () => void;
 }
 
+const PRESET_OPTIONS = ["Lite (Fastest)", "PostHog (Accurate)", "Custom"];
+
+const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
+    "Lite (Fastest)": "realtime",
+    "PostHog (Accurate)": "posthoc",
+};
+
+const presetValueToLabel: Record<string, string> = {
+    realtime: "Lite (Fastest)",
+    posthoc: "PostHog (Accurate)",
+    custom: "Custom",
+};
+
 const RTPMediaPipeDetectorSettings: React.FC<
     RTPMediaPipeDetectorSettingsProps
 > = ({ open, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
 
-    // Toggles
-    const [smoothLandmarks, setSmoothLandmarks] = useState(true);
-    const [segmentation, setSegmentation] = useState(true);
-    const [smoothSegmentation, setSmoothSegmentation] = useState(true);
-    const [refineFaceLandmarks, setRefineFaceLandmarks] = useState(true);
-    const [staticImageMode, setStaticImageMode] = useState(true);
+    const {
+        detectorConfig,
+        updateDetectorConfigLocalOnly,
+        replaceDetectorConfigLocalOnly,
+        isLoading,
+    } = useMocap();
+    const { triggerRealtimeApply } = useRealtimePipelineSync();
 
-    // Dropdown state (IMPORTANT FIX)
-    const [preset, setPreset] = useState("Lite Fastest");
+    const handleUpdateDetectorConfig = useCallback(
+        (updates: Partial<MediapipeDetectorConfig>) => {
+            updateDetectorConfigLocalOnly(updates);
+            triggerRealtimeApply();
+        },
+        [updateDetectorConfigLocalOnly, triggerRealtimeApply]
+    );
+
+    const handleReplaceDetectorConfig = useCallback(
+        (config: MediapipeDetectorConfig) => {
+            replaceDetectorConfigLocalOnly(config);
+            triggerRealtimeApply();
+        },
+        [replaceDetectorConfigLocalOnly, triggerRealtimeApply]
+    );
+
+    const currentPreset = detectPreset(detectorConfig);
+
+    const handlePresetChange = useCallback(
+        (label: string) => {
+            const target = presetLabelToTarget[label];
+            if (target === "realtime") handleReplaceDetectorConfig({...MEDIAPIPE_REALTIME_PRESET});
+            else if (target === "posthoc") handleReplaceDetectorConfig({...MEDIAPIPE_POSTHOC_PRESET});
+        },
+        [handleReplaceDetectorConfig]
+    );
 
     useEffect(() => {
         if (!open) return;
@@ -63,14 +109,15 @@ const RTPMediaPipeDetectorSettings: React.FC<
                     </button>
                 </div>
 
-                {/* Preset dropdown (FIXED) */}
+                {/* Preset dropdown */}
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                     <span className="text-sm">Preset</span>
 
                     <NameDropdownSelector
-                        options={["Lite (Fastest)", "PostHog (Accurate)"]}
-                        initialValue={preset}
-                        onChange={setPreset}
+                        key={currentPreset}
+                        options={PRESET_OPTIONS}
+                        initialValue={presetValueToLabel[currentPreset]}
+                        onChange={handlePresetChange}
                         className="flex flex-row"
                     />
                 </div>
@@ -79,55 +126,62 @@ const RTPMediaPipeDetectorSettings: React.FC<
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                     <span className="text-sm">Min detection confidence</span>
                     <ValueSelector
-                        value={0.5}
+                        value={detectorConfig.min_detection_confidence}
                         min={0}
                         max={1}
+                        step={0.05}
                         unit=""
-                        onChange={() => {}}
+                        onChange={(v) => handleUpdateDetectorConfig({ min_detection_confidence: v })}
                     />
                 </div>
 
-                {/* Max Tracking Confidence */}
+                {/* Min Tracking Confidence */}
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Max tracking confidence</span>
+                    <span className="text-sm">Min tracking confidence</span>
                     <ValueSelector
-                        value={0.5}
+                        value={detectorConfig.min_tracking_confidence}
                         min={0}
                         max={1}
+                        step={0.05}
                         unit=""
-                        onChange={() => {}}
+                        onChange={(v) => handleUpdateDetectorConfig({ min_tracking_confidence: v })}
                     />
                 </div>
 
                 {/* Toggles */}
                 <ToggleComponent
                     text="Smooth landmarks"
-                    isToggled={smoothLandmarks}
-                    onToggle={setSmoothLandmarks}
+                    isToggled={detectorConfig.smooth_landmarks}
+                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_landmarks: checked })}
+                    disabled={isLoading}
                 />
 
                 <ToggleComponent
                     text="Segmentation"
-                    isToggled={segmentation}
-                    onToggle={setSegmentation}
+                    isToggled={detectorConfig.enable_segmentation}
+                    onToggle={(checked) => handleUpdateDetectorConfig({ enable_segmentation: checked })}
+                    disabled={isLoading}
                 />
 
                 <ToggleComponent
                     text="Smooth segmentation"
-                    isToggled={smoothSegmentation}
-                    onToggle={setSmoothSegmentation}
+                    isToggled={detectorConfig.smooth_segmentation}
+                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_segmentation: checked })}
+                    disabled={isLoading || !detectorConfig.enable_segmentation}
                 />
 
                 <ToggleComponent
                     text="Refine face landmarks"
-                    isToggled={refineFaceLandmarks}
-                    onToggle={setRefineFaceLandmarks}
+                    isToggled={detectorConfig.refine_face_landmarks}
+                    onToggle={(checked) => handleUpdateDetectorConfig({ refine_face_landmarks: checked })}
+                    disabled={isLoading}
                 />
 
                 <ToggleComponent
                     text="Static image mode"
-                    isToggled={staticImageMode}
-                    onToggle={setStaticImageMode}
+                    isToggled={detectorConfig.static_image_mode}
+                    onToggle={(checked) => handleUpdateDetectorConfig({ static_image_mode: checked })}
+                    disabled={isLoading}
                 />
             </div>
         </div>

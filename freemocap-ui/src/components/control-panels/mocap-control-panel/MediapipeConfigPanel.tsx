@@ -2,6 +2,8 @@ import React, {useCallback} from "react";
 import {useMocap} from "@/hooks/useMocap";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {
+    detectPreset,
+    DetectorPreset,
     MEDIAPIPE_POSTHOC_PRESET,
     MEDIAPIPE_REALTIME_PRESET,
     MediapipeDetectorConfig,
@@ -13,24 +15,6 @@ const MODEL_COMPLEXITY_LABELS: Record<MediapipeModelComplexity, string> = {
     1: "Full (balanced)",
     2: "Heavy (most accurate)",
 };
-
-type DetectorPreset = "realtime" | "posthoc" | "custom";
-
-function detectPreset(
-    config: { model_complexity: number; enable_segmentation: boolean; smooth_segmentation: boolean }
-): DetectorPreset {
-    if (
-        config.model_complexity === 0 &&
-        !config.enable_segmentation &&
-        !config.smooth_segmentation
-    ) return "realtime";
-    if (
-        config.model_complexity === 2 &&
-        config.enable_segmentation &&
-        config.smooth_segmentation
-    ) return "posthoc";
-    return "custom";
-}
 
 interface MediapipeConfigPanelProps {
     updateDetectorConfig?: (updates: Partial<MediapipeDetectorConfig>) => void;

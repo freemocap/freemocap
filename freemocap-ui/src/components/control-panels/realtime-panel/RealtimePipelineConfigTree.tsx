@@ -2,9 +2,8 @@ import React, {useCallback} from "react";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
-import {useAppDispatch, useAppSelector} from "@/store/hooks";
-import {applyRealtimePipeline, selectIsPipelineConnected, selectPipelineConfig} from "@/store/slices/realtime";
 import {useMocap} from "@/hooks/useMocap";
+import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
 import {MediapipeDetectorConfig, RealtimeFilterConfig} from "@/store/slices/mocap";
 
 export type PipelineContext = "realtime" | "posthoc";
@@ -38,20 +37,13 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     rigidBodyEnabled,
     onRigidBodyToggle,
 }) => {
-    const dispatch = useAppDispatch();
-    const isConnected = useAppSelector(selectIsPipelineConnected);
-    const pipelineConfig = useAppSelector(selectPipelineConfig);
     const {
         updateDetectorConfigLocalOnly,
         replaceDetectorConfigLocalOnly,
         updateSkeletonFilterConfigLocalOnly,
         replaceSkeletonFilterConfigLocalOnly,
     } = useMocap();
-    const triggerRealtimeApply = useCallback(() => {
-        if (isConnected) {
-            dispatch(applyRealtimePipeline(pipelineConfig));
-        }
-    }, [dispatch, isConnected, pipelineConfig]);
+    const {triggerRealtimeApply} = useRealtimePipelineSync();
 
     const handleUpdateDetectorConfig = useCallback(
         (updates: Partial<MediapipeDetectorConfig>) => {

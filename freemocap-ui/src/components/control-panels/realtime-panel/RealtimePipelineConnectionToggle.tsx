@@ -1,35 +1,14 @@
 import React from "react";
-import {useAppDispatch, useAppSelector} from "@/store/hooks";
-import {
-    applyRealtimePipeline,
-    closePipeline,
-    selectCanConnectPipeline,
-    selectCanDisconnectPipeline,
-    selectIsPipelineConnected,
-    selectIsPipelineLoading,
-    selectPipelineConfig,
-} from "@/store/slices/realtime";
+import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
 
 export const RealtimePipelineConnectionToggle: React.FC = () => {
-    const dispatch = useAppDispatch();
-
-    const isConnected = useAppSelector(selectIsPipelineConnected);
-    const isLoading = useAppSelector(selectIsPipelineLoading);
-    const canConnect = useAppSelector(selectCanConnectPipeline);
-    const canDisconnect = useAppSelector(selectCanDisconnectPipeline);
-    const pipelineConfig = useAppSelector(selectPipelineConfig);
+    const {isConnected, isLoading, canConnect, canDisconnect, toggleConnection} = useRealtimePipelineSync();
 
     const isClickable = canConnect || canDisconnect;
 
     const handleToggle = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
-        if (isLoading) return;
-
-        if (isConnected) {
-            await dispatch(closePipeline());
-        } else {
-            await dispatch(applyRealtimePipeline(pipelineConfig));
-        }
+        await toggleConnection();
     };
 
     const tooltipText = isConnected

@@ -1,16 +1,24 @@
 import React, {useEffect, useRef, useState} from "react";
 import IconButton from "@/components/ui-components/IconButton";
 
+/** Rounds to the precision of `step` and clamps to [min, max], avoiding float drift like 0.005 - 0.0005 = 0.0045000000000000005. */
+function roundToStep(value: number, step: number, min: number, max: number): number {
+    const decimals = (step.toString().split(".")[1] || "").length;
+    const rounded = Number(value.toFixed(decimals));
+    return Math.max(min, Math.min(max, rounded));
+}
+
 interface InputWithUnitProps {
     value: number;
     onChange: (value: number) => void;
     unit?: string;
     min?: number;
     max?: number;
+    step?: number;
     onEnter?: () => void;
 }
 
-const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = "", min = 1, max = 999, onEnter}) => {
+const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = "", min = 1, max = 999, step = 1, onEnter}) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -28,6 +36,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = ""
                 value={value}
                 min={min}
                 max={max}
+                step={step}
                 onChange={e => onChange(Math.max(min, Math.min(max, Number(e.target.value) || min)))}
                 onFocus={e => e.target.select()}
                 onKeyDown={handleKeyDown}
@@ -43,10 +52,11 @@ interface ValueSelectorProps {
     unit?: string;
     min?: number;
     max?: number;
+    step?: number;
     onChange?: (value: number) => void;
 }
 
-const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1, max = 999, onChange}) => {
+const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1, max = 999, step = 1, onChange}) => {
     const [open, setOpen] = useState(false);
     const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
     const containerRef = useRef<HTMLDivElement>(null);
@@ -94,7 +104,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
                     <div className="flex right-0 p-2 gap-2 bg-middark br-1 z-1">
                         <IconButton
                             icon="minus-icon"
-                            onClick={() => currentValue > min && onChange?.(currentValue - 1)}
+                            onClick={() => currentValue > min && onChange?.(roundToStep(currentValue - step, step, min, max))}
                             disabled={currentValue <= min}
                             className={`icon-size-25 ${currentValue <= min ? "deactivated" : ""}`}
                             iconSize="icon-size-20"
@@ -105,11 +115,12 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
                             unit={unit}
                             min={min}
                             max={max}
+                            step={step}
                             onEnter={() => setOpen(false)}
                         />
                         <IconButton
                             icon="plus-icon"
-                            onClick={() => currentValue < max && onChange?.(currentValue + 1)}
+                            onClick={() => currentValue < max && onChange?.(roundToStep(currentValue + step, step, min, max))}
                             disabled={currentValue >= max}
                             className={`icon-size-25 ${currentValue >= max ? "deactivated" : ""}`}
                             iconSize="icon-size-20"

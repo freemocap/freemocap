@@ -278,6 +278,7 @@ a.link:hover {
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
+.gap-32 { gap: 32px; }
 
 /* =========================
    PADDING
@@ -339,7 +340,9 @@ a.link:hover {
 .mt-2 { margin-top: 8px; }
 .mt-3 { margin-top: 12px; }
 .mt-4 { margin-top: 16px; }
-
+.mt-45 {
+  margin-top: 45px;
+}
 /* Margin Left/Right */
 
 .ml-1 { margin-left: 4px; }

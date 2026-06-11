@@ -26,7 +26,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 `icon-size-20` defines the icon size specified in the `app.css` design system.
 */
 /* icons vars */
-  :root { 
+:root {
   --plus-icon: url("../assets/icons/plus_icon.svg");
   --checkUpdate-icon: url("../assets/icons/checkUpdate_icon.svg");
   --upToDate-icon: url("../assets/icons/upToDate_icon.svg");
@@ -41,6 +41,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --clear-icon: url("../assets/icons/clear_icon.svg");
   --load-icon: url("../assets/icons/load_icon.svg");
   --live-icon: url("../assets/icons/live_icon.svg");
+
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
   --github-icon: url("../assets/icons/github_icon.svg");
@@ -96,22 +97,43 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --settings_icon: url("../assets/icons/settings_icon.svg");
 
 
-    --grid4_icon: url("../assets/icons/grid4_icon.svg");
-    --grid3_icon: url("../assets/icons/grid3_icon.svg");
-    --grid2_icon: url("../assets/icons/grid2_icon.svg");
-  }
+  --grid4_icon: url("../assets/icons/grid4_icon.svg");
+  --grid3_icon: url("../assets/icons/grid3_icon.svg");
+  --grid2_icon: url("../assets/icons/grid2_icon.svg");
+
+  --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
+
+  --importvideo-icon: url("../assets/icons/importvideo_icon.svg");
+
+  --live-active-icon: url("../assets/icons/live_active_icon.svg");
+  --twodtracking-active-icon: url("../assets/icons/2dtracking_active_icon.svg");
+  --threedtracking-active-icon: url("../assets/icons/3dtracking_active_icon.svg");
+  --triangulate-active-icon: url("../assets/icons/triangulate_active_icon.svg");
+  --skeleton-active-icon: url("../assets/icons/skeleton_active_icon.svg");
+  --skeletonfilter-active-icon: url("../assets/icons/skeletonfilter_active_icon.svg");
+  --skeletonfilter-icon: url("../assets/icons/skeletonfilter_icon.svg");
+  --twodtracking-icon: url("../assets/icons/2dtracking_icon.svg");
+  --threedtracking-icon: url("../assets/icons/3dtracking_icon.svg");
+  --triangulate-icon: url("../assets/icons/triangulate_icon.svg");
+  --skeleton-icon: url("../assets/icons/skeleton_icon.svg");
+  --charuco-icon: url("../assets/icons/charuco_icon.svg");
+  --charuco-active-icon: url("../assets/icons/charuco_active_icon.svg");
+}
 
 
-  /* icon type */
+/* icon type */
 .close-icon {
   background-image: var(--close-icon);
 }
+
 .mic-icon {
   background-image: var(--mic-icon);
 }
+
 .mic-active-icon {
   background-image: var(--mic-active-icon);
 }
+
 .close-icon {
   background-image: var(--close-icon);
 }
@@ -119,6 +141,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .expand-icon {
   background-image: var(--expand-icon);
 }
+
 .collapse-icon {
   background-image: var(--collapse-icon);
 }
@@ -126,51 +149,67 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .rotate-icon {
   background-image: var(--rotate-icon);
 }
+
 .pause-icon {
   background-image: var(--pause-icon);
 }
+
 .play-icon {
   background-image: var(--play-icon);
 }
+
 .back-icon {
   background-image: var(--back-icon);
 }
+
 .search-icon {
   background-image: var(--search-icon);
 }
+
 .clear-icon {
   background-image: var(--clear-icon);
 }
+
 .load-icon {
   background-image: var(--load-icon);
 }
+
 .home-icon {
   background-image: var(--home-icon);
 }
+
 .scan-icon {
   background-image: var(--scan-icon);
 }
+
 .externallink-icon {
   background-image: var(--externallink-icon);
 }
+
 .stream-icon {
   background-image: var(--stream-icon);
 }
+
 .stopstreaming-icon {
   background-image: var(--stopstreaming-icon);
 }
+
 .streaming-icon {
   background-image: var(--streaming-icon);
 }
+
 .calibrate-icon {
   background-image: var(--calibrate-icon);
 }
+
 .explainer-icon {
   background-image: var(--explainer-icon);
 }
+
 .calibrated-icon {
   background-image: var(--calibrated-icon);
 }
+
 .subfolder-icon {
   background-image: var(--subfolder_icon);
 }
@@ -205,6 +244,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .upToDate-icon {
   background-image: var(--upToDate-icon);
+}
+.charuco-icon {
+  background-image: var(--charuco-icon);
+}
+.charuco-active-icon {
+  background-image: var(--charuco-active-icon);
 }
 
 .updateAvailable-icon {
@@ -244,39 +289,51 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .connected-icon {
   background-image: var(--connected-icon);
 }
+
 .copyover-icon {
   background-image: var(--copyover-icon);
 }
+
 .loop-icon {
   background-image: var(--loop-icon);
 }
+
 .copy-icon {
   background-image: var(--copy-icon);
 }
+
 .copied-icon {
   background-image: var(--copied-icon);
 }
+
 .scrolldown-icon {
   background-image: var(--scrolldown-icon);
 }
+
 .save-icon {
   background-image: var(--save-icon);
 }
+
 .scrollup-icon {
   background-image: var(--scrollup-icon);
 }
+
 .loopactive-icon {
   background-image: var(--loopactive-icon);
 }
+
 .frameforward-icon {
   background-image: var(--frameforward-icon);
 }
+
 .framebackward-icon {
   background-image: var(--framebackward-icon);
 }
+
 .skipforward-icon {
   background-image: var(--skipforward-icon);
 }
+
 .skipbackward-icon {
   background-image: var(--skipbackward-icon);
 }
@@ -318,8 +375,50 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .processmocap-icon {
   background-image: var(--processmocap-icon);
 }
+.twodtracking-active-icon {
+  background-image: var(--twodtracking-active-icon);
+}
+.live-active-icon {
+  background-image: var(--live-active-icon);
+}
+.threedtracking-active-icon {
+  background-image: var(--threedtracking-active-icon);
+}
+.triangulate-active-icon {
+  background-image: var(--triangulate-active-icon);
+}
+.skeleton-active-icon {
+  background-image: var(--skeleton-active-icon);
+}
+.skeletonfilter-active-icon {
+  background-image: var(--skeletonfilter-active-icon);
+}
+.twodtracking-icon {
+  background-image: var(--twodtracking-icon);
+}
+.threedtracking-icon {
+  background-image: var(--threedtracking-icon);
+}
+.triangulate-icon {
+  background-image: var(--triangulate-icon);
+}
+.skeleton-icon {
+  background-image: var(--skeleton-icon);
+}
+.skeletonfilter-icon {
+  background-image: var(--skeletonfilter-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.importvideo-icon {
+  background-image: var(--importvideo-icon);
+}
 
-  /* =========================
+/* =========================
    icons buttons
    ========================= */
 
@@ -327,6 +426,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   min-width: 12px;
   min-height: 12px;
 }
+
 .icon-size-20 {
   width: 20px;
   height: 20px;
@@ -338,10 +438,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   width: 25px;
   height: 25px;
 }
+
 .icon-size-25 {
   width: 25px;
   height: 25px;
 }
+
 .icon-size-32 {
   width: 32px;
   height: 32px;
@@ -358,20 +460,23 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   display: flex;
   justify-content: center;
 }
+
 .icon-button.deactivated {
 
-   opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 /* button icons variants */
 .primary {
   background-color: var(--color-bg-primary);
 }
+
 .icon-button.tertiary {
   background-color: transparent;
 }
+
 .icon-button.tertiary:hover {
   filter: brightness(1.2);
 }
@@ -382,12 +487,13 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .icon-button:hover>.icon {
   filter: brightness(1);
- 
+
 
   transition: filter var(--speed-1) ease-in-out;
 }
-.icon-button:hover:not(.secondary,.tertiary) {
- 
+
+.icon-button:hover:not(.secondary, .tertiary) {
+
   background-color: var(--color-surface-active);
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;

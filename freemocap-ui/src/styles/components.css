@@ -237,7 +237,10 @@ button.rotate-button {
   line-height: 25px;
   padding: 0;
 }
-
+.RTP-settings-flyout {
+  width: 280px;
+  
+}
 .segmented-control-button>p.text.sm {
   /* small size */
   min-height: 22px;
@@ -303,7 +306,10 @@ button.rotate-button {
     width 0.15s ease,
     height 0.15s ease;
 }
-
+.streaming-bar-setting-action-bar {
+  margin-top: -35px;
+    margin-right: 9px;
+}
 /*
    CENTER INDICATOR
 */
@@ -899,7 +905,7 @@ animation: fadeIn, scaleIn;
 /* Main content tab bar */
 .main-tab-bar {
   padding: 6px 8px;
-  background-color: var(--color-bg-secondary);
+  /* background-color: var(--color-bg-secondary); */
   display: flex;
 }
 

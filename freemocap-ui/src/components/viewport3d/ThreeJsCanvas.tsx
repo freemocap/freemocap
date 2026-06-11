@@ -293,7 +293,10 @@ export function ThreeJsCanvas() {
           className="w-full h-full block"
           style={{
             touchAction: "none",
+             
+            background: "var(--color-bg-primary)",
           }}
+      
         />
         <ViewportOverlay onFitCamera={handleFit} onResetCamera={handleReset} />
       </div>

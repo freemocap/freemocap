@@ -8,7 +8,7 @@ import {usePlaybackContext} from '@/components/playback/PlaybackContext';
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
-import {SettingsOverlay} from "@/components/ui-components/SettingsOverlay";
+import {GridSettingsOverlay} from "@/components/ui-components/GridSettingsOverlay";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
@@ -118,16 +118,15 @@ const PlaybackPage: React.FC = () => {
     }, [controller.allReady, controller.erroredVideos, videoEntries.length, availableSources, selectedSource, setSelectedSource]);
 
     return (
-        <div className="flex flex-col flex-1 bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
+        <div className="flex flex-col flex-1 pos-rel bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
+            <GridSettingsOverlay
+                settings={settings}
+                onSettingsChange={handleSettingsChange}
+            />
+
             <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
                     <div className="flex flex-col pos-rel flex-1 min-h-0">
-                        <SettingsOverlay
-                            settings={settings}
-                            onSettingsChange={handleSettingsChange}
-                            onResetLayout={handleResetLayout}
-                        />
-
                         <div className="flex flex-row items-center gap-1 flex-wrap" style={{
                             padding: '6px 12px',
                             borderBottom: '1px solid var(--color-border-secondary)',

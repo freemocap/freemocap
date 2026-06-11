@@ -7,6 +7,7 @@ import type {
 } from "@/pages/StreamingViewPage";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
+import ValueSelector from "@/components/ui-components/ValueSelector";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 
 import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
@@ -109,13 +110,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
     onSettingsChange({ columns: checked ? null : manualColumns });
   };
 
-  const handleColumnsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value);
-    if (!isNaN(value) && value > 0) {
-      setManualColumns(value);
-      if (isAuto) setIsAuto(false);
-      onSettingsChange({ columns: value });
-    }
+  const handleColumnsChange = (value: number) => {
+    setManualColumns(value);
+    if (isAuto) setIsAuto(false);
+    onSettingsChange({ columns: value });
   };
 
   const handle3dViewToggle = (checked: boolean) => {
@@ -272,23 +270,16 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onToggle={handleAutoChange}
             />
 
-            <div className="input-with-unit flex-1">
-              <input
-                type="number"
-                className="input-field numeric-input text md"
-                value={isAuto ? autoColumns : manualColumns}
-                onChange={handleColumnsChange}
-                min={1}
-                step={1}
-              />
-              <span className="unit-label text sm text-gray">
-                {t("columns")}
-              </span>
-            </div>
+            <ValueSelector
+              value={isAuto ? autoColumns : manualColumns}
+              min={1}
+              max={12}
+              onChange={handleColumnsChange}
+            />
 
             <p className="text sm text-gray">
               {isAuto
-                ? `Auto-detected: ${autoColumns}`
+                ? `Auto-detected: ${autoColumns} Columns`
                 : "Enter any positive number"}
             </p>
           </div>

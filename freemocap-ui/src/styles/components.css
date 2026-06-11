@@ -303,7 +303,10 @@ button.rotate-button {
     width 0.15s ease,
     height 0.15s ease;
 }
-
+.streaming-bar-setting-action-bar {
+  margin-top: -35px;
+    margin-right: 9px;
+}
 /*
    CENTER INDICATOR
 */

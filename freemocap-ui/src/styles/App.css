@@ -278,6 +278,7 @@ a.link:hover {
 .gap-2 { gap: 8px; }
 .gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
+.gap-32 { gap: 32px; }
 
 /* =========================
    PADDING

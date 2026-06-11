@@ -687,6 +687,9 @@ a:after {
 .m-4 {
   margin: 16px;
 }
+.mt-45 {
+  margin-top: 45px;
+}
 
 /* widths/heights */
 .w-full {

@@ -76,8 +76,8 @@ export const MainNavTabs = () => {
     }, [navigate]);
 
     return (
-        <div className="main-tab-bar">
-            <div className="segmented-control-container br-1-1 gap-1 p-1 bg-middark flex flex-row">
+        <div className="main-tab-bar main-tab-bar-container pos-abs top-0 left-0 main-segmented-control-container">
+            <div className="segmented-control-container bg-middark br-2 gap-1 p-1 z-1 flex flex-row">
                 {NAV_TABS.map((tab, idx) => {
                     const isActive = idx === activeIdx;
                     return (
@@ -88,7 +88,7 @@ export const MainNavTabs = () => {
                         >
                             {tab.path === '/active-recording'
                                 ? <ActiveRecordingLabel />
-                                : <p className={`text md text-center p-1${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
+                                : <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
                             }
                         </button>
                     );

@@ -61,9 +61,9 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
                             style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
                         />
                         <Panel className="right-side-panel" defaultSize={76} minSize={10}>
-                            <div className="flex flex-col h-full">
+                            <div className="flex flex-col h-full pos-rel bg-darkgray br-2">
                                 <MainNavTabs />
-                                <div className="flex-1 min-h-0 overflow-hidden">
+                                <div className="flex-1 min-h-0 mt-45">
                                     {children}
                                 </div>
                             </div>

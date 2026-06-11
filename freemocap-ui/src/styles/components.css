@@ -899,7 +899,7 @@ animation: fadeIn, scaleIn;
 /* Main content tab bar */
 .main-tab-bar {
   padding: 6px 8px;
-  background-color: var(--color-bg-secondary);
+  /* background-color: var(--color-bg-secondary); */
   display: flex;
 }
 

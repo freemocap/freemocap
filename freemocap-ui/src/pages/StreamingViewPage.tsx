@@ -34,7 +34,7 @@ export const StreamingViewPage = () => {
 
     return (
         <React.Fragment>
-            <div className="flex flex-col pos-rel overflow-hidden bg-dark p-2 flex-1 h-full w-full">
+            <div className="streaming-page flex flex-col pos-rel flex-1 h-full w-full">
                 <SettingsOverlay
                     settings={settings}
                     onSettingsChange={handleSettingsChange}
@@ -55,30 +55,10 @@ export const StreamingViewPage = () => {
                                 </div>
                             </Panel>
 
-                            <PanelResizeHandle>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    backgroundColor: 'var(--color-border-secondary)',
-                                    transition: 'background-color 0.15s ease',
-                                    cursor: isHorizontal ? 'col-resize' : 'row-resize',
-                                    ...(isHorizontal
-                                        ? {width: '6px', height: '100%', flexDirection: 'column' as const}
-                                        : {height: '6px', width: '100%', flexDirection: 'row' as const}
-                                    ),
-                                }}>
-                                    {[0, 1, 2].map((i) => (
-                                        <div key={i} className="flex-shrink-0" style={{
-                                            width: 4,
-                                            height: 4,
-                                            borderRadius: '50%',
-                                            backgroundColor: 'var(--color-text-disabled)',
-                                            margin: isHorizontal ? '2px 0' : '0 2px',
-                                        }}/>
-                                    ))}
-                                </div>
-                            </PanelResizeHandle>
+                       <PanelResizeHandle
+                                                 className="resizable-component"
+                                                 style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
+                                             />
 
                             <Panel defaultSize={40} minSize={10}>
                                 <div className="h-full">

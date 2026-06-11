@@ -237,7 +237,10 @@ button.rotate-button {
   line-height: 25px;
   padding: 0;
 }
-
+.RTP-settings-flyout {
+  width: 280px;
+  
+}
 .segmented-control-button>p.text.sm {
   /* small size */
   min-height: 22px;

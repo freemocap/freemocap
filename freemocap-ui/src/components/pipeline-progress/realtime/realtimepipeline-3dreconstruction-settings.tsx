@@ -4,13 +4,13 @@ import NameDropdownSelector from "@/components/ui-components/NameDropdownSelecto
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 
-interface RealtimePipelineMediaPipeDetectorSettingsProps {
+interface RTPMediaPipeDetectorSettingsProps {
   open: boolean;
   onClose: () => void;
 }
 
-const RealtimePipelineMediaPipeDetectorSettings: React.FC<
-  RealtimePipelineMediaPipeDetectorSettingsProps
+const RTPMediaPipeDetectorSettings: React.FC<
+  RTPMediaPipeDetectorSettingsProps
 > = ({ open, onClose }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -51,9 +51,9 @@ const RealtimePipelineMediaPipeDetectorSettings: React.FC<
   return (
     <div
       ref={modalRef}
-      className="file-directory-settings-container draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
+      className="RTP-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
     >
-      <div className="flex flex-col right-0 p-2 bg-middark br-1 z-1">
+      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Point Gate settings" />
@@ -172,4 +172,4 @@ const RealtimePipelineMediaPipeDetectorSettings: React.FC<
   );
 };
 
-export default RealtimePipelineMediaPipeDetectorSettings;
+export default RTPMediaPipeDetectorSettings;

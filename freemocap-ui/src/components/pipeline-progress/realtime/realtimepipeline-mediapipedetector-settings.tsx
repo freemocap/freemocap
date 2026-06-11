@@ -4,13 +4,13 @@ import NameDropdownSelector from '@/components/ui-components/NameDropdownSelecto
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 
-interface RealtimePipelineMediaPipeDetectorSettingsProps {
+interface RTPMediaPipeDetectorSettingsProps {
     open: boolean;
     onClose: () => void;
 }
 
-const RealtimePipelineMediaPipeDetectorSettings: React.FC<
-    RealtimePipelineMediaPipeDetectorSettingsProps
+const RTPMediaPipeDetectorSettings: React.FC<
+    RTPMediaPipeDetectorSettingsProps
 > = ({ open, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -134,4 +134,4 @@ const RealtimePipelineMediaPipeDetectorSettings: React.FC<
     );
 };
 
-export default RealtimePipelineMediaPipeDetectorSettings;
+export default RTPMediaPipeDetectorSettings;

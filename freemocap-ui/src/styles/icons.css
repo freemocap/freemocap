@@ -102,7 +102,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --grid2_icon: url("../assets/icons/grid2_icon.svg");
 
   --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
-  --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
+
   --importvideo-icon: url("../assets/icons/importvideo_icon.svg");
 
   --live-active-icon: url("../assets/icons/live_active_icon.svg");
@@ -116,6 +116,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --threedtracking-icon: url("../assets/icons/3dtracking_icon.svg");
   --triangulate-icon: url("../assets/icons/triangulate_icon.svg");
   --skeleton-icon: url("../assets/icons/skeleton_icon.svg");
+  --charuco-icon: url("../assets/icons/charuco_icon.svg");
+  --charuco-active-icon: url("../assets/icons/charuco_active_icon.svg");
 }
 
 
@@ -242,6 +244,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .upToDate-icon {
   background-image: var(--upToDate-icon);
+}
+.charuco-icon {
+  background-image: var(--charuco-icon);
+}
+.charuco-active-icon {
+  background-image: var(--charuco-active-icon);
 }
 
 .updateAvailable-icon {
@@ -370,6 +378,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .twodtracking-active-icon {
   background-image: var(--twodtracking-active-icon);
 }
+.live-active-icon {
+  background-image: var(--live-active-icon);
+}
 .threedtracking-active-icon {
   background-image: var(--threedtracking-active-icon);
 }
@@ -396,6 +407,15 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 .skeletonfilter-icon {
   background-image: var(--skeletonfilter-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.importvideo-icon {
+  background-image: var(--importvideo-icon);
 }
 
 /* =========================

@@ -18,7 +18,6 @@ import {restrictToParentElement, restrictToVerticalAxis} from '@dnd-kit/modifier
 import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper';
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
-import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
@@ -30,7 +29,6 @@ const STORAGE_KEY = 'freemocap-sidebar-section-order';
 const DEFAULT_SECTION_ORDER = [
     'cameras',
     'recording',
-    'realtime',
     'calibration',
     'mocap',
     'recordings',
@@ -42,7 +40,6 @@ const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording']);
 const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
-    realtime: RealtimePipelinePanel,
     cameras: CameraConfigTreeView,
     recording: RecordingInfoPanel,
     calibration: CalibrationPanel,
@@ -125,12 +122,13 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
     const { pathname } = useLocation();
     const isStreaming = pathname === '/streaming';
     const isPlayback = pathname === '/playback';
+    const isActiveRecording = pathname === '/active-recording';
     const visibleSections = useMemo(
         () => sectionOrder.filter(id =>
             (isStreaming || !STREAMING_ONLY_SECTIONS.has(id)) &&
-            (isPlayback || !PLAYBACK_ONLY_SECTIONS.has(id))
+            (isPlayback || isActiveRecording || !PLAYBACK_ONLY_SECTIONS.has(id))
         ),
-        [sectionOrder, isStreaming, isPlayback],
+        [sectionOrder, isStreaming, isPlayback, isActiveRecording],
     );
 
     const { t } = useTranslation();

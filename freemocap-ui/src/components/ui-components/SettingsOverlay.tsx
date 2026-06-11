@@ -65,17 +65,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const skeletonEnabled = cameraNodeConfig.skeleton_tracking_enabled;
   const triangulateEnabled = aggregatorConfig.triangulation_enabled;
   const filterEnabled = aggregatorConfig.filter_enabled;
-  const rigidBodyEnabled = aggregatorConfig.skeleton_enabled;
-
-  // ── 2D Tracking parent state ──────────────────────────────────────────────
-  const tracking2dAllOn = charucoEnabled && skeletonEnabled;
-  const tracking2dSomeOn = charucoEnabled || skeletonEnabled;
-  const tracking2dIndeterminate = tracking2dSomeOn && !tracking2dAllOn;
-
-  // ── 3D Reconstruction parent state ────────────────────────────────────────
-  const recon3dAllOn = triangulateEnabled && filterEnabled && rigidBodyEnabled;
-  const recon3dSomeOn = triangulateEnabled || filterEnabled || rigidBodyEnabled;
-  const recon3dIndeterminate = recon3dSomeOn && !recon3dAllOn;
 
   const handleCharucoToggle = () =>
     applyOrUpdatePipelineConfig({
@@ -89,18 +78,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       camera_node_config: { ...cameraNodeConfig, skeleton_tracking_enabled: !skeletonEnabled },
     });
 
-  const handle2dTrackingToggle = () => {
-    const next = !tracking2dAllOn;
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      camera_node_config: {
-        ...cameraNodeConfig,
-        charuco_tracking_enabled: next,
-        skeleton_tracking_enabled: next,
-      },
-    });
-  };
-
   const handleTriangulateToggle = () =>
     applyOrUpdatePipelineConfig({
       ...pipelineConfig,
@@ -112,19 +89,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       ...pipelineConfig,
       aggregator_config: { ...aggregatorConfig, filter_enabled: !filterEnabled },
     });
-
-  const handle3dReconstructionToggle = () => {
-    const next = !recon3dAllOn;
-    applyOrUpdatePipelineConfig({
-      ...pipelineConfig,
-      aggregator_config: {
-        ...aggregatorConfig,
-        triangulation_enabled: next,
-        filter_enabled: next,
-        skeleton_enabled: next,
-      },
-    });
-  };
 
   const liveClickable = canConnect || canDisconnect;
   const handleLiveStreamClick = () => {
@@ -171,13 +135,13 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="live-action-buttons-group-1 flex flex-row items-center gap-1">
 
             <IconButton
-              icon={(tracking2dAllOn || tracking2dIndeterminate) ? "twodtracking-active-icon" : "twodtracking-icon"}
-              onClick={handle2dTrackingToggle}
+              icon={skeletonEnabled ? "twodtracking-active-icon" : "twodtracking-icon"}
+              onClick={handleSkeletonToggle}
               tooltip
               tooltipText="2D Tracking"
               tooltipPosition="pos-bottom"
               disabled={false}
-              className={`icon-size-25 ${tracking2dAllOn ? "active" : tracking2dIndeterminate ? "active indeterminate" : ""}`}
+              className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
             />
 
             <IconButton
@@ -190,22 +154,12 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               className={`icon-size-25 ${charucoEnabled ? "active" : ""}`}
             />
 
-            <IconButton
-              icon={skeletonEnabled ? "skeleton-active-icon" : "skeleton-icon"}
-              onClick={handleSkeletonToggle}
-              tooltip
-              tooltipText="Skeleton Setup"
-              tooltipPosition="pos-bottom"
-              disabled={false}
-              className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
-            />
-
             <div className="modal-container pos-rel">
               <IconButton
-                icon={active.trackingSettings ? "settings-icon" : "settings-icon"}
+                icon={active.trackingSettings ? "skeleton-active-icon" : "skeleton-icon"}
                 onClick={() => toggleActive("trackingSettings")}
                 tooltip
-                tooltipText="Tracking Settings"
+                tooltipText="Skeleton Setup"
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`icon-size-25 ${active.trackingSettings ? "active" : ""}`}
@@ -222,20 +176,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           <div className="live-action-buttons-group-2 flex flex-row items-center gap-1">
 
             <IconButton
-              icon={(recon3dAllOn || recon3dIndeterminate) ? "threedtracking-active-icon" : "threedtracking-icon"}
-              onClick={handle3dReconstructionToggle}
-              tooltip
-              tooltipText="3D Tracking"
-              tooltipPosition="pos-bottom"
-              disabled={false}
-              className={`icon-size-25 ${recon3dAllOn ? "active" : recon3dIndeterminate ? "active indeterminate" : ""}`}
-            />
-
-            <IconButton
-              icon={triangulateEnabled ? "triangulate-active-icon" : "triangulate-icon"}
+              icon={triangulateEnabled ? "threedtracking-active-icon" : "threedtracking-icon"}
               onClick={handleTriangulateToggle}
               tooltip
-              tooltipText="Point Triangulation"
+              tooltipText="3D Tracking"
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${triangulateEnabled ? "active" : ""}`}
@@ -250,6 +194,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               disabled={false}
               className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
             />
+
             <div className="modal-container pos-rel">
               <IconButton
                 icon={active.filterSettings ? "settings-icon" : "settings-icon"}

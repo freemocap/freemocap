@@ -468,11 +468,6 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   cursor: not-allowed;
 }
 
-.icon-button.indeterminate {
-
-  opacity: 0.6;
-}
-
 /* button icons variants */
 .primary {
   background-color: var(--color-bg-primary);

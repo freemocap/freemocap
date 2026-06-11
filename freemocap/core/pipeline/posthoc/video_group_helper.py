@@ -218,11 +218,8 @@ class VideoHelper(BaseModel):
         if cached_frame is not None:
             return cached_frame
 
-        # Determine read strategy and read frame
-        if self._should_use_sequential_read(frame_number):
-            frame = self._read_sequential(frame_number)
-        else:
-            frame = self._read_random_access(frame_number)
+        frame = self._read_sequential(frame_number)
+
 
         if frame is None:
             raise RuntimeError(f"Failed to read frame {frame_number}")
@@ -233,14 +230,7 @@ class VideoHelper(BaseModel):
 
         return frame
 
-    def _should_use_sequential_read(self, frame_number: int) -> bool:
-        """Check if sequential reading would be more efficient."""
-        if self.last_read_frame < 0:
-            return False
-        return True # Always use sequential read when not wrapping around to avoid frame slippage
-        # # If we're reading nearby frames forward, use sequential
-        # distance = frame_number - self.last_read_frame
-        # return 0 < distance <= self.sequential_threshold
+
 
     def _read_sequential(self, frame_number: int) -> np.ndarray:
         """Read frame using sequential access (grab/retrieve)."""
@@ -257,16 +247,7 @@ class VideoHelper(BaseModel):
 
         return frame
 
-    def _read_random_access(self, frame_number: int) -> np.ndarray:
-        """Read frame using random access (set position then read)."""
-        # Set position and read
-        self.video_reader.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-        ret, frame = self.video_reader.read()
 
-        if not ret or frame is None:
-            raise RuntimeError(f"Failed to read frame {frame_number}")
-
-        return frame
 
     def read_frame_batch(self, frame_numbers: list[int]) -> list[np.ndarray]:
         """
@@ -339,6 +320,27 @@ class VideoHelper(BaseModel):
         self.video_reader.release()
         self.cache.clear()
 
+    def __str__(self) -> str:
+        metadata = self.metadata
+        lines = [
+            f"VideoHelper:",
+            f"  video_path           = {self.video_path}",
+            f"  metadata:",
+            f"    file_path          = {metadata.file_path}",
+            f"    width              = {metadata.width}",
+            f"    height             = {metadata.height}",
+            f"    frames_per_second  = {metadata.fps}",
+            f"    frame_count        = {metadata.frame_count}",
+            f"    fourcc             = {metadata.fourcc}",
+            f"    duration_seconds   = {metadata.duration_seconds}",
+            f"    start_frame        = {metadata.start_frame}",
+            f"    end_frame          = {metadata.end_frame}",
+            f"  last_read_frame      = {self.last_read_frame}",
+            f"  sequential_threshold = {self.sequential_threshold}",
+        ]
+        return "\n".join(lines)
+
+
     def __enter__(self) -> "VideoHelper":
         """Context manager entry."""
         return self
@@ -368,6 +370,13 @@ class VideoGroupHelper(BaseModel):
     @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.videos.keys())
+
+    @property
+    def frame_count(self) -> int:
+        frame_counts = {video.metadata.frame_count for video in self.videos.values()}
+        if len(frame_counts) != 1:
+            raise ValueError("All videos in VideoGroup must have the same frame count.")
+        return list(frame_counts)[0]
 
     @model_validator(mode="after")
     def validate_videos(self):
@@ -479,6 +488,19 @@ class VideoGroupHelper(BaseModel):
     def close(self):
         for video in self.videos.values():
             video.close()
+
+    def __str__(self) -> str:
+        lines = [
+            f"VideoGroupHelper:",
+            f"  number_of_videos     = {len(self.videos)}",
+            f"  frame_count          = {self.frame_count}",
+            f"  keyed_from_manifest  = {self.keyed_from_manifest}",
+            f"  filename_reindex_applied = {self.filename_reindex_applied}",
+            f"  camera_ids:",
+        ]
+        for camera_id in self.camera_ids:
+            lines.append(f"    {camera_id}")
+        return "\n".join(lines)
 
 
 def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:

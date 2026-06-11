@@ -37,7 +37,7 @@ export const StreamingViewPage = () => {
 
   return (
     <React.Fragment>
-      <div className="streaming-page flex flex-col pos-rel flex-1 h-full w-full">
+      <div className="streaming-page p-1 flex flex-col pos-rel flex-1 h-full w-full">
         <SettingsOverlay
           settings={settings}
           onSettingsChange={handleSettingsChange}
@@ -71,7 +71,7 @@ export const StreamingViewPage = () => {
               />
 
               <Panel defaultSize={40} minSize={10}>
-                <div className="h-full">
+                <div className="h-full 3d-viewport-master">
                   <ThreeJsCanvas />
                 </div>
               </Panel>

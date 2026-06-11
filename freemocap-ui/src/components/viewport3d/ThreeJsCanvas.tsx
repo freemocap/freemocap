@@ -285,12 +285,12 @@ export function ThreeJsCanvas() {
       <div
         ref={containerRef}
         tabIndex={0}
-        className="pos-rel w-full h-full"
+        className="3d-viewport-container pos-rel w-full h-full"
         style={{ outline: "none" }}
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-full block"
+          className="3d-viewport br-2 w-full h-full block"
           style={{
             touchAction: "none",
              

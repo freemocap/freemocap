@@ -6,8 +6,6 @@ import {useMenuActions} from "@/hooks/useMenuActions";
 import {useKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";
 import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
-
-
 export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.ReactNode; onOpenWelcome?: () => void }) => {
     const leftPanelRef = useRef<ImperativePanelHandle>(null);
     const bottomPanelRef = useRef<ImperativePanelHandle>(null);

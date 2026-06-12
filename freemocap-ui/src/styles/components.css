@@ -94,8 +94,13 @@
 }
 
 .button.sm.dropdown:after {
-  content: var(--dropdown-icon);
+  content: "";
   margin-left: auto;
+   background-image: var(--dropdown-icon);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain; /* or 16px 16px */
+    display: block;
 }
 
 .button.sm.select-folder:after {

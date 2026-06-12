@@ -1,25 +1,49 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
+import { useCalibration } from "@/hooks/useCalibration";
+import { CalibrationSolverMethod } from "@/store/slices/calibration";
 
-const CalibrationSettings = ({ onClose }) => {
+type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
+
+interface BoardPresetDims {
+  squares_x: number;
+  squares_y: number;
+}
+
+const BOARD_PRESETS: Record<Exclude<BoardPreset, "Custom">, BoardPresetDims> = {
+  "5 x 3": { squares_x: 5, squares_y: 3 },
+  "7 x 5": { squares_x: 7, squares_y: 5 },
+};
+
+const PRESET_OPTIONS: BoardPreset[] = ["5 x 3", "7 x 5", "Custom"];
+
+const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
+
+const solverLabelToMethod: Record<string, CalibrationSolverMethod> = {
+  "Anipose legacy": "anipose",
+  "Accurate": "pyceres",
+};
+
+const solverMethodToLabel: Record<CalibrationSolverMethod, string> = {
+  anipose: "Anipose legacy",
+  pyceres: "Accurate",
+};
+
+interface CalibrationSettingsProps {
+  onClose?: () => void;
+}
+
+const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const { config, updateCalibrationConfig } = useCalibration();
+  const board = config.charucoBoard;
 
-  // UI-only state for visual interactions
-  const [currentPreset, setCurrentPreset] = useState("7 x 5");
-  const [currentPresetSolver, setCurrentPresetSolver] =
-    useState("Anipose legacy");
-  const [xSquareSize, setXSquareSize] = useState(5);
-  const [ySquareSize, setYSquareSize] = useState(3);
-  const [squareLength, setSquareLength] = useState(35);
-  const [betaValue, setBetaValue] = useState(2.5);
-
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (onClose) onClose();
-  };
+  }, [onClose]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -28,29 +52,45 @@ const CalibrationSettings = ({ onClose }) => {
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleClose();
+    };
+
     document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [onClose]);
+  }, [handleClose]);
 
-  const PRESET_OPTIONS = ["5 x 3", "7 x 5", "Custom"];
-  const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
+  const currentPreset = useMemo<BoardPreset>(() => {
+    for (const [preset, dims] of Object.entries(BOARD_PRESETS)) {
+      if (dims.squares_x === board.squares_x && dims.squares_y === board.squares_y) {
+        return preset as BoardPreset;
+      }
+    }
+    return "Custom";
+  }, [board.squares_x, board.squares_y]);
 
-  const presetValueToLabel: Record<string, string> = {
-    "7 x 5": "7 x 5",
-    "5 x 3": "5 x 3",
-    custom: "Custom",
-  };
+  const handlePresetChange = useCallback(
+    (value: string) => {
+      const preset = value as BoardPreset;
+      if (preset === "Custom") return;
+      updateCalibrationConfig({
+        charucoBoard: { ...board, ...BOARD_PRESETS[preset] },
+      });
+    },
+    [board, updateCalibrationConfig],
+  );
 
-  // UI-only handlers that just update local state
-  const handlePresetChange = (value: string) => {
-    setCurrentPreset(value);
-  };
-
-  const handlePresetChangeSolver = (value: string) => {
-    setCurrentPresetSolver(value);
-  };
+  const handleSolverChange = useCallback(
+    (value: string) => {
+      const method = solverLabelToMethod[value];
+      if (method) updateCalibrationConfig({ solverMethod: method });
+    },
+    [updateCalibrationConfig],
+  );
 
   return (
     <div
@@ -90,12 +130,12 @@ const CalibrationSettings = ({ onClose }) => {
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">X Square Size</span>
           <ValueSelector
-            value={xSquareSize}
-            min={1}
-            max={200}
+            value={board.squares_x}
+            min={2}
+            max={20}
             step={1}
             unit=""
-            onChange={setXSquareSize}
+            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_x: v } })}
           />
         </div>
 
@@ -103,12 +143,12 @@ const CalibrationSettings = ({ onClose }) => {
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Y Square Size</span>
           <ValueSelector
-            value={ySquareSize}
-            min={1}
-            max={200}
+            value={board.squares_y}
+            min={2}
+            max={20}
             step={1}
             unit=""
-            onChange={setYSquareSize}
+            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_y: v } })}
           />
         </div>
 
@@ -118,25 +158,12 @@ const CalibrationSettings = ({ onClose }) => {
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Square length</span>
           <ValueSelector
-            value={squareLength}
+            value={board.square_length_mm}
             min={1}
             max={9999999}
-            step={1}
+            step={0.1}
             unit="mm"
-            onChange={setSquareLength}
-          />
-        </div>
-
-        {/* Beta */}
-        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Beta</span>
-          <ValueSelector
-            value={betaValue}
-            min={0}
-            max={5}
-            step={0.05}
-            unit=""
-            onChange={setBetaValue}
+            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, square_length_mm: v } })}
           />
         </div>
 
@@ -146,10 +173,10 @@ const CalibrationSettings = ({ onClose }) => {
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Method</span>
           <NameDropdownSelector
-            key={currentPresetSolver}
+            key={config.solverMethod}
             options={PRESET_OPTIONS_SOLVER}
-            initialValue={currentPresetSolver}
-            onChange={handlePresetChangeSolver}
+            initialValue={solverMethodToLabel[config.solverMethod]}
+            onChange={handleSolverChange}
             className="flex flex-row"
           />
         </div>

@@ -234,7 +234,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         </div>
 
         <button
-          className="button icon-button br-2 bg-middark elevated-sharp"
+          className="button icon-button br-2"
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
         >

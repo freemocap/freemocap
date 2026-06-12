@@ -4,8 +4,11 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import { useMocap } from "@/hooks/useMocap";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
-import { DEFAULT_REALTIME_FILTER_CONFIG, RealtimeFilterConfig } from "@/store/slices/mocap";
-
+import {
+  DEFAULT_REALTIME_FILTER_CONFIG,
+  RealtimeFilterConfig,
+} from "@/store/slices/mocap";
+import IconButton from "@/components/ui-components/IconButton";
 interface RTPthreeDReconstructionSettingsProps {
   open: boolean;
   onClose: () => void;
@@ -34,7 +37,7 @@ const RTPthreeDReconstructionSettings: React.FC<
       updateSkeletonFilterConfigLocalOnly(updates);
       triggerRealtimeApply();
     },
-    [updateSkeletonFilterConfigLocalOnly, triggerRealtimeApply]
+    [updateSkeletonFilterConfigLocalOnly, triggerRealtimeApply],
   );
 
   const handleResetDefaults = useCallback(() => {
@@ -48,7 +51,7 @@ const RTPthreeDReconstructionSettings: React.FC<
         ...pipelineConfig,
         aggregator_config: { ...aggregatorConfig, skeleton_enabled: value },
       }),
-    [applyOrUpdatePipelineConfig, pipelineConfig, aggregatorConfig]
+    [applyOrUpdatePipelineConfig, pipelineConfig, aggregatorConfig],
   );
 
   useEffect(() => {
@@ -85,17 +88,21 @@ const RTPthreeDReconstructionSettings: React.FC<
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Point Gate settings" />
           <div className="flex flex-row gap-1 items-center">
-            <button
-              className="button sm secondary"
+            <IconButton
+              icon="clear-icon"
+              className="button sm"
               onClick={handleResetDefaults}
               disabled={isLoading}
-              style={{ fontSize: 11 }}
-            >
-              Reset Defaults
-            </button>
-            <button className="button icon-button" onClick={onClose}>
-              <span className="icon close-icon icon-size-20" />
-            </button>
+              tooltip
+              tooltipText="Reset to defaults"
+              tooltipPosition="pos-left"
+            />
+
+            <IconButton
+              icon="close-icon"
+              className="button sm"
+              onClick={onClose}
+            />
           </div>
         </div>
 
@@ -108,7 +115,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={200}
             step={1}
             unit="px"
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_reprojection_error_px: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ max_reprojection_error_px: v })
+            }
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -120,7 +129,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={200}
             step={1}
             unit="m/s"
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_velocity_m_per_s: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ max_velocity_m_per_s: v })
+            }
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -132,7 +143,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={30}
             step={1}
             unit=""
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ max_rejected_streak: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ max_rejected_streak: v })
+            }
           />
         </div>
 
@@ -145,7 +158,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={0.1}
             step={0.0005}
             unit=""
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ min_cutoff: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ min_cutoff: v })
+            }
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -180,7 +195,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={100}
             step={1}
             unit=""
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ fabrik_max_iterations: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ fabrik_max_iterations: v })
+            }
           />
         </div>
 
@@ -193,7 +210,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={3.0}
             step={0.01}
             unit="m"
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ height_meters: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ height_meters: v })
+            }
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -204,7 +223,9 @@ const RTPthreeDReconstructionSettings: React.FC<
             max={0.05}
             step={0.001}
             unit="m"
-            onChange={(v) => handleUpdateSkeletonFilterConfig({ noise_sigma: v })}
+            onChange={(v) =>
+              handleUpdateSkeletonFilterConfig({ noise_sigma: v })
+            }
           />
         </div>
 

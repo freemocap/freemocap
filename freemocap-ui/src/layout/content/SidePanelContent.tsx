@@ -140,7 +140,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
             <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
-                <CalibrationModule/>
+                
                 <div className="flex flex-row items-center gap-1 p-1"
                 >
                     {onOpenWelcome && (
@@ -169,7 +169,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         />
                     )}
                 </div>
-
+                        
                 {/* Sidebar Sections — drag-reorderable */}
                 <DndContext
                     sensors={sensors}
@@ -177,6 +177,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     modifiers={modifiers}
                     onDragEnd={handleDragEnd}
                 >
+                    
                     <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
                         <div className="flex flex-col gap-1">
                             {visibleSections.map((sectionId) => {
@@ -190,6 +191,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         </div>
                     </SortableContext>
                 </DndContext>
+                <CalibrationModule/>
             </div>
         </>
     );

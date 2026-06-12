@@ -141,7 +141,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
                 
-                <div className="flex flex-row items-center gap-1 p-1"
+                <div className="left-side-top-bar flex flex-row items-center gap-1 p-1"
                 >
                     {onOpenWelcome && (
                         <IconButton

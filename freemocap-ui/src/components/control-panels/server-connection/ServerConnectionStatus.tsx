@@ -78,8 +78,9 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                 textColor: 'text-gray',
                 className: 'connection-status-button-opener full-width',
             }}
+            dropdownClassName="connection-status-dropdown bg-dark"
             dropdownItems={
-                <div className="connection-container flex flex-col p-1 gap-2 br-1 bg-darkgray border-1 border-mid-black">
+                <div className="connection-container flex flex-col p-1 gap-2 br-1 bg-darkgray border-mid-black">
                     <div className="group-0 connection-group flex flex-col gap-1 bg-middark br-1 p-1">
                         {/* Python server row (Electron only) */}
                         {isElectron && (
@@ -262,6 +263,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                     )}
                 </div>
             }
+            
         />
     );
 };

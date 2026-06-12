@@ -3,7 +3,7 @@ import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
-import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
+import DropdownButton from "@/components/ui-components/DropdownButton.tsx";
 import CalibrationSettings from "./calibration-settings";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 
@@ -18,6 +18,32 @@ const CalibrationModule = () => {
   const handleCloseSettings = () => {
     setShowCalibrationSettings(false);
   };
+
+  const dropdownItems = (
+    <div className="flex flex-col gap-1">
+      <button
+        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
+        onClick={() => {}} // Empty logic
+      >
+        <span className="icon record-icon icon-size-16" />
+        <p className="text-gray text md text-align-left">Record</p>
+      </button>
+      <button
+        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
+        onClick={() => {}} // Empty logic
+      >
+        <span className="icon video-icon icon-size-16" />
+        <p className="text-gray text md text-align-left">Import videos</p>
+      </button>
+      <button
+        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
+        onClick={() => {}} // Empty logic
+      >
+        <span className="icon tomlfile-icon icon-size-16" />
+        <p className="text-gray text md text-align-left">Import .toml file</p>
+      </button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col p-1 bg-middark br-1 pos-rel ">
@@ -38,7 +64,7 @@ const CalibrationModule = () => {
         </div>
       </div>
       <div
-        className="button sm  trigger-charuco-settings-flyout  flex-wrap flex pos-rel p-1 br-1  flex-row items-center justify-content-space-between"
+        className="button sm trigger-charuco-settings-flyout flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
         onClick={handleToggleSettings}
       >
         <div className="group-1 flex flex-col items-start">
@@ -67,14 +93,18 @@ const CalibrationModule = () => {
         <CalibrationSettings onClose={handleCloseSettings} />
       )}
       <div className="p-1 group-3 calibration-action-container flex flex-row items-center">
-        <ButtonSm
-          iconClass="charuco-icon"
-          text="Calibrate"
-          onClick={() => {}} // Does nothing but clicks
-          disabled={!isElectron}
-          className="button sm min-w-full justify-center"
-          buttonType="secondary"
-          textClass="text-center text md"
+        <DropdownButton
+          buttonProps={{
+            text: "Calibrate",
+            iconClass: "charuco-icon",
+            disabled: !isElectron,
+            className: "button sm min-w-full justify-center",
+            buttonType: "secondary",
+            textClass: "text-center text md",
+            
+          }}
+          dropdownItems={dropdownItems}
+          dropdownClassName=""
         />
       </div>
       <ToggleComponent
@@ -87,7 +117,6 @@ const CalibrationModule = () => {
         disabled=""
       />
     </div>
-    // </div>
   );
 };
 

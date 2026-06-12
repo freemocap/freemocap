@@ -10,15 +10,18 @@ interface DropdownButtonProps {
     textColor?: string;
     buttonType?: string;
     className?: string;
+    dropdownClassName?: string; // Changed from DropdownclassName to dropdownClassName
     onClick?: () => void;
   };
   dropdownItems?: ReactNode;
   containerClassName?: string;
+  dropdownClassName?: string; // Added proper prop at component level
 }
 
 export default function DropdownButton({
   buttonProps,
   dropdownItems,
+  dropdownClassName, // Changed from DropdownclassName to dropdownClassName
   containerClassName,
 }: DropdownButtonProps) {
   const [open, setOpen] = useState(false);
@@ -45,13 +48,13 @@ export default function DropdownButton({
   };
 
   return (
-    <div ref={buttonRef} className={clsx("pos-rel", containerClassName)}>
+    <div ref={buttonRef} className={clsx("flex flex-row w-full pos-rel", containerClassName)}>
       <ButtonSm {...buttonProps} onClick={handleButtonClick} />
 
       {open && (
         <div
           ref={popupRef}
-          className="connection-status-dropdown flex flex-row reveal slide-down elevated-sharp dropdown-container border-1 border-black bg-middark br-2 flex flex-col gap-1 p-1"
+          className={clsx("pos-abs left-0 top-30 w-full dropdown-container flex flex-row reveal slide-down elevated-sharp dropdown-container border-1 border-black bg-middark br-2 flex flex-col gap-1 p-1", dropdownClassName)}
         >
           {dropdownItems}
         </div>

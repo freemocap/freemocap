@@ -937,13 +937,13 @@ animation: fadeIn, scaleIn;
 
 
 .connection-status-dropdown {
-  position: fixed;
-  top: 32px;
-  left: 8px;
-  z-index: 100;
-  max-width:  400px;
-  min-width:  400px;
-  z-index: 114;
+  position: fixed!important;
+  top: 32px!important;;
+  left: 8px!important;;
+  z-index: 100!important;;
+  max-width:  400px!important;;
+  min-width:  400px!important;;
+  
 }
 
 .playback-settings-popup { 

@@ -180,9 +180,10 @@ button.rotate-button {
 
 .video-tile.camera-source.empty:before,
 .video-tile.video-source.empty:before {
-
-  margin: 8px;
+  max-width: 20px;
+  margin: 4px;
   display: inline-block;
+  opacity: 0.5;
 }
 
 .video-tile.camera-source.empty:before {

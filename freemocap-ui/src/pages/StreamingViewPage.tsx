@@ -37,7 +37,7 @@ export const StreamingViewPage = () => {
 
   return (
     <React.Fragment>
-      <div className="streaming-page p-1 flex flex-col pos-rel flex-1 h-full w-full">
+      <div className="streaming-page p-2 flex flex-col pos-rel flex-1 h-full w-full">
         <SettingsOverlay
           settings={settings}
           onSettingsChange={handleSettingsChange}

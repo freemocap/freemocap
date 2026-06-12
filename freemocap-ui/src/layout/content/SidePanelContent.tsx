@@ -22,9 +22,7 @@ import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapP
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
-
-
-const STORAGE_KEY = 'freemocap-sidebar-section-order';
+import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
 const DEFAULT_SECTION_ORDER = [
     'cameras',
@@ -138,11 +136,12 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
             {isCollapsed && onToggleCollapse && (
                 <CollapsedToolbar onToggleCollapse={onToggleCollapse} />
             )}
-
+            
             <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
-                <div className="flex flex-row items-center gap-1 p-1"
+                
+                <div className="left-side-top-bar flex flex-row items-center gap-1 p-1"
                 >
                     {onOpenWelcome && (
                         <IconButton
@@ -170,7 +169,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         />
                     )}
                 </div>
-
+                        
                 {/* Sidebar Sections — drag-reorderable */}
                 <DndContext
                     sensors={sensors}
@@ -178,6 +177,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     modifiers={modifiers}
                     onDragEnd={handleDragEnd}
                 >
+                    
                     <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
                         <div className="flex flex-col gap-1">
                             {visibleSections.map((sectionId) => {
@@ -191,6 +191,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         </div>
                     </SortableContext>
                 </DndContext>
+                <CalibrationModule/>
             </div>
         </>
     );

@@ -124,6 +124,9 @@ a.link:hover {
 .pos-sticky {
   position: sticky;
 }
+.pos-fixed {
+  position: fixed;
+}
 
 /* Position helpers */
 
@@ -134,6 +137,15 @@ a.link:hover {
 .top-8 { top: 8px; }
 .top-10 { top: 10px; }
 .top-12 { top: 12px; }
+.top-14 { top: 14px; }
+.top-16 { top: 16px; }
+.top-18 { top: 18px; }
+.top-20 { top: 20px; }
+.top-22 { top: 22px; }
+.top-24 { top: 24px; }
+.top-26 { top: 26px; }
+.top-28 { top: 28px; }
+.top-30 { top: 30px; }
 
 .top-50 {
   top: 50%;
@@ -509,32 +521,7 @@ body,
   text-align: right;
 }
 
-/* =========================
-   TEXT COLOR
-   ========================= */
 
-.text-white,
-.color-white {
-  color: var(--color-text-primary);
-}
-
-.text-gray,
-.color-gray {
-  color: var(--color-text-muted);
-}
-
-.text-warning {
-  color: var(--color-warning);
-}
-
-.text-darkgray,
-.color-darkgray {
-  color: var(--color-text-disabled);
-}
-
-.text-error {
-  color: var(--color-danger);
-}
 
 /* =========================
    HELPERS

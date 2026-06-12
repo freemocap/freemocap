@@ -5,6 +5,7 @@ interface NameDropdownSelectorProps {
   initialValue?: string;
   onChange?: (value: string) => void;
   className?: string;
+  DropdownclassName?: string;
 }
 
 const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
@@ -12,6 +13,7 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
   initialValue = "",
   onChange,
   className = "",
+  DropdownclassName = "",
 }) => {
   const [selected, setSelected] = useState(initialValue);
   const [open, setOpen] = useState(false);
@@ -45,7 +47,7 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
       </button>
 
       {open && (
-        <div className="mt-1 left-0 dropdown-container border-1 border-black elevated-sharp pos-abs flex flex-col right-0 p-1 bg-dark br-2 z-1 reveal slide-down">
+        <div className={`dropdown-container top-30 border-1 border-black elevated-sharp pos-abs flex flex-col right-0 p-1 bg-dark br-2 z-1 reveal slide-down ${DropdownclassName}`}>
           <div className="flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">
             {options.map((option, index) => (
               <button

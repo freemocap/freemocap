@@ -41,6 +41,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --clear-icon: url("../assets/icons/clear_icon.svg");
   --load-icon: url("../assets/icons/load_icon.svg");
   --live-icon: url("../assets/icons/live_icon.svg");
+  --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
 
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
@@ -52,6 +53,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --streaming-icon: url("../assets/icons/streaming_icon.svg");
   --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
   --calibrated-icon: url("../assets/icons/calibrated_icon.svg");
+  --cancelcalibrate-icon: url("../assets/icons/cancelcalibrate_icon.svg");
   --camera-icon: url("../assets/icons/camera_icon.svg");
   --explainer-icon: url("../assets/icons/explainer_icon.svg");
   --expand-icon: url("../assets/icons/expand_icon.svg");
@@ -128,6 +130,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .mic-icon {
   background-image: var(--mic-icon);
+}
+.snaptogrid-icon {
+  background-image: var(--snaptogrid-icon);
 }
 
 .mic-active-icon {
@@ -208,6 +213,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .calibrated-icon {
   background-image: var(--calibrated-icon);
+}
+.cancelcalibrate-icon {
+  background-image: var(--cancelcalibrate-icon);
 }
 
 .subfolder-icon {

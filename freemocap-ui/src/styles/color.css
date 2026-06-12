@@ -113,6 +113,7 @@
   --color-bg-tertiary: var(--gray-700);
   --color-bg-quaternary: var(--gray-100);
   --color-bg-elevated: var(--gray-600);
+  --color-bg-idle: var(--gray-500);
   --color-bg-warning: var(--warning-500);
 
   /* Surface States */
@@ -142,7 +143,7 @@
   /* Success */
   --color-success: var(--green-100);
   --color-success-strong: var(--green-200);
-  --color-success: var(--green-400);
+
   --color-success-muted: var(--green-500);
   --color-success-idle: var(--green-900);
   --color-success-surface: var(--green-100-alpha-20);
@@ -281,4 +282,32 @@
 .button.card:hover {
   background-color: var(--color-surface-hover);
   transition: background-color var(--speed-1) ease-in-out;
+}
+/* =========================
+   TEXT COLOR
+   ========================= */
+
+.text-white,
+.color-white {
+  color: var(--color-text-primary);
+}
+.text-success {
+  color: var(--color-success);
+}
+.text-gray,
+.color-gray {
+  color: var(--color-text-muted);
+}
+
+.text-warning {
+  color: var(--color-warning);
+}
+
+.text-darkgray,
+.color-darkgray {
+  color: var(--color-text-disabled);
+}
+
+.text-error {
+  color: var(--color-danger);
 }

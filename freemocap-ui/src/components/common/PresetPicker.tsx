@@ -30,14 +30,16 @@ export function PresetPicker<T extends string>({
     };
 
     return (
-        <div className={`flex flex-col gap-1${disabled ? ' disabled' : ''}`}>
+        <div className={`min-w-full flex flex-col gap-1${disabled ? ' disabled' : ''}`}>
             {label && <label className="text sm text-gray">{label}</label>}
             <NameDropdownSelector
                 key={value}
                 options={labels}
                 initialValue={selectedLabel}
                 onChange={handleChange}
+                DropdownclassName="left-0"
             />
+            
         </div>
     );
 }

@@ -102,8 +102,8 @@
   height: 10px;
   right: 4px;
   bottom: 4px;
-  border-right: 2px solid var(--color-white-alpha-50);
-  border-bottom: 2px solid var(--color-white-alpha-50);
+  /* border-right: 2px solid var(--color-white-alpha-50);
+  border-bottom: 2px solid var(--color-white-alpha-50); */
 }
 
 /* ============================================================

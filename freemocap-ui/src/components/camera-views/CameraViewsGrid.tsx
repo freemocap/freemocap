@@ -8,6 +8,7 @@ import {useTranslation} from "react-i18next";
 import {useAppSelector} from "@/store/hooks";
 import {selectAutoApply, selectCameras, selectIsLoading} from "@/store/slices/cameras/cameras-selectors";
 import {useGridLayout} from "@/hooks/useGridLayout";
+import CameraEmptyState from "@/components/ui-components/camerasEmptyState";
 
 interface CameraViewsGridProps {
     manualColumns: number | null;
@@ -62,19 +63,10 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
         return (
             <div
                 ref={containerRef}
-                className="flex items-center justify-center h-full w-full text-center"
-                style={{
-                    color: "var(--color-text-secondary)",
-                    fontSize: "1.2rem",
-                    padding: 32,
-                }}
+                className="streaming-empty-state video-container flex flex-row flex-wrap gap-2 flex-1 flex-start mt-1"
+           
             >
-                <div>
-                    <div>{t("noCamerasConnected")}</div>
-                    <div style={{ fontSize: "0.9rem", marginTop: "0.5rem" }}>
-                        {t("waitingForCameraStreams")}
-                    </div>
-                </div>
+              <CameraEmptyState />
             </div>
         );
     }
@@ -82,7 +74,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden w-full h-full"
+            className="streaming-page-camera-feed-inner pos-rel overflow-hidden w-full h-full"
             style={{minHeight: 300}}
         >
             <ReactGridLayout
@@ -99,11 +91,11 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                     return (
                         <div
                             key={cameraId}
-                            className="overflow-hidden br-1"
+                            className="streaming-page-camera-feed-item overflow-hidden br-2"
                             style={{
                                 border: isRecording
-                                    ? "2px solid #ff2020"
-                                    : "1px solid rgba(255,255,255,0.15)",
+                                    ? "2px solid var(--color-danger)"
+                                    : "2px solid transparent",
                                 transition: "border 0.3s ease, box-shadow 0.3s ease",
                                 ...(isRecording ? {animation: 'recordingBorderPulse 3s infinite ease-in-out'} : {}),
                             }}

@@ -23,14 +23,14 @@
 
 /* Primary fullwidth button */
 .secondary {
-  background-color: var(--color-bg-elevated);
+  background-color: var( --color-bg-idle);
 }
 .secondary > p {
   color: var(--color-text-primary);
 }
 
 .secondary:hover {
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-bg-elevated);
 }
 .tertiary > p {
   color: var(--color-text-primary);
@@ -94,8 +94,13 @@
 }
 
 .button.sm.dropdown:after {
-  content: var(--dropdown-icon);
+  content: "";
   margin-left: auto;
+   background-image: var(--dropdown-icon);
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain; /* or 16px 16px */
+    display: block;
 }
 
 .button.sm.select-folder:after {
@@ -180,9 +185,10 @@ button.rotate-button {
 
 .video-tile.camera-source.empty:before,
 .video-tile.video-source.empty:before {
-
-  margin: 8px;
+  max-width: 20px;
+  margin: 4px;
   display: inline-block;
+  opacity: 0.5;
 }
 
 .video-tile.camera-source.empty:before {
@@ -237,10 +243,15 @@ button.rotate-button {
   line-height: 25px;
   padding: 0;
 }
-.RTP-settings-flyout {
+.RTP-settings-flyout, .calibration-settings-flyout {
   width: 280px;
   
 }
+.calibration-settings-flyout {
+    top: 340px;
+    left: 310px;
+    }
+
 .segmented-control-button>p.text.sm {
   /* small size */
   min-height: 22px;
@@ -307,7 +318,7 @@ button.rotate-button {
     height 0.15s ease;
 }
 .streaming-bar-setting-action-bar {
-  margin-top: -35px;
+  margin-top: -39px;
     margin-right: 9px;
 }
 /*
@@ -706,10 +717,13 @@ animation: fadeIn, scaleIn;
 }
 
 .value-selector-container {
-  top: 25px;
-  right: 0px;
+  top: 30px;
+  right: -8px;
 }
-
+.string-selector {
+  top: 30px;
+  right: -8px;
+}
 .value-label,
 .input-field {
   
@@ -888,7 +902,8 @@ animation: fadeIn, scaleIn;
   min-width: 280px;
   top: 56px;
   left: 132px;
-  max-width: 520px;
+   min-width: 350px;
+  min-width: 350px;
   max-height: 80vh;
 
   position: fixed;
@@ -922,13 +937,13 @@ animation: fadeIn, scaleIn;
 
 
 .connection-status-dropdown {
-  position: fixed;
-  top: 32px;
-  left: 8px;
-  z-index: 100;
-  max-width:  400px;
-  min-width:  400px;
-  z-index: 114;
+  position: fixed!important;
+  top: 32px!important;;
+  left: 8px!important;;
+  z-index: 100!important;;
+  max-width:  400px!important;;
+  min-width:  400px!important;;
+  
 }
 
 .playback-settings-popup { 

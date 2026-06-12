@@ -21,27 +21,27 @@ const CalibrationModule = () => {
 
   const dropdownItems = (
     <div className="flex flex-col gap-1">
-      <button
-        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
-        onClick={() => {}} // Empty logic
-      >
-        <span className="icon record-icon icon-size-16" />
-        <p className="text-gray text md text-align-left">Record</p>
-      </button>
-      <button
-        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
-        onClick={() => {}} // Empty logic
-      >
-        <span className="icon video-icon icon-size-16" />
-        <p className="text-gray text md text-align-left">Import videos</p>
-      </button>
-      <button
-        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width"
-        onClick={() => {}} // Empty logic
-      >
-        <span className="icon tomlfile-icon icon-size-16" />
-        <p className="text-gray text md text-align-left">Import .toml file</p>
-      </button>
+      <ButtonSm
+        iconClass="record-icon"
+        text="Record and Calibrate"
+        className="full-width"
+        textClass="text-align-left"
+        onClick={() => {}}
+      />
+      <ButtonSm
+        iconClass="importVideos-icon"
+        text="Import Calibration videos"
+        className="full-width"
+        textClass="text-align-left"
+        onClick={() => {}}
+      />
+      <ButtonSm
+        iconClass="tomlfile-icon"
+        text="Import .toml file"
+        className="full-width"
+        textClass="text-align-left"
+        onClick={() => {}}
+      />
     </div>
   );
 

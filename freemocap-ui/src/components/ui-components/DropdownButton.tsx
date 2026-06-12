@@ -54,7 +54,7 @@ export default function DropdownButton({
       {open && (
         <div
           ref={popupRef}
-          className={clsx("pos-abs left-0 top-30 w-full dropdown-container flex flex-row reveal slide-down elevated-sharp dropdown-container border-1 border-black bg-middark br-2 flex flex-col gap-1 p-1", dropdownClassName)}
+          className={clsx("pos-abs z-2 left-0 top-30 w-full dropdown-container flex flex-row reveal slide-down elevated-sharp dropdown-container border-1 border-black bg-middark br-2 flex flex-col gap-1 p-1", dropdownClassName)}
         >
           {dropdownItems}
         </div>

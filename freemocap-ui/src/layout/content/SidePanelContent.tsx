@@ -1,74 +1,35 @@
-import React, {useCallback, useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import IconButton from '@/components/ui-components/IconButton';
-import {
-    closestCenter,
-    DndContext,
-    DragEndEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from '@dnd-kit/core';
-import {arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,} from '@dnd-kit/sortable';
-import {restrictToParentElement, restrictToVerticalAxis} from '@dnd-kit/modifiers';
 
-
-import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper';
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
-import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";const STORAGE_KEY = 'freemocap-sidebar-section-order';
+import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 
-const DEFAULT_SECTION_ORDER = [
+const SECTION_ORDER = [
     'cameras',
+    'calibration',
     'recording',
     'mocap',
     'recordings',
 ] as const;
 
-type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
+type SectionId = (typeof SECTION_ORDER)[number];
 
 const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording']);
 const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     cameras: CameraConfigTreeView,
+    calibration: CalibrationModule,
     recording: RecordingInfoPanel,
     mocap: MocapPanel,
     recordings: RecordingBrowserSection,
 };
-
-function loadSectionOrder(): SectionId[] {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return [...DEFAULT_SECTION_ORDER];
-        const parsed = JSON.parse(stored) as string[];
-        const defaultSet = new Set<string>(DEFAULT_SECTION_ORDER);
-        const parsedSet = new Set(parsed);
-        if (
-            parsed.length !== DEFAULT_SECTION_ORDER.length ||
-            !parsed.every((id) => defaultSet.has(id)) ||
-            !DEFAULT_SECTION_ORDER.every((id) => parsedSet.has(id))
-        ) {
-            return [...DEFAULT_SECTION_ORDER];
-        }
-        return parsed as SectionId[];
-    } catch {
-        return [...DEFAULT_SECTION_ORDER];
-    }
-}
-
-function saveSectionOrder(order: SectionId[]): void {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-    } catch {
-        // Storage unavailable — ignore
-    }
-}
 
 interface SidePanelContentProps {
     isCollapsed?: boolean;
@@ -93,37 +54,16 @@ const CollapsedToolbar: React.FC<{ onToggleCollapse: () => void }> = ({ onToggle
 };
 
 export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpenWelcome }: SidePanelContentProps) => {
-    const [sectionOrder, setSectionOrder] = useState<SectionId[]>(loadSectionOrder);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-    );
-
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-        setSectionOrder((prev) => {
-            const oldIndex = prev.indexOf(active.id as SectionId);
-            const newIndex = prev.indexOf(over.id as SectionId);
-            const newOrder = arrayMove(prev, oldIndex, newIndex);
-            saveSectionOrder(newOrder);
-            return newOrder;
-        });
-    }, []);
-
-    const modifiers = useMemo(() => [restrictToVerticalAxis, restrictToParentElement], []);
-
     const { pathname } = useLocation();
     const isStreaming = pathname === '/streaming';
     const isPlayback = pathname === '/playback';
     const isActiveRecording = pathname === '/active-recording';
     const visibleSections = useMemo(
-        () => sectionOrder.filter(id =>
+        () => SECTION_ORDER.filter(id =>
             (isStreaming || !STREAMING_ONLY_SECTIONS.has(id)) &&
             (isPlayback || isActiveRecording || !PLAYBACK_ONLY_SECTIONS.has(id))
         ),
-        [sectionOrder, isStreaming, isPlayback, isActiveRecording],
+        [isStreaming, isPlayback, isActiveRecording],
     );
 
     const { t } = useTranslation();
@@ -133,11 +73,11 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
             {isCollapsed && onToggleCollapse && (
                 <CollapsedToolbar onToggleCollapse={onToggleCollapse} />
             )}
-            
+
             <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
-                
+
                 <div className="left-side-top-bar flex flex-row items-center gap-1 p-1"
                 >
                     {onOpenWelcome && (
@@ -166,31 +106,14 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         />
                     )}
                 </div>
-                        
-                {/* Sidebar Sections — drag-reorderable */}
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    modifiers={modifiers}
-                    onDragEnd={handleDragEnd}
-                >
-                    
-                    <SortableContext items={visibleSections} strategy={verticalListSortingStrategy}>
-                        <div className="flex flex-col gap-1">
-                            {visibleSections.map((sectionId) => {
-                                const Component = SECTION_COMPONENTS[sectionId];
-                                return (
-                                    <React.Fragment key={sectionId}>
-                                        {sectionId === 'mocap' && <CalibrationModule/>}
-                                        <SortableSectionWrapper id={sectionId}>
-                                            <Component />
-                                        </SortableSectionWrapper>
-                                    </React.Fragment>
-                                );
-                            })}
-                        </div>
-                    </SortableContext>
-                </DndContext>
+
+                {/* Sidebar Sections */}
+                <div className="flex flex-col gap-1">
+                    {visibleSections.map((sectionId) => {
+                        const Component = SECTION_COMPONENTS[sectionId];
+                        return <Component key={sectionId} />;
+                    })}
+                </div>
             </div>
         </>
     );

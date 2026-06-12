@@ -1,5 +1,4 @@
 import React, {ReactNode, useCallback, useState} from "react";
-import {useDragHandle} from "@/components/common/DragHandleContext";
 
 interface CollapsibleSidebarSectionProps {
     icon: ReactNode;
@@ -21,7 +20,6 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
     defaultExpanded = false,
 }) => {
     const [expanded, setExpanded] = useState(defaultExpanded);
-    const dragHandle = useDragHandle();
 
     const handleToggle = useCallback(() => setExpanded((prev) => !prev), []);
     const handleControlClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
@@ -37,22 +35,9 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
                     cursor: 'pointer',
                     userSelect: 'none',
                     backgroundColor: 'var(--color-bg-elevated)',
-                    paddingLeft: dragHandle ? 4 : 12,
+                    paddingLeft: 12,
                 }}
             >
-                {/* Drag handle */}
-                {dragHandle && (
-                    <div
-                        {...dragHandle.attributes}
-                        {...dragHandle.listeners}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center"
-                        style={{ cursor: 'grab', opacity: 0.4, padding: '0 2px' }}
-                    >
-                        <span className="icon icon-size-20" style={{ backgroundImage: 'repeating-linear-gradient(transparent, transparent 2px, var(--gray-400) 2px, var(--gray-400) 3px)', backgroundSize: '4px 100%' }} />
-                    </div>
-                )}
-
                 {/* Chevron */}
                 <span className={`icon icon-size-20 flex-shrink-0 ${expanded ? 'collapse-icon' : 'expand-icon'}`} style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
 

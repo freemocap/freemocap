@@ -38,11 +38,14 @@ const CalibrationSettings = ({ onClose }) => {
   };
 
   return (
-    <div className="calibration-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
-      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
+    <div
+      className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
+      onClick={handleClose}
+    >
+      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex flex-row justify-content-space-between items-center">
-          <div className="flex flex-col justify-content-space-between items-center">
+          <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
             <SubactionHeader text="Charuco board settings" />
             <div className="flex flex-row gap-1 items-center">
               <IconButton

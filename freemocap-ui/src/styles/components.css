@@ -243,10 +243,14 @@ button.rotate-button {
   line-height: 25px;
   padding: 0;
 }
-.RTP-settings-flyout {
+.RTP-settings-flyout, .calibration-settings-flyout {
   width: 280px;
   
 }
+.calibration-settings-flyout {
+    top: 340px;
+    left: 310px;
+    }
 
 .segmented-control-button>p.text.sm {
   /* small size */

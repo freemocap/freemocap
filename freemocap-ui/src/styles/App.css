@@ -124,6 +124,9 @@ a.link:hover {
 .pos-sticky {
   position: sticky;
 }
+.pos-fixed {
+  position: fixed;
+}
 
 /* Position helpers */
 

@@ -53,8 +53,15 @@ const CalibrationModule = () => {
         <div className="flex flex-row items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
             <div className="flex flex-row items-center">
-              <span className="icon calibrated-icon icon-size-20" />
-              <p className="text md text-success p-1">Calibrated</p>
+              <div className="calibrate-icon-group flex flex-row items-center">
+                <span className="icon calibrated-icon icon-size-20" />
+                <p className="text md text-success p-1">Calibrated</p>
+              </div>
+              <div className="calibrated-path-group flex flex-row items-center">
+                <p className="text md text-nowrap flex flex-row w-full text-gray p-1">
+                  C:Path:where-it-was-calibared-
+                </p>
+              </div>
             </div>
             <div className="flex flex-row gap-1 items-center">
               <IconButton
@@ -68,6 +75,41 @@ const CalibrationModule = () => {
             </div>
           </div>
         </div>
+        <div className="groupe-2-action- flex flex-row pos-rel justify-content-space-between items-center gap-1">
+          <div className="flex flex-row items-center how-it-was-made-group">
+            <div className="how-it-was-made-inner-group pos-rel flex flex-row items-center">
+              <span className="icon record-icon icon-size-20" />
+              {/* This is important, change icon
+              and show how it was originally the calibration done
+              like
+              if done by recording show record-icon
+              if used videos show importVideos-icon
+              if used by importing toml file show tomlfile-icon
+              */}
+              <span className="icon snaptogrid-icon icon-size-20" />
+            </div>
+            <div className="charuco-group-on-it-was-adhjusted- charuco-settings-action-container flex flex-row items-center gap-1">
+              <span className="text-gray tag text-nowrap text md text-align-left">
+                5x3
+              </span>
+              <span className="text-gray tag text-nowrap text md text-align-left">
+                35mm
+              </span>
+              <span className="text-gray tag text-nowrap text md text-align-left">
+                Anipose
+              </span>
+            </div>
+          </div>
+             <IconButton
+            icon="cancelcalibrate-icon"
+            className="button sm"
+            onClick={() => {}} // shows onboarding tooltips
+            tooltip
+            tooltipText="Abort Calibration"
+            tooltipPosition="pos-left"
+          />
+        </div>
+        
       </div>
     );
   }

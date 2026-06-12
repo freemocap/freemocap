@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
@@ -6,6 +6,8 @@ import IconButton from "@/components/ui-components/IconButton";
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 
 const CalibrationSettings = ({ onClose }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
   // UI-only state for visual interactions
   const [currentPreset, setCurrentPreset] = useState("7 x 5");
   const [currentPresetSolver, setCurrentPresetSolver] =
@@ -18,6 +20,19 @@ const CalibrationSettings = ({ onClose }) => {
   const handleClose = () => {
     if (onClose) onClose();
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        handleClose();
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [onClose]);
 
   const PRESET_OPTIONS = ["5 x 3", "7 x 5", "Custom"];
   const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
@@ -40,9 +55,8 @@ const CalibrationSettings = ({ onClose }) => {
   return (
     <div
       className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
-      onClick={handleClose}
     >
-      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1" onClick={(e) => e.stopPropagation()}>
+      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1" ref={modalRef} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">

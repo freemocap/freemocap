@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import IconButton from '@/components/ui-components/IconButton';
+import {Row} from '@/components/ui-components/Row';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {selectCameraById} from '@/store/slices/cameras/cameras-selectors';
 import {cameraDesiredConfigUpdated, autoApplyToggled} from '@/store/slices/cameras/cameras-slice';
@@ -88,89 +89,55 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
             <CameraView cameraIndex={cameraIndex} cameraId={cameraId} maxWidth/>
 
             {hovered && (
-                <div
-                    className="pos-abs top-6 right-6 flex flex-col z-10 br-2"
-                    style={{
-                        gap: '5px',
-                        backgroundColor: 'rgba(0,0,0,0.55)',
-                        backdropFilter: 'blur(3px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        padding: '6px',
-                    }}>
-                    <div className="flex items-center" style={{gap: '6px'}}>
+                <div className="pos-abs top-6 right-6 flex flex-col z-10 br-2 border-1 border-black elevated-sharp bg-dark p-1 gap-1">
+                    <Row label="Rotate">
                         <IconButton
                             icon="rotate-icon"
                             title="Rotate 90° clockwise"
                             onClick={handleRotate}
                             disabled={isLoading}
-                            className=""
-                            iconSize=""
-                            style={btnStyle}
-                            iconStyle={{fontSize: 16}}
                         />
-                        <span style={valueStyle}>{ROTATION_DEGREE_LABELS[rotation]}</span>
-                    </div>
+                        <span className="text sm text-gray">{ROTATION_DEGREE_LABELS[rotation]}</span>
+                    </Row>
 
-                    <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
-
-                    <div className="flex items-center gap-1">
+                    <Row label="Exposure">
                         <IconButton
                             icon="minus-icon"
                             title="Decrease exposure"
                             onClick={handleExposureDown}
                             disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
-                            className=""
-                            iconSize=""
-                            style={btnStyle}
-                            iconStyle={{fontSize: 16}}
                         />
+                        <span className="text sm text-gray">{exposureLabel}</span>
                         <IconButton
                             icon="plus-icon"
                             title="Increase exposure"
                             onClick={handleExposureUp}
                             disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
-                            className=""
-                            iconSize=""
-                            style={btnStyle}
-                            iconStyle={{fontSize: 16}}
                         />
-                        <span style={valueStyle}>{exposureLabel}</span>
-                    </div>
+                    </Row>
 
-                    <div className="flex items-center gap-1">
+                    <Row label="Mode">
                         <IconButton
                             icon="settings-icon"
                             title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
                             onClick={handleAutoExposure}
                             disabled={isLoading}
-                            className=""
-                            iconSize=""
-                            style={exposureMode === 'AUTO' ? btnActiveStyle : btnStyle}
-                            iconStyle={{fontSize: 16}}
+                            style={{color: exposureMode === 'AUTO' ? 'var(--color-accent)' : 'inherit', opacity: exposureMode === 'AUTO' ? 1 : 0.5}}
                         />
                         <IconButton
                             icon="warning-icon"
                             title="Recommend exposure for this camera"
                             onClick={handleRecommendExposure}
                             disabled={isLoading}
-                            className=""
-                            iconSize=""
-                            style={btnStyle}
-                            iconStyle={{fontSize: 16}}
                         />
-                    </div>
+                    </Row>
 
-                    <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
-
-                    <div className="flex items-center gap-1">
+                    <Row label="Auto-apply">
                         <IconButton
                             icon="loop-icon"
                             title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
                             onClick={() => dispatch(autoApplyToggled())}
-                            className=""
-                            iconSize=""
-                            style={isAutoApply ? btnActiveStyle : btnStyle}
-                            iconStyle={{fontSize: 16}}
+                            style={{color: isAutoApply ? 'var(--color-accent)' : 'inherit', opacity: isAutoApply ? 1 : 0.5}}
                         />
                         {!isAutoApply && (
                             <IconButton
@@ -178,44 +145,11 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
                                 title="Apply changes to camera"
                                 onClick={handleApply}
                                 disabled={isApplying}
-                                className=""
-                                iconSize=""
-                                style={btnStyle}
-                                iconStyle={{fontSize: 16}}
                             />
                         )}
-                    </div>
+                    </Row>
                 </div>
             )}
         </div>
     );
-};
-
-const btnStyle: React.CSSProperties = {
-    width: 24,
-    height: 24,
-    padding: '3px',
-    color: 'rgba(255,255,255,0.8)',
-    borderRadius: '5px',
-    outline: 'none',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-};
-
-const btnActiveStyle: React.CSSProperties = {
-    ...btnStyle,
-    color: '#fff',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-};
-
-const valueStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontFamily: 'monospace',
-    color: 'rgba(255,255,255,0.85)',
-    minWidth: '28px',
-    lineHeight: 1,
 };

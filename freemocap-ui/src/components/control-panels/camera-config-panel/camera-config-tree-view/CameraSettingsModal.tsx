@@ -15,6 +15,7 @@ import {
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import IconButton from '@/components/ui-components/IconButton';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
+import {Row} from '@/components/ui-components/Row';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 
@@ -39,18 +40,6 @@ const resolutionLabel = (config: CameraConfig): string => {
     );
     return preset?.label ?? `${config.resolution.width} × ${config.resolution.height}`;
 };
-
-const Row: React.FC<{label: string; indent?: boolean; children: React.ReactNode}> = ({label, indent, children}) => (
-    <div className="text-input-container gap-1 p-1 br-1 flex justify-content-space-between items-center">
-        <p className="text md text-gray text-nowrap flex items-center gap-1" style={{minWidth: 80}}>
-            {indent && <span className="icon icon-size-20 subcat-icon" />}
-            {label}
-        </p>
-        <div className="flex-1 flex flex-end">
-            {children}
-        </div>
-    </div>
-);
 
 export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera, initialPos, onClose}) => {
     const dispatch = useAppDispatch();

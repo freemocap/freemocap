@@ -242,6 +242,7 @@ button.rotate-button {
   width: 280px;
   
 }
+
 .segmented-control-button>p.text.sm {
   /* small size */
   min-height: 22px;
@@ -710,7 +711,10 @@ animation: fadeIn, scaleIn;
   top: 30px;
   right: -8px;
 }
-
+.string-selector {
+  top: 30px;
+  right: -8px;
+}
 .value-label,
 .input-field {
   
@@ -889,7 +893,8 @@ animation: fadeIn, scaleIn;
   min-width: 280px;
   top: 56px;
   left: 132px;
-  max-width: 520px;
+   min-width: 350px;
+  min-width: 350px;
   max-height: 80vh;
 
   position: fixed;

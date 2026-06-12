@@ -64,7 +64,7 @@ const TextSelector: React.FC<TextSelectorProps> = ({
 
       {open && (
         <div
-          className={`border-1 border-black elevated-sharp pos-abs flex flex-row right-0 p-1 bg-dark br-2 z-1 reveal slide-down ${popupClassName}`}
+          className={`string-selector pos-abs border-1 w-full border-black elevated-sharp flex flex-row  p-1 bg-dark br-2 z-1 reveal slide-down ${popupClassName}`}
         >
           <div className="min-w-full flex p-2 gap-2 bg-middark br-1">
             <div className="text-input">

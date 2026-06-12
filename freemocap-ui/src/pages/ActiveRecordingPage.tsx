@@ -16,7 +16,6 @@ import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import {useBlender} from "@/hooks/useBlender";
 import {RecordingInfoPanel} from '@/components/control-panels/recording-info-panel/RecordingInfoPanel';
-import {CalibrationPanel} from '@/components/control-panels/calibration-control-panel/CalibrationPanel';
 import {MocapPanel} from '@/components/control-panels/mocap-control-panel/MocapPanel';
 
 const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
@@ -137,7 +136,6 @@ const ActiveRecordingPage: React.FC = () => {
                                 />
                             </div>
 
-                            <CalibrationPanel/>
                             <MocapPanel/>
                         </>
                     )}

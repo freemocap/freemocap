@@ -186,7 +186,7 @@ const CalibrationModule = () => {
   // Calibrated
   if (isCalibrated) {
     return (
-      <div className="flex flex-col p-1 bg-middark br-1 pos-rel" style={{ minWidth: 0, overflow: "hidden" }}>
+      <div className="flex flex-col p-1 bg-middark br-1 pos-rel" style={{ minWidth: 0 }}>
         {errorBanner}
         <div className="flex flex-row items-center" style={{ minWidth: 0 }}>
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100" style={{ minWidth: 0 }}>
@@ -195,11 +195,18 @@ const CalibrationModule = () => {
                 <span className="icon calibrated-icon icon-size-20" />
                 <p className="text md text-success p-1">Calibrated</p>
               </div>
-              <div className="recording-path-preview flex flex-row items-center flex-1 p-1" style={{ minWidth: 0 }} title={loadedCalibration?.path}>
+              <div className="recording-path-preview tooltip-wrapper pos-rel flex flex-row items-center flex-1 p-1" style={{ minWidth: 0, overflow: "visible" }}>
                 <div className="recording-path-part">
                   <p className="text-gray text md">{calibrationPathDir}</p>
                 </div>
-                <p className="text-gray text md text-nowrap" style={{ flexShrink: 0 }}>{calibrationPathFilename}</p>
+                <p className="text-gray text md text-nowrap text-align-left" style={{ flexShrink: 0 }}>{calibrationPathFilename}</p>
+                {loadedCalibration?.path && (
+                  <div className="tooltip-container elevated-sharp pos-bottom p-01 br-2 bg-dark" style={{ minWidth: "auto", width: 270, maxWidth: "90vw" }}>
+                    <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
+                      <p className="text-white text md" style={{ fontFamily: "monospace", whiteSpace: "normal", wordBreak: "break-all" }}>{loadedCalibration.path}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex flex-row gap-1 items-center">

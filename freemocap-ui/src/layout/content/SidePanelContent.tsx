@@ -19,7 +19,6 @@ import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
-import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";const STORAGE_KEY = 'freemocap-sidebar-section-order';
@@ -27,7 +26,6 @@ import CalibrationModule from "@/components/pipeline-progress/calibration-progre
 const DEFAULT_SECTION_ORDER = [
     'cameras',
     'recording',
-    'calibration',
     'mocap',
     'recordings',
 ] as const;
@@ -40,7 +38,6 @@ const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings']);
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     cameras: CameraConfigTreeView,
     recording: RecordingInfoPanel,
-    calibration: CalibrationPanel,
     mocap: MocapPanel,
     recordings: RecordingBrowserSection,
 };
@@ -183,15 +180,17 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             {visibleSections.map((sectionId) => {
                                 const Component = SECTION_COMPONENTS[sectionId];
                                 return (
-                                    <SortableSectionWrapper key={sectionId} id={sectionId}>
-                                        <Component />
-                                    </SortableSectionWrapper>
+                                    <React.Fragment key={sectionId}>
+                                        {sectionId === 'mocap' && <CalibrationModule/>}
+                                        <SortableSectionWrapper id={sectionId}>
+                                            <Component />
+                                        </SortableSectionWrapper>
+                                    </React.Fragment>
                                 );
                             })}
                         </div>
                     </SortableContext>
                 </DndContext>
-                <CalibrationModule/>
             </div>
         </>
     );

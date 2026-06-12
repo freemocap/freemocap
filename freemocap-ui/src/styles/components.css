@@ -308,7 +308,7 @@ button.rotate-button {
     height 0.15s ease;
 }
 .streaming-bar-setting-action-bar {
-  margin-top: -35px;
+  margin-top: -39px;
     margin-right: 9px;
 }
 /*
@@ -707,8 +707,8 @@ animation: fadeIn, scaleIn;
 }
 
 .value-selector-container {
-  top: 25px;
-  right: 0px;
+  top: 30px;
+  right: -8px;
 }
 
 .value-label,

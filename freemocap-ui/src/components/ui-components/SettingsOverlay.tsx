@@ -130,7 +130,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
         <div className="live-action-buttons-container flex flex-row gap-32">
 
           {/* GROUP 1 */}
-          <div className="live-action-buttons-group-1 flex flex-row items-center gap-1">
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-1 flex flex-row items-center gap-1">
 
             <IconButton
               icon={skeletonEnabled ? "twodtracking-active-icon" : "twodtracking-icon"}
@@ -171,7 +171,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           </div>
 
           {/* GROUP 2 */}
-          <div className="live-action-buttons-group-2 flex flex-row items-center gap-1">
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-2 flex flex-row items-center gap-1">
 
             <IconButton
               icon={triangulateEnabled ? "threedtracking-active-icon" : "threedtracking-icon"}
@@ -212,7 +212,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           </div>
 
           {/* GROUP 3 */}
-          <div className="live-action-buttons-group-3 flex flex-row items-center gap-1">
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-3 flex flex-row items-center gap-1">
 
             <IconButton
               icon={isConnected ? "live-active-icon" : "live-icon"}
@@ -225,9 +225,9 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                     ? "Connect pipeline"
                     : "Select cameras first"
               }
-              tooltipPosition="pos-bottom"
+              tooltipPosition="pos-bottom-right"
               disabled={!liveClickable || isPipelineLoading}
-              className={`icon-size-25 ${isConnected ? "active" : ""} ${!liveClickable ? "deactivated" : ""}`}
+              className={`icon-size-25 ${isConnected ? "active" : ""} ${!liveClickable ? "" : ""}`}
             />
           </div>
 

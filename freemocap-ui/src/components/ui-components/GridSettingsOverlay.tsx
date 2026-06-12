@@ -7,6 +7,7 @@ import type {
 } from "@/pages/StreamingViewPage";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
+import IconButton from "@/components/ui-components/IconButton";
 
 interface GridSettingsOverlayProps {
   settings: CameraSettings;
@@ -57,17 +58,12 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
   return (
     <>
       <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
-        <button
-          className="button icon-button br-2 bg-middark elevated-sharp"
+        <IconButton
+          icon={isOpen ? "close-icon" : "settings-icon"}
+          className="icon-size-25 br-2 bg-middark elevated-sharp"
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
-        >
-          <span
-            className={`icon icon-size-20 ${
-              isOpen ? "close-icon" : "settings-icon"
-            }`}
-          />
-        </button>
+        />
       </div>
 
       {/* SETTINGS PANEL */}

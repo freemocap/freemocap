@@ -12,6 +12,7 @@ import {RecordingStatusPanel} from "@/components/common/RecordingStatusPanel";
 import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
+import IconButton from "@/components/ui-components/IconButton";
 
 export const MocapPanel: React.FC = () => {
     const {setOverlayVisibility} = useServer();
@@ -197,9 +198,7 @@ export const MocapPanel: React.FC = () => {
                         <div className="toast-notification error">
                             <div className="flex flex-row items-center justify-content-space-between">
                                 <p className="text sm">{displayError}</p>
-                                <button className="button icon-button br-1" onClick={handleClearError} title="Dismiss">
-                                    <span className="icon clear-icon icon-size-12" />
-                                </button>
+                                <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={handleClearError} title="Dismiss" />
                             </div>
                         </div>
                     )}
@@ -227,41 +226,33 @@ export const MocapPanel: React.FC = () => {
                             />
                             <div className="flex flex-row pos-abs right-4 top-50">
                                 {isUsingManualPath && (
-                                    <button
-                                        className="button icon-button br-1"
+                                    <IconButton
+                                        icon="clear-icon"
                                         onClick={clearManualRecordingPath}
                                         title="Clear manual path (revert to default)"
-                                    >
-                                        <span className="icon clear-icon icon-size-20" />
-                                    </button>
+                                    />
                                 )}
-                                <button
-                                    className="button icon-button br-1"
+                                <IconButton
+                                    icon="save-icon"
                                     onClick={() => {
                                         triggerRefresh();
                                         refreshRecordingStatus();
                                     }}
                                     disabled={!mocapRecordingPath || isLoading}
                                     title="Re-check folder"
-                                >
-                                    <span className="icon save-icon icon-size-20" />
-                                </button>
-                                <button
-                                    className="button icon-button br-1"
+                                />
+                                <IconButton
+                                    icon="streaming-icon"
                                     onClick={handleOpenFolder}
                                     disabled={!isElectron || !effectiveMocapPath}
                                     title="Open folder in file explorer"
-                                >
-                                    <span className="icon streaming-icon icon-size-20" />
-                                </button>
-                                <button
-                                    className="button icon-button br-1"
+                                />
+                                <IconButton
+                                    icon="download-icon"
                                     onClick={handleSelectDirectory}
                                     disabled={!isElectron}
                                     title="Select directory"
-                                >
-                                    <span className="icon download-icon icon-size-20" />
-                                </button>
+                                />
                             </div>
                         </div>
                         <p className="text sm text-gray">

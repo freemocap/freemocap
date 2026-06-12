@@ -9,6 +9,7 @@ import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import type {CameraSettings} from '@/pages/StreamingViewPage';
 import {GridSettingsOverlay} from "@/components/ui-components/GridSettingsOverlay";
+import IconButton from "@/components/ui-components/IconButton";
 import {Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {ThreeJsCanvas} from "@/components/viewport3d/ThreeJsCanvas";
 import {FileKeypointsSourceProvider} from "@/components/viewport3d/FileKeypointsSourceProvider";
@@ -137,14 +138,12 @@ const PlaybackPage: React.FC = () => {
                                 {recordingName}
                             </p>
 
-                            <button
+                            <IconButton
                                 title={t('openFolder')}
-                                className="button icon-button br-1-1"
+                                icon="load-icon"
                                 onClick={handleOpenFolder}
                                 style={{color: 'var(--color-warning)', border: '1px solid rgba(230,73,0,0.3)', padding: '0 8px'}}
-                            >
-                                <span className="icon load-icon icon-size-20"/>
-                            </button>
+                            />
 
                             <div className="flex-1"/>
 

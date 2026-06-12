@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { RecordingStatus } from "@/types/recording-status";
+import IconButton from "@/components/ui-components/IconButton";
 
 interface RecordingStatusPanelProps {
     status: RecordingStatus | null;
@@ -99,17 +100,12 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                 <span className="text sm text-gray flex-1">Recording folder</span>
                 <span className={`tag text sm ${summaryColor}`}>{summaryLabel}</span>
                 {onRefresh && (
-                    <button
-                        className="button icon-button br-1"
+                    <IconButton
+                        icon={isLoading ? "loader-icon" : "rotate-icon"}
                         onClick={(e) => { e.stopPropagation(); onRefresh(); }}
                         disabled={isLoading}
                         title="Re-check folder"
-                    >
-                        {isLoading
-                            ? <span className="icon loader-icon icon-size-20" />
-                            : <span className="icon rotate-icon icon-size-20" />
-                        }
-                    </button>
+                    />
                 )}
                 <span className="icon icon-size-20 collapse-icon" style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
             </div>

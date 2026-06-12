@@ -6,6 +6,7 @@ import {useElectronIPC} from "@/services";
 import {MediapipeConfigPanel} from "@/components/control-panels/mocap-control-panel/MediapipeConfigPanel";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useCalibration} from "@/hooks/useCalibration";
+import IconButton from "@/components/ui-components/IconButton";
 
 export const MocapTaskTreeItem: React.FC = () => {
     const [localError, setLocalError] = useState<string | null>(null);
@@ -162,21 +163,15 @@ export const MocapTaskTreeItem: React.FC = () => {
     }, [mocapStatus]);
 
     const refreshButton = (
-        <button
-            className="button icon-button br-1"
-            onClick={(e: React.MouseEvent) => {
+        <IconButton
+            icon={isRefreshing ? "loader-icon" : "rotate-icon"}
+            onClick={(e) => {
                 e.stopPropagation();
                 handleRefresh();
             }}
             disabled={!mocapRecordingPath || isLoading || isRefreshing}
             title={mocapRecordingPath ? "Re-check mocap folder" : "No path set"}
-        >
-            {isRefreshing ? (
-                <span className="icon loader-icon icon-size-20" />
-            ) : (
-                <span className="icon rotate-icon icon-size-20" />
-            )}
-        </button>
+        />
     );
 
     // Derive status for collapsed summary
@@ -194,29 +189,26 @@ export const MocapTaskTreeItem: React.FC = () => {
             {mocapStatusIcon}
             {refreshButton}
             {isRecording ? (
-                <button
-                    className="button icon-button br-1 btn-danger"
-                    onClick={(e: React.MouseEvent) => {
+                <IconButton
+                    icon="stopstreaming-icon"
+                    className="icon-size-25 btn-danger"
+                    onClick={(e) => {
                         e.stopPropagation();
                         dispatchStopMocapRecording();
                     }}
                     disabled={isLoading}
                     title="Stop mocap recording"
-                >
-                    <span className="icon stopstreaming-icon icon-size-20" />
-                </button>
+                />
             ) : (
-                <button
-                    className="button icon-button br-1"
-                    onClick={(e: React.MouseEvent) => {
+                <IconButton
+                    icon="record-icon"
+                    onClick={(e) => {
                         e.stopPropagation();
                         dispatchStartMocapRecording();
                     }}
                     disabled={!canStartRecording || isLoading}
                     title={canStartRecording ? "Start mocap recording" : "Cannot record yet"}
-                >
-                    <span className="icon record-icon icon-size-20" />
-                </button>
+                />
             )}
         </div>
     );
@@ -238,9 +230,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         <div className="toast-notification error">
                             <div className="flex flex-row items-center justify-content-space-between">
                                 <p className="text sm">{displayError}</p>
-                                <button className="button icon-button br-1" onClick={handleClearError} title="Dismiss">
-                                    <span className="icon clear-icon icon-size-12" />
-                                </button>
+                                <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={handleClearError} title="Dismiss" />
                             </div>
                         </div>
                     )}
@@ -276,22 +266,18 @@ export const MocapTaskTreeItem: React.FC = () => {
                             />
                             <div className="flex flex-row pos-abs right-4 top-50">
                                 {isUsingManualPath && (
-                                    <button
-                                        className="button icon-button br-1"
+                                    <IconButton
+                                        icon="clear-icon"
                                         onClick={handleClearManualPath}
                                         title="Clear manual path (revert to default)"
-                                    >
-                                        <span className="icon clear-icon icon-size-20" />
-                                    </button>
+                                    />
                                 )}
-                                <button
-                                    className="button icon-button br-1"
+                                <IconButton
+                                    icon="load-icon"
                                     onClick={handleSelectDirectory}
                                     disabled={!isElectron}
                                     title="Select directory"
-                                >
-                                    <span className="icon load-icon icon-size-20" />
-                                </button>
+                                />
                             </div>
                         </div>
                         <p className="text sm text-gray">{pathHelperText}</p>

@@ -1,4 +1,5 @@
 import React from "react";
+import IconButton from "@/components/ui-components/IconButton";
 
 interface RecordingHeaderButtonProps {
     isRecording: boolean;
@@ -19,8 +20,9 @@ export const RecordingHeaderButton: React.FC<RecordingHeaderButtonProps> = ({
     };
 
     return (
-        <button
-            className="button icon-button br-1 p-1"
+        <IconButton
+            icon={isPending ? "loader-icon" : isRecording ? "stop-icon" : "record-icon"}
+            className="icon-size-25 p-1"
             onClick={handleClick}
             disabled={disabled || isPending}
             title={isRecording ? "Stop Recording" : "Start Recording"}
@@ -30,14 +32,6 @@ export const RecordingHeaderButton: React.FC<RecordingHeaderButtonProps> = ({
                 transition: "color 0.2s ease",
                 animation: isRecording ? 'pulse-record 2s infinite ease-in-out' : undefined,
             }}
-        >
-            {isPending ? (
-                <span className="icon loader-icon icon-size-20" />
-            ) : isRecording ? (
-                <span className="icon stop-icon icon-size-20" />
-            ) : (
-                <span className="icon record-icon icon-size-20" />
-            )}
-        </button>
+        />
     );
 };

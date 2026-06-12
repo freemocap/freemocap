@@ -1,4 +1,5 @@
 import React from "react";
+import IconButton from "@/components/ui-components/IconButton";
 
 export interface DirectoryStatus {
     exists: boolean;
@@ -51,17 +52,12 @@ export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
                     <span className="text sm text-gray">{title}</span>
                 </div>
                 {onRefresh && (
-                    <button
-                        className="button icon-button br-1"
+                    <IconButton
+                        icon={isRefreshing ? "loader-icon" : "rotate-icon"}
                         onClick={onRefresh}
                         disabled={refreshDisabled}
                         title="Re-check folder"
-                    >
-                        {isRefreshing
-                            ? <span className="icon loader-icon icon-size-20" />
-                            : <span className="icon rotate-icon icon-size-20" />
-                        }
-                    </button>
+                    />
                 )}
             </div>
 

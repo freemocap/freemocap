@@ -4,6 +4,7 @@ import {activeRecordingSet} from '@/store/slices/active-recording/active-recordi
 import {useElectronIPC} from '@/services';
 import {PipelineGroup, PipelinePhase, PipelineProgress, PHASE_LABELS, PIPELINE_TYPE_CONFIG} from '@/store/slices/pipelines';
 import {stopPipeline} from '@/store/slices/pipelines/pipelines-thunks';
+import IconButton from '@/components/ui-components/IconButton';
 
 function formatTimeAgo(timestamp: number): string {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -123,26 +124,20 @@ export default function PipelineGroupCard({group, onDismiss}: {
                 <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.7rem'}}>
                     {overallProgress}%
                 </p>
-                <button title="Open folder" className="button icon-button br-1 p-01" onClick={handleOpenFolder} disabled={!fullPath}>
-                    <span className="icon load-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
-                </button>
-                <button title="Load in playback" className="button icon-button br-1 p-01" onClick={handleLoadPlayback}>
-                    <span className="icon play-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
-                </button>
+                <IconButton title="Open folder" icon="load-icon" className="icon-size-25 p-01" iconStyle={{fontSize: '0.85rem'}} onClick={handleOpenFolder} disabled={!fullPath}/>
+                <IconButton title="Load in playback" icon="play-icon" className="icon-size-25 p-01" iconStyle={{fontSize: '0.85rem'}} onClick={handleLoadPlayback}/>
                 {group.isActive && (
-                    <button
+                    <IconButton
                         title="Stop pipeline"
-                        className="button icon-button br-1 p-01"
+                        icon="close-icon"
+                        className="icon-size-25 p-01"
+                        iconStyle={{fontSize: '0.85rem'}}
                         onClick={() => dispatch(stopPipeline(group.basePipelineId))}
                         style={{color: 'var(--color-error)'}}
-                    >
-                        <span className="icon close-icon icon-size-20" style={{fontSize: '0.85rem'}}/>
-                    </button>
+                    />
                 )}
                 {onDismiss && (
-                    <button className="button icon-button br-1 p-01" onClick={onDismiss}>
-                        <span className="icon close-icon icon-size-20" style={{fontSize: '0.75rem'}}/>
-                    </button>
+                    <IconButton icon="close-icon" className="icon-size-25 p-01" iconStyle={{fontSize: '0.75rem'}} onClick={onDismiss}/>
                 )}
             </div>
             <div title={fullPath}>

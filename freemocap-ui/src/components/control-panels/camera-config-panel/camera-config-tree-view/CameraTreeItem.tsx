@@ -117,14 +117,13 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera}) => {
                         <div className="flex-1" />
 
                         {/* Settings open/close button */}
-                        <button
+                        <IconButton
                             ref={settingsBtnRef}
-                            className={clsx('pos-abs top-50 right-0 button icon-button', settingsOpen && 'activated')}
+                            icon={settingsOpen ? 'close-icon' : 'settings-icon'}
+                            className={clsx('icon-size-25 pos-abs top-50 right-0', settingsOpen && 'activated')}
                             onClick={handleOpenSettings}
                             title={settingsOpen ? t('closeSettings') : 'Camera settings'}
-                        >
-                            <span className={clsx('icon icon-size-20', settingsOpen ? 'close-icon' : 'settings-icon')} />
-                        </button>
+                        />
                     </div>
 
                     {/* Config chips */}

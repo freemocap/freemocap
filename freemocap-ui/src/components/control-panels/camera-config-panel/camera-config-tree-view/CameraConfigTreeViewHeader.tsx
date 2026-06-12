@@ -10,6 +10,7 @@ import {
 import {autoApplyToggled, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
 import {selectAutoApply} from "@/store/slices/cameras/cameras-selectors";
 import {useTranslation} from 'react-i18next';
+import IconButton from "@/components/ui-components/IconButton";
 
 interface CameraConfigTreeViewHeaderProps {
     cameraCount: number;
@@ -100,80 +101,51 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
             </p>
 
             <div className="flex flex-row items-center gap-1 mr-2">
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon={isAutoApply ? "sync-icon" : "sync-disabled-icon"}
                     onClick={() => dispatch(autoApplyToggled())}
                     title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — use apply button to send'}
                     style={{
                         color: isAutoApply ? 'var(--color-accent)' : 'inherit',
                         opacity: isAutoApply ? 1 : 0.5,
                     }}
-                >
-                    {isAutoApply
-                        ? <span className="icon sync-icon icon-size-20" />
-                        : <span className="icon sync-disabled-icon icon-size-20" />
-                    }
-                </button>
+                />
 
-                <button
-                    className="button icon-button br-2 p-1"
+                <IconButton
+                    icon="videocam-icon"
+                    className="icon-size-25 br-2 p-1"
                     onClick={handleConnectOrApply}
                     title={t("connectCameras")}
                     style={{
                         color: 'var(--color-accent)',
                         border: '2px solid var(--color-accent)',
                     }}
-                >
-                    <span className="pos-rel flex-inline" style={{width: 28, height: 28}}>
-                        <span className="icon videocam-icon icon-size-20" style={{color: 'var(--color-accent)'}} />
-                        <span className="icon arrow-down-icon icon-size-12" style={{
-                            position: 'absolute',
-                            top: -6,
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            color: 'var(--color-accent)',
-                            filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
-                        }} />
-                    </span>
-                </button>
+                    iconStyle={{color: 'var(--color-accent)'}}
+                />
 
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon={isPaused ? "play-icon" : "pause-icon"}
                     onClick={handlePauseUnpause}
                     title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}
-                >
-                    {isPaused
-                        ? <span className="icon play-icon icon-size-20" />
-                        : <span className="icon pause-icon icon-size-20" />
-                    }
-                </button>
+                />
 
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon="videocam-off-icon"
                     onClick={handleCloseCameras}
                     title={t("closeAllCameras")}
-                >
-                    <span className="icon videocam-off-icon icon-size-20" />
-                </button>
+                />
 
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon={isLoading || isActionInProgress ? "loader-icon" : "refresh-icon"}
                     onClick={handleRefreshCameras}
                     title={t("detectCameras")}
-                >
-                    {isLoading || isActionInProgress
-                        ? <span className="icon loader-icon icon-size-20" />
-                        : <span className="icon refresh-icon icon-size-20" />
-                    }
-                </button>
+                />
 
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon="clear-icon"
                     onClick={handleClearSavedSettings}
                     title={t("clearCameraSettings")}
-                >
-                    <span className="icon clear-icon icon-size-20" />
-                </button>
+                />
             </div>
         </div>
     );

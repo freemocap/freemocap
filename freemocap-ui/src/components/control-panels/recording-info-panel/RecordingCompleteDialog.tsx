@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {recordingCompletionDismissed} from '@/store/slices/recording/recording-slice';
 import {useElectronIPC} from '@/services/electron-ipc/electron-ipc';
+import IconButton from '@/components/ui-components/IconButton';
 import type {RecordingCompletionData, StatsSummary} from '@/store/slices/recording/recording-types';
 
 function formatStat(value: number, precision: number = 3): string {
@@ -93,9 +94,7 @@ export const RecordingCompleteDialog: React.FC = () => {
             >
                 <div className="flex flex-row items-center justify-content-space-between pb-2">
                     <p className="text bg text-white">Recording Complete!</p>
-                    <button className="button icon-button br-1" onClick={handleClose} title="Close">
-                        <span className="icon close-icon icon-size-20" />
-                    </button>
+                    <IconButton icon="close-icon" onClick={handleClose} title="Close" />
                 </div>
 
                 <div className="flex flex-row items-center gap-1 mb-2">
@@ -112,12 +111,8 @@ export const RecordingCompleteDialog: React.FC = () => {
                     >
                         {completionData.recording_path}
                     </span>
-                    <button className="button icon-button br-1" onClick={handleCopyPath} title="Copy path">
-                        <span className="icon copy-icon icon-size-20" />
-                    </button>
-                    <button className="button icon-button br-1" onClick={handleOpenFolder} title="Open folder">
-                        <span className="icon folder-icon icon-size-20" />
-                    </button>
+                    <IconButton icon="copy-icon" onClick={handleCopyPath} title="Copy path" />
+                    <IconButton icon="folder-icon" onClick={handleOpenFolder} title="Open folder" />
                 </div>
 
                 <p className="text sm text-gray mb-2">

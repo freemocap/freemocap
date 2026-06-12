@@ -135,9 +135,7 @@ const CalibrationModule = () => {
   const errorBanner = error && (
     <div className="toast-notification error flex items-center justify-content-space-between">
       <p className="text sm">{error}</p>
-      <button className="button icon-button" onClick={clearError}>
-        <span className="icon clear-icon icon-size-20" />
-      </button>
+      <IconButton icon="clear-icon" onClick={clearError} />
     </div>
   );
 

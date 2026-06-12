@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import IconButton from '@/components/ui-components/IconButton';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
 import ValueSelector from '@/components/ui-components/ValueSelector';
@@ -104,9 +105,7 @@ const RTPMediaPipeDetectorSettings: React.FC<
                 {/* Header */}
                 <div className="flex justify-content-space-between items-center">
                     <SubactionHeader text="MediaPipe Settings" />
-                    <button className="button icon-button" onClick={onClose}>
-                        <span className="icon close-icon icon-size-20" />
-                    </button>
+                    <IconButton icon="close-icon" onClick={onClose} />
                 </div>
 
                 {/* Preset dropdown */}

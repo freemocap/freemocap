@@ -13,6 +13,7 @@ import {
     RotationValue,
 } from '@/store/slices/cameras/cameras-types';
 import ButtonSm from '@/components/ui-components/ButtonSm';
+import IconButton from '@/components/ui-components/IconButton';
 import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import ValueSelector from '@/components/ui-components/ValueSelector';
@@ -195,13 +196,12 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                     >
                         <p className="text md" style={{color: 'var(--color-bg-primary)'}}>Update Settings</p>
                     </button>
-                    <button
-                        className="icon-button gap-1 br-1 button sm fit-content flex-inline text-left items-center"
+                    <IconButton
+                        icon="clear-icon"
+                        className="icon-size-25 gap-1 sm fit-content flex-inline text-left items-center"
                         onClick={() => dispatch(savedSettingsCleared())}
                         title="Reset all cameras to default settings"
-                    >
-                        <span className="icon icon-size-20 clear-icon" />
-                    </button>
+                    />
                 </div>
             </div>
         </div>,

@@ -4,12 +4,14 @@ import { TooltipPosition } from "./types";
 
 interface IconButtonProps {
   icon: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onMouseDown?: (e: React.MouseEvent) => void;
   disabled?: boolean;
   title?: string;
   className?: string;
   iconSize?: string;
+  style?: React.CSSProperties;
+  iconStyle?: React.CSSProperties;
   tooltip?: boolean;
   tooltipText?: string;
   tooltipPosition?: TooltipPosition;
@@ -23,11 +25,13 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
   title,
   className = "icon-size-25",
   iconSize = "icon-size-20",
+  style,
+  iconStyle,
   tooltip = false,
   tooltipText = "",
   tooltipPosition = "pos-bottom",
 }, ref) => {
-  const iconEl = <span className={clsx("icon", icon, iconSize)} />;
+  const iconEl = <span className={clsx("icon", icon, iconSize)} style={iconStyle} />;
 
   const tooltipEl = tooltip && tooltipText && (
     <div className={clsx("tooltip-container elevated-sharp", tooltipPosition, "p-01 br-2 bg-dark")}>
@@ -49,7 +53,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
           disabled
           onMouseDown={onMouseDown}
           className={clsx("button icon-button pos-rel br-1", className)}
-          style={{ pointerEvents: "none" }}
+          style={{ ...style, pointerEvents: "none" }}
         >
           {iconEl}
         </button>
@@ -66,6 +70,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
       disabled={disabled}
       title={title}
       className={clsx("button icon-button pos-rel br-1", className)}
+      style={style}
     >
       {iconEl}
       {tooltipEl}

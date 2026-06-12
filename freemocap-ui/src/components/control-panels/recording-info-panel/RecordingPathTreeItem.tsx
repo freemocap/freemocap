@@ -6,6 +6,7 @@ import TextSelector from '@/components/ui-components/TextSelector';
 import {useAppDispatch} from '@/store';
 import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
 import {useElectronIPC} from '@/services';
+import IconButton from '@/components/ui-components/IconButton';
 
 interface RecordingPathTreeItemProps {
     recordingDirectory: string;
@@ -103,16 +104,15 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                     </p>
                 </button>
 
-                <button
-                    className={`button icon-button ${createSubfolder ? 'invisible' : ''}`}
+                <IconButton
+                    icon="addsubfolder-icon"
+                    className={`icon-size-25 ${createSubfolder ? 'invisible' : ''}`}
                     onClick={() => {
                         onCreateSubfolderChange(true);
                         onCustomSubfolderNameChange('NewSubfolder');
                     }}
                     title="Add subfolder"
-                >
-                    <span className="icon addsubfolder-icon icon-size-20" />
-                </button>
+                />
             </div>
 
             {/* Subfolder row */}
@@ -125,16 +125,14 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                         placeholder="subfolder name"
                         popupClassName="directory-input-popup"
                     />
-                    <button
-                        className="button icon-button"
+                    <IconButton
+                        icon="minus-icon"
                         onClick={() => {
                             onCreateSubfolderChange(false);
                             onCustomSubfolderNameChange('');
                         }}
                         title="Remove subfolder"
-                    >
-                        <span className="icon minus-icon icon-size-20" />
-                    </button>
+                    />
                 </div>
             )}
 

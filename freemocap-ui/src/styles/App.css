@@ -113,12 +113,12 @@ a.link:hover {
    POSITIONS
    ========================= */
 
-.pos-abs {
-  position: absolute;
-}
-
 .pos-rel {
   position: relative;
+}
+
+.pos-abs {
+  position: absolute;
 }
 
 .pos-sticky {

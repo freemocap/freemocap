@@ -5,7 +5,7 @@ import {CameraConfigRotation} from "./CameraConfigRotation";
 import {CameraConfig, ExposureMode, RotationValue} from "@/store/slices/cameras/cameras-types";
 import {useAppDispatch, useAppSelector} from "@/store";
 import {configCopiedToAll, selectCameras} from "@/store/slices/cameras";
-import {useTranslation} from 'react-i18next';
+import IconButton from "@/components/ui-components/IconButton";
 
 interface CameraConfigPanelProps {
     config: CameraConfig;
@@ -19,7 +19,6 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
     isExpanded,
 }) => {
     const dispatch = useAppDispatch();
-    const {t} = useTranslation();
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
 
@@ -77,11 +76,10 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
 
                 <div className="flex-1" />
 
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon="mediation-icon"
                     onClick={handleCopyToAllCameras}
                     disabled={otherCamerasCount === 0}
-                    aria-label={t("copySettingsToAll")}
                     title={
                         otherCamerasCount > 0
                             ? `Copy settings to ${otherCamerasCount} other camera${otherCamerasCount > 1 ? "s" : ""}`
@@ -90,9 +88,7 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
                     style={{
                         border: '1px solid var(--color-border-secondary)',
                     }}
-                >
-                    <span className="icon mediation-icon icon-size-20" />
-                </button>
+                />
             </div>
 
             <div className="pt-1" style={{borderTop: '1px solid var(--color-border-secondary)'}}>

@@ -2,6 +2,7 @@
 import {memo, useCallback, useEffect, useRef, useState} from "react"
 import * as d3 from "d3"
 import {useTranslation} from "react-i18next"
+import IconButton from "@/components/ui-components/IconButton"
 
 export type ChartMargins = {
     top: number
@@ -197,15 +198,9 @@ export default memo(function BaseD3ChartView({
                     right: 5,
                     boxShadow: "0 1px 4px rgba(0,0,0,0.4)",
                 }}>
-                    <button title={t("zoomIn")} className="button icon-button br-1" onClick={handleZoomIn}>
-                        <span className="icon plus-icon icon-size-20"/>
-                    </button>
-                    <button title={t("zoomOut")} className="button icon-button br-1" onClick={handleZoomOut}>
-                        <span className="icon minus-icon icon-size-20"/>
-                    </button>
-                    <button title={t("resetZoom")} className="button icon-button br-1" onClick={handleResetZoom}>
-                        <span className="icon back-icon icon-size-20"/>
-                    </button>
+                    <IconButton icon="plus-icon" title={t("zoomIn")} onClick={handleZoomIn}/>
+                    <IconButton icon="minus-icon" title={t("zoomOut")} onClick={handleZoomOut}/>
+                    <IconButton icon="back-icon" title={t("resetZoom")} onClick={handleResetZoom}/>
                 </div>
             )}
 

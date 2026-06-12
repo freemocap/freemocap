@@ -29,6 +29,7 @@ import {
 import {serverUrls} from '@/constants/server-urls';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import IconButton from '@/components/ui-components/IconButton';
 
 export type RecordingEntry = RecordingListEntry;
 
@@ -557,14 +558,13 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                         </div>
                     </button>
 
-                    <button
+                    <IconButton
                         title={expanded ? 'Hide folder detail' : 'Show folder detail'}
-                        className="button icon-button br-1 mr-2"
+                        icon="expand-icon"
+                        className="icon-size-25 mr-2"
                         onClick={toggleExpand}
                         style={{transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', alignSelf: 'center'}}
-                    >
-                        <span className="icon expand-icon icon-size-20"/>
-                    </button>
+                    />
                 </div>
 
                 {expanded && (

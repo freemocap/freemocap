@@ -1,4 +1,5 @@
 import React from "react";
+import IconButton from "@/components/ui-components/IconButton";
 
 export type CalibrationTomlSource = "auto" | "calibration-panel" | "manual" | "last-successful";
 
@@ -46,14 +47,12 @@ export const CalibrationTomlPicker: React.FC<CalibrationTomlPickerProps> = ({
             </div>
 
             {source !== "auto" && tomlPath && (
-                <button
-                    className="button icon-button br-1"
+                <IconButton
+                    icon="rotate-icon"
                     onClick={onUseAutoDetected}
                     disabled={disabled}
                     title="Use auto-detected calibration"
-                >
-                    <span className="icon rotate-icon icon-size-20" />
-                </button>
+                />
             )}
 
             <button

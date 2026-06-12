@@ -233,17 +233,12 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
         </div>
 
-        <button
-          className="button icon-button br-2"
+        <IconButton
+          icon={isOpen ? "close-icon" : "settings-icon"}
+          className="icon-size-25 br-2"
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
-        >
-          <span
-            className={`icon icon-size-20 ${
-              isOpen ? "close-icon" : "settings-icon"
-            }`}
-          />
-        </button>
+        />
       </div>
 
       {/* SETTINGS PANEL */}

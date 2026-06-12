@@ -2,6 +2,7 @@ import React from 'react';
 import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import IconButton from '@/components/ui-components/IconButton';
 
 interface BlenderSectionProps {
     recordingFolderPath: string | null | undefined;
@@ -84,9 +85,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     <div className="toast-notification error">
                         <div className="flex flex-row items-center justify-content-space-between">
                             <p className="text sm">{error}</p>
-                            <button className="button icon-button br-1" onClick={clearError} title="Dismiss error">
-                                <span className="icon clear-icon icon-size-12" />
-                            </button>
+                            <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={clearError} title="Dismiss error" />
                         </div>
                     </div>
                 )}
@@ -101,30 +100,24 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                         />
                         <div className="flex flex-row pos-abs right-4 top-50">
                             {isUsingManualBlenderPath && (
-                                <button
-                                    className="button icon-button br-1"
+                                <IconButton
+                                    icon="clear-icon"
                                     onClick={clearBlenderExePath}
                                     title="Clear manual path (revert to auto-detected)"
-                                >
-                                    <span className="icon clear-icon icon-size-20" />
-                                </button>
+                                />
                             )}
-                            <button
-                                className="button icon-button br-1"
+                            <IconButton
+                                icon="save-icon"
                                 onClick={redetectBlender}
                                 disabled={isDetecting}
                                 title="Re-detect Blender"
-                            >
-                                <span className="icon save-icon icon-size-20" />
-                            </button>
-                            <button
-                                className="button icon-button br-1"
+                            />
+                            <IconButton
+                                icon="download-icon"
                                 onClick={handleSelectBlenderExe}
                                 disabled={!isElectron}
                                 title="Select Blender executable"
-                            >
-                                <span className="icon download-icon icon-size-20" />
-                            </button>
+                            />
                         </div>
                     </div>
                     <p className="text sm text-gray">

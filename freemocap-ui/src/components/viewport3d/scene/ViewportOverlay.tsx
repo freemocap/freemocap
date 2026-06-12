@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ViewportVisibility } from "../helpers/viewport3d-types";
 import { useViewportState } from "./ViewportStateContext";
+import IconButton from "@/components/ui-components/IconButton";
 
 interface ViewportOverlayProps {
     onFitCamera: () => void;
@@ -55,13 +56,12 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
             }}>
                 <div className="flex flex-row items-center justify-content-space-between">
                     <p className="text sm m-0" style={{fontWeight: 'bold'}}>Viewport</p>
-                    <button
-                        className="button icon-button br-1 p-01"
+                    <IconButton
+                        icon={expanded ? 'collapse-icon' : 'expand-icon'}
+                        className="icon-size-25 p-01"
                         onClick={() => setExpanded(e => !e)}
                         style={{color: "#ccc"}}
-                    >
-                        <span className={`icon icon-size-20 ${expanded ? 'collapse-icon' : 'expand-icon'}`}/>
-                    </button>
+                    />
                 </div>
 
                 <VisToggle label="Environment"  checked={visibility.environment}      onChange={toggleEnvironment} />
@@ -82,22 +82,18 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
             </div>
 
             <div className="flex flex-row gap-1 pos-abs bottom-8 right-8">
-                <button
+                <IconButton
                     title="Fit to skeleton (F)"
-                    className="button icon-button br-1"
+                    icon="search-icon"
                     onClick={onFitCamera}
                     style={{backgroundColor: "rgba(0,0,0,0.6)", color: "#ccc"}}
-                >
-                    <span className="icon search-icon icon-size-20"/>
-                </button>
-                <button
+                />
+                <IconButton
                     title="Reset view"
-                    className="button icon-button br-1"
+                    icon="back-icon"
                     onClick={onResetCamera}
                     style={{backgroundColor: "rgba(0,0,0,0.6)", color: "#ccc"}}
-                >
-                    <span className="icon back-icon icon-size-20"/>
-                </button>
+                />
             </div>
 
             <p className="text sm pos-abs bottom-8 left-8 m-0" style={{color: "#666", pointerEvents: "none"}}>

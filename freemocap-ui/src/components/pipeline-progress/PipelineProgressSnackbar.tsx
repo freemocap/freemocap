@@ -11,6 +11,7 @@ import {
 } from '@/store/slices/pipelines';
 import {stopAllPipelines} from '@/store/slices/pipelines/pipelines-thunks';
 import PipelineGroupCard from './PipelineGroupCard';
+import IconButton from '@/components/ui-components/IconButton';
 
 const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT = 420;
@@ -203,43 +204,39 @@ export default function PipelineProgressSnackbar() {
                         }}/>
                     )}
 
-                    <button
-                        className="button icon-button br-1 p-01"
+                    <IconButton
+                        icon={collapsed ? 'expand-icon' : 'collapse-icon'}
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => setCollapsed(c => !c)}
-                    >
-                        <span className={`icon icon-size-20 ${collapsed ? 'expand-icon' : 'collapse-icon'}`}/>
-                    </button>
+                    />
 
                     {hasRunningVisible && (
-                        <button
-                            className="button icon-button br-1 p-01"
+                        <IconButton
+                            icon="close-icon"
+                            className="icon-size-25 p-01"
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
                             title="Stop all pipelines"
                             style={{color: 'var(--color-error)'}}
-                        >
-                            <span className="icon close-icon icon-size-20"/>
-                        </button>
+                        />
                     )}
 
-                    <button
-                        className="button icon-button br-1 p-01"
+                    <IconButton
+                        icon="clear-icon"
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(allPipelinesCleared())}
                         disabled={visibleGroups.length === 0}
                         title="Clear all pipelines"
-                    >
-                        <span className="icon clear-icon icon-size-20"/>
-                    </button>
+                    />
 
-                    <button
-                        className="button icon-button br-1 p-01"
+                    <IconButton
+                        icon="close-icon"
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
-                    >
-                        <span className="icon close-icon icon-size-20"/>
-                    </button>
+                    />
 
                     <span className="icon settings-icon icon-size-20 flex-shrink-0" style={{color: 'var(--color-text-disabled)', marginLeft: 2, cursor: 'grab'}}/>
                 </div>

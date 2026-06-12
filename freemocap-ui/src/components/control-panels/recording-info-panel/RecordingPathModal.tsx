@@ -1,6 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import IconButton from '@/components/ui-components/IconButton';
 import {RecordingPathTreeItem} from './RecordingPathTreeItem';
 
 interface RecordingPathModalProps {
@@ -68,9 +69,7 @@ export const RecordingPathModal: React.FC<RecordingPathModalProps> = ({open, onC
             <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
                 <div className="flex justify-content-space-between items-center">
                     <SubactionHeader text="Recording Path &amp; Settings" />
-                    <button className="button icon-button" onClick={onClose}>
-                        <span className="icon close-icon icon-size-20" />
-                    </button>
+                    <IconButton icon="close-icon" onClick={onClose} />
                 </div>
                 <RecordingPathTreeItem {...itemProps} />
             </div>

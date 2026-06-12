@@ -7,6 +7,7 @@ import {
     selectActiveRecordingName,
 } from "@/store/slices/active-recording/active-recording-slice";
 import { useElectronIPC } from "@/services";
+import IconButton from "@/components/ui-components/IconButton";
 
 const NAV_TABS = [
     { path: '/streaming', label: 'Streaming' },
@@ -46,14 +47,14 @@ const ActiveRecordingLabel: React.FC = () => {
                     onClick={handleOpenFolder}
                 >
                     {recordingName}
-                    <button
-                        className="button icon-button ml-1"
+                    <IconButton
+                        icon="close-icon"
+                        iconSize="icon-size-12"
+                        className="ml-1"
                         onClick={handleClearRecording}
                         style={{ lineHeight: 1 }}
                         title="Clear active recording"
-                    >
-                        <span className="icon close-icon icon-size-12" />
-                    </button>
+                    />
                 </span>
             ) : (
                 <span className="text sm text-gray" style={{ fontStyle: 'italic' }}>(none)</span>

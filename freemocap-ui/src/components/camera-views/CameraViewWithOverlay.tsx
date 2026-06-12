@@ -1,4 +1,5 @@
 import React, {useState} from 'react';
+import IconButton from '@/components/ui-components/IconButton';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {selectCameraById} from '@/store/slices/cameras/cameras-selectors';
 import {cameraDesiredConfigUpdated, autoApplyToggled} from '@/store/slices/cameras/cameras-slice';
@@ -97,86 +98,91 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
                         padding: '6px',
                     }}>
                     <div className="flex items-center" style={{gap: '6px'}}>
-                        <button
+                        <IconButton
+                            icon="rotate-icon"
                             title="Rotate 90° clockwise"
-                            className="button icon-button"
                             onClick={handleRotate}
                             disabled={isLoading}
+                            className=""
+                            iconSize=""
                             style={btnStyle}
-                        >
-                            <span className="icon rotate-icon" style={{fontSize: 16}}/>
-                        </button>
+                            iconStyle={{fontSize: 16}}
+                        />
                         <span style={valueStyle}>{ROTATION_DEGREE_LABELS[rotation]}</span>
                     </div>
 
                     <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
                     <div className="flex items-center gap-1">
-                        <button
+                        <IconButton
+                            icon="minus-icon"
                             title="Decrease exposure"
-                            className="button icon-button"
                             onClick={handleExposureDown}
                             disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
+                            className=""
+                            iconSize=""
                             style={btnStyle}
-                        >
-                            <span className="icon minus-icon" style={{fontSize: 16}}/>
-                        </button>
-                        <button
+                            iconStyle={{fontSize: 16}}
+                        />
+                        <IconButton
+                            icon="plus-icon"
                             title="Increase exposure"
-                            className="button icon-button"
                             onClick={handleExposureUp}
                             disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
+                            className=""
+                            iconSize=""
                             style={btnStyle}
-                        >
-                            <span className="icon plus-icon" style={{fontSize: 16}}/>
-                        </button>
+                            iconStyle={{fontSize: 16}}
+                        />
                         <span style={valueStyle}>{exposureLabel}</span>
                     </div>
 
                     <div className="flex items-center gap-1">
-                        <button
+                        <IconButton
+                            icon="settings-icon"
                             title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
-                            className="button icon-button"
                             onClick={handleAutoExposure}
                             disabled={isLoading}
+                            className=""
+                            iconSize=""
                             style={exposureMode === 'AUTO' ? btnActiveStyle : btnStyle}
-                        >
-                            <span className="icon settings-icon" style={{fontSize: 16}}/>
-                        </button>
-                        <button
+                            iconStyle={{fontSize: 16}}
+                        />
+                        <IconButton
+                            icon="warning-icon"
                             title="Recommend exposure for this camera"
-                            className="button icon-button"
                             onClick={handleRecommendExposure}
                             disabled={isLoading}
+                            className=""
+                            iconSize=""
                             style={btnStyle}
-                        >
-                            <span className="icon warning-icon" style={{fontSize: 16}}/>
-                        </button>
+                            iconStyle={{fontSize: 16}}
+                        />
                     </div>
 
                     <div style={{height: '1px', backgroundColor: 'rgba(255,255,255,0.1)', margin: '0 -2px'}}/>
 
                     <div className="flex items-center gap-1">
-                        <button
+                        <IconButton
+                            icon="loop-icon"
                             title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
-                            className="button icon-button"
                             onClick={() => dispatch(autoApplyToggled())}
+                            className=""
+                            iconSize=""
                             style={isAutoApply ? btnActiveStyle : btnStyle}
-                        >
-                            <span className="icon loop-icon" style={{fontSize: 16}}/>
-                        </button>
+                            iconStyle={{fontSize: 16}}
+                        />
                         {!isAutoApply && (
-                            <button
+                            <IconButton
+                                icon={isApplying ? 'loader-icon' : 'upToDate-icon'}
                                 title="Apply changes to camera"
-                                className="button icon-button"
                                 onClick={handleApply}
                                 disabled={isApplying}
+                                className=""
+                                iconSize=""
                                 style={btnStyle}
-                            >
-                                {isApplying
-                                    ? <span className="icon loader-icon" style={{fontSize: 16}}/>
-                                    : <span className="icon upToDate-icon" style={{fontSize: 16}}/>}
-                            </button>
+                                iconStyle={{fontSize: 16}}
+                            />
                         )}
                     </div>
                 </div>

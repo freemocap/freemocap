@@ -521,32 +521,7 @@ body,
   text-align: right;
 }
 
-/* =========================
-   TEXT COLOR
-   ========================= */
 
-.text-white,
-.color-white {
-  color: var(--color-text-primary);
-}
-
-.text-gray,
-.color-gray {
-  color: var(--color-text-muted);
-}
-
-.text-warning {
-  color: var(--color-warning);
-}
-
-.text-darkgray,
-.color-darkgray {
-  color: var(--color-text-disabled);
-}
-
-.text-error {
-  color: var(--color-danger);
-}
 
 /* =========================
    HELPERS

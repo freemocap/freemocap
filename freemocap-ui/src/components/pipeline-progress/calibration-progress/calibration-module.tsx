@@ -10,6 +10,7 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 const CalibrationModule = () => {
   const [isElectron] = useState(true); // Added missing state variable
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
+  const [isCalibrated, setIsCalibrated] = useState(true); // Set to false for now
 
   const handleToggleSettings = () => {
     setShowCalibrationSettings(!showCalibrationSettings);
@@ -45,6 +46,33 @@ const CalibrationModule = () => {
     </div>
   );
 
+  // If calibrated, show dummy UI
+  if (isCalibrated) {
+    return (
+      <div className="flex flex-col p-1 bg-middark br-1 pos-rel">
+        <div className="flex flex-row items-center">
+          <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
+            <div className="flex flex-row items-center">
+              <span className="icon calibrated-icon icon-size-20" />
+              <p className="text md text-success p-1">Calibrated</p>
+            </div>
+            <div className="flex flex-row gap-1 items-center">
+              <IconButton
+                icon="explainer-icon"
+                className="button sm"
+                onClick={() => {}} // shows onboarding tooltips
+                tooltip
+                tooltipText="How to calibrate"
+                tooltipPosition="pos-left"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original UI when not calibrated
   return (
     <div className="flex flex-col p-1 bg-middark br-1 pos-rel ">
       {/* Content goes here */}
@@ -101,7 +129,6 @@ const CalibrationModule = () => {
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
             textClass: "text-center text md",
-            
           }}
           dropdownItems={dropdownItems}
           dropdownClassName=""

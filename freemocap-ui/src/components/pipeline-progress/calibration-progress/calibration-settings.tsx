@@ -3,12 +3,13 @@ import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
-import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 
 const CalibrationSettings = ({ onClose }) => {
   // UI-only state for visual interactions
   const [currentPreset, setCurrentPreset] = useState("7 x 5");
-  const [currentPresetSolver, setCurrentPresetSolver] = useState("Anipose legacy");
+  const [currentPresetSolver, setCurrentPresetSolver] =
+    useState("Anipose legacy");
   const [xSquareSize, setXSquareSize] = useState(5);
   const [ySquareSize, setYSquareSize] = useState(3);
   const [squareLength, setSquareLength] = useState(35);
@@ -37,20 +38,22 @@ const CalibrationSettings = ({ onClose }) => {
   };
 
   return (
-    <div className="RTP-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
+    <div className="calibration-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
       <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
         {/* Header */}
-        <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Charuco board settings" />
-          <div className="flex flex-row gap-1 items-center">
-            <IconButton
-              icon="explainer-icon"
-              className="button sm"
-              onClick={() => {}} // Does nothing but clicks
-              tooltip
-              tooltipText="Learn about calibration"
-              tooltipPosition="pos-left"
-            />
+        <div className="flex flex-row justify-content-space-between items-center">
+          <div className="flex flex-col justify-content-space-between items-center">
+            <SubactionHeader text="Charuco board settings" />
+            <div className="flex flex-row gap-1 items-center">
+              <IconButton
+                icon="explainer-icon"
+                className="button sm"
+                onClick={() => {}} // Does nothing but clicks
+                tooltip
+                tooltipText="Learn about calibration"
+                tooltipPosition="pos-left"
+              />
+            </div>
           </div>
         </div>
 

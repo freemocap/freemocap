@@ -23,14 +23,14 @@
 
 /* Primary fullwidth button */
 .secondary {
-  background-color: var(--color-bg-elevated);
+  background-color: var( --color-bg-idle);
 }
 .secondary > p {
   color: var(--color-text-primary);
 }
 
 .secondary:hover {
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-bg-elevated);
 }
 .tertiary > p {
   color: var(--color-text-primary);

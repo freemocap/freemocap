@@ -22,9 +22,7 @@ import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapP
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
-
-
-const STORAGE_KEY = 'freemocap-sidebar-section-order';
+import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";const STORAGE_KEY = 'freemocap-sidebar-section-order';
 
 const DEFAULT_SECTION_ORDER = [
     'cameras',
@@ -138,10 +136,11 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
             {isCollapsed && onToggleCollapse && (
                 <CollapsedToolbar onToggleCollapse={onToggleCollapse} />
             )}
-
+            
             <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
+                <CalibrationModule/>
                 <div className="flex flex-row items-center gap-1 p-1"
                 >
                     {onOpenWelcome && (

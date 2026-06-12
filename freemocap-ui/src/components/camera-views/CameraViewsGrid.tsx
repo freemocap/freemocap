@@ -74,7 +74,7 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden w-full h-full"
+            className="streaming-page-camera-feed-inner pos-rel overflow-hidden w-full h-full"
             style={{minHeight: 300}}
         >
             <ReactGridLayout
@@ -91,11 +91,11 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
                     return (
                         <div
                             key={cameraId}
-                            className="overflow-hidden br-1"
+                            className="streaming-page-camera-feed-item overflow-hidden br-2"
                             style={{
                                 border: isRecording
-                                    ? "2px solid #ff2020"
-                                    : "1px solid rgba(255,255,255,0.15)",
+                                    ? "2px solid var(--color-danger)"
+                                    : "2px solid transparent",
                                 transition: "border 0.3s ease, box-shadow 0.3s ease",
                                 ...(isRecording ? {animation: 'recordingBorderPulse 3s infinite ease-in-out'} : {}),
                             }}

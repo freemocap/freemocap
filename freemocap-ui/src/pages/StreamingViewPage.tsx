@@ -51,7 +51,7 @@ export const StreamingViewPage = () => {
               direction={settings.layoutDirection}
             >
               <Panel defaultSize={60} minSize={20}>
-                <div className="h-full overflow-y">
+                <div className="streaming-page-camera-feed-container br-2 h-full overflow-y">
                   <ErrorBoundary>
                     <CameraViewsGrid
                       manualColumns={settings.columns}

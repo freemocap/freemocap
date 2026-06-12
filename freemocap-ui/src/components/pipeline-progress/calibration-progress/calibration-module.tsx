@@ -9,8 +9,8 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 
 const CalibrationModule = () => {
   const [isElectron] = useState(true); // Added missing state variable
-  const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
-  const [isCalibrated, setIsCalibrated] = useState(true); // Set to false for now
+  const [showCalibrationSettings, setShowCalibrationSettings] = useState(true);
+  const [isCalibrated, setIsCalibrated] = useState(false); // Set to false for now
 
   const handleToggleSettings = () => {
     setShowCalibrationSettings(!showCalibrationSettings);

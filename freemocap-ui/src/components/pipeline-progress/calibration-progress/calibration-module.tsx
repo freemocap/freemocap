@@ -28,7 +28,7 @@ const CalibrationModule = () => {
             <div className="flex flex-row gap-1 items-center">
               <IconButton
                 icon="explainer-icon"
-                className="button sm mr-1"
+                className="button sm"
                 onClick={() => {}} // shows onboarding tooltips
                 tooltip
                 tooltipText="How to calibrate"
@@ -37,7 +37,7 @@ const CalibrationModule = () => {
             </div>
           </div>
         </div>
-        <div className="button sm  trigger-charuco-settings-flyout  flex pos-rel p-1 br-1 h-25 flex-row items-center justify-content-space-between" onClick={handleToggleSettings}>
+        <div className="button sm  trigger-charuco-settings-flyout  flex-wrap flex pos-rel p-1 br-1  flex-row items-center justify-content-space-between" onClick={handleToggleSettings}>
           <div className="group-1 flex flex-col items-start">
             <p className="text-gray text-nowrap text md text-align-left">
               Charuco board
@@ -56,14 +56,7 @@ const CalibrationModule = () => {
               </span>
             </div>
             <div className="group-2.2 pos-rel flex flex-col items-center">
-              <IconButton
-                icon="settings-icon"
-                className="button sm"
-                onClick={() => {}} // Does nothing but clicks
-                tooltip
-                tooltipText="Charuco settings"
-                tooltipPosition="pos-left"
-              />
+              <span className="icon settings-icon icon-size-20" />
             </div>
           </div>
         </div>

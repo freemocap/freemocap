@@ -716,10 +716,6 @@ animation: fadeIn, scaleIn;
   font-style: italic;
 }
 
-.value-selector-container {
-  top: 30px;
-  right: -8px;
-}
 .string-selector {
   top: 30px;
   right: -8px;

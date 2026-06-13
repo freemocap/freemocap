@@ -677,7 +677,7 @@ button.rotate-button {
 }
 
 .splash-image-container {
-  background-image: url(/images/splashmodal_art.webp);
+  background-image: url(../images/splashmodal_art.webp); 
   background-repeat: no-repeat;
   background-size: contain;
 }
@@ -745,7 +745,7 @@ button.rotate-button {
 
 .string-selector {
   top: 30px;
-  right: -8px;
+  
 }
 
 .value-label,

@@ -67,7 +67,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
       
       {/* Modal */}
       <div 
-        className="mocap-settings-modal overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2" 
+        className="mocap-settings-modal bg-primary border-1 border-black overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2" 
 
       >
         {/* <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
@@ -76,7 +76,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         </div> */}
 
         {/* Row 1 */}
-        <div className="inner-container-settings- flex flex-row flex-1 h-inherit br-2">
+        <div className="inner-container-settings- bg-secondary flex flex-row flex-1 h-inherit br-2">
           {/* Column 1 - Buttons */}
             
 
@@ -111,7 +111,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         </div>
 
         {/* Row 2 */}
-        <div className="bottom-area-action-container border-1 border-mid-black br-2 flex flex-col align-end bottom-row gap-2 p-2 pt-0">
+        <div className="bottom-area-action-container p-2 br-2 flex flex-col align-end bottom-row gap-2 pt-0">
           {/* Column 1 - Two buttons */}
           <div className="flex flex-row gap-2 h-full">
             <ButtonSm

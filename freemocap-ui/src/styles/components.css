@@ -699,13 +699,13 @@ button.rotate-button {
   max-height: 650px;
   min-width: 550px;
   min-height: 650px;
-  width: 550px;
-  height: 650px;
+  /* width: 550px;
+  height: 650px; */
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   z-index: 1000;
-  background-color: var(--color-bg-secondary);
+  
        
 }
 /* .splashmodal-mini-menu-container {

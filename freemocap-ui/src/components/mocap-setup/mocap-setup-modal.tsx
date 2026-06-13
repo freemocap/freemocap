@@ -4,6 +4,7 @@ import SubactionHeader from '@/components/ui-components/SubactionHeader';
 
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
+import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 
 interface MocapSetupModalProps {
   onClose?: () => void;
@@ -39,22 +40,17 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
           );
         }
       case "button3":
-        return (
-          <div className="flex flex-col gap-2 p-2 bg-dark br-2">
-            <p className="text-white text md">Third Settings Panel</p>
-            <p className="text-gray text sm">Placeholder for additional settings content.</p>
-            <div className="flex flex-col gap-1 mt-2">
-              <div className="flex items-center gap-2">
-                <span className="icon settings-icon icon-size-20" />
-                <p className="text-gray text sm">Sample setting option 1</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="icon settings-icon icon-size-20" />
-                <p className="text-gray text sm">Sample setting option 2</p>
-              </div>
+        try {
+          return <MOCAPBlenderSettings open={true} onClose={() => {}} />;
+        } catch (error) {
+          console.error("Error rendering Blender Settings:", error);
+          return (
+            <div className="flex flex-col gap-2 p-2 bg-dark br-2">
+              <p className="text-white text md">Blender Settings</p>
+              <p className="text-gray text sm">Failed to load component. Check if the export is correct.</p>
             </div>
-          </div>
-        );
+          );
+        }
       default:
         return null;
     }

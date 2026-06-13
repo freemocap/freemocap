@@ -38,7 +38,7 @@ const ActiveRecordingLabel: React.FC = () => {
 
     return (
         <span className="flex flex-row items-center gap-1">
-            <span className="text-white">Active Recording</span>
+            <span className="text-gray">Active Recording</span>
             {recordingName ? (
                 <span
                     className="flex flex-row text-nowrap tag text sm text-white"

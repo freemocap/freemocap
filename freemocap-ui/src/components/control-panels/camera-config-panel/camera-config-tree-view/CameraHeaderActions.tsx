@@ -59,10 +59,10 @@ export const CameraHeaderActions: React.FC = () => {
             {connectedCameras.length === 0 ? (
                 <ButtonSm
                     text={isLoading ? t('connecting') : t('connectCameras')}
-                    iconClass={isLoading ? 'loader-icon' : 'stream-icon'}
+                    iconClass={isLoading ? '' : ''}
                     onClick={handleUpdate}
                     textColor="text-black"
-                    className={isLoading ? 'disabled primary' : 'primary'}
+                    className={isLoading ? 'disabled primary' : 'secondary'}
                     tooltip
                     tooltipText={t('connectCameras')}
                     tooltipPosition="pos-bottom-right"

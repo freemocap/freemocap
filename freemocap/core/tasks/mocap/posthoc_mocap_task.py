@@ -77,8 +77,15 @@ def run_posthoc_mocap_aggregator_task(
                 )
             observation_recorders[cam_id].add_observation(observation=obs)
 
+    recording_folder = Path(recording_info.full_recording_path)
+
     # ---- Get calibration path ----
-    if task_config.calibration_source == CalibrationSource.SPECIFIED:
+    # A single camera needs no calibration - triangulation is skipped entirely
+    # and the skeleton is built directly from 2D pixel observations.
+    if len(camera_ids) == 1:
+        calibration_toml_path: Path | None = None
+        logger.info("Single camera recording - skipping calibration lookup")
+    elif task_config.calibration_source == CalibrationSource.SPECIFIED:
         if not task_config.calibration_toml_path:
             raise RuntimeError("calibration_source is 'specified' but calibration_toml_path is not set.")
         calibration_toml_path = Path(task_config.calibration_toml_path)
@@ -97,16 +104,16 @@ def run_posthoc_mocap_aggregator_task(
         logger.info(f"Using most recent calibration TOML: {calibration_toml_path}")
 
     # ---- Copy calibration file into recording folder ----
-    recording_folder = Path(recording_info.full_recording_path)
-    recording_calibration_copy = recording_folder / calibration_toml_path.name
-    shutil.copy2(calibration_toml_path, recording_calibration_copy)
-    logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
+    if calibration_toml_path is not None:
+        recording_calibration_copy = recording_folder / calibration_toml_path.name
+        shutil.copy2(calibration_toml_path, recording_calibration_copy)
+        logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
 
     # ---- Run skeleton triangulation ----
     _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")
     logger.info("Starting skeleton triangulation...")
 
-    output_folder = Path(recording_info.full_recording_path) / "output_data"
+    output_folder = recording_folder / "output_data"
 
     skeleton = skeleton_from_mediapipe_observation_recorders(
         observation_recorders=observation_recorders,

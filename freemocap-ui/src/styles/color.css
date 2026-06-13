@@ -316,3 +316,783 @@
 .text-error {
   color: var(--color-danger);
 }
+
+/* ========================================
+   SEMANTIC COLOR UTILITY CLASSES
+   ======================================== */
+
+/* =========================
+   INFO / BRAND COLORS
+   ========================= */
+
+/* Text Colors */
+.text-info {
+  color: var(--color-info);
+}
+
+.text-info-strong {
+  color: var(--color-info-strong);
+}
+
+.text-info-medium {
+  color: var(--color-info-medium);
+}
+
+.text-info-muted {
+  color: var(--color-info-muted);
+}
+
+.text-info-idle {
+  color: var(--color-info-idle);
+}
+
+/* Background Colors */
+.bg-info {
+  background-color: var(--color-info);
+}
+
+.bg-info-strong {
+  background-color: var(--color-info-strong);
+}
+
+.bg-info-medium {
+  background-color: var(--color-info-medium);
+}
+
+.bg-info-muted {
+  background-color: var(--color-info-muted);
+}
+
+.bg-info-idle {
+  background-color: var(--color-info-idle);
+}
+
+.bg-info-surface {
+  background-color: var(--color-info-surface);
+}
+
+/* Border Colors */
+.border-info {
+  border-color: var(--color-info);
+}
+
+.border-info-strong {
+  border-color: var(--color-info-strong);
+}
+
+.border-info-medium {
+  border-color: var(--color-info-medium);
+}
+
+.border-info-muted {
+  border-color: var(--color-info-muted);
+}
+
+.border-info-idle {
+  border-color: var(--color-info-idle);
+}
+
+/* Hover Variants for Info */
+.hover\:bg-info:hover {
+  background-color: var(--color-info);
+}
+
+.hover\:text-info:hover {
+  color: var(--color-info);
+}
+
+/* =========================
+   SUCCESS COLORS
+   ========================= */
+
+/* Text Colors */
+.text-success-strong {
+  color: var(--color-success-strong);
+}
+
+.text-success-muted {
+  color: var(--color-success-muted);
+}
+
+.text-success-idle {
+  color: var(--color-success-idle);
+}
+
+/* Background Colors */
+.bg-success-strong {
+  background-color: var(--color-success-strong);
+}
+
+.bg-success-muted {
+  background-color: var(--color-success-muted);
+}
+
+.bg-success-idle {
+  background-color: var(--color-success-idle);
+}
+
+.bg-success-surface {
+  background-color: var(--color-success-surface);
+}
+
+/* Border Colors */
+.border-success {
+  border-color: var(--color-success);
+}
+
+.border-success-strong {
+  border-color: var(--color-success-strong);
+}
+
+.border-success-muted {
+  border-color: var(--color-success-muted);
+}
+
+.border-success-idle {
+  border-color: var(--color-success-idle);
+}
+
+/* Hover Variants for Success */
+.hover\:bg-success:hover {
+  background-color: var(--color-success);
+}
+
+.hover\:text-success:hover {
+  color: var(--color-success);
+}
+
+/* =========================
+   WARNING COLORS
+   ========================= */
+
+/* Text Colors */
+.text-warning-strong {
+  color: var(--color-warning-strong);
+}
+
+.text-warning-muted {
+  color: var(--color-warning-muted);
+}
+
+/* Background Colors */
+.bg-warning-strong {
+  background-color: var(--color-warning-strong);
+}
+
+.bg-warning-muted {
+  background-color: var(--color-warning-muted);
+}
+
+.bg-warning-surface {
+  background-color: var(--color-warning-surface);
+}
+
+/* Border Colors */
+.border-warning-strong {
+  border-color: var(--color-warning-strong);
+}
+
+.border-warning-muted {
+  border-color: var(--color-warning-muted);
+}
+
+/* Hover Variants for Warning */
+.hover\:bg-warning:hover {
+  background-color: var(--color-bg-warning);
+}
+
+.hover\:text-warning:hover {
+  color: var(--color-warning);
+}
+
+/* =========================
+   DANGER / ERROR COLORS
+   ========================= */
+
+/* Text Colors */
+.text-danger {
+  color: var(--color-danger);
+}
+
+.text-danger-strong {
+  color: var(--color-danger-strong);
+}
+
+.text-danger-idle {
+  color: var(--color-danger-idle);
+}
+
+.text-danger-muted {
+  color: var(--color-danger-muted);
+}
+
+/* Background Colors */
+.bg-danger {
+  background-color: var(--color-danger);
+}
+
+.bg-danger-strong {
+  background-color: var(--color-danger-strong);
+}
+
+.bg-danger-idle {
+  background-color: var(--color-danger-idle);
+}
+
+.bg-danger-muted {
+  background-color: var(--color-danger-muted);
+}
+
+.bg-danger-surface {
+  background-color: var(--color-danger-surface);
+}
+
+/* Border Colors */
+.border-danger {
+  border-color: var(--color-danger);
+}
+
+.border-danger-strong {
+  border-color: var(--color-danger-strong);
+}
+
+.border-danger-idle {
+  border-color: var(--color-danger-idle);
+}
+
+.border-danger-muted {
+  border-color: var(--color-danger-muted);
+}
+
+/* Hover Variants for Danger */
+.hover\:bg-danger:hover {
+  background-color: var(--color-danger);
+}
+
+.hover\:text-danger:hover {
+  color: var(--color-danger);
+}
+
+/* =========================
+   BACKGROUND COLORS (Semantic)
+   ========================= */
+
+.bg-primary {
+  background-color: var(--color-bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--color-bg-secondary);
+}
+
+.bg-tertiary {
+  background-color: var(--color-bg-tertiary);
+}
+
+.bg-quaternary {
+  background-color: var(--color-bg-quaternary);
+}
+
+.bg-elevated {
+  background-color: var(--color-bg-elevated);
+}
+
+.bg-idle {
+  background-color: var(--color-bg-idle);
+}
+
+/* Surface States */
+.bg-surface-hover {
+  background-color: var(--color-surface-hover);
+}
+
+.bg-surface-active {
+  background-color: var(--color-surface-active);
+}
+
+.bg-surface-overlay {
+  background-color: var(--color-surface-overlay);
+}
+
+/* =========================
+   TEXT COLORS (Semantic)
+   ========================= */
+
+.text-primary {
+  color: var(--color-text-primary);
+}
+
+.text-secondary {
+  color: var(--color-text-secondary);
+}
+
+.text-muted {
+  color: var(--color-text-muted);
+}
+
+.text-disabled {
+  color: var(--color-text-disabled);
+}
+
+/* =========================
+   BORDER COLORS (Semantic)
+   ========================= */
+
+.border-primary {
+  border-color: var(--color-border-primary);
+}
+
+.border-secondary {
+  border-color: var(--color-border-secondary);
+}
+
+.border-muted {
+  border-color: var(--color-border-muted);
+}
+
+/* =========================
+   CHART SEMANTICS
+   ========================= */
+
+/* Text Colors */
+.text-chart-frontend {
+  color: var(--chart-frontend);
+}
+
+.text-chart-backend {
+  color: var(--chart-backend);
+}
+
+/* Background Colors */
+.bg-chart-frontend {
+  background-color: var(--chart-frontend);
+}
+
+.bg-chart-frontend-bg {
+  background-color: var(--chart-frontend-bg);
+}
+
+.bg-chart-backend {
+  background-color: var(--chart-backend);
+}
+
+.bg-chart-backend-bg {
+  background-color: var(--chart-backend-bg);
+}
+
+/* Border Colors */
+.border-chart-frontend {
+  border-color: var(--chart-frontend);
+}
+
+.border-chart-backend {
+  border-color: var(--chart-backend);
+}
+
+/* =========================
+   METRIC SEMANTICS
+   ========================= */
+
+/* Text Colors */
+.text-metric-recent {
+  color: var(--metric-recent);
+}
+
+.text-metric-mean {
+  color: var(--metric-mean);
+}
+
+.text-metric-median {
+  color: var(--metric-median);
+}
+
+.text-metric-stddev {
+  color: var(--metric-stddev);
+}
+
+.text-metric-max {
+  color: var(--metric-max);
+}
+
+.text-metric-min {
+  color: var(--metric-min);
+}
+
+.text-metric-min-dark {
+  color: var(--metric-min-dark);
+}
+
+/* Background Colors */
+.bg-metric-recent {
+  background-color: var(--metric-recent);
+}
+
+.bg-metric-recent-bg {
+  background-color: var(--metric-recent-bg);
+}
+
+.bg-metric-mean {
+  background-color: var(--metric-mean);
+}
+
+.bg-metric-mean-bg {
+  background-color: var(--metric-mean-bg);
+}
+
+.bg-metric-median {
+  background-color: var(--metric-median);
+}
+
+.bg-metric-median-bg {
+  background-color: var(--metric-median-bg);
+}
+
+.bg-metric-stddev {
+  background-color: var(--metric-stddev);
+}
+
+.bg-metric-stddev-bg {
+  background-color: var(--metric-stddev-bg);
+}
+
+.bg-metric-max {
+  background-color: var(--metric-max);
+}
+
+.bg-metric-max-bg {
+  background-color: var(--metric-max-bg);
+}
+
+.bg-metric-min {
+  background-color: var(--metric-min);
+}
+
+.bg-metric-min-bg {
+  background-color: var(--metric-min-bg);
+}
+
+/* Border Colors */
+.border-metric-recent {
+  border-color: var(--metric-recent);
+}
+
+.border-metric-mean {
+  border-color: var(--metric-mean);
+}
+
+.border-metric-median {
+  border-color: var(--metric-median);
+}
+
+.border-metric-stddev {
+  border-color: var(--metric-stddev);
+}
+
+.border-metric-max {
+  border-color: var(--metric-max);
+}
+
+.border-metric-min {
+  border-color: var(--metric-min);
+}
+
+/* =========================
+   LOG LEVEL SEMANTICS
+   ========================= */
+
+/* Text Colors */
+.text-log-trace {
+  color: var(--log-trace);
+}
+
+.text-log-debug {
+  color: var(--log-debug);
+}
+
+.text-log-info {
+  color: var(--log-info);
+}
+
+.text-log-success {
+  color: var(--log-success);
+}
+
+.text-log-api {
+  color: var(--log-api);
+}
+
+.text-log-warning {
+  color: var(--log-warning);
+}
+
+.text-log-error {
+  color: var(--log-error);
+}
+
+.text-log-critical {
+  color: var(--log-critical);
+}
+
+/* Background Colors */
+.bg-log-trace {
+  background-color: var(--log-trace);
+}
+
+.bg-log-trace-alpha {
+  background-color: var(--log-trace-alpha);
+}
+
+.bg-log-debug {
+  background-color: var(--log-debug);
+}
+
+.bg-log-debug-alpha {
+  background-color: var(--log-debug-alpha);
+}
+
+.bg-log-info {
+  background-color: var(--log-info);
+}
+
+.bg-log-info-alpha {
+  background-color: var(--log-info-alpha);
+}
+
+.bg-log-success {
+  background-color: var(--log-success);
+}
+
+.bg-log-success-alpha {
+  background-color: var(--log-success-alpha);
+}
+
+.bg-log-api {
+  background-color: var(--log-api);
+}
+
+.bg-log-api-alpha {
+  background-color: var(--log-api-alpha);
+}
+
+.bg-log-warning {
+  background-color: var(--log-warning);
+}
+
+.bg-log-warning-alpha {
+  background-color: var(--log-warning-alpha);
+}
+
+.bg-log-error {
+  background-color: var(--log-error);
+}
+
+.bg-log-error-alpha {
+  background-color: var(--log-error-alpha);
+}
+
+.bg-log-critical {
+  background-color: var(--log-critical);
+}
+
+.bg-log-critical-alpha {
+  background-color: var(--log-critical-alpha);
+}
+
+/* Border Colors */
+.border-log-trace {
+  border-color: var(--log-trace);
+}
+
+.border-log-debug {
+  border-color: var(--log-debug);
+}
+
+.border-log-info {
+  border-color: var(--log-info);
+}
+
+.border-log-success {
+  border-color: var(--log-success);
+}
+
+.border-log-api {
+  border-color: var(--log-api);
+}
+
+.border-log-warning {
+  border-color: var(--log-warning);
+}
+
+.border-log-error {
+  border-color: var(--log-error);
+}
+
+.border-log-critical {
+  border-color: var(--log-critical);
+}
+
+/* =========================
+   LOG TERMINAL SEMANTICS
+   ========================= */
+
+.bg-log {
+  background-color: var(--log-bg);
+}
+
+.bg-log-row {
+  background-color: var(--log-row-bg);
+}
+
+.text-log-timestamp {
+  color: var(--log-timestamp);
+}
+
+.text-log-text {
+  color: var(--log-text);
+}
+
+.text-log-url {
+  color: var(--log-url);
+}
+
+.border-log-detail {
+  border-color: var(--log-detail-border);
+}
+
+.bg-log-stack {
+  background-color: var(--log-stack-bg);
+}
+
+/* =========================
+   UTILITY CLASSES FOR ALL COLORS
+   ========================= */
+
+/* Ring / Outline Utilities */
+.ring-info {
+  box-shadow: 0 0 0 2px var(--color-info);
+}
+
+.ring-success {
+  box-shadow: 0 0 0 2px var(--color-success);
+}
+
+.ring-warning {
+  box-shadow: 0 0 0 2px var(--color-warning);
+}
+
+.ring-danger {
+  box-shadow: 0 0 0 2px var(--color-danger);
+}
+
+/* Fill for SVG */
+.fill-info {
+  fill: var(--color-info);
+}
+
+.fill-success {
+  fill: var(--color-success);
+}
+
+.fill-warning {
+  fill: var(--color-warning);
+}
+
+.fill-danger {
+  fill: var(--color-danger);
+}
+
+.fill-primary {
+  fill: var(--color-text-primary);
+}
+
+.fill-muted {
+  fill: var(--color-text-muted);
+}
+
+/* Stroke for SVG */
+.stroke-info {
+  stroke: var(--color-info);
+}
+
+.stroke-success {
+  stroke: var(--color-success);
+}
+
+.stroke-warning {
+  stroke: var(--color-warning);
+}
+
+.stroke-danger {
+  stroke: var(--color-danger);
+}
+
+/* Caret Color for inputs */
+.caret-info {
+  caret-color: var(--color-info);
+}
+
+.caret-success {
+  caret-color: var(--color-success);
+}
+
+.caret-warning {
+  caret-color: var(--color-warning);
+}
+
+.caret-danger {
+  caret-color: var(--color-danger);
+}
+
+/* Selection Color */
+.selection-info::selection {
+  background-color: var(--color-info);
+  color: var(--color-text-primary);
+}
+
+.selection-success::selection {
+  background-color: var(--color-success);
+  color: var(--color-text-primary);
+}
+
+/* Placeholder Color */
+.placeholder-info::placeholder {
+  color: var(--color-info);
+}
+
+.placeholder-success::placeholder {
+  color: var(--color-success);
+}
+
+/* Opacity Utilities for Semantic Colors */
+.bg-info\/10 {
+  background-color: var(--color-info-surface);
+}
+
+.bg-success\/10 {
+  background-color: var(--color-success-surface);
+}
+
+.bg-warning\/10 {
+  background-color: var(--color-warning-surface);
+}
+
+.bg-danger\/10 {
+  background-color: var(--color-danger-surface);
+}
+
+/* Focus Ring Utilities */
+.focus\:ring-info:focus {
+  box-shadow: 0 0 0 3px var(--color-info);
+}
+
+.focus\:ring-success:focus {
+  box-shadow: 0 0 0 3px var(--color-success);
+}
+
+.focus\:ring-warning:focus {
+  box-shadow: 0 0 0 3px var(--color-warning);
+}
+
+.focus\:ring-danger:focus {
+  box-shadow: 0 0 0 3px var(--color-danger);
+}

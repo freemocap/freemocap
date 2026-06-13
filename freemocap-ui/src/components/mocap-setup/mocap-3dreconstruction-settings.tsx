@@ -83,7 +83,7 @@ const MOCAPthreeDReconstructionSettings: React.FC<
       ref={modalRef}
       className="flex flex-col w-full br-2 reveal fadeIn gap-1"
     >
-      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
+      <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Point Gate settings" />

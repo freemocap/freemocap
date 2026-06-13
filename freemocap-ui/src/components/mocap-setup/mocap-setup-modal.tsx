@@ -11,7 +11,6 @@ interface MocapSetupModalProps {
 
 const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
   const [activeButton, setActiveButton] = useState<"button1" | "button2" | "button3">("button1");
-  const [row2Active, setRow2Active] = useState<"left" | "right">("left");
 
   const renderRightPanelContent = () => {
     switch (activeButton) {
@@ -65,18 +64,14 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
     <>
       {/* Backdrop overlay */}
       <div 
-        className="pos-fixed inset-0" 
-        style={{ 
-          backgroundColor: "rgba(0, 0, 0, 0.7)", 
-          zIndex: 999,
-          backdropFilter: "blur(4px)"
-        }}
+        className="pos-fixed inset-0 bg-surface-overlay z-10" 
+       
         onClick={onClose}
       />
       
       {/* Modal */}
       <div 
-        className="mocap-settings-modal pos-fixed elevated-sharp p-1 b-2" 
+        className="mocap-settings-modal overflow-hidden pos-fixed elevated-sharp p-1 b-2 flex flex-col br-2" 
 
       >
         {/* <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
@@ -85,66 +80,65 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         </div> */}
 
         {/* Row 1 */}
-        <div className="flex flex-row gap-2 p-3" style={{ minHeight: 400 }}>
+        <div className="inner-container-settings- flex flex-row flex-1 h-inherit br-2">
           {/* Column 1 - Buttons */}
             
 
-          <div className="flex flex-col gap-2" style={{ minWidth: 180, flexShrink: 0 }}>
+          <div className="left-section-actions br-1 p-2 bg-tertiary flex flex-col flex-1 gap-2" style={{ maxWidth: 146, flexShrink: 0 }}>
             <SubactionHeader 
             text="Mocap setup" 
-            className="text-white"/>
+            className="text-gray"/>
             <ButtonSm
               text="3D Reconstruction"
-              buttonType={activeButton === "button1" ? "primary" : "secondary"}
-              className="full-width"
+              buttonType={activeButton === "button1" ? "activated" : "idle"}
+              className="full-width quaternary"
               onClick={() => setActiveButton("button1")}
             />
             <ButtonSm
               text="MediaPipe Detector"
-              buttonType={activeButton === "button2" ? "primary" : "secondary"}
-              className="full-width"
+              buttonType={activeButton === "button2" ? "activated" : "idle"}
+              className="full-width quaternary"
               onClick={() => setActiveButton("button2")}
             />
             <ButtonSm
-              text="Other Settings"
-              buttonType={activeButton === "button3" ? "primary" : "secondary"}
-              className="full-width"
+              text="Blender"
+              buttonType={activeButton === "button3" ? "activated" : "idle"}
+              className="full-width quaternary"
               onClick={() => setActiveButton("button3")}
             />
           </div>
           
           {/* Column 2 - Dynamic Content */}
-          <div className="right-side-settings-container flex w-full flex-row">
+          <div className="right-side-settings-container overflow-y p-2 flex-1 flex w-full flex-row">
             {renderRightPanelContent()}
           </div>
         </div>
 
         {/* Row 2 */}
-        <div className="flex flex-row gap-2 p-3 pt-0">
+        <div className="bottom-area-action-container flex flex-col align-end bottom-row gap-2 p-2 pt-0">
           {/* Column 1 - Two buttons */}
-          <div className="flex flex-row gap-2" style={{ minWidth: 180, flexShrink: 0 }}>
+          <div className="flex flex-row gap-2 h-full">
             <ButtonSm
-              text="Action A"
-              buttonType={row2Active === "left" ? "primary" : "secondary"}
-              className="full-width"
-              onClick={() => setRow2Active("left")}
+              text="Close"
+              buttonType="quaternary"
+              className=""
+              onClick={onClose}
             />
             <ButtonSm
-              text="Action B"
-              buttonType={row2Active === "right" ? "primary" : "secondary"}
-              className="full-width"
-              onClick={() => setRow2Active("right")}
+              text="Process Mocap"
+              textColor="text-white"
+              iconClass="processmocap-icon"
+              buttonType=""
+              className="primary accent"
+              onClick={() => {}}
+              tooltip={true}
+              tooltipPosition="pos-top"
+              tooltipText="Start mocap processing"
             />
           </div>
-          
-          {/* Column 2 - Paragraph */}
-          <div className="flex-1 bg-dark br-2 p-2 flex items-center">
-            <p className="text-gray text md text-center w-full">
-              This is a dummy paragraph. Content changes based on which action button is active. Currently:{" "}
-              <span className="text-white">{row2Active === "left" ? "Action A" : "Action B"}</span>
-            </p>
+          <div className="flex flex-row gap-2 h-full">
+            <p className="text sm text-gray">Processing may take hours, depending on your system, ideally avoid using your computer.</p></div>
           </div>
-        </div>
       </div>
     </>
   );

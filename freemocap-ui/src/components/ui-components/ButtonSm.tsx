@@ -36,7 +36,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
   const innerContent = (
     <>
       {iconClass && <span className={clsx("icon icon-size-20", iconClass)} />}
-      <p className={clsx(textColor, "text-nowrap text md text-align-left", textClass)}>
+      <p className={clsx(textColor, "text-nowrap text bg text-align-left", textClass)}>
         {text}
       </p>
     </>

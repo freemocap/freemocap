@@ -43,7 +43,20 @@
   color: var(--color-text-primary);
 }
 
+/* Primary fullwidth button */
+button.quaternary {
+  background-color: transparent;
+}
 
+.app-root.quaternary:hover {
+  background-color: var(--color-bg-elevated);
+}
+.button.quaternary.activated {
+  background-color: var(--color-bg-primary);
+}
+.button.quaternary>p {
+  color: var(--color-text-primary);
+}
 .full-width {
   min-width: 100%;
 }
@@ -58,7 +71,7 @@
 }
 
 .primary>p {
-  color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
 }
 
 
@@ -81,7 +94,7 @@
 }
 
 .accent>p {
-  color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
 }
 
 .accent:hover {
@@ -686,6 +699,8 @@ button.rotate-button {
   max-height: 600px;
   min-width: 500px;
   min-height: 600px;
+  width: 500px;
+  height: 600px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

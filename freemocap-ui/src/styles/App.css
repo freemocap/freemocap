@@ -379,6 +379,12 @@ a.link:hover {
 .h-full {
   height: 100%;
 }
+.h-inherit {
+  height: inherit;
+}
+.h-inherit {
+  width: inherit;
+}
 
 .h-25 {
   height: 25px;

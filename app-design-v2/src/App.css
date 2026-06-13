@@ -253,6 +253,7 @@ q::after {
   background-color: var(--gray-600);
 }
 
+
 /* card button */
 .button.card {
   width: 100px;

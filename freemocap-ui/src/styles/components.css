@@ -4,6 +4,7 @@
   text-align: center;
   border-radius: 4px;
 }
+
 /* BUTTON STYLES AND SHAPES */
 /* Activate button */
 .activated>p {
@@ -17,22 +18,25 @@
 .button.activated {
   background-color: var(--color-bg-elevated);
 }
+
 .button.activated:hover {
   background-color: var(--color-bg-tertiary);
 }
 
 /* Primary fullwidth button */
 .secondary {
-  background-color: var( --color-bg-idle);
+  background-color: var(--color-bg-idle);
 }
-.secondary > p {
+
+.secondary>p {
   color: var(--color-text-primary);
 }
 
 .secondary:hover {
   background-color: var(--color-bg-elevated);
 }
-.tertiary > p {
+
+.tertiary>p {
   color: var(--color-text-primary);
 }
 
@@ -45,10 +49,12 @@
 .primary {
   background-color: var(--color-text-primary);
 }
+
 .primary:hover {
   background-color: var(--log-trace);
 }
-.primary > p {
+
+.primary>p {
   color: var(--color-bg-secondary);
 }
 
@@ -62,18 +68,21 @@
   background-color: var(--color-danger-idle);
   border: 1px solid var(--color-danger);
 }
+
 .btn-danger:hover {
   background-color: var(--color-danger-muted);
 }
-.btn-danger > p {
+
+.btn-danger>p {
   color: var(--color-text-primary);
 }
-.accent > p {
+
+.accent>p {
   color: var(--color-bg-secondary);
 }
 
 .accent:hover {
-   background-color: var(--color-danger-strong);
+  background-color: var(--color-danger-strong);
 }
 
 /* card button */
@@ -96,11 +105,12 @@
 .button.sm.dropdown:after {
   content: "";
   margin-left: auto;
-   background-image: var(--dropdown-icon);
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain; /* or 16px 16px */
-    display: block;
+  background-image: var(--dropdown-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* or 16px 16px */
+  display: block;
 }
 
 .button.sm.select-folder:after {
@@ -124,6 +134,7 @@ button.rotate-button {
   max-width: max-content;
   /* min-width: max-content; */
 }
+
 .min-w-fit-content {
   /* max-width: max-content; */
   min-width: max-content;
@@ -147,7 +158,7 @@ button.rotate-button {
   input,
   button.active,
   .toggle-button, .rotate-button):active {
-  transform:  scale(99%);
+  transform: scale(99%);
   transform: translateY(1px);
 
 }
@@ -214,9 +225,9 @@ button.rotate-button {
 
 .main-segmented-control {
   position: absolute;
-    left: 6px;
-    top: 6px;
-    z-index: 2;
+  left: 6px;
+  top: 6px;
+  z-index: 2;
 }
 
 .active-tools-header {
@@ -243,14 +254,17 @@ button.rotate-button {
   line-height: 25px;
   padding: 0;
 }
-.RTP-settings-flyout, .calibration-settings-flyout {
-  width: 280px;
-  
-}
+
+.RTP-settings-flyout,
 .calibration-settings-flyout {
-    top: 80px;
-    left: 310px;
-    }
+  width: 280px;
+
+}
+
+.calibration-settings-flyout {
+  top: 80px;
+  left: 310px;
+}
 
 .segmented-control-button>p.text.sm {
   /* small size */
@@ -304,9 +318,9 @@ button.rotate-button {
 }
 
 /* Resizable panel handles  --------------------- */
-.resizable-component { 
+.resizable-component {
 
-  background-color: transparent!important;
+  background-color: transparent !important;
 }
 
 .resizable-component {
@@ -317,10 +331,12 @@ button.rotate-button {
     width 0.15s ease,
     height 0.15s ease;
 }
+
 .streaming-bar-setting-action-bar {
   margin-top: -39px;
-    margin-right: 9px;
+  margin-right: 9px;
 }
+
 /*
    CENTER INDICATOR
 */
@@ -385,7 +401,7 @@ button.rotate-button {
 
 /* react-resizable-panels adds this attribute */
 .resizable-component[data-resize-handle-state="drag"] {
-  background-color: rgba(255,255,255,0.08);
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Wider while dragging */
@@ -408,9 +424,9 @@ button.rotate-button {
 
 /* ---- Welcome Page ---- */
 .welcome-modal {
-width: 680px;
-min-height: 400px;
-animation: fadeIn, scaleIn;
+  width: 680px;
+  min-height: 400px;
+  animation: fadeIn, scaleIn;
 }
 
 .welcome-modal-image-col {
@@ -451,28 +467,34 @@ animation: fadeIn, scaleIn;
   background-color: var(--color-info-muted);
   transform: translateY(-1px);
 }
+
 .right-side-panel {
 
   height: 100%;
 }
-.main-container  {
+
+.main-container {
   height: inherit;
 }
+
 .all-actions-components {
   align-items: center;
-    justify-content: space-between;
-    align-content: center;
-    width: 100%;
+  justify-content: space-between;
+  align-content: center;
+  width: 100%;
 }
+
 .welcome-connect-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-.mode-header{
+
+.mode-header {
   min-height: 33px;
   width: inherit;
   margin-bottom: 1px;
 }
+
 /* ---- Toast Notification ---- */
 .toast-notification {
   position: fixed;
@@ -508,9 +530,9 @@ animation: fadeIn, scaleIn;
   gap: 4px;
   padding: 2px 8px;
   border: none;
-  
+
   border-radius: 4px;
-  
+
   font-family: monospace;
   font-size: 0.75rem;
   color: var(--color-text-muted);
@@ -620,14 +642,16 @@ animation: fadeIn, scaleIn;
 }
 
 .splash-modal {
-    width: 550px;
-    height: 366px;
+  width: 550px;
+  height: 366px;
   /* animation: scaleIn 0.3s ease forwards; */
   animation: fadeIn, scaleIn;
 }
+
 .camera-cell {
   border-radius: 8px;
 }
+
 .conection-container {
   width: 255px;
 }
@@ -657,7 +681,7 @@ animation: fadeIn, scaleIn;
 
 /* .splashmodal-mini-menu-container {
   position: absolute; */
-  /* top: 5px;
+/* top: 5px;
   left: 5px;
 } */
 
@@ -697,7 +721,7 @@ animation: fadeIn, scaleIn;
    Based on ModernCSS.dev
    ========================================= */
 
-   /* Style the numeric input specifically */
+/* Style the numeric input specifically */
 .numeric-input {
   color: var(--color-text-muted);
   font-weight: bold;
@@ -720,16 +744,19 @@ animation: fadeIn, scaleIn;
   top: 30px;
   right: -8px;
 }
+
 .value-label,
 .input-field {
-  
+
   color: var(--color-text-muted);
-  
+
 }
-.input-field:active, .input-field:focus {
-  
+
+.input-field:active,
+.input-field:focus {
+
   border: none;
-  
+
 }
 
 .unit-label {
@@ -741,16 +768,16 @@ animation: fadeIn, scaleIn;
   filter: brightness(2);
 }
 
-.input-with-unit, .input-with-string
- {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--color-bg-elevated);
-    border-radius: 4px;
-    padding: 4px 8px;
-    height: 28px;
-    width: 77px;
-    transition: border var(--speed-2);
+.input-with-unit,
+.input-with-string {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-bg-elevated);
+  border-radius: 4px;
+  padding: 4px 8px;
+  height: 28px;
+  width: 77px;
+  transition: border var(--speed-2);
 }
 
 .input-with-unit.tooltip:has(input.input-field:hover) {
@@ -796,7 +823,8 @@ animation: fadeIn, scaleIn;
   /* max-width: 300px; */
 }
 
-.selected-camera-feed::before, .selected-camera-settings::before {
+.selected-camera-feed::before,
+.selected-camera-settings::before {
 
   outline: 1.5px solid var(--color-border-primary);
   content: "";
@@ -898,7 +926,7 @@ animation: fadeIn, scaleIn;
   min-width: 280px;
   top: 56px;
   left: 132px;
-   min-width: 350px;
+  min-width: 350px;
   min-width: 350px;
   max-height: 80vh;
 
@@ -933,19 +961,24 @@ animation: fadeIn, scaleIn;
 
 
 .connection-status-dropdown {
-  position: fixed!important;
-  top: 32px!important;;
-  left: 8px!important;;
-  z-index: 100!important;;
-  max-width:  400px!important;;
-  min-width:  400px!important;;
-  
+  position: fixed !important;
+  top: 32px !important;
+  ;
+  left: 8px !important;
+  ;
+  z-index: 100 !important;
+  ;
+  max-width: 400px !important;
+  ;
+  min-width: 400px !important;
+  ;
+
 }
 
-.playback-settings-popup { 
-    
-    min-width: 182px;
- 
+.playback-settings-popup {
+
+  min-width: 182px;
+
 }
 
 .playback-timeline-scrubber {
@@ -962,6 +995,7 @@ animation: fadeIn, scaleIn;
   max-height: 16px;
   top: -6px;
 }
+
 .error-message-container::before,
 .error-message-container::after {
   content: "";
@@ -982,4 +1016,3 @@ animation: fadeIn, scaleIn;
 .error-message-container::after {
   right: -20px;
 }
-

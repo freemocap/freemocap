@@ -153,7 +153,7 @@ const CalibrationModule = () => {
                 icon="cancelcalibrate-icon"
                 className="button sm"
                 onClick={dispatchStopCalibrationRecording}
-                tooltip
+                tooltip={true}
                 tooltipText="Stop recording & calibrate"
                 tooltipPosition="pos-left"
               />

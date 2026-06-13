@@ -74,7 +74,7 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
       {open && ReactDOM.createPortal(
         <div
           ref={dropdownRef}
-          style={{ ...menuStyle, zIndex: 1000 }}
+          style={{ ...menuStyle, zIndex: 10000 }}
           className={`dropdown-container border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal ${openUpward ? "slide-up" : "slide-down"} ${DropdownclassName}`}
         >
           <div className="flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">

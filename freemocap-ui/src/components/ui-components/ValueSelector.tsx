@@ -58,7 +58,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
     const currentValue = value ?? min;
 
     return (
-        <div className="value-selector-container flex flex-row items-center p-2 gap-2 bg-middark br-1">
+        <div className="value-selector-container flex flex-row items-center gap-2 bg-middark br-1">
             <IconButton
                 icon="minus-icon"
                 onClick={() => currentValue > min && onChange?.(roundToStep(currentValue - step, step, min, max))}

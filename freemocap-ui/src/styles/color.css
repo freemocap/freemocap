@@ -214,7 +214,7 @@
      LOG LEVEL SEMANTICS
      ======================================== */
 
-  --log-trace: var(--gray-300);
+  --log-trace: var(--gray-100);
   --log-trace-alpha: var(--gray-300-alpha-10);
 
   --log-debug: var(--blue-200);

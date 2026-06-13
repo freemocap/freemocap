@@ -10,6 +10,9 @@
 .activated>p {
   color: var(--color-success);
 }
+.isOn>p {
+  color: var(--color-text-primary);
+}
 
 .selected>p {
   color: var(--color-text-primary);

@@ -78,7 +78,7 @@
   filter:grayscale(0);
 }
 .button.sm.br-1:not(.active,.button-sm-group) {
-  color: var(--color-text-primary);
+  color: var(--color-text-tertiary);
   
 }
 /* Level border colours */
@@ -129,7 +129,7 @@
   display: inline-block;
   line-height: normal;
   vertical-align: middle;
-  color: #000;
+  
 }
 
 .log-level-badge.trace    { background-color: var(--log-trace); }

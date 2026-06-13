@@ -106,7 +106,7 @@ export default function FramerateHistogramView({
                 .attr("y", -28)
                 .attr("text-anchor", "middle")
                 .style("font-family", "monospace")
-                .style("font-size", "10px")
+                // .style("font-size", "10px")
                 .style("fill", "var(--color-text-muted)")
                 .text("Density")
 

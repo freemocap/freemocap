@@ -359,27 +359,27 @@ const LogTerminalFull = ({
         <div className="log-terminal">
             {/* Toolbar */}
             <div className="log-toolbar flex items-center gap-1 p-1 flex-wrap">
-                <p className="text bg text-gray">{t('serverLogs')}</p>
-
-                {snapshot.hasErrors && (
-                    <span className="icon warning-icon icon-size-20" title={t("errorsDetected")} />
-                )}
-
-                {/* Level filter buttons */}
-                <div className="flex gap-1 flex-wrap">
-                    {LOG_LEVELS.map((level) => {
-                        const count = snapshot.countsByLevel[level] || 0;
-                        const isActive = selectedLevels.includes(level.toLowerCase());
-                        return (
-                            <button
-                                key={level}
-                                className={clsx("button sm br-1 log-level-filter", level.toLowerCase(), isActive && "active")}
-                                onClick={() => toggleLevel(level.toLowerCase())}
-                            >
-                                <p className="text sm">{level}{count > 0 ? ` (${count})` : ''}</p>
-                            </button>
-                        );
-                    })}
+                <div className="ml-1 log-toolbar-inner flex items-center gap-1 flex-wrap">
+                    <p className="text bg text-gray">{t('serverLogs')}</p>
+                    {snapshot.hasErrors && (
+                        <span className="icon warning-icon icon-size-20" title={t("errorsDetected")} />
+                    )}
+                    {/* Level filter buttons */}
+                    <div className="flex gap-1 flex-wrap">
+                        {LOG_LEVELS.map((level) => {
+                            const count = snapshot.countsByLevel[level] || 0;
+                            const isActive = selectedLevels.includes(level.toLowerCase());
+                            return (
+                                <button
+                                    key={level}
+                                    className={clsx("button sm br-1 log-level-filter", level.toLowerCase(), isActive && "active")}
+                                    onClick={() => toggleLevel(level.toLowerCase())}
+                                >
+                                    <p className="text sm">{level}{count > 0 ? ` (${count})` : ''}</p>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {/* Action buttons */}

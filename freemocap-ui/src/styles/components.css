@@ -695,12 +695,12 @@ button.rotate-button {
   background-size: contain;
 }
 .mocap-settings-modal {
-  max-width: 500px;
-  max-height: 600px;
-  min-width: 500px;
-  min-height: 600px;
-  width: 500px;
-  height: 600px;
+  max-width: 550px;
+  max-height: 650px;
+  min-width: 550px;
+  min-height: 650px;
+  width: 550px;
+  height: 650px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

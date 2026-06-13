@@ -67,7 +67,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
       
       {/* Modal */}
       <div 
-        className="mocap-settings-modal overflow-hidden pos-fixed elevated-sharp p-1 b-2 flex flex-col br-2" 
+        className="mocap-settings-modal overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2" 
 
       >
         {/* <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
@@ -111,11 +111,11 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         </div>
 
         {/* Row 2 */}
-        <div className="bottom-area-action-container flex flex-col align-end bottom-row gap-2 p-2 pt-0">
+        <div className="bottom-area-action-container border-1 border-mid-black br-2 flex flex-col align-end bottom-row gap-2 p-2 pt-0">
           {/* Column 1 - Two buttons */}
           <div className="flex flex-row gap-2 h-full">
             <ButtonSm
-              text="Close"
+              text="Cancel"
               buttonType="quaternary"
               className=""
               onClick={onClose}

@@ -98,14 +98,14 @@ const MOCAPMediaPipeDetectorSettings: React.FC<
     return (
         <div
             ref={modalRef}
-            className="RTP-settings-flyout pos-abs top-5 right-0 draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
+            className="flex flex-col w-full br-2 reveal fadeIn gap-1"
         >
             <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
 
                 {/* Header */}
                 <div className="flex justify-content-space-between items-center">
                     <SubactionHeader text="MediaPipe Settings" />
-                    <IconButton icon="close-icon" onClick={onClose} />
+                    {/* <IconButton icon="close-icon" onClick={onClose} /> */}
                 </div>
 
                 {/* Preset dropdown */}

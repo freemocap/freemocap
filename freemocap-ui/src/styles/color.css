@@ -272,9 +272,11 @@
 .border-white {
   border-color: var(--color-text-primary);
 }
+
 .bg-warning {
   background-color: var(--color-bg-warning);
 }
+
 /* ========================================
    COMPONENT STATES
    ======================================== */
@@ -283,20 +285,13 @@
   background-color: var(--color-surface-hover);
   transition: background-color var(--speed-1) ease-in-out;
 }
+
 /* =========================
    TEXT COLOR
    ========================= */
 
-.text-white,
-.color-white {
-  color: var(--color-text-primary);
-}
 .text-success {
   color: var(--color-success);
-}
-.text-gray,
-.color-gray {
-  color: var(--color-text-muted);
 }
 
 .text-warning {
@@ -306,6 +301,16 @@
 .text-darkgray,
 .color-darkgray {
   color: var(--color-text-disabled);
+}
+
+.text-white,
+.color-white {
+  color: var(--color-text-primary);
+}
+
+.text-gray,
+.color-gray {
+  color: var(--color-text-muted);
 }
 
 .text-error {

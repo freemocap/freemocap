@@ -681,7 +681,18 @@ button.rotate-button {
   background-repeat: no-repeat;
   background-size: contain;
 }
-
+.mocap-settings-modal {
+  max-width: 500px;
+  max-height: 600px;
+  min-width: 500px;
+  min-height: 600px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  background-color: var(--color-bg-secondary);
+       
+}
 /* .splashmodal-mini-menu-container {
   position: absolute; */
 /* top: 5px;

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
-// Try both import patterns - use the ones that match your exports
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
+
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
 
@@ -16,7 +17,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
     switch (activeButton) {
       case "button1":
         try {
-          return <RTPthreeDReconstructionSettings />;
+          return <MOCAPthreeDReconstructionSettings open={true} onClose={() => {}} />;
         } catch (error) {
           console.error("Error rendering 3D Reconstruction Settings:", error);
           return (
@@ -28,7 +29,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         }
       case "button2":
         try {
-          return <RTPMediaPipeDetectorSettings />;
+          return <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />;
         } catch (error) {
           console.error("Error rendering MediaPipe Detector Settings:", error);
           return (
@@ -75,27 +76,23 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
       
       {/* Modal */}
       <div 
-        className="dummy-settings-modal pos-fixed elevated-sharp bg-middark br-3" 
-        style={{ 
-          width: 1000, 
-          maxWidth: "90vw",
-          maxHeight: "90vh",
-          top: "50%", 
-          left: "50%", 
-          transform: "translate(-50%, -50%)", 
-          zIndex: 1000,
-          overflow: "auto"
-        }}
+        className="mocap-settings-modal pos-fixed elevated-sharp p-1 b-2" 
+
       >
-        <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
+        {/* <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
           <h3 className="text-white text lg">Mocap Setup</h3>
           <ButtonSm text="Close" iconClass="clear-icon" buttonType="secondary" onClick={onClose} />
-        </div>
+        </div> */}
 
         {/* Row 1 */}
         <div className="flex flex-row gap-2 p-3" style={{ minHeight: 400 }}>
           {/* Column 1 - Buttons */}
+            
+
           <div className="flex flex-col gap-2" style={{ minWidth: 180, flexShrink: 0 }}>
+            <SubactionHeader 
+            text="Mocap setup" 
+            className="text-white"/>
             <ButtonSm
               text="3D Reconstruction"
               buttonType={activeButton === "button1" ? "primary" : "secondary"}
@@ -117,7 +114,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
           </div>
           
           {/* Column 2 - Dynamic Content */}
-          <div className="flex-1 bg-dark br-2 p-2" style={{ minHeight: 350, overflow: "auto" }}>
+          <div className="right-side-settings-container flex w-full flex-row">
             {renderRightPanelContent()}
           </div>
         </div>

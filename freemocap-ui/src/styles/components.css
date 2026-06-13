@@ -708,6 +708,12 @@ button.rotate-button {
   
        
 }
+.inner-container-settings {
+ height: 569px;
+}
+.bottom-area-action-container {
+ height: 66px;
+}
 /* .splashmodal-mini-menu-container {
   position: absolute; */
 /* top: 5px;

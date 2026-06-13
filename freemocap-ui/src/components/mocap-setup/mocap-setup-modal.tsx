@@ -76,7 +76,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         </div> */}
 
         {/* Row 1 */}
-        <div className="inner-container-settings- bg-secondary flex flex-row flex-1 h-inherit br-2">
+        <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
           {/* Column 1 - Buttons */}
             
 
@@ -105,7 +105,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
           </div>
           
           {/* Column 2 - Dynamic Content */}
-          <div className="right-side-settings-container overflow-y p-2 flex-1 flex w-full flex-row">
+          <div className="right-side-settings-container bg-secondary br-1 overflow-y p-2 flex-1 flex w-full flex-row">
             {renderRightPanelContent()}
           </div>
         </div>

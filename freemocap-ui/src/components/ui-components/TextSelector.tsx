@@ -66,8 +66,8 @@ const TextSelector: React.FC<TextSelectorProps> = ({
         <div
           className={`string-selector pos-abs border-1 w-full border-black elevated-sharp flex flex-row  p-1 bg-dark br-2 z-1 reveal slide-down ${popupClassName}`}
         >
-          <div className="min-w-full flex p-2 gap-2 bg-middark br-1">
-            <div className="text-input">
+          <div className="min-w-full w-full flex p-2 gap-2 bg-middark br-1">
+            <div className="text-input w-full">
               <input
                 ref={inputRef}
                 type="text"
@@ -75,7 +75,7 @@ const TextSelector: React.FC<TextSelectorProps> = ({
                 onChange={(e) => onChange?.(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
-                className={`text-nowrap input-field text md text-center ${popupClassName}`}
+                className={`text-nowrap w-full input-field text md text-center ${popupClassName}`}
               />
             </div>
           </div>

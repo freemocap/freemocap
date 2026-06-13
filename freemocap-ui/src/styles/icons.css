@@ -60,7 +60,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --collapse-icon: url("../assets/icons/collapse_icon.svg");
   --copyover-icon: url("../assets/icons/copyover_icon.svg");
   --save-icon: url("../assets/icons/save_icon.svg");
-
+  --frame-icon: url("../assets/icons/frame_icon.svg");
+  --grid-icon: url("../assets/icons/grid_icon.svg");
   --copy-icon: url("../assets/icons/copy_icon.svg");
   --scrolldown-icon: url("../assets/icons/scrolldown_icon.svg");
   --scrollup-icon: url("../assets/icons/scrollup_icon.svg");
@@ -127,6 +128,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .close-icon {
   background-image: var(--close-icon);
 }
+.frame-icon {
+  background-image: var(--frame-icon);
+}
+.grid-icon {
+  background-image: var(--grid-icon);
+}
 
 .mic-icon {
   background-image: var(--mic-icon);
@@ -181,6 +188,21 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .home-icon {
   background-image: var(--home-icon);
+}
+.arrowdown-icon {
+  background-image: var(--dropdown-icon);
+}
+.arrowup-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(180deg);
+}
+.arrowright-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(90deg);
+}
+.arrowleft-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(-90deg);
 }
 
 .scan-icon {

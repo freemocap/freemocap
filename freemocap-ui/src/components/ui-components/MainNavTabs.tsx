@@ -38,10 +38,10 @@ const ActiveRecordingLabel: React.FC = () => {
 
     return (
         <span className="flex flex-row items-center gap-1">
-            <span className="text-white">Active Recording</span>
+            <span className="text-gray">Active Recording</span>
             {recordingName ? (
                 <span
-                    className="tag text sm text-white"
+                    className="flex flex-row text-nowrap tag text sm text-white"
                     style={{ fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                     title={fullPath ?? recordingName}
                     onClick={handleOpenFolder}

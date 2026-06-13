@@ -174,10 +174,10 @@ export default function FramerateStatisticsView({
 
     const renderMetricCell = (rowKey: RowKey, metric: MetricKey) => (
         <td key={metric} style={cellStyle(metric)}>
-            <div style={{fontWeight: 'bold', fontFamily: 'monospace', color: colorMap[metric], fontSize: '0.7rem', whiteSpace: 'nowrap'}}>
+            <div>
                 <span ref={setSpanRef(`${rowKey}-${metric}-primary`)}>--</span>
             </div>
-            <div style={{fontSize: '0.6rem', color: colorMap[metric], opacity: 0.9, whiteSpace: 'nowrap'}}>
+            <div>
                 <span ref={setSpanRef(`${rowKey}-${metric}-secondary`)}>--</span>
             </div>
         </td>
@@ -187,10 +187,10 @@ export default function FramerateStatisticsView({
         <tr key={rowKey}>
             <td
                 title={shortTooltip}
-                style={{fontWeight: 'bold', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '2px 4px 2px 8px', color: sourceColor, cursor: 'help'}}
+                style={{fontWeight: '800', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '2px 4px 2px 8px', color: sourceColor, cursor: 'help'}}
             >
                 {sourceLabel}
-                <div style={{fontSize: '0.6rem', color: 'var(--color-text-secondary)'}}>
+                <div style={{color: 'var(--color-text-secondary)'}}>
                     <span ref={setSpanRef(`${rowKey}-samples`)}>--</span>
                 </div>
             </td>
@@ -198,11 +198,11 @@ export default function FramerateStatisticsView({
         </tr>
     );
 
-    const thStyle: React.CSSProperties = {fontWeight: 'bold', padding: '2px 4px', fontSize: '0.65rem', lineHeight: '1.1', whiteSpace: 'nowrap'};
+    const thStyle: React.CSSProperties = {};
 
     return (
         <div className="overflow-x">
-            <table className="w-full" style={{borderCollapse: 'collapse', fontSize: '0.65rem', lineHeight: '1.1'}}>
+            <table className="w-full text sm" style={{}}>
                 <thead>
                     <tr>
                         <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...thStyle, width: '12%', color: 'var(--color-text-primary)', textAlign: 'left'}} align="left" />

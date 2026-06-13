@@ -182,7 +182,7 @@ export default memo(function BaseD3ChartView({
         >
             {title && (
                 <p className="text sm text-gray pos-abs top-2 left-8 z-5 m-0" style={{
-                    fontSize: "0.7rem",
+                    
                     opacity: 0.9,
                     backgroundColor: "var(--color-bg-default)",
                     padding: "0 4px",

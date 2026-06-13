@@ -142,7 +142,7 @@ const CalibrationModule = () => {
   // Recording in progress
   if (isRecording) {
     return (
-      <div className="flex flex-col p-1 bg-middark br-1 pos-rel gap-1">
+      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-1 pos-rel gap-1">
         {errorBanner}
         <div className="flex flex-row items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
@@ -153,7 +153,7 @@ const CalibrationModule = () => {
                 icon="cancelcalibrate-icon"
                 className="button sm"
                 onClick={dispatchStopCalibrationRecording}
-                tooltip
+                tooltip={true}
                 tooltipText="Stop recording & calibrate"
                 tooltipPosition="pos-left"
               />
@@ -184,7 +184,7 @@ const CalibrationModule = () => {
   // Calibrated
   if (isCalibrated) {
     return (
-      <div className="flex flex-col p-1 bg-middark br-1 pos-rel" style={{ minWidth: 0 }}>
+      <div className="calibration-module-calibarted z-4 flex flex-col p-1 bg-middark br-1 pos-rel" style={{ minWidth: 0 }}>
         {errorBanner}
         <div className="flex flex-row items-center" style={{ minWidth: 0 }}>
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100" style={{ minWidth: 0 }}>
@@ -248,7 +248,7 @@ const CalibrationModule = () => {
 
   // Not calibrated, not recording
   return (
-    <div className="flex flex-col p-1 bg-middark br-1 pos-rel ">
+    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-1 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">

@@ -57,21 +57,21 @@ export const FramerateViewerPanel = ({ isCollapsed = false }: { isCollapsed?: bo
                 <p className="text bg text-gray">{t('cameraPerformanceMetrics')}</p>
                 <div className="flex gap-1">
                     <button
-                        className={clsx("button sm br-1", showStats && "activated")}
+                        className={clsx("button sm br-1", showStats && "isOn")}
                         onClick={() => setShowStats(v => !v)}
                         title={t("statisticsView")}
                     >
                         <p className="text sm">Stats</p>
                     </button>
                     <button
-                        className={clsx("button sm br-1", showTimeseries && "activated")}
+                        className={clsx("button sm br-1", showTimeseries && "isOn")}
                         onClick={() => setShowTimeseries(v => !v)}
                         title={t("timelineView")}
                     >
                         <p className="text sm">Timeline</p>
                     </button>
                     <button
-                        className={clsx("button sm br-1", showHistogram && "activated")}
+                        className={clsx("button sm br-1", showHistogram && "isOn")}
                         onClick={() => setShowHistogram(v => !v)}
                         title={t("distributionView")}
                     >

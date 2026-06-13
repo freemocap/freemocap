@@ -195,10 +195,10 @@ export const RecordingInfoPanel: React.FC = () => {
     };
 
     return (
-            <div className="main-side-actions flex flex-col gap-1 z-3" >
+            <div className="main-side-actions flex flex-col gap-1 order-3" >
 
                 {/* File directory group */}
-                <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">
+                <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2 ">
                     <p className="text-nowrap text-left bg-md text-darkgray p-1">File directory</p>
 
                     {/* Read-only path preview */}
@@ -213,7 +213,7 @@ export const RecordingInfoPanel: React.FC = () => {
                     </div>
 
                     {/* Tag + options button */}
-                    <div className="flex flex-row gap-1 items-center">
+                    <div className="flex flex-row flex-wrap gap-1 items-center">
                         <TextSelector
                             value={recordingTag}
                             onChange={(v) => dispatch(recordingTagChanged(v))}
@@ -235,7 +235,7 @@ export const RecordingInfoPanel: React.FC = () => {
                 </div>
 
                 {/* Record group */}
-                <div className="record-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 p-2 pb-2">
+                <div className="record-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 p-2 pb-2 order-4">
                     <div
                         className="flex flex-row flex-1 items-center gap-1 w-full"
                         onClick={(e) => e.stopPropagation()}

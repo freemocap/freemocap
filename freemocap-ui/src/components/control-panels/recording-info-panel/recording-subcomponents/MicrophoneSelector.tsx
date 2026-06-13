@@ -63,6 +63,7 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
                 <span className={clsx("icon icon-size-20", selectedMicIndex >= 0 ? "mic-active-icon" : "mic-icon")} />
                 <div className={clsx("flex-1", (disabled || loading) && "disabled")}>
                     <NameDropdownSelector
+                
                         options={options}
                         initialValue={selectedName}
                         onChange={handleChange}
@@ -81,7 +82,7 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
                 />
             </div>
             {error && (
-                <p className="error-message text sm text-error text-nowrap overflow-hidden" style={{textOverflow: 'ellipsis'}} title={error}>
+                <p className="error-message text-center text sm text-error text-nowrap overflow-hidden" style={{textOverflow: 'ellipsis'}} title={error}>
                     {error}
                 </p>
             )}

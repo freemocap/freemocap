@@ -43,7 +43,7 @@ const CalibrationModule = () => {
     clearError,
   } = useCalibration();
 
-  const [showCalibrationSettings, setShowCalibrationSettings] = useState(true);
+  const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
   const [calibrationSource, setCalibrationSource] = useState<CalibrationSource>("record");
 
   const isCalibrated = !!loadedCalibration;

@@ -8,11 +8,18 @@ import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3d
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 
+type MocapMode = "recording" | "playback";
+
 interface MocapSetupModalProps {
   onClose?: () => void;
+  mode?: MocapMode;
 }
 
-const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
+const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
+  onClose,
+  mode = "playback",
+}) => {
+  const [isSaving, setIsSaving] = useState(false);
   const [activeButton, setActiveButton] = useState<
     "button1" | "button2" | "button3" | "button4" | "button5"
   >("button1");
@@ -199,24 +206,44 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
               className=""
               onClick={onClose}
             />
-            <ButtonSm
-              text="Process Mocap"
-              textColor="text-white"
-              iconClass="processmocap-icon"
-              buttonType=""
-              className="primary accent"
-              onClick={() => {}}
-              tooltip={true}
-              tooltipPosition="pos-top"
-              tooltipText="Start mocap processing"
-            />
+            {mode === "playback" ? (
+              <ButtonSm
+                text="Process Mocap"
+                textColor="text-white"
+                iconClass="processmocap-icon"
+                buttonType=""
+                className="primary accent"
+                onClick={() => {}}
+                tooltip={true}
+                tooltipPosition="pos-top-right"
+                tooltipText="Start mocap processing"
+              />
+            ) : (
+              <ButtonSm
+                text={isSaving ? "Saving..." : "Save"}
+                textColor="text-white"
+                buttonType=""
+                className="primary accent"
+                onClick={() => {
+                  setIsSaving(true);
+                  setTimeout(() => {
+                    onClose?.();
+                  }, 1000);
+                }}
+                tooltip={true}
+                tooltipPosition="pos-top-right"
+                tooltipText="Save mocap settings"
+              />
+            )}
           </div>
-          <div className="flex flex-row gap-2 h-full">
-            <p className="text sm text-gray">
-              Processing may take hours, depending on your system, ideally avoid
-              using your computer.
-            </p>
-          </div>
+          {mode === "playback" && (
+            <div className="flex flex-row gap-2 h-full">
+              <p className="text sm text-gray">
+                Processing may take hours, depending on your system, ideally avoid
+                using your computer.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </>

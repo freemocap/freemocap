@@ -365,7 +365,10 @@ export const RecordingInfoPanel: React.FC = () => {
 
       {/* Mocap Setup Modal */}
       {mocapSetupModalOpen && (
-        <MocapSetupModal onClose={() => setMocapSetupModalOpen(false)} />
+        <MocapSetupModal
+          mode="recording"
+          onClose={() => setMocapSetupModalOpen(false)}
+        />
       )}
     </>
   );

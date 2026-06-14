@@ -35,7 +35,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
 
     return (
         <div className="main-app-container flex flex-col" style={{ height: '100vh' }}>
-            {/* {showModal && <MocapSetupModal onClose={() => setShowModal(false)} />} */}
+             {/* {showModal && <MocapSetupModal onClose={() => setShowModal(false)} />}  */}
             <PanelGroup className="app-container flex-1" direction="vertical">
                 {/* Top section (horizontal panels) */}
                 <Panel className="app-container-inner" defaultSize={87} minSize={20}>

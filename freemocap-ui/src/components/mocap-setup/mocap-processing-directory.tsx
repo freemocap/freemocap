@@ -15,7 +15,7 @@ import {
   MediapipeDetectorConfig,
 } from "@/store/slices/mocap";
 
-interface MOCAPBlenderSettingsProps {
+interface ProcessDirectoryModuleProps {
   open: boolean;
   onClose: () => void;
 }
@@ -32,12 +32,12 @@ const presetValueToLabel: Record<string, string> = {
   custom: "Custom",
 };
 
-const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
+const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   open,
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [blenderDirectory, setBlenderDirectory] = useState<string>("");
+  const [processDirectory, setprocessDirectory] = useState<string>("");
 
   const {
     detectorConfig,
@@ -52,7 +52,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
     if (!isElectron || !api) return;
     try {
       const result: string | null = await api.fileSystem.selectDirectory.mutate();
-      if (result) setBlenderDirectory(result);
+      if (result) setprocessDirectory(result);
     } catch (error) {
       console.error("Failed to select directory:", error);
     }
@@ -119,34 +119,36 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
       <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Blender settings" />
+          <SubactionHeader text="Process Directory" />
           {/* <IconButton icon="close-icon" onClick={onClose} /> */}
         </div>
         <div className="flex flex-row justify-content-space-between items-center">
-          <div className="flex flex-row  items-center">
-            <span className="icon icon-size-20 blender-icon"></span>
-            <p className="p-1 text-gray">Blender folder directory</p>
-          </div>
-          <ButtonSm text="Autodetect" onClick={() => {}} />
-          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
+                  <ToggleComponent
+          text="Use a custom directory for mocap process"
+          isToggled={detectorConfig.autoopen_blen_file}
+          onToggle={(checked) =>
+            handleUpdateDetectorConfig({ autoopen_blen_file: checked })
+          }
+          disabled={isLoading}
+        />
         </div>
         
 
-        {/* Blender directory selector */}
-        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+        {/* Process directory selector */}
+        <div className={`select-custom-mocap-directory flex p-1 flex-row gap-1 items-center justify-content-space-between${!detectorConfig.autoopen_blen_file ? " disabled" : ""}`}>
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
             onClick={handleSelectDirectory}
-            title="Click to select blender directory"
+            title="Click to select Process directory"
             disabled={!isElectron}
           >
-            {blenderDirectory ? (
+            {processDirectory ? (
               <p className="recording-path-preview flex text-wrap flex-1 text md">
-                {blenderDirectory}
+                {processDirectory}
               </p>
             ) : (
               <p className="text-gray flex text-wrap flex-1 text md">
-                Select blender directory
+                Select a folder where the mocap process will be saved.
               </p>
             )}
           </button>
@@ -154,26 +156,12 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
 
         {/* Toggles */}
 
-        <ToggleComponent
-          text="Auto-open .blend file in Blender"
-          isToggled={detectorConfig.autoopen_blen_file}
-          onToggle={(checked) =>
-            handleUpdateDetectorConfig({ autoopen_blen_file: checked })
-          }
-          disabled={isLoading}
-        />
 
-        <ToggleComponent
-          text="Export to Blender after mocap processing"
-          isToggled={detectorConfig.export_to_blender}
-          onToggle={(checked) =>
-            handleUpdateDetectorConfig({ export_to_blender: checked })
-          }
-          disabled={isLoading}
-        />
+
+
       </div>
     </div>
   );
 };
 
-export default MOCAPBlenderSettings;
+export default ProcessDirectoryModule;

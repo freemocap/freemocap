@@ -1,190 +1,179 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import SubactionHeader from '@/components/ui-components/SubactionHeader';
-import IconButton from '@/components/ui-components/IconButton';
-import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
-import ToggleComponent from '@/components/ui-components/ToggleComponent';
-import ValueSelector from '@/components/ui-components/ValueSelector';
-import { useMocap } from '@/hooks/useMocap';
-import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import SubactionHeader from "@/components/ui-components/SubactionHeader";
+import IconButton from "@/components/ui-components/IconButton";
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
+import ValueSelector from "@/components/ui-components/ValueSelector";
+import ButtonSm from "@/components/ui-components/ButtonSm";
+import { useMocap } from "@/hooks/useMocap";
+import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
+import { useElectronIPC } from "@/services";
 import {
-    detectPreset,
-    MEDIAPIPE_POSTHOC_PRESET,
-    MEDIAPIPE_REALTIME_PRESET,
-    MediapipeDetectorConfig,
-} from '@/store/slices/mocap';
+  detectPreset,
+  MEDIAPIPE_POSTHOC_PRESET,
+  MEDIAPIPE_REALTIME_PRESET,
+  MediapipeDetectorConfig,
+} from "@/store/slices/mocap";
 
 interface MOCAPBlenderSettingsProps {
-    open: boolean;
-    onClose: () => void;
+  open: boolean;
+  onClose: () => void;
 }
-
 const PRESET_OPTIONS = ["Lite (Fastest)", "PostHog (Accurate)", "Custom"];
 
 const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
-    "Lite (Fastest)": "realtime",
-    "PostHog (Accurate)": "posthoc",
+  "Lite (Fastest)": "realtime",
+  "PostHog (Accurate)": "posthoc",
 };
 
 const presetValueToLabel: Record<string, string> = {
-    realtime: "Lite (Fastest)",
-    posthoc: "PostHog (Accurate)",
-    custom: "Custom",
+  realtime: "Lite (Fastest)",
+  posthoc: "PostHog (Accurate)",
+  custom: "Custom",
 };
 
-const MOCAPBlenderSettings: React.FC<
-    MOCAPBlenderSettingsProps
-> = ({ open, onClose }) => {
-    const modalRef = useRef<HTMLDivElement>(null);
+const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
+  open,
+  onClose,
+}) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const [blenderDirectory, setBlenderDirectory] = useState<string>("");
 
-    const {
-        detectorConfig,
-        updateDetectorConfigLocalOnly,
-        replaceDetectorConfigLocalOnly,
-        isLoading,
-    } = useMocap();
-    const { triggerRealtimeApply } = useRealtimePipelineSync();
+  const {
+    detectorConfig,
+    updateDetectorConfigLocalOnly,
+    replaceDetectorConfigLocalOnly,
+    isLoading,
+  } = useMocap();
+  const { triggerRealtimeApply } = useRealtimePipelineSync();
+  const { api, isElectron } = useElectronIPC();
 
-    const handleUpdateDetectorConfig = useCallback(
-        (updates: Partial<MediapipeDetectorConfig>) => {
-            updateDetectorConfigLocalOnly(updates);
-            triggerRealtimeApply();
-        },
-        [updateDetectorConfigLocalOnly, triggerRealtimeApply]
-    );
+  const handleSelectDirectory = async (): Promise<void> => {
+    if (!isElectron || !api) return;
+    try {
+      const result: string | null = await api.fileSystem.selectDirectory.mutate();
+      if (result) setBlenderDirectory(result);
+    } catch (error) {
+      console.error("Failed to select directory:", error);
+    }
+  };
 
-    const handleReplaceDetectorConfig = useCallback(
-        (config: MediapipeDetectorConfig) => {
-            replaceDetectorConfigLocalOnly(config);
-            triggerRealtimeApply();
-        },
-        [replaceDetectorConfigLocalOnly, triggerRealtimeApply]
-    );
+  const handleUpdateDetectorConfig = useCallback(
+    (updates: Partial<MediapipeDetectorConfig>) => {
+      updateDetectorConfigLocalOnly(updates);
+      triggerRealtimeApply();
+    },
+    [updateDetectorConfigLocalOnly, triggerRealtimeApply],
+  );
 
-    const currentPreset = detectPreset(detectorConfig);
+  const handleReplaceDetectorConfig = useCallback(
+    (config: MediapipeDetectorConfig) => {
+      replaceDetectorConfigLocalOnly(config);
+      triggerRealtimeApply();
+    },
+    [replaceDetectorConfigLocalOnly, triggerRealtimeApply],
+  );
 
-    const handlePresetChange = useCallback(
-        (label: string) => {
-            const target = presetLabelToTarget[label];
-            if (target === "realtime") handleReplaceDetectorConfig({...MEDIAPIPE_REALTIME_PRESET});
-            else if (target === "posthoc") handleReplaceDetectorConfig({...MEDIAPIPE_POSTHOC_PRESET});
-        },
-        [handleReplaceDetectorConfig]
-    );
+  const currentPreset = detectPreset(detectorConfig);
 
-    useEffect(() => {
-        if (!open) return;
+  const handlePresetChange = useCallback(
+    (label: string) => {
+      const target = presetLabelToTarget[label];
+      if (target === "realtime")
+        handleReplaceDetectorConfig({ ...MEDIAPIPE_REALTIME_PRESET });
+      else if (target === "posthoc")
+        handleReplaceDetectorConfig({ ...MEDIAPIPE_POSTHOC_PRESET });
+    },
+    [handleReplaceDetectorConfig],
+  );
 
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-        };
+  useEffect(() => {
+    if (!open) return;
 
-        const handleClickOutside = (e: MouseEvent) => {
-            if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-                onClose();
-            }
-        };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
 
-        window.addEventListener('keydown', handleKeyDown);
-        document.addEventListener('mousedown', handleClickOutside);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
 
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown);
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [open, onClose]);
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
 
-    if (!open) return null;
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open, onClose]);
 
-    return (
-        <div
-            ref={modalRef}
-            className="flex flex-col w-full br-2 reveal fadeIn gap-1"
-        >
-            <div className="gap-1 flex flex-col">
+  if (!open) return null;
 
-                {/* Header */}
-                <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Blender settings" />
-                    {/* <IconButton icon="close-icon" onClick={onClose} /> */}
-                </div>
-
-                {/* Preset dropdown */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Preset</span>
-
-                    <NameDropdownSelector
-                        key={currentPreset}
-                        options={PRESET_OPTIONS}
-                        initialValue={presetValueToLabel[currentPreset]}
-                        onChange={handlePresetChange}
-                        className="flex flex-row"
-                    />
-                </div>
-
-                {/* Min Detection Confidence */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Min detection confidence</span>
-                    <ValueSelector
-                        value={detectorConfig.min_detection_confidence}
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        unit=""
-                        onChange={(v) => handleUpdateDetectorConfig({ min_detection_confidence: v })}
-                    />
-                </div>
-
-                {/* Min Tracking Confidence */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Min tracking confidence</span>
-                    <ValueSelector
-                        value={detectorConfig.min_tracking_confidence}
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        unit=""
-                        onChange={(v) => handleUpdateDetectorConfig({ min_tracking_confidence: v })}
-                    />
-                </div>
-
-                {/* Toggles */}
-                <ToggleComponent
-                    text="Smooth landmarks"
-                    isToggled={detectorConfig.smooth_landmarks}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_landmarks: checked })}
-                    disabled={isLoading}
-                />
-
-                <ToggleComponent
-                    text="Segmentation"
-                    isToggled={detectorConfig.enable_segmentation}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ enable_segmentation: checked })}
-                    disabled={isLoading}
-                />
-
-                <ToggleComponent
-                    text="Smooth segmentation"
-                    isToggled={detectorConfig.smooth_segmentation}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_segmentation: checked })}
-                    disabled={isLoading || !detectorConfig.enable_segmentation}
-                />
-
-                <ToggleComponent
-                    text="Refine face landmarks"
-                    isToggled={detectorConfig.refine_face_landmarks}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ refine_face_landmarks: checked })}
-                    disabled={isLoading}
-                />
-
-                <ToggleComponent
-                    text="Static image mode"
-                    isToggled={detectorConfig.static_image_mode}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ static_image_mode: checked })}
-                    disabled={isLoading}
-                />
-            </div>
+  return (
+    <div
+      ref={modalRef}
+      className="flex flex-col w-full br-2 reveal fadeIn gap-1"
+    >
+      <div className="gap-1 flex flex-col">
+        {/* Header */}
+        <div className="flex justify-content-space-between items-center">
+          <SubactionHeader text="Blender settings" />
+          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
         </div>
-    );
+        <div className="flex flex-row justify-content-space-between items-center">
+          <div className="flex flex-row  items-center">
+            <span className="icon icon-size-20 blender-icon"></span>
+            <p className="p-1 text-gray">Blender folder directory</p>
+          </div>
+          <ButtonSm text="Autodetect" onClick={() => {}} />
+          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
+        </div>
+        
+
+        {/* Blender directory selector */}
+        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+          <button
+            className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
+            onClick={handleSelectDirectory}
+            title="Click to select blender directory"
+            disabled={!isElectron}
+          >
+            {blenderDirectory ? (
+              <p className="recording-path-preview flex text-wrap flex-1 text md">
+                {blenderDirectory}
+              </p>
+            ) : (
+              <p className="text-gray flex text-wrap flex-1 text md">
+                Select blender directory
+              </p>
+            )}
+          </button>
+        </div>
+
+        {/* Toggles */}
+
+        <ToggleComponent
+          text="Auto-open .blend file in Blender"
+          isToggled={detectorConfig.autoopen_blen_file}
+          onToggle={(checked) =>
+            handleUpdateDetectorConfig({ autoopen_blen_file: checked })
+          }
+          disabled={isLoading}
+        />
+
+        <ToggleComponent
+          text="Export to Blender after mocap processing"
+          isToggled={detectorConfig.export_to_blender}
+          onToggle={(checked) =>
+            handleUpdateDetectorConfig({ export_to_blender: checked })
+          }
+          disabled={isLoading}
+        />
+      </div>
+    </div>
+  );
 };
 
 export default MOCAPBlenderSettings;

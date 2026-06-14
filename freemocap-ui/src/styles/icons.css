@@ -42,6 +42,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --load-icon: url("../assets/icons/load_icon.svg");
   --live-icon: url("../assets/icons/live_icon.svg");
   --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
+  --blender-icon: url("../assets/icons/blender_icon.svg");
 
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
@@ -219,6 +220,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .stopstreaming-icon {
   background-image: var(--stopstreaming-icon);
+}
+.blender-icon {
+  background-image: var(--blender-icon);
 }
 
 .streaming-icon {

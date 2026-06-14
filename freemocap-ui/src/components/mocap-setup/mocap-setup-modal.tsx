@@ -128,7 +128,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
               data-panel="panel1"
               className="bg-secondary p-2 br-1"
             >
-              <CalibrationModule />
+              <CalibrationModule isCalibrated={true} />
             </div>
 
             {/* Panel 2 - 3D Reconstruction */}

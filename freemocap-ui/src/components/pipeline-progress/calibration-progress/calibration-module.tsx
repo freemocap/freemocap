@@ -17,13 +17,30 @@ import {
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
 
+  /**
+   * Represents the current operating mode of the application.
+   * - "streaming": real-time camera capture mode (all calibration options available, including "Record and Calibrate")
+   * - "playback": video playback mode ("Record and Calibrate" option should be hidden from the dropdown)
+   *
+   * TODO[INTEGRATION]: Replace this dummy state with the actual mode from the app's
+   * global state or server. For example, you might fetch this from:
+   * - A Redux selector like `useAppSelector(selectAppMode)`
+   * - An IPC call to the backend
+   * - A context provider
+   */
+type AppMode = "streaming" | "playback";
+
 const SOURCE_ICONS: Record<CalibrationSource, string> = {
   record: "record-icon",
   "import-videos": "importVideos-icon",
   "import-toml": "tomlfile-icon",
 };
 
-const CalibrationModule = () => {
+interface CalibrationModuleProps {
+  isCalibrated?: boolean;
+}
+
+const CalibrationModule = ({ isCalibrated: isCalibratedProp }: CalibrationModuleProps) => {
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
@@ -46,7 +63,25 @@ const CalibrationModule = () => {
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
   const [calibrationSource, setCalibrationSource] = useState<CalibrationSource>("record");
 
-  const isCalibrated = !!loadedCalibration;
+  /**
+   * Dummy state for the app operating mode.
+   *
+   * DEFAULT: "streaming" - In streaming mode, the "Record and Calibrate" option
+   * appears in the calibration dropdown alongside "Import Calibration videos"
+   * and "Import .toml file".
+   *
+   * If set to "playback", only the "Record and Calibrate" option is removed
+   * from the dropdown (the dropdown itself stays visible).
+   *
+   * TODO[INTEGRATION]: Replace this with the actual mode source from your app.
+   * For example:
+   *   const appMode = useAppSelector(selectAppMode);
+   *   // or
+   *   const { appMode } = useAppContext();
+   */
+  const [appMode] = useState<AppMode>("streaming");
+
+  const isCalibrated = isCalibratedProp ?? !!loadedCalibration;
 
   const [calibrationPathDir, calibrationPathFilename] = useMemo(() => {
     const path = loadedCalibration?.path ?? "";
@@ -103,16 +138,35 @@ const CalibrationModule = () => {
     dispatch(calibrationLoadedFromBundle(null));
   }, [dispatch, loadedCalibration]);
 
+  /**
+   * Whether the "Record and Calibrate" option should appear in the dropdown.
+   *
+   * - Streaming mode: show "Record and Calibrate" (real-time recording is possible).
+   * - Playback mode: hide "Record and Calibrate" (not applicable when playing back videos).
+   */
+  const shouldShowRecordAndCalibrate = appMode === "streaming";
+
+  /**
+   * Build the dropdown items for the calibration dropdown.
+   * The dropdown itself is always visible, but the "Record and Calibrate" option
+   * is conditionally hidden in playback mode.
+   */
   const dropdownItems = (
     <div className="flex flex-col gap-1">
-      <ButtonSm
-        iconClass="record-icon"
-        text="Record and Calibrate"
-        className="full-width"
-        textClass="text-align-left"
-        onClick={handleRecordAndCalibrate}
-        disabled={!canStartRecording || !isElectron}
-      />
+      {/* 
+        "Record and Calibrate" is only available in streaming mode.
+        In playback mode, this option is hidden since recording doesn't make sense.
+      */}
+      {shouldShowRecordAndCalibrate && (
+        <ButtonSm
+          iconClass="record-icon"
+          text="Record and Calibrate"
+          className="full-width"
+          textClass="text-align-left"
+          onClick={handleRecordAndCalibrate}
+          disabled={!canStartRecording || !isElectron}
+        />
+      )}
       <ButtonSm
         iconClass="importVideos-icon"
         text="Import Calibration videos"
@@ -291,11 +345,14 @@ const CalibrationModule = () => {
         <CalibrationSettings onClose={handleCloseSettings} />
       )}
       <div className="p-1 group-3 calibration-action-container flex flex-row items-center">
+        {/* 
+          The calibration dropdown is always visible.
+          However, the "Record and Calibrate" option inside it is hidden in playback mode.
+        */}
         <DropdownButton
           buttonProps={{
             text: "Calibrate",
             iconClass: "charuco-icon",
-            disabled: !isElectron,
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
             textClass: "text-center text md",

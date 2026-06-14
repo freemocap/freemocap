@@ -1,91 +1,48 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
-import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
-import ToggleComponent from "@/components/ui-components/ToggleComponent";
-import ValueSelector from "@/components/ui-components/ValueSelector";
-import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useMocap } from "@/hooks/useMocap";
-import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 import { useElectronIPC } from "@/services";
-import {
-  detectPreset,
-  MEDIAPIPE_POSTHOC_PRESET,
-  MEDIAPIPE_REALTIME_PRESET,
-  MediapipeDetectorConfig,
-} from "@/store/slices/mocap";
 
 interface ProcessDirectoryModuleProps {
   open: boolean;
   onClose: () => void;
 }
-const PRESET_OPTIONS = ["Lite (Fastest)", "PostHog (Accurate)", "Custom"];
-
-const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
-  "Lite (Fastest)": "realtime",
-  "PostHog (Accurate)": "posthoc",
-};
-
-const presetValueToLabel: Record<string, string> = {
-  realtime: "Lite (Fastest)",
-  posthoc: "PostHog (Accurate)",
-  custom: "Custom",
-};
 
 const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   open,
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [processDirectory, setprocessDirectory] = useState<string>("");
 
   const {
-    detectorConfig,
-    updateDetectorConfigLocalOnly,
-    replaceDetectorConfigLocalOnly,
+    mocapRecordingPath,
+    isUsingManualPath,
     isLoading,
+    setManualRecordingPath,
+    clearManualRecordingPath,
+    validateDirectory,
   } = useMocap();
-  const { triggerRealtimeApply } = useRealtimePipelineSync();
   const { api, isElectron } = useElectronIPC();
 
   const handleSelectDirectory = async (): Promise<void> => {
     if (!isElectron || !api) return;
     try {
       const result: string | null = await api.fileSystem.selectDirectory.mutate();
-      if (result) setprocessDirectory(result);
+      if (result) await setManualRecordingPath(result);
     } catch (error) {
       console.error("Failed to select directory:", error);
     }
   };
 
-  const handleUpdateDetectorConfig = useCallback(
-    (updates: Partial<MediapipeDetectorConfig>) => {
-      updateDetectorConfigLocalOnly(updates);
-      triggerRealtimeApply();
-    },
-    [updateDetectorConfigLocalOnly, triggerRealtimeApply],
-  );
-
-  const handleReplaceDetectorConfig = useCallback(
-    (config: MediapipeDetectorConfig) => {
-      replaceDetectorConfigLocalOnly(config);
-      triggerRealtimeApply();
-    },
-    [replaceDetectorConfigLocalOnly, triggerRealtimeApply],
-  );
-
-  const currentPreset = detectPreset(detectorConfig);
-
-  const handlePresetChange = useCallback(
-    (label: string) => {
-      const target = presetLabelToTarget[label];
-      if (target === "realtime")
-        handleReplaceDetectorConfig({ ...MEDIAPIPE_REALTIME_PRESET });
-      else if (target === "posthoc")
-        handleReplaceDetectorConfig({ ...MEDIAPIPE_POSTHOC_PRESET });
-    },
-    [handleReplaceDetectorConfig],
-  );
+  const handleOpenFolder = async (): Promise<void> => {
+    if (!isElectron || !api || !mocapRecordingPath) return;
+    try {
+      await api.fileSystem.openFolder.mutate({ path: mocapRecordingPath });
+    } catch (error) {
+      console.error("Failed to open folder:", error);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -120,45 +77,58 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Process Directory" />
-          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
         </div>
-        <div className="flex flex-row justify-content-space-between items-center">
-                  <ToggleComponent
-          text="Use a custom directory for mocap process"
-          isToggled={detectorConfig.autoopen_blen_file}
-          onToggle={(checked) =>
-            handleUpdateDetectorConfig({ autoopen_blen_file: checked })
-          }
-          disabled={isLoading}
-        />
-        </div>
-        
 
         {/* Process directory selector */}
-        <div className={`select-custom-mocap-directory flex p-1 flex-row gap-1 items-center justify-content-space-between${!detectorConfig.autoopen_blen_file ? " disabled" : ""}`}>
+        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
             onClick={handleSelectDirectory}
             title="Click to select Process directory"
             disabled={!isElectron}
+            style={{ minWidth: 0, overflow: "hidden" }}
           >
-            {processDirectory ? (
-              <p className="recording-path-preview flex text-wrap flex-1 text md">
-                {processDirectory}
+            {mocapRecordingPath ? (
+              <p
+                className="recording-path-preview flex-1 text md"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {mocapRecordingPath}
               </p>
             ) : (
-              <p className="text-gray flex text-wrap flex-1 text md">
+              <p
+                className="text-gray flex-1 text md"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
                 Select a folder where the mocap process will be saved.
               </p>
             )}
           </button>
+          <div className="flex flex-row gap-1" style={{ flexShrink: 0 }}>
+            {isUsingManualPath && (
+              <IconButton
+                icon="clear-icon"
+                onClick={clearManualRecordingPath}
+                title="Clear manual path (revert to default)"
+              />
+            )}
+            <IconButton
+              icon="save-icon"
+              onClick={() => mocapRecordingPath && validateDirectory(mocapRecordingPath)}
+              disabled={!mocapRecordingPath || isLoading}
+              title="Re-check folder"
+            />
+            <IconButton
+              icon="streaming-icon"
+              onClick={handleOpenFolder}
+              disabled={!isElectron || !mocapRecordingPath}
+              title="Open folder in file explorer"
+            />
+          </div>
         </div>
-
-        {/* Toggles */}
-
-
-
-
+        <p className="text sm text-gray">
+          {isUsingManualPath ? "Using custom path" : "Using default recording directory"}
+        </p>
       </div>
     </div>
   );

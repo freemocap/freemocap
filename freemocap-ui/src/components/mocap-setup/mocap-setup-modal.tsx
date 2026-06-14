@@ -7,6 +7,7 @@ import CalibrationModule from "@/components/pipeline-progress/calibration-progre
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
+import { useMocap } from "@/hooks/useMocap";
 
 type MocapMode = "recording" | "playback";
 
@@ -19,7 +20,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
   onClose,
   mode = "playback",
 }) => {
-  const [isSaving, setIsSaving] = useState(false);
+  const { canProcessMocapRecording, isLoading, dispatchProcessMocapRecording } =
+    useMocap();
   const [activeButton, setActiveButton] = useState<
     "button1" | "button2" | "button3" | "button4" | "button5"
   >("button1");
@@ -213,25 +215,24 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
                 iconClass="processmocap-icon"
                 buttonType=""
                 className="primary accent"
-                onClick={() => {}}
+                onClick={() => {
+                  dispatchProcessMocapRecording();
+                  onClose?.();
+                }}
+                disabled={!canProcessMocapRecording || isLoading}
                 tooltip={true}
-                tooltipPosition="pos-top-right"
+                tooltipPosition="pos-top"
                 tooltipText="Start mocap processing"
               />
             ) : (
               <ButtonSm
-                text={isSaving ? "Saving..." : "Save"}
+                text="Save"
                 textColor="text-white"
                 buttonType=""
                 className="primary accent"
-                onClick={() => {
-                  setIsSaving(true);
-                  setTimeout(() => {
-                    onClose?.();
-                  }, 1000);
-                }}
+                onClick={onClose}
                 tooltip={true}
-                tooltipPosition="pos-top-right"
+                tooltipPosition="pos-top"
                 tooltipText="Save mocap settings"
               />
             )}

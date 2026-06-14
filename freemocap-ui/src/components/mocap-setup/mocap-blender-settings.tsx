@@ -1,91 +1,68 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
-import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
-import ValueSelector from "@/components/ui-components/ValueSelector";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useMocap } from "@/hooks/useMocap";
-import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
+import { useBlender } from "@/hooks/useBlender";
 import { useElectronIPC } from "@/services";
-import {
-  detectPreset,
-  MEDIAPIPE_POSTHOC_PRESET,
-  MEDIAPIPE_REALTIME_PRESET,
-  MediapipeDetectorConfig,
-} from "@/store/slices/mocap";
 
 interface MOCAPBlenderSettingsProps {
   open: boolean;
   onClose: () => void;
 }
-const PRESET_OPTIONS = ["Lite (Fastest)", "PostHog (Accurate)", "Custom"];
-
-const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
-  "Lite (Fastest)": "realtime",
-  "PostHog (Accurate)": "posthoc",
-};
-
-const presetValueToLabel: Record<string, string> = {
-  realtime: "Lite (Fastest)",
-  posthoc: "PostHog (Accurate)",
-  custom: "Custom",
-};
 
 const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   open,
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const [blenderDirectory, setBlenderDirectory] = useState<string>("");
 
-  const {
-    detectorConfig,
-    updateDetectorConfigLocalOnly,
-    replaceDetectorConfigLocalOnly,
-    isLoading,
-  } = useMocap();
-  const { triggerRealtimeApply } = useRealtimePipelineSync();
+  const { mocapRecordingPath } = useMocap();
   const { api, isElectron } = useElectronIPC();
+  const {
+    effectiveBlenderExePath,
+    isUsingManualBlenderPath,
+    exportToBlenderEnabled,
+    autoOpenBlendFile,
+    isExporting,
+    isDetecting,
+    isOpening,
+    lastBlendFilePath,
+    redetectBlender,
+    setBlenderExePath,
+    clearBlenderExePath,
+    setExportToBlenderEnabled,
+    setAutoOpenBlendFile,
+    triggerBlenderExport,
+    triggerOpenInBlender,
+  } = useBlender();
 
-  const handleSelectDirectory = async (): Promise<void> => {
+  const handleSelectBlenderExe = async (): Promise<void> => {
     if (!isElectron || !api) return;
     try {
-      const result: string | null = await api.fileSystem.selectDirectory.mutate();
-      if (result) setBlenderDirectory(result);
+      const result: string | null = await api.fileSystem.selectExecutableFile.mutate();
+      if (result) setBlenderExePath(result);
     } catch (error) {
-      console.error("Failed to select directory:", error);
+      console.error("Failed to select Blender executable:", error);
     }
   };
 
-  const handleUpdateDetectorConfig = useCallback(
-    (updates: Partial<MediapipeDetectorConfig>) => {
-      updateDetectorConfigLocalOnly(updates);
-      triggerRealtimeApply();
-    },
-    [updateDetectorConfigLocalOnly, triggerRealtimeApply],
-  );
+  const handleProcessWithBlender = (): void => {
+    if (!mocapRecordingPath) return;
+    void triggerBlenderExport(mocapRecordingPath);
+  };
 
-  const handleReplaceDetectorConfig = useCallback(
-    (config: MediapipeDetectorConfig) => {
-      replaceDetectorConfigLocalOnly(config);
-      triggerRealtimeApply();
-    },
-    [replaceDetectorConfigLocalOnly, triggerRealtimeApply],
-  );
+  const handleOpenInBlender = (): void => {
+    if (!mocapRecordingPath) return;
+    void triggerOpenInBlender(mocapRecordingPath);
+  };
 
-  const currentPreset = detectPreset(detectorConfig);
+  const canExport =
+    !!mocapRecordingPath && !!effectiveBlenderExePath && !isExporting;
 
-  const handlePresetChange = useCallback(
-    (label: string) => {
-      const target = presetLabelToTarget[label];
-      if (target === "realtime")
-        handleReplaceDetectorConfig({ ...MEDIAPIPE_REALTIME_PRESET });
-      else if (target === "posthoc")
-        handleReplaceDetectorConfig({ ...MEDIAPIPE_POSTHOC_PRESET });
-    },
-    [handleReplaceDetectorConfig],
-  );
+  const canOpen =
+    !!mocapRecordingPath && !!effectiveBlenderExePath && !isOpening;
 
   useEffect(() => {
     if (!open) return;
@@ -120,57 +97,94 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
           <SubactionHeader text="Blender settings" />
-          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
         </div>
         <div className="flex flex-row justify-content-space-between items-center">
-          <div className="flex flex-row  items-center">
+          <div className="flex flex-row items-center">
             <span className="icon icon-size-20 blender-icon"></span>
-            <p className="p-1 text-gray">Blender folder directory</p>
+            <p className="p-1 text-gray">Blender executable</p>
           </div>
-          <ButtonSm text="Autodetect" onClick={() => {}} />
-          {/* <IconButton icon="close-icon" onClick={onClose} /> */}
+          <ButtonSm
+            text={isDetecting ? "Detecting..." : "Autodetect"}
+            onClick={redetectBlender}
+            disabled={isDetecting}
+          />
         </div>
-        
 
-        {/* Blender directory selector */}
+        {/* Blender executable selector */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
-            onClick={handleSelectDirectory}
-            title="Click to select blender directory"
+            onClick={handleSelectBlenderExe}
+            title="Click to select Blender executable"
             disabled={!isElectron}
+            style={{ minWidth: 0, overflow: "hidden" }}
           >
-            {blenderDirectory ? (
-              <p className="recording-path-preview flex text-wrap flex-1 text md">
-                {blenderDirectory}
+            {effectiveBlenderExePath ? (
+              <p
+                className="recording-path-preview flex-1 text md"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {effectiveBlenderExePath}
               </p>
             ) : (
-              <p className="text-gray flex text-wrap flex-1 text md">
-                Select blender directory
+              <p
+                className="text-gray flex-1 text md"
+                style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              >
+                {isDetecting ? "Detecting…" : "Select Blender executable"}
               </p>
             )}
           </button>
+          {isUsingManualBlenderPath && (
+            <div className="flex flex-row gap-1" style={{ flexShrink: 0 }}>
+              <IconButton
+                icon="clear-icon"
+                onClick={clearBlenderExePath}
+                title="Clear manual path (revert to auto-detected)"
+              />
+            </div>
+          )}
         </div>
+        <p className="text sm text-gray">
+          {isUsingManualBlenderPath
+            ? "Using manually selected Blender"
+            : effectiveBlenderExePath
+              ? "Auto-detected Blender"
+              : "Click to browse for blender.exe"}
+        </p>
 
         {/* Toggles */}
-
-        <ToggleComponent
-          text="Auto-open .blend file in Blender"
-          isToggled={detectorConfig.autoopen_blen_file}
-          onToggle={(checked) =>
-            handleUpdateDetectorConfig({ autoopen_blen_file: checked })
-          }
-          disabled={isLoading}
-        />
-
         <ToggleComponent
           text="Export to Blender after mocap processing"
-          isToggled={detectorConfig.export_to_blender}
-          onToggle={(checked) =>
-            handleUpdateDetectorConfig({ export_to_blender: checked })
-          }
-          disabled={isLoading}
+          isToggled={exportToBlenderEnabled}
+          onToggle={setExportToBlenderEnabled}
         />
+
+        <ToggleComponent
+          text="Auto-open .blend file in Blender when done"
+          isToggled={autoOpenBlendFile}
+          onToggle={setAutoOpenBlendFile}
+        />
+
+        <ButtonSm
+          text={isExporting ? "Exporting to Blender…" : "Process Recording with Blender"}
+          onClick={handleProcessWithBlender}
+          disabled={!canExport}
+          className="full-width quaternary"
+        />
+
+        <ButtonSm
+          text={isOpening ? "Opening…" : "Open .blend in Blender"}
+          onClick={handleOpenInBlender}
+          disabled={!canOpen}
+          className="full-width quaternary"
+        />
+
+        {lastBlendFilePath && (
+          <p className="text sm text-gray" style={{ fontFamily: "monospace" }}>
+            Last export: {lastBlendFilePath}
+          </p>
+        )}
       </div>
     </div>
   );

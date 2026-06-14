@@ -5,6 +5,7 @@ import IconButton from '@/components/ui-components/IconButton';
 
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
 import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
+import {RecordingInfoPanel as ProcessMocapPanel} from "@/components/control-panels/recording-info-panel/ProcessMocapPanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
@@ -13,6 +14,7 @@ import CalibrationModule from "@/components/pipeline-progress/calibration-progre
 const SECTION_ORDER = [
     'cameras',
     'calibration',
+    'process_mocap',
     'recording',
     'mocap',
     'recordings',
@@ -21,11 +23,12 @@ const SECTION_ORDER = [
 type SectionId = (typeof SECTION_ORDER)[number];
 
 const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording']);
-const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings']);
+const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings', 'process_mocap']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     cameras: CameraConfigTreeView,
     calibration: CalibrationModule,
+    process_mocap: ProcessMocapPanel,
     recording: RecordingInfoPanel,
     mocap: MocapPanel,
     recordings: RecordingBrowserSection,
@@ -74,7 +77,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                 <CollapsedToolbar onToggleCollapse={onToggleCollapse} />
             )}
 
-            <div className="inner flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
+            <div className="playback-mode left-side-panel flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
                 style={{ display: isCollapsed ? 'none' : 'flex' }}>
                 {/* Header — home + connection + collapse button */}
 
@@ -108,7 +111,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                 </div>
 
                 {/* Sidebar Sections */}
-                <div className="flex flex-col gap-1">
+                <div className="playback-mode left-side-panel flex flex-col gap-1">
                     {visibleSections.map((sectionId) => {
                         const Component = SECTION_COMPONENTS[sectionId];
                         return <Component key={sectionId} />;

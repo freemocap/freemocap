@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 
+import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
@@ -13,7 +14,7 @@ interface MocapSetupModalProps {
 
 const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
   const [activeButton, setActiveButton] = useState<
-    "button1" | "button2" | "button3" | "button4"
+    "button1" | "button2" | "button3" | "button4" | "button5"
   >("button1");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -21,9 +22,10 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
   const panel2Ref = useRef<HTMLDivElement>(null);
   const panel3Ref = useRef<HTMLDivElement>(null);
   const panel4Ref = useRef<HTMLDivElement>(null);
+  const panel5Ref = useRef<HTMLDivElement>(null);
 
   const scrollToPanel = useCallback((panelIndex: number) => {
-    const refs = [panel1Ref, panel2Ref, panel3Ref, panel4Ref];
+    const refs = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref];
     const targetRef = refs[panelIndex];
     if (targetRef.current && scrollContainerRef.current) {
       targetRef.current.scrollIntoView({
@@ -32,11 +34,12 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
         inline: "nearest",
       });
       setActiveButton(
-        ["button1", "button2", "button3", "button4"][panelIndex] as
+        ["button1", "button2", "button3", "button4", "button5"][panelIndex] as
           | "button1"
           | "button2"
           | "button3"
-          | "button4",
+          | "button4"
+          | "button5",
       );
     }
   }, []);
@@ -52,6 +55,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
             else if (id === "panel2") setActiveButton("button2");
             else if (id === "panel3") setActiveButton("button3");
             else if (id === "panel4") setActiveButton("button4");
+            else if (id === "panel5") setActiveButton("button5");
           }
         });
       },
@@ -62,7 +66,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
       },
     );
 
-    const panels = [panel1Ref, panel2Ref, panel3Ref, panel4Ref];
+    const panels = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref];
     panels.forEach((ref) => {
       if (ref.current) observer.observe(ref.current);
     });
@@ -91,28 +95,34 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
           >
             <SubactionHeader text="Mocap setup" className="text-gray" />
             <ButtonSm
-              text="Calibration"
+              text="Processing Directory"
               buttonType={activeButton === "button1" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(0)}
             />
             <ButtonSm
-              text="3D Reconstruction"
+              text="Calibration"
               buttonType={activeButton === "button2" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(1)}
             />
             <ButtonSm
-              text="MediaPipe Detector"
+              text="3D Reconstruction"
               buttonType={activeButton === "button3" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(2)}
             />
             <ButtonSm
-              text="Blender"
+              text="MediaPipe Detector"
               buttonType={activeButton === "button4" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(3)}
+            />
+            <ButtonSm
+              text="Blender"
+              buttonType={activeButton === "button5" ? "activated" : "idle"}
+              className="full-width quaternary"
+              onClick={() => scrollToPanel(4)}
             />
           </div>
 
@@ -122,19 +132,28 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
             className="right-side-settings-container bg-primary br-1 overflow-y flex-1 flex flex-col gap-1 w-full flex-row overflow-y-auto"
           >
             {/* <div className="flex flex-col gap-2 w-full"> */}
-            {/* Panel 1 - Calibration */}
+            {/* Panel 1 - Processing Directory */}
             <div
               ref={panel1Ref}
               data-panel="panel1"
               className="bg-secondary p-2 br-1"
             >
-              <CalibrationModule isCalibrated={true} />
+              <ProcessingDirectorySettings open={true} onClose={() => {}} />
             </div>
 
-            {/* Panel 2 - 3D Reconstruction */}
+            {/* Panel 2 - Calibration */}
             <div
               ref={panel2Ref}
               data-panel="panel2"
+              className="bg-secondary p-2 br-1"
+            >
+              <CalibrationModule isCalibrated={true} />
+            </div>
+
+            {/* Panel 3 - 3D Reconstruction */}
+            <div
+              ref={panel3Ref}
+              data-panel="panel3"
               className="bg-secondary p-2 br-1"
             >
               <MOCAPthreeDReconstructionSettings
@@ -143,19 +162,19 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
               />
             </div>
 
-            {/* Panel 3 - MediaPipe Detector */}
+            {/* Panel 4 - MediaPipe Detector */}
             <div
-              ref={panel3Ref}
-              data-panel="panel3"
+              ref={panel4Ref}
+              data-panel="panel4"
               className="bg-secondary p-2 br-1"
             >
               <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />
             </div>
 
-            {/* Panel 4 - Blender */}
+            {/* Panel 5 - Blender */}
             <div
-              ref={panel4Ref}
-              data-panel="panel4"
+              ref={panel5Ref}
+              data-panel="panel5"
               className="bg-secondary p-2 br-1"
             >
               <MOCAPBlenderSettings open={true} onClose={() => {}} />

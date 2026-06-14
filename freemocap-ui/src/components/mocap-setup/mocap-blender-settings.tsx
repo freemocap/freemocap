@@ -1,6 +1,5 @@
 import React, { useEffect, useRef } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
-import IconButton from "@/components/ui-components/IconButton";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useMocap } from "@/hooks/useMocap";
@@ -31,7 +30,6 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
     lastBlendFilePath,
     redetectBlender,
     setBlenderExePath,
-    clearBlenderExePath,
     setExportToBlenderEnabled,
     setAutoOpenBlendFile,
     triggerBlenderExport,
@@ -135,15 +133,6 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
               </p>
             )}
           </button>
-          {isUsingManualBlenderPath && (
-            <div className="flex flex-row gap-1" style={{ flexShrink: 0 }}>
-              <IconButton
-                icon="clear-icon"
-                onClick={clearBlenderExePath}
-                title="Clear manual path (revert to auto-detected)"
-              />
-            </div>
-          )}
         </div>
         <p className="text sm text-gray">
           {isUsingManualBlenderPath

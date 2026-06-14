@@ -57,7 +57,8 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera}) => {
         dispatch(cameraSelectionToggled(camera.id));
     };
 
-    const handleToggleRealtime = (): void => {
+    const handleToggleRealtime = (e: React.MouseEvent): void => {
+        e.stopPropagation();
         dispatch(cameraRealtimeToggled(camera.id));
     };
 
@@ -92,14 +93,6 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera}) => {
                             </div>
                         </div>
                     </div>
-                    <IconButton
-                        icon={camera.realtimeEnabled ? 'streaming-icon' : 'stopstreaming-icon'}
-                        onClick={handleToggleRealtime}
-                        disabled={!camera.selected}
-                        tooltip
-                        tooltipText={camera.realtimeEnabled ? 'Remove from realtime pipeline' : 'Add to realtime pipeline'}
-                        tooltipPosition="pos-bottom-left"
-                    />
                 </div>
 
                 {/* Right: camera info + settings toggle */}
@@ -126,14 +119,34 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({camera}) => {
                         />
                     </div>
 
-                    {/* Config chips */}
-                    {configSummary.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                            {configSummary.map(item => (
-                                <span key={item} className="camera-config-chip">{item}</span>
-                            ))}
+                    {/* Realtime status indicator + config chips */}
+                    <div className="flex flex-row items-center gap-1">
+                        <div className="tooltip-wrapper pos-rel flex-inline">
+                            <span
+                                className={clsx(
+                                    "icon icon-size-20 bg-middark br-1",
+                                    camera.realtimeEnabled ? "live-active-icon" : "live-icon",
+                                    camera.selected ? "cursor-pointer" : "disabled"
+                                )}
+                                onClick={camera.selected ? handleToggleRealtime : undefined}
+                            />
+                            <div className="tooltip-container elevated-sharp pos-bottom-left p-01 br-2 bg-dark">
+                                <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
+                                    <p className="text-white text md">
+                                        {camera.realtimeEnabled ? 'Remove from realtime pipeline' : 'Add to realtime pipeline'}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    )}
+
+                        {configSummary.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                                {configSummary.map(item => (
+                                    <span key={item} className="camera-config-chip">{item}</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

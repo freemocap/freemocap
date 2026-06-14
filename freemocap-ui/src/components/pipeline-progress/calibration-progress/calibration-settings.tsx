@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
@@ -73,10 +73,18 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
     return "Custom";
   }, [board.squares_x, board.squares_y]);
 
+  const [forcedCustom, setForcedCustom] = useState(false);
+
+  const displayedPreset: BoardPreset = forcedCustom ? "Custom" : currentPreset;
+
   const handlePresetChange = useCallback(
     (value: string) => {
       const preset = value as BoardPreset;
-      if (preset === "Custom") return;
+      if (preset === "Custom") {
+        setForcedCustom(true);
+        return;
+      }
+      setForcedCustom(false);
       updateCalibrationConfig({
         charucoBoard: { ...board, ...BOARD_PRESETS[preset] },
       });
@@ -118,9 +126,9 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
           <span className="text-sm">Preset</span>
           <NameDropdownSelector
-            key={currentPreset}
+            key={displayedPreset}
             options={PRESET_OPTIONS}
-            initialValue={currentPreset}
+            initialValue={displayedPreset}
             onChange={handlePresetChange}
             className="flex flex-row"
           />
@@ -135,6 +143,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
             max={20}
             step={1}
             unit=""
+            disabled={displayedPreset !== "Custom"}
             onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_x: v } })}
           />
         </div>
@@ -148,6 +157,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
             max={20}
             step={1}
             unit=""
+            disabled={displayedPreset !== "Custom"}
             onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_y: v } })}
           />
         </div>

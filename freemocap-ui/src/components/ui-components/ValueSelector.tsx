@@ -15,9 +15,10 @@ interface InputWithUnitProps {
     min?: number;
     max?: number;
     step?: number;
+    disabled?: boolean;
 }
 
-const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = "", min = 1, max = 999, step = 1}) => {
+const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = "", min = 1, max = 999, step = 1, disabled = false}) => {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -35,6 +36,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = ""
                 min={min}
                 max={max}
                 step={step}
+                disabled={disabled}
                 onChange={e => onChange(Math.max(min, Math.min(max, Number(e.target.value) || min)))}
                 onFocus={e => e.target.select()}
                 onKeyDown={handleKeyDown}
@@ -52,18 +54,19 @@ interface ValueSelectorProps {
     max?: number;
     step?: number;
     onChange?: (value: number) => void;
+    disabled?: boolean;
 }
 
-const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1, max = 999, step = 1, onChange}) => {
+const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1, max = 999, step = 1, onChange, disabled = false}) => {
     const currentValue = value ?? min;
 
     return (
-        <div className="value-selector-container flex flex-row items-center gap-2 bg-middark br-1">
+        <div className={`value-selector-container flex flex-row items-center gap-2 bg-middark br-1 ${disabled ? "disabled" : ""}`}>
             <IconButton
                 icon="minus-icon"
                 onClick={() => currentValue > min && onChange?.(roundToStep(currentValue - step, step, min, max))}
-                disabled={currentValue <= min}
-                className={`icon-size-25 ${currentValue <= min ? "deactivated" : ""}`}
+                disabled={disabled || currentValue <= min}
+                className={`icon-size-25 ${disabled || currentValue <= min ? "deactivated" : ""}`}
                 iconSize="icon-size-20"
             />
             <InputWithUnit
@@ -73,12 +76,13 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({value, unit = "", min = 1,
                 min={min}
                 max={max}
                 step={step}
+                disabled={disabled}
             />
             <IconButton
                 icon="plus-icon"
                 onClick={() => currentValue < max && onChange?.(roundToStep(currentValue + step, step, min, max))}
-                disabled={currentValue >= max}
-                className={`icon-size-25 ${currentValue >= max ? "deactivated" : ""}`}
+                disabled={disabled || currentValue >= max}
+                className={`icon-size-25 ${disabled || currentValue >= max ? "deactivated" : ""}`}
                 iconSize="icon-size-20"
             />
         </div>

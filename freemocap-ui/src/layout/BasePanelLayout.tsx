@@ -6,14 +6,14 @@ import {useMenuActions} from "@/hooks/useMenuActions";
 import {useKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";
 import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
-// import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal"; // Capitalized import
+import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal"; // Capitalized import
 
 export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.ReactNode; onOpenWelcome?: () => void }) => {
     const leftPanelRef = useRef<ImperativePanelHandle>(null);
     const bottomPanelRef = useRef<ImperativePanelHandle>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
-    // const [showModal, setShowModal] = useState(true); // Added state - set to true to show by default
+    const [showModal, setShowModal] = useState(true); // Added state - set to true to show by default
 
     const handleToggleCollapse = useCallback(() => {
         const panel = leftPanelRef.current;
@@ -35,7 +35,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
 
     return (
         <div className="main-app-container flex flex-col" style={{ height: '100vh' }}>
-            {/* {showModal && <MocapSetupModal onClose={() => setShowModal(false)} />} */}
+             {showModal && <MocapSetupModal onClose={() => setShowModal(false)} />} 
             <PanelGroup className="app-container flex-1" direction="vertical">
                 {/* Top section (horizontal panels) */}
                 <Panel className="app-container-inner" defaultSize={87} minSize={20}>

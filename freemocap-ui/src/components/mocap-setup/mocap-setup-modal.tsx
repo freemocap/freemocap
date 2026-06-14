@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
-import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import SubactionHeader from "@/components/ui-components/SubactionHeader";
 
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
 import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
@@ -11,102 +11,143 @@ interface MocapSetupModalProps {
 }
 
 const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
-  const [activeButton, setActiveButton] = useState<"button1" | "button2" | "button3">("button1");
+  const [activeButton, setActiveButton] = useState<
+    "button1" | "button2" | "button3"
+  >("button1");
 
-  const renderRightPanelContent = () => {
-    switch (activeButton) {
-      case "button1":
-        try {
-          return <MOCAPthreeDReconstructionSettings open={true} onClose={() => {}} />;
-        } catch (error) {
-          console.error("Error rendering 3D Reconstruction Settings:", error);
-          return (
-            <div className="flex flex-col gap-2 p-2 bg-dark br-2">
-              <p className="text-white text md">3D Reconstruction Settings</p>
-              <p className="text-gray text sm">Failed to load component. Check if the export is correct.</p>
-            </div>
-          );
-        }
-      case "button2":
-        try {
-          return <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />;
-        } catch (error) {
-          console.error("Error rendering MediaPipe Detector Settings:", error);
-          return (
-            <div className="flex flex-col gap-2 p-2 bg-dark br-2">
-              <p className="text-white text md">MediaPipe Detector Settings</p>
-              <p className="text-gray text sm">Failed to load component. Check if the export is correct.</p>
-            </div>
-          );
-        }
-      case "button3":
-        try {
-          return <MOCAPBlenderSettings open={true} onClose={() => {}} />;
-        } catch (error) {
-          console.error("Error rendering Blender Settings:", error);
-          return (
-            <div className="flex flex-col gap-2 p-2 bg-dark br-2">
-              <p className="text-white text md">Blender Settings</p>
-              <p className="text-gray text sm">Failed to load component. Check if the export is correct.</p>
-            </div>
-          );
-        }
-      default:
-        return null;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const panel1Ref = useRef<HTMLDivElement>(null);
+  const panel2Ref = useRef<HTMLDivElement>(null);
+  const panel3Ref = useRef<HTMLDivElement>(null);
+
+  const scrollToPanel = useCallback((panelIndex: number) => {
+    const refs = [panel1Ref, panel2Ref, panel3Ref];
+    const targetRef = refs[panelIndex];
+    if (targetRef.current && scrollContainerRef.current) {
+      targetRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+        inline: "nearest",
+      });
+      setActiveButton(
+        ["button1", "button2", "button3"][panelIndex] as
+          | "button1"
+          | "button2"
+          | "button3",
+      );
     }
-  };
+  }, []);
+
+  // IntersectionObserver to detect which panel is visible on scroll
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute("data-panel");
+            if (id === "panel1") setActiveButton("button1");
+            else if (id === "panel2") setActiveButton("button2");
+            else if (id === "panel3") setActiveButton("button3");
+          }
+        });
+      },
+      {
+        root: scrollContainerRef.current,
+        rootMargin: "0px 0px -50% 0px",
+        threshold: 0.5,
+      },
+    );
+
+    const panels = [panel1Ref, panel2Ref, panel3Ref];
+    panels.forEach((ref) => {
+      if (ref.current) observer.observe(ref.current);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   return (
     <>
       {/* Backdrop overlay */}
-      <div 
-        className="pos-fixed inset-0 bg-surface-overlay z-10" 
-       
+      <div
+        className="pos-fixed inset-0 bg-surface-overlay z-10"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
-      <div 
-        className="mocap-settings-modal bg-primary border-1 border-black overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2" 
-
-      >
-        {/* <div className="flex items-center justify-content-space-between p-3 border-1 border-bottom" style={{ borderColor: "var(--color-border-secondary)" }}>
-          <h3 className="text-white text lg">Mocap Setup</h3>
-          <ButtonSm text="Close" iconClass="clear-icon" buttonType="secondary" onClick={onClose} />
-        </div> */}
-
+      <div className="mocap-settings-modal bg-primary border-1 border-black overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
         {/* Row 1 */}
         <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
           {/* Column 1 - Buttons */}
-            
-
-          <div className="left-section-actions br-1 p-2 bg-tertiary flex flex-col flex-1 gap-2" style={{ maxWidth: 146, flexShrink: 0 }}>
-            <SubactionHeader 
-            text="Mocap setup" 
-            className="text-gray"/>
+          <div
+            className="left-section-actions br-1 p-2 bg-tertiary flex flex-col flex-1 gap-2"
+            style={{ maxWidth: 146, flexShrink: 0 }}
+          >
+            <SubactionHeader text="Mocap setup" className="text-gray" />
             <ButtonSm
               text="3D Reconstruction"
               buttonType={activeButton === "button1" ? "activated" : "idle"}
               className="full-width quaternary"
-              onClick={() => setActiveButton("button1")}
+              onClick={() => scrollToPanel(0)}
             />
             <ButtonSm
               text="MediaPipe Detector"
               buttonType={activeButton === "button2" ? "activated" : "idle"}
               className="full-width quaternary"
-              onClick={() => setActiveButton("button2")}
+              onClick={() => scrollToPanel(1)}
             />
             <ButtonSm
               text="Blender"
               buttonType={activeButton === "button3" ? "activated" : "idle"}
               className="full-width quaternary"
-              onClick={() => setActiveButton("button3")}
+              onClick={() => scrollToPanel(2)}
             />
           </div>
-          
+
           {/* Column 2 - Dynamic Content */}
-          <div className="right-side-settings-container bg-secondary br-1 overflow-y p-2 flex-1 flex w-full flex-row">
-            {renderRightPanelContent()}
+          <div
+            ref={scrollContainerRef}
+            className="right-side-settings-container bg-primary br-1 overflow-y flex-1 flex flex-col gap-1 w-full flex-row overflow-y-auto"
+          >
+            {/* <div className="flex flex-col gap-2 w-full"> */}
+            {/* Panel 1 - 3D Reconstruction */}
+            <div
+              ref={panel1Ref}
+              data-panel="panel1"
+              className="bg-secondary p-2 br-1"
+            >
+              <MOCAPthreeDReconstructionSettings
+                open={true}
+                onClose={() => {}}
+              />
+            </div>
+
+            {/* Panel 2 - MediaPipe Detector */}
+            <div
+              ref={panel2Ref}
+              data-panel="panel2"
+              className="bg-secondary p-2 br-1"
+            >
+              <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />
+            </div>
+
+            {/* Panel 3 - Blender */}
+            <div
+              ref={panel3Ref}
+              data-panel="panel3"
+              className="bg-secondary p-2 br-1"
+            >
+              <MOCAPBlenderSettings open={true} onClose={() => {}} />
+            </div>
+
+            {/* Dummy div for extra scroll space */}
+            <div
+              className="bg-secondary p-2"
+              style={{ minHeight: "220px", transform: "translateY(-6px)" }}
+            ></div>
+            {/* </div> */}
           </div>
         </div>
 
@@ -133,8 +174,12 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({ onClose }) => {
             />
           </div>
           <div className="flex flex-row gap-2 h-full">
-            <p className="text sm text-gray">Processing may take hours, depending on your system, ideally avoid using your computer.</p></div>
+            <p className="text sm text-gray">
+              Processing may take hours, depending on your system, ideally avoid
+              using your computer.
+            </p>
           </div>
+        </div>
       </div>
     </>
   );

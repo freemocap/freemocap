@@ -205,11 +205,16 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     <div className="playback-speed-button-containter pos-rel">
                         <button
                             ref={speedButtonRef}
-                            className="playback-speed-button icon-size-25 button sm fit-content flex-inline items-center gap-1 br-1"
+                            className="playback-speed-button icon-size-25 button icon-button sm fit-content flex-inline items-center gap-1 br-1"
                             onClick={() => setSpeedDropdownOpen((prev) => !prev)}
                             title={t("playbackSpeed")}
                         >
                             <span className="text-gray text md text-nowrap">{playbackRate}×</span>
+                            <div className="tooltip-container elevated-sharp pos-top p-01 br-2 bg-dark">
+                                <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
+                                    <p className="text-white text md">{t("playbackSpeed")}</p>
+                                </div>
+                            </div>
                         </button>
 
                         {speedDropdownOpen && (

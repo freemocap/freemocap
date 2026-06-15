@@ -6,7 +6,7 @@ import DropdownButton from "@/components/ui-components/DropdownButton.tsx";
 import CalibrationSettings from "./calibration-settings";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useCalibration } from "@/hooks/useCalibration";
-import { useElectronIPC } from "@/services";
+import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   calibrationAutoLoadDismissed,
@@ -45,7 +45,10 @@ const CalibrationModule = ({
 }: CalibrationModuleProps) => {
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
+  const { connectedCameraIds } = useServer();
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
+
+  const noCamerasConnected = connectedCameraIds.length === 0;
 
   const {
     config,
@@ -164,7 +167,7 @@ const CalibrationModule = ({
    * is conditionally hidden in playback mode.
    */
   const dropdownItems = (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 calibrate-module-dropdown-list">
       {/* 
         "Record and Calibrate" is only available in streaming mode.
         In playback mode, this option is hidden since recording doesn't make sense.
@@ -176,7 +179,10 @@ const CalibrationModule = ({
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
-          disabled={!canStartRecording || !isElectron}
+          disabled={noCamerasConnected && !isLoading}
+          tooltip={true}
+          tooltipPosition="pos-right"
+          tooltipText={noCamerasConnected ? "Connect cameras to record" : undefined}
         />
       )}
       <ButtonSm

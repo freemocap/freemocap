@@ -4,6 +4,7 @@ FreemocapApplication with SettingsManager integration.
 """
 import logging
 import multiprocessing
+import time
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
 
@@ -24,8 +25,16 @@ from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineCon
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+from freemocap.core.pupil.pupil_labs_config import PupilLabsConfig
+from freemocap.core.pupil.pupil_labs_manager import PupilLabsManager
 
 logger = logging.getLogger(__name__)
+
+# Maximum frame rate for pupil-only payloads when no cameras are connected.
+_PUPIL_ONLY_MIN_INTERVAL: float = 1.0 / 60.0  # 60 fps max
+
+# Dummy camera group id used for pupil-only frontend payloads.
+_PUPIL_ONLY_CAMERA_GROUP_ID: str = "pupil_only"
 
 
 @dataclass
@@ -35,6 +44,11 @@ class FreemocapApplication:
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
+    pupil_labs_manager: PupilLabsManager
+
+    # Pupil-only streaming state (used when no cameras are connected).
+    _pupil_only_frame_number: int = 0
+    _last_pupil_only_send_time: float = 0.0
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -52,6 +66,9 @@ class FreemocapApplication:
                 worker_registry=worker_registry,
             ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
+            pupil_labs_manager=PupilLabsManager(
+                config=PupilLabsConfig(),
+            ),
         )
 
     @property
@@ -65,9 +82,14 @@ class FreemocapApplication:
         await self.camera_group_manager.start_recording_all_groups(
             recording_info=recording_info,
         )
+        if recording_info.full_recording_path is not None:
+            self.pupil_labs_manager.trigger_recording_start(
+                recording_info.full_recording_path
+            )
 
     async def stop_recording_all(self) -> RecordingInfo | None:
         recording_infos = await self.camera_group_manager.stop_recording_all_groups()
+        self.pupil_labs_manager.trigger_recording_stop()
         if len(recording_infos) == 0:
             logger.warning("No recordings were stopped.")
             return None
@@ -145,6 +167,11 @@ class FreemocapApplication:
         """
         await self.realtime_pipeline_manager.wait_for_any_result_ready(timeout=timeout)
 
+    @property
+    def pupil_data_available(self) -> bool:
+        """True if the Pupil Labs bridge is connected and has streamed data."""
+        return self.pupil_labs_manager.connected
+
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
@@ -152,6 +179,9 @@ class FreemocapApplication:
         # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
         posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
         posthoc_progress.extend(self.posthoc_pipeline_manager.evict_completed())
+
+        # Fetch median pupil data once per camera frame
+        pupil_data = self.pupil_labs_manager.get_median_pupil_data()
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
         active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
@@ -166,14 +196,43 @@ class FreemocapApplication:
                 results.append(FrontendImagePacket(
                     images_bytearray=image_bytes,
                     multiframe_timestamp=mf_timestamp,
-                    frontend_payload=FrontendPayload(camera_group_id=cg_id, frame_number=frame_number),
+                    frontend_payload=FrontendPayload(
+                        camera_group_id=cg_id,
+                        frame_number=frame_number,
+                        pupil_data=pupil_data,
+                    ),
                 ))
+
+            # --- Pupil-only fallback: no cameras connected, but pupil data exists ---
+            if not results and pupil_data is not None:
+                now = time.perf_counter()
+                if now - self._last_pupil_only_send_time >= _PUPIL_ONLY_MIN_INTERVAL:
+                    self._last_pupil_only_send_time = now
+                    self._pupil_only_frame_number += 1
+                    results.append(FrontendImagePacket(
+                        images_bytearray=bytearray(),  # no image
+                        multiframe_timestamp=float(time.perf_counter_ns()),
+                        frontend_payload=FrontendPayload(
+                            camera_group_id=_PUPIL_ONLY_CAMERA_GROUP_ID,
+                            frame_number=self._pupil_only_frame_number,
+                            pupil_data=pupil_data,
+                        ),
+                    ))
+                    logger.trace(
+                        f"Pupil-only payload sent "
+                        f"(frame={self._pupil_only_frame_number})"
+                    )
+
             return results, posthoc_progress
 
         # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
         realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
             if_newer_than=if_newer_than
         )
+
+        # Attach median pupil data to each frontend payload
+        for packet in realtime_pipeline_packets:
+            packet.frontend_payload.pupil_data = pupil_data
 
         return realtime_pipeline_packets, posthoc_progress
 
@@ -184,6 +243,7 @@ class FreemocapApplication:
     def close_pipelines(self) -> None:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
+        self.pupil_labs_manager.stop_bridge()
 
     def pause_unpause_pipelines(self) -> None:
         self.realtime_pipeline_manager.pause_unpause_all()
@@ -192,6 +252,7 @@ class FreemocapApplication:
         self.global_kill_flag.value = True
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
+        self.pupil_labs_manager.stop_bridge()
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

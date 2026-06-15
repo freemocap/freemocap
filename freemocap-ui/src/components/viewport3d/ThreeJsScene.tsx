@@ -7,6 +7,7 @@ import {KeypointsRenderer} from "./renderers/KeypointsRenderer";
 import {FaceRenderer} from "@/components/viewport3d/renderers/FaceRenderer";
 import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRenderer";
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
+import {EyeGazeRenderer} from "@/components/viewport3d/renderers/EyeGazeRenderer";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
@@ -28,6 +29,7 @@ function DataInvalidator() {
             workerDataStore.subscribeToVisibility(() => invalidate()),
             workerDataStore.subscribeToCalibration(() => invalidate()),
             workerDataStore.subscribeToSchemaState(() => invalidate()),
+            workerDataStore.subscribeToPupilData(() => invalidate()),
         ];
         return () => unsubs.forEach(fn => fn());
     }, [invalidate, subscribeToKeypointsRaw, subscribeToKeypointsFiltered]);
@@ -67,6 +69,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             {visibility.connections && <ConnectionRenderer />}
             {visibility.face && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
+            {visibility.eyeGaze && <EyeGazeRenderer />}
         </>
     );
 }

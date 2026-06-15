@@ -47,6 +47,12 @@ freemocap = "freemocap.__main__:run_main"
 [tool.setuptools]
 packages = ["freemocap"]
 
+[project.optional-dependencies]
+pupil = [
+    "pyzmq>=26",
+    "msgpack>=1",
+]
+
 [tool.uv]
 package = true
 exclude-dependencies = ["onnxruntime"] # fix erroneous inclusion of onnxruntime that happens alongside onnxruntime-gpu

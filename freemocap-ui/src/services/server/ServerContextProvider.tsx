@@ -28,6 +28,7 @@ import {
     parseKeypointsMessage,
 } from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
 import {RigidBodyPose} from "@/components/viewport3d";
+import type {PupilFramePayload} from "@/components/viewport3d/helpers/pupil-types";
 import {
     KeypointsCallback,
     KeypointsFrame,
@@ -89,6 +90,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const rigidBodiesRef = useRef<Map<string, RigidBodyPose>>(new Map());
     const trackedPointsSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
     const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
+    const pupilDataRef = useRef<PupilFramePayload | null>(null);
+    const pupilDataSubscribersRef = useRef<Set<(data: PupilFramePayload) => void>>(new Set());
     const keypointsFilteredRef = useRef<KeypointsFrame | null>(null);
     const keypointsFilteredSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
 
@@ -348,6 +351,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 }
                 rigidBodiesRef.current = posesMap;
                 for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
+            }
+
+            if (payload.pupil_data) {
+                pupilDataRef.current = payload.pupil_data;
+                for (const cb of pupilDataSubscribersRef.current) cb(payload.pupil_data);
             }
         };
 
@@ -675,6 +683,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return trackedPointsRef.current;
     }, []);
 
+    const subscribeToPupilData = useCallback((cb: (data: PupilFramePayload) => void): () => void => {
+        pupilDataSubscribersRef.current.add(cb);
+        return () => { pupilDataSubscribersRef.current.delete(cb); };
+    }, []);
+
+    const getLatestPupilData = useCallback((): PupilFramePayload | null => {
+        return pupilDataRef.current;
+    }, []);
+
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
         charucoEnabledRef.current = charuco;
         skeletonEnabledRef.current = skeleton;
@@ -718,11 +735,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToKeypointsFiltered,
         subscribeToRigidBodies,
         getLatestKeypointsRaw,
+        subscribeToPupilData,
+        getLatestPupilData,
         setOverlayVisibility,
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, subscribeToPupilData, getLatestPupilData, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

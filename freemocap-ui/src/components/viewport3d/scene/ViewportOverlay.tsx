@@ -32,6 +32,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     const facePointsCountRef  = useRef<HTMLSpanElement | null>(null);
     const connectionsCountRef = useRef<HTMLSpanElement | null>(null);
     const camerasCountRef     = useRef<HTMLSpanElement | null>(null);
+    const eyeGazeCountRef     = useRef<HTMLSpanElement | null>(null);
     const totalPointsRef      = useRef<HTMLSpanElement | null>(null);
     const totalBodiesRef      = useRef<HTMLSpanElement | null>(null);
 
@@ -44,6 +45,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
             if (facePointsCountRef.current)   facePointsCountRef.current.textContent  = String(s.facePoints);
             if (connectionsCountRef.current)  connectionsCountRef.current.textContent = String(s.connections);
             if (camerasCountRef.current)      camerasCountRef.current.textContent     = String(s.cameras);
+            if (eyeGazeCountRef.current)      eyeGazeCountRef.current.textContent     = String(s.eyeGaze);
             if (totalPointsRef.current)       totalPointsRef.current.textContent      = String(s.keypointsRaw + s.keypointsFiltered + s.facePoints);
             if (totalBodiesRef.current)       totalBodiesRef.current.textContent      = String(s.rigidBodies);
         }, 500);
@@ -61,6 +63,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
     const toggleFace         = useCallback(() => toggle("face"),              [toggle]);
     const toggleConnections  = useCallback(() => toggle("connections"),       [toggle]);
     const toggleCameras      = useCallback(() => toggle("cameras"),           [toggle]);
+    const toggleEyeGaze      = useCallback(() => toggle("eyeGaze"),           [toggle]);
 
     return (
         <>
@@ -87,6 +90,7 @@ export function ViewportOverlay({ onFitCamera, onResetCamera }: ViewportOverlayP
                 <VisToggle label="Face"         countRef={facePointsCountRef}         checked={visibility.face}              onChange={toggleFace} />
                 <VisToggle label="Connections"  countRef={connectionsCountRef}        checked={visibility.connections}       onChange={toggleConnections} />
                 <VisToggle label="Cameras"      countRef={camerasCountRef}            checked={visibility.cameras}           onChange={toggleCameras} />
+                <VisToggle label="Eye gaze"     countRef={eyeGazeCountRef}           checked={visibility.eyeGaze}           onChange={toggleEyeGaze} />
 
                 <Collapse in={expanded}>
                     <Typography variant="caption" sx={{ mt: 1, display: "block", color: "#888" }}>

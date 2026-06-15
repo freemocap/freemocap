@@ -10,6 +10,7 @@ from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body
 from freemocap.core.types.type_overloads import TrackedPointNameString, PipelineIdString, FrameNumberInt
 from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
 # from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
+from freemocap.core.pupil.pupil_data_models import PupilFramePayload  # noqa: TC001 — msgspec evaluates field types at runtime, cannot be TYPE_CHECKING
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,7 @@ class FrontendPayload(msgspec.Struct):
     keypoints_raw: dict[TrackedPointNameString, Point3d] | None = None
     keypoints_filtered: dict[TrackedPointNameString, Point3d] | None = None
     rigid_body_poses: dict[str, RigidBodyPose] | None = None
+    pupil_data: "PupilFramePayload | None" = None
 
     @classmethod
     def from_aggregation_output(

@@ -14,6 +14,7 @@ import {OverlayRendererFactory} from "@/services/server/server-helpers/image-ove
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
 import {Point3d, RigidBodyPose} from "@/components/viewport3d";
+import type {PupilFramePayload} from "@/components/viewport3d/helpers/pupil-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 // Type guard to check if a message is a log record
@@ -57,6 +58,8 @@ export interface FrontendPayloadMessage {
     keypoints_raw: Record<string, Point3d>
     keypoints_filtered: Record<string, Point3d>
     rigid_body_poses: Record<string, RigidBodyPose>;
+    /** Optional median-aggregated pupil labs data (3D eyeball model + gaze vectors). */
+    pupil_data?: PupilFramePayload;
 }
 
 export function isFrontendPayload(data: any): data is FrontendPayloadMessage {

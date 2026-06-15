@@ -12,4 +12,5 @@ export * from './slices/realtime';
 export * from './slices/mocap';
 export * from './slices/pipelines';
 export * from './slices/blender';
+export * from './slices/pupil-labs';
 export * from './slices/active-recording';

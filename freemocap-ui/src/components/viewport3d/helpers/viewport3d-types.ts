@@ -29,6 +29,7 @@ export interface ViewportVisibility {
     face: boolean;
     connections: boolean;
     cameras: boolean;
+    eyeGaze: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -39,6 +40,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     face: true,
     connections: true,
     cameras: true,
+    eyeGaze: true,
 };
 
 /** Live stats from each renderer. */
@@ -49,4 +51,5 @@ export interface ViewportStats {
     facePoints: number;
     connections: number;
     cameras: number;
+    eyeGaze: number;
 }

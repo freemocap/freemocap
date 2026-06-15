@@ -90,8 +90,25 @@ async def main(force_preferred_port:bool=True) -> None:
         )
         server = uvicorn.Server(config)
 
+        async def _watch_kill_flag_shutdown() -> None:
+            """Bridge global_kill_flag → server.should_exit.
+
+            Any code (WebSocket crash handlers, pipeline nodes, etc.) can
+            set global_kill_flag.value = True to trigger a full server
+            shutdown.  This task polls the flag and translates it to
+            uvicorn's should_exit signal.
+            """
+            while not global_kill_flag.value:
+                await asyncio.sleep(1.0)
+            logger.info("global_kill_flag set — shutting down server")
+            if server is not None:
+                server.should_exit = True
+
+        _kill_watch_task = asyncio.create_task(_watch_kill_flag_shutdown())
+
         logger.info(f"Starting server on {HOSTNAME}:{port}")
         await server.serve()
+        _kill_watch_task.cancel()
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received")

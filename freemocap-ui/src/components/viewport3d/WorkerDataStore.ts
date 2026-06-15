@@ -11,6 +11,7 @@
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
 import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
+import type { PupilFramePayload } from "./helpers/pupil-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +59,7 @@ const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSche
 const calibChan = makeChannel<LoadedCalibration | null>(null);
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
+const pupilDataChan = makeChannel<PupilFramePayload | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -76,6 +78,7 @@ export const workerDataStore: KeypointsSource & {
     getCalibrationConfig: () => CalibrationConfig;
     subscribeToVisibility: (cb: Listener<ViewportVisibility>) => () => void;
     getVisibility: () => ViewportVisibility;
+    subscribeToPupilData: (cb: Listener<PupilFramePayload | null>) => () => void;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
@@ -114,6 +117,9 @@ export const workerDataStore: KeypointsSource & {
     subscribeToVisibility: visibilityChan.subscribe,
     getVisibility: visibilityChan.getLatest,
 
+    // Pupil Labs data (3D eyeball + gaze)
+    subscribeToPupilData: pupilDataChan.subscribe,
+
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
@@ -140,6 +146,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);
+                break;
+            case "pupilData":
+                pupilDataChan.dispatch(data as PupilFramePayload | null);
                 break;
             case "resetCamera":
                 resetCameraChan.dispatch(null);

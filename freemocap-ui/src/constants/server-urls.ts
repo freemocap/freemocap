@@ -94,6 +94,11 @@ class ServerUrls {
             blenderExport: `${baseUrl}/freemocap/blender/export`,
             blenderOpen: `${baseUrl}/freemocap/blender/open`,
 
+            // Pupil Labs endpoints
+            pupilConnect: `${baseUrl}/freemocap/pupil/connect`,
+            pupilDisconnect: `${baseUrl}/freemocap/pupil/disconnect`,
+            pupilStatus: `${baseUrl}/freemocap/pupil/status`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

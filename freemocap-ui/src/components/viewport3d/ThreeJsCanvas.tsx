@@ -189,6 +189,12 @@ export function ThreeJsCanvas() {
         });
     }, [subscribeToKeypointsFiltered]);
 
+    useEffect(() => {
+        return server.subscribeToPupilData((pupilFrame) => {
+            VIEWPORT_WORKER.postMessage({ type: "pupilData", data: pupilFrame });
+        });
+    }, [server.subscribeToPupilData]);
+
     // ── Low-frequency config data ─────────────────────────────────────────────
     // During playback, FileKeypointsSourceProvider owns the schema (fetched from
     // the recording's tracker_schema.json). Pushing the live-server schema here

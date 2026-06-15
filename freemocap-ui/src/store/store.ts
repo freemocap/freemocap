@@ -11,6 +11,7 @@ import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 import {localeSlice} from "@/store/slices/locale";
 import {pipelinesSlice} from "@/store/slices/pipelines/pipelines-slice";
 import {blenderSlice} from "@/store/slices/blender/blender-slice";
+import {pupilLabsSlice} from "@/store/slices/pupil-labs/pupil-labs-slice";
 import {recordingStatusSlice} from "@/store/slices/recording-status/recording-status-slice";
 import {activeRecordingSlice} from "@/store/slices/active-recording/active-recording-slice";
 import playbackDataReducer from "@/store/slices/playback-data/playback-data-slice";
@@ -31,6 +32,7 @@ export const store = configureStore({
         locale: localeSlice.reducer,
         pipelines: pipelinesSlice.reducer,
         blender: blenderSlice.reducer,
+        pupilLabs: pupilLabsSlice.reducer,
         recordingStatus: recordingStatusSlice.reducer,
         activeRecording: activeRecordingSlice.reducer,
         playbackData: playbackDataReducer,

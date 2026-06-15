@@ -25,6 +25,7 @@ import {RecordingInfoPanel} from "@/components/control-panels/recording-info-pan
 import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
+import {PupilLabsPanel} from "@/components/control-panels/pupil-labs-panel/PupilLabsPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 
 const STORAGE_KEY = 'freemocap-sidebar-section-order';
@@ -35,6 +36,7 @@ const DEFAULT_SECTION_ORDER = [
     'realtime',
     'calibration',
     'mocap',
+    'pupil',
 ] as const;
 
 type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
@@ -45,6 +47,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     recording: RecordingInfoPanel,
     calibration: CalibrationPanel,
     mocap: MocapPanel,
+    pupil: PupilLabsPanel,
 };
 
 function loadSectionOrder(): SectionId[] {

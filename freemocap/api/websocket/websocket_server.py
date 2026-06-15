@@ -159,6 +159,8 @@ class WebsocketServer:
             await asyncio.gather(*self.ws_tasks)
         except Exception as e:
             logger.exception(f"Error in websocket runner: {e.__class__}: {e}")
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             for task in self.ws_tasks:
                 if not task.done():
                     task.cancel()
@@ -201,10 +203,18 @@ class WebsocketServer:
                             logger.trace(f"Backpressure: {backpressure} frames unacknowledged")
                         continue
 
-                # Ack received — block (off the event loop) until the
-                # aggregator signals a processed frame is ready, then pull
-                # and send immediately
-                await self._app.wait_for_realtime_result(timeout=0.5)
+                # Ack received — determine wait timeout.
+                # When no cameras/pipelines are active but pupil data is
+                # available, poll at ~120 Hz so the 60 fps throttle in
+                # get_latest_frontend_payloads can gate pupil-only sends.
+                if self._app.pupil_data_available and not self._app.realtime_pipeline_manager.pipelines:
+                    wait_timeout = 0.001  # poll frequently for pupil-only
+                else:
+                    wait_timeout = 0.5
+
+                # Block (off the event loop) until a camera frame is ready,
+                # or poll briefly for pupil-only data.
+                await self._app.wait_for_realtime_result(timeout=wait_timeout)
 
                 try:
                     packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=int(self.last_sent_frame_number))
@@ -221,7 +231,7 @@ class WebsocketServer:
                         async with self._send_lock:
                             await self.websocket.send_bytes(packet.keypoints_binary_payload)
 
-                    if packet.images_bytearray is not None:
+                    if packet.images_bytearray is not None and len(packet.images_bytearray) > 0:
                         async with self._send_lock:
                             await self.websocket.send_bytes(packet.images_bytearray)
 
@@ -275,7 +285,7 @@ class WebsocketServer:
             pass
         except Exception as e:
             logger.exception(f"Error in frontend image relay: {e.__class__}: {e}")
-            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
@@ -314,6 +324,7 @@ class WebsocketServer:
                 f"— ws state: {self.websocket.client_state}"
             )
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     async def _client_message_handler(self):
@@ -366,6 +377,8 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error handling client message: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+            
             raise
         finally:
             logger.info("Ending client message handler...")

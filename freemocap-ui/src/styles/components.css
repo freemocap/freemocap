@@ -278,8 +278,8 @@ button.rotate-button {
 }
 
 .calibration-settings-flyout {
-  top: 80px;
-  left: 310px;
+  top: 340px;
+  left: 300px;
 }
 
 .segmented-control-button>p.text.sm {
@@ -851,9 +851,9 @@ button.rotate-button {
 }
 
 .camera-settings-modal {
-  position: absolute;
-  right: 0;
-  top: 110px;
+  position: fixed;
+  left:300px;
+  top: 90px;
   min-width: 225px;
   /* max-width: 300px; */
 }
@@ -959,8 +959,8 @@ button.rotate-button {
 
 .file-directory-settings-container {
   min-width: 280px;
-  top: 56px;
-  left: 132px;
+  top: 476px;
+  left: 300px;
   min-width: 350px;
   min-width: 350px;
   max-height: 80vh;

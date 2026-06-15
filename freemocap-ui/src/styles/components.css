@@ -871,3 +871,9 @@
 .error-message-container::after {
   right: -20px;
 }
+.camera-settings-container.contextual {
+
+  min-width: 300px;
+
+
+}

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
@@ -68,6 +68,25 @@ const CalibrationModule = ({
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
+
+  // Cycling calibration messages during recording
+  const calibrationMessages = [
+    "Hold up the calibration board",
+    "Check all cameras have a clear view",
+    "Recording in progress",
+  ];
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isRecording) {
+      setMessageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % calibrationMessages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isRecording, calibrationMessages.length]);
 
   /**
    * Dummy state for the app operating mode.
@@ -219,16 +238,20 @@ const CalibrationModule = ({
         <div className="flex flex-row items-center">
           <div className="flex flex-col flex-1 justify-content-space-between items-center">
             <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
-              <div className="flex flex-row  gap-1 items-center">
-                <span className="icon icon-size-20 calibrating-icon"></span>
-                <SubactionHeader 
-                className="text-white"
-                text="Show the calibration board" />
-              </div>
-              
-                <p className="text md text-gray p-1">
-                  {recordingProgress.toFixed(0)}%
-                </p>
+                <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
+                  <span className="icon icon-size-20 calibrating-icon"></span>
+                  <SubactionHeader
+                    className="text-white calibration-header-shimmer text-nowrap"
+                    text={calibrationMessages[messageIndex]}
+                  />
+                </div>
+                
+                 
+                           <div className="flex flex-row flex-1 items-center">
+
+               <span className="text md text-gray p-1">
+                    {recordingProgress.toFixed(0)}%
+                  </span>
                 <IconButton
                   icon="explainer-icon"
                   className="button sm"
@@ -237,7 +260,7 @@ const CalibrationModule = ({
                   tooltipText="How to calibrate"
                   tooltipPosition="pos-left"
                 />
-              
+              </div>
             </div>
              <div
               className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end"
@@ -255,7 +278,7 @@ const CalibrationModule = ({
 
           </div>
         </div>
-        <div className="charuco-settings-action-container flex flex-row items-center gap-1">
+        <div className="charuco-settings-action-container while-recording flex flex-row items-center gap-1">
           {charucoTags.map((tag) => (
             <span
               key={tag}
@@ -290,9 +313,9 @@ const CalibrationModule = ({
         style={{ minWidth: 0 }}
       >
         {errorBanner}
-        <div className="flex flex-row items-center" style={{ minWidth: 0 }}>
+        <div className="flex flex-row items-center">
           <div
-            className="flex flex-row flex-1 justify-content-space-between items-center w-100"
+            className="flex flex-row flex-1 justify-content-space-between items-center w-full"
             style={{ minWidth: 0 }}
           >
             <div
@@ -436,7 +459,7 @@ const CalibrationModule = ({
         <DropdownButton
           buttonProps={{
             text: "Calibrate",
-            iconClass: "charuco-icon",
+            iconClass: "calibrate-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
             textClass: "text-center text bg",

@@ -125,7 +125,7 @@ export const RecordingPathPanel: React.FC = () => {
           tooltip={true}
           tooltipPosition="pos-left"
           tooltipText={tagInputVisible ? "Remove tag" : "Add tag"}
-          className={tagInputVisible ? "activate" : ""}
+          className={`icon-size-25 ${tagInputVisible ? "activate" : ""}`}
           onClick={() => {
             const newState = !tagInputVisible;
             setTagInputVisible(newState);

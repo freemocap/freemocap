@@ -197,30 +197,30 @@ export const RecordingControlPanel: React.FC = () => {
             }
           />
         </div>
-        <div
-          className={
-            "streaming-mode mocap-settings-button " +
-            (autoProcess &&
-            recordingTypePreset !== "none" &&
-            !recordingInfo.isRecording
-              ? ""
-              : "disabled ") +
-            "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
-          }
-          onClick={handleToggleSettings}
-        >
-          <div className=" flex flex-row items-start items-center gap-1">
-            <span className="icon subcat-icon icon-size-20" />
-            <p className="text-gray text-nowrap text md text-align-left">
-              Mocap Settings
-            </p>
-          </div>
-          <div className="group-2 flex flex-row pos-rel items-center gap-1">
-            <div className="group-2.2 pos-rel flex flex-col items-center">
-              <span className="icon settings-icon icon-size-20" />
+        {autoProcess && (
+          <div
+            className={
+              "streaming-mode mocap-settings-button " +
+              (recordingTypePreset !== "none" && !recordingInfo.isRecording
+                ? ""
+                : "disabled ") +
+              "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
+            }
+            onClick={handleToggleSettings}
+          >
+            <div className=" flex flex-row items-start items-center gap-1">
+              <span className="icon subcat-icon icon-size-20" />
+              <p className="text-gray text-nowrap text md text-align-left">
+                Mocap Settings
+              </p>
+            </div>
+            <div className="group-2 flex flex-row pos-rel items-center gap-1">
+              <div className="group-2.2 pos-rel flex flex-col items-center">
+                <span className="icon settings-icon icon-size-20" />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <MicrophoneSelector
           selectedMicIndex={micDeviceIndex}

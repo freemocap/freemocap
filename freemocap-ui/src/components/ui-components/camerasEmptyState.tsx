@@ -4,7 +4,7 @@ const NUM_TILES = 6;
 
 const CameraEmptyState: React.FC = () => {
   return (
-    <div className="video-container flex flex-row flex-wrap gap-2 flex-1 flex-start mt-1">
+    <div className="video-container flex flex-row flex-wrap justify-center gap-2 flex-1 flex-start mt-1">
       {Array.from({ length: NUM_TILES }).map((_, index) => (
         <div
           key={index}

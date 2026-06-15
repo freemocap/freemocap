@@ -119,7 +119,7 @@ const PlaybackPage: React.FC = () => {
     }, [controller.allReady, controller.erroredVideos, videoEntries.length, availableSources, selectedSource, setSelectedSource]);
 
     return (
-        <div className="flex flex-col flex-1 pos-rel bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
+        <div className="playback-mode-main-container flex flex-col flex-1 pos-rel h-full">
             <GridSettingsOverlay
                 settings={settings}
                 onSettingsChange={handleSettingsChange}
@@ -128,37 +128,31 @@ const PlaybackPage: React.FC = () => {
             <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
                     <div className="flex flex-col pos-rel flex-1 min-h-0">
-                        <div className="flex flex-row items-center gap-1 flex-wrap" style={{
-                            padding: '6px 12px',
-                            borderBottom: '1px solid var(--color-border-secondary)',
-                            backgroundColor: 'rgba(255,255,255,0.03)',
-                            minHeight: 40,
-                        }}>
-                            <p className="text md text-white text-nowrap m-0" style={{fontFamily: monoFont, fontWeight: 600}}>
-                                {recordingName}
-                            </p>
-
-                            <IconButton
+                        <div className="playback-mode-top-mid-bar flex flex-row items-center gap-1 flex-wrap  p-2">
+                            {/* <IconButton
                                 title={t('openFolder')}
                                 icon="load-icon"
                                 onClick={handleOpenFolder}
-                                style={{color: 'var(--color-warning)', border: '1px solid rgba(230,73,0,0.3)', padding: '0 8px'}}
-                            />
+                            /> */}
+                            <p className="text md text-nowrap m-0">
+                                {recordingName}
+                            </p>
+
 
                             <div className="flex-1"/>
 
-                            <span title={t('cameraStreams')} className="tag text sm" style={{fontFamily: monoFont, color: 'var(--color-info)', borderColor: 'rgba(43,164,255,0.3)'}}>
+                            <span title={t('cameraStreams')} className="tag text sm">
                                 {t('cameraCount', {count: loadedVideos.length})}
                             </span>
 
                             {totalSize > 0 && (
-                                <span title={t('totalRecordingSize')} className="tag text sm" style={{fontFamily: monoFont}}>
+                                <span title={t('totalRecordingSize')} className="tag text sm">
                                     {formatBytes(totalSize)}
                                 </span>
                             )}
 
                             {recordingFps != null && recordingFps > 0 && (
-                                <span title={t('recordingCaptureFps')} className="tag text sm" style={{fontFamily: monoFont, color: 'var(--color-warning)', borderColor: 'rgba(230,73,0,0.3)'}}>
+                                <span title={t('recordingCaptureFps')} className="tag text sm">
                                     rec: {recordingFps} fps
                                 </span>
                             )}
@@ -171,7 +165,7 @@ const PlaybackPage: React.FC = () => {
                                     direction={settings.layoutDirection}
                                 >
                                     <Panel defaultSize={60} minSize={20}>
-                                        <div className="flex flex-col h-full">
+                                        <div className="playback-mode-video-feed-container p-1 br-2 flex flex-col h-full">
                                             <SyncedVideoPlayer
                                                 videos={videoEntries}
                                                 manualColumns={settings.columns}
@@ -181,28 +175,14 @@ const PlaybackPage: React.FC = () => {
                                         </div>
                                     </Panel>
 
-                                    <PanelResizeHandle>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            backgroundColor: 'var(--color-border-secondary)',
-                                            transition: 'background-color 0.15s ease',
-                                            cursor: isHorizontal ? 'col-resize' : 'row-resize',
-                                            ...(isHorizontal
-                                                ? {width: '6px', height: '100%', flexDirection: 'column' as const}
-                                                : {height: '6px', width: '100%', flexDirection: 'row' as const}
-                                            ),
-                                        }}>
-                                            {[0, 1, 2].map((i) => (
-                                                <div key={i} className="flex-shrink-0" style={{
-                                                    width: 4, height: 4, borderRadius: '50%',
-                                                    backgroundColor: 'var(--color-text-disabled)',
-                                                    margin: isHorizontal ? '2px 0' : '0 2px',
-                                                }}/>
-                                            ))}
-                                        </div>
-                                    </PanelResizeHandle>
+                                     <PanelResizeHandle
+                                               className="resizable-component"
+                                               style={{
+                                                 width: "4px",
+                                                 cursor: "col-resize",
+                                                 backgroundColor: "var(--color-surface-active)",
+                                               }}
+                                             />
 
                                     <Panel defaultSize={40} minSize={10}>
                                         <div className="h-full">

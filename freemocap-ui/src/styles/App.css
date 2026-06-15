@@ -218,6 +218,9 @@ a.link:hover {
 .flex-wrap {
   flex-wrap: wrap;
 }
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
 
 .items-center {
   align-items: center;

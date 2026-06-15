@@ -94,7 +94,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="mocap-settings-modal bg-primary border-1 border-black overflow-hidden pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
+      <div className="mocap-settings-modal bg-primary border-1 border-black pos-fixed gap-1 elevated-sharp p-1 b-2 flex flex-col br-2">
         {/* Row 1 */}
         <div className="inner-container-settings gap-1 flex flex-row flex-1 br-2">
           {/* Column 1 - Buttons */}
@@ -156,7 +156,9 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               data-panel="panel2"
               className="bg-secondary p-2 br-1"
             >
-              <CalibrationModule isCalibrated={true} />
+              <CalibrationModule
+                appModeOverride={mode === "playback" ? "playback" : "streaming"}
+              />
             </div>
 
             {/* Panel 3 - 3D Reconstruction */}

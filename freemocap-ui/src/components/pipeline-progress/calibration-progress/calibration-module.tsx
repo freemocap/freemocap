@@ -39,10 +39,16 @@ const SOURCE_ICONS: Record<CalibrationSource, string> = {
 
 interface CalibrationModuleProps {
   isCalibrated?: boolean;
+  /**
+   * Optionally override the app mode detection.
+   * When provided, this takes precedence over route-based mode detection.
+   */
+  appModeOverride?: "streaming" | "playback";
 }
 
 const CalibrationModule = ({
   isCalibrated: isCalibratedProp,
+  appModeOverride,
 }: CalibrationModuleProps) => {
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
@@ -70,9 +76,9 @@ const CalibrationModule = ({
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
 
-  // Derive app mode from the current route
+  // Derive app mode from the current route, unless overridden by props
   const location = useLocation();
-  const appMode: AppMode = location.pathname === "/playback" ? "playback" : "streaming";
+  const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
 
   // Cycling calibration messages during recording
   const calibrationMessages = [

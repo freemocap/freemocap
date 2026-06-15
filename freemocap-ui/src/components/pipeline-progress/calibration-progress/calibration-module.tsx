@@ -205,9 +205,9 @@ const CalibrationModule = ({
   );
 
   const errorBanner = error && (
-    <div className="toast-notification error flex items-center justify-content-space-between">
+    <div className="toast-notification gap-4 error flex items-center justify-content-space-between elevated-sharp">
       <p className="text sm">{error}</p>
-      <IconButton icon="clear-icon" onClick={clearError} />
+      <IconButton icon="close-icon" onClick={clearError} />
     </div>
   );
 
@@ -217,21 +217,42 @@ const CalibrationModule = ({
       <div className="calibration-module-recording flex flex-col p-1 bg-middark br-1 pos-rel gap-1">
         {errorBanner}
         <div className="flex flex-row items-center">
-          <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
-            <SubactionHeader text="Calibration" />
-            <div className="flex flex-row gap-1 items-center">
-              <p className="text md text-gray p-1">
-                {recordingProgress.toFixed(0)}%
-              </p>
-              <IconButton
-                icon="cancelcalibrate-icon"
-                className="button sm"
-                onClick={dispatchStopCalibrationRecording}
-                tooltip={true}
-                tooltipText="Stop recording & calibrate"
-                tooltipPosition="pos-left"
-              />
+          <div className="flex flex-col flex-1 justify-content-space-between items-center">
+            <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
+              <div className="flex flex-row  gap-1 items-center">
+                <span className="icon icon-size-20 calibrating-icon"></span>
+                <SubactionHeader 
+                className="text-white"
+                text="Show the calibration board" />
+              </div>
+              
+                <p className="text md text-gray p-1">
+                  {recordingProgress.toFixed(0)}%
+                </p>
+                <IconButton
+                  icon="explainer-icon"
+                  className="button sm"
+                  onClick={() => {}} // shows onboarding tooltips
+                  tooltip
+                  tooltipText="How to calibrate"
+                  tooltipPosition="pos-left"
+                />
+              
             </div>
+             <div
+              className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end"
+            >
+              {Array.from({ length: 26 }).map((_, index) => {
+                const isActive = (index / 26) * 100 <= recordingProgress;
+                return (
+                  <div
+                    key={index}
+                    className={isActive ? "is-active" : ""}
+                  />
+                );
+              })}
+            </div>
+
           </div>
         </div>
         <div className="charuco-settings-action-container flex flex-row items-center gap-1">
@@ -244,19 +265,19 @@ const CalibrationModule = ({
             </span>
           ))}
         </div>
-        <div
-          className="w-full overflow-hidden br-1"
-          style={{ height: 8, backgroundColor: "var(--color-bg-secondary)" }}
-        >
-          <div
-            style={{
-              width: `${recordingProgress}%`,
-              height: "100%",
-              backgroundColor: "var(--color-info)",
-              transition: "width 0.3s",
-            }}
-          />
-        </div>
+                    <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
+              <ButtonSm
+                iconClass=""
+                text="Stop Recording & Calibrate"
+                className="accent button min-w-full full-width-text-center"
+                
+                onClick={dispatchStopCalibrationRecording}
+                tooltip={true}
+                tooltipText="Stop Recording & Calibrate"
+                tooltipPosition="pos-top"
+              />
+            </div>
+       
       </div>
     );
   }

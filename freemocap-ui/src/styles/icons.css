@@ -43,6 +43,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --live-icon: url("../assets/icons/live_icon.svg");
   --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
   --blender-icon: url("../assets/icons/blender_icon.svg");
+  --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
 
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
@@ -223,6 +224,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 .blender-icon {
   background-image: var(--blender-icon);
+}
+.calibrating-icon {
+  background-image: var(--calibrating-icon);
 }
 
 .streaming-icon {

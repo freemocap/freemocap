@@ -25,7 +25,9 @@
 .button.activated:hover {
   background-color: var(--color-bg-tertiary);
 }
-
+.button.full-width-text-center {
+  justify-content: center;
+}
 /* Primary fullwidth button */
 .secondary {
   background-color: var(--color-bg-idle);
@@ -514,11 +516,11 @@ button.rotate-button {
 /* ---- Toast Notification ---- */
 .toast-notification {
   position: fixed;
-  bottom: 24px;
+  bottom: 36px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 200;
-  padding: 8px 16px;
+  padding: 8px 8px;
   border-radius: 6px;
   border: 1px solid var(--color-bg-elevated);
   background-color: var(--color-bg-secondary);
@@ -1050,4 +1052,27 @@ button.rotate-button {
 
 .error-message-container::after {
   right: -20px;
+}
+
+/* CALIBRATION PROGRESS COLUMNS */
+.calibration-progress-columns {
+  height: 32px;
+  background-color: var(--color-bg-darker, #1a1a1a);
+  gap: auto;
+  display: flex;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.calibration-progress-columns > div {
+  width: 6px;
+  height: 100%;
+  background-color: var(--color-bg-black, #000000);
+  transition: background-color 0.2s ease;
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+
+.calibration-progress-columns > div.is-active {
+  background-color: var(--color-success, #22c55e);
 }

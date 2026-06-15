@@ -412,7 +412,7 @@ const CalibrationModule = ({
             iconClass: "charuco-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
-            textClass: "text-center text md",
+            textClass: "text-center text bg",
           }}
           dropdownItems={dropdownItems}
           dropdownClassName=""

@@ -5,8 +5,9 @@ import { useElectronIPC } from '@/services';
 import { useServer } from '@/services/server/ServerContextProvider';
 import { LanguageSwitcher } from '@/components/languages/LanguageSwitcher';
 import { VersionChip } from '@/components/ui-components/VersionChip';
-import { useAppDispatch } from '@/store';
-import { camerasConnectOrUpdate } from '@/store/slices/cameras/cameras-thunks';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { camerasConnectOrUpdate, detectCameras } from '@/store/slices/cameras/cameras-thunks';
+import { selectCameras } from '@/store/slices/cameras/cameras-selectors';
 import { EXTERNAL_URLS } from '@/constants/external-urls';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import ButtonCard from '@/components/ui-components/ButtonCard';
@@ -26,6 +27,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
     const [telemetryLoaded, setTelemetryLoaded] = useState<boolean>(false);
     const { isElectron, api } = useElectronIPC();
     const { connectedCameraIds } = useServer();
+    const cameras = useAppSelector(selectCameras);
     const prevCountRef = useRef(connectedCameraIds.length);
 
     // Close automatically when cameras first connect
@@ -73,11 +75,18 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
         }
     }, [isElectron, api]);
 
-    const handleGoToCameras = useCallback(() => {
+    const handleGoToCameras = useCallback(async () => {
         navigate('/streaming');
         onClose();
+        if (cameras.length === 0) {
+            try {
+                await dispatch(detectCameras({ filterVirtual: true })).unwrap();
+            } catch {
+                return;
+            }
+        }
         dispatch(camerasConnectOrUpdate());
-    }, [navigate, onClose, dispatch]);
+    }, [navigate, onClose, dispatch, cameras.length]);
 
     const handleGoToPlayback = useCallback(() => {
         navigate('/playback');

@@ -29,10 +29,7 @@ export const detectCameras = createAsyncThunk<
     { state: RootState }
 >(
     'cameras/detect',
-    async (request = { filterVirtual: true }, { getState }) => {
-        const state = getState();
-        const existingCameras = state.cameras.cameras;
-
+    async (request = { filterVirtual: true }) => {
         const response = await fetch(serverUrls.endpoints.detectCameras, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -67,7 +64,6 @@ export const detectCameras = createAsyncThunk<
 
         return data.cameras.map((serverCamera): Camera => {
             const cameraId = serverCamera.camera_id;
-            const existing = existingCameras.find(cam => cam.id === cameraId);
             const saved = prunedPersisted[cameraId];
 
             const defaultConfig = createDefaultCameraConfig(
@@ -76,25 +72,24 @@ export const detectCameras = createAsyncThunk<
                 serverCamera.name,
             );
 
-            // Priority: existing in-memory state > persisted localStorage > defaults
-            const desiredConfig: CameraConfig = existing?.desiredConfig
-                ?? (saved ? { ...defaultConfig, ...saved.desiredConfig } : { ...defaultConfig });
+            // Priority: persisted localStorage > defaults
+            // (in-memory state for an already-known camera is merged in by the
+            // reducer, using the state at fulfillment time rather than this
+            // stale dispatch-time snapshot)
+            const desiredConfig: CameraConfig = saved
+                ? { ...defaultConfig, ...saved.desiredConfig }
+                : { ...defaultConfig };
 
-            const selected: boolean = existing?.selected
-                ?? saved?.selected
-                ?? true;
-
-            const realtimeEnabled: boolean = existing?.realtimeEnabled
-                ?? saved?.realtimeEnabled
-                ?? true;
+            const selected: boolean = saved?.selected ?? true;
+            const realtimeEnabled: boolean = saved?.realtimeEnabled ?? true;
 
             return {
                 id: cameraId,
                 name: serverCamera.name,
                 index: serverCamera.index,
-                actualConfig: existing?.actualConfig || defaultConfig,
+                actualConfig: defaultConfig,
                 desiredConfig,
-                hasConfigMismatch: existing?.hasConfigMismatch ?? false,
+                hasConfigMismatch: false,
                 connectionStatus: 'available',
                 selected,
                 realtimeEnabled,
@@ -102,7 +97,7 @@ export const detectCameras = createAsyncThunk<
                     vendorId: serverCamera.vendor_id,
                     productId: serverCamera.product_id,
                 },
-                metrics: existing?.metrics,
+                metrics: undefined,
             };
         });
     }
@@ -135,7 +130,10 @@ export const camerasConnectOrUpdate = createAsyncThunk<
         }
 
         // RECOMMEND triggers a slow backend algorithm; give it enough time.
-        const timeoutMs = hasRecommend ? 60_000 : 3_000;
+        // Opening camera devices for the first time can also be much slower
+        // than re-applying config to cameras that are already running.
+        const anyConnected = state.cameras.cameras.some(c => c.connectionStatus === 'connected');
+        const timeoutMs = hasRecommend ? 60_000 : anyConnected ? 3_000 : 15_000;
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
         let response: Response;

@@ -94,10 +94,13 @@
   "jumpToEnd": "Jump to end (End)",
   "loopOn": "Loop is on (L to toggle)",
   "loopOff": "Loop playback (L)",
+  
   "syncInfo": "Sync info",
   "syncInfoTitle": "Recording playback may show desynchronization not present in the recorded videos. Matched frame numbers represent images from the same time slice.  We are working on a fix. ",
   "syncInfoBody": "Browser video playback does not guarantee sample-accurate synchronization across multiple streams. The player uses a leader-follower strategy and corrects drift when it exceeds a small tolerance, but minor desynchronization (1–2 frames) can occur",
   "previousFrame": "Previous frame (← / Shift+← for 10)",
+  "pause": "Pause (Space)",
+  "play": "Play (Space)",
   "nextFrame": "Next frame (→ / Shift+→ for 10)",
   "zoomIn": "Zoom In",
   "zoomOut": "Zoom Out",

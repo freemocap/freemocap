@@ -40,7 +40,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
         return () => clearInterval(interval);
     }, [isRecording, recordingStartTime, isPending]);
 
-    const isDisabled = disabled || isPending || countdown !== null;
+    const isDisabled = disabled || isPending;
 
     const buttonEl = (
         <button

@@ -191,6 +191,9 @@ export const RecordingInfoPanel: React.FC = () => {
         dispatch(pendingOperationSet(null));
         throw error;
       }
+    } else if (countdown !== null) {
+      // Cancel the countdown and return to idle state
+      dispatch(countdownSet(null));
     } else if (useDelayStart) {
       dispatch(countdownSet(delaySeconds));
     } else {

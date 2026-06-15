@@ -80,7 +80,8 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
         </div>
 
         {/* Process directory selector */}
-        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+        <div className="set-mocap-directory flex p-1 flex-row gap-1 items-center justify-content-space-between">
+          <span className="icon icon-size-20 subcat-icon"></span>
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
             onClick={handleSelectDirectory}
@@ -110,23 +111,32 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
                 icon="clear-icon"
                 onClick={clearManualRecordingPath}
                 title="Clear manual path (revert to default)"
+                tooltip={true}
+                tooltipPosition="pos-top-right"
+                tooltipText="Clear manual path (revert to default)"
               />
             )}
             <IconButton
-              icon="save-icon"
+              icon="checkUpdate-icon"
               onClick={() => mocapRecordingPath && validateDirectory(mocapRecordingPath)}
               disabled={!mocapRecordingPath || isLoading}
               title="Re-check folder"
+              tooltip={true}
+              tooltipPosition="pos-top-right"
+              tooltipText="Re-check folder"
             />
             <IconButton
-              icon="streaming-icon"
+              icon="subfolder-icon"
               onClick={handleOpenFolder}
               disabled={!isElectron || !mocapRecordingPath}
               title="Open folder in file explorer"
+              tooltip={true}
+              tooltipPosition="pos-top-right"
+              tooltipText="Open folder in file explorer"
             />
           </div>
         </div>
-        <p className="text sm text-gray">
+        <p className="text sm text-gray p-1">
           {isUsingManualPath ? "Using custom path" : "Using default recording directory"}
         </p>
       </div>

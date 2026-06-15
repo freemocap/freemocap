@@ -12,8 +12,6 @@ interface RecordingPathTreeItemProps {
     recordingDirectory: string;
     countdown: number | null;
     recordingTag: string;
-    useDelayStart: boolean;
-    delaySeconds: number;
     useTimestamp: boolean;
     baseName: string;
     recordingTypePreset: string;
@@ -22,8 +20,6 @@ interface RecordingPathTreeItemProps {
     createSubfolder: boolean;
     customSubfolderName: string;
     isRecording: boolean;
-    onDelayToggle: (value: boolean) => void;
-    onDelayChange: (value: number) => void;
     onTagChange: (value: string) => void;
     onNameChange: (value: string) => void;
     onUseTimestampChange: (value: boolean) => void;
@@ -38,8 +34,6 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     recordingDirectory,
     countdown,
     recordingTag,
-    useDelayStart,
-    delaySeconds,
     useTimestamp,
     baseName,
     recordingTypePreset,
@@ -48,8 +42,6 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     createSubfolder,
     customSubfolderName,
     isRecording,
-    onDelayToggle,
-    onDelayChange,
     onTagChange,
     onNameChange,
     onUseTimestampChange,
@@ -143,15 +135,11 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
             <RecordingControlsSection
                 recordingName={recordingName}
                 recordingTag={recordingTag}
-                useDelayStart={useDelayStart}
-                delaySeconds={delaySeconds}
                 useTimestamp={useTimestamp}
                 baseName={baseName}
                 useIncrement={useIncrement}
                 currentIncrement={currentIncrement}
                 isRecording={isRecording}
-                onDelayToggle={onDelayToggle}
-                onDelayChange={onDelayChange}
                 onTagChange={onTagChange}
                 onNameChange={onNameChange}
                 onUseTimestampChange={onUseTimestampChange}

@@ -18,7 +18,7 @@ import NameDropdownSelector from '@/components/ui-components/NameDropdownSelecto
 import {Row} from '@/components/ui-components/Row';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import ValueSelector from '@/components/ui-components/ValueSelector';
-
+import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 interface CameraSettingsModalProps {
     camera: Camera;
     initialPos: {top: number; left: number};
@@ -46,7 +46,6 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
     const [pos, setPos] = useState(initialPos);
-    const dragRef = useRef<{startX: number; startY: number; startTop: number; startLeft: number} | null>(null);
     const modalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -69,40 +68,14 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
         dispatch(cameraDesiredConfigUpdated({cameraId: camera.id, config: {...camera.desiredConfig, ...patch}}));
     };
 
-    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        if ((e.target as HTMLElement).closest('button, input, select')) return;
-        e.currentTarget.setPointerCapture(e.pointerId);
-        dragRef.current = {startX: e.clientX, startY: e.clientY, startTop: pos.top, startLeft: pos.left};
-        e.currentTarget.style.cursor = 'grabbing';
-    };
-
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!dragRef.current || !e.currentTarget.hasPointerCapture(e.pointerId)) return;
-        setPos({
-            top: dragRef.current.startTop + (e.clientY - dragRef.current.startY),
-            left: dragRef.current.startLeft + (e.clientX - dragRef.current.startX),
-        });
-    };
-
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (dragRef.current) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-            e.currentTarget.style.cursor = 'grab';
-            dragRef.current = null;
-        }
-    };
-
     const config = camera.desiredConfig;
     const isManual = config.exposure_mode === 'MANUAL';
 
     return ReactDOM.createPortal(
         <div
             ref={modalRef}
-            className="camera-settings-container fit-content reveal slide-down camera-settings-modal modal draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 fadeIn gap-1 z-2"
-            style={{position: 'fixed', top: pos.top, left: pos.left, zIndex: 300, cursor: 'grab'}}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
+            className="camera-settings-container draggable fit-content reveal slide-down camera-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 fadeIn gap-1 z-2"
+            // style={{position: 'fixed', top: pos.top, left: pos.left, zIndex: 300}}
             onClick={e => e.stopPropagation()}
         >
             <div className="fit-content flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">

@@ -78,6 +78,8 @@ export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns,
             style={{minHeight: 300}}
         >
             <ReactGridLayout
+                className="streaming-page-camera-feed-item-container"
+                
                 width={width}
                 layout={layout}
                 gridConfig={gridConfig}

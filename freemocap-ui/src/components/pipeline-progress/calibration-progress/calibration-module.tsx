@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
@@ -6,7 +7,7 @@ import DropdownButton from "@/components/ui-components/DropdownButton.tsx";
 import CalibrationSettings from "./calibration-settings";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useCalibration } from "@/hooks/useCalibration";
-import { useElectronIPC } from "@/services";
+import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   calibrationAutoLoadDismissed,
@@ -38,14 +39,23 @@ const SOURCE_ICONS: Record<CalibrationSource, string> = {
 
 interface CalibrationModuleProps {
   isCalibrated?: boolean;
+  /**
+   * Optionally override the app mode detection.
+   * When provided, this takes precedence over route-based mode detection.
+   */
+  appModeOverride?: "streaming" | "playback";
 }
 
 const CalibrationModule = ({
   isCalibrated: isCalibratedProp,
+  appModeOverride,
 }: CalibrationModuleProps) => {
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
+  const { connectedCameraIds } = useServer();
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
+
+  const noCamerasConnected = connectedCameraIds.length === 0;
 
   const {
     config,
@@ -66,23 +76,29 @@ const CalibrationModule = ({
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
 
-  /**
-   * Dummy state for the app operating mode.
-   *
-   * DEFAULT: "streaming" - In streaming mode, the "Record and Calibrate" option
-   * appears in the calibration dropdown alongside "Import Calibration videos"
-   * and "Import .toml file".
-   *
-   * If set to "playback", only the "Record and Calibrate" option is removed
-   * from the dropdown (the dropdown itself stays visible).
-   *
-   * TODO[INTEGRATION]: Replace this with the actual mode source from your app.
-   * For example:
-   *   const appMode = useAppSelector(selectAppMode);
-   *   // or
-   *   const { appMode } = useAppContext();
-   */
-  const [appMode] = useState<AppMode>("streaming");
+  // Derive app mode from the current route, unless overridden by props
+  const location = useLocation();
+  const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
+
+  // Cycling calibration messages during recording
+  const calibrationMessages = [
+    "Hold up the calibration board",
+    "Check all cameras have a clear view",
+    "Recording in progress",
+  ];
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (!isRecording) {
+      setMessageIndex(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % calibrationMessages.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isRecording, calibrationMessages.length]);
+
 
   const isCalibrated = isCalibratedProp ?? !!loadedCalibration;
 
@@ -164,7 +180,7 @@ const CalibrationModule = ({
    * is conditionally hidden in playback mode.
    */
   const dropdownItems = (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-1 calibrate-module-dropdown-list">
       {/* 
         "Record and Calibrate" is only available in streaming mode.
         In playback mode, this option is hidden since recording doesn't make sense.
@@ -176,7 +192,12 @@ const CalibrationModule = ({
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
-          disabled={!canStartRecording || !isElectron}
+          disabled={noCamerasConnected && !isLoading}
+          tooltip={true}
+          tooltipPosition="pos-right"
+          tooltipText={
+            noCamerasConnected ? "Connect cameras to record" : undefined
+          }
         />
       )}
       <ButtonSm
@@ -199,36 +220,53 @@ const CalibrationModule = ({
   );
 
   const errorBanner = error && (
-    <div className="toast-notification error flex items-center justify-content-space-between">
+    <div className="toast-notification gap-4 error flex items-center justify-content-space-between elevated-sharp">
       <p className="text sm">{error}</p>
-      <IconButton icon="clear-icon" onClick={clearError} />
+      <IconButton icon="close-icon" onClick={clearError} />
     </div>
   );
 
   // Recording in progress
   if (isRecording) {
     return (
-      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-1 pos-rel gap-1">
+      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1">
         {errorBanner}
         <div className="flex flex-row items-center">
-          <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
-            <SubactionHeader text="Calibration" />
-            <div className="flex flex-row gap-1 items-center">
-              <p className="text md text-gray p-1">
-                {recordingProgress.toFixed(0)}%
-              </p>
-              <IconButton
-                icon="cancelcalibrate-icon"
-                className="button sm"
-                onClick={dispatchStopCalibrationRecording}
-                tooltip={true}
-                tooltipText="Stop recording & calibrate"
-                tooltipPosition="pos-left"
-              />
+          <div className="flex flex-col flex-1 justify-content-space-between items-center">
+            <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
+              <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
+                <span className="icon icon-size-20 calibrating-icon"></span>
+                <SubactionHeader
+                  className="text-white calibration-header-shimmer text-nowrap"
+                  text={calibrationMessages[messageIndex]}
+                />
+              </div>
+
+              <div className="flex flex-row flex-1 items-center">
+                <span className="text md text-gray p-1">
+                  {recordingProgress.toFixed(0)}%
+                </span>
+                <IconButton
+                  icon="explainer-icon"
+                  className="button sm"
+                  onClick={() => {}} // shows onboarding tooltips
+                  tooltip
+                  tooltipText="How to calibrate"
+                  tooltipPosition="pos-left"
+                />
+              </div>
+            </div>
+            <div className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end">
+              {Array.from({ length: 26 }).map((_, index) => {
+                const isActive = (index / 26) * 100 <= recordingProgress;
+                return (
+                  <div key={index} className={isActive ? "is-active" : ""} />
+                );
+              })}
             </div>
           </div>
         </div>
-        <div className="charuco-settings-action-container flex flex-row items-center gap-1">
+        <div className="charuco-settings-action-container while-recording flex flex-row items-center gap-1">
           {charucoTags.map((tag) => (
             <span
               key={tag}
@@ -238,17 +276,15 @@ const CalibrationModule = ({
             </span>
           ))}
         </div>
-        <div
-          className="w-full overflow-hidden br-1"
-          style={{ height: 8, backgroundColor: "var(--color-bg-secondary)" }}
-        >
-          <div
-            style={{
-              width: `${recordingProgress}%`,
-              height: "100%",
-              backgroundColor: "var(--color-info)",
-              transition: "width 0.3s",
-            }}
+        <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
+          <ButtonSm
+            iconClass=""
+            text="Stop Recording & Calibrate"
+            className="accent button min-w-full full-width-text-center"
+            onClick={dispatchStopCalibrationRecording}
+            tooltip={true}
+            tooltipText="Stop Recording & Calibrate"
+            tooltipPosition="pos-top"
           />
         </div>
       </div>
@@ -263,9 +299,9 @@ const CalibrationModule = ({
         style={{ minWidth: 0 }}
       >
         {errorBanner}
-        <div className="flex flex-row items-center" style={{ minWidth: 0 }}>
+        <div className="flex flex-row items-center">
           <div
-            className="flex flex-row flex-1 justify-content-space-between items-center w-100"
+            className="flex flex-row flex-1 justify-content-space-between items-center w-full"
             style={{ minWidth: 0 }}
           >
             <div
@@ -356,7 +392,7 @@ const CalibrationModule = ({
 
   // Not calibrated, not recording
   return (
-    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-1 pos-rel order-2 ">
+    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
@@ -409,10 +445,10 @@ const CalibrationModule = ({
         <DropdownButton
           buttonProps={{
             text: "Calibrate",
-            iconClass: "charuco-icon",
+            iconClass: "calibrate-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
-            textClass: "text-center text md",
+            textClass: "text-center text bg",
           }}
           dropdownItems={dropdownItems}
           dropdownClassName=""

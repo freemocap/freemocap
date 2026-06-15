@@ -132,8 +132,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     return (
         <div
             ref={containerRef}
-            className="pos-rel overflow-hidden w-full h-full"
-            style={{backgroundColor: '#0a0a0a'}}
+            className="br-2 pos-rel overflow-hidden w-full h-full"
+            
         >
             <ReactGridLayout
                 width={width}
@@ -147,10 +147,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                 {videos.map((video) => (
                     <div
                         key={video.videoId}
-                        className="overflow-hidden br-1"
-                        style={{
-                            border: '1px solid rgba(255,255,255,0.15)',
-                        }}
+                        className="video-feed-tile overflow-hidden br-1"
+                      
                     >
                         <ZoomableVideoTile
                             videoId={video.videoId}
@@ -173,11 +171,7 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
             </ReactGridLayout>
 
             {!allReady && videos.length > 0 && (
-                <div className="pos-abs bottom-0 left-0 right-0 z-10 text-center" style={{
-                    padding: '4px 0',
-                    backgroundColor: 'var(--color-warning-dark)',
-                    color: '#fff',
-                }}>
+                <div className="pos-abs bottom-0 left-0 right-0 z-10 text-center">
                     <p className="text sm m-0">{t("loadingVideos", {ready: videosReady, total: videos.length})}</p>
                 </div>
             )}

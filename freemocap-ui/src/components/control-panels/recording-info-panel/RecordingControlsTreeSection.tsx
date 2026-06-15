@@ -1,8 +1,5 @@
 import React from 'react';
 import {
-    DelayRecordingStartControl
-} from "@/components/control-panels/recording-info-panel/recording-subcomponents/DelayRecordingStartControl";
-import {
     RecordingNamePreview
 } from "@/components/control-panels/recording-info-panel/recording-subcomponents/RecordingNamePreview";
 import {
@@ -12,15 +9,11 @@ import {
 interface RecordingControlsSectionProps {
     recordingName: string;
     recordingTag: string;
-    useDelayStart: boolean;
-    delaySeconds: number;
     useTimestamp: boolean;
     baseName: string;
     useIncrement: boolean;
     currentIncrement: number;
     isRecording: boolean;
-    onDelayToggle: (value: boolean) => void;
-    onDelayChange: (value: number) => void;
     onTagChange: (value: string) => void;
     onNameChange: (value: string) => void;
     onUseTimestampChange: (value: boolean) => void;
@@ -31,9 +24,9 @@ interface RecordingControlsSectionProps {
 
 export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> = ({
     recordingName, recordingTag,
-    useDelayStart, delaySeconds, useTimestamp, baseName,
+    useTimestamp, baseName,
     useIncrement, currentIncrement,
-    isRecording, onDelayToggle, onDelayChange, onTagChange, onNameChange,
+    isRecording, onTagChange, onNameChange,
     onUseTimestampChange, onBaseNameChange, onUseIncrementChange, onIncrementChange,
 }) => {
     return (
@@ -44,12 +37,6 @@ export const RecordingControlsSection: React.FC<RecordingControlsSectionProps> =
                 isRecording={isRecording}
                 onTagChange={onTagChange}
                 onNameChange={onNameChange}
-            />
-            <DelayRecordingStartControl
-                useDelay={useDelayStart}
-                delaySeconds={delaySeconds}
-                onDelayToggle={onDelayToggle}
-                onDelayChange={onDelayChange}
             />
             <RecordingSettingsSection
                 useTimestamp={useTimestamp}

@@ -302,10 +302,10 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
     };
 
     return (
-        <div className="flex playback-page-content pos-rel flex flex-col gap-1 h-full overflow-hidden">
+        <div className="playback-file-directory-inner-content flex playback-page-content pos-rel flex flex-col gap-1 h-full overflow-hidden">
             {/* Folder selector */}
-            <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center pb-2">
-                <div className="flex flex-col flex-start gap-1 items-center">
+            <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center">
+                <div className="flex flex-col flex-start gap-1 items-center w-full">
                     <SubactionHeader text="Folder Directory" />
                     <ButtonSm
                         iconClass="subfolder-icon"
@@ -313,7 +313,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                         onClick={handleBrowseDirectory}
                         title="Click to select recording folder"
                         disabled={!isElectron}
-                        className="select-path bg-middark flex-1"
+                        className="select-path bg-middark flex-1 w-full min-w-full"
                         textClass="text-wrap flex-1"
                     />
                 </div>
@@ -381,7 +381,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                         <span className="icon loader-icon icon-size-20" />
                     </div>
                 ) : filteredSorted.length === 0 ? (
-                    <div className="recording-warning-container flex flex-col flex-wrap p-2 m-4 text-center gap-1 items-center justify-center br-2">
+                    <div className="recording-warning-container flex flex-col flex-wrap p-6 m-4 text-center gap-1 items-center justify-center br-2">
                         <span className="icon warning-icon icon-size-32" />
                         <p className="text md text-white text-center">
                             {recordings.length === 0 ? t('noRecordingsFound') : 'No recordings match your filter.'}

@@ -62,7 +62,7 @@ export const CameraHeaderActions: React.FC = () => {
                     iconClass={isLoading ? '' : ''}
                     onClick={handleUpdate}
                     textColor="text-black"
-                    className={isLoading ? 'disabled primary' : 'secondary'}
+                    className={isLoading ? 'disabled secondary' : 'secondary'}
                     tooltip
                     tooltipText={t('connectCameras')}
                     tooltipPosition="pos-bottom-right"

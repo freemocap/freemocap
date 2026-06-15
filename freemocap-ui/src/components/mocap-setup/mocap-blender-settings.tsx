@@ -101,10 +101,13 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             <span className="icon icon-size-20 blender-icon"></span>
             <p className="p-1 text-gray">Blender executable</p>
           </div>
-          <ButtonSm
+        <ButtonSm
             text={isDetecting ? "Detecting..." : "Autodetect"}
             onClick={redetectBlender}
             disabled={isDetecting}
+            tooltip={true}
+            tooltipPosition="pos-top-right"
+            tooltipText="Automatically find Blender installation on your system"
           />
         </div>
 
@@ -134,7 +137,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             )}
           </button>
         </div>
-        <p className="text sm text-gray">
+        <p className="text sm text-gray p-1 mb-3">
           {isUsingManualBlenderPath
             ? "Using manually selected Blender"
             : effectiveBlenderExePath
@@ -159,7 +162,10 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           text={isExporting ? "Exporting to Blender…" : "Process Recording with Blender"}
           onClick={handleProcessWithBlender}
           disabled={!canExport}
-          className="full-width quaternary"
+          className="full-width quaternary mt-3"
+          tooltip={true}
+          tooltipPosition="pos-bottom-left"
+          tooltipText="Send your motion capture recording to Blender for further processing"
         />
 
         <ButtonSm
@@ -167,10 +173,13 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           onClick={handleOpenInBlender}
           disabled={!canOpen}
           className="full-width quaternary"
+          tooltip={true}
+          tooltipPosition="pos-bottom-left"
+          tooltipText="Launch Blender and open the .blend file"
         />
 
         {lastBlendFilePath && (
-          <p className="text sm text-gray" style={{ fontFamily: "monospace" }}>
+          <p className="text sm text-gray p-1 mb-3">
             Last export: {lastBlendFilePath}
           </p>
         )}

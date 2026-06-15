@@ -50,7 +50,7 @@ export const CameraConfigTreeView: React.FC = () => {
             </div>
 
             {/* Camera list */}
-            <div className="camera-list-container flex flex-col overflow-y overflow-x-hidden z-1 pos-rel">
+            <div className="camera-list-container min-h-0 flex-1 flex flex-col overflow-y overflow-x-hidden z-1 pos-rel">
                 {cameras.length === 0 ? (
                     <NoCamerasPlaceholder />
                 ) : (

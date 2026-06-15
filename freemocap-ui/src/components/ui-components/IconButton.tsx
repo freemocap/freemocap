@@ -52,7 +52,7 @@ const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(({
           ref={ref}
           disabled
           onMouseDown={onMouseDown}
-          className={clsx("button icon-button pos-rel br-1", className)}
+          className={clsx("button icon-button icon-size-25 pos-rel br-1", className)}
           style={{ ...style, pointerEvents: "none" }}
         >
           {iconEl}

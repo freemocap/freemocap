@@ -105,7 +105,7 @@ async def main(force_preferred_port:bool=True) -> None:
             await await_1s()
 
         worker_registry.shutdown_all()
-        logger.success("Done! Thank you for using FreeMoCap 💀✨")
+        logger.success("Done! Thank you for using FreeMocap")
 
 def run_main() -> None:
     asyncio.run(main())

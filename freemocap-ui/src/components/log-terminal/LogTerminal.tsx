@@ -122,6 +122,7 @@ const LogEntryDetail = ({ log }: { log: LogRecord }) => {
 
     return (
         <div className="log-entry-detail" onClick={(e) => e.stopPropagation()}>
+            <div className="log-entry-detail-message"><Linkify text={log.message} /></div>
             <div>Location: {log.module}:{log.funcName}:Line#{log.lineno}</div>
             <div>{t("fileLabel")}: {log.filename}</div>
             <div>{t("timeDelta")}: {log.delta_t}</div>

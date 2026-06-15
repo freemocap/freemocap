@@ -91,6 +91,11 @@
 .log-entry.error    { border-left-color: var(--log-error); }
 .log-entry.critical { border-left-color: var(--log-critical); }
 
+/* Allow the detail overlay (positioned at top: 100%, outside this row's box) to be visible */
+.log-entry.expanded {
+  overflow: visible;
+}
+
 /* Expanded row background */
 .log-entry.trace.expanded    { background-color: var(--log-trace-alpha); }
 .log-entry.debug.expanded    { background-color: var(--log-debug-alpha); }
@@ -191,6 +196,13 @@
   white-space: pre-wrap;
   line-height: 1.4;
   overflow: visible;
+  overflow-wrap: anywhere;
+}
+
+.log-entry-detail-message {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--log-text);
 }
 
 /* ---- Stack trace ---- */

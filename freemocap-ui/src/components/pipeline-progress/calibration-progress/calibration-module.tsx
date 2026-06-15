@@ -243,9 +243,11 @@ const CalibrationModule = ({
               </div>
 
               <div className="flex flex-row flex-1 items-center">
+                {/* TODO: recordingProgress doesn't update during recording, fix and re-enable
                 <span className="text md text-gray p-1">
                   {recordingProgress.toFixed(0)}%
                 </span>
+                */}
                 <IconButton
                   icon="explainer-icon"
                   className="button sm"
@@ -256,6 +258,7 @@ const CalibrationModule = ({
                 />
               </div>
             </div>
+            {/* TODO: recordingProgress doesn't update during recording, fix and re-enable
             <div className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end">
               {Array.from({ length: 26 }).map((_, index) => {
                 const isActive = (index / 26) * 100 <= recordingProgress;
@@ -264,6 +267,7 @@ const CalibrationModule = ({
                 );
               })}
             </div>
+            */}
           </div>
         </div>
         <div className="charuco-settings-action-container while-recording flex flex-row items-center gap-1">

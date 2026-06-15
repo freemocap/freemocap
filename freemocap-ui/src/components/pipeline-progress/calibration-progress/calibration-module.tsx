@@ -229,7 +229,7 @@ const CalibrationModule = ({
   // Recording in progress
   if (isRecording) {
     return (
-      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-1 pos-rel gap-1">
+      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1">
         {errorBanner}
         <div className="flex flex-row items-center">
           <div className="flex flex-col flex-1 justify-content-space-between items-center">
@@ -392,7 +392,7 @@ const CalibrationModule = ({
 
   // Not calibrated, not recording
   return (
-    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-1 pos-rel order-2 ">
+    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">

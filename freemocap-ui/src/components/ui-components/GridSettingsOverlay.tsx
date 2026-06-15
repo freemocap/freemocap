@@ -60,7 +60,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
       <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
         <IconButton
           icon={isOpen ? "close-icon" : "settings-icon"}
-          className="icon-size-25 br-2 bg-middark elevated-sharp"
+          className="icon-size-25 br-2 bg-middark"
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
         />
@@ -72,7 +72,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
           style={{
             position: "absolute",
-            top: 70,
+            top: 0,
             right: 16,
             zIndex: 999,
             minWidth: 260,

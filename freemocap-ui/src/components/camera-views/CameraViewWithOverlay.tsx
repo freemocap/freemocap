@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import IconButton from '@/components/ui-components/IconButton';
 import {Row} from '@/components/ui-components/Row';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
@@ -20,10 +20,24 @@ interface CameraViewWithOverlayProps {
 
 export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cameraIndex, cameraId, isLoading, isAutoApply}) => {
     const dispatch = useAppDispatch();
-    const [hovered, setHovered] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [isApplying, setIsApplying] = useState(false);
+    const overlayRef = useRef<HTMLDivElement>(null);
     const camera = useAppSelector(state => selectCameraById(state, cameraId));
     const desiredConfig = camera?.desiredConfig;
+
+    useEffect(() => {
+        if (!showSettings) return;
+
+        const handleClickOutside = (e: MouseEvent) => {
+            if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
+                setShowSettings(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showSettings]);
 
     const rotation = desiredConfig?.rotation as RotationValue ?? -1;
     const exposure = desiredConfig?.exposure ?? -7;
@@ -81,75 +95,106 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({cam
         String(exposure);
 
     return (
-        <div
-            className="pos-rel w-full h-full"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
+        <div className="pos-rel w-full h-full">
             <CameraView cameraIndex={cameraIndex} cameraId={cameraId} maxWidth/>
 
-            {hovered && (
-                <div className="pos-abs top-6 right-6 flex flex-col z-10 br-2 border-1 border-black elevated-sharp bg-dark p-1 gap-1">
-                    <Row label="Rotate">
-                        <IconButton
-                            icon="rotate-icon"
-                            title="Rotate 90° clockwise"
-                            onClick={handleRotate}
-                            disabled={isLoading}
-                        />
-                        <span className="text sm text-gray">{ROTATION_DEGREE_LABELS[rotation]}</span>
-                    </Row>
+            {/* Settings toggle button */}
+            <div
+                className="pos-abs top-6 right-6 z-10"
+                ref={overlayRef}
+            >
+                <IconButton
+                    icon="settings-icon"
+                    title={showSettings ? 'Close settings' : 'Open settings'}
+                    onClick={() => setShowSettings(prev => !prev)}
+                />
 
-                    <Row label="Exposure">
-                        <IconButton
-                            icon="minus-icon"
-                            title="Decrease exposure"
-                            onClick={handleExposureDown}
-                            disabled={isLoading || exposureMode !== 'MANUAL' || exposure <= EXPOSURE_MIN}
-                        />
-                        <span className="text sm text-gray">{exposureLabel}</span>
-                        <IconButton
-                            icon="plus-icon"
-                            title="Increase exposure"
-                            onClick={handleExposureUp}
-                            disabled={isLoading || exposureMode !== 'MANUAL' || exposure >= EXPOSURE_MAX}
-                        />
-                    </Row>
+                {showSettings && (
+                    <div className="camera-settings-container camera-overylay-settings pos-abs top-6 right-6 flex flex-col z-10 br-2 border-1 border-black elevated-sharp bg-dark p-1 gap-1">
+                        <div className="fit-content flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
+                            {/* Header */}
+                            <div className="subaction-header-container justify-content-space-between gap-1 br-1 flex items-center h-25 p-1">
+                                <p className="text-nowrap text-left bg-md text-darkgray">Camera settings</p>
+                            </div>
 
-                    <Row label="Mode">
-                        <IconButton
-                            icon="settings-icon"
-                            title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
-                            onClick={handleAutoExposure}
-                            disabled={isLoading}
-                            style={{color: exposureMode === 'AUTO' ? 'var(--color-accent)' : 'inherit', opacity: exposureMode === 'AUTO' ? 1 : 0.5}}
-                        />
-                        <IconButton
-                            icon="warning-icon"
-                            title="Recommend exposure for this camera"
-                            onClick={handleRecommendExposure}
-                            disabled={isLoading}
-                        />
-                    </Row>
+                            {/* Rotate */}
+                            <Row label="Rotate">
+                                <IconButton
+                                    icon="rotate-icon"
+                                    title="Rotate 90° clockwise"
+                                    onClick={handleRotate}
+                                    disabled={isLoading}
+                                />
+                                <span className="text sm text-gray">{ROTATION_DEGREE_LABELS[rotation]}</span>
+                            </Row>
 
-                    <Row label="Auto-apply">
-                        <IconButton
-                            icon="loop-icon"
-                            title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
-                            onClick={() => dispatch(autoApplyToggled())}
-                            style={{color: isAutoApply ? 'var(--color-accent)' : 'inherit', opacity: isAutoApply ? 1 : 0.5}}
-                        />
-                        {!isAutoApply && (
-                            <IconButton
-                                icon={isApplying ? 'loader-icon' : 'upToDate-icon'}
-                                title="Apply changes to camera"
-                                onClick={handleApply}
-                                disabled={isApplying}
-                            />
-                        )}
-                    </Row>
-                </div>
-            )}
+                            {/* Exposure mode */}
+                            <Row label="Exposure">
+                                <div className="flex flex-row gap-1 items-center">
+                                    <IconButton
+                                        icon="settings-icon"
+                                        title={exposureMode === 'AUTO' ? 'Switch to manual exposure' : 'Switch to auto exposure'}
+                                        onClick={handleAutoExposure}
+                                        disabled={isLoading}
+                                        style={{color: exposureMode === 'AUTO' ? 'var(--color-accent)' : 'inherit', opacity: exposureMode === 'AUTO' ? 1 : 0.5}}
+                                    />
+                                    <span className="text sm text-gray">{exposureLabel}</span>
+                                    <IconButton
+                                        icon="warning-icon"
+                                        title="Recommend exposure for this camera"
+                                        onClick={handleRecommendExposure}
+                                        disabled={isLoading}
+                                    />
+                                </div>
+                            </Row>
+
+                            {/* Exposure value — only when manual */}
+                            {exposureMode === 'MANUAL' && (
+                                <Row label="Change exposure" indent>
+                                    <div className="flex flex-row gap-1 items-center">
+                                        <IconButton
+                                            icon="minus-icon"
+                                            title="Decrease exposure"
+                                            onClick={handleExposureDown}
+                                            disabled={isLoading || exposure <= EXPOSURE_MIN}
+                                        />
+                                        <span className="text sm text-gray">{exposure}</span>
+                                        <IconButton
+                                            icon="plus-icon"
+                                            title="Increase exposure"
+                                            onClick={handleExposureUp}
+                                            disabled={isLoading || exposure >= EXPOSURE_MAX}
+                                        />
+                                    </div>
+                                </Row>
+                            )}
+
+                            {/* Footer */}
+                            <div className="flex flex-row gap-1 pt-1">
+                                <IconButton
+                                    icon="loop-icon"
+                                    title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — click apply to send'}
+                                    onClick={() => dispatch(autoApplyToggled())}
+                                    style={{color: isAutoApply ? 'var(--color-accent)' : 'inherit', opacity: isAutoApply ? 1 : 0.5}}
+                                />
+                                {!isAutoApply && (
+                                    <button
+                                        className="button sm br-1 flex-1"
+                                        style={{background: 'var(--color-text-primary)', color: 'var(--color-bg-primary)'}}
+                                        onClick={handleApply}
+                                        disabled={isApplying}
+                                        title="Apply changes to camera"
+                                    >
+                                        <p className="text md" style={{color: 'var(--color-bg-primary)'}}>
+                                            {isApplying ? 'Applying...' : 'Apply'}
+                                        </p>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

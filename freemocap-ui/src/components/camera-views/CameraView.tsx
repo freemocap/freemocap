@@ -96,7 +96,7 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
                     lineHeight: 1.4,
                 }}
             >
-                <div className="flex" style={{ fontSize: '10px', marginTop: '2px', gap: '6px', whiteSpace: 'nowrap' }}>
+                <div className="camera-stats flex" style={{ fontSize: '10px', marginTop: '2px', gap: '6px', whiteSpace: 'nowrap' }}>
                     <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
                     <span style={{ color: frontendColor }}>
                         D:<span ref={displayFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>

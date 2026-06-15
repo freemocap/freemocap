@@ -111,7 +111,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                 </div>
 
                 {/* Sidebar Sections */}
-                <div className="playback-mode left-side-panel flex flex-col gap-1">
+                <div className="playback-mode left-side-panel flex flex-col gap-1 min-h-0 h-full">
                     {visibleSections.map((sectionId) => {
                         const Component = SECTION_COMPONENTS[sectionId];
                         return <Component key={sectionId} />;

@@ -53,27 +53,8 @@ export const RecordingPathPanel: React.FC = () => {
   }, [recordingInfo.isRecording]);
 
   useEffect(() => {
-    if (
-      recordingInfo?.recordingDirectory?.startsWith("~") &&
-      isElectron &&
-      api
-    ) {
-      api.fileSystem.getHomeDirectory
-        .query()
-        .then((homePath: string) => {
-          const updatedDirectory = recordingInfo.recordingDirectory
-            .replace("~", homePath)
-            .replace(/\\/g, "/");
-          dispatch(
-            recordingInfoUpdated({ recordingDirectory: updatedDirectory }),
-          );
-        })
-        .catch((error: unknown) => {
-          console.error("Failed to get home directory:", error);
-          throw error;
-        });
-    }
-  }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
+    setTagInputVisible(!!recordingTag);
+  }, [recordingTag]);
 
   // Build display path for the read-only preview
   const previewNameParts = useTimestamp ? [previewTimestamp] : [baseName];
@@ -135,6 +116,8 @@ export const RecordingPathPanel: React.FC = () => {
                 const btn = tagInputContainerRef.current?.querySelector("button");
                 btn?.click();
               }, 0);
+            } else {
+              dispatch(recordingTagChanged(""));
             }
           }}
         />
@@ -160,11 +143,14 @@ export const RecordingPathPanel: React.FC = () => {
       {/* Tag input */}
       <div ref={tagInputContainerRef}>
         {tagInputVisible && (
-          <TextSelector
-            value={recordingTag}
-            onChange={(v) => dispatch(recordingTagChanged(v))}
-            placeholder={t("recordingTagPlaceholder")}
-          />
+          <div className="flex flex-row gap-1 p-2 items-center">
+            <span className="icon icon-size-20 subcat-icon"></span>
+            <TextSelector
+              value={recordingTag}
+              onChange={(v) => dispatch(recordingTagChanged(v))}
+              placeholder={t("recordingTagPlaceholder")}
+            />
+          </div>
         )}
       </div>
 

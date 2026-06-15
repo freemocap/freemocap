@@ -186,3 +186,7 @@ button.rotate-button {
   transform: rotate(90deg);
   transition: transform var(--speed-0) ease-in-out;
 }
+
+.icon-button.activate {
+  background-color: var(--color-info-medium);
+}

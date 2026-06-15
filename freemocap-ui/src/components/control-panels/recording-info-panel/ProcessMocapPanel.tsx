@@ -19,7 +19,7 @@ export const RecordingInfoPanel: React.FC = () => {
     <>
       <div className="main-side-actions flex flex-col gap-1 order-3">
         {/* File directory group */}
-        <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">
+        <div className="file-directory-group justify-content-space-between bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2">
           <p className="text-nowrap text-left bg-md text-darkgray p-1">
             File directory
           </p>

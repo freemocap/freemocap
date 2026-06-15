@@ -100,6 +100,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
   --importproject_icon: url("../assets/icons/importproject_icon.svg");
   --settings_icon: url("../assets/icons/settings_icon.svg");
+  --tag_icon: url("../assets/icons/tag_icon.svg");
+  --tag_active_icon: url("../assets/icons/tag_active_icon.svg");
 
 
   --grid4_icon: url("../assets/icons/grid4_icon.svg");
@@ -227,6 +229,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 .calibrating-icon {
   background-image: var(--calibrating-icon);
+}
+.tag-icon {
+  background-image: var(--tag_icon);
+}
+.tag-active-icon {
+  background-image: var(--tag_active_icon);
 }
 
 .streaming-icon {

@@ -35,10 +35,11 @@ import { getTimestampString } from "@/components/control-panels/recording-info-p
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
 import { RecordingPathModal } from "./RecordingPathModal";
 import TextSelector from "@/components/ui-components/TextSelector";
-import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useTranslation } from "react-i18next";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
+import IconButton from "@/components/ui-components/IconButton";
+import { useRef } from "react";
 
 export type { RecordingTypePreset };
 
@@ -72,6 +73,8 @@ export const RecordingInfoPanel: React.FC = () => {
 
   const [pathModalOpen, setPathModalOpen] = useState(false);
   const [mocapSetupModalOpen, setMocapSetupModalOpen] = useState(false);
+  const [tagInputVisible, setTagInputVisible] = useState(false);
+  const tagInputContainerRef = useRef<HTMLDivElement>(null);
   const [previewTimestamp, setPreviewTimestamp] = useState(() =>
     getTimestampString(),
   );
@@ -254,34 +257,49 @@ export const RecordingInfoPanel: React.FC = () => {
       <div className="main-side-actions flex flex-col gap-1 order-3">
         {/* File directory group */}
         <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 pb-2 ">
-          <p className="text-nowrap text-left bg-md text-darkgray p-1">
-            File directory
-          </p>
-
+        <div className="file-directory-group justify-content-space-between flex flex-row">
+            <p className="text-nowrap text-left bg-md text-darkgray p-1">
+              File directory
+            </p>
+            <IconButton
+            icon={tagInputVisible ? "tag-active-icon" : "tag-icon"}
+            tooltip={true}
+            tooltipPosition="pos-left"
+            tooltipText={tagInputVisible ? "Remove tag" : "Add tag"}
+            className={tagInputVisible ? "activate" : ""}
+            onClick={() => {
+              const newState = !tagInputVisible;
+              setTagInputVisible(newState);
+              if (newState) {
+                // Simulate click on the TextSelector button after render
+                setTimeout(() => {
+                  const btn = tagInputContainerRef.current?.querySelector("button");
+                  btn?.click();
+                }, 0);
+              }
+            }}
+            />
+          </div>
           {/* Read-only path preview */}
-          <div
-            className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black full-width"
-            style={{ pointerEvents: "none" }}
+          <button
+            className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black full-width w-full"
+            onClick={() => setPathModalOpen(true)}
           >
             <span className="icon icon-size-20 subfolder-icon" />
             <p className="text-gray text-nowrap text md text-align-left flex flex-end">
               {displayPath || "Set recording path"}
             </p>
-          </div>
+          </button>
 
-          {/* Tag + options button */}
-          <div className="flex flex-row flex-wrap gap-1 items-center">
-            <TextSelector
-              value={recordingTag}
-              onChange={(v) => dispatch(recordingTagChanged(v))}
-              placeholder={t("recordingTagPlaceholder")}
-            />
-            <ButtonSm
-              iconClass="settings-icon"
-              text="Recording Options"
-              textColor="text-gray"
-              onClick={() => setPathModalOpen(true)}
-            />
+          {/* Tag input */}
+          <div ref={tagInputContainerRef}>
+            {tagInputVisible && (
+              <TextSelector
+                value={recordingTag}
+                onChange={(v) => dispatch(recordingTagChanged(v))}
+                placeholder={t("recordingTagPlaceholder")}
+              />
+            )}
           </div>
 
           <RecordingPathModal

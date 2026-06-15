@@ -108,6 +108,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
         <div
           className={clsx(
             "camera-settings-button button sm br-1 flex flex-col gap-1 flex-1 cursor-pointer p-1",
+            settingsOpen && "selected-camera-feed",
             settingsOpen && "selected-camera-settings",
           )}
           onClick={handleOpenSettings}

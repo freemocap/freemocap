@@ -1,0 +1,170 @@
+import React, { useEffect, useRef, useState } from "react";
+import {
+  baseNameChanged,
+  createSubfolderToggled,
+  currentIncrementChanged,
+  customSubfolderNameChanged,
+  recordingInfoUpdated,
+  recordingTagChanged,
+  recordingTypePresetChanged,
+  useIncrementToggled,
+  useTimestampToggled,
+} from "@/store/slices/recording/recording-slice";
+import type { RecordingTypePreset } from "@/store/slices/recording/recording-types";
+import { useAppDispatch, useAppSelector } from "@/store";
+import { getTimestampString } from "@/components/control-panels/recording-info-panel/getTimestampString";
+import { RecordingPathModal } from "./RecordingPathModal";
+import TextSelector from "@/components/ui-components/TextSelector";
+import IconButton from "@/components/ui-components/IconButton";
+import { useTranslation } from "react-i18next";
+import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
+
+export const RecordingPathPanel: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const recordingInfo = useAppSelector((state) => state.recording);
+  const {
+    createSubfolder,
+    useTimestamp,
+    useIncrement,
+    currentIncrement,
+    baseName,
+    customSubfolderName,
+    recordingTag,
+    recordingTypePreset,
+  } = recordingInfo.config;
+
+  const [pathModalOpen, setPathModalOpen] = useState(false);
+  const [tagInputVisible, setTagInputVisible] = useState(false);
+  const tagInputContainerRef = useRef<HTMLDivElement>(null);
+  const [previewTimestamp, setPreviewTimestamp] = useState(() =>
+    getTimestampString(),
+  );
+
+  const { isElectron, api } = useElectronIPC();
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    if (recordingInfo.isRecording) return;
+    const id = setInterval(
+      () => setPreviewTimestamp(getTimestampString()),
+      1000,
+    );
+    return () => clearInterval(id);
+  }, [recordingInfo.isRecording]);
+
+  useEffect(() => {
+    if (
+      recordingInfo?.recordingDirectory?.startsWith("~") &&
+      isElectron &&
+      api
+    ) {
+      api.fileSystem.getHomeDirectory
+        .query()
+        .then((homePath: string) => {
+          const updatedDirectory = recordingInfo.recordingDirectory
+            .replace("~", homePath)
+            .replace(/\\/g, "/");
+          dispatch(
+            recordingInfoUpdated({ recordingDirectory: updatedDirectory }),
+          );
+        })
+        .catch((error: unknown) => {
+          console.error("Failed to get home directory:", error);
+          throw error;
+        });
+    }
+  }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
+
+  // Build display path for the read-only preview
+  const previewNameParts = useTimestamp ? [previewTimestamp] : [baseName];
+  if (recordingTypePreset !== "none")
+    previewNameParts.push(recordingTypePreset);
+  if (recordingTag) previewNameParts.push(recordingTag);
+  if (useIncrement) previewNameParts.push(String(currentIncrement));
+  const previewName = previewNameParts.join("_");
+  const displayPath =
+    createSubfolder && customSubfolderName
+      ? `${recordingInfo.recordingDirectory}/${customSubfolderName}/${previewName}`
+      : `${recordingInfo.recordingDirectory}/${previewName}`;
+
+  const modalProps = {
+    recordingDirectory: recordingInfo.recordingDirectory,
+    countdown: null,
+    recordingTag,
+    useTimestamp,
+    baseName,
+    recordingTypePreset,
+    useIncrement,
+    currentIncrement,
+    createSubfolder,
+    customSubfolderName,
+    isRecording: recordingInfo.isRecording,
+    onTagChange: (v: string) => dispatch(recordingTagChanged(v)),
+    onNameChange: (v: string) => {
+      dispatch(useTimestampToggled(false));
+      dispatch(baseNameChanged(v));
+    },
+    onUseTimestampChange: (v: boolean) => dispatch(useTimestampToggled(v)),
+    onBaseNameChange: (v: string) => dispatch(baseNameChanged(v)),
+    onUseIncrementChange: (v: boolean) => dispatch(useIncrementToggled(v)),
+    onIncrementChange: (v: number) => dispatch(currentIncrementChanged(v)),
+    onCreateSubfolderChange: (v: boolean) =>
+      dispatch(createSubfolderToggled(v)),
+    onCustomSubfolderNameChange: (v: string) =>
+      dispatch(customSubfolderNameChanged(v)),
+  };
+
+  return (
+    <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1">
+      <div className="file-directory-group justify-content-space-between flex flex-row">
+        <p className="text-nowrap text-left bg-md text-darkgray p-1">
+          File directory
+        </p>
+        <IconButton
+          icon={tagInputVisible ? "tag-active-icon" : "tag-icon"}
+          tooltip={true}
+          tooltipPosition="pos-left"
+          tooltipText={tagInputVisible ? "Remove tag" : "Add tag"}
+          className={tagInputVisible ? "activate" : ""}
+          onClick={() => {
+            const newState = !tagInputVisible;
+            setTagInputVisible(newState);
+            if (newState) {
+              setTimeout(() => {
+                const btn = tagInputContainerRef.current?.querySelector("button");
+                btn?.click();
+              }, 0);
+            }
+          }}
+        />
+      </div>
+      {/* Read-only path preview */}
+      <button
+        className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black full-width w-full"
+        onClick={() => setPathModalOpen(true)}
+      >
+        <span className="icon icon-size-20 subfolder-icon" />
+        <p className="text-gray text-nowrap text md text-align-left flex flex-end">
+          {displayPath || "Set recording path"}
+        </p>
+      </button>
+
+      {/* Tag input */}
+      <div ref={tagInputContainerRef}>
+        {tagInputVisible && (
+          <TextSelector
+            value={recordingTag}
+            onChange={(v) => dispatch(recordingTagChanged(v))}
+            placeholder={t("recordingTagPlaceholder")}
+          />
+        )}
+      </div>
+
+      <RecordingPathModal
+        open={pathModalOpen}
+        onClose={() => setPathModalOpen(false)}
+        {...modalProps}
+      />
+    </div>
+  );
+};

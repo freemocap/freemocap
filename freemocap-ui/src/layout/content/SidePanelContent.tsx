@@ -4,7 +4,8 @@ import {useTranslation} from 'react-i18next';
 import IconButton from '@/components/ui-components/IconButton';
 
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
-import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
+import {RecordingPathPanel} from "@/components/control-panels/recording-info-panel/RecordingPathPanel";
+import {RecordingControlPanel} from "@/components/control-panels/recording-info-panel/RecordingControlPanel";
 import {RecordingInfoPanel as ProcessMocapPanel} from "@/components/control-panels/recording-info-panel/ProcessMocapPanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
@@ -15,21 +16,23 @@ const SECTION_ORDER = [
     'recordings',
     'cameras',
     'calibration',
-    'recording',
+    'recording_path',
+    'recording_control',
     'process_mocap',
     'mocap',
 ] as const;
 
 type SectionId = (typeof SECTION_ORDER)[number];
 
-const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording']);
+const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording_path', 'recording_control']);
 const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings', 'process_mocap']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     cameras: CameraConfigTreeView,
     calibration: CalibrationModule,
     process_mocap: ProcessMocapPanel,
-    recording: RecordingInfoPanel,
+    recording_path: RecordingPathPanel,
+    recording_control: RecordingControlPanel,
     mocap: MocapPanel,
     recordings: RecordingBrowserSection,
 };

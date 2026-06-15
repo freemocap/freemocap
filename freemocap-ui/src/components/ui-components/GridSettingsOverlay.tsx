@@ -64,7 +64,6 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
         />
-      </div>
 
       {/* SETTINGS PANEL */}
       {isOpen && (
@@ -164,6 +163,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           )}
         </div>
       )}
+      </div>
     </>
   );
 };

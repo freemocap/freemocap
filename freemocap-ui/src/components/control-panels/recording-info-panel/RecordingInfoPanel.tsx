@@ -27,6 +27,7 @@ import type { RecordingTypePreset } from "@/store/slices/recording/recording-typ
 import { calibrateRecording } from "@/store/slices/calibration/calibration-thunks";
 import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
 import { PresetPicker } from "@/components/common/PresetPicker";
+import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
 import { useServer } from "@/services/server/ServerContextProvider";
@@ -225,8 +226,6 @@ export const RecordingInfoPanel: React.FC = () => {
     recordingDirectory: recordingInfo.recordingDirectory,
     countdown,
     recordingTag,
-    useDelayStart,
-    delaySeconds,
     useTimestamp,
     baseName,
     recordingTypePreset,
@@ -235,8 +234,6 @@ export const RecordingInfoPanel: React.FC = () => {
     createSubfolder,
     customSubfolderName,
     isRecording: recordingInfo.isRecording,
-    onDelayToggle: (v: boolean) => dispatch(useDelayStartToggled(v)),
-    onDelayChange: (v: number) => dispatch(delaySecondsChanged(v)),
     onTagChange: (v: string) => dispatch(recordingTagChanged(v)),
     onNameChange: (v: string) => {
       dispatch(useTimestampToggled(false));
@@ -315,7 +312,13 @@ export const RecordingInfoPanel: React.FC = () => {
               onClick={handleRecordButtonClick}
             />
           </div>
-
+              {/* put the delay toggle below here  */}
+          <DelayRecordingStartControl
+            useDelay={useDelayStart}
+            delaySeconds={delaySeconds}
+            onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
+            onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
+          />
           {/* Preset + auto-process */}
           <div className="flex flex-start flex-col items-center gap-1">
             <PresetPicker

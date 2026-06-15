@@ -10,8 +10,6 @@ interface RecordingPathModalProps {
     recordingDirectory: string;
     countdown: number | null;
     recordingTag: string;
-    useDelayStart: boolean;
-    delaySeconds: number;
     useTimestamp: boolean;
     baseName: string;
     recordingTypePreset: string;
@@ -20,8 +18,6 @@ interface RecordingPathModalProps {
     createSubfolder: boolean;
     customSubfolderName: string;
     isRecording: boolean;
-    onDelayToggle: (value: boolean) => void;
-    onDelayChange: (value: number) => void;
     onTagChange: (value: string) => void;
     onNameChange: (value: string) => void;
     onUseTimestampChange: (value: boolean) => void;

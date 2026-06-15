@@ -147,7 +147,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
         : [];
 
     return (
-        <div className="playback-controls bg-dark br-2 flex flex-row flex-wrap row-reverse justify-center gap-2 p-2">
+        <div className="playback-controls bg-dark br-2 flex flex-row flex-wrap row-reverse justify-center gap-2 p-2 m-1 mt-0">
             {/* Timeline Scrubber */}
             <div className="playback-timeline-scrubber flex flex-row items-center">
                 <div className="playback-timeline-track flex-1 bg-middark relative">

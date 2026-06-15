@@ -344,6 +344,13 @@ a.link:hover {
 .m-3 { margin: 12px; }
 .m-4 { margin: 16px; }
 
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: 4px; }
+.mt-2 {  margin-top: 8px; }
+.mt-3 {  margin-top: 12px; }
+.mt-4 {  margin-top: 16px; }
+
 /* Margin Bottom */
 
 .mb-0 { margin-bottom: 0; }
@@ -390,7 +397,7 @@ a.link:hover {
 .h-inherit {
   height: inherit;
 }
-.w-inherit {
+.w4-inherit {
   width: inherit;
 }
 

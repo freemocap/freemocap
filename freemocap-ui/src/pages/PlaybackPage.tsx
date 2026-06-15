@@ -158,14 +158,14 @@ const PlaybackPage: React.FC = () => {
                             )}
                         </div>
 
-                        <div className="flex flex-col flex-1 min-h-0">
+                        <div className="playback-mode-below-main p-1 flex flex-col flex-1 min-h-0">
                             {settings.show3dView ? (
                                 <PanelGroup
                                     key={`main-panels-${resetKey}-${settings.layoutDirection}`}
                                     direction={settings.layoutDirection}
                                 >
                                     <Panel defaultSize={60} minSize={20}>
-                                        <div className="playback-mode-video-feed-container p-1 br-2 flex flex-col h-full">
+                                        <div className="playback-mode-video-feed-container br-2 flex flex-col h-full">
                                             <SyncedVideoPlayer
                                                 videos={videoEntries}
                                                 manualColumns={settings.columns}

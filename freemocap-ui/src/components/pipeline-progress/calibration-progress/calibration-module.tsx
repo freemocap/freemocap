@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
@@ -69,6 +70,10 @@ const CalibrationModule = ({
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
 
+  // Derive app mode from the current route
+  const location = useLocation();
+  const appMode: AppMode = location.pathname === "/playback" ? "playback" : "streaming";
+
   // Cycling calibration messages during recording
   const calibrationMessages = [
     "Hold up the calibration board",
@@ -88,23 +93,6 @@ const CalibrationModule = ({
     return () => clearInterval(interval);
   }, [isRecording, calibrationMessages.length]);
 
-  /**
-   * Dummy state for the app operating mode.
-   *
-   * DEFAULT: "streaming" - In streaming mode, the "Record and Calibrate" option
-   * appears in the calibration dropdown alongside "Import Calibration videos"
-   * and "Import .toml file".
-   *
-   * If set to "playback", only the "Record and Calibrate" option is removed
-   * from the dropdown (the dropdown itself stays visible).
-   *
-   * TODO[INTEGRATION]: Replace this with the actual mode source from your app.
-   * For example:
-   *   const appMode = useAppSelector(selectAppMode);
-   *   // or
-   *   const { appMode } = useAppContext();
-   */
-  const [appMode] = useState<AppMode>("streaming");
 
   const isCalibrated = isCalibratedProp ?? !!loadedCalibration;
 

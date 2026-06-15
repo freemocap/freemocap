@@ -182,7 +182,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
               <div className="flex flex-col gap-1">
                 <ToggleComponent
                   text="Auto-apply"
-                  iconClass="loop-icon"
+                  
                   isToggled={isAutoApply}
                   onToggle={() => dispatch(autoApplyToggled())}
                 />

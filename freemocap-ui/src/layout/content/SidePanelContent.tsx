@@ -12,12 +12,12 @@ import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSec
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 
 const SECTION_ORDER = [
+    'recordings',
     'cameras',
     'calibration',
-    'process_mocap',
     'recording',
+    'process_mocap',
     'mocap',
-    'recordings',
 ] as const;
 
 type SectionId = (typeof SECTION_ORDER)[number];

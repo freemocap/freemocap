@@ -79,7 +79,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
   const configSummary = getConfigSummary(camera.desiredConfig);
 
   return (
-    <div className="camera-item-row br-1 flex flex-col gap-1 m-1">
+    <div className="camera-item-row br-1 flex flex-col gap-1">
       <div className="camera-row-group flex flex-row gap-0 items-center">
         {/* Left: selection + realtime toggles */}
         <div className="flex flex-row checkbox-group">

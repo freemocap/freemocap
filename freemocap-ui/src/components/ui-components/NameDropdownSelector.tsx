@@ -36,9 +36,9 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
   };
 
   return (
-    <div ref={containerRef} className={`name-dropdown-selector pos-rel inline-block ${className}`}>
+    <div ref={containerRef} className={`name-dropdown-selector min-w-0 w-inherit pos-rel inline-block ${className}`}>
       <button
-        className="gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width dropdown border-1 border-mid-black"
+        className="flex flex-1 w-inherit gap-1 br-1 button sm flex-inline text-left items-center dropdown border-1 border-mid-black"
         onClick={() => setOpen((prev) => !prev)}
       >
         <p className="text-gray text md text-align-left text-nowrap">
@@ -48,11 +48,11 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
 
       {open && (
         <div className={`dropdown-container top-30 border-1 min-w-full border-black elevated-sharp pos-abs flex flex-col right-0 p-1 bg-dark br-2 z-1 reveal slide-down ${DropdownclassName}`}>
-          <div className="flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">
+          <div className="w-full flex flex-col right-0 p-1 gap-2 bg-middark br-1 z-1">
             {options.map((option, index) => (
               <button
                 key={index}
-                className={`gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width ${selected === option ? "selected" : ""}`}
+                className={`w-full gap-1 br-1 button sm fit-content flex-inline text-left items-center full-width ${selected === option ? "selected" : ""}`}
                 onClick={() => handleSelect(option)}
               >
                 <p className="text-gray text md text-align-left text-nowrap">{option}</p>

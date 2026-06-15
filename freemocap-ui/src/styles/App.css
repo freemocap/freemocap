@@ -149,6 +149,7 @@ a.link:hover {
 .top-28 { top: 28px; }
 .top-30 { top: 30px; }
 
+.top-unset { top: unset; }
 .top-50 {
   top: 50%;
   transform: translateY(-50%);
@@ -189,6 +190,7 @@ a.link:hover {
 .bottom-12 { bottom: 12px; }
 .bottom-36 { bottom: 36px; }
 
+.bottom-100 { bottom: 100%; }
 .inset-0 {
   inset: 0;
 }
@@ -388,7 +390,7 @@ a.link:hover {
 .h-inherit {
   height: inherit;
 }
-.h-inherit {
+.w-inherit {
   width: inherit;
 }
 

@@ -98,7 +98,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
     return ReactDOM.createPortal(
         <div
             ref={modalRef}
-            className="camera-settings-container fit-content reveal slide-down camera-settings-modal modal draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 fadeIn gap-1 z-2"
+            className="camera-settings-container fit-content reveal slide-down camera-settings-modal modal border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 fadeIn gap-1 z-2"
             style={{position: 'fixed', top: pos.top, left: pos.left, zIndex: 300, cursor: 'grab'}}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}

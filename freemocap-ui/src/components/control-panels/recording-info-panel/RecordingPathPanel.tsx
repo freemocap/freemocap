@@ -116,10 +116,11 @@ export const RecordingPathPanel: React.FC = () => {
 
   return (
     <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1">
-      <div className="file-directory-group justify-content-space-between flex flex-row">
+      <div className="file-directory-group justify-content-space-between flex flex-row items-center">
         <p className="text-nowrap text-left bg-md text-darkgray p-1">
-          File directory
+          Set Folder directory
         </p>
+        
         <IconButton
           icon={tagInputVisible ? "tag-active-icon" : "tag-icon"}
           tooltip={true}
@@ -139,15 +140,22 @@ export const RecordingPathPanel: React.FC = () => {
         />
       </div>
       {/* Read-only path preview */}
-      <button
-        className="button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black full-width w-full"
-        onClick={() => setPathModalOpen(true)}
-      >
-        <span className="icon icon-size-20 subfolder-icon" />
-        <p className="text-gray text-nowrap text md text-align-left flex flex-end">
-          {displayPath || "Set recording path"}
-        </p>
-      </button>
+      <div className="file-directory-group justify-content-space-between flex flex-row items-center w-full">
+        <button
+          className="button-sm-group gap-1 br-1 w-full min-w-full justify-content-space-between button items-center sm fit-content flex-inline text-left items-center text-black "
+          onClick={() => setPathModalOpen(true)}
+        >
+          <div  className="gap-1 br-1 flex-1 min-w-0 items-center sm fit-content p-0 flex-inline text-left items-center text-black "
+>
+            <span className="icon icon-size-20 subfolder-icon" />
+            <p className="text-gray text-nowrap text md text-align-left flex flex-end">
+              {displayPath || "Set recording path"}
+            </p>
+          </div>
+          <span className="icon icon-size-20 settings-icon"></span>
+        </button>
+        
+      </div>
 
       {/* Tag input */}
       <div ref={tagInputContainerRef}>

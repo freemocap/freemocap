@@ -38,7 +38,7 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
   return (
     <div ref={containerRef} className={`name-dropdown-selector min-w-0 w-inherit pos-rel inline-block ${className}`}>
       <button
-        className="flex flex-1 w-inherit gap-1 br-1 button sm flex-inline text-left items-center dropdown border-1 border-mid-black"
+        className="flex flex-1 min-w-full flex-1 gap-1 br-1 button sm flex-inline text-left items-center dropdown border-1 border-mid-black"
         onClick={() => setOpen((prev) => !prev)}
       >
         <p className="text-gray text md text-align-left text-nowrap">

@@ -92,7 +92,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                 camera.connectionStatus === "connected" ? "streaming" : ""
               }
             />
-            <div className="tooltip-container elevated-sharp pos-bottom-left p-01 br-2 bg-dark">
+            <div className="tooltip-container elevated-sharp pos-right p-01 br-2 bg-dark">
               <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                 <p className="text-white text md">
                   {camera.selected

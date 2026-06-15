@@ -25,7 +25,7 @@ export const CollapsibleSidebarSection: React.FC<CollapsibleSidebarSectionProps>
     const handleControlClick = useCallback((e: React.MouseEvent) => e.stopPropagation(), []);
 
     return (
-        <div className="bg-darkgray br-1 overflow-hidden hidden">
+        <div className="bg-darkgray br-1 overflow-hidden hidden motion-caption-left-side-bar">
             {/* Header row */}
             <div
                 onClick={handleToggle}

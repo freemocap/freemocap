@@ -134,7 +134,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
             )}
           </button>
         </div>
-        <p className="text sm text-gray">
+        <p className="text sm text-gray p-1 mb-3">
           {isUsingManualBlenderPath
             ? "Using manually selected Blender"
             : effectiveBlenderExePath
@@ -170,7 +170,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
         />
 
         {lastBlendFilePath && (
-          <p className="text sm text-gray" style={{ fontFamily: "monospace" }}>
+          <p className="text sm text-gray p-1 mb-3">
             Last export: {lastBlendFilePath}
           </p>
         )}

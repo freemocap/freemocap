@@ -99,7 +99,7 @@ export const RecordingPathPanel: React.FC = () => {
     <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1">
       <div className="file-directory-group justify-content-space-between flex flex-row items-center">
         <p className="text-nowrap text-left bg-md text-darkgray p-1">
-          Set Folder directory
+          Set folder directory
         </p>
         
         <IconButton

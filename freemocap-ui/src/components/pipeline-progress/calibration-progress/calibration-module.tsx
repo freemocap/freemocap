@@ -201,7 +201,9 @@ const CalibrationModule = ({
           disabled={noCamerasConnected && !isLoading}
           tooltip={true}
           tooltipPosition="pos-right"
-          tooltipText={noCamerasConnected ? "Connect cameras to record" : undefined}
+          tooltipText={
+            noCamerasConnected ? "Connect cameras to record" : undefined
+          }
         />
       )}
       <ButtonSm
@@ -238,20 +240,18 @@ const CalibrationModule = ({
         <div className="flex flex-row items-center">
           <div className="flex flex-col flex-1 justify-content-space-between items-center">
             <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
-                <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
-                  <span className="icon icon-size-20 calibrating-icon"></span>
-                  <SubactionHeader
-                    className="text-white calibration-header-shimmer text-nowrap"
-                    text={calibrationMessages[messageIndex]}
-                  />
-                </div>
-                
-                 
-                           <div className="flex flex-row flex-1 items-center">
+              <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
+                <span className="icon icon-size-20 calibrating-icon"></span>
+                <SubactionHeader
+                  className="text-white calibration-header-shimmer text-nowrap"
+                  text={calibrationMessages[messageIndex]}
+                />
+              </div>
 
-               <span className="text md text-gray p-1">
-                    {recordingProgress.toFixed(0)}%
-                  </span>
+              <div className="flex flex-row flex-1 items-center">
+                <span className="text md text-gray p-1">
+                  {recordingProgress.toFixed(0)}%
+                </span>
                 <IconButton
                   icon="explainer-icon"
                   className="button sm"
@@ -262,20 +262,14 @@ const CalibrationModule = ({
                 />
               </div>
             </div>
-             <div
-              className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end"
-            >
+            <div className="calibration-progress-columns w-full overflow-hidden br-1 flex items-end">
               {Array.from({ length: 26 }).map((_, index) => {
                 const isActive = (index / 26) * 100 <= recordingProgress;
                 return (
-                  <div
-                    key={index}
-                    className={isActive ? "is-active" : ""}
-                  />
+                  <div key={index} className={isActive ? "is-active" : ""} />
                 );
               })}
             </div>
-
           </div>
         </div>
         <div className="charuco-settings-action-container while-recording flex flex-row items-center gap-1">
@@ -288,19 +282,17 @@ const CalibrationModule = ({
             </span>
           ))}
         </div>
-                    <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
-              <ButtonSm
-                iconClass=""
-                text="Stop Recording & Calibrate"
-                className="accent button min-w-full full-width-text-center"
-                
-                onClick={dispatchStopCalibrationRecording}
-                tooltip={true}
-                tooltipText="Stop Recording & Calibrate"
-                tooltipPosition="pos-top"
-              />
-            </div>
-       
+        <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
+          <ButtonSm
+            iconClass=""
+            text="Stop Recording & Calibrate"
+            className="accent button min-w-full full-width-text-center"
+            onClick={dispatchStopCalibrationRecording}
+            tooltip={true}
+            tooltipText="Stop Recording & Calibrate"
+            tooltipPosition="pos-top"
+          />
+        </div>
       </div>
     );
   }

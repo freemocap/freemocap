@@ -64,7 +64,6 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           onClick={() => setIsOpen(!isOpen)}
           title={isOpen ? t("closeSettings") : t("gridSettings")}
         />
-      </div>
 
       {/* SETTINGS PANEL */}
       {isOpen && (
@@ -72,8 +71,9 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
           style={{
             position: "absolute",
-            top: 70,
-            right: 16,
+            top: "100%",
+            right: 0,
+            marginTop: 8,
             zIndex: 999,
             minWidth: 260,
           }}
@@ -164,6 +164,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
           )}
         </div>
       )}
+      </div>
     </>
   );
 };

@@ -59,6 +59,7 @@
   "custom": "Custom",
   "current": "Current",
   "recommend": "Recommend",
+  "recommendExposureAll": "Auto-recommend exposure for all cameras",
   "cameraRotation": "camera rotation",
   "selectCameraRotation": "Select camera image rotation",
   "exposureControl": "Choose between automatic or manual exposure control",

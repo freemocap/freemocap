@@ -7,7 +7,7 @@ import {
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
+import {recommendExposureForAll, selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
 import {useTranslation} from 'react-i18next';
 import IconButton from "@/components/ui-components/IconButton";
 import ButtonSm from "@/components/ui-components/ButtonSm";
@@ -45,6 +45,10 @@ export const CameraHeaderActions: React.FC = () => {
         dispatch(pauseUnpauseCameras());
     }, [dispatch]);
 
+    const handleRecommendExposure = useCallback(() => {
+        dispatch(recommendExposureForAll());
+    }, [dispatch]);
+
     return (
         <>
             <IconButton
@@ -54,6 +58,14 @@ export const CameraHeaderActions: React.FC = () => {
                 tooltipText={isRecording ? t('stopRecordingFirst') : t('detectCameras')}
                 tooltipPosition="pos-bottom"
                 disabled={isRecording}
+            />
+
+            <IconButton
+                icon="recommendexposure-icon"
+                onClick={handleRecommendExposure}
+                tooltip
+                tooltipText={t('recommendExposureAll')}
+                tooltipPosition="pos-bottom"
             />
 
             {connectedCameras.length === 0 ? (

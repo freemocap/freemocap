@@ -1,12 +1,10 @@
-import React from "react";
-import {Box, Checkbox, Chip, Tooltip, Typography, useTheme} from "@mui/material";
-import {TreeItem} from "@mui/x-tree-view/TreeItem";
+import React, { useState } from "react";
 
 interface PipelineStageTreeItemProps {
     itemId: string;
     label: string;
     checked: boolean;
-    indeterminate?: boolean; // NEW: partial-child-selected state
+    indeterminate?: boolean;
     onToggle: (newValue: boolean) => void;
     disabled?: boolean;
     disabledReason?: string;
@@ -16,90 +14,62 @@ interface PipelineStageTreeItemProps {
 }
 
 export const RealtimePipelineStageTreeItem: React.FC<PipelineStageTreeItemProps> = ({
-                                                                                        itemId,
-                                                                                        label,
-                                                                                        checked,
-                                                                                        indeterminate = false,
-                                                                                        onToggle,
-                                                                                        disabled = false,
-                                                                                        disabledReason,
-                                                                                        summaryWhenCollapsed,
-                                                                                        isExpanded = false,
-                                                                                        children,
-                                                                                    }) => {
-    const theme = useTheme();
+    itemId,
+    label,
+    checked,
+    indeterminate = false,
+    onToggle,
+    disabled = false,
+    disabledReason,
+    summaryWhenCollapsed,
+    children,
+}) => {
+    const [expanded, setExpanded] = useState(false);
 
     const handleCheckboxClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!disabled) {
-            // If any children are on (checked or indeterminate), turn all off; otherwise turn all on
-            onToggle(!(checked || indeterminate));
-        }
+        if (!disabled) onToggle(!(checked || indeterminate));
     };
 
-    const checkbox = (
-        <Checkbox
-            size="small"
+    const checkboxEl = (
+        <input
+            type="checkbox"
             checked={checked}
-            indeterminate={indeterminate}
+            ref={(el) => { if (el) el.indeterminate = indeterminate; }}
             disabled={disabled}
-            onMouseDown={e => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={handleCheckboxClick}
-            sx={{p: 0.5, flexShrink: 0}}
+            onChange={() => {}}
+            className="flex-shrink-0"
+            style={{ accentColor: 'var(--color-info)' }}
         />
     );
 
-    const labelContent = (
-        <Box
-            sx={{
-                display: "flex",
-                alignItems: "center",
-                py: 0.25,
-                minHeight: 32,
-                gap: 0.5,
-            }}
-        >
-            {disabled && disabledReason ? (
-                <Tooltip title={disabledReason} arrow>
-                    <span>{checkbox}</span>
-                </Tooltip>
-            ) : (
-                checkbox
-            )}
-
-            <Typography
-                variant="body2"
-                sx={{
-                    flexShrink: 0,
-                    color: disabled
-                        ? theme.palette.text.disabled
-                        : theme.palette.text.primary,
-                }}
-            >
-                {label}
-            </Typography>
-
-            {!isExpanded && summaryWhenCollapsed && (
-                <Chip
-                    label={summaryWhenCollapsed}
-                    size="small"
-                    variant="outlined"
-                    sx={{
-                        ml: 0.5,
-                        height: 18,
-                        fontSize: 10,
-                        "& .MuiChip-label": {px: 0.75},
-                        borderColor: theme.palette.divider,
-                        color: theme.palette.text.secondary,
-                    }}
-                />
-            )}
-        </Box>
-    );
-
     return (
-        <TreeItem itemId={itemId} label={labelContent}>
-            {children}
-        </TreeItem>
+        <div className="flex flex-col">
+            <div
+                className="flex flex-row items-center gap-1 p-1"
+                
+                onClick={() => children && setExpanded(v => !v)}
+            >
+                {disabled && disabledReason ? (
+                    <span title={disabledReason}>{checkboxEl}</span>
+                ) : (
+                    checkboxEl
+                )}
+                <p className="text sm flex-1" style={{ color: disabled ? 'var(--color-text-disabled)' : 'var(--color-text-primary)' }}>
+                    {label}
+                </p>
+                {!expanded && summaryWhenCollapsed && (
+                    <span className="tag text sm" style={{ height: 18, fontSize: 10 }}>{summaryWhenCollapsed}</span>
+                )}
+                {children && (
+                    <span className="icon icon-size-20 collapse-icon" style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                )}
+            </div>
+            {expanded && children && (
+                <div className="pl-2">{children}</div>
+            )}
+        </div>
     );
 };

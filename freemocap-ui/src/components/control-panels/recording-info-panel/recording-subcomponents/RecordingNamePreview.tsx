@@ -1,39 +1,40 @@
 import React from 'react';
-import {useTranslation} from 'react-i18next';
-import {TextField, Typography} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import TextSelector from '@/components/ui-components/TextSelector';
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
 
 interface RecordingNamePreviewProps {
     name: string;
     tag: string;
     isRecording: boolean;
     onTagChange: (tag: string) => void;
+    onNameChange: (name: string) => void;
 }
 
 export const RecordingNamePreview: React.FC<RecordingNamePreviewProps> = ({
-                                                                              name,
-                                                                              tag,
-                                                                              isRecording,
-                                                                              onTagChange
-                                                                          }) => {
+    name, tag, isRecording, onTagChange, onNameChange,
+}) => {
     const { t } = useTranslation();
     return (
-        <>
-            <Typography variant="body2" sx={{mb: 1}}>
-                {t('recordingName', { name })}
-            </Typography>
+        <div className="flex flex-col gap-1">
+            <SubactionHeader text="Recording Name" />
+            {!isRecording ? (
+                <TextSelector
+                    value={name}
+                    onChange={onNameChange}
+                    placeholder={t("recordingName")}
+                    popupClassName="directory-input-popup"
+                />
+            ) : (
+                <p className="text sm text-gray recording-path-preview">{name}</p>
+            )}
             {!isRecording && (
-                <TextField
-                    label={t("recordingTag")}
+                <TextSelector
                     value={tag}
-                    onChange={(e) => onTagChange(e.target.value)}
-                    onKeyDown={(e) => {
-                        // Stop the TreeView from intercepting keyboard navigation
-                        e.stopPropagation();}}
-                    size="small"
-                    fullWidth
+                    onChange={onTagChange}
                     placeholder={t("recordingTagPlaceholder")}
                 />
             )}
-        </>
+        </div>
     );
 };

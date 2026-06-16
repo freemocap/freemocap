@@ -1,8 +1,4 @@
 import React, {useCallback} from 'react';
-import {Box, Button, Chip, Stack, Tooltip, Typography, useTheme} from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import VideoLibraryIcon from '@mui/icons-material/VideoLibrary';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import {useNavigate} from 'react-router-dom';
 import {Footer} from '@/components/ui-components/Footer';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -19,9 +15,8 @@ import {
 import {useElectronIPC} from '@/services';
 import {useTranslation} from 'react-i18next';
 import {useBlender} from "@/hooks/useBlender";
-import LaunchIcon from "@mui/icons-material/Launch";
-import {RecordingInfoPanel} from '@/components/control-panels/recording-info-panel/RecordingInfoPanel';
-import {CalibrationPanel} from '@/components/control-panels/calibration-control-panel/CalibrationPanel';
+import {RecordingPathPanel} from '@/components/control-panels/recording-info-panel/RecordingPathPanel';
+import {RecordingControlPanel} from '@/components/control-panels/recording-info-panel/RecordingControlPanel';
 import {MocapPanel} from '@/components/control-panels/mocap-control-panel/MocapPanel';
 
 const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
@@ -34,14 +29,11 @@ const ORIGIN_LABEL: Record<string, string> = {
 };
 
 const ActiveRecordingPage: React.FC = () => {
-    const theme = useTheme();
     const {t} = useTranslation();
     const navigate = useNavigate();
     const {api} = useElectronIPC();
 
     const {triggerOpenInBlender} = useBlender();
-
-    const isDark = theme.palette.mode === 'dark';
 
     const recordingName = useAppSelector(selectActiveRecordingName);
     const baseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
@@ -72,154 +64,70 @@ const ActiveRecordingPage: React.FC = () => {
         void triggerOpenInBlender(fullPath);
     }, [structure?.blendPath, triggerOpenInBlender]);
 
-
-
-    const pageBg = theme.palette.mode === 'dark'
-        ? theme.palette.background.default
-        : theme.palette.background.paper;
-
     return (
-        <Box
-            sx={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                backgroundColor: pageBg,
-                borderStyle: 'solid',
-                borderWidth: '1px',
-                borderColor: theme.palette.divider,
-            }}
-        >
-            <Box sx={{display: 'flex', flexDirection: 'column', p: 2, gap: 2}}>
+        <div className="flex flex-col w-full overflow-y overflow-hidden bg-dark h-full" style={{border: '1px solid var(--color-border-secondary)'}}>
+            <div className="flex flex-col p-2 gap-2">
                 <ErrorBoundary>
                     {!recordingName ? (
-                        <Box sx={{py: 4, px: 2}}>
-                            <Stack spacing={2} alignItems="flex-start">
-                                <Typography variant="body2" color="text.disabled" sx={{fontStyle: 'italic'}}>
+                        <div className="pl-4 pr-4" style={{paddingTop: 32}}>
+                            <div className="flex flex-col gap-2">
+                                <p className="text sm text-gray" style={{fontStyle: 'italic'}}>
                                     No active recording. This folder will be created when you start recording.
-                                </Typography>
-                                <Stack direction="row" spacing={1} sx={{mt: 1}}>
-                                    <Button variant="outlined" onClick={() => navigate('/streaming')}>
+                                </p>
+                                <div className="flex flex-row gap-1 mt-1">
+                                    <button className="button sm secondary" onClick={() => navigate('/streaming')}>
                                         Go to Streaming
-                                    </Button>
-                                    <Button variant="outlined" onClick={() => navigate('/browse')}>
+                                    </button>
+                                    <button className="button sm secondary" onClick={() => navigate('/browse')}>
                                         Browse recordings
-                                    </Button>
-                                </Stack>
-                            </Stack>
-                            <RecordingInfoPanel/>
-                        </Box>
+                                    </button>
+                                </div>
+                            </div>
+                            <RecordingPathPanel />
+                            <RecordingControlPanel />
+                        </div>
                     ) : (
                         <>
-                            {/* Identity header */}
-                            <Box
-                                sx={{
-                                    p: 2,
-                                    borderRadius: 1,
-                                    border: `1px solid ${theme.palette.divider}`,
-                                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                }}
-                            >
-                                <Stack direction="row" alignItems="center" spacing={1} sx={{mb: 1, flexWrap: 'wrap'}}>
-                                    <Typography
-                                        variant="h6"
-                                        sx={{fontFamily: MONO_FONT, fontWeight: 600}}
-                                    >
+                            <div className="p-2 br-1 border-1 border-mid-black">
+                                <div className="flex flex-row items-center gap-1 mb-1 flex-wrap">
+                                    <p className="text bg text-white m-0" style={{fontFamily: MONO_FONT, fontWeight: 600}}>
                                         {recordingName}
-                                    </Typography>
+                                    </p>
                                     {origin && (
-                                        <Chip
-                                            label={ORIGIN_LABEL[origin] ?? origin}
-                                            size="small"
-                                            variant="outlined"
-                                            sx={{height: 20, fontSize: '0.7rem'}}
-                                        />
+                                        <span className="tag text sm">
+                                            {ORIGIN_LABEL[origin] ?? origin}
+                                        </span>
                                     )}
-                                </Stack>
-                                <Tooltip title={fullPath ?? ''}>
-                                    <Typography
-                                        variant="body2"
-                                        sx={{
-                                            fontFamily: MONO_FONT,
-                                            color: theme.palette.text.secondary,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
-                                        {fullPath}
-                                    </Typography>
-                                </Tooltip>
-                                <Stack direction="row" spacing={1} sx={{mt: 2, flexWrap: 'wrap'}}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<FolderOpenIcon/>}
-                                        onClick={handleOpenFolder}
-                                    >
+                                </div>
+                                <p
+                                    title={fullPath ?? ''}
+                                    className="text sm text-gray m-0 overflow-hidden"
+                                    style={{fontFamily: MONO_FONT, textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
+                                >
+                                    {fullPath}
+                                </p>
+                                <div className="flex flex-row gap-1 mt-2 flex-wrap">
+                                    <button className="button sm secondary" onClick={handleOpenFolder}>
+                                        <span className="icon load-icon icon-size-20"/>
                                         {t('openFolder')}
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<PlayArrowIcon/>}
-                                        onClick={() => navigate('/playback')}
-                                    >
+                                    </button>
+                                    <button className="button sm secondary" onClick={() => navigate('/playback')}>
+                                        <span className="icon play-icon icon-size-20"/>
                                         Open in Playback
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<LaunchIcon/>}
-                                        onClick={handleOpenInBlender}
-                                    >
+                                    </button>
+                                    <button className="button sm secondary" onClick={handleOpenInBlender}>
+                                        <span className="icon expand-icon icon-size-20"/>
                                         Open in Blender
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<VideoLibraryIcon/>}
-                                        onClick={() => navigate('/browse')}
-                                    >
+                                    </button>
+                                    <button className="button sm secondary" onClick={() => navigate('/browse')}>
+                                        <span className="icon load-icon icon-size-20"/>
                                         Browse recordings
-                                    </Button>
-                                </Stack>
-                            </Box>
+                                    </button>
+                                </div>
+                            </div>
 
-                            {/*/!* Derived-path summary *!/*/}
-                            {/*{structure && (*/}
-                            {/*    <Box*/}
-                            {/*        sx={{*/}
-                            {/*            p: 2,*/}
-                            {/*            borderRadius: 1,*/}
-                            {/*            border: `1px solid ${theme.palette.divider}`,*/}
-                            {/*        }}*/}
-                            {/*    >*/}
-                            {/*        <Typography variant="subtitle2" sx={{mb: 1}}>Canonical layout</Typography>*/}
-                            {/*        <Stack spacing={0.5}>*/}
-                            {/*            <PathRow label="videos/synchronized" value={structure.videosSynchronizedDir}/>*/}
-                            {/*            <PathRow label="videos/annotated" value={structure.videosAnnotatedDir}/>*/}
-                            {/*            <PathRow label="output/" value={structure.outputDir}/>*/}
-                            {/*            <PathRow label="calibration.toml" value={structure.calibrationTomlPath}/>*/}
-                            {/*            <PathRow label="recording_info.json" value={structure.recordingInfoPath}/>*/}
-                            {/*            <PathRow label="data.parquet" value={structure.dataParquetPath}/>*/}
-                            {/*            <PathRow label=".blend" value={structure.blendPath}/>*/}
-                            {/*        </Stack>*/}
-                            {/*    </Box>*/}
-                            {/*)}*/}
-
-                            {/* Stage checklist */}
-                            <Box
-                                sx={{
-                                    p: 2,
-                                    borderRadius: 1,
-                                    border: `1px solid ${theme.palette.divider}`,
-                                }}
-                            >
-                                <Typography variant="subtitle2" sx={{mb: 1}}>Pipeline stages</Typography>
+                            <div className="p-2 br-1 border-1 border-mid-black">
+                                <p className="text md text-white m-0" style={{fontWeight: 600}}>Pipeline stages</p>
                                 <RecordingStatusPanel
                                     status={status}
                                     isLoading={statusLoading}
@@ -228,37 +136,30 @@ const ActiveRecordingPage: React.FC = () => {
                                     defaultExpanded
                                     recordingFolderPath={fullPath}
                                 />
-                            </Box>
+                            </div>
 
-                            {/* Control panels */}
-                            <CalibrationPanel/>
                             <MocapPanel/>
                         </>
                     )}
                 </ErrorBoundary>
-            </Box>
-            <Box component="footer" sx={{p: 0.5}}>
+            </div>
+            <footer className="p-1">
                 <Footer/>
-            </Box>
-        </Box>
+            </footer>
+        </div>
     );
 };
 
 const PathRow: React.FC<{ label: string; value: string }> = ({label, value}) => (
-    <Stack direction="row" spacing={1} sx={{alignItems: 'center'}}>
-        <Typography variant="caption" sx={{minWidth: 160, color: 'text.secondary'}}>{label}</Typography>
-        <Typography
-            variant="caption"
-            sx={{
-                fontFamily: MONO_FONT,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-            }}
+    <div className="flex flex-row gap-1 items-center">
+        <span className="text sm text-gray" style={{minWidth: 160}}>{label}</span>
+        <span
+            className="text sm overflow-hidden"
+            style={{fontFamily: MONO_FONT, textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}
         >
             {value}
-        </Typography>
-    </Stack>
+        </span>
+    </div>
 );
 
 export default ActiveRecordingPage;

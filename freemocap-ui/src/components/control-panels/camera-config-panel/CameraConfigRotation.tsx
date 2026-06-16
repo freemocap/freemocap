@@ -1,7 +1,4 @@
 import React from 'react';
-import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
-import {Box, Tooltip, useTheme} from '@mui/material';
 import {ROTATION_DEGREE_LABELS, ROTATION_OPTIONS, RotationValue} from '@/store/slices/cameras/cameras-types';
 import {useTranslation} from 'react-i18next';
 
@@ -10,52 +7,27 @@ interface CameraConfigRotationProps {
     onChange: (rotation: RotationValue) => void;
 }
 
-
-
 export const CameraConfigRotation: React.FC<CameraConfigRotationProps> = ({
-                                                                              rotation = -1,
-                                                                              onChange
-                                                                          }) => {
-    const theme = useTheme();
-    const { t } = useTranslation();
-
-    const handleChange = (
-        event: React.MouseEvent<HTMLElement>,
-        newRotation: RotationValue | null,
-    ): void => {
-        if (newRotation !== null) {
-            onChange(newRotation);
-        }
-    };
+    rotation = -1,
+    onChange
+}) => {
+    const {t} = useTranslation();
 
     return (
-        <Box>
-            <Tooltip title={t("selectCameraRotation")}>
-                <ToggleButtonGroup
-                    color={theme.palette.primary.main as any}
-                    value={rotation}
-                    size="small"
-                    exclusive
-                    onChange={handleChange}
-                    aria-label={t("cameraRotation")}
-                    sx={{
-                        '& .MuiToggleButton-root.Mui-selected': {
-                            backgroundColor: theme.palette.primary.dark,
-                            color: theme.palette.primary.contrastText,
-                            border: `1px solid ${theme.palette.text.secondary}`,
-                            '&:hover': {
-                                backgroundColor: theme.palette.primary.light,
-                            },
-                        }
-                    }}
-                >
-                    {ROTATION_OPTIONS.map((option: RotationValue) => (
-                        <ToggleButton key={option} value={option}>
-                            {ROTATION_DEGREE_LABELS[option]}
-                        </ToggleButton>
-                    ))}
-                </ToggleButtonGroup>
-            </Tooltip>
-        </Box>
+        <div title={t("selectCameraRotation")}>
+            <div className="flex flex-row gap-1 flex-wrap">
+                {ROTATION_OPTIONS.map((option: RotationValue) => (
+                    <button
+                        key={option}
+                        className={`button sm${rotation === option ? ' primary' : ' secondary'}`}
+                        onClick={() => onChange(option)}
+                        aria-label={t("cameraRotation")}
+                        style={{padding: '2px 8px', fontSize: 11}}
+                    >
+                        {ROTATION_DEGREE_LABELS[option]}
+                    </button>
+                ))}
+            </div>
+        </div>
     );
 };

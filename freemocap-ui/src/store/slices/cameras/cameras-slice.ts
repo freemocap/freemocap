@@ -136,7 +136,21 @@ export const cameraSlice = createSlice({
             })
             .addCase(detectCameras.fulfilled, (state, action) => {
                 state.isLoading = false;
-                state.cameras = action.payload;
+                const previousCameras = state.cameras;
+                state.cameras = action.payload.map(camera => {
+                    const existing = previousCameras.find(cam => cam.id === camera.id);
+                    if (!existing) return camera;
+                    return {
+                        ...camera,
+                        actualConfig: existing.actualConfig,
+                        desiredConfig: existing.desiredConfig,
+                        hasConfigMismatch: existing.hasConfigMismatch,
+                        connectionStatus: existing.connectionStatus,
+                        selected: existing.selected,
+                        realtimeEnabled: existing.realtimeEnabled,
+                        metrics: existing.metrics,
+                    };
+                });
                 persistAllCameraSettings(state);
             })
             .addCase(detectCameras.rejected, (state, action) => {

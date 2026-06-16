@@ -1,7 +1,6 @@
 import React from 'react';
-import {Alert, Box, Button, LinearProgress, Typography} from '@mui/material';
-import {useTranslation} from 'react-i18next';
-import {useAutoUpdate} from '@/hooks/useAutoUpdate';
+import { useTranslation } from 'react-i18next';
+import { useAutoUpdate } from '@/hooks/useAutoUpdate';
 
 export const UpdateBanner: React.FC = () => {
     const { t } = useTranslation();
@@ -13,43 +12,37 @@ export const UpdateBanner: React.FC = () => {
 
     if (status === 'error') {
         return (
-            <Alert severity="error" sx={{ borderRadius: 0 }}>
-                {t('updateError')}: {errorMessage}
-            </Alert>
+            <div className="update-banner update-banner-error">
+                <span className="text sm">{t('updateError')}: {errorMessage}</span>
+            </div>
         );
     }
 
     if (status === 'downloading') {
         return (
-            <Box sx={{ px: 2, py: 1, bgcolor: 'info.main', color: 'info.contrastText' }}>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    {t('downloading')} {version && `v${version}`}
-                </Typography>
-                <LinearProgress variant="determinate" value={progress} sx={{ borderRadius: 1 }} />
-            </Box>
+            <div className="update-banner update-banner-info">
+                <span className="text sm">{t('downloading')} {version && `v${version}`}</span>
+                <div className="update-progress-track">
+                    <div className="update-progress-fill" style={{ width: `${progress}%` }} />
+                </div>
+            </div>
         );
     }
 
     if (status === 'ready') {
         return (
-            <Alert
-                severity="success"
-                sx={{ borderRadius: 0 }}
-                action={
-                    <Button color="inherit" size="small" onClick={installUpdate}>
-                        {t('restartToUpdate')}
-                    </Button>
-                }
-            >
-                {t('downloadComplete')} — v{version}
-            </Alert>
+            <div className="update-banner update-banner-success">
+                <span className="text sm">{t('downloadComplete')} — v{version}</span>
+                <button className="button sm" onClick={installUpdate}>
+                    {t('restartToUpdate')}
+                </button>
+            </div>
         );
     }
 
-    // status === 'available'
     return (
-        <Alert severity="info" sx={{ borderRadius: 0 }}>
-            {t('updateAvailableMessage', { version })}
-        </Alert>
+        <div className="update-banner update-banner-info">
+            <span className="text sm">{t('updateAvailableMessage', { version })}</span>
+        </div>
     );
 };

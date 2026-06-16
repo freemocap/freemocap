@@ -1,8 +1,3 @@
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import TextField from '@mui/material/TextField';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {
     selectGroupedPipelines,
@@ -13,6 +8,7 @@ import {
     filterTextChanged,
 } from '@/store/slices/pipelines';
 import PipelineGroupCard from './PipelineGroupCard';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 export default function PipelineProgressPanel() {
     const groups = useAppSelector(selectGroupedPipelines);
@@ -22,47 +18,37 @@ export default function PipelineProgressPanel() {
     const dispatch = useAppDispatch();
 
     return (
-        <Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
-            <Box sx={{display: 'flex', alignItems: 'center', gap: 1, px: 1, py: 0.5, flexShrink: 0}}>
-                <TextField
-                    size="small"
-                    placeholder="Filter..."
-                    value={filterText}
-                    onChange={(e) => dispatch(filterTextChanged(e.target.value))}
-                    sx={{
-                        flex: 1,
-                        '& .MuiInputBase-root': {height: 28, fontSize: '0.75rem'},
-                    }}
-                />
+        <div className="flex flex-col h-full">
+            <div className="flex flex-col gap-1 flex-shrink-0" style={{padding: '4px 8px'}}>
+                <div className="input-with-string">
+                    <input
+                        className="input-field text md"
+                        placeholder="Filter..."
+                        value={filterText}
+                        onChange={(e) => dispatch(filterTextChanged(e.target.value))}
+                        style={{height: 28, fontSize: '0.75rem'}}
+                    />
+                </div>
                 {hasCompleted && (
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                size="small"
-                                checked={showCompleted}
-                                onChange={() => dispatch(toggleShowCompleted())}
-                                sx={{p: 0.25}}
-                            />
-                        }
-                        label={<Typography variant="caption">Show completed</Typography>}
-                        sx={{mr: 0, ml: 0}}
+                    <ToggleComponent
+                        text="Show completed"
+                        isToggled={showCompleted}
+                        onToggle={() => dispatch(toggleShowCompleted())}
                     />
                 )}
-            </Box>
+            </div>
 
-            <Box sx={{flex: 1, overflow: 'auto'}}>
+            <div className="flex-1 overflow-y">
                 {groups.length === 0 ? (
-                    <Box sx={{height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-                        <Typography variant="caption" color="text.secondary">
-                            No active pipelines
-                        </Typography>
-                    </Box>
+                    <div className="flex items-center justify-center h-full">
+                        <p className="text sm text-gray">No active pipelines</p>
+                    </div>
                 ) : (
                     groups.map((group) => (
                         <PipelineGroupCard key={group.basePipelineId} group={group}/>
                     ))
                 )}
-            </Box>
-        </Box>
+            </div>
+        </div>
     );
 }

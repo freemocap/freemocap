@@ -689,15 +689,21 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     }, []);
 
     const updateServerConnection = useCallback((host: string, port: number): void => {
+        const currentUrl = serverUrls.getWebSocketUrl();
+
         // Update the singleton so HTTP endpoints also update
         serverUrls.setHost(host);
         serverUrls.setPort(port);
 
-        // Update the WebSocket URL and reconnect
+        const newUrl = serverUrls.getWebSocketUrl();
+
+        // Only disconnect and reconnect if the URL actually changed — calling this
+        // on every mount (e.g. when CollapsedToolbar mounts on sidebar collapse)
+        // with the same URL was causing a spurious disconnect → "no cameras" flash.
         const ws = wsConnectionRef.current;
-        if (ws) {
+        if (ws && newUrl !== currentUrl) {
             ws.disconnect();
-            ws.updateUrl(serverUrls.getWebSocketUrl());
+            ws.updateUrl(newUrl);
             // The auto-reconnect loop in ServerConnectionStatus will re-trigger connect()
         }
     }, []);

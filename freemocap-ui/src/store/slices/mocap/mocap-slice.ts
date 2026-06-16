@@ -111,6 +111,25 @@ export const DEFAULT_ESTIMATOR_CONFIG: EstimatorConfig = {
     iqr_confidence_sensitivity: 10.0,
 };
 
+export type DetectorPreset = "realtime" | "posthoc" | "custom";
+
+/** Detects which preset (if any) the current detector config matches. */
+export function detectPreset(
+    config: { model_complexity: number; enable_segmentation: boolean; smooth_segmentation: boolean }
+): DetectorPreset {
+    if (
+        config.model_complexity === 0 &&
+        !config.enable_segmentation &&
+        !config.smooth_segmentation
+    ) return "realtime";
+    if (
+        config.model_complexity === 2 &&
+        config.enable_segmentation &&
+        config.smooth_segmentation
+    ) return "posthoc";
+    return "custom";
+}
+
 /** Default RealtimeFilterConfig matching backend defaults. */
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
     min_cutoff: 0.005,

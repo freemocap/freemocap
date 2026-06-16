@@ -1,21 +1,9 @@
 import * as React from 'react';
-import Box from '@mui/material/Box';
-import IconButton from '@mui/material/IconButton';
-import LinearProgress from '@mui/material/LinearProgress';
-import Paper from '@mui/material/Paper';
-import Typography from '@mui/material/Typography';
-import CloseIcon from '@mui/icons-material/Close';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import StopCircleIcon from '@mui/icons-material/StopCircle';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {
     allPipelinesCleared,
     pipelineDismissed,
     pipelineSnackbarHidden,
-    pipelineSnackbarShown,
     selectActiveBasePipelineCount,
     selectDismissedBasePipelineIds,
     selectGroupedPipelinesAll,
@@ -23,7 +11,7 @@ import {
 } from '@/store/slices/pipelines';
 import {stopAllPipelines} from '@/store/slices/pipelines/pipelines-thunks';
 import PipelineGroupCard from './PipelineGroupCard';
-import {useTheme} from "@mui/material";
+import IconButton from '@/components/ui-components/IconButton';
 
 const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT = 420;
@@ -42,8 +30,8 @@ const CURSOR: Record<ResizeHandle, string> = {
 const EDGE = 6;
 const CORN = 14;
 
-function handleSx(h: ResizeHandle) {
-    const base = {position: 'absolute', zIndex: 10} as const;
+function handleStyle(h: ResizeHandle): React.CSSProperties {
+    const base: React.CSSProperties = {position: 'absolute', zIndex: 10};
     switch (h) {
         case 'n':  return {...base, top: -EDGE/2, left: CORN, right: CORN, height: EDGE, cursor: CURSOR.n};
         case 's':  return {...base, bottom: -EDGE/2, left: CORN, right: CORN, height: EDGE, cursor: CURSOR.s};
@@ -60,7 +48,6 @@ const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
 export default function PipelineProgressSnackbar() {
     const dispatch = useAppDispatch();
-    const theme = useTheme()
     const groups = useAppSelector(selectGroupedPipelinesAll);
     const activeCount = useAppSelector(selectActiveBasePipelineCount);
     const open = useAppSelector(selectSnackbarVisible);
@@ -148,11 +135,9 @@ export default function PipelineProgressSnackbar() {
         };
     }, []);
 
-
     const visibleGroups = groups.filter(g => !dismissedIds.includes(g.basePipelineId));
     const hasRunningVisible = visibleGroups.some(g => !g.isComplete && !g.isFailed);
 
-    // Summary info for collapsed view — prefer active, fall back to most recent
     const summaryGroup = visibleGroups.find(g => g.isActive) ?? visibleGroups[0] ?? null;
     const summaryProgress = summaryGroup
         ? (summaryGroup.aggregator?.progress
@@ -166,144 +151,102 @@ export default function PipelineProgressSnackbar() {
 
     if (!open) return null;
 
-    const positionSx: React.CSSProperties = dragPos
-        ? {position: 'fixed', left: dragPos.left, top: dragPos.top, zIndex: 1400}
-        : {position: 'fixed', bottom: 8, right: 8, zIndex: 1400};
+    const containerStyle: React.CSSProperties = dragPos
+        ? {position: 'fixed', left: dragPos.left, top: dragPos.top, zIndex: 1400, width: size.width, ...(collapsed ? {} : {height: size.height})}
+        : {position: 'fixed', bottom: 8, right: 8, zIndex: 1400, width: size.width, ...(collapsed ? {} : {height: size.height})};
 
     return (
-        <Box
-            ref={containerRef}
-            sx={{
-                ...positionSx,
-                width: size.width,
-                // collapsed: auto-height (just the header); expanded: full tracked height
-                ...(collapsed ? {} : {height: size.height}),
-            }}
-        >
-            {/* Width handles always available; height/corner handles only when expanded */}
+        <div ref={containerRef} style={containerStyle}>
             {HANDLES.filter(h => !collapsed || h === 'e' || h === 'w').map(h => (
-                <Box key={h} sx={handleSx(h)} onMouseDown={(e) => startResize(h, e)}/>
+                <div key={h} style={handleStyle(h)} onMouseDown={(e) => startResize(h, e)}/>
             ))}
 
-            <Paper
-                elevation={6}
-                sx={{
-                    width: '100%',
-                    height: collapsed ? 'auto' : '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    borderRadius: 2,
-                    overflow: 'hidden',
-                    border: 1,
-                    borderColor: hasRunningVisible ? '#FF00FF' : 'transparent',
-                }}
-            >
-                {/* Header — always visible */}
-                <Box
+            <div className="bg-middark flex flex-col w-full overflow-hidden" style={{
+                height: collapsed ? 'auto' : '100%',
+                borderRadius: 8,
+                border: `1px solid ${hasRunningVisible ? '#FF00FF' : 'transparent'}`,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+            }}>
+                <div
                     onMouseDown={handleHeaderMouseDown}
-                    sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        px: 1,
-                        py: 0.75,
-                        borderBottom: collapsed ? 0 : 1,
-                        borderColor: 'divider',
-                        flexShrink: 0,
+                    className="flex flex-row items-center flex-shrink-0"
+                    style={{
+                        padding: '6px 8px',
+                        borderBottom: collapsed ? 'none' : '1px solid var(--color-border-secondary)',
                         cursor: 'grab',
                         userSelect: 'none',
-                        '&:active': {cursor: 'grabbing'},
                     }}
                 >
                     {collapsed ? (
-                        // Collapsed summary: name + progress bar + %
-                        <Box sx={{flex: 1, minWidth: 0, mr: 1}}>
-                            <Box sx={{display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', mb: 0.25}}>
-                                <Typography variant="caption" noWrap sx={{fontSize: '0.72rem', flex: 1, mr: 0.5}}>
+                        <div className="flex-1 min-w-0 mr-1">
+                            <div className="flex flex-row items-center justify-content-space-between" style={{marginBottom: 2}}>
+                                <p className="text sm flex-1 mr-1 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem'}}>
                                     {summaryLabel}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{fontSize: '0.68rem', flexShrink: 0}}>
+                                </p>
+                                <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.68rem'}}>
                                     {summaryProgress}%
-                                </Typography>
-                            </Box>
+                                </p>
+                            </div>
                             {summaryGroup?.isActive && (
-                                <LinearProgress
-                                    variant="determinate"
-                                    value={summaryProgress}
-                                    sx={{height: 3, borderRadius: 1}}
-                                />
+                                <div className="update-progress-track" style={{height: 3, borderRadius: 2}}>
+                                    <div className="update-progress-fill h-full" style={{width: `${summaryProgress}%`, borderRadius: 2}}/>
+                                </div>
                             )}
-                        </Box>
+                        </div>
                     ) : (
-                        // Expanded title
-                        <Typography variant="subtitle2" sx={{flex: 1}}>
-                            Pipeline Progress
-                        </Typography>
+                        <p className="text md text-white flex-1 m-0" style={{fontWeight: 600}}>Pipeline Progress</p>
                     )}
 
                     {hasRunningVisible && (
-                        <Box sx={{
-                            width: 7, height: 7, borderRadius: '50%', bgcolor: 'primary.main', mr: 1, flexShrink: 0,
+                        <div className="flex-shrink-0 mr-1" style={{
+                            width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-info)',
                             animation: 'fmcPulse 1.4s ease-in-out infinite',
-                            '@keyframes fmcPulse': {
-                                '0%, 100%': {opacity: 1, transform: 'scale(1)'},
-                                '50%': {opacity: 0.3, transform: 'scale(0.7)'},
-                            },
                         }}/>
                     )}
 
                     <IconButton
-                        size="small"
+                        icon={collapsed ? 'expand-icon' : 'collapse-icon'}
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => setCollapsed(c => !c)}
-                        sx={{p: 0.25}}
-                    >
-                        {collapsed ? <ExpandLessIcon fontSize="small"/> : <ExpandMoreIcon fontSize="small"/>}
-                    </IconButton>
+                    />
 
                     {hasRunningVisible && (
                         <IconButton
-                            size="small"
+                            icon="close-icon"
+                            className="icon-size-25 p-01"
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
                             title="Stop all pipelines"
-                            sx={{p: 0.25, color: 'error.main'}}
-                        >
-                            <StopCircleIcon fontSize="small"/>
-                        </IconButton>
+                            style={{color: 'var(--color-error)'}}
+                        />
                     )}
 
                     <IconButton
-                        size="small"
+                        icon="clear-icon"
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(allPipelinesCleared())}
                         disabled={visibleGroups.length === 0}
                         title="Clear all pipelines"
-                        sx={{p: 0.25}}
-                    >
-                        <DeleteSweepIcon fontSize="small"/>
-                    </IconButton>
+                    />
 
                     <IconButton
-                        size="small"
+                        icon="close-icon"
+                        className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
-                        sx={{p: 0.25}}
-                    >
-                        <CloseIcon fontSize="small"/>
-                    </IconButton>
+                    />
 
-                    <DragIndicatorIcon sx={{fontSize: '0.9rem', color: 'text.disabled', ml: 0.25, flexShrink: 0, cursor: 'grab'}}/>
-                </Box>
+                    <span className="icon settings-icon icon-size-20 flex-shrink-0" style={{color: 'var(--color-text-disabled)', marginLeft: 2, cursor: 'grab'}}/>
+                </div>
 
-                {/* Scrollable content — hidden when collapsed */}
                 {!collapsed && (
-                    <Box sx={{overflow: 'auto', flex: 1, minHeight: 0}}>
+                    <div className="overflow-y flex-1 min-h-0">
                         {visibleGroups.length === 0 ? (
-                            <Box sx={{py: 2, display: 'flex', justifyContent: 'center'}}>
-                                <Typography variant="caption" color="text.secondary">
-                                    No active pipelines
-                                </Typography>
-                            </Box>
+                            <div className="flex justify-center" style={{paddingTop: 16, paddingBottom: 16}}>
+                                <p className="text sm text-gray">No active pipelines</p>
+                            </div>
                         ) : (
                             visibleGroups.map((group) => (
                                 <PipelineGroupCard
@@ -313,9 +256,9 @@ export default function PipelineProgressSnackbar() {
                                 />
                             ))
                         )}
-                    </Box>
+                    </div>
                 )}
-            </Paper>
-        </Box>
+            </div>
+        </div>
     );
 }

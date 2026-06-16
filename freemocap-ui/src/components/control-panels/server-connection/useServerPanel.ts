@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Theme, useTheme} from '@mui/material/styles';
 import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
@@ -8,8 +7,6 @@ import {ExecutableCandidate, WS_RECONNECT_INTERVAL_MS} from './types';
 import {STORAGE_KEYS, loadFromStorage, saveToStorage} from './storage';
 
 export interface ServerPanelState {
-    // theme
-    theme: Theme;
     // server context
     isConnected: boolean;
     connectedCameraIds: string[];
@@ -44,10 +41,10 @@ export interface ServerPanelState {
     refreshCandidates: () => Promise<void>;
     browseForExecutable: () => Promise<void>;
     // toggle handlers
-    handleToggleAutoLaunch: (e: React.MouseEvent) => void;
-    handleToggleAutoConnectWs: (e: React.MouseEvent) => void;
-    handleToggleServerRunning: (e: React.MouseEvent) => void;
-    handleToggleWsConnected: (e: React.MouseEvent) => void;
+    handleToggleAutoLaunch: (newState: boolean) => void;
+    handleToggleAutoConnectWs: (newState: boolean) => void;
+    handleToggleServerRunning: () => void;
+    handleToggleWsConnected: () => void;
     // host/port
     applyHostPort: () => void;
     handleHostPortKeyDown: (e: React.KeyboardEvent) => void;
@@ -59,7 +56,6 @@ export interface ServerPanelState {
 }
 
 export function useServerPanel(): ServerPanelState {
-    const theme = useTheme();
     const {isConnected, connect, disconnect, connectedCameraIds, updateServerConnection} = useServer();
     const {t} = useTranslation();
     const {isElectron, api} = useElectronIPC();
@@ -272,28 +268,21 @@ export function useServerPanel(): ServerPanelState {
 
     // ── Toggle handlers ──
 
-    const handleToggleAutoLaunch = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setAutoLaunchServer((prev) => !prev);
+    const handleToggleAutoLaunch = useCallback((newState: boolean) => {
+        setAutoLaunchServer(newState);
     }, []);
 
-    const handleToggleAutoConnectWs = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        setAutoConnectWs((prev) => {
-            const next = !prev;
-            if (!next) disconnect();
-            return next;
-        });
+    const handleToggleAutoConnectWs = useCallback((newState: boolean) => {
+        setAutoConnectWs(newState);
+        if (!newState) disconnect();
     }, [disconnect]);
 
-    const handleToggleServerRunning = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleToggleServerRunning = useCallback(() => {
         if (serverRunning) stopServer();
         else startServer();
     }, [serverRunning, startServer, stopServer]);
 
-    const handleToggleWsConnected = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleToggleWsConnected = useCallback(() => {
         if (isConnected) {
             setAutoConnectWs(false);
             disconnect();
@@ -322,12 +311,11 @@ export function useServerPanel(): ServerPanelState {
     // ── Derived values ──
 
     const wsStatusColor = isConnected ? '#00ffff' : '#f44336';
-    const serverStatusColor = serverRunning ? theme.palette.success.main : theme.palette.text.disabled;
+    const serverStatusColor = serverRunning ? 'var(--color-success)' : 'var(--color-text-muted)';
     const validCandidates = candidates.filter((c) => c.isValid);
     const invalidCandidates = candidates.filter((c) => !c.isValid);
 
     return {
-        theme,
         isConnected,
         connectedCameraIds,
         isElectron,

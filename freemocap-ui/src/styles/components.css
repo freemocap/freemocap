@@ -1,0 +1,879 @@
+.tag {
+  background-color: var(--color-bg-elevated);
+  padding: 2px 5px 2px 5px;
+  text-align: center;
+  border-radius: 4px;
+}
+
+
+/* video tiles */
+.video-tile {
+  /* flex: 1 0 25%; */
+  height: auto;
+  aspect-ratio: 1 / 1;
+
+}
+
+.video-tile.size-2 {
+  flex: 1 0 calc(50% - 8px);
+  max-width: calc(50% - 8px);
+}
+
+.video-tile.size-3 {
+  flex: 1 0 calc(33.33% - 8px);
+  max-width: calc(33.33% - 8px);
+}
+
+.video-tile.size-4 {
+  flex: 1 0 calc(25% - 8px);
+  max-width: calc(25% - 8px);
+}
+
+
+.video-tile.camera-source.empty:before,
+.video-tile.video-source.empty:before {
+  max-width: 20px;
+  margin: 4px;
+  display: inline-block;
+  opacity: 0.5;
+}
+
+.video-tile.camera-source.empty:before {
+  content: var(--camera-icon);
+
+}
+
+.video-tile.video-source.empty:before {
+  content: var(--video-icon);
+
+}
+
+.video-tile.empty {
+  border: 1.5px dashed var(--color-border-primary);
+
+  background: transparent;
+}
+
+/* segmented-control design */
+.segmented-control-container {
+  max-width: max-content;
+}
+
+.main-segmented-control {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  z-index: 2;
+}
+
+.active-tools-header {
+  margin-left: 346px;
+
+}
+
+.segmented-control-button {
+  min-width: 110px;
+  transition: color var(--speed-1) ease-in-out;
+}
+
+.segmented-control-sm {
+  position: static;
+}
+
+.segmented-control-sm .segmented-control-button {
+  min-width: 50px;
+}
+
+.segmented-control-button>p.text.md {
+  /* medium size */
+  min-height: 25px;
+  line-height: 25px;
+  padding: 0;
+}
+
+.RTP-settings-flyout,
+.calibration-settings-flyout {
+  width: 280px;
+
+}
+
+.calibration-settings-flyout {
+  top: 340px;
+  left: 300px;
+}
+
+.segmented-control-button>p.text.sm {
+  /* small size */
+  min-height: 22px;
+  line-height: 22px;
+  padding: 0;
+}
+
+.segmented-control-button:hover>p {
+  color: var(--color-text-primary);
+  transition: color var(--speed-1) ease-in-out;
+}
+
+
+
+/* text colors */
+/* .color-gray-400 {
+  color: var(--color-text-muted);
+}
+.color-gray-100 {
+  color: var(--color-text-primary);
+} */
+/* icon setup on the left side */
+.icon {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* filter animation in */
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+
+/* =========================
+   OPTIONAL: small layout helpers
+   ========================= */
+.app-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---- Header Panel ---- */
+.header-panel {
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+
+.top-header {
+  background-color: var(--color-bg-secondary);
+  /* border-bottom: 1.5px solid var(--color-bg-elevated); */
+}
+
+/* Resizable panel handles  --------------------- */
+.resizable-component {
+
+  background-color: transparent !important;
+}
+
+.resizable-component {
+  position: relative;
+  background: transparent;
+  transition:
+    background-color 0.2s ease,
+    width 0.15s ease,
+    height 0.15s ease;
+}
+
+.streaming-bar-setting-action-bar {
+  margin-top: -39px;
+  margin-right: 9px;
+}
+
+/*
+   CENTER INDICATOR
+*/
+
+/* Vertical divider (left/right resize) */
+.resizable-component[data-panel-group-direction="horizontal"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 20px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--color-border-primary);
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* Horizontal divider (top/bottom resize) */
+.resizable-component[data-panel-group-direction="vertical"]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--color-border-primary);
+  opacity: 0;
+  transition:
+    opacity 0.15s ease,
+    background 0.15s ease,
+    transform 0.15s ease;
+}
+
+/* 
+   HOVER
+ */
+
+.resizable-component[data-resize-handle-state="hover"]::before {
+  opacity: 1;
+  background: var(--log-trace);
+}
+
+/* Slightly enlarge handle area on hover */
+.resizable-component[data-panel-group-direction="horizontal"]:hover {
+  width: 4px !important;
+}
+
+.resizable-component[data-panel-group-direction="vertical"]:hover {
+  height: 4px !important;
+}
+
+/* =========================================
+   DRAGGING STATE
+========================================= */
+
+/* react-resizable-panels adds this attribute */
+.resizable-component[data-resize-handle-state="drag"] {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Wider while dragging */
+.resizable-component[data-panel-group-direction="horizontal"][data-resize-handle-state="drag"] {
+  width: 8px !important;
+}
+
+.resizable-component[data-panel-group-direction="vertical"][data-resize-handle-state="drag"] {
+  height: 8px !important;
+}
+
+/* Make center indicator brighter/larger while dragging */
+.resizable-component[data-resize-handle-state="drag"]::before {
+  opacity: 1;
+  background: white;
+  transform: translate(-50%, -50%) scale(1.2);
+}
+
+
+
+/* ---- Welcome Page ---- */
+.welcome-modal {
+  width: 680px;
+  min-height: 400px;
+  animation: fadeIn, scaleIn;
+}
+
+.welcome-modal-image-col {
+  background: linear-gradient(160deg, var(--color-bg-primary) 0%, var(--color-info-idle) 100%);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+}
+
+.welcome-modal-logo {
+  max-width: 160px;
+  max-height: 160px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+.welcome-connect-button {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color var(--speed-1), transform var(--speed-1);
+  background-color: var(--color-info-idle);
+  border: 2px solid var(--color-info-muted);
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.welcome-connect-button:hover:not(:disabled) {
+  background-color: var(--color-info-muted);
+  transform: translateY(-1px);
+}
+
+.right-side-panel {
+
+  height: 100%;
+}
+
+.main-container {
+  height: inherit;
+}
+
+.all-actions-components {
+  align-items: center;
+  justify-content: space-between;
+  align-content: center;
+  width: 100%;
+}
+
+.welcome-connect-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mode-header {
+  min-height: 33px;
+  width: inherit;
+  margin-bottom: 1px;
+}
+
+/* ---- Toast Notification ---- */
+.toast-notification {
+  position: fixed;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  padding: 8px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--color-bg-elevated);
+  background-color: var(--color-bg-secondary);
+  animation: fadeIn var(--speed-2) ease;
+  max-width: 320px;
+  text-align: center;
+}
+
+.toast-notification.success {
+  border-color: var(--color-success);
+}
+
+.toast-notification.error {
+  border-color: var(--color-danger);
+}
+
+.toast-notification.info {
+  border-color: var(--color-info-muted);
+}
+
+/* ---- Version badge ---- */
+.version-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: none;
+
+  border-radius: 4px;
+
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  transition: border-color var(--speed-1), color var(--speed-1);
+  /* background-color: var(--color-bg-secondary); */
+}
+
+.version-badge:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text-primary);
+}
+
+.version-badge.success {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+.version-badge:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Language switcher ---- */
+.language-dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.language-dropdown-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+  min-width: 220px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.language-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 6px 8px;
+}
+
+.language-option:hover {
+  background-color: var(--color-bg-elevated);
+}
+
+.language-option.selected {
+  background-color: var(--color-bg-tertiary);
+}
+
+.translation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid;
+  font-size: 0.65rem;
+  cursor: pointer;
+  text-decoration: none;
+  bottom: 50px;
+}
+
+.translation-badge.ai {
+  border-color: var(--color-warning);
+  color: var(--color-warning);
+}
+
+.translation-badge.human {
+  border-color: var(--color-info-muted);
+  color: var(--color-info-muted);
+}
+
+.translation-badge.native {
+  border-color: var(--color-success);
+  color: var(--color-success);
+}
+
+/* ---- Footer / Bottom Info Panel ---- */
+.bottom-info-container {
+  background-color: var(--color-bg-secondary);
+}
+
+.info-panel-divider {
+  width: 4px;
+  background-color: var(--color-bg-elevated);
+  cursor: col-resize;
+  flex-shrink: 0;
+}
+
+/* ---- Splash Modal Styles ---- */
+.splash-overlay {
+  position: fixed;
+  /* inset: 0; */
+  background-color: var(--color-surface-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  /* animation: fadeIn 0.3s ease forwards; */
+  animation: fadeIn;
+}
+
+.splash-modal {
+  width: 550px;
+  height: 366px;
+  /* animation: scaleIn 0.3s ease forwards; */
+  animation: fadeIn, scaleIn;
+}
+
+.camera-cell {
+  border-radius: 8px;
+}
+
+.conection-container {
+  width: 255px;
+}
+
+.disabled>* {
+  opacity: 0.6;
+
+  transition: opacity var(--speed-2) ease-in-out;
+}
+
+.disabled,
+.disabled>* {
+  pointer-events: none;
+  opacity: 0.6;
+  /* prevents clicking */
+}
+
+.splash-screen-logo {
+  opacity: 0.5;
+}
+
+.splash-image-container {
+  background-image: url(../images/splashmodal_art.webp); 
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+.mocap-settings-modal {
+  max-width: 550px;
+  max-height: 650px;
+  min-width: 550px;
+  min-height: 650px;
+  /* width: 550px;
+  height: 650px; */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  
+       
+}
+.inner-container-settings {
+ height: 569px;
+}
+.bottom-area-action-container {
+ height: 66px;
+}
+/* .splashmodal-mini-menu-container {
+  position: absolute; */
+/* top: 5px;
+  left: 5px;
+} */
+
+.version-button-container {
+  /* position: absolute; */
+  /* top: 278px;
+  left: 6px; */
+  /* display: block; */
+  text-wrap: nowrap;
+}
+
+.splash-image-logo-container {
+  background-image: url(/images/logo_name.svg);
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 88px;
+  height: 28px;
+  opacity: 0.5;
+}
+
+.footer-content {
+  /* position: absolute; */
+  bottom: -30px;
+  left: 50%;
+  opacity: 0.5;
+  text-wrap: nowrap;
+  transform: translateX(-50%);
+}
+
+/* --------- ui components styles -------- */
+/* --------- ui components styles -------- */
+
+/* --------- checkbox -------- */
+
+/* =========================================
+   Custom CSS Checkboxes (Reusable)
+   Based on ModernCSS.dev
+   ========================================= */
+
+/* Style the numeric input specifically */
+.numeric-input {
+  color: var(--color-text-muted);
+  font-weight: bold;
+  text-align: right;
+}
+
+
+/* Style the unit text */
+.unit-label {
+  margin-left: 8px;
+}
+
+
+.unit-text {
+  color: #007acc;
+  font-style: italic;
+}
+
+.string-selector {
+  top: 30px;
+  
+}
+
+.value-label,
+.input-field {
+
+  color: var(--color-text-muted);
+
+}
+
+.input-field:active,
+.input-field:focus {
+
+  border: none;
+
+}
+
+.unit-label {
+
+  color: var(--color-border-primary);
+}
+
+.segmented-control-icon {
+  filter: brightness(2);
+}
+
+.input-with-unit,
+.input-with-string {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-bg-elevated);
+  border-radius: 4px;
+  padding: 4px 8px;
+  height: 28px;
+  width: 77px;
+  transition: border var(--speed-2);
+}
+
+.input-with-unit.tooltip:has(input.input-field:hover) {
+  border-color: var(--color-text-muted);
+  transition: border var(--speed-2);
+}
+
+.input-with-unit.tooltip:focus-within {
+  box-shadow: 0px 0px 0px 1px var(--color-text-secondary-alpha-10);
+  border-color: var(--color-text-primary);
+  transition: border var(--speed-2);
+}
+
+/* Apply the same focus/hover behaviour to all input containers */
+.input-with-unit:has(input.input-field:hover),
+.input-with-string:has(input.input-field:hover) {
+  border-color: var(--color-text-muted);
+  transition: border var(--speed-2);
+}
+
+.input-with-unit:focus-within,
+.input-with-string:focus-within {
+  box-shadow: 0px 0px 0px 1px var(--color-text-secondary-alpha-10);
+  border-color: var(--color-text-primary);
+  transition: border var(--speed-2);
+}
+
+
+
+.file-directory-settings-modal {
+  position: absolute;
+  right: 101%;
+  top: -5px;
+  min-width: 300px;
+  /* max-width: 300px; */
+}
+
+.camera-settings-modal {
+  position: fixed;
+  left:300px;
+  top: 90px;
+  min-width: 225px;
+  /* max-width: 300px; */
+}
+
+.selected-camera-feed::before,
+.selected-camera-settings::before {
+
+  outline: 1.5px solid var(--color-border-primary);
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  border-radius: 9px;
+  padding: 2px;
+
+}
+
+.excluded-camera-tooltip {
+  top: 21px;
+  left: 0px;
+}
+
+.vanished {
+  opacity: 0;
+  pointer-events: none;
+
+}
+
+@media screen (min-width : 1920px) {
+
+  ds\:video-tile.size-25 {
+    flex: 1 0 calc(25%);
+    max-width: calc(37%);
+  }
+
+}
+
+/* Sidebar navigation tab buttons */
+.sidebar-nav-cameras {
+  background-color: var(--color-success-idle);
+  color: var(--color-success);
+}
+
+.sidebar-nav-cameras:hover {
+  background-color: var(--color-success-idle);
+  opacity: 0.9;
+}
+
+.sidebar-nav-playback {
+  background-color: var(--color-info-idle);
+  color: var(--metric-stddev);
+}
+
+.sidebar-nav-playback:hover {
+  background-color: var(--color-info-idle);
+  opacity: 0.9;
+}
+
+.sidebar-nav-inactive {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-muted);
+}
+
+.sidebar-nav-inactive:hover {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+}
+
+/* Update banner */
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px;
+  flex-shrink: 0;
+}
+
+.update-banner-error {
+  background-color: var(--metric-median);
+  color: var(--color-text-primary);
+}
+
+.update-banner-info {
+  background-color: var(--color-info-idle);
+  color: var(--metric-stddev);
+}
+
+.update-banner-success {
+  background-color: var(--color-success-idle);
+  color: var(--color-success);
+}
+
+.update-progress-track {
+  height: 4px;
+  border-radius: 2px;
+  background-color: var(--color-text-secondary-alpha-20);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.file-directory-settings-container {
+  min-width: 280px;
+  top: 476px;
+  left: 300px;
+  min-width: 350px;
+  min-width: 350px;
+  max-height: 80vh;
+
+  position: fixed;
+  z-index: 9999;
+}
+
+.update-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+  background-color: var(--metric-stddev);
+  transition: width 0.3s ease;
+}
+
+/* Main content tab bar */
+.main-tab-bar {
+  padding: 6px 8px;
+  /* background-color: var(--color-bg-secondary); */
+  display: flex;
+}
+
+
+
+/* =========================================
+   BUTTON GROUP
+========================================= */
+
+.button-sm-group {
+  position: relative;
+  overflow: visible;
+}
+
+
+.connection-status-dropdown {
+  position: fixed !important;
+  top: 32px !important;
+  ;
+  left: 8px !important;
+  ;
+  z-index: 100 !important;
+  ;
+  max-width: 400px !important;
+  ;
+  min-width: 400px !important;
+  ;
+
+}
+
+.playback-settings-popup {
+
+  min-width: 182px;
+
+}
+
+.playback-timeline-scrubber {
+  flex: 1 1 522px;
+  min-width: 0;
+  width: 100%;
+}
+
+/* =========================================
+   ERROR MESSAGE CONTAINER
+========================================= */
+
+.error-message-container {
+  max-height: 16px;
+  top: -6px;
+}
+
+.error-message-container::before,
+.error-message-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 20px;
+  height: 16px;
+  background-image: url(/images/inv-edge.svg);
+  background-repeat: no-repeat;
+  background-size: contain;
+}
+
+.error-message-container::before {
+  left: -20px;
+  transform: scaleX(-1);
+}
+
+.error-message-container::after {
+  right: -20px;
+}
+.camera-settings-container.contextual {
+
+  min-width: 300px;
+
+
+}

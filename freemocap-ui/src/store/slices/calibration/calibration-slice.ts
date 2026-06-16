@@ -42,6 +42,7 @@ export interface CalibrationState {
     error: string | null;
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
+    dismissedCalibrationPath: string | null;
 }
 
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
@@ -62,6 +63,7 @@ const initialState: CalibrationState = {
     error: null,
     directoryInfo: null,
     loadedCalibration: null,
+    dismissedCalibrationPath: null,
 };
 
 export const calibrationSlice = createSlice({
@@ -87,6 +89,9 @@ export const calibrationSlice = createSlice({
         },
         calibrationLoadedFromBundle: (state, action: PayloadAction<LoadedCalibration | null>) => {
             state.loadedCalibration = action.payload;
+        },
+        calibrationAutoLoadDismissed: (state, action: PayloadAction<string | null>) => {
+            state.dismissedCalibrationPath = action.payload;
         },
         resetCalibrationState: () => initialState,
     },
@@ -164,6 +169,7 @@ export const selectCalibrationProgress = (state: RootState) => state.calibration
 export const selectCalibrationError = (state: RootState) => state.calibration.error;
 export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
 export const selectLoadedCalibration = (state: RootState) => state.calibration.loadedCalibration;
+export const selectDismissedCalibrationPath = (state: RootState) => state.calibration.dismissedCalibrationPath;
 
 export const selectCalibrationRecordingPath = selectActiveRecordingFullPath;
 
@@ -208,5 +214,6 @@ export const {
     calibrationDirectoryInfoUpdated,
     calibrationPipelineProgressReceived,
     calibrationLoadedFromBundle,
+    calibrationAutoLoadDismissed,
     resetCalibrationState,
 } = calibrationSlice.actions;

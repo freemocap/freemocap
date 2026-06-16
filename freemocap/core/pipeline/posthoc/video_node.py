@@ -200,10 +200,21 @@ class VideoNode(SourceNode):
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
                 width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+                # Prefer H.264 ("avc1") so annotated videos play directly in browsers/Electron's
+                # <video> element. Fall back to "mp4v" if the local OpenCV/ffmpeg build lacks an
+                # H.264 encoder — playable in desktop players but not in <video> tags.
                 video_writer = cv2.VideoWriter(
-                    str(annotated_output_path), fourcc, fps, (width, height)
+                    str(annotated_output_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height)
                 )
+                if not video_writer.isOpened():
+                    video_writer.release()
+                    logger.warning(
+                        f"H.264 ('avc1') encoder unavailable for {video_path.stem} — "
+                        f"falling back to 'mp4v' (annotated video will not play in browser <video> tags)"
+                    )
+                    video_writer = cv2.VideoWriter(
+                        str(annotated_output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
+                    )
                 if not video_writer.isOpened():
                     raise RuntimeError(
                         f"Failed to create video writer for: {annotated_output_path}"

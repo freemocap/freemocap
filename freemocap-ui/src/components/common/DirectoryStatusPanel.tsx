@@ -1,72 +1,31 @@
 import React from "react";
-import {Box, Chip, CircularProgress, IconButton, Stack, Tooltip, Typography, useTheme,} from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CloseIcon from "@mui/icons-material/Close";
-import InfoIcon from "@mui/icons-material/Info";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import IconButton from "@/components/ui-components/IconButton";
 
-/**
- * Minimal directory‐info shape shared by both calibration and mocap hooks.
- * Extend as needed – the component only reads what it renders.
- */
 export interface DirectoryStatus {
     exists: boolean;
     hasVideos: boolean;
     hasSynchronizedVideos: boolean;
     errorMessage?: string | null;
-    /** Path to a relevant TOML / output file, if one exists. */
     tomlPath?: string | null;
 }
 
 export interface DirectoryStatusPanelProps {
-    /** Section heading shown next to the info icon. */
     title: string;
-    /** Label for the TOML chip, e.g. "Has calibration TOML" */
     tomlLabel: string;
-    /** The directoryInfo object from the relevant hook. `null` hides the panel. */
     directoryInfo: DirectoryStatus | null;
-    /** Called when the user clicks the refresh button. */
     onRefresh?: () => void;
-    /** Disables the refresh button. */
     refreshDisabled?: boolean;
-    /** Shows a spinner on the refresh button. */
     isRefreshing?: boolean;
-    /** Visual accent for the border: "ok" | "bad" | "none". Defaults to "none". */
     status?: "ok" | "bad" | "none";
 }
 
-/** Reusable chip for a boolean check. */
-const StatusChip: React.FC<{
-    label: string;
-    ok: boolean;
-}> = ({label, ok}) => {
-    const theme = useTheme();
-    return (
-        <Chip
-            label={label}
-            size="small"
-            color={ok ? "success" : "default"}
-            icon={ok ? <CheckCircleIcon /> : <CloseIcon />}
-            variant={ok ? "filled" : "outlined"}
-            sx={
-                !ok
-                    ? {
-                          borderColor: theme.palette.grey[400],
-                          "& .MuiChip-icon": {color: theme.palette.grey[600]},
-                      }
-                    : {}
-            }
-        />
-    );
-};
+const StatusChip: React.FC<{ label: string; ok: boolean }> = ({ label, ok }) => (
+    <span className={`tag text sm flex flex-row items-center gap-1 ${ok ? '' : 'text-gray'}`}>
+        <span className={`icon icon-size-12 ${ok ? 'upToDate-icon' : 'close-icon'}`} />
+        {label}
+    </span>
+);
 
-/**
- * Shows directory existence, video availability, sync status and TOML
- * presence as a row of status chips with an optional refresh button.
- *
- * Designed to drop into both CalibrationControlPanel and MocapTaskTreeItem,
- * replacing the ~140 lines of duplicated chip JSX in each.
- */
 export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
     title,
     tomlLabel,
@@ -76,86 +35,49 @@ export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
     isRefreshing = false,
     status = "none",
 }) => {
-    const theme = useTheme();
-
     if (!directoryInfo) return null;
 
-    const borderColor =
-        status === "ok"
-            ? "#00e5ff44"
-            : status === "bad"
-              ? `${theme.palette.error.main}44`
-              : theme.palette.divider;
+    const borderStyle = status === "ok"
+        ? '2px solid #00e5ff44'
+        : status === "bad"
+        ? '2px solid var(--color-danger)'
+        : '2px solid var(--color-border-muted)';
 
     return (
-        <Box sx={{p: 1.5, borderRadius: 1, border: `2px solid ${borderColor}`}}>
-            <Stack spacing={1}>
-                {/* Header row */}
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                    }}
-                >
-                    <Box sx={{display: "flex", alignItems: "center", gap: 1}}>
-                        <InfoIcon fontSize="small" color="info" />
-                        <Typography variant="caption" fontWeight="medium">
-                            {title}
-                        </Typography>
-                    </Box>
-
-                    {onRefresh && (
-                        <Tooltip title="Re-check folder">
-                            <span>
-                                <IconButton
-                                    size="small"
-                                    onClick={onRefresh}
-                                    disabled={refreshDisabled}
-                                    sx={{p: 0.25}}
-                                >
-                                    {isRefreshing ? (
-                                        <CircularProgress size={14} color="inherit" />
-                                    ) : (
-                                        <RefreshIcon sx={{fontSize: 14}} />
-                                    )}
-                                </IconButton>
-                            </span>
-                        </Tooltip>
-                    )}
-                </Box>
-
-                {/* Status chips */}
-                <Box sx={{display: "flex", gap: 1, flexWrap: "wrap"}}>
-                    <StatusChip
-                        label={directoryInfo.exists ? "Directory exists" : "Directory will be created"}
-                        ok={directoryInfo.exists}
+        <div className="p-2 br-1 flex flex-col gap-1" style={{ border: borderStyle }}>
+            {/* Header row */}
+            <div className="flex flex-row items-center justify-content-space-between">
+                <div className="flex flex-row items-center gap-1">
+                    <span className="icon icon-size-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg width=\'16\' height=\'16\' viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3ccircle cx=\'8\' cy=\'8\' r=\'6\' stroke=\'%232ba4ff\' stroke-width=\'1.5\'/%3e%3cpath d=\'M8 7v4M8 5.5v.5\' stroke=\'%232ba4ff\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3e%3c/svg%3e")' }} />
+                    <span className="text sm text-gray">{title}</span>
+                </div>
+                {onRefresh && (
+                    <IconButton
+                        icon={isRefreshing ? "loader-icon" : "rotate-icon"}
+                        onClick={onRefresh}
+                        disabled={refreshDisabled}
+                        title="Re-check folder"
                     />
-                    <StatusChip label="Has videos" ok={directoryInfo.hasVideos} />
-                    <StatusChip label="Has synchronized_videos" ok={directoryInfo.hasSynchronizedVideos} />
-                    <StatusChip label={tomlLabel} ok={!!directoryInfo.tomlPath} />
-                </Box>
-
-                {/* TOML path display */}
-                {directoryInfo.tomlPath && (
-                    <Box sx={{mt: 1}}>
-                        <Typography variant="caption" color="text.secondary">
-                            Found calibration file:
-                        </Typography>
-                        <Typography
-                            variant="caption"
-                            sx={{
-                                fontFamily: "monospace",
-                                display: "block",
-                                color: "success.main",
-                                wordBreak: "break-all",
-                            }}
-                        >
-                            {directoryInfo.tomlPath}
-                        </Typography>
-                    </Box>
                 )}
-            </Stack>
-        </Box>
+            </div>
+
+            {/* Status chips */}
+            <div className="flex flex-row flex-wrap gap-1">
+                <StatusChip label={directoryInfo.exists ? "Directory exists" : "Directory will be created"} ok={directoryInfo.exists} />
+                <StatusChip label="Has videos" ok={directoryInfo.hasVideos} />
+                <StatusChip label="Has synchronized_videos" ok={directoryInfo.hasSynchronizedVideos} />
+                <StatusChip label={tomlLabel} ok={!!directoryInfo.tomlPath} />
+            </div>
+
+            {/* TOML path display */}
+            {directoryInfo.tomlPath && (
+                <div>
+                    <p className="text sm text-gray">Found calibration file:</p>
+                    <p className="text sm" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
+                        {directoryInfo.tomlPath}
+                    </p>
+                </div>
+            )}
+        </div>
     );
 };

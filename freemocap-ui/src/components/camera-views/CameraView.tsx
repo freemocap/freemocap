@@ -72,16 +72,9 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
     return (
         <div
             ref={containerRef}
+            className="w-full h-full flex flex-col items-center justify-center pos-rel overflow-hidden"
             style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
                 backgroundColor: '#000',
-                position: 'relative',
-                overflow: 'hidden',
                 cursor,
             }}
             {...containerHandlers}
@@ -93,20 +86,17 @@ export const CameraView: React.FC<CameraViewProps> = memo(({cameraIndex, cameraI
                 />
             </div>
             <div
+                className="pos-abs bottom-8 left-8 br-1"
                 style={{
-                    position: 'absolute',
-                    bottom: 8,
-                    left: 8,
                     backgroundColor: 'rgba(0, 0, 0, 0.75)',
                     color: '#fff',
                     padding: '4px 8px',
-                    borderRadius: 4,
                     fontSize: '12px',
                     fontFamily: 'monospace',
                     lineHeight: 1.4,
                 }}
             >
-                <div style={{ fontSize: '10px', marginTop: '2px', display: 'flex', gap: '6px', whiteSpace: 'nowrap' }}>
+                <div className="camera-stats flex" style={{ fontSize: '10px', marginTop: '2px', gap: '6px', whiteSpace: 'nowrap' }}>
                     <span style={{color:'#aaa'}}>#{cameraIndex} - {cameraId}</span>
                     <span style={{ color: frontendColor }}>
                         D:<span ref={displayFpsRef} style={{display: 'inline-block', minWidth: '5ch', textAlign: 'right'}}>--</span>

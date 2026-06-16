@@ -1,5 +1,4 @@
 import React, {useEffect, useState} from "react";
-import {Box, FormControl, InputLabel, MenuItem, Select, TextField, useTheme} from "@mui/material";
 import {CameraConfig} from "@/store/slices/cameras/cameras-types";
 import {useTranslation} from 'react-i18next';
 
@@ -16,7 +15,7 @@ const PRESET_RESOLUTIONS = [
 
 const RESOLUTION_CONSTRAINTS = {
     min: 1,
-    max: 7680, // 8K width probably plent lol
+    max: 7680,
     default: { width: 1280, height: 720 }
 };
 
@@ -24,8 +23,7 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
     resolution,
     onChange
 }) => {
-    const theme = useTheme();
-    const { t } = useTranslation();
+    const {t} = useTranslation();
     const isPreset = PRESET_RESOLUTIONS.some(
         preset => preset.width === resolution.width && preset.height === resolution.height
     );
@@ -39,7 +37,6 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
     const [widthError, setWidthError] = useState<string>('');
     const [heightError, setHeightError] = useState<string>('');
 
-    // Update custom inputs when resolution prop changes externally
     useEffect(() => {
         if (selectedValue === 'custom') {
             setCustomWidth(resolution.width.toString());
@@ -47,7 +44,7 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
         }
     }, [resolution.width, resolution.height, selectedValue]);
 
-    const validateDimension = (value: string, dimension: 'width' | 'height'): string => {
+    const validateDimension = (value: string, _dimension: 'width' | 'height'): string => {
         const numValue = parseInt(value, 10);
 
         if (value === '' || isNaN(numValue)) {
@@ -65,7 +62,7 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
         return '';
     };
 
-    const handleSelectChange = (event: any): void => {
+    const handleSelectChange = (event: React.ChangeEvent<HTMLSelectElement>): void => {
         const value = event.target.value;
         setSelectedValue(value);
 
@@ -112,7 +109,6 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
         const error = validateDimension(value, dimension);
 
         if (error) {
-            // Reset to current valid value
             if (dimension === 'width') {
                 setCustomWidth(resolution.width.toString());
                 setWidthError('');
@@ -124,7 +120,7 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
     };
 
     const handleKeyDown = (
-        event: React.KeyboardEvent<HTMLDivElement>,
+        event: React.KeyboardEvent<HTMLInputElement>,
         dimension: 'width' | 'height'
     ): void => {
         if (event.key === 'Enter') {
@@ -134,106 +130,61 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
     };
 
     return (
-        <Box>
-            <FormControl
-                size="small"
-                fullWidth
-                sx={{
-                    color: theme.palette.text.primary,
-                    mb: selectedValue === 'custom' ? 1 : 0
-                }}
-            >
-                <InputLabel sx={{ color: theme.palette.text.primary }}>
-                    Resolution
-                </InputLabel>
-                <Select
+        <div>
+            <div className="input-with-string" style={{marginBottom: selectedValue === 'custom' ? 4 : 0}}>
+                <select
+                    className="input-field text md"
                     value={selectedValue}
-                    label={t("resolution")}
                     onChange={handleSelectChange}
-                    sx={{ color: theme.palette.text.primary }}
                 >
                     {PRESET_RESOLUTIONS.map(preset => (
-                        <MenuItem
+                        <option
                             key={`${preset.width}x${preset.height}`}
                             value={`${preset.width}x${preset.height}`}
                         >
                             {preset.label}
-                        </MenuItem>
+                        </option>
                     ))}
-                    <MenuItem value="custom">{t("custom")}</MenuItem>
-                </Select>
-            </FormControl>
+                    <option value="custom">{t("custom")}</option>
+                </select>
+            </div>
 
             {selectedValue === 'custom' && (
-                <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
-                    <TextField
-                        label={t("width")}
-                        value={customWidth}
-                        onChange={handleCustomWidthChange}
-                        onBlur={() => handleCustomBlur('width')}
-                        onKeyDown={(e) => handleKeyDown(e, 'width')}
-                        type="number"
-                        size="small"
-                        error={!!widthError}
-                        helperText={widthError}
-                        inputProps={{
-                            min: RESOLUTION_CONSTRAINTS.min,
-                            max: RESOLUTION_CONSTRAINTS.max,
-                        }}
-                        sx={{
-                            flex: 1,
-                            '& .MuiInputLabel-root': {
-                                color: theme.palette.text.primary,
-                            },
-                            '& .MuiOutlinedInput-root': {
-                                color: theme.palette.text.primary,
-                                '& fieldset': {
-                                    borderColor: theme.palette.primary.contrastText,
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: theme.palette.primary.contrastText,
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: theme.palette.primary.contrastText,
-                                },
-                            },
-                        }}
-                    />
-                    <TextField
-                        label={t("height")}
-                        value={customHeight}
-                        onChange={handleCustomHeightChange}
-                        onBlur={() => handleCustomBlur('height')}
-                        onKeyDown={(e) => handleKeyDown(e, 'height')}
-                        type="number"
-                        size="small"
-                        error={!!heightError}
-                        helperText={heightError}
-                        inputProps={{
-                            min: RESOLUTION_CONSTRAINTS.min,
-                            max: RESOLUTION_CONSTRAINTS.max,
-                        }}
-                        sx={{
-                            flex: 1,
-                            '& .MuiInputLabel-root': {
-                                color: theme.palette.text.primary,
-                            },
-                            '& .MuiOutlinedInput-root': {
-                                color: theme.palette.text.primary,
-                                '& fieldset': {
-                                    borderColor: theme.palette.primary.contrastText
-                                },
-                                '&:hover fieldset': {
-                                    borderColor: theme.palette.primary.contrastText,
-                                },
-                                '&.Mui-focused fieldset': {
-                                    borderColor: theme.palette.primary.contrastText
-                                },
-                            },
-                        }}
-                    />
-                </Box>
+                <div className="flex flex-row gap-1 mt-1">
+                    <div className="flex flex-col flex-1">
+                        <div className="input-with-string">
+                            <input
+                                className="input-field text md"
+                                type="number"
+                                placeholder={t("width")}
+                                value={customWidth}
+                                onChange={handleCustomWidthChange}
+                                onBlur={() => handleCustomBlur('width')}
+                                onKeyDown={(e) => handleKeyDown(e, 'width')}
+                                min={RESOLUTION_CONSTRAINTS.min}
+                                max={RESOLUTION_CONSTRAINTS.max}
+                            />
+                        </div>
+                        {widthError && <span className="text sm text-error">{widthError}</span>}
+                    </div>
+                    <div className="flex flex-col flex-1">
+                        <div className="input-with-string">
+                            <input
+                                className="input-field text md"
+                                type="number"
+                                placeholder={t("height")}
+                                value={customHeight}
+                                onChange={handleCustomHeightChange}
+                                onBlur={() => handleCustomBlur('height')}
+                                onKeyDown={(e) => handleKeyDown(e, 'height')}
+                                min={RESOLUTION_CONSTRAINTS.min}
+                                max={RESOLUTION_CONSTRAINTS.max}
+                            />
+                        </div>
+                        {heightError && <span className="text sm text-error">{heightError}</span>}
+                    </div>
+                </div>
             )}
-        </Box>
+        </div>
     );
 };

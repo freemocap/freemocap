@@ -1,14 +1,4 @@
 import React from "react";
-import {Box, CircularProgress, IconButton, Stack, Tooltip, Typography, useTheme} from "@mui/material";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import PauseIcon from "@mui/icons-material/Pause";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
-import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-import SyncIcon from "@mui/icons-material/Sync";
-import SyncDisabledIcon from "@mui/icons-material/SyncDisabled";
 
 import {useAppDispatch, useAppSelector} from "@/store";
 import {
@@ -20,6 +10,7 @@ import {
 import {autoApplyToggled, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
 import {selectAutoApply} from "@/store/slices/cameras/cameras-selectors";
 import {useTranslation} from 'react-i18next';
+import IconButton from "@/components/ui-components/IconButton";
 
 interface CameraConfigTreeViewHeaderProps {
     cameraCount: number;
@@ -28,11 +19,10 @@ interface CameraConfigTreeViewHeaderProps {
 }
 
 export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProps> = ({
-                                                                                           cameraCount,
-                                                                                           isLoading,
-                                                                                           isPaused,
-                                                                                       }) => {
-    const theme = useTheme();
+    cameraCount,
+    isLoading,
+    isPaused,
+}) => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
     const isAutoApply = useAppSelector(selectAutoApply);
@@ -40,7 +30,6 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
     const handleRefreshCameras = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
-
         setIsActionInProgress(true);
         try {
             await dispatch(detectCameras({filterVirtual: true})).unwrap();
@@ -53,7 +42,6 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
     const handleConnectOrApply = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
-
         setIsActionInProgress(true);
         try {
             await dispatch(camerasConnectOrUpdate()).unwrap();
@@ -66,7 +54,6 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
     const handleCloseCameras = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
-
         setIsActionInProgress(true);
         try {
             await dispatch(closeCameras()).unwrap();
@@ -80,7 +67,6 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
 
     const handlePauseUnpause = async (e: React.MouseEvent): Promise<void> => {
         e.stopPropagation();
-
         setIsActionInProgress(true);
         try {
             await dispatch(pauseUnpauseCameras()).unwrap();
@@ -101,142 +87,66 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
     };
 
     return (
-        <Box
+        <div
             onClick={handleHeaderClick}
-            sx={{
-                display: "flex",
-                alignItems: "center",
-                py: 1,
-                backgroundColor: theme.palette.primary.dark,
-                color: theme.palette.primary.contrastText,
+            className="flex flex-row items-center p-1 pt-2 pb-2"
+            style={{
+                backgroundColor: 'var(--color-bg-elevated)',
+                color: '#fff',
             }}
         >
-            <VideocamIcon sx={{ml: 2, mr: 1}}/>
-            <Typography variant="h6" sx={{flexGrow: 1}}>
+            <span className="icon videocam-icon icon-size-20 ml-2 mr-1" />
+            <p className="text bg text-white flex-1">
                 {t('camerasCount', {count: cameraCount})}
-            </Typography>
+            </p>
 
-            <Stack direction="row" spacing={1} sx={{mr: 2}}>
-                {/* Auto-apply toggle */}
-                <Tooltip title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — use apply button to send'}>
-                    <IconButton
-                        size="small"
-                        onClick={() => dispatch(autoApplyToggled())}
-                        sx={{
-                            color: isAutoApply ? theme.palette.secondary.light : 'inherit',
-                            opacity: isAutoApply ? 1 : 0.5,
-                        }}
-                    >
-                        {isAutoApply ? <SyncIcon/> : <SyncDisabledIcon/>}
-                    </IconButton>
-                </Tooltip>
+            <div className="flex flex-row items-center gap-1 mr-2">
+                <IconButton
+                    icon={isAutoApply ? "sync-icon" : "sync-disabled-icon"}
+                    onClick={() => dispatch(autoApplyToggled())}
+                    title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — use apply button to send'}
+                    style={{
+                        color: isAutoApply ? 'var(--color-accent)' : 'inherit',
+                        opacity: isAutoApply ? 1 : 0.5,
+                    }}
+                />
 
-                {/* Connect/Apply Button - Always visible, changes icon and behavior */}
-                <Tooltip title={t("connectCameras")}>
-                    <span>
-                        <IconButton
-                            size="small"
-                            onClick={handleConnectOrApply}
-                            sx={{
-                                color: "inherit",
-                                border: `2px solid ${theme.palette.secondary.main}`,
-                                borderRadius: '8px',
-                                padding: '4px',
-                                '&:hover': {
-                                    border: `2px solid ${theme.palette.secondary.light}`,
-                                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                                }
-                            }}
-                        >
+                <IconButton
+                    icon="videocam-icon"
+                    className="icon-size-25 br-2 p-1"
+                    onClick={handleConnectOrApply}
+                    title={t("connectCameras")}
+                    style={{
+                        color: 'var(--color-accent)',
+                        border: '2px solid var(--color-accent)',
+                    }}
+                    iconStyle={{color: 'var(--color-accent)'}}
+                />
 
-                        <Box sx={{position: 'relative', display: 'inline-flex', width: 28, height: 28}}>
-                            <VideocamIcon
-                                sx={{
-                                    color: theme.palette.secondary.main,
-                                    fontSize: 24,
-                                }}
-                            />
-                            <ArrowDownwardIcon
-                                sx={{
-                                    position: 'absolute',
-                                    top: -6,
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    fontSize: 14,
-                                    color: theme.palette.secondary.light,
-                                    fontWeight: 'bold',
-                                    strokeWidth: 3,
-                                    stroke: theme.palette.secondary.dark,
-                                    filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
-                                }}
-                            />
-                        </Box>
+                <IconButton
+                    icon={isPaused ? "play-icon" : "pause-icon"}
+                    onClick={handlePauseUnpause}
+                    title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}
+                />
 
+                <IconButton
+                    icon="videocam-off-icon"
+                    onClick={handleCloseCameras}
+                    title={t("closeAllCameras")}
+                />
 
-                        </IconButton>
-                    </span>
-                </Tooltip>
+                <IconButton
+                    icon={isLoading || isActionInProgress ? "loader-icon" : "refresh-icon"}
+                    onClick={handleRefreshCameras}
+                    title={t("detectCameras")}
+                />
 
-                {/* Pause/Play Button */}
-                <Tooltip title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}>
-                    <span>
-                        <IconButton
-                            size="small"
-                            onClick={handlePauseUnpause}
-                            sx={{
-                                color: "inherit",
-                            }}
-                        >
-                            {isPaused ? <PlayArrowIcon/> : <PauseIcon/>}
-                        </IconButton>
-                    </span>
-                </Tooltip>
-
-                {/* Close Button */}
-                <Tooltip title={t("closeAllCameras")}>
-                    <span>
-                        <IconButton
-                            size="small"
-                            onClick={handleCloseCameras}
-                            sx={{
-                                color: "inherit",
-                            }}
-                        >
-                            <VideocamOffIcon/>
-                        </IconButton>
-                    </span>
-                </Tooltip>
-
-                {/* Refresh/Detect Button - Always visible */}
-                <Tooltip title={t("detectCameras")}>
-                    <span>
-                        <IconButton
-                            size="small"
-                            onClick={handleRefreshCameras}
-                            sx={{color: "inherit"}}
-                        >
-                            {isLoading || isActionInProgress ? (
-                                <CircularProgress size={20} sx={{color: "inherit"}}/>
-                            ) : (
-                                <YoutubeSearchedForIcon/>
-                            )}
-                        </IconButton>
-                    </span>
-                </Tooltip>
-
-                {/* Clear Saved Settings Button */}
-                <Tooltip title={t("clearCameraSettings")}>
-                    <span>
-                        <IconButton
-                            size="small"
-                            onClick={handleClearSavedSettings}
-                            sx={{color: "inherit"}}
-                        >
-                            <DeleteSweepIcon/>
-                        </IconButton>
-                    </span>
-                </Tooltip>
-            </Stack>
-        </Box>
+                <IconButton
+                    icon="clear-icon"
+                    onClick={handleClearSavedSettings}
+                    title={t("clearCameraSettings")}
+                />
+            </div>
+        </div>
     );
 };

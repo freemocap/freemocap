@@ -1,212 +1,347 @@
-import React, {useState} from 'react';
-import {
-    Box,
-    Checkbox,
-    Divider,
-    FormControlLabel,
-    IconButton,
-    Paper,
-    Switch,
-    TextField,
-    ToggleButton,
-    ToggleButtonGroup,
-    Tooltip,
-} from '@mui/material';
-import SettingsIcon from '@mui/icons-material/Settings';
-import CloseIcon from '@mui/icons-material/Close';
-import GridViewIcon from '@mui/icons-material/GridView';
-import ViewSidebarIcon from '@mui/icons-material/ViewSidebar';
-import SplitscreenIcon from '@mui/icons-material/Splitscreen';
-import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
-import {useServer} from '@/services/server/ServerContextProvider';
-import {useTranslation} from 'react-i18next';
-import type {CameraSettings, LayoutDirection} from '@/pages/StreamingViewPage';
+import React, { useState } from "react";
+import { useServer } from "@/services/server/ServerContextProvider";
+import { useTranslation } from "react-i18next";
+import type {
+  CameraSettings,
+  LayoutDirection,
+} from "@/pages/StreamingViewPage";
+import ToggleComponent from "@/components/ui-components/ToggleComponent";
+import IconButton from "@/components/ui-components/IconButton";
+import ValueSelector from "@/components/ui-components/ValueSelector";
+import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
+
+import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
+import RTPthreeDReconstructionSettings from "@/components/pipeline-progress/realtime/realtimepipeline-3dreconstruction-settings";
 
 interface SettingsOverlayProps {
-    settings: CameraSettings;
-    onSettingsChange: (partial: Partial<CameraSettings>) => void;
-    onResetLayout: () => void;
+  settings: CameraSettings;
+  onSettingsChange: (partial: Partial<CameraSettings>) => void;
+  onResetLayout: () => void;
 }
 
+type ActiveState = {
+  trackingSettings: boolean;
+  filterSettings: boolean;
+};
+
 export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
-    settings,
-    onSettingsChange,
-    onResetLayout,
+  settings,
+  onSettingsChange,
+  onResetLayout,
 }) => {
-    const { connectedCameraIds } = useServer();
-    const { t } = useTranslation();
-    const [isOpen, setIsOpen] = useState<boolean>(false);
-    const [isAuto, setIsAuto] = useState<boolean>(settings.columns === null);
-    const [manualColumns, setManualColumns] = useState<number>(settings.columns ?? 2);
+  const { connectedCameraIds } = useServer();
+  const { t } = useTranslation();
 
-    const getAutoColumns = (total: number): number => {
-        if (total <= 1) return 1;
-        if (total <= 4) return 2;
-        if (total <= 9) return 3;
-        return 4;
-    };
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isAuto, setIsAuto] = useState<boolean>(settings.columns === null);
+  const [manualColumns, setManualColumns] = useState<number>(
+    settings.columns ?? 2,
+  );
 
-    const autoColumns = getAutoColumns(connectedCameraIds.length);
+  const [active, setActive] = useState<ActiveState>({
+    trackingSettings: false,
+    filterSettings: false,
+  });
 
-    const handleAutoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const checked = event.target.checked;
-        setIsAuto(checked);
-        onSettingsChange({ columns: checked ? null : manualColumns });
-    };
+  const toggleActive = (key: keyof ActiveState) => {
+    setActive((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
-    const handleColumnsChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(event.target.value);
-        if (!isNaN(value) && value > 0) {
-            setManualColumns(value);
-            if (isAuto) setIsAuto(false);
-            onSettingsChange({ columns: value });
-        }
-    };
+  const {
+    pipelineConfig,
+    cameraNodeConfig,
+    aggregatorConfig,
+    applyOrUpdatePipelineConfig,
+    isConnected,
+    isLoading: isPipelineLoading,
+    canConnect,
+    canDisconnect,
+    toggleConnection,
+  } = useRealtimePipelineSync();
 
-    const handle3dViewToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
-        onSettingsChange({ show3dView: event.target.checked });
-    };
+  const charucoEnabled = cameraNodeConfig.charuco_tracking_enabled;
+  const skeletonEnabled = cameraNodeConfig.skeleton_tracking_enabled;
+  const triangulateEnabled = aggregatorConfig.triangulation_enabled;
+  const filterEnabled = aggregatorConfig.filter_enabled;
 
-    const handleLayoutDirectionChange = (
-        _event: React.MouseEvent<HTMLElement>,
-        newDirection: LayoutDirection | null,
-    ) => {
-        if (newDirection !== null) {
-            onSettingsChange({ layoutDirection: newDirection });
-        }
-    };
+  const handleCharucoToggle = () =>
+    applyOrUpdatePipelineConfig({
+      ...pipelineConfig,
+      camera_node_config: { ...cameraNodeConfig, charuco_tracking_enabled: !charucoEnabled },
+    });
 
-    return (
-        <>
-            {/* Settings toggle button */}
-            <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
-                <Tooltip title={isOpen ? t('closeSettings') : t('gridSettings')}>
-                    <IconButton
-                        onClick={() => setIsOpen(!isOpen)}
-                        sx={{
-                            backgroundColor: 'background.paper',
-                            boxShadow: 2,
-                            '&:hover': { backgroundColor: 'action.hover' },
-                        }}
-                    >
-                        {isOpen ? <CloseIcon /> : <SettingsIcon />}
-                    </IconButton>
-                </Tooltip>
-            </Box>
+  const handleSkeletonToggle = () =>
+    applyOrUpdatePipelineConfig({
+      ...pipelineConfig,
+      camera_node_config: { ...cameraNodeConfig, skeleton_tracking_enabled: !skeletonEnabled },
+    });
 
-            {/* Settings panel */}
-            {isOpen && (
-                <Paper
-                    elevation={8}
-                    sx={{
-                        position: 'absolute',
-                        top: 70,
-                        right: 16,
-                        zIndex: 999,
-                        padding: 2,
-                        minWidth: 260,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 2,
-                    }}
-                >
-                    {/* ── Grid columns ──────────────────────────── */}
-                    <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                            <GridViewIcon fontSize="small" />
-                            <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>{t('gridColumns')}</Box>
-                        </Box>
+  const handleTriangulateToggle = () =>
+    applyOrUpdatePipelineConfig({
+      ...pipelineConfig,
+      aggregator_config: { ...aggregatorConfig, triangulation_enabled: !triangulateEnabled },
+    });
 
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={isAuto}
-                                        onChange={handleAutoChange}
-                                        sx={{ '&.Mui-checked': { color: 'text.primary' } }}
-                                    />
-                                }
-                                label={t('auto')}
-                            />
-                            <TextField
-                                type="number"
-                                label={t('columns')}
-                                value={isAuto ? autoColumns : manualColumns}
-                                onChange={handleColumnsChange}
-                                fullWidth
-                                inputProps={{ min: 1, step: 1 }}
-                                helperText={
-                                    isAuto
-                                        ? `Auto-detected: ${autoColumns}`
-                                        : 'Enter any positive number'
-                                }
-                            />
-                        </Box>
-                    </Box>
+  const handleFilterToggle = () =>
+    applyOrUpdatePipelineConfig({
+      ...pipelineConfig,
+      aggregator_config: { ...aggregatorConfig, filter_enabled: !filterEnabled },
+    });
 
-                    <Divider />
+  const liveClickable = canConnect || canDisconnect;
+  const handleLiveStreamClick = () => {
+    toggleConnection();
+  };
 
-                    {/* ── 3D viewport toggle ────────────────────── */}
-                    <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <ViewSidebarIcon fontSize="small" />
-                            <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>3D Viewport</Box>
-                        </Box>
+  const getAutoColumns = (total: number): number => {
+    if (total <= 1) return 1;
+    if (total <= 4) return 2;
+    if (total <= 9) return 3;
+    return 4;
+  };
 
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={settings.show3dView}
-                                    onChange={handle3dViewToggle}
-                                    size="small"
-                                />
-                            }
-                            label={settings.show3dView ? 'Visible' : 'Hidden'}
-                            sx={{ ml: 0 }}
-                        />
-                    </Box>
+  const autoColumns = getAutoColumns(connectedCameraIds.length);
 
-                    {/* ── Layout direction (only when 3D is on) ─── */}
-                    {settings.show3dView && (
-                        <>
-                            <Divider />
+  const handleAutoChange = (checked: boolean) => {
+    setIsAuto(checked);
+    onSettingsChange({ columns: checked ? null : manualColumns });
+  };
 
-                            <Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                    <SplitscreenIcon fontSize="small" />
-                                    <Box sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Layout</Box>
-                                </Box>
+  const handleColumnsChange = (value: number) => {
+    setManualColumns(value);
+    if (isAuto) setIsAuto(false);
+    onSettingsChange({ columns: value });
+  };
 
-                                <ToggleButtonGroup
-                                    value={settings.layoutDirection}
-                                    exclusive
-                                    onChange={handleLayoutDirectionChange}
-                                    size="small"
-                                    fullWidth
-                                >
-                                    <ToggleButton value="horizontal" aria-label="side by side">
-                                        <Tooltip title="Side by side">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                {/* Two vertical panels icon */}
-                                                <ViewSidebarIcon fontSize="small" />
-                                                <Box sx={{ fontSize: '0.75rem' }}>Side by side</Box>
-                                            </Box>
-                                        </Tooltip>
-                                    </ToggleButton>
-                                    <ToggleButton value="vertical" aria-label="stacked">
-                                        <Tooltip title="Stacked">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                <ViewAgendaIcon fontSize="small" />
-                                                <Box sx={{ fontSize: '0.75rem' }}>Stacked</Box>
-                                            </Box>
-                                        </Tooltip>
-                                    </ToggleButton>
-                                </ToggleButtonGroup>
-                            </Box>
-                        </>
-                    )}
-                </Paper>
-            )}
-        </>
-    );
+  const handle3dViewToggle = (checked: boolean) => {
+    onSettingsChange({ show3dView: checked });
+  };
+
+  const handleLayoutDirectionChange = (newDirection: LayoutDirection) => {
+    onSettingsChange({ layoutDirection: newDirection });
+  };
+
+  return (
+    <>
+      <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
+        <div className="live-action-buttons-container flex flex-row gap-32">
+
+          {/* GROUP 1 */}
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-1 flex flex-row items-center gap-1">
+
+            <IconButton
+              icon={skeletonEnabled ? "twodtracking-active-icon" : "twodtracking-icon"}
+              onClick={handleSkeletonToggle}
+              tooltip
+              tooltipText="2D Tracking"
+              tooltipPosition="pos-bottom"
+              disabled={false}
+              className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
+            />
+
+            <IconButton
+              icon={charucoEnabled ? "charuco-active-icon" : "charuco-icon"}
+              onClick={handleCharucoToggle}
+              tooltip
+              tooltipText="Charuco Board"
+              tooltipPosition="pos-bottom"
+              disabled={false}
+              className={`icon-size-25 ${charucoEnabled ? "active" : ""}`}
+            />
+
+            <div className="modal-container pos-rel">
+              <IconButton
+                icon={active.trackingSettings ? "skeleton-active-icon" : "skeleton-icon"}
+                onClick={() => toggleActive("trackingSettings")}
+                tooltip
+                tooltipText="Skeleton Setup"
+                tooltipPosition="pos-bottom"
+                disabled={false}
+                className={`icon-size-25 ${active.trackingSettings ? "active" : ""}`}
+              />
+              {/* RTP MediaPipe Settings Modal */}
+              <RTPMediaPipeDetectorSettings
+                open={active.trackingSettings}
+                onClose={() => toggleActive("trackingSettings")}
+              />
+            </div>
+          </div>
+
+          {/* GROUP 2 */}
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-2 flex flex-row items-center gap-1">
+
+            <IconButton
+              icon={triangulateEnabled ? "threedtracking-active-icon" : "threedtracking-icon"}
+              onClick={handleTriangulateToggle}
+              tooltip
+              tooltipText="3D Tracking"
+              tooltipPosition="pos-bottom"
+              disabled={false}
+              className={`icon-size-25 ${triangulateEnabled ? "active" : ""}`}
+            />
+
+            <IconButton
+              icon={filterEnabled ? "skeletonfilter-active-icon" : "skeletonfilter-icon"}
+              onClick={handleFilterToggle}
+              tooltip
+              tooltipText="Skeleton Filter"
+              tooltipPosition="pos-bottom"
+              disabled={false}
+              className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
+            />
+
+            <div className="modal-container pos-rel">
+              <IconButton
+                icon={active.filterSettings ? "settings-icon" : "settings-icon"}
+                onClick={() => toggleActive("filterSettings")}
+                tooltip
+                tooltipText="Filter Settings"
+                tooltipPosition="pos-bottom"
+                disabled={false}
+                className={`icon-size-25 ${active.filterSettings ? "active" : ""}`}
+              />
+              {/* RTP 3D Reconstructions Settings Modal */}
+              <RTPthreeDReconstructionSettings
+                open={active.filterSettings}
+                onClose={() => toggleActive("filterSettings")}
+              />
+            </div>
+          </div>
+
+          {/* GROUP 3 */}
+          <div className="p-1 br-2 bg-gray live-action-buttons-group-3 flex flex-row items-center gap-1">
+
+            <IconButton
+              icon={isConnected ? "live-active-icon" : "live-icon"}
+              onClick={handleLiveStreamClick}
+              tooltip
+              tooltipText={
+                isConnected
+                  ? "Disconnect pipeline"
+                  : canConnect
+                    ? "Connect pipeline"
+                    : "Select cameras first"
+              }
+              tooltipPosition="pos-bottom-right"
+              disabled={!liveClickable || isPipelineLoading}
+              className={`icon-size-25 ${isConnected ? "active" : ""} ${!liveClickable ? "" : ""}`}
+            />
+          </div>
+
+        </div>
+
+        <div className="modal-container pos-rel">
+          <IconButton
+            icon={isOpen ? "close-icon" : "settings-icon"}
+            className="icon-size-25 br-2"
+            onClick={() => setIsOpen(!isOpen)}
+            title={isOpen ? t("closeSettings") : t("gridSettings")}
+          />
+
+      {/* SETTINGS PANEL */}
+      {isOpen && (
+        <div
+          className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
+          style={{
+            position: "absolute",
+            top: "100%",
+            right: 0,
+            marginTop: 8,
+            zIndex: 999,
+            minWidth: 260,
+          }}
+        >
+          <div className="flex flex-col gap-1">
+            <div className="flex flex-row items-center gap-1">
+              <span className="icon grid4-icon icon-size-20" />
+              <p className="text bg text-white">{t("gridColumns")}</p>
+            </div>
+
+            <ToggleComponent
+              text={t("auto")}
+              isToggled={isAuto}
+              onToggle={handleAutoChange}
+            />
+
+            <ValueSelector
+              value={isAuto ? autoColumns : manualColumns}
+              min={1}
+              max={12}
+              onChange={handleColumnsChange}
+            />
+
+            <p className="text sm text-gray">
+              {isAuto
+                ? `Auto-detected: ${autoColumns} Columns`
+                : "Enter any positive number"}
+            </p>
+          </div>
+
+          <div
+            style={{
+              height: 1,
+              backgroundColor: "var(--color-border-secondary)",
+            }}
+          />
+
+          <div className="flex flex-col gap-1">
+            <ToggleComponent
+              text="3D Viewport"
+              iconClass="streaming-icon"
+              isToggled={settings.show3dView}
+              onToggle={handle3dViewToggle}
+            />
+          </div>
+
+          {settings.show3dView && (
+            <>
+              <div
+                style={{
+                  height: 1,
+                  backgroundColor: "var(--color-border-secondary)",
+                }}
+              />
+
+              <div className="flex flex-col gap-1">
+                <p className="text bg text-white">Layout</p>
+
+                <div className="flex flex-row gap-1">
+                  <button
+                    className={`button sm flex-1 ${
+                      settings.layoutDirection === "horizontal"
+                        ? "primary"
+                        : "secondary"
+                    }`}
+                    onClick={() =>
+                      handleLayoutDirectionChange("horizontal")
+                    }
+                  >
+                    <p className="text sm">Side by side</p>
+                  </button>
+
+                  <button
+                    className={`button sm flex-1 ${
+                      settings.layoutDirection === "vertical"
+                        ? "primary"
+                        : "secondary"
+                    }`}
+                    onClick={() =>
+                      handleLayoutDirectionChange("vertical")
+                    }
+                  >
+                    <p className="text sm">Stacked</p>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+        </div>
+      </div>
+    </>
+  );
 };

@@ -1,219 +1,92 @@
-import React, {useState} from "react";
-import {Box, CircularProgress, IconButton, Tooltip, useTheme} from "@mui/material";
-import VideocamIcon from "@mui/icons-material/Videocam";
-import VideocamOffIcon from "@mui/icons-material/VideocamOff";
-import PauseIcon from "@mui/icons-material/Pause";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import YoutubeSearchedForIcon from "@mui/icons-material/YoutubeSearchedFor";
-import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import WbIncandescentIcon from "@mui/icons-material/WbIncandescent";
+import React, {useCallback, useEffect, useState} from "react";
 
-import {useAppDispatch} from "@/store";
+import {useAppDispatch, useAppSelector} from "@/store";
 import {
     camerasConnectOrUpdate,
     closeCameras,
     detectCameras,
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
-import {recommendExposureForAll, savedSettingsCleared} from "@/store/slices/cameras/cameras-slice";
+import {selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
 import {useTranslation} from 'react-i18next';
+import IconButton from "@/components/ui-components/IconButton";
+import ButtonSm from "@/components/ui-components/ButtonSm";
 
-interface CameraHeaderActionsProps {
-    isLoading: boolean;
-    isPaused: boolean;
-}
-
-export const CameraHeaderActions: React.FC<CameraHeaderActionsProps> = ({
-    isLoading,
-    isPaused,
-}) => {
+export const CameraHeaderActions: React.FC = () => {
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
-    const theme = useTheme();
+    const [isStoppingCameras, setIsStoppingCameras] = useState(false);
 
-    const [isActionInProgress, setIsActionInProgress] = useState(false);
+    const isLoading = useAppSelector(selectIsLoading);
+    const isPaused = useAppSelector(selectIsPaused);
+    const connectedCameras = useAppSelector(selectConnectedCameras);
+    const isRecording = useAppSelector(state => state.recording.isRecording);
 
-    const handleRefreshCameras = async (e: React.MouseEvent): Promise<void> => {
-        e.stopPropagation();
-        setIsActionInProgress(true);
-        try {
-            await dispatch(detectCameras({filterVirtual: true})).unwrap();
-        } catch (error) {
-            console.error('Error detecting cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
+    useEffect(() => {
+        if (isStoppingCameras && connectedCameras.length === 0) {
+            setIsStoppingCameras(false);
         }
-    };
+    }, [isStoppingCameras, connectedCameras.length]);
 
-    const handleConnectOrApply = async (e: React.MouseEvent): Promise<void> => {
-        e.stopPropagation();
-        setIsActionInProgress(true);
-        try {
-            await dispatch(camerasConnectOrUpdate()).unwrap();
-        } catch (error) {
-            console.error('Error with camera operation:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleDetect = useCallback(() => {
+        dispatch(detectCameras({filterVirtual: true}));
+    }, [dispatch]);
 
-    const handleCloseCameras = async (e: React.MouseEvent): Promise<void> => {
-        e.stopPropagation();
-        setIsActionInProgress(true);
-        try {
-            await dispatch(closeCameras()).unwrap();
-        } catch (error) {
-            console.error('Error closing cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleUpdate = useCallback(() => {
+        dispatch(camerasConnectOrUpdate());
+    }, [dispatch]);
 
-    const handlePauseUnpause = async (e: React.MouseEvent): Promise<void> => {
-        e.stopPropagation();
-        setIsActionInProgress(true);
-        try {
-            await dispatch(pauseUnpauseCameras()).unwrap();
-        } catch (error) {
-            console.error('Error pausing/unpausing cameras:', error);
-        } finally {
-            setIsActionInProgress(false);
-        }
-    };
+    const handleStop = useCallback(() => {
+        setIsStoppingCameras(true);
+        dispatch(closeCameras());
+    }, [dispatch]);
 
-    const handleRecommendExposureAll = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        dispatch(recommendExposureForAll());
-    };
-
-    const handleClearSavedSettings = (e: React.MouseEvent): void => {
-        e.stopPropagation();
-        dispatch(savedSettingsCleared());
-    };
-
-    const busy = isLoading || isActionInProgress;
+    const handlePauseUnpause = useCallback(() => {
+        dispatch(pauseUnpauseCameras());
+    }, [dispatch]);
 
     return (
         <>
-            {/* Connect/Apply Button - Keep pink/magenta color with border */}
-            <Tooltip title={t("connectCameras")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleConnectOrApply}
-                        sx={{
-                            color: "secondary.main",
-                            padding: "4px",
-                            border: `2px solid ${theme.palette.secondary.main}`,
-                            borderRadius: '8px',
-                            "&:hover": {
-                                color: "secondary.light",
-                                border: `2px solid ${theme.palette.secondary.light}`,
-                                backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            }
-                        }}
-                    >
-                        <Box sx={{ position: 'relative', display: 'inline-flex', width: 28, height: 28 }}>
-                            <VideocamIcon
-                                sx={{
-                                    color: 'secondary.main',
-                                    fontSize: 24,
-                                }}
-                            />
-                            <ArrowDownwardIcon
-                                    sx={{
-                                        position: 'absolute',
-                                        top: -6,
-                                        left: '50%',
-                                        transform: 'translateX(-50%)',
-                                        fontSize: 14,
-                                        color: theme.palette.secondary.light,
-                                        fontWeight: 'bold',
-                                        strokeWidth: 3,
-                                        stroke: theme.palette.secondary.dark,
-                                        filter: 'drop-shadow(0 0 2px rgba(0,0,0,0.8))',
-                                    }}
-                                />
-                        </Box>
-                    </IconButton>
-                </span>
-            </Tooltip>
+            <IconButton
+                icon="scan-icon"
+                onClick={handleDetect}
+                tooltip
+                tooltipText={isRecording ? t('stopRecordingFirst') : t('detectCameras')}
+                tooltipPosition="pos-bottom"
+                disabled={isRecording}
+            />
 
-            {/* Recommend Exposure for All Button */}
-            <Tooltip title="Auto-recommend exposure for all cameras">
-                <span>
+            {connectedCameras.length === 0 ? (
+                <ButtonSm
+                    text={isLoading ? t('connecting') : t('connectCameras')}
+                    iconClass={isLoading ? '' : ''}
+                    onClick={handleUpdate}
+                    textColor="text-black"
+                    className={isLoading ? 'disabled secondary' : 'secondary'}
+                    tooltip
+                    tooltipText={t('connectCameras')}
+                    tooltipPosition="pos-bottom-right"
+                />
+            ) : (
+                <>
                     <IconButton
-                        size="small"
-                        onClick={handleRecommendExposureAll}
-                        sx={{color: "inherit", padding: "4px"}}
-                    >
-                        <WbIncandescentIcon sx={{fontSize: 24}}/>
-                    </IconButton>
-                </span>
-            </Tooltip>
-
-            {/* Pause/Play Button */}
-            <Tooltip title={isPaused ? t("resumeStreaming") : t("pauseStreaming")}>
-                <span>
-                    <IconButton
-                        size="small"
+                        icon={isPaused ? 'play-icon' : 'pause-icon'}
                         onClick={handlePauseUnpause}
-                        sx={{
-                            color: "inherit",
-                            padding: "4px",
-                        }}
-                    >
-                        {isPaused ? <PlayArrowIcon sx={{ fontSize: 24 }} /> : <PauseIcon sx={{ fontSize: 24 }} />}
-                    </IconButton>
-                </span>
-            </Tooltip>
-
-            {/* Close Button */}
-            <Tooltip title={t("closeAllCameras")}>
-                <span>
+                        tooltip
+                        tooltipText={isRecording ? t('stopRecordingFirst') : isPaused ? t('resumeStreaming') : t('pauseStreaming')}
+                        tooltipPosition="pos-bottom-right"
+                        disabled={isRecording}
+                    />
                     <IconButton
-                        size="small"
-                        onClick={handleCloseCameras}
-                        sx={{
-                            color: "inherit",
-                            padding: "4px",
-                        }}
-                    >
-                        <VideocamOffIcon sx={{ fontSize: 24 }} />
-                    </IconButton>
-                </span>
-            </Tooltip>
-
-            {/* Refresh/Detect Button */}
-            <Tooltip title={t("detectCameras")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleRefreshCameras}
-                        sx={{ color: "inherit", padding: "4px" }}
-                    >
-                        {busy ? (
-                            <CircularProgress size={20} sx={{ color: "inherit" }} />
-                        ) : (
-                            <YoutubeSearchedForIcon sx={{ fontSize: 24 }} />
-                        )}
-                    </IconButton>
-                </span>
-            </Tooltip>
-
-            {/* Clear Saved Settings Button */}
-            <Tooltip title={t("clearCameraSettings")}>
-                <span>
-                    <IconButton
-                        size="small"
-                        onClick={handleClearSavedSettings}
-                        sx={{ color: "inherit", padding: "4px" }}
-                    >
-                        <DeleteSweepIcon sx={{ fontSize: 24 }} />
-                    </IconButton>
-                </span>
-            </Tooltip>
+                        icon={isStoppingCameras ? 'loader-icon' : 'stopstreaming-icon'}
+                        onClick={handleStop}
+                        tooltip
+                        tooltipText={isRecording ? t('stopRecordingFirst') : t('closeAllCameras')}
+                        tooltipPosition="pos-bottom-right"
+                        disabled={isRecording || isStoppingCameras}
+                    />
+                </>
+            )}
         </>
     );
 };

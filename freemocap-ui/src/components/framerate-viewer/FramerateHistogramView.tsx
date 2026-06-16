@@ -1,8 +1,7 @@
 // src/components/framerate-viewer/FramerateHistogramView.tsx
 import {useCallback, useRef} from "react"
 import * as d3 from "d3"
-import {useTheme} from "@mui/material/styles"
-import {applyAxisStyles} from "./d3ChartUtils"
+import {applyAxisStyles, darkChartTheme} from "./d3ChartUtils"
 import BaseD3ChartView, {ChartLifecycle, ChartScaffolding} from "@/components/framerate-viewer/BaseD3ChartView"
 import {useTranslation} from "react-i18next"
 import {useServer} from "@/services/server/ServerContextProvider"
@@ -16,9 +15,6 @@ type FramerateHistogramProps = {
 
 type HistogramBin = {x0: number; x1: number; count: number; density: number}
 
-/**
- * Build histogram bins with a domain tight to the actual data range.
- */
 function buildHistogram(fpsValues: number[]): {
     bins: HistogramBin[]
     maxDensity: number
@@ -58,10 +54,6 @@ function buildHistogram(fpsValues: number[]): {
     return {bins, maxDensity}
 }
 
-/**
- * Convert duration samples to FPS in-place into a reusable output array.
- * Avoids allocating a fresh array on every update call.
- */
 function toFpsInPlace(samples: TimestampedSample[], out: number[]): void {
     out.length = 0
     for (let i = 0; i < samples.length; i++) {
@@ -70,9 +62,6 @@ function toFpsInPlace(samples: TimestampedSample[], out: number[]): void {
     }
 }
 
-/**
- * Persistent mutable state shared between initChart and updateChart.
- */
 type ChartState = {
     frontendBarGroup: d3.Selection<SVGGElement, unknown, null, undefined>
     backendBarGroup: d3.Selection<SVGGElement, unknown, null, undefined>
@@ -88,22 +77,18 @@ export default function FramerateHistogramView({
     backendColor,
     title = "Framerate Distribution",
 }: FramerateHistogramProps) {
-    const theme = useTheme()
     const {t} = useTranslation()
     const stateRef = useRef<ChartState | null>(null)
     const {getFramerateStore} = useServer()
 
-    // initChart — creates persistent groups
     const initChart = useCallback(
         ({svg, chartArea, width, height}: ChartScaffolding): ChartLifecycle => {
             const xScale = d3.scaleLinear().range([0, width])
             const yScale = d3.scaleLinear().range([height, 0])
 
-            // Persistent bar groups — one per series, never removed
             const frontendBarGroup = chartArea.append("g").attr("class", "bars-frontend")
             const backendBarGroup = chartArea.append("g").attr("class", "bars-backend")
 
-            // Axis labels (appended to svg root group, outside clip-path)
             svg.append("text")
                 .attr("class", "x-axis-label")
                 .attr("x", width / 2)
@@ -111,7 +96,7 @@ export default function FramerateHistogramView({
                 .attr("text-anchor", "middle")
                 .style("font-family", "monospace")
                 .style("font-size", "10px")
-                .style("fill", theme.palette.text.secondary)
+                .style("fill", darkChartTheme.textSecondaryColor)
                 .text("FPS")
 
             svg.append("text")
@@ -122,10 +107,9 @@ export default function FramerateHistogramView({
                 .attr("text-anchor", "middle")
                 .style("font-family", "monospace")
                 .style("font-size", "10px")
-                .style("fill", theme.palette.text.secondary)
+                .style("fill", darkChartTheme.textSecondaryColor)
                 .text("Density")
 
-            // Persistent empty-state text (hidden by default)
             chartArea.append("text")
                 .attr("class", "empty-text")
                 .attr("x", width / 2)
@@ -134,7 +118,7 @@ export default function FramerateHistogramView({
                 .attr("dominant-baseline", "central")
                 .style("font-family", "monospace")
                 .style("font-size", "12px")
-                .style("fill", theme.palette.text.disabled)
+                .style("fill", darkChartTheme.textDisabledColor)
                 .style("display", "none")
 
             stateRef.current = {
@@ -153,16 +137,14 @@ export default function FramerateHistogramView({
                 },
             }
         },
-        [theme, frontendColor, backendColor]
+        [frontendColor, backendColor]
     )
 
-    // updateChart — uses D3 data join for minimal DOM mutations
     const updateChart = useCallback(
         ({svg, chartArea, xAxisG, yAxisG, width, height}: ChartScaffolding) => {
             const state = stateRef.current
             if (!state) return
 
-            // Read fresh data directly from the store — no React state involved.
             const snapshot = getFramerateStore().getSnapshot()
             const recentFrontendDurations = snapshot.recentFrontendDurations
             const recentBackendDurations = snapshot.recentBackendDurations
@@ -180,7 +162,6 @@ export default function FramerateHistogramView({
             const emptyText = chartArea.select<SVGTextElement>(".empty-text")
 
             if (!frontendHist && !backendHist) {
-                // Clear all bars
                 state.frontendBarGroup.selectAll("rect").remove()
                 state.backendBarGroup.selectAll("rect").remove()
                 emptyText.style("display", null).text(t("waitingForData"))
@@ -189,7 +170,6 @@ export default function FramerateHistogramView({
 
             emptyText.style("display", "none")
 
-            // Compute domain from all bins
             let minX = Infinity
             let maxX = -Infinity
             let maxDensity = 0
@@ -213,7 +193,6 @@ export default function FramerateHistogramView({
             state.xScale.domain([minX - xPad, maxX + xPad])
             state.yScale.domain([0, maxDensity * 1.15])
 
-            // Update axes in-place
             const xAxisGen = d3
                 .axisBottom(state.xScale)
                 .ticks(Math.max(2, Math.min(8, Math.floor(width / 50))))
@@ -225,9 +204,8 @@ export default function FramerateHistogramView({
 
             xAxisG.call(xAxisGen)
             yAxisG.call(yAxisGen)
-            applyAxisStyles(svg, theme)
+            applyAxisStyles(svg, darkChartTheme)
 
-            // D3 data join for bars — enter/update/exit pattern
             const numSources = [frontendHist, backendHist].filter(Boolean).length
             const barInset = numSources > 1 ? 1 : 0
 
@@ -240,18 +218,15 @@ export default function FramerateHistogramView({
                 const bars = group.selectAll<SVGRectElement, HistogramBin>("rect")
                     .data(bins, (d) => `${d.x0}-${d.x1}`)
 
-                // EXIT: remove bars for bins that no longer exist
                 bars.exit().remove()
 
-                // ENTER: create new bars
                 const entered = bars.enter()
                     .append("rect")
                     .attr("fill", color)
-                    .attr("stroke", theme.palette.background.paper)
+                    .attr("stroke", darkChartTheme.backgroundPaperColor)
                     .attr("stroke-width", 0.5)
                     .attr("opacity", 0.7)
 
-                // UPDATE + ENTER: update positions and sizes for all bars
                 entered.merge(bars)
                     .attr("x", (d) => state.xScale(d.x0) + srcIdx * barInset)
                     .attr("width", (d) => {
@@ -272,7 +247,7 @@ export default function FramerateHistogramView({
             updateBars(state.frontendBarGroup, frontendHist?.bins ?? [], frontendColor, 0)
             updateBars(state.backendBarGroup, backendHist?.bins ?? [], backendColor, numSources > 1 ? 1 : 0)
         },
-        [getFramerateStore, frontendColor, backendColor, theme, t]
+        [getFramerateStore, frontendColor, backendColor, t]
     )
 
     return <BaseD3ChartView title={title} initChart={initChart} updateChart={updateChart}

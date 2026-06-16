@@ -1,5 +1,4 @@
 import React, {useMemo} from 'react';
-import {Box, Typography, useTheme} from '@mui/material';
 import ReactGridLayout, {noCompactor} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -21,11 +20,8 @@ export interface PlaybackSettings {
 
 interface SyncedVideoPlayerProps {
     videos: VideoEntry[];
-    /** null = auto-optimize, number = manual column count */
     manualColumns: number | null;
-    /** Increment to force layout reset */
     resetKey: number;
-    /** Playback controller from usePlaybackController */
     controller: PlaybackController;
 }
 
@@ -55,17 +51,12 @@ function formatSeconds(frame: number, fps: number): string {
     return `${(frame / fps).toFixed(3)}s`;
 }
 
-/**
- * Pure video grid renderer. All playback state is managed externally
- * via the PlaybackController from usePlaybackController.
- */
 export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     videos,
     manualColumns,
     resetKey,
     controller,
 }) => {
-    const theme = useTheme();
     const {t} = useTranslation();
 
     const {
@@ -75,16 +66,15 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         settings,
         allReady,
         videosReady,
+        erroredVideos,
         setVideoRef,
         setFrameOverlayRef,
         setTimeOverlayRef,
         handleLoadedMetadata,
+        handleVideoError,
         frameTimestampsRef,
     } = controller;
 
-    // -----------------------------------------------------------------------
-    // Grid layout
-    // -----------------------------------------------------------------------
     const videoIds = useMemo(() => videos.map(v => v.videoId), [videos]);
 
     const {
@@ -101,17 +91,15 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         measureParent: true,
     });
 
-    // -----------------------------------------------------------------------
-    // Render
-    // -----------------------------------------------------------------------
     if (videos.length === 0) {
         return (
-            <Box
+            <div
                 ref={containerRef}
-                sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary'}}
+                className="flex items-center justify-center h-full"
+                style={{color: 'var(--color-text-secondary)'}}
             >
-                <Typography>{t("noVideosLoaded")}</Typography>
-            </Box>
+                <p className="text md text-gray">{t("noVideosLoaded")}</p>
+            </div>
         );
     }
 
@@ -142,23 +130,10 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     }
 
     return (
-        <Box
+        <div
             ref={containerRef}
-            sx={{
-                position: 'relative',
-                width: '100%',
-                height: '100%',
-                overflow: 'hidden',
-                backgroundColor: '#0a0a0a',
-                '& .react-grid-placeholder': {
-                    backgroundColor: 'primary.main',
-                    opacity: 0.15,
-                    borderRadius: '4px',
-                },
-                '& .react-resizable-handle': {
-                    zIndex: 10,
-                },
-            }}
+            className="br-2 pos-rel overflow-hidden w-full h-full"
+            
         >
             <ReactGridLayout
                 width={width}
@@ -170,13 +145,10 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                 {...gridHandlers}
             >
                 {videos.map((video) => (
-                    <Box
+                    <div
                         key={video.videoId}
-                        sx={{
-                            overflow: 'hidden',
-                            borderRadius: '4px',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                        }}
+                        className="video-feed-tile overflow-hidden br-1"
+                      
                     >
                         <ZoomableVideoTile
                             videoId={video.videoId}
@@ -187,30 +159,22 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             initialFrameText={initialFrameText}
                             initialTimeText={initialTimeText}
                             timestampsAreReal={timestampsAreReal}
+                            hasError={erroredVideos.has(video.videoId)}
                             setVideoRef={setVideoRef}
                             setFrameOverlayRef={setFrameOverlayRef}
                             setTimeOverlayRef={setTimeOverlayRef}
                             handleLoadedMetadata={handleLoadedMetadata}
+                            handleVideoError={handleVideoError}
                         />
-                    </Box>
+                    </div>
                 ))}
             </ReactGridLayout>
 
             {!allReady && videos.length > 0 && (
-                <Box sx={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    zIndex: 10,
-                    textAlign: 'center',
-                    py: 0.5,
-                    backgroundColor: theme.palette.warning.dark,
-                    color: '#fff',
-                }}>
-                    <Typography variant="caption">{t("loadingVideos", {ready: videosReady, total: videos.length})}</Typography>
-                </Box>
+                <div className="pos-abs bottom-0 left-0 right-0 z-10 text-center">
+                    <p className="text sm m-0">{t("loadingVideos", {ready: videosReady, total: videos.length})}</p>
+                </div>
             )}
-        </Box>
+        </div>
     );
 };

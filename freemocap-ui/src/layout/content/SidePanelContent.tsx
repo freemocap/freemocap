@@ -1,275 +1,126 @@
-import React, {useCallback, useMemo, useState} from 'react';
-import Box from '@mui/material/Box';
-import {IconButton, List, ListItem, useTheme} from '@mui/material';
-import {
-    closestCenter,
-    DndContext,
-    DragEndEvent,
-    KeyboardSensor,
-    PointerSensor,
-    useSensor,
-    useSensors,
-} from '@dnd-kit/core';
-import {arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy,} from '@dnd-kit/sortable';
-import {restrictToParentElement, restrictToVerticalAxis} from '@dnd-kit/modifiers';
-import ThemeToggle from '@/components/ui-components/ThemeToggle';
-import HomeIcon from '@mui/icons-material/Home';
-import {useLocation, useNavigate} from 'react-router-dom';
-import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
+import React, {useMemo} from 'react';
+import {useLocation} from 'react-router-dom';
+import {useTranslation} from 'react-i18next';
+import IconButton from '@/components/ui-components/IconButton';
 
-import {SortableSectionWrapper} from '@/components/common/SortableSectionWrapper';
-import {
-    CameraConfigTreeView
-} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
-import {RecordingInfoPanel} from "@/components/control-panels/recording-info-panel/RecordingInfoPanel";
-import {RealtimePipelinePanel} from "@/components/control-panels/realtime-panel/RealtimePipelinePanel";
+import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
+import {RecordingPathPanel} from "@/components/control-panels/recording-info-panel/RecordingPathPanel";
+import {RecordingControlPanel} from "@/components/control-panels/recording-info-panel/RecordingControlPanel";
+import {RecordingInfoPanel as ProcessMocapPanel} from "@/components/control-panels/recording-info-panel/ProcessMocapPanel";
 import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
-import {CalibrationPanel} from "@/components/control-panels/calibration-control-panel/CalibrationPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
+import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
+import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 
-const STORAGE_KEY = 'freemocap-sidebar-section-order';
-
-const DEFAULT_SECTION_ORDER = [
+const SECTION_ORDER = [
+    'recordings',
     'cameras',
-    'recording',
-    'realtime',
     'calibration',
+    'recording_path',
+    'recording_control',
+    'process_mocap',
     'mocap',
 ] as const;
 
-type SectionId = (typeof DEFAULT_SECTION_ORDER)[number];
+type SectionId = (typeof SECTION_ORDER)[number];
+
+const STREAMING_ONLY_SECTIONS = new Set<SectionId>(['cameras', 'recording_path', 'recording_control']);
+const PLAYBACK_ONLY_SECTIONS = new Set<SectionId>(['recordings', 'process_mocap']);
 
 const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
-    realtime: RealtimePipelinePanel,
     cameras: CameraConfigTreeView,
-    recording: RecordingInfoPanel,
-    calibration: CalibrationPanel,
+    calibration: CalibrationModule,
+    process_mocap: ProcessMocapPanel,
+    recording_path: RecordingPathPanel,
+    recording_control: RecordingControlPanel,
     mocap: MocapPanel,
+    recordings: RecordingBrowserSection,
 };
 
-function loadSectionOrder(): SectionId[] {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return [...DEFAULT_SECTION_ORDER];
-        const parsed = JSON.parse(stored) as string[];
-        const defaultSet = new Set<string>(DEFAULT_SECTION_ORDER);
-        const parsedSet = new Set(parsed);
-        if (
-            parsed.length !== DEFAULT_SECTION_ORDER.length ||
-            !parsed.every((id) => defaultSet.has(id)) ||
-            !DEFAULT_SECTION_ORDER.every((id) => parsedSet.has(id))
-        ) {
-            return [...DEFAULT_SECTION_ORDER];
-        }
-        return parsed as SectionId[];
-    } catch {
-        return [...DEFAULT_SECTION_ORDER];
-    }
+interface SidePanelContentProps {
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+    onOpenWelcome?: () => void;
 }
 
-function saveSectionOrder(order: SectionId[]): void {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-    } catch {
-        // Storage full or unavailable — silently ignore
-    }
-}
-
-const scrollbarStyles = {
-    '&::-webkit-scrollbar': {
-        width: '6px',
-        backgroundColor: 'transparent',
-    },
-    '&::-webkit-scrollbar-thumb': {
-        backgroundColor: (theme: { palette: { mode: string } }) =>
-            theme.palette.mode === 'dark'
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'rgba(0, 0, 0, 0.2)',
-        borderRadius: '3px',
-        '&:hover': {
-            backgroundColor: (theme: { palette: { mode: string } }) =>
-                theme.palette.mode === 'dark'
-                    ? 'rgba(255, 255, 255, 0.3)'
-                    : 'rgba(0, 0, 0, 0.3)',
-        },
-    },
-    '&::-webkit-scrollbar-track': {
-        backgroundColor: 'transparent',
-    },
-    scrollbarWidth: 'thin',
-    scrollbarColor: (theme: { palette: { mode: string } }) =>
-        theme.palette.mode === 'dark'
-            ? 'rgba(255, 255, 255, 0.2) transparent'
-            : 'rgba(0, 0, 0, 0.2) transparent',
+const CollapsedToolbar: React.FC<{ onToggleCollapse: () => void }> = ({ onToggleCollapse }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="collapsed-sidebar items-center flex flex-col items-center w-full h-full pt-1 gap-1">
+            <IconButton
+                icon="expand-icon"
+                onClick={onToggleCollapse}
+                tooltip={true}
+                tooltipText={t('expandSidebar')}
+                tooltipPosition="pos-right"
+            />
+            <ServerConnectionStatus compact />
+        </div>
+    );
 };
 
-export const SidePanelContent = () => {
-    const theme = useTheme();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const [sectionOrder, setSectionOrder] = useState<SectionId[]>(loadSectionOrder);
-
-    const sensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 5,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        }),
+export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpenWelcome }: SidePanelContentProps) => {
+    const { pathname } = useLocation();
+    const isStreaming = pathname === '/streaming';
+    const isPlayback = pathname === '/playback';
+    const isActiveRecording = pathname === '/active-recording';
+    const visibleSections = useMemo(
+        () => SECTION_ORDER.filter(id =>
+            (isStreaming || !STREAMING_ONLY_SECTIONS.has(id)) &&
+            (isPlayback || isActiveRecording || !PLAYBACK_ONLY_SECTIONS.has(id))
+        ),
+        [isStreaming, isPlayback, isActiveRecording],
     );
 
-    const handleDragEnd = useCallback((event: DragEndEvent) => {
-        const { active, over } = event;
-        if (!over || active.id === over.id) return;
-
-        setSectionOrder((prev) => {
-            const oldIndex = prev.indexOf(active.id as SectionId);
-            const newIndex = prev.indexOf(over.id as SectionId);
-            const newOrder = arrayMove(prev, oldIndex, newIndex);
-            saveSectionOrder(newOrder);
-            return newOrder;
-        });
-    }, []);
-
-    const modifiers = useMemo(
-        () => [restrictToVerticalAxis, restrictToParentElement],
-        [],
-    );
+    const { t } = useTranslation();
 
     return (
-        <Box
-            sx={{
-                width: '100%',
-                height: '100%',
-                backgroundColor:
-                    theme.palette.mode === 'dark'
-                        ? theme.palette.background.paper
-                        : theme.palette.grey[50],
-                color: theme.palette.text.primary,
-                display: 'flex',
-                flexDirection: 'column',
-                overflowY: 'auto',
-                overflowX: 'hidden',
-                ...scrollbarStyles,
-            }}
-        >
-            {/* Header */}
-            <List disablePadding>
-                <ListItem
-                    sx={{
-                        borderBottom:
-                            theme.palette.mode === 'dark'
-                                ? '1px solid rgba(255,255,255,0.08)'
-                                : '1px solid rgba(0,0,0,0.08)',
-                        py: 0.75,
-                        px: 1.5,
-                        minHeight: 40,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                    }}
+        <>
+            {isCollapsed && onToggleCollapse && (
+                <CollapsedToolbar onToggleCollapse={onToggleCollapse} />
+            )}
+
+            <div className="playback-mode left-side-panel flex gap-1 flex-col bg-darkgray br-2 w-full h-full"
+                style={{ display: isCollapsed ? 'none' : 'flex' }}>
+                {/* Header — home + connection + collapse button */}
+
+                <div className="left-side-top-bar flex flex-row items-center gap-1 p-1"
                 >
-                    <Box
-                        component="span"
-                        sx={{
-                            fontSize: 16,
-                            fontWeight: 600,
-                            color: theme.palette.text.primary,
-                        }}
-                    >
-                        FreeMoCap 💀✨
-                    </Box>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                    {onOpenWelcome && (
                         <IconButton
-                            size="small"
-                            onClick={() => navigate('/')}
-                            sx={{
-                                padding: '4px',
-                                color:
-                                    location.pathname === '/'
-                                        ? theme.palette.success.main
-                                        : theme.palette.text.secondary,
-                            }}
-                        >
-                            <HomeIcon sx={{ fontSize: 18 }} />
-                        </IconButton>
-                        <IconButton
-                            color="inherit"
-                            onClick={() => navigate('/viewport')}
-                        >
-                            <DirectionsRunIcon />
-                        </IconButton>
-
-                        {/*<IconButton*/}
-                        {/*    size="small"*/}
-                        {/*    onClick={() => navigate('/cameras')}*/}
-                        {/*    sx={{*/}
-                        {/*        padding: '4px',*/}
-                        {/*        color:*/}
-                        {/*            location.pathname === '/cameras'*/}
-                        {/*                ? theme.palette.success.main*/}
-                        {/*                : theme.palette.text.secondary,*/}
-                        {/*    }}*/}
-                        {/*>*/}
-                        {/*    <VideocamIcon sx={{ fontSize: 18 }} />*/}
-                        {/*</IconButton>*/}
-
-                        {/*<Tooltip title="Settings">*/}
-                        {/*    <IconButton*/}
-                        {/*        size="small"*/}
-                        {/*        onClick={() => navigate('/settings')}*/}
-                        {/*        sx={{*/}
-                        {/*            padding: '4px',*/}
-                        {/*            color:*/}
-                        {/*                location.pathname === '/settings'*/}
-                        {/*                    ? theme.palette.success.main*/}
-                        {/*                    : theme.palette.text.secondary,*/}
-                        {/*        }}*/}
-                        {/*    >*/}
-                        {/*        <TuneIcon sx={{ fontSize: 18 }} />*/}
-                        {/*    </IconButton>*/}
-                        {/*</Tooltip>*/}
-
-                        <ThemeToggle />
-                    </Box>
-                </ListItem>
-            </List>
-            <ServerConnectionStatus/>
-
-            {/* Sidebar Sections — drag-reorderable */}
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                modifiers={modifiers}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext
-                    items={sectionOrder}
-                    strategy={verticalListSortingStrategy}
-                >
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: 0.75,
-                            p: 0.75,
-                            pb: 2,
-                        }}
+                            icon="home-icon"
+                            onClick={onOpenWelcome}
+                            tooltip={true}
+                            tooltipText="Home"
+                            tooltipPosition="pos-right"
+                        />
+                    )}
+                    <div
+                        data-warning="service-unavailable"
+                        className="flex-1 overflow-hidden min-w-0"
                     >
-                        {sectionOrder.map((sectionId) => {
-                            const Component = SECTION_COMPONENTS[sectionId];
-                            return (
-                                <SortableSectionWrapper key={sectionId} id={sectionId}>
-                                    <Component />
-                                </SortableSectionWrapper>
-                            );
-                        })}
-                    </Box>
-                </SortableContext>
-            </DndContext>
-        </Box>
+                        <ServerConnectionStatus />
+                    </div>
+                    {onToggleCollapse && (
+                        <IconButton
+                            icon="collapse-icon"
+                            onClick={onToggleCollapse}
+                            tooltip={true}
+                            tooltipText={t('collapseSidebar')}
+                            tooltipPosition="pos-left"
+                            className="icon-size-25"
+                        />
+                    )}
+                </div>
+
+                {/* Sidebar Sections */}
+                <div className="playback-mode left-side-panel flex flex-col gap-1 min-h-0 h-full">
+                    {visibleSections.map((sectionId) => {
+                        const Component = SECTION_COMPONENTS[sectionId];
+                        return <Component key={sectionId} />;
+                    })}
+                </div>
+            </div>
+        </>
     );
 };

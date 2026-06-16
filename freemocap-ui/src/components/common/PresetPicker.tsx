@@ -1,5 +1,5 @@
 import React from "react";
-import {Box, FormControl, InputLabel, MenuItem, Select, SxProps, Theme} from "@mui/material";
+import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 
 interface PresetOption<T extends string> {
     value: T;
@@ -12,9 +12,6 @@ interface PresetPickerProps<T extends string> {
     options: PresetOption<T>[];
     onChange: (value: T) => void;
     disabled?: boolean;
-    size?: "small" | "medium";
-    minWidth?: number;
-    sx?: SxProps<Theme>;
 }
 
 export function PresetPicker<T extends string>({
@@ -23,30 +20,26 @@ export function PresetPicker<T extends string>({
     options,
     onChange,
     disabled = false,
-    size = "small",
-    minWidth = 120,
-    sx,
 }: PresetPickerProps<T>): React.ReactElement {
-    const labelId = label ? `preset-picker-${label.toLowerCase().replace(/\s+/g, "-")}-label` : undefined;
+    const labels = options.map(o => o.label);
+    const selectedLabel = options.find(o => o.value === value)?.label ?? labels[0];
+
+    const handleChange = (label: string) => {
+        const opt = options.find(o => o.label === label);
+        if (opt) onChange(opt.value);
+    };
 
     return (
-        <Box >
-        <FormControl size={size} sx={{minWidth, ...sx}}>
-            {label && <InputLabel id={labelId}>{label}</InputLabel>}
-            <Select
-                labelId={labelId}
-                value={value}
-                label={label || undefined}
-                onChange={(e) => onChange(e.target.value as T)}
-                disabled={disabled}
-            >
-                {options.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-            </Box>
+        <div className={`min-w-full flex flex-col gap-1${disabled ? ' disabled' : ''}`}>
+            {label && <label className="text sm text-gray">{label}</label>}
+            <NameDropdownSelector
+                key={value}
+                options={labels}
+                initialValue={selectedLabel}
+                onChange={handleChange}
+                DropdownclassName="left-0"
+            />
+            
+        </div>
     );
 }

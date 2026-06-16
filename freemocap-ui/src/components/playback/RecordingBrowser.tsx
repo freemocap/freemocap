@@ -1,45 +1,11 @@
 /**
  * RecordingBrowser — lists available recording sessions from the server,
  * with search filtering, multi-field sorting, and rich per-recording metadata.
- *
- * Uses a Redux-cached batch response (fetchAllRecordings) so expanding a row
- * doesn't trigger individual HTTP requests. The cache is populated on app
- * startup and refreshed when the user navigates to the recordings tab.
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
-import {
-    Box,
-    Button,
-    Chip,
-    CircularProgress,
-    Collapse,
-    IconButton,
-    InputAdornment,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemIcon,
-    ListItemText,
-    MenuItem,
-    Select,
-    type SelectChangeEvent,
-    TextField,
-    Tooltip,
-    Typography,
-    useTheme,
-} from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import FolderIcon from '@mui/icons-material/Folder';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import VideocamIcon from '@mui/icons-material/Videocam';
-import StorageIcon from '@mui/icons-material/Storage';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import SearchIcon from '@mui/icons-material/Search';
-import SortIcon from '@mui/icons-material/Sort';
-import {serverUrls} from '@/constants/server-urls';
+import clsx from 'clsx';
 import {useTranslation} from 'react-i18next';
+import {useElectronIPC} from '@/services';
 import {RecordingStatusPanel} from '@/components/common/RecordingStatusPanel';
 import {useRecordingStatus} from '@/hooks/useRecordingStatus';
 import {useAppDispatch, useAppSelector} from '@/store';
@@ -60,11 +26,13 @@ import {
     selectRecordingsFetchedAt,
     selectRecordingsIsLoading,
 } from '@/store/slices/recording-status/recording-status-slice';
+import {serverUrls} from '@/constants/server-urls';
+import ButtonSm from '@/components/ui-components/ButtonSm';
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import IconButton from '@/components/ui-components/IconButton';
 
-/** Re-exported for PlaybackContext / PlaybackPage consumers. */
 export type RecordingEntry = RecordingListEntry;
 
-/** Shape passed up to the parent when a recording is loaded */
 export interface LoadedVideo {
     videoId: string;
     filename: string;
@@ -80,16 +48,11 @@ interface RecordingBrowserProps {
         sources?: Record<string, { available: boolean; valid: boolean; video_count: number; videos: LoadedVideo[] }>,
         preferred?: string,
     ) => void;
-    /** Name/path of the recording currently loaded into the Playback view — highlighted in the list. */
     activeRecordingPath?: string | null;
 }
 
 type SortField = 'date' | 'name' | 'size' | 'cameras' | 'frames' | 'duration';
 type SortDirection = 'asc' | 'desc';
-
-// ---------------------------------------------------------------------------
-// Formatting helpers
-// ---------------------------------------------------------------------------
 
 function formatBytes(bytes: number): string {
     if (bytes <= 0) return '0 B';
@@ -111,15 +74,7 @@ function formatDuration(seconds: number): string {
     return `${m}m ${s}s`;
 }
 
-/**
- * Try to parse an ISO-like timestamp from a recording folder name.
- * Handles patterns like:
- *   2026-02-18_09-24-12_GMT-5
- *   2026-02-18T09_24_12
- *   2026-02-18
- */
 function parseTimestampFromName(name: string): Date | null {
-    // Full datetime: 2026-02-18_09-24-12 or 2026-02-18T09:24:12
     const fullMatch = name.match(
         /(\d{4})-(\d{2})-(\d{2})[T_](\d{2})[_:\-](\d{2})[_:\-](\d{2})/
     );
@@ -127,7 +82,6 @@ function parseTimestampFromName(name: string): Date | null {
         const [, y, mo, d, h, mi, s] = fullMatch;
         return new Date(+y, +mo - 1, +d, +h, +mi, +s);
     }
-    // Date only: 2026-02-18
     const dateMatch = name.match(/(\d{4})-(\d{2})-(\d{2})/);
     if (dateMatch) {
         const [, y, mo, d] = dateMatch;
@@ -153,10 +107,6 @@ function formatRelativeTime(date: Date): string {
         year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
 }
-
-// ---------------------------------------------------------------------------
-// Sort helpers
-// ---------------------------------------------------------------------------
 
 function getSortValue(rec: RecordingEntry, field: SortField): number | string {
     switch (field) {
@@ -194,14 +144,6 @@ function compareRecordings(
     return direction === 'desc' ? -cmp : cmp;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", monospace';
-const ACCENT_BLUE = '#29b6f6';
-const ACCENT_GREEN = '#00ff88';
-
 const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
     { value: 'date', labelKey: 'date' },
     { value: 'name', labelKey: 'name' },
@@ -211,17 +153,11 @@ const SORT_OPTIONS: { value: SortField; labelKey: string }[] = [
     { value: 'duration', labelKey: 'duration' },
 ];
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
-
 export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingLoaded, activeRecordingPath }) => {
-    const theme = useTheme();
     const { t } = useTranslation();
-    const isDark = theme.palette.mode === 'dark';
     const dispatch = useAppDispatch();
+    const { api, isElectron } = useElectronIPC();
 
-    // Data from Redux cache (prefetched on app startup)
     const recordings = useAppSelector(selectRecordingsList);
     const recordingsFetchedAt = useAppSelector(selectRecordingsFetchedAt);
     const isLoadingList = useAppSelector(selectRecordingsIsLoading);
@@ -230,17 +166,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
     const [error, setError] = useState<string | null>(null);
     const [loadingPath, setLoadingPath] = useState<string | null>(null);
 
-    // Manual path input
     const [manualPath, setManualPath] = useState('');
-
-    // Filter / sort
     const [filterText, setFilterText] = useState('');
     const [sortField, setSortField] = useState<SortField>('date');
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
-    // -----------------------------------------------------------------------
-    // Fetch the list of recordings from the server (cache-aware)
-    // -----------------------------------------------------------------------
     const fetchRecordings = useCallback(async (force = false) => {
         const MAX_CACHE_AGE_MS = 30_000;
         if (!force && recordingsFetchedAt && Date.now() - recordingsFetchedAt < MAX_CACHE_AGE_MS) {
@@ -254,31 +184,20 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
     }, [dispatch, recordingsFetchedAt]);
 
     useEffect(() => {
-        // Fetch on mount if cache is empty (belt-and-suspenders with AppContent prefetch)
         if (recordings.length === 0) {
             fetchRecordings();
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // -----------------------------------------------------------------------
-    // Apply filter + sort
-    // -----------------------------------------------------------------------
     const filteredSorted = useMemo(() => {
         let result = recordings;
-
-        // Text filter
         if (filterText.trim()) {
             const q = filterText.trim().toLowerCase();
             result = result.filter((r) => r.name.toLowerCase().includes(q));
         }
-
-        // Sort
         return [...result].sort((a, b) => compareRecordings(a, b, sortField, sortDir));
     }, [recordings, filterText, sortField, sortDir]);
 
-    // -----------------------------------------------------------------------
-    // Load a specific recording
-    // -----------------------------------------------------------------------
     const loadRecording = useCallback(
         async (recordingPath: string) => {
             setIsLoadingRecording(true);
@@ -286,7 +205,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
             setError(null);
 
             try {
-                // Determine recording ID (name) and parent directory
                 const rec = recordings.find((r) => r.path === recordingPath);
                 const recName = rec ? rec.name : recordingPath.split(/[\\/]/).pop() || recordingPath;
                 const parsed = rec?.path ? splitParentAndName(rec.path) : null;
@@ -313,7 +231,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                 let sources: Record<string, {available: boolean; valid: boolean; video_count: number; videos: LoadedVideo[]}> | undefined;
                 let preferred: string | undefined;
 
-                // New structured response: { preferred_source, sources: { annotated, synchronized } }
                 if (data.sources) {
                     sources = {};
                     for (const [key, src] of Object.entries(data.sources) as [string, any][]) {
@@ -333,7 +250,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                     preferred = resolvedPreferred;
                     videos = sources[resolvedPreferred]?.videos ?? [];
                 } else {
-                    // Fallback: old flat-array response
                     videos = data.map(
                         (v: {
                             video_id: string;
@@ -351,7 +267,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
 
                 const recFps = rec?.fps ?? undefined;
 
-                // Promote this recording to the app-wide active recording.
                 const layoutPreset = rec?.layout_validation
                     ? detectLayoutPreset(rec.layout_validation)
                     : undefined;
@@ -362,7 +277,6 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                     layoutPreset,
                 }));
 
-                // Context callback is view-model only (loadedVideos/fps/sources).
                 onRecordingLoaded(videos, recName, recFps, sources, preferred);
             } catch (e) {
                 setError(e instanceof Error ? e.message : 'Failed to load recording');
@@ -374,277 +288,136 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
         [onRecordingLoaded, recordings, dispatch],
     );
 
-    const handleLoadManualPath = useCallback(() => {
-        const trimmed = manualPath.trim();
-        if (trimmed) loadRecording(trimmed);
-    }, [manualPath, loadRecording]);
-
-    // -----------------------------------------------------------------------
-    // Sort controls
-    // -----------------------------------------------------------------------
-    const handleSortFieldChange = (e: SelectChangeEvent) => {
-        setSortField(e.target.value as SortField);
-    };
+    const handleBrowseDirectory = useCallback(async () => {
+        if (!isElectron || !api) return;
+        const result: string | null = await api.fileSystem.selectDirectory.mutate();
+        if (!result) return;
+        const trimmed = result.trim().replace(/[\\/]+$/, '');
+        setManualPath(trimmed);
+        loadRecording(trimmed);
+    }, [api, isElectron, loadRecording]);
 
     const toggleSortDir = () => {
         setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
     };
 
-    // -----------------------------------------------------------------------
-    // Render
-    // -----------------------------------------------------------------------
     return (
-        <Box
-            sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-                p: 2,
-                height: '100%',
-                overflow: 'hidden',
-            }}
-        >
-            {/* ── Manual path input ── */}
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    label={t("recordingFolderPath")}
-                    placeholder="~/freemocap_data/recordings/2024-01-01..."
-                    value={manualPath}
-                    onChange={(e) => setManualPath(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleLoadManualPath();
-                    }}
-                    disabled={isLoadingRecording}
-                    sx={{ '& input': { fontFamily: MONO_FONT, fontSize: '0.85rem' } }}
-                />
-                <Button
-                    variant="contained"
-                    onClick={handleLoadManualPath}
-                    disabled={!manualPath.trim() || isLoadingRecording}
-                    startIcon={
-                        isLoadingRecording && !loadingPath ? (
-                            <CircularProgress size={16} />
-                        ) : (
-                            <PlayArrowIcon />
-                        )
-                    }
-                    sx={{
-                        whiteSpace: 'nowrap',
-                        backgroundColor: isDark ? '#4caf50' : undefined,
-                        color: isDark ? '#fff' : undefined,
-                        '&:hover': { backgroundColor: isDark ? '#66bb6a' : undefined },
-                    }}
-                >
-                    {t('load')}
-                </Button>
-            </Box>
-
-            {/* ── Error ── */}
-            {error && (
-                <Typography color="error" variant="body2" sx={{ px: 1 }}>
-                    {error}
-                </Typography>
-            )}
-
-            {/* ── Header bar: title, filter, sort, refresh ── */}
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 1,
-                }}
-            >
-                {/* Left: title + count */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography
-                        variant="subtitle2"
-                        sx={{
-                            color: theme.palette.text.primary,
-                            fontWeight: 600,
-                        }}
-                    >
-                        {t('recordings')}
-                    </Typography>
-                    {recordings.length > 0 && (
-                        <Chip
-                            label={
-                                filterText
-                                    ? `${filteredSorted.length} / ${recordings.length}`
-                                    : String(recordings.length)
-                            }
-                            size="small"
-                            variant="outlined"
-                            sx={{
-                                height: 20,
-                                fontSize: '0.7rem',
-                                borderColor: isDark ? 'rgba(255,255,255,0.2)' : undefined,
-                                color: isDark ? '#b3b9c6' : undefined,
-                            }}
-                        />
-                    )}
-                </Box>
-
-                {/* Right: filter + sort + refresh */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {/* Search filter */}
-                    <TextField
-                        size="small"
-                        placeholder={t("filter")}
-                        value={filterText}
-                        onChange={(e) => setFilterText(e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon
-                                        sx={{
-                                            fontSize: 16,
-                                            color: isDark
-                                                ? 'rgba(255,255,255,0.4)'
-                                                : 'rgba(0,0,0,0.4)',
-                                        }}
-                                    />
-                                </InputAdornment>
-                            ),
-                        }}
-                        sx={{
-                            width: 160,
-                            '& input': { fontSize: '0.8rem', py: 0.5 },
-                        }}
+        <div className="playback-file-directory-inner-content flex playback-page-content pos-rel flex flex-col gap-1 h-full overflow-hidden">
+            {/* Folder selector */}
+            <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center">
+                <div className="flex flex-col flex-start gap-1 items-center w-full">
+                    <SubactionHeader text="Folder Directory" />
+                    <ButtonSm
+                        iconClass="subfolder-icon"
+                        text={manualPath || "Select recording folder"}
+                        onClick={handleBrowseDirectory}
+                        title="Click to select recording folder"
+                        disabled={!isElectron}
+                        className="select-path bg-middark flex-1 w-full min-w-full"
+                        textClass="text-wrap flex-1"
                     />
+                </div>
+            </div>
 
-                    {/* Sort field dropdown */}
-                    <Select
-                        value={sortField}
-                        onChange={handleSortFieldChange}
-                        size="small"
-                        variant="outlined"
-                        sx={{
-                            minWidth: 100,
-                            '& .MuiSelect-select': {
-                                py: 0.4,
-                                fontSize: '0.75rem',
-                                color: isDark ? '#b3b9c6' : undefined,
-                            },
-                            '& .MuiOutlinedInput-notchedOutline': {
-                                borderColor: isDark
-                                    ? 'rgba(255,255,255,0.2)'
-                                    : undefined,
-                            },
-                            '& .MuiSvgIcon-root': {
-                                color: isDark
-                                    ? 'rgba(255,255,255,0.4)'
-                                    : undefined,
-                            },
-                        }}
-                    >
-                        {SORT_OPTIONS.map((opt) => (
-                            <MenuItem key={opt.value} value={opt.value}>
-                                {t(opt.labelKey)}
-                            </MenuItem>
-                        ))}
-                    </Select>
+            {error && <p className="pl-2 flex flex-row text sm text-error">{error}</p>}
 
-                    {/* Sort direction toggle */}
-                    <Tooltip
-                        title={`Sort ${sortDir === 'desc' ? 'newest first' : 'oldest first'} — click to toggle`}
-                    >
-                        <IconButton
-                            size="small"
-                            onClick={toggleSortDir}
-                            sx={{
-                                color: isDark ? '#b3b9c6' : theme.palette.text.secondary,
-                            }}
-                        >
-                            <SortIcon
-                                sx={{
-                                    fontSize: 18,
-                                    transform: sortDir === 'asc' ? 'scaleY(-1)' : 'none',
-                                    transition: 'transform 0.2s ease',
-                                }}
+            {/* Header + list wrapper */}
+            <div className="flex flex-col flex-1 overflow-hidden bg-middark br-1 p-1 gap-2">
+                {/* Header bar */}
+                <div className="recording-group flex flex-row flex-wrap flex-start items-center gap-1 justify-content-space-between">
+                    <div className="flex header-holder-for-recording items-center gap-1">
+                        {recordings.length > 0 && (
+                            <p className="tag camera-status-badge">
+                                {filterText
+                                    ? `${filteredSorted.length} / ${recordings.length}`
+                                    : recordings.length}
+                            </p>
+                        )}
+                        <SubactionHeader text={t("recordings")} />
+                    </div>
+
+                    <div className="flex flex-wrap flex-row items-center gap-1 justify-content-space-between min-w-full">
+                        <div className="input-with-string flex flex-1">
+                            <input
+                                className="input-field"
+                                placeholder={t("filter")}
+                                value={filterText}
+                                onChange={(e) => setFilterText(e.target.value)}
                             />
-                        </IconButton>
-                    </Tooltip>
-
-                    {/* Refresh */}
-                    <Button
-                        size="small"
-                        startIcon={<RefreshIcon />}
-                        onClick={() => fetchRecordings(true)}
-                        disabled={isLoadingList}
-                        sx={{ color: isDark ? '#b3b9c6' : undefined }}
-                    >
-                        {t('refresh')}
-                    </Button>
-                </Box>
-            </Box>
-
-            {/* ── Recording list ── */}
-            {isLoadingList ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-                    <CircularProgress size={24} sx={{ color: ACCENT_BLUE }} />
-                </Box>
-            ) : filteredSorted.length === 0 ? (
-                <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ textAlign: 'center', py: 4 }}
-                >
-                    {recordings.length === 0
-                        ? t('noRecordingsFound')
-                        : 'No recordings match your filter.'}
-                </Typography>
-            ) : (
-                <List
-                    dense
-                    sx={{
-                        flex: 1,
-                        overflow: 'auto',
-                        border: `1px solid ${theme.palette.divider}`,
-                        borderRadius: 1,
-                        '& .MuiListItemButton-root + .MuiListItemButton-root': {
-                            borderTop: `1px solid ${theme.palette.divider}`,
-                        },
-                    }}
-                >
-                    {filteredSorted.map((rec) => (
-                        <RecordingRow
-                            key={rec.path}
-                            rec={rec}
-                            isLoading={loadingPath === rec.path}
-                            isAnyLoading={isLoadingRecording}
-                            isDark={isDark}
-                            isActive={!!activeRecordingPath && (activeRecordingPath === rec.name || activeRecordingPath === rec.path)}
-                            onClick={() => loadRecording(rec.path)}
-                            recordingsRootPath={rec.path.slice(0, Math.max(rec.path.lastIndexOf('/'), rec.path.lastIndexOf('\\'))) || null}
+                        </div>
+                        <select
+                            className="sort-select input-field"
+                            value={sortField}
+                            onChange={(e) => setSortField(e.target.value as SortField)}
+                        >
+                            {SORT_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>
+                                    {t(opt.labelKey)}
+                                </option>
+                            ))}
+                        </select>
+                        <ButtonSm
+                            text={sortDir === 'desc' ? '↓' : '↑'}
+                            onClick={toggleSortDir}
+                            tooltip={true}
+                            tooltipText={sortDir === 'desc' ? t('sortDescending') : t('sortAscending')}
+                            tooltipPosition="pos-bottom"
                         />
-                    ))}
-                </List>
-            )}
-        </Box>
+                        <ButtonSm
+                            text={t("refresh")}
+                            onClick={() => fetchRecordings(true)}
+                            disabled={isLoadingList}
+                            iconClass="rotate-icon"
+                            tooltip={true}
+                            tooltipText={t("refresh")}
+                            tooltipPosition="pos-bottom"
+                        />
+                    </div>
+                </div>
+
+                {/* List */}
+                {isLoadingList ? (
+                    <div className="flex items-center justify-center py-4">
+                        <span className="icon loader-icon icon-size-20" />
+                    </div>
+                ) : filteredSorted.length === 0 ? (
+                    <div className="recording-warning-container flex flex-col flex-wrap p-6 m-4 text-center gap-1 items-center justify-center br-2">
+                        <span className="icon warning-icon icon-size-32" />
+                        <p className="text md text-white text-center">
+                            {recordings.length === 0 ? t('noRecordingsFound') : 'No recordings match your filter.'}
+                        </p>
+                    </div>
+                ) : (
+                    <div className="recording-list flex-1 overflow-y br-2 p-1">
+                        {filteredSorted.map((rec) => (
+                            <RecordingRow
+                                key={rec.path}
+                                rec={rec}
+                                isLoading={loadingPath === rec.path}
+                                isAnyLoading={isLoadingRecording}
+                                isActive={!!activeRecordingPath && (activeRecordingPath === rec.name || activeRecordingPath === rec.path)}
+                                onClick={() => loadRecording(rec.path)}
+                                recordingsRootPath={rec.path.slice(0, Math.max(rec.path.lastIndexOf('/'), rec.path.lastIndexOf('\\'))) || null}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 };
-
-// ---------------------------------------------------------------------------
-// RecordingRow — a single recording in the list
-// ---------------------------------------------------------------------------
 
 interface RecordingRowProps {
     rec: RecordingEntry;
     isLoading: boolean;
     isAnyLoading: boolean;
-    isDark: boolean;
     isActive: boolean;
     onClick: () => void;
     recordingsRootPath: string | null;
 }
 
 const RecordingRow: React.FC<RecordingRowProps> = React.memo(
-    ({ rec, isLoading, isAnyLoading, isDark, isActive, onClick, recordingsRootPath }) => {
-        const theme = useTheme();
+    ({ rec, isLoading, isAnyLoading, isActive, onClick, recordingsRootPath }) => {
         const parsedDate = parseTimestampFromName(rec.name);
         const { t } = useTranslation();
         const [expanded, setExpanded] = useState(false);
@@ -678,307 +451,135 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
         };
 
         return (
-            <ListItem
-                disablePadding
-                sx={{
-                    flexDirection: 'column',
-                    alignItems: 'stretch',
-                    ...(isActive && {
-                        backgroundColor: isDark ? 'rgba(41,182,246,0.12)' : 'rgba(41,182,246,0.10)',
-                        borderLeft: `3px solid ${ACCENT_BLUE}`,
-                    }),
-                }}
+            <div
+                className={clsx(
+                    "br-1 recording-row flex text-white flex-col flex-start",
+                    isAnyLoading && !isLoading && "recording-row-disabled",
+                )}
+                style={isActive ? {
+                    backgroundColor: 'rgba(41,182,246,0.12)',
+                    borderLeft: '3px solid var(--color-info)',
+                } : undefined}
             >
-                <Box sx={{display: 'flex', alignItems: 'stretch'}}>
-                <ListItemButton
-                    onClick={onClick}
-                    disabled={isAnyLoading}
-                    sx={{
-                        py: 1.25,
-                        px: 2,
-                        flex: 1,
-                        opacity: isAnyLoading && !isLoading ? 0.5 : 1,
-                    }}
-                >
-                {/* Folder icon or spinner */}
-                <ListItemIcon sx={{ minWidth: 36 }}>
-                    {isLoading ? (
-                        <CircularProgress size={20} sx={{ color: ACCENT_BLUE }} />
-                    ) : (
-                        <FolderIcon
-                            fontSize="small"
-                            sx={{
-                                color: isDark
-                                    ? ACCENT_BLUE
-                                    : theme.palette.primary.main,
-                            }}
-                        />
-                    )}
-                </ListItemIcon>
-
-                <ListItemText
-                    disableTypography
-                    primary={
-                        <Box sx={{display: 'flex', alignItems: 'center', gap: 1, mb: 0.5}}>
-                            <Typography
-                                variant="body2"
-                                sx={{
-                                    fontFamily: MONO_FONT,
-                                    fontWeight: 600,
-                                    fontSize: '0.85rem',
-                                    color: isActive
-                                        ? (isDark ? ACCENT_BLUE : theme.palette.primary.main)
-                                        : theme.palette.text.primary,
-                                }}
-                            >
-                                {rec.name}
-                            </Typography>
-                            {isActive && (
-                                <Chip
-                                    size="small"
-                                    icon={<PlayArrowIcon sx={{fontSize: '12px !important'}}/>}
-                                    label="loaded in playback"
-                                    sx={{
-                                        height: 18,
-                                        fontSize: '0.65rem',
-                                        fontFamily: MONO_FONT,
-                                        backgroundColor: isDark ? `${ACCENT_BLUE}22` : 'rgba(41,182,246,0.15)',
-                                        color: isDark ? ACCENT_BLUE : theme.palette.primary.main,
-                                        border: `1px solid ${isDark ? `${ACCENT_BLUE}55` : 'rgba(41,182,246,0.4)'}`,
-                                        '& .MuiChip-icon': {color: 'inherit'},
-                                        '& .MuiChip-label': {px: 0.75},
-                                    }}
-                                />
-                            )}
-                            {isLegacyLayout && (
-                                <Tooltip
-                                    title={
-                                        <Box sx={{fontFamily: MONO_FONT, fontSize: '0.7rem'}}>
-                                            <div>Legacy folder layout (legacy_v1)</div>
-                                            {legacyMarkers.length > 0 && (
-                                                <ul style={{margin: '4px 0 0 16px', padding: 0}}>
-                                                    {legacyMarkers.map((marker) => (
-                                                        <li key={marker}>{marker}</li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                        </Box>
-                                    }
-                                    arrow
-                                >
-                                    <Chip
-                                        size="small"
-                                        label="Legacy"
-                                        sx={{
-                                            height: 18,
-                                            fontSize: '0.65rem',
-                                            fontFamily: MONO_FONT,
-                                            backgroundColor: isDark ? 'rgba(255,167,38,0.18)' : 'rgba(255,167,38,0.15)',
-                                            color: isDark ? '#ffb74d' : '#e65100',
-                                            border: `1px solid ${isDark ? 'rgba(255,167,38,0.5)' : 'rgba(230,81,0,0.4)'}`,
-                                            '& .MuiChip-label': {px: 0.75},
-                                        }}
-                                    />
-                                </Tooltip>
-                            )}
-                        </Box>
-                    }
-                    secondary={
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: 1.5,
-                                alignItems: 'center',
-                            }}
-                        >
-                            {/* Camera count */}
-                            <StatBadge
-                                icon={
-                                    <VideocamIcon
-                                        sx={{
-                                            fontSize: 14,
-                                            color: theme.palette.text.secondary,
-                                        }}
-                                    />
-                                }
-                                label={`${rec.video_count} cam${rec.video_count !== 1 ? 's' : ''}`}
-                                tooltip="Camera streams"
-                            />
-
-                            {/* Size */}
-                            {rec.total_size_bytes != null &&
-                                rec.total_size_bytes > 0 && (
-                                    <StatBadge
-                                        icon={
-                                            <StorageIcon
-                                                sx={{
-                                                    fontSize: 14,
-                                                    color: theme.palette.text
-                                                        .secondary,
-                                                }}
-                                            />
-                                        }
-                                        label={formatBytes(rec.total_size_bytes)}
-                                        tooltip="Total size on disk"
-                                    />
-                                )}
-
-                            {/* Duration */}
-                            {rec.duration_seconds != null &&
-                                rec.duration_seconds > 0 && (
-                                    <StatBadge
-                                        icon={
-                                            <AccessTimeIcon
-                                                sx={{
-                                                    fontSize: 14,
-                                                    color: theme.palette.text
-                                                        .secondary,
-                                                }}
-                                            />
-                                        }
-                                        label={formatDuration(rec.duration_seconds)}
-                                        tooltip="Recording duration"
-                                    />
-                                )}
-
-                            {/* Frame count chip */}
-                            {rec.total_frames != null && rec.total_frames > 0 && (
-                                <Tooltip title={t("frameCountPerCamera")}>
-                                    <Chip
-                                        label={`${rec.total_frames.toLocaleString()} frames`}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{
-                                            height: 18,
-                                            fontSize: '0.65rem',
-                                            fontFamily: MONO_FONT,
-                                            '& .MuiChip-label': { px: 0.75 },
-                                            borderColor: isDark
-                                                ? `${ACCENT_GREEN}44`
-                                                : undefined,
-                                            color: isDark
-                                                ? ACCENT_GREEN
-                                                : undefined,
-                                        }}
-                                    />
-                                </Tooltip>
-                            )}
-
-                            {/* FPS chip */}
-                            {rec.fps != null && rec.fps > 0 && (
-                                <Tooltip title={t("recordingCaptureFps")}>
-                                    <Chip
-                                        label={`${rec.fps} fps`}
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{
-                                            height: 18,
-                                            fontSize: '0.65rem',
-                                            fontFamily: MONO_FONT,
-                                            '& .MuiChip-label': { px: 0.75 },
-                                            borderColor: isDark
-                                                ? `${ACCENT_BLUE}44`
-                                                : undefined,
-                                            color: isDark
-                                                ? ACCENT_BLUE
-                                                : theme.palette.info.main,
-                                        }}
-                                    />
-                                </Tooltip>
-                            )}
-
-                            {/* Relative time */}
-                            {parsedDate && (
-                                <Tooltip title={parsedDate.toLocaleString()}>
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            color: theme.palette.text.disabled,
-                                            fontStyle: 'italic',
-                                        }}
-                                    >
-                                        {formatRelativeTime(parsedDate)}
-                                    </Typography>
-                                </Tooltip>
-                            )}
-
-                            {/* Status summary */}
-                            {summary && (
-                                <Tooltip
-                                    title={
-                                        ready
-                                            ? 'All pipeline stages complete — ready for Blender'
-                                            : `${stagesComplete}/${stagesTotal} pipeline stages complete`
-                                    }
-                                >
-                                    <Chip
-                                        size="small"
-                                        label={
-                                            ready
-                                                ? 'Blender ready'
-                                                : `${stagesComplete}/${stagesTotal} stages`
-                                        }
-                                        color={ready ? 'success' : 'default'}
-                                        icon={ready ? <CheckCircleIcon/> : undefined}
-                                        variant={ready ? 'filled' : 'outlined'}
-                                        sx={{height: 18, fontSize: '0.65rem', '& .MuiChip-label': {px: 0.75}}}
-                                    />
-                                </Tooltip>
-                            )}
-                        </Box>
-                    }
-                />
-                </ListItemButton>
-                <Tooltip title={expanded ? 'Hide folder detail' : 'Show folder detail'}>
-                    <IconButton
-                        size="small"
-                        onClick={toggleExpand}
-                        sx={{
-                            mr: 1,
-                            alignSelf: 'center',
-                            transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition: 'transform 0.2s ease',
+                <div className="flex flex-row items-center">
+                    <button
+                        className="flex flex-row flex-1 items-center gap-1 text-left"
+                        onClick={onClick}
+                        disabled={isAnyLoading}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            padding: '10px 16px',
+                            opacity: isAnyLoading && !isLoading ? 0.5 : 1,
                         }}
                     >
-                        <ExpandMoreIcon fontSize="small"/>
-                    </IconButton>
-                </Tooltip>
-                </Box>
-                <Collapse in={expanded} unmountOnExit>
-                    <Box sx={{px: 2, pb: 2}}>
+                        <div className="flex-shrink-0" style={{minWidth: 36}}>
+                            {isLoading
+                                ? <span className="icon loader-icon icon-size-20" style={{color: 'var(--color-info)'}}/>
+                                : <span className="icon load-icon icon-size-20" style={{color: 'var(--color-info)'}}/>}
+                        </div>
+
+                        <div className="flex-1">
+                            <div className="flex flex-row items-center gap-1 mb-1">
+                                <p className="text md text-white recording-name m-0" style={{
+                                    fontWeight: 600,
+                                    color: isActive ? 'var(--color-info)' : undefined,
+                                }}>
+                                    {rec.name}
+                                </p>
+                                {isActive && (
+                                    <span className="tag text sm" style={{fontSize: '0.65rem', backgroundColor: 'rgba(41,182,246,0.13)', color: 'var(--color-info)', border: '1px solid rgba(41,182,246,0.33)'}}>
+                                        loaded in playback
+                                    </span>
+                                )}
+                                {isLegacyLayout && (
+                                    <span
+                                        className="tag text sm"
+                                        title={`Legacy folder layout (legacy_v1)${legacyMarkers.length > 0 ? ': ' + legacyMarkers.join(', ') : ''}`}
+                                        style={{fontSize: '0.65rem', backgroundColor: 'rgba(255,167,38,0.18)', color: '#ffb74d', border: '1px solid rgba(255,167,38,0.5)'}}
+                                    >
+                                        Legacy
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="flex flex-row items-center flex-wrap gap-3">
+                                <span className="text sm text-gray" title="Camera streams">
+                                    {`${rec.video_count} cam${rec.video_count !== 1 ? 's' : ''}`}
+                                </span>
+
+                                {rec.total_size_bytes != null && rec.total_size_bytes > 0 && (
+                                    <span className="text sm text-gray" title="Total size on disk">
+                                        {formatBytes(rec.total_size_bytes)}
+                                    </span>
+                                )}
+
+                                {rec.duration_seconds != null && rec.duration_seconds > 0 && (
+                                    <span className="text sm text-gray" title="Recording duration">
+                                        {formatDuration(rec.duration_seconds)}
+                                    </span>
+                                )}
+
+                                {rec.total_frames != null && rec.total_frames > 0 && (
+                                    <span
+                                        title={t("frameCountPerCamera")}
+                                        className="camera-config-chip text-gray"
+                                    >
+                                        {`${rec.total_frames.toLocaleString()} frames`}
+                                    </span>
+                                )}
+
+                                {rec.fps != null && rec.fps > 0 && (
+                                    <span
+                                        title={t("recordingCaptureFps")}
+                                        className="camera-config-chip text-gray"
+                                    >
+                                        {`${rec.fps} fps`}
+                                    </span>
+                                )}
+
+                                {parsedDate && (
+                                    <span title={parsedDate.toLocaleString()} className="text sm text-gray" style={{fontStyle: 'italic'}}>
+                                        {formatRelativeTime(parsedDate)}
+                                    </span>
+                                )}
+
+                                {summary && (
+                                    <span
+                                        title={ready ? 'All pipeline stages complete — ready for Blender' : `${stagesComplete}/${stagesTotal} pipeline stages complete`}
+                                        className="tag text sm"
+                                        style={{fontSize: '0.65rem', color: ready ? 'var(--color-success)' : undefined}}
+                                    >
+                                        {ready ? 'Blender ready' : `${stagesComplete}/${stagesTotal} stages`}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    </button>
+
+                    <IconButton
+                        title={expanded ? 'Hide folder detail' : 'Show folder detail'}
+                        icon="expand-icon"
+                        className="icon-size-25 mr-2"
+                        onClick={toggleExpand}
+                        style={{transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', alignSelf: 'center'}}
+                    />
+                </div>
+
+                {expanded && (
+                    <div className="pl-4 pr-4 pb-4">
                         <RecordingStatusPanel
                             status={detailedStatus}
                             isLoading={statusLoading}
                             error={statusError}
                             onRefresh={refreshStatus}
                         />
-                    </Box>
-                </Collapse>
-            </ListItem>
+                    </div>
+                )}
+            </div>
         );
     },
 );
 
 RecordingRow.displayName = 'RecordingRow';
-
-// ---------------------------------------------------------------------------
-// StatBadge — tiny icon + label used in the secondary line
-// ---------------------------------------------------------------------------
-
-interface StatBadgeProps {
-    icon: React.ReactNode;
-    label: string;
-    tooltip: string;
-}
-
-const StatBadge: React.FC<StatBadgeProps> = ({ icon, label, tooltip }) => (
-    <Tooltip title={tooltip}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            {icon}
-            <Typography variant="caption" color="text.secondary">
-                {label}
-            </Typography>
-        </Box>
-    </Tooltip>
-);

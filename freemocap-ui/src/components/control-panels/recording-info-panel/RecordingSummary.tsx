@@ -1,6 +1,4 @@
 import React, {useEffect, useState} from "react";
-import {Chip, Typography, useTheme} from "@mui/material";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
 
 function formatDuration(startedAt: string): string {
     const seconds = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
@@ -34,48 +32,25 @@ export const RecordingSummary: React.FC<RecordingSummaryProps> = ({
         const id = setInterval(() => setRecordingDuration(formatDuration(startedAt)), 1000);
         return () => clearInterval(id);
     }, [isRecording, startedAt]);
-    const theme = useTheme();
 
     if (!isRecording) {
         return (
-            <Typography
-                variant="caption"
-                sx={{
-                    color: theme.palette.grey[400],
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                }}
-            >
+            <span className="text sm text-gray text-nowrap" style={{fontWeight: 500}}>
                 Ready
-            </Typography>
+            </span>
         );
     }
 
     return (
-        <Chip
-            icon={<FiberManualRecordIcon sx={{ fontSize: 10 }} />}
-            label={recordingDuration || "Recording..."}
-            size="small"
-            sx={{
-                height: 20,
-                fontSize: 11,
-                fontWeight: 600,
-                backgroundColor: theme.palette.error.main,
-                color: theme.palette.error.contrastText,
+        <span
+            className="tag text sm"
+            style={{
+                backgroundColor: 'var(--color-danger)',
+                color: '#fff',
                 animation: 'pulse-record 2s infinite ease-in-out',
-                '@keyframes pulse-record': {
-                    '0%, 100%': { opacity: 1 },
-                    '50%': { opacity: 0.7 },
-                },
-                "& .MuiChip-icon": {
-                    color: "inherit",
-                    animation: 'pulse-dot 1s infinite ease-in-out',
-                    '@keyframes pulse-dot': {
-                        '0%, 100%': { opacity: 1 },
-                        '50%': { opacity: 0.4 },
-                    },
-                },
             }}
-        />
+        >
+            {recordingDuration || "Recording..."}
+        </span>
     );
 };

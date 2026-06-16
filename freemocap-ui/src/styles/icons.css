@@ -1,0 +1,546 @@
+/* How to add icons to the design system
+
+1. Ask the team to share the Figma file with you so you can collaborate.
+
+2. Icons should always use a 1.33px stroke width and be exported as a 16px square.
+   Always convert the stroke/border into a solid shape before exporting.
+
+3. To add an icon to the codebase, first import the 16x16px SVG file.
+
+4. Add the icon to `icons.css` as a variable so it can be reused easily throughout the design system.
+
+5. Update the same file in the bottom of `icon.css` and use the same icon variable you just created as a class.
+
+Note:
+The FreeMoCap design system uses icons as CSS background images.
+To ensure icons are always consistent and reusable across the app, we define the variable in `app.css` as a background image.
+
+Study the codebase HTML structure carefully. You will notice that whenever icons are used for buttons, we use the following class structure:
+
+- `icon`
+- `import-icon`
+- `icon-size-20`
+
+`icon` indicates that the HTML DOM element contains an icon.
+`import-icon` defines the actual background image used by the app.
+`icon-size-20` defines the icon size specified in the `app.css` design system.
+*/
+/* icons vars */
+:root {
+  --plus-icon: url("../assets/icons/plus_icon.svg");
+  --checkUpdate-icon: url("../assets/icons/checkUpdate_icon.svg");
+  --upToDate-icon: url("../assets/icons/upToDate_icon.svg");
+  --updateAvailable-icon: url("../assets/icons/updateAvailable_icon.svg");
+  --minus-icon: url("../assets/icons/minus_icon.svg");
+  --close-icon: url("../assets/icons/close_icon.svg");
+  --rotate-icon: url("../assets/icons/rotate_icon.svg");
+  --pause-icon: url("../assets/icons/pause_icon.svg");
+  --play-icon: url("../assets/icons/play_icon.svg");
+  --scan-icon: url("../assets/icons/scan_icon.svg");
+  --home-icon: url("../assets/icons/home_icon.svg");
+  --clear-icon: url("../assets/icons/clear_icon.svg");
+  --load-icon: url("../assets/icons/load_icon.svg");
+  --live-icon: url("../assets/icons/live_icon.svg");
+  --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
+  --blender-icon: url("../assets/icons/blender_icon.svg");
+  --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
+
+  --import-icon: url("../assets/icons/import-icon.svg");
+  --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
+  --github-icon: url("../assets/icons/github_icon.svg");
+  --externallink-icon: url("../assets/icons/externallink_icon.svg");
+  --dropdown-icon: url("../assets/icons/dropdown_icon.svg");
+  --stream-icon: url("../assets/icons/stream_icon.svg");
+  --stopstreaming-icon: url("../assets/icons/stopstreaming_icon.svg");
+  --streaming-icon: url("../assets/icons/streaming_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+  --calibrated-icon: url("../assets/icons/calibrated_icon.svg");
+  --cancelcalibrate-icon: url("../assets/icons/cancelcalibrate_icon.svg");
+  --camera-icon: url("../assets/icons/camera_icon.svg");
+  --explainer-icon: url("../assets/icons/explainer_icon.svg");
+  --expand-icon: url("../assets/icons/expand_icon.svg");
+  --collapse-icon: url("../assets/icons/collapse_icon.svg");
+  --copyover-icon: url("../assets/icons/copyover_icon.svg");
+  --save-icon: url("../assets/icons/save_icon.svg");
+  --frame-icon: url("../assets/icons/frame_icon.svg");
+  --grid-icon: url("../assets/icons/grid_icon.svg");
+  --copy-icon: url("../assets/icons/copy_icon.svg");
+  --scrolldown-icon: url("../assets/icons/scrolldown_icon.svg");
+  --scrollup-icon: url("../assets/icons/scrollup_icon.svg");
+
+  --mic-icon: url("../assets/icons/mic_icon.svg");
+  --mic-active-icon: url("../assets/icons/mic_active_icon.svg");
+  --processmocap-icon: url("../assets/icons/processmocap_icon.svg");
+  --video-icon: url("../assets/icons/video_icon.svg");
+  --record-icon: url("../assets/icons/record_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+  --back-icon: url("../assets/icons/back_icon.svg");
+  --copied-icon: url("../assets/icons/copied_icon.svg");
+  --frameforward-icon: url("../assets/icons/frameforward_icon.svg");
+  --framebackward-icon: url("../assets/icons/framebackward_icon.svg");
+  --loop-icon: url("../assets/icons/loop_icon.svg");
+  --loopactive-icon: url("../assets/icons/loopactive_icon.svg");
+  --skipbackward-icon: url("../assets/icons/skipbackward_icon.svg");
+  --skipforward-icon: url("../assets/icons/skipforward_icon.svg");
+
+  --learn-icon: url("../assets/icons/learn_icon.svg");
+  --discord-icon: url("../assets/icons/discord_icon.svg");
+  --connected-icon: url("../assets/icons/connected_icon.svg");
+  --warning-icon: url("../assets/icons/warning_icon.svg");
+  --loader-icon: url("../assets/icons/loader_icon.svg");
+  --donate-icon: url("../assets/icons/donate_icon.svg");
+  --subcat-icon: url("../assets/icons/subcat_icon.svg");
+  --download-icon: url("../assets/icons/download_icon.svg");
+  --search-icon: url("../assets/icons/search_icon.svg");
+
+  --settings-icon: url("../assets/icons/settings_icon.svg");
+  --subfolder_icon: url("../assets/icons/subfolder_icon.svg");
+  --addsubfolder_icon: url("../assets/icons/addsubfolder_icon.svg");
+  --file_icon: url("../assets/icons/file_icon.svg");
+
+  --importproject_icon: url("../assets/icons/importproject_icon.svg");
+  --settings_icon: url("../assets/icons/settings_icon.svg");
+  --tag_icon: url("../assets/icons/tag_icon.svg");
+  --tag_active_icon: url("../assets/icons/tag_active_icon.svg");
+
+
+  --grid4_icon: url("../assets/icons/grid4_icon.svg");
+  --grid3_icon: url("../assets/icons/grid3_icon.svg");
+  --grid2_icon: url("../assets/icons/grid2_icon.svg");
+
+  --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
+
+  --importvideo-icon: url("../assets/icons/importvideo_icon.svg");
+
+  --live-active-icon: url("../assets/icons/live_active_icon.svg");
+  --twodtracking-active-icon: url("../assets/icons/2dtracking_active_icon.svg");
+  --threedtracking-active-icon: url("../assets/icons/3dtracking_active_icon.svg");
+  --triangulate-active-icon: url("../assets/icons/triangulate_active_icon.svg");
+  --skeleton-active-icon: url("../assets/icons/skeleton_active_icon.svg");
+  --skeletonfilter-active-icon: url("../assets/icons/skeletonfilter_active_icon.svg");
+  --skeletonfilter-icon: url("../assets/icons/skeletonfilter_icon.svg");
+  --twodtracking-icon: url("../assets/icons/2dtracking_icon.svg");
+  --threedtracking-icon: url("../assets/icons/3dtracking_icon.svg");
+  --triangulate-icon: url("../assets/icons/triangulate_icon.svg");
+  --skeleton-icon: url("../assets/icons/skeleton_icon.svg");
+  --charuco-icon: url("../assets/icons/charuco_icon.svg");
+  --charuco-active-icon: url("../assets/icons/charuco_active_icon.svg");
+}
+
+
+/* icon type */
+.close-icon {
+  background-image: var(--close-icon);
+}
+.frame-icon {
+  background-image: var(--frame-icon);
+}
+.grid-icon {
+  background-image: var(--grid-icon);
+}
+
+.mic-icon {
+  background-image: var(--mic-icon);
+}
+.snaptogrid-icon {
+  background-image: var(--snaptogrid-icon);
+}
+
+.mic-active-icon {
+  background-image: var(--mic-active-icon);
+}
+
+.close-icon {
+  background-image: var(--close-icon);
+}
+
+.expand-icon {
+  background-image: var(--expand-icon);
+}
+
+.collapse-icon {
+  background-image: var(--collapse-icon);
+}
+
+.rotate-icon {
+  background-image: var(--rotate-icon);
+}
+
+.pause-icon {
+  background-image: var(--pause-icon);
+}
+
+.play-icon {
+  background-image: var(--play-icon);
+}
+
+.back-icon {
+  background-image: var(--back-icon);
+}
+
+.search-icon {
+  background-image: var(--search-icon);
+}
+
+.clear-icon {
+  background-image: var(--clear-icon);
+}
+
+.load-icon {
+  background-image: var(--load-icon);
+}
+
+.home-icon {
+  background-image: var(--home-icon);
+}
+.arrowdown-icon {
+  background-image: var(--dropdown-icon);
+}
+.arrowup-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(180deg);
+}
+.arrowright-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(90deg);
+}
+.arrowleft-icon {
+  background-image: var(--dropdown-icon);
+  transform: rotate(-90deg);
+}
+
+.scan-icon {
+  background-image: var(--scan-icon);
+}
+
+.externallink-icon {
+  background-image: var(--externallink-icon);
+}
+
+.stream-icon {
+  background-image: var(--stream-icon);
+}
+
+.stopstreaming-icon {
+  background-image: var(--stopstreaming-icon);
+}
+.blender-icon {
+  background-image: var(--blender-icon);
+}
+.calibrating-icon {
+  background-image: var(--calibrating-icon);
+}
+.tag-icon {
+  background-image: var(--tag_icon);
+}
+.tag-active-icon {
+  background-image: var(--tag_active_icon);
+}
+
+.streaming-icon {
+  background-image: var(--streaming-icon);
+}
+
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+
+.explainer-icon {
+  background-image: var(--explainer-icon);
+}
+
+.calibrated-icon {
+  background-image: var(--calibrated-icon);
+}
+.cancelcalibrate-icon {
+  background-image: var(--cancelcalibrate-icon);
+}
+
+.subfolder-icon {
+  background-image: var(--subfolder_icon);
+}
+
+.file-icon {
+  background-image: var(--file_icon);
+}
+
+.grid4-icon {
+  background-image: var(--grid4_icon);
+}
+
+.grid3-icon {
+  background-image: var(--grid3_icon);
+}
+
+.grid2-icon {
+  background-image: var(--grid2_icon);
+}
+
+.settings-icon {
+  background-image: var(--settings_icon);
+}
+
+.plus-icon {
+  background-image: var(--plus-icon);
+}
+
+.checkUpdate-icon {
+  background-image: var(--checkUpdate-icon);
+}
+
+.upToDate-icon {
+  background-image: var(--upToDate-icon);
+}
+.charuco-icon {
+  background-image: var(--charuco-icon);
+}
+.charuco-active-icon {
+  background-image: var(--charuco-active-icon);
+}
+
+.updateAvailable-icon {
+  background-image: var(--updateAvailable-icon);
+}
+
+.addsubfolder-icon {
+  background-image: var(--addsubfolder_icon);
+}
+
+
+.minus-icon {
+  background-image: var(--minus-icon);
+}
+
+/* icon types */
+.live-icon {
+  background-image: var(--live-icon);
+}
+
+.import-icon {
+  background-image: var(--import-icon);
+}
+
+.importVideos-icon {
+  background-image: var(--importVideos-icon);
+}
+
+.github-icon {
+  background-image: var(--github-icon);
+}
+
+.discord-icon {
+  background-image: var(--discord-icon);
+}
+
+.connected-icon {
+  background-image: var(--connected-icon);
+}
+
+.copyover-icon {
+  background-image: var(--copyover-icon);
+}
+
+.loop-icon {
+  background-image: var(--loop-icon);
+}
+
+.copy-icon {
+  background-image: var(--copy-icon);
+}
+
+.copied-icon {
+  background-image: var(--copied-icon);
+}
+
+.scrolldown-icon {
+  background-image: var(--scrolldown-icon);
+}
+
+.save-icon {
+  background-image: var(--save-icon);
+}
+
+.scrollup-icon {
+  background-image: var(--scrollup-icon);
+}
+
+.loopactive-icon {
+  background-image: var(--loopactive-icon);
+}
+
+.frameforward-icon {
+  background-image: var(--frameforward-icon);
+}
+
+.framebackward-icon {
+  background-image: var(--framebackward-icon);
+}
+
+.skipforward-icon {
+  background-image: var(--skipforward-icon);
+}
+
+.skipbackward-icon {
+  background-image: var(--skipbackward-icon);
+}
+
+.loader-icon {
+  background-image: var(--loader-icon);
+  animation: spin-ramp 2s infinite;
+  animation-timing-function: cubic-bezier(0.95, 0.17, 0.37, 0.72);
+}
+
+.warning-icon {
+  background-image: var(--warning-icon);
+}
+
+.donate-icon {
+  background-image: var(--donate-icon);
+}
+
+.record-icon {
+  background-image: var(--record-icon);
+}
+
+.calibrate-icon {
+  background-image: var(--calibrate-icon);
+}
+
+.learn-icon {
+  background-image: var(--learn-icon);
+}
+
+.subcat-icon {
+  background-image: var(--subcat-icon);
+}
+
+.download-icon {
+  background-image: var(--download-icon);
+}
+
+.processmocap-icon {
+  background-image: var(--processmocap-icon);
+}
+.twodtracking-active-icon {
+  background-image: var(--twodtracking-active-icon);
+}
+.live-active-icon {
+  background-image: var(--live-active-icon);
+}
+.threedtracking-active-icon {
+  background-image: var(--threedtracking-active-icon);
+}
+.triangulate-active-icon {
+  background-image: var(--triangulate-active-icon);
+}
+.skeleton-active-icon {
+  background-image: var(--skeleton-active-icon);
+}
+.skeletonfilter-active-icon {
+  background-image: var(--skeletonfilter-active-icon);
+}
+.twodtracking-icon {
+  background-image: var(--twodtracking-icon);
+}
+.threedtracking-icon {
+  background-image: var(--threedtracking-icon);
+}
+.triangulate-icon {
+  background-image: var(--triangulate-icon);
+}
+.skeleton-icon {
+  background-image: var(--skeleton-icon);
+}
+.skeletonfilter-icon {
+  background-image: var(--skeletonfilter-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.tomlfile-icon {
+  background-image: var(--tomlfile-icon);
+}
+.importvideo-icon {
+  background-image: var(--importvideo-icon);
+}
+
+/* =========================
+   icons buttons
+   ========================= */
+
+.icon-size-12 {
+  min-width: 12px;
+  min-height: 12px;
+}
+
+.icon-size-20 {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.icon-size-25 {
+  width: 25px;
+  height: 25px;
+}
+
+.icon-size-25 {
+  width: 25px;
+  height: 25px;
+}
+
+.icon-size-32 {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-size-42 {
+  width: 42px;
+  height: 42px;
+}
+
+.icon-button {
+
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.icon-button.deactivated {
+
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* button icons variants */
+.primary {
+  background-color: var(--color-bg-primary);
+}
+
+.icon-button.tertiary {
+  background-color: transparent;
+}
+
+.icon-button.tertiary:hover {
+  filter: brightness(1.2);
+}
+
+.primary:hover {
+  background-color: var(--color-danger-idle);
+}
+
+.icon-button:hover>.icon {
+  filter: brightness(1);
+
+
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+.icon-button:hover:not(.secondary, .tertiary) {
+
+  background-color: var(--color-surface-active);
+  /* filter animation out */
+  transition: filter var(--speed-1) ease-in-out;
+}

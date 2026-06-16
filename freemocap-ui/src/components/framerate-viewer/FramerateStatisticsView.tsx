@@ -1,19 +1,5 @@
 // src/components/framerate-viewer/FramerateStatisticsView.tsx
 import React, {useEffect, useRef, useState} from "react";
-import {
-    Box,
-    Divider,
-    Paper,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Tooltip,
-    Typography,
-} from "@mui/material";
-import {alpha, useTheme} from "@mui/material/styles";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {backendColor, frontendColor} from "@/components/framerate-viewer/FrameRateViewer";
 import {useTranslation} from "react-i18next";
@@ -29,8 +15,6 @@ const formatNumber = (num: number | null, precision = 3): string => {
     return num !== null ? num.toFixed(precision) : "N/A";
 };
 
-// --- Progressive tooltip (renders once, state is local to tooltip interaction) ---
-
 type ProgressiveTooltipProps = {
     shortInfo: string;
     longInfo: string;
@@ -43,38 +27,15 @@ export const ProgressiveTooltip = ({
     children,
 }: ProgressiveTooltipProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    const theme = useTheme();
-    const {t} = useTranslation();
 
     return (
-        <Tooltip
-            title={
-                <Box onClick={(e) => { e.preventDefault(); setIsExpanded(!isExpanded); }} sx={{cursor: "pointer"}}>
-                    <Typography variant="body2">
-                        {isExpanded ? longInfo : shortInfo}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{display: "block", mt: 1, textAlign: "center"}}>
-                        {isExpanded ? t("clickToShowLess") : t("clickToLearnMore")}
-                    </Typography>
-                </Box>
-            }
-            arrow
-            placement="top"
-            componentsProps={{
-                tooltip: {
-                    sx: {
-                        backgroundColor: theme.palette.background.paper,
-                        color: theme.palette.text.primary,
-                        border: `1px solid ${theme.palette.divider}`,
-                        boxShadow: theme.shadows[3],
-                        maxWidth: isExpanded ? 500 : 300,
-                        p: 1.5,
-                    },
-                },
-            }}
+        <span
+            title={isExpanded ? longInfo : shortInfo}
+            onClick={() => setIsExpanded(v => !v)}
+            style={{cursor: 'help'}}
         >
             {children}
-        </Tooltip>
+        </span>
     );
 };
 
@@ -82,8 +43,8 @@ type HeaderCellWithTooltipProps = {
     label: string;
     shortInfo: string;
     longInfo: string;
-    style?: object;
-    align?: "inherit" | "left" | "center" | "right" | "justify";
+    style?: React.CSSProperties;
+    align?: "left" | "center" | "right";
 };
 
 export const HeaderCellWithTooltip = ({
@@ -92,23 +53,26 @@ export const HeaderCellWithTooltip = ({
     longInfo,
     style = {},
     align = "center",
-}: HeaderCellWithTooltipProps) => (
-    <ProgressiveTooltip shortInfo={shortInfo} longInfo={longInfo}>
-        <TableCell align={align} sx={style}>
-            {label}
-        </TableCell>
-    </ProgressiveTooltip>
-);
+}: HeaderCellWithTooltipProps) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const {t} = useTranslation();
 
-// --- Ref key types ---
+    return (
+        <th
+            title={isExpanded ? longInfo : shortInfo}
+            style={{...style, textAlign: align, cursor: 'help', userSelect: 'none'}}
+            onClick={() => setIsExpanded(v => !v)}
+        >
+            {label}
+        </th>
+    );
+};
 
 const METRIC_KEYS = ["recent", "mean", "median", "stdDev", "max", "min"] as const;
 type MetricKey = typeof METRIC_KEYS[number];
 const ROW_KEYS = ["backend", "frontend"] as const;
 type RowKey = typeof ROW_KEYS[number];
 type RefKey = `${RowKey}-${MetricKey}-${"primary" | "secondary"}` | `${RowKey}-samples`;
-
-// --- Extract display strings from store data ---
 
 function computeCellValues(
     currentData: DetailedFramerate | null,
@@ -146,13 +110,18 @@ function computeCellValues(
     };
 }
 
-// --- Main component: renders MUI table once, updates numbers via refs ---
+const colorMap: Record<string, string> = {
+    recent: '#66bb6a',
+    mean: '#ffa726',
+    median: '#f57c00',
+    stdDev: '#42a5f5',
+    max: '#ef5350',
+    min: '#29b6f6',
+};
 
 export default function FramerateStatisticsView({
     compact = false,
 }: FramerateStatisticsViewProps) {
-    const theme = useTheme();
-    const isDarkMode = theme.palette.mode === "dark";
     const {t} = useTranslation();
     const {getFramerateStore} = useServer();
 
@@ -161,7 +130,6 @@ export default function FramerateStatisticsView({
         spanRefs.current[key] = el;
     };
 
-    // Poll the store and write to DOM spans — zero React re-renders.
     useEffect(() => {
         const tick = () => {
             const snapshot = getFramerateStore().getSnapshot();
@@ -187,25 +155,6 @@ export default function FramerateStatisticsView({
         return () => clearInterval(id);
     }, [getFramerateStore, t]);
 
-    // --- Static styles ---
-
-    const colorMap: Record<string, string> = {
-        recent: isDarkMode ? theme.palette.success.light : theme.palette.success.main,
-        mean: isDarkMode ? theme.palette.warning.light : theme.palette.warning.main,
-        median: isDarkMode ? theme.palette.warning.dark : theme.palette.warning.dark,
-        stdDev: isDarkMode ? theme.palette.primary.light : theme.palette.primary.main,
-        max: isDarkMode ? theme.palette.error.light : theme.palette.error.main,
-        min: isDarkMode ? theme.palette.info.light : theme.palette.info.main,
-    };
-
-    const getCellStyle = (metricType: string) => ({
-        backgroundColor: alpha(colorMap[metricType] || theme.palette.grey[500], isDarkMode ? 0.2 : 0.1),
-        borderBottom: "none",
-        padding: "2px 4px",
-    });
-
-    const headerCellStyle = {fontWeight: "bold", paddingY: 0.5};
-
     const tooltips = {
         source: {short: t("statsSourceShort"), long: t("statsSourceLong")},
         recent: {short: t("statsCurrentShort"), long: t("statsCurrentLong")},
@@ -216,60 +165,70 @@ export default function FramerateStatisticsView({
         min: {short: t("statsMinShort"), long: t("statsMinLong")},
     };
 
-    // --- Render helpers (called once at mount) ---
+    const cellStyle = (metric: string): React.CSSProperties => ({
+        backgroundColor: colorMap[metric] ? colorMap[metric] + '22' : undefined,
+        borderBottom: 'none',
+        padding: '2px 4px',
+        textAlign: 'center',
+    });
 
     const renderMetricCell = (rowKey: RowKey, metric: MetricKey) => (
-        <TableCell key={metric} align="center" sx={getCellStyle(metric)}>
-            <Typography fontWeight="bold" fontFamily="monospace" color={colorMap[metric]} sx={{fontSize: "0.7rem", whiteSpace: "nowrap"}}>
+        <td key={metric} style={cellStyle(metric)}>
+            <div>
                 <span ref={setSpanRef(`${rowKey}-${metric}-primary`)}>--</span>
-            </Typography>
-            <Typography variant="caption" color={colorMap[metric]} sx={{fontSize: "0.6rem", opacity: 0.9, whiteSpace: "nowrap"}}>
+            </div>
+            <div>
                 <span ref={setSpanRef(`${rowKey}-${metric}-secondary`)}>--</span>
-            </Typography>
-        </TableCell>
+            </div>
+        </td>
     );
 
     const renderRow = (rowKey: RowKey, sourceColor: string, sourceLabel: string, shortTooltip: string, longTooltip: string) => (
-        <TableRow key={rowKey}>
-            <ProgressiveTooltip shortInfo={shortTooltip} longInfo={longTooltip}>
-                <TableCell sx={{fontWeight: "bold", borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, paddingY: 0.5, paddingLeft: 1, color: sourceColor, cursor: "help"}}>
-                    {sourceLabel}
-                    <Typography variant="caption" display="block" color="text.secondary" sx={{fontSize: "0.6rem"}}>
-                        <span ref={setSpanRef(`${rowKey}-samples`)}>--</span>
-                    </Typography>
-                </TableCell>
-            </ProgressiveTooltip>
+        <tr key={rowKey}>
+            <td
+                title={shortTooltip}
+                style={{fontWeight: '800', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '2px 4px 2px 8px', color: sourceColor, cursor: 'help'}}
+            >
+                {sourceLabel}
+                <div style={{color: 'var(--color-text-secondary)'}}>
+                    <span ref={setSpanRef(`${rowKey}-samples`)}>--</span>
+                </div>
+            </td>
             {METRIC_KEYS.map((metric) => renderMetricCell(rowKey, metric))}
-        </TableRow>
+        </tr>
     );
 
-    // --- Static MUI table (rendered once) ---
+    const thStyle: React.CSSProperties = {};
 
     return (
-        <TableContainer component={Paper} elevation={0} sx={{backgroundColor: "transparent", border: "none", overflowX: "auto"}}>
-            <Table size="small" padding="none" sx={{"& .MuiTableCell-root": {fontSize: "0.65rem", lineHeight: "1.1", whiteSpace: "nowrap"}}}>
-                <TableHead>
-                    <TableRow>
-                        <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...headerCellStyle, width: "12%", color: theme.palette.text.primary}} align="left" />
-                        <HeaderCellWithTooltip label={t("Recent")} shortInfo={tooltips.recent.short} longInfo={tooltips.recent.long} style={{...headerCellStyle, ...getCellStyle("recent")}} />
-                        <HeaderCellWithTooltip label={t("mean")} shortInfo={tooltips.mean.short} longInfo={tooltips.mean.long} style={{...headerCellStyle, ...getCellStyle("mean")}} />
-                        <HeaderCellWithTooltip label={t("median")} shortInfo={tooltips.median.short} longInfo={tooltips.median.long} style={{...headerCellStyle, ...getCellStyle("median")}} />
-                        <HeaderCellWithTooltip label={t("stdDevCv")} shortInfo={tooltips.stdDev.short} longInfo={tooltips.stdDev.long} style={{...headerCellStyle, ...getCellStyle("stdDev")}} />
-                        <HeaderCellWithTooltip label={t("max")} shortInfo={tooltips.max.short} longInfo={tooltips.max.long} style={{...headerCellStyle, ...getCellStyle("max")}} />
-                        <HeaderCellWithTooltip label={t("min")} shortInfo={tooltips.min.short} longInfo={tooltips.min.long} style={{...headerCellStyle, ...getCellStyle("min")}} />
-                    </TableRow>
-                    <TableRow>
-                        <TableCell colSpan={7} sx={{padding: 0}}><Divider sx={{borderColor: theme.palette.divider}} /></TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
+        <div className="overflow-x">
+            <table className="w-full text sm" style={{}}>
+                <thead>
+                    <tr>
+                        <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...thStyle, width: '12%', color: 'var(--color-text-primary)', textAlign: 'left'}} align="left" />
+                        <HeaderCellWithTooltip label={t("Recent")} shortInfo={tooltips.recent.short} longInfo={tooltips.recent.long} style={{...thStyle, ...{backgroundColor: colorMap.recent + '22'}}} />
+                        <HeaderCellWithTooltip label={t("mean")} shortInfo={tooltips.mean.short} longInfo={tooltips.mean.long} style={{...thStyle, ...{backgroundColor: colorMap.mean + '22'}}} />
+                        <HeaderCellWithTooltip label={t("median")} shortInfo={tooltips.median.short} longInfo={tooltips.median.long} style={{...thStyle, ...{backgroundColor: colorMap.median + '22'}}} />
+                        <HeaderCellWithTooltip label={t("stdDevCv")} shortInfo={tooltips.stdDev.short} longInfo={tooltips.stdDev.long} style={{...thStyle, ...{backgroundColor: colorMap.stdDev + '22'}}} />
+                        <HeaderCellWithTooltip label={t("max")} shortInfo={tooltips.max.short} longInfo={tooltips.max.long} style={{...thStyle, ...{backgroundColor: colorMap.max + '22'}}} />
+                        <HeaderCellWithTooltip label={t("min")} shortInfo={tooltips.min.short} longInfo={tooltips.min.long} style={{...thStyle, ...{backgroundColor: colorMap.min + '22'}}} />
+                    </tr>
+                    <tr>
+                        <td colSpan={7} className="p-0">
+                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
                     {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
-                    <TableRow>
-                        <TableCell colSpan={7} sx={{padding: 0}}><Divider sx={{borderColor: theme.palette.divider}} /></TableCell>
-                    </TableRow>
+                    <tr>
+                        <td colSpan={7} className="p-0">
+                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
+                        </td>
+                    </tr>
                     {renderRow("frontend", frontendColor, t("display"), t("rendersReceivedFrames"), t("displayTooltipLong"))}
-                </TableBody>
-            </Table>
-        </TableContainer>
+                </tbody>
+            </table>
+        </div>
     );
 }

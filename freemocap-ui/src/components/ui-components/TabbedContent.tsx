@@ -1,8 +1,4 @@
-import React, {useState} from 'react';
-import Box from '@mui/material/Box';
-import Tabs from '@mui/material/Tabs';
-import Tab from '@mui/material/Tab';
-import type {SxProps, Theme} from '@mui/material/styles';
+import React, { useState } from 'react';
 
 export interface TabDef {
     label: React.ReactNode;
@@ -13,44 +9,36 @@ interface TabbedContentProps {
     tabs: TabDef[];
     activeTab?: number;
     onTabChange?: (index: number) => void;
-    tabsSx?: SxProps<Theme>;
 }
 
-/**
- * Generic tabbed content container.
- * All tab panels stay mounted — only visibility is toggled (display block/none).
- * Can be controlled (activeTab + onTabChange) or uncontrolled (internal state).
- */
-export function TabbedContent({tabs, activeTab, onTabChange, tabsSx}: TabbedContentProps) {
+export function TabbedContent({ tabs, activeTab, onTabChange }: TabbedContentProps) {
     const [internalTab, setInternalTab] = useState(0);
     const controlled = activeTab !== undefined;
     const currentTab = controlled ? activeTab : internalTab;
 
-    const handleChange = (_: React.SyntheticEvent, value: number) => {
-        if (onTabChange) onTabChange(value);
-        if (!controlled) setInternalTab(value);
+    const handleClick = (idx: number) => {
+        if (onTabChange) onTabChange(idx);
+        if (!controlled) setInternalTab(idx);
     };
 
     return (
-        <Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
-            <Tabs
-                value={currentTab}
-                onChange={handleChange}
-                sx={{
-                    minHeight: 28,
-                    '& .MuiTab-root': {minHeight: 28, py: 0, fontSize: '0.75rem'},
-                    ...tabsSx as any,
-                }}
-            >
+        <div className="h-full flex flex-col">
+            <div className="main-tab-bar">
                 {tabs.map((t, i) => (
-                    <Tab key={i} label={t.label}/>
+                    <button
+                        key={i}
+                        className={`segmented-control-button button${currentTab === i ? ' activated' : ''}`}
+                        onClick={() => handleClick(i)}
+                    >
+                        <p className={`text md${currentTab === i ? ' text-white' : ' text-gray'}`}>{t.label}</p>
+                    </button>
                 ))}
-            </Tabs>
+            </div>
             {tabs.map((t, i) => (
-                <Box key={i} sx={{flex: 1, overflow: 'hidden', display: currentTab === i ? 'block' : 'none'}}>
+                <div key={i} className="flex-1 overflow-hidden" style={{ display: currentTab === i ? 'block' : 'none' }}>
                     {t.content}
-                </Box>
+                </div>
             ))}
-        </Box>
+        </div>
     );
 }

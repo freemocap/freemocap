@@ -1,0 +1,210 @@
+/* ============================================================
+   Framerate Viewer
+   ============================================================ */
+
+.framerate-viewer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  /* overflow: hidden; */
+  padding: 4px;
+  gap: 4px;
+  /* background-color: var(--color-text-muted); */
+}
+
+.framerate-viewer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 25px;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+.framerate-stats-wrapper {
+  flex-shrink: 0;
+}
+
+.framerate-charts-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  gap: 4px;
+}
+
+.framerate-charts-area.row    { flex-direction: row; }
+.framerate-charts-area.column { flex-direction: column; }
+
+.framerate-chart-panel {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ============================================================
+   Framerate Statistics Table
+   ============================================================ */
+
+.stats-table-wrapper {
+  overflow: visible;
+}
+
+.tooltip-container.stats-tooltip {
+  width: max-content;
+  max-width: 300px;
+  min-width: 0;
+  white-space: normal;
+}
+
+.stats-table {
+  /* font-size: 0.65rem; */
+  border-collapse: collapse;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.stats-th {
+  /* font-size: 0.65rem; */
+  /* line-height: 1.1; */
+  white-space: nowrap;
+  padding: 2px 4px;
+  text-align: center;
+  font-weight: bold;
+  cursor: help;
+  font-family: monospace;
+  position: relative;
+}
+
+
+.stats-td {
+  /* font-size: 0.65rem; */
+  /* line-height: 1.1; */
+  white-space: nowrap;
+  padding: 2px 4px;
+  text-align: center;
+  border-bottom: none;
+  font-family: monospace;
+}
+
+/* Source column header */
+.stats-th-source {
+  width: 12%;
+  color: var(--color-text-primary);
+  text-align: left;
+}
+
+/* Metric column backgrounds */
+.stats-col-recent { background-color: var(--metric-recent-bg); }
+.stats-col-mean   { background-color: var(--metric-mean-bg); }
+.stats-col-median { background-color: var(--metric-median-bg); }
+.stats-col-stddev { background-color: var(--metric-stddev-bg); }
+.stats-col-max    { background-color: var(--metric-max-bg); }
+.stats-col-min    { background-color: var(--metric-min-bg); }
+
+/* Metric cell values */
+.stats-cell-primary {
+  /* font-weight: bold;
+  font-family: monospace; */
+  /* font-size: 0.7rem; */
+  white-space: nowrap;
+}
+
+.stats-cell-secondary {
+  /* font-size: 0.6rem; */
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.stats-cell-recent-text { color: var(--metric-recent); }
+.stats-cell-mean-text   { color: var(--metric-mean); }
+.stats-cell-median-text { color: var(--metric-median); }
+.stats-cell-stddev-text { color: var(--metric-stddev); }
+.stats-cell-max-text    { color: var(--metric-max); }
+.stats-cell-min-text    { color: var(--metric-min); }
+
+/* Source label cell */
+.stats-source-cell {
+  font-weight: bold;
+  border-left: 4px solid;
+  padding: 2px 4px 2px 8px;
+  cursor: help;
+  text-align: left;
+  white-space: nowrap;
+  position: relative;
+}
+
+.stats-source-backend {
+  border-left-color: var(--chart-backend);
+  background-color: var(--chart-backend-bg);
+  color: var(--chart-backend);
+}
+
+.stats-source-frontend {
+  border-left-color: var(--chart-frontend);
+  background-color: var(--chart-frontend-bg);
+  color: var(--chart-frontend);
+}
+
+.stats-source-samples {
+  font-size: 0.6rem;
+  color: var(--color-text-muted);
+}
+
+/* Divider row */
+.stats-divider > td {
+  padding: 0;
+  border-bottom: 1px solid var(--color-bg-elevated);
+}
+
+/* ============================================================
+   D3 Chart Base
+   ============================================================ */
+
+.d3-chart-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+.d3-chart-title {
+  position: absolute;
+  top: 2px;
+  left: 8px;
+  
+  opacity: 0.9;
+  z-index: 5;
+  background-color: var(--color-bg-secondary);
+  padding: 0 4px;
+  border-radius: 2px;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  margin: 0;
+  font-family: monospace;
+  pointer-events: none;
+}
+
+.d3-zoom-controls {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  z-index: 10;
+  background-color: var(--color-text-muted);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  transition: opacity var(--speed-2);
+}
+
+.d3-zoom-controls.visible { opacity: 1; pointer-events: auto; }
+.d3-zoom-controls.hidden  { opacity: 0; pointer-events: none; }
+
+.d3-zoom-button {
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.d3-chart-svg {
+  display: block;
+  overflow: hidden;
+}

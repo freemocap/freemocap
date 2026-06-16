@@ -1,18 +1,17 @@
 import React, {useEffect, useState} from 'react';
-import {Box, Typography} from '@mui/material';
-import {TreeItem} from '@mui/x-tree-view/TreeItem';
-import {
-    FullRecordingPathPreview
-} from "@/components/control-panels/recording-info-panel/recording-subcomponents/FullRecordingPathPreview";
 import {RecordingControlsSection} from "@/components/control-panels/recording-info-panel/RecordingControlsTreeSection";
 import {getTimestampString} from "@/components/control-panels/recording-info-panel/getTimestampString";
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import TextSelector from '@/components/ui-components/TextSelector';
+import {useAppDispatch} from '@/store';
+import {recordingDirectoryChanged} from '@/store/slices/recording/recording-slice';
+import {useElectronIPC} from '@/services';
+import IconButton from '@/components/ui-components/IconButton';
 
 interface RecordingPathTreeItemProps {
     recordingDirectory: string;
     countdown: number | null;
     recordingTag: string;
-    useDelayStart: boolean;
-    delaySeconds: number;
     useTimestamp: boolean;
     baseName: string;
     recordingTypePreset: string;
@@ -21,9 +20,8 @@ interface RecordingPathTreeItemProps {
     createSubfolder: boolean;
     customSubfolderName: string;
     isRecording: boolean;
-    onDelayToggle: (value: boolean) => void;
-    onDelayChange: (value: number) => void;
     onTagChange: (value: string) => void;
+    onNameChange: (value: string) => void;
     onUseTimestampChange: (value: boolean) => void;
     onBaseNameChange: (value: string) => void;
     onUseIncrementChange: (value: boolean) => void;
@@ -33,96 +31,122 @@ interface RecordingPathTreeItemProps {
 }
 
 export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
-                                                                                recordingDirectory,
-                                                                                countdown,
-                                                                                recordingTag,
-                                                                                useDelayStart,
-                                                                                delaySeconds,
-                                                                                useTimestamp,
-                                                                                baseName,
-                                                                                recordingTypePreset,
-                                                                                useIncrement,
-                                                                                currentIncrement,
-                                                                                createSubfolder,
-                                                                                customSubfolderName,
-                                                                                isRecording,
-                                                                                onDelayToggle,
-                                                                                onDelayChange,
-                                                                                onTagChange,
-                                                                                onUseTimestampChange,
-                                                                                onBaseNameChange,
-                                                                                onUseIncrementChange,
-                                                                                onIncrementChange,
-                                                                                onCreateSubfolderChange,
-                                                                                onCustomSubfolderNameChange
-                                                                            }) => {
-    // Tick once per second while not recording so the name preview stays current.
-    // Isolated here so only this subtree re-renders, not the entire panel.
+    recordingDirectory,
+    countdown,
+    recordingTag,
+    useTimestamp,
+    baseName,
+    recordingTypePreset,
+    useIncrement,
+    currentIncrement,
+    createSubfolder,
+    customSubfolderName,
+    isRecording,
+    onTagChange,
+    onNameChange,
+    onUseTimestampChange,
+    onBaseNameChange,
+    onUseIncrementChange,
+    onIncrementChange,
+    onCreateSubfolderChange,
+    onCustomSubfolderNameChange,
+}) => {
+    const dispatch = useAppDispatch();
+    const {api, isElectron} = useElectronIPC();
     const [previewTimestamp, setPreviewTimestamp] = useState<string>(() => getTimestampString());
+
     useEffect(() => {
         if (isRecording) return;
         const id = setInterval(() => setPreviewTimestamp(getTimestampString()), 1000);
         return () => clearInterval(id);
     }, [isRecording]);
 
+    const handleSelectDirectory = async (): Promise<void> => {
+        if (!isElectron || !api) return;
+        try {
+            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            if (result) dispatch(recordingDirectoryChanged(result));
+        } catch (error) {
+            console.error('Failed to select directory:', error);
+        }
+    };
+
     const nameParts: string[] = [];
-    if (useTimestamp) {
-        nameParts.push(previewTimestamp);
-    } else {
-        nameParts.push(baseName);
-    }
+    if (useTimestamp) nameParts.push(previewTimestamp);
+    else nameParts.push(baseName);
     if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
     if (recordingTag) nameParts.push(recordingTag);
     const recordingName = nameParts.join("_");
-    const subfolder = createSubfolder ? customSubfolderName || previewTimestamp : undefined;
 
     return (
-        <TreeItem
-            itemId="recording-path"
-            label={
-                <Box sx={{display: 'flex', alignItems: 'center', gap: 1}}>
-                    <FullRecordingPathPreview
-                        directory={recordingDirectory}
-                        filename={recordingName}
-                        subfolder={subfolder}
-                    />
-                </Box>
-            }
-        >
-            <Box
-                onKeyDown={(e) => e.stopPropagation()}
-                sx={{pl: 2, pt: 1, display: 'flex', flexDirection: 'column', gap: 2}}
-            >
-                {countdown !== null && (
-                    <Typography variant="h4" align="center" color="secondary">
-                        Starting in {countdown}...
-                    </Typography>
-                )}
+        <div className="file-directory-settings-item flex flex-col gap-1" onKeyDown={(e) => e.stopPropagation()}>
+            <SubactionHeader text="Recording Folder" />
 
-                <RecordingControlsSection
-                    recordingDirectory={recordingDirectory}
-                    recordingName={recordingName}
-                    recordingTag={recordingTag}
-                    useDelayStart={useDelayStart}
-                    delaySeconds={delaySeconds}
-                    useTimestamp={useTimestamp}
-                    baseName={baseName}
-                    useIncrement={useIncrement}
-                    currentIncrement={currentIncrement}
-                    createSubfolder={createSubfolder}
-                    customSubfolderName={customSubfolderName}
-                    isRecording={isRecording}
-                    onDelayToggle={onDelayToggle}
-                    onDelayChange={onDelayChange}
-                    onTagChange={onTagChange}
-                    onUseTimestampChange={onUseTimestampChange}
-                    onBaseNameChange={onBaseNameChange}
-                    onUseIncrementChange={onUseIncrementChange}
-                    onIncrementChange={onIncrementChange}
-                    onCreateSubfolderChange={onCreateSubfolderChange}
-                    onCustomSubfolderNameChange={onCustomSubfolderNameChange}
+            {/* Base folder row */}
+            <div className="flex items-center gap-1">
+                <button
+                    className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
+                    onClick={handleSelectDirectory}
+                    title="Click to select recording folder"
+                    disabled={!isElectron}
+                >
+                    <span className="icon subfolder-icon icon-size-20" />
+                    <p className="recording-path-preview flex text-wrap flex-1 text md">
+                        {recordingDirectory}
+                    </p>
+                </button>
+
+                <IconButton
+                    icon="addsubfolder-icon"
+                    className={`icon-size-25 ${createSubfolder ? 'invisible' : ''}`}
+                    onClick={() => {
+                        onCreateSubfolderChange(true);
+                        onCustomSubfolderNameChange('NewSubfolder');
+                    }}
+                    title="Add subfolder"
                 />
-            </Box>
-        </TreeItem>
+            </div>
+
+            {/* Subfolder row */}
+            {createSubfolder && (
+                <div className="flex items-center gap-1 pl-2">
+                    <span className="icon icon-size-20 subcat-icon" />
+                    <TextSelector
+                        value={customSubfolderName}
+                        onChange={onCustomSubfolderNameChange}
+                        placeholder="subfolder name"
+                        popupClassName="directory-input-popup"
+                    />
+                    <IconButton
+                        icon="minus-icon"
+                        onClick={() => {
+                            onCreateSubfolderChange(false);
+                            onCustomSubfolderNameChange('');
+                        }}
+                        title="Remove subfolder"
+                    />
+                </div>
+            )}
+
+            {countdown !== null && (
+                <p className="recording-countdown">{`Starting in ${countdown}...`}</p>
+            )}
+
+            <RecordingControlsSection
+                recordingName={recordingName}
+                recordingTag={recordingTag}
+                useTimestamp={useTimestamp}
+                baseName={baseName}
+                useIncrement={useIncrement}
+                currentIncrement={currentIncrement}
+                isRecording={isRecording}
+                onTagChange={onTagChange}
+                onNameChange={onNameChange}
+                onUseTimestampChange={onUseTimestampChange}
+                onBaseNameChange={onBaseNameChange}
+                onUseIncrementChange={onUseIncrementChange}
+                onIncrementChange={onIncrementChange}
+            />
+        </div>
     );
 };

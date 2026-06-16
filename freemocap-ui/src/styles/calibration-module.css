@@ -1,0 +1,57 @@
+/* CALIBRATION PROGRESS COLUMNS */
+.calibration-progress-columns {
+  height: 32px;
+  background-color: var(--color-bg-darker);
+  gap: auto;
+  display: flex;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.calibration-progress-columns > div {
+  width: 6px;
+  height: 100%;
+  background-color: var(--color-bg-primary);
+  transition: background-color 0.2s ease;
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+
+.calibration-progress-columns > div.is-active {
+  background-color: var(--color-success);
+}
+.charuco-settings-action-container.while-recording {
+  min-height: 25px;
+}
+
+/* SHIMMER TEXT ANIMATION FOR CALIBRATION HEADER */
+@keyframes shimmer-text {
+  0%, 100% {
+    color: var(--color-text-primary, var( --color-text-primary));
+    /* text-shadow: 0 0 4px rgba(255, 255, 255, 0.3); */
+  }
+  16.66% {
+    color: var(--color-bg-idle, var( --color-text-primary));
+    /* text-shadow: 0 0 8px rgba(211, 217, 219, 0.5); */
+  }
+  33.33% {
+    color: var(--color-text-primary, var( --color-text-primary));
+    /* text-shadow: 0 0 4px rgba(255, 255, 255, 0.3); */
+  }
+  50% {
+    color: var(--color-bg-idle, var( --color-text-primary));
+    /* text-shadow: 0 0 8px rgba(156, 163, 175, 0.5); */
+  }
+  66.66% {
+    color: var(--color-text-primary, var( --color-text-primary));
+    /* text-shadow: 0 0 4px rgba(255, 255, 255, 0.3); */
+  }
+  83.33% {
+    color: var(--color-bg-idle, var( --color-text-primary));
+    /* text-shadow: 0 0 8px rgba(211, 217, 219, 0.5); */
+  }
+}
+
+.calibration-header-shimmer {
+  animation: shimmer-text 9s ease-in-out infinite;
+}

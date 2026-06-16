@@ -1,13 +1,7 @@
-import React, {useEffect, useState} from "react";
-import {Box, useTheme,} from "@mui/material";
-import {SimpleTreeView} from "@mui/x-tree-view/SimpleTreeView";
-import ExpandMore from "@mui/icons-material/ExpandMore";
-import ChevronRight from "@mui/icons-material/ChevronRight";
-import VideoCameraFrontIcon from '@mui/icons-material/VideoCameraFront';
+import React, {useEffect} from "react";
 
-import {CameraGroupTreeItem} from "./CameraGroupTreeItem";
+import {CameraTreeItem} from "./CameraTreeItem";
 import {NoCamerasPlaceholder} from "./NoCamerasPlaceholder";
-import {CameraSummary} from "./CameraSummary";
 import {CameraHeaderActions} from "./CameraHeaderActions";
 import {
     Camera,
@@ -21,124 +15,53 @@ import {
 } from "@/store";
 import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from 'react-i18next';
-import {CollapsibleSidebarSection} from "../../../common/CollapsibleSidebarSection";
 
 
 export const CameraConfigTreeView: React.FC = () => {
-    const theme = useTheme();
     const dispatch = useAppDispatch();
     const {t} = useTranslation();
     const {isConnected} = useServer();
 
-    // Redux state
     const cameras = useAppSelector(selectCameras);
     const isLoading = useAppSelector(selectIsLoading);
     const connectedCameras = useAppSelector(selectConnectedCameras);
-
-    // Local state
-    const [expandedItems, setExpandedItems] = useState<string[]>([
-        "cameras-root",
-        "cameras-connected",
-        "cameras-available"
-    ]);
-
-    // Pause state from Redux (shared with keyboard shortcut)
     const isPaused = useAppSelector(selectIsPaused);
 
-    // Group cameras by status
-    const availableCameras = cameras.filter((cam: Camera) => cam.connectionStatus !== "connected");
-    const isConnectedToCameras = connectedCameras.length > 0;
-
-    // Initial camera detection
     useEffect(() => {
         if (isConnected && cameras.length === 0) {
             dispatch(detectCameras({filterVirtual: true}));
         }
     }, [isConnected, cameras.length, dispatch]);
 
-    const handleExpandedItemsChange = (
-        event: React.SyntheticEvent,
-        itemIds: string[]
-    ): void => {
-        setExpandedItems(itemIds);
-    };
-
-
     return (
-        <CollapsibleSidebarSection
-            icon={<VideoCameraFrontIcon sx={{color: "inherit"}}/>}
-            title={t('cameras')}
-            summaryContent={
-                <CameraSummary
-                    cameraCount={cameras.length}
-                    connectedCount={connectedCameras.length}
-                />
-            }
-            secondaryControls={
-                <CameraHeaderActions
-                    isLoading={isLoading}
-                    isPaused={isPaused}
-                />
-            }
-            defaultExpanded={false}
-        >
-            <Box
-                sx={{
-                    color: "text.primary",
-                    backgroundColor: theme.palette.background.paper,
-                    borderRadius: 1,
-                    mx: 1,
-                    my: 0.5,
-                }}
-            >
-                <SimpleTreeView
-                    expandedItems={expandedItems}
-                    onExpandedItemsChange={handleExpandedItemsChange}
-                    slots={{
-                        collapseIcon: ExpandMore,
-                        expandIcon: ChevronRight,
-                    }}
-                    sx={{
-                        flexGrow: 1,
-                        '& .MuiTreeItem-content': {
-                            padding: '2px 4px',
-                            margin: '1px 0',
-                        },
-                        '& .MuiTreeItem-label': {
-                            fontSize: 13,
-                            padding: '1px 0',
-                        },
-                    }}
-                >
-                    {cameras.length === 0 ? (
-                        <NoCamerasPlaceholder/>
-                    ) : (
-                        <>
-                            {/* Connected Cameras Group */}
-                            {isConnectedToCameras && connectedCameras.length > 0 && (
-                                <CameraGroupTreeItem
-                                    groupId="cameras-connected"
-                                    title={t("connectedCameras")}
-                                    cameras={connectedCameras}
-                                    icon={<VideoCameraFrontIcon color="success"/>}
-                                    expandedItems={expandedItems}
-                                />
-                            )}
+        <div className="camera-config-sidebar-panel flex flex-col flex-1 bg-middark br-2 p-1 min-h-0 order-1">
+            {/* Header */}
+            <div className="camera-group-header flex flex-row flex-wrap items-center gap-1 p-1 pos-rel z-2">
+                <p className="flex flex-row text md text-gray">{cameras.length} {t('cameras')}</p>
+                {connectedCameras.length > 0 && (
+                    <span className="text md" style={{color: 'var(--color-success)'}}>
+                        {connectedCameras.length} Streaming
+                    </span>
+                )}
+                <div className="flex-1" />
+                <div className="button-group flex items-center gap-1 pos-rel">
+                    <CameraHeaderActions />
+                </div>
+            </div>
 
-                            {/* Available Cameras Group */}
-                            {availableCameras.length > 0 && (
-                                <CameraGroupTreeItem
-                                    groupId="cameras-available"
-                                    title={t("availableCameras")}
-                                    cameras={availableCameras}
-                                    icon={<VideoCameraFrontIcon color="info"/>}
-                                    expandedItems={expandedItems}
-                                />
-                            )}
-                        </>
-                    )}
-                </SimpleTreeView>
-            </Box>
-        </CollapsibleSidebarSection>
+            {/* Camera list */}
+            <div className="camera-list-container min-h-0 flex-1 flex flex-col overflow-y overflow-x-hidden z-1 pos-rel">
+                {cameras.length === 0 ? (
+                    <NoCamerasPlaceholder />
+                ) : (
+                    cameras
+                        .slice()
+                        .sort((a: Camera, b: Camera) => a.index - b.index)
+                        .map((camera: Camera) => (
+                            <CameraTreeItem key={camera.id} camera={camera} />
+                        ))
+                )}
+            </div>
+        </div>
     );
 };

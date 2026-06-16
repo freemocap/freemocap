@@ -14,7 +14,8 @@ export const YiddishFlag: React.FC<React.SVGProps<SVGSVGElement>> = (props) => (
     viewBox="0 0 60 42"
     width={20}
     height={14}
-    style={{ borderRadius: 2, flexShrink: 0 }}
+    className="flex-shrink-0"
+    style={{ borderRadius: 2 }}
     {...props}
   >
     {/* White background */}

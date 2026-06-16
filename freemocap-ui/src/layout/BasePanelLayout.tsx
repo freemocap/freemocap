@@ -1,27 +1,25 @@
-// freemocap-ui/src/layout/BasePanelLayout.tsx
-import React, {useCallback, useRef, useState} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import {ImperativePanelHandle, Panel, PanelGroup, PanelResizeHandle} from "react-resizable-panels";
 import {SidePanelContent} from "@/layout/content/SidePanelContent";
 import BottomPanelContent from "@/layout/content/BottomPanelContent";
-import {useTheme} from "@mui/material/styles";
-import {Box} from "@mui/material";
 import {useMenuActions} from "@/hooks/useMenuActions";
 import {useKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";
 import {RecordingCompleteDialog} from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import {MainNavTabs} from "@/components/ui-components/MainNavTabs";
 
-
-export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
-    const theme = useTheme();
+export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.ReactNode; onOpenWelcome?: () => void }) => {
     const leftPanelRef = useRef<ImperativePanelHandle>(null);
     const bottomPanelRef = useRef<ImperativePanelHandle>(null);
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [isBottomCollapsed, setIsBottomCollapsed] = useState(false);
+const [isBottomCollapsed, setIsBottomCollapsed] = useState(true);
+
+    useEffect(() => {
+        bottomPanelRef.current?.collapse();
+    }, []);
 
     const handleToggleCollapse = useCallback(() => {
         const panel = leftPanelRef.current;
         if (!panel) return;
-
         if (panel.isCollapsed()) {
             panel.expand();
         } else {
@@ -29,33 +27,26 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
         }
     }, []);
 
-    const handlePanelCollapse = useCallback(() => {
-        setIsCollapsed(true);
-    }, []);
-
-    const handlePanelExpand = useCallback(() => {
-        setIsCollapsed(false);
-    }, []);
-
+    const handlePanelCollapse = useCallback(() => setIsCollapsed(true), []);
+    const handlePanelExpand = useCallback(() => setIsCollapsed(false), []);
     const handleBottomPanelCollapse = useCallback(() => setIsBottomCollapsed(true), []);
     const handleBottomPanelExpand = useCallback(() => setIsBottomCollapsed(false), []);
 
-    // Connect native menu actions to the app
     useMenuActions({ onToggleSidebar: handleToggleCollapse });
-
-    // Register global keyboard shortcuts (Ctrl+Shift+L, Shift+Space, etc.)
     useKeyboardShortcuts();
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', height: '100vh'}}>
-            <PanelGroup
-                direction="vertical"
-                style={{flex: 1}}
-            >
+        <div className="main-app-container flex flex-col" style={{ height: '100vh' }}>
+            <PanelGroup className="app-container flex-1" direction="vertical">
                 {/* Top section (horizontal panels) */}
-                <Panel defaultSize={87} minSize={20}>
-                    <PanelGroup direction="horizontal" style={{direction: "ltr"}}>
+                <Panel className="app-container-inner" defaultSize={87} minSize={20}>
+                    <PanelGroup
+                        className="pos-rel app-container-sub pr-1 pl-1 pt-1 pb-0"
+                        direction="horizontal"
+                        style={{ direction: "ltr" }}
+                    >
                         <Panel
+                            className="left-side-panel p-1 action-container bg-darkgray br-2 border-mid-black border-1"
                             ref={leftPanelRef}
                             collapsible
                             defaultSize={24}
@@ -65,38 +56,34 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
                             onExpand={handlePanelExpand}
                         >
                             <SidePanelContent
-                                // isCollapsed={isCollapsed}
-                                // onToggleCollapse={handleToggleCollapse}
+                                isCollapsed={isCollapsed}
+                                onToggleCollapse={handleToggleCollapse}
+                                onOpenWelcome={onOpenWelcome}
                             />
                         </Panel>
-                        {/* Horizontal Resize Handle */}
                         <PanelResizeHandle
-                            style={{
-                                width: "4px",
-                                cursor: "col-resize",
-                                backgroundColor: theme.palette.primary.light,
-                            }}
+                            className="resizable-component"
+                            style={{ width: "4px", cursor: "col-resize", backgroundColor: "var(--color-surface-active)" }}
                         />
-
-                        {/* Main/Central Content Panel */}
-                        <Panel defaultSize={76} minSize={10}>
-                            <MainNavTabs/>
-                            {children}
+                        <Panel className="right-side-panel" defaultSize={76} minSize={10}>
+                            <div className="flex flex-col h-full pos-rel bg-darkgray br-2">
+                                <MainNavTabs />
+                                <div className="flex-1 min-h-0 mt-45">
+                                    {children}
+                                </div>
+                            </div>
                             <RecordingCompleteDialog />
                         </Panel>
                     </PanelGroup>
                 </Panel>
 
-                {/* Vertical Resize Handle */}
                 <PanelResizeHandle
-                    style={{
-                        height: "4px",
-                        cursor: "row-resize",
-                        backgroundColor: theme.palette.primary.light,
-                    }}
+                    className="resizable-component"
+                    style={{ height: "4px", cursor: "row-resize", backgroundColor: "var(--color-surface-active)" }}
                 />
 
                 <Panel
+                    className="console-area pr-1 pl-1 pb-1"
                     ref={bottomPanelRef}
                     collapsible
                     defaultSize={13}
@@ -105,9 +92,9 @@ export const BasePanelLayout = ({children}: { children?: React.ReactNode }) => {
                     onCollapse={handleBottomPanelCollapse}
                     onExpand={handleBottomPanelExpand}
                 >
-                    <BottomPanelContent isCollapsed={isBottomCollapsed}/>
+                    <BottomPanelContent isCollapsed={isBottomCollapsed} />
                 </Panel>
             </PanelGroup>
-        </Box>
+        </div>
     );
 };

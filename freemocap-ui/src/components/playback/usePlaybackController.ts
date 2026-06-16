@@ -92,6 +92,7 @@ export function usePlaybackController({
     });
     const [isLooping, setIsLooping] = useState(false);
     const isLoopingRef = useRef(false);
+    const [erroredVideos, setErroredVideos] = useState<Set<string>>(new Set());
 
     const fps = recordingFps || 30;
     const allReady = videosReady >= videos.length && videos.length > 0;
@@ -105,19 +106,26 @@ export function usePlaybackController({
         if (recordingFps && recordingFps > 0) fpsRef.current = recordingFps;
     }, [recordingFps]);
 
-    // Track the previous set of video IDs so we only reset state when the
-    // actual composition changes. The `videos` prop is a fresh array on every
-    // render (from loadedVideos.map() in PlaybackPage), so we can't use
-    // array reference equality.
+    // Track the previous set of video IDs+URLs so we reset state whenever the
+    // recording changes — even when the same cameras are used across recordings.
+    // The `videos` prop is a fresh array on every render (from loadedVideos.map()
+    // in PlaybackPage), so we can't use array reference equality.
     const prevVideoIdsRef = useRef<string>('');
 
-    // Elect leader and reset per-video-set state only when video IDs change
+    // Elect leader and reset per-video-set state when video IDs or stream URLs change
     useEffect(() => {
-        const currentIds = videos.map(v => v.videoId).sort().join('|');
+        const currentIds = videos.map(v => `${v.videoId}::${v.streamUrl}`).sort().join('|');
         if (currentIds !== prevVideoIdsRef.current) {
             prevVideoIdsRef.current = currentIds;
+            isPlayingRef.current = false;
+            setIsPlaying(false);
             setVideosReady(0);
+            setErroredVideos(new Set());
+            setTotalFrames(0);
+            setDuration(0);
+            setCurrentFrame(0);
             totalFramesRef.current = 0;
+            currentFrameRef.current = 0;
             didSeekInitialRef.current = false;
         }
         leaderIdRef.current = videos.length > 0 ? videos[0].videoId : null;
@@ -282,6 +290,18 @@ export function usePlaybackController({
         setVideosReady((prev) => prev + 1);
     }, []);
 
+    // Error handler — called by video elements via onError. Counts the video as
+    // "ready" (so the loading gate doesn't hang forever) and records it as failed.
+    const handleVideoError = useCallback((videoId: string) => {
+        setErroredVideos((prev) => {
+            if (prev.has(videoId)) return prev;
+            const next = new Set(prev);
+            next.add(videoId);
+            return next;
+        });
+        setVideosReady((prev) => prev + 1);
+    }, []);
+
     // Playback commands
     const handlePlayPause = useCallback(() => {
         if (isPlayingRef.current) {
@@ -418,6 +438,7 @@ export function usePlaybackController({
         isLooping,
         allReady,
         videosReady,
+        erroredVideos,
 
         // Setters
         setSettings,
@@ -432,6 +453,7 @@ export function usePlaybackController({
         handleSeekToEnd,
         handleToggleLoop,
         handleLoadedMetadata,
+        handleVideoError,
 
         // Ref registration
         setVideoRef,

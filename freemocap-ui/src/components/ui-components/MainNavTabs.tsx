@@ -1,37 +1,31 @@
-import {useLocation, useNavigate} from "react-router-dom";
-import {useCallback, useMemo} from "react";
-import {alpha, darken} from "@mui/material/styles";
-import {Box, Chip, Link, Tab, Tabs, Tooltip, Typography} from "@mui/material";
-import FolderOpenIcon from "@mui/icons-material/FolderOpen";
-import {useAppDispatch, useAppSelector} from "@/store";
+import React, { useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "@/store";
 import {
     activeRecordingCleared,
     selectActiveRecordingFullPath,
     selectActiveRecordingName,
 } from "@/store/slices/active-recording/active-recording-slice";
-import {useElectronIPC} from "@/services";
+import { useElectronIPC } from "@/services";
+import IconButton from "@/components/ui-components/IconButton";
 
 const NAV_TABS = [
-    {path: '/welcome', label: 'Home'},
-    {path: '/streaming', label: 'Streaming'},
-    {path: '/playback', label: 'Playback'},
-    {path: '/browse', label: 'Recordings'},
-    {path: '/active-recording', label: 'Active Recording'},
+    { path: '/streaming', label: 'Streaming' },
+    { path: '/playback', label: 'Playback' },
+    { path: '/active-recording', label: 'Active Recording' },
 ] as const;
 
-const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
-
-const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
+const ActiveRecordingLabel: React.FC = () => {
     const dispatch = useAppDispatch();
     const recordingName = useAppSelector(selectActiveRecordingName);
     const fullPath = useAppSelector(selectActiveRecordingFullPath);
-    const {api} = useElectronIPC();
+    const { api } = useElectronIPC();
 
     const handleOpenFolder = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!fullPath) return;
         try {
-            await api?.fileSystem.openFolder.mutate({path: fullPath});
+            await api?.fileSystem.openFolder.mutate({ path: fullPath });
         } catch (err) {
             console.error('Failed to open recording folder:', err);
         }
@@ -42,63 +36,30 @@ const ActiveRecordingTabLabel: React.FC<{isActive: boolean}> = ({isActive}) => {
         dispatch(activeRecordingCleared());
     };
 
-    const tooltipContent = fullPath ? (
-        <Box sx={{p: 0.5}}>
-            <Typography variant="caption" sx={{fontFamily: MONO_FONT, display: 'block', mb: 0.5}}>
-                {fullPath}
-            </Typography>
-            <Link
-                component="button"
-                onClick={handleOpenFolder}
-                underline="hover"
-                sx={{display: 'inline-flex', alignItems: 'center', gap: 0.5, fontSize: '0.7rem'}}
-            >
-                <FolderOpenIcon sx={{fontSize: 14}}/>
-                Open in Explorer
-            </Link>
-        </Box>
-    ) : (
-        <Typography variant="caption">No active recording</Typography>
-    );
-
     return (
-        <Tooltip title={tooltipContent} placement="bottom" arrow>
-            <Box sx={{display: 'inline-flex', alignItems: 'center', gap: 0.75}}>
-                <Typography component="span" sx={{fontSize: 'inherit'}}>Active Recording</Typography>
-                {recordingName ? (
-                    <Chip
-                        size="small"
-                        label={recordingName}
-                        onDelete={handleClearRecording}
-                        sx={{
-                            height: 18,
-                            fontSize: '0.65rem',
-                            fontFamily: MONO_FONT,
-                            maxWidth: 220,
-                            '& .MuiChip-label': {
-                                px: 0.75,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                            },
-                            '& .MuiChip-deleteIcon': {
-                                fontSize: 12,
-                                opacity: 0,
-                                transition: 'opacity 0.15s',
-                            },
-                            '&:hover .MuiChip-deleteIcon': {opacity: 1},
-                        }}
+        <span className="flex flex-row items-center gap-1">
+            <span className="text-gray">Active Recording</span>
+            {recordingName ? (
+                <span
+                    className="flex flex-row text-nowrap tag text sm text-white"
+                    style={{ fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={fullPath ?? recordingName}
+                    onClick={handleOpenFolder}
+                >
+                    {recordingName}
+                    <IconButton
+                        icon="close-icon"
+                        iconSize="icon-size-12"
+                        className="ml-1"
+                        onClick={handleClearRecording}
+                        style={{ lineHeight: 1 }}
+                        title="Clear active recording"
                     />
-                ) :  (
-                    <Typography
-                        component="span"
-                        sx={{fontSize: '0.65rem', color: 'text.disabled', fontStyle: 'italic'}}
-                    >
-                        (none)
-                    </Typography>
-                )}
-            </Box>
-        </Tooltip>
+                </span>
+            ) : (
+                <span className="text sm text-gray" style={{ fontStyle: 'italic' }}>(none)</span>
+            )}
+        </span>
     );
 };
 
@@ -106,53 +67,34 @@ export const MainNavTabs = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const activeTab = useMemo(() => {
+    const activeIdx = useMemo(() => {
         const idx = NAV_TABS.findIndex(t => location.pathname === t.path);
         return idx >= 0 ? idx : 0;
     }, [location.pathname]);
 
-    const handleTabChange = useCallback((_: React.SyntheticEvent, index: number) => {
-        navigate(NAV_TABS[index].path);
+    const handleClick = useCallback((path: string) => {
+        navigate(path);
     }, [navigate]);
 
     return (
-        <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
-            sx={(theme) => ({
-                minHeight: 28,
-                px: 0.5,
-                borderRadius: 1,
-                backgroundColor: darken(theme.palette.background.default, 0.2),
-                borderBottom: `1px solid ${alpha(theme.palette.divider, 0.2)}`,
-                '& .MuiTab-root': {
-                    minHeight: 28,
-                    fontSize: '0.75rem',
-                    py: 0.5,
-                    borderRadius: 0.75,
-                    position: 'relative',
-                    textTransform: 'none',
-                },
-                '& .MuiTab-root:not(:last-of-type)::after': {
-                    content: '""',
-                    position: 'absolute',
-                    right: 0,
-                    top: '22%',
-                    height: '56%',
-                    borderRight: `1px solid ${alpha(theme.palette.divider, 0.15)}`,
-                },
-                '& .MuiTab-root.Mui-selected': {
-                    backgroundColor: darken(theme.palette.background.paper, 0.15),
-                },
-            })}
-        >
-            {NAV_TABS.map((tab, idx) => {
-                const isActive = idx === activeTab;
-                const label = tab.path === '/active-recording'
-                    ? <ActiveRecordingTabLabel isActive={isActive}/>
-                    : tab.label;
-                return <Tab key={tab.path} label={label}/>;
-            })}
-        </Tabs>
+        <div className="main-tab-bar main-tab-bar-container pos-abs top-0 left-0 main-segmented-control-container">
+            <div className="segmented-control-container bg-middark br-2 gap-1 p-1 z-1 flex flex-row">
+                {NAV_TABS.map((tab, idx) => {
+                    const isActive = idx === activeIdx;
+                    return (
+                        <button
+                            key={tab.path}
+                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center${isActive ? ' bg-dark' : ''}`}
+                            onClick={() => handleClick(tab.path)}
+                        >
+                            {tab.path === '/active-recording'
+                                ? <ActiveRecordingLabel />
+                                : <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
+                            }
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
     );
 };

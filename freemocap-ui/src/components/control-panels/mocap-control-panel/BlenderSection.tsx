@@ -1,25 +1,8 @@
 import React from 'react';
-import {
-    Alert,
-    Box,
-    Button,
-    Checkbox,
-    Divider,
-    FormControlLabel,
-    IconButton,
-    InputAdornment,
-    Stack,
-    TextField,
-    Tooltip,
-    Typography,
-} from '@mui/material';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import LaunchIcon from '@mui/icons-material/Launch';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import ClearIcon from '@mui/icons-material/Clear';
-import MovieFilterIcon from '@mui/icons-material/MovieFilter';
 import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import IconButton from '@/components/ui-components/IconButton';
 
 interface BlenderSectionProps {
     recordingFolderPath: string | null | undefined;
@@ -90,125 +73,97 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
         (hasBlendFile === undefined || hasBlendFile);
 
     return (
-        <Box sx={{mt: 1}}>
-            <Divider sx={{mb: 2}}>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                    <MovieFilterIcon fontSize="small"/>
-                    <Typography variant="overline" sx={{lineHeight: 1}}>
-                        Blender
-                    </Typography>
-                </Stack>
-            </Divider>
+        <div className="mt-2">
+            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
+            <div className="flex flex-row items-center gap-1 mb-2">
+                <span className="icon processmocap-icon icon-size-20" />
+                <p className="text sm text-gray" style={{textTransform: 'uppercase', letterSpacing: 1}}>Blender</p>
+            </div>
 
-            <Stack spacing={2}>
+            <div className="flex flex-col gap-2">
                 {error && (
-                    <Alert severity="error" onClose={clearError}>
-                        {error}
-                    </Alert>
+                    <div className="toast-notification error">
+                        <div className="flex flex-row items-center justify-content-space-between">
+                            <p className="text sm">{error}</p>
+                            <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={clearError} title="Dismiss error" />
+                        </div>
+                    </div>
                 )}
 
-                <TextField
-                    label="Blender Executable"
-                    value={effectiveBlenderExePath ?? ''}
-                    onChange={(e) => setBlenderExePath(e.target.value || null)}
-                    fullWidth
-                    size="small"
-                    placeholder={isDetecting ? 'Detecting…' : 'No Blender found — select manually'}
-                    helperText={
-                        isUsingManualBlenderPath
+                <div className="flex flex-col gap-1">
+                    <div className="input-with-string">
+                        <input
+                            className="input-field text md"
+                            value={effectiveBlenderExePath ?? ''}
+                            onChange={(e) => setBlenderExePath(e.target.value || null)}
+                            placeholder={isDetecting ? 'Detecting…' : 'No Blender found — select manually'}
+                        />
+                        <div className="flex flex-row pos-abs right-4 top-50">
+                            {isUsingManualBlenderPath && (
+                                <IconButton
+                                    icon="clear-icon"
+                                    onClick={clearBlenderExePath}
+                                    title="Clear manual path (revert to auto-detected)"
+                                />
+                            )}
+                            <IconButton
+                                icon="save-icon"
+                                onClick={redetectBlender}
+                                disabled={isDetecting}
+                                title="Re-detect Blender"
+                            />
+                            <IconButton
+                                icon="download-icon"
+                                onClick={handleSelectBlenderExe}
+                                disabled={!isElectron}
+                                title="Select Blender executable"
+                            />
+                        </div>
+                    </div>
+                    <p className="text sm text-gray">
+                        {isUsingManualBlenderPath
                             ? 'Using manually selected Blender'
                             : effectiveBlenderExePath
                                 ? 'Auto-detected Blender'
-                                : 'Click the folder icon to browse for blender.exe'
-                    }
-                    InputProps={{
-                        endAdornment: (
-                            <InputAdornment position="end">
-                                {isUsingManualBlenderPath && (
-                                    <Tooltip title="Clear manual path (revert to auto-detected)">
-                                        <IconButton onClick={clearBlenderExePath} edge="end" size="small">
-                                            <ClearIcon fontSize="small"/>
-                                        </IconButton>
-                                    </Tooltip>
-                                )}
-                                <Tooltip title="Re-detect Blender">
-                                    <span>
-                                        <IconButton
-                                            onClick={redetectBlender}
-                                            edge="end"
-                                            size="small"
-                                            disabled={isDetecting}
-                                        >
-                                            <RefreshIcon fontSize="small"/>
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-                                <Tooltip title="Select Blender executable">
-                                    <span>
-                                        <IconButton
-                                            onClick={handleSelectBlenderExe}
-                                            edge="end"
-                                            disabled={!isElectron}
-                                        >
-                                            <FolderOpenIcon/>
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-                            </InputAdornment>
-                        ),
-                    }}
-                />
+                                : 'Click the folder icon to browse for blender.exe'}
+                    </p>
+                </div>
 
-                <Stack spacing={0.5}>
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                size="small"
-                                checked={exportToBlenderEnabled}
-                                onChange={(e) => setExportToBlenderEnabled(e.target.checked)}
-                            />
-                        }
-                        label="Export to Blender after mocap processing"
+                <div className="flex flex-col gap-1">
+                    <ToggleComponent
+                        text="Export to Blender after mocap processing"
+                        isToggled={exportToBlenderEnabled}
+                        onToggle={setExportToBlenderEnabled}
                     />
-                    <FormControlLabel
-                        control={
-                            <Checkbox
-                                size="small"
-                                checked={autoOpenBlendFile}
-                                onChange={(e) => setAutoOpenBlendFile(e.target.checked)}
-                            />
-                        }
-                        label="Auto-open .blend file in Blender when done"
+                    <ToggleComponent
+                        text="Auto-open .blend file in Blender when done"
+                        isToggled={autoOpenBlendFile}
+                        onToggle={setAutoOpenBlendFile}
                     />
-                </Stack>
+                </div>
 
-                <Button
-                    variant="outlined"
-                    color="secondary"
-                    startIcon={<MovieFilterIcon/>}
+                <button
+                    className="button sm secondary w-full"
                     onClick={handleProcessWithBlender}
                     disabled={!canExport}
-                    fullWidth
                 >
                     {isExporting ? 'Exporting to Blender…' : 'Process Recording with Blender'}
-                </Button>
+                </button>
 
-                <Button
-                    variant="outlined"
-                    startIcon={<LaunchIcon/>}
+                <button
+                    className="button sm secondary w-full"
                     onClick={handleOpenInBlender}
                     disabled={!canOpen}
-                    fullWidth
                 >
                     {isOpening ? 'Opening…' : 'Open .blend in Blender'}
-                </Button>
+                </button>
 
                 {lastBlendFilePath && (
-                    <Typography variant="caption" color="text.secondary" sx={{fontFamily: 'monospace'}}>
+                    <p className="text sm text-gray" style={{fontFamily: 'monospace'}}>
                         Last export: {lastBlendFilePath}
-                    </Typography>
+                    </p>
                 )}
-            </Stack>
-        </Box>
+            </div>
+        </div>
     );
 };

@@ -12,7 +12,7 @@ naturally when their work is done.
 import logging
 import multiprocessing
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from multiprocessing.sharedctypes import Synchronized
 
@@ -53,6 +53,15 @@ class PosthocPipeline(PipelineABC):
     pubsub: PubSubTopicManager
     started: bool = False
     queued_progress_message: PipelineProgressMessage | None = None
+    # Retained latest progress message per node id (keyed by pipeline_id, e.g.
+    # "<base>" for the aggregator and "<base>:<camera>" for each video node).
+    # Progress is delivered as RETAINED STATE — the full snapshot is re-sent on
+    # every poll — rather than as one-shot consumable events. This makes the UI
+    # level-triggered: a single dropped/stolen progress message can no longer
+    # leave a bar stuck, because each node's latest (incl. terminal COMPLETE/
+    # FAILED) state keeps being re-asserted until the pipeline is evicted. The
+    # frontend dedupes identical (phase, progress) per id, so repeats are free.
+    _latest_progress_by_id: dict[str, PipelineProgressMessage] = field(default_factory=dict)
 
     @property
     def alive(self) -> bool:
@@ -181,14 +190,23 @@ class PosthocPipeline(PipelineABC):
         logger.debug(f"PosthocPipeline [{self.id}] shut down")
 
     def get_progress_messages(self) -> list[PipelineProgressMessage]:
-        progress_messages: list[PipelineProgressMessage] = []
+        # Drain any newly-emitted messages from the node queues, fold them into
+        # the retained per-id snapshot, then return the FULL snapshot. Returning
+        # the snapshot (rather than only the freshly-drained messages) is what
+        # makes completion self-healing: if a terminal message was ever missed
+        # downstream, it keeps being re-sent on subsequent polls until eviction.
+        fresh: list[PipelineProgressMessage] = []
         if self.queued_progress_message is not None:
-            progress_messages.append(self.queued_progress_message)
+            fresh.append(self.queued_progress_message)
             self.queued_progress_message = None
         for node in list(self.video_nodes.values()):
-            progress_messages.extend(node.get_progress_messages())
-        progress_messages.extend(self.aggregation_node.get_progress_messages())
-        return progress_messages
+            fresh.extend(node.get_progress_messages())
+        fresh.extend(self.aggregation_node.get_progress_messages())
+
+        for message in fresh:
+            self._latest_progress_by_id[message.pipeline_id] = message
+
+        return list(self._latest_progress_by_id.values())
 
     def drain_and_get_messages(self) -> list[PipelineProgressMessage]:
         """Flush the relay (pub→sub) then drain all subscription queues.

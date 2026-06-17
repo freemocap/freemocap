@@ -7,7 +7,7 @@ so a single source of truth governs which model is used in either pipeline mode.
 from pathlib import Path
 
 from pydantic import BaseModel, Field
-from skellytracker.trackers.rtmpose_tracker.rtmpose_session import ExecutionProviderName
+from skellytracker.utilities.gpu_utils.execution_provider_name import ExecutionProviderName
 
 
 def _default_engine_cache_dir() -> Path:

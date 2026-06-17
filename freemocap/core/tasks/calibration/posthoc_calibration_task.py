@@ -28,7 +28,6 @@ from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.anipose_calibration.run_anipose_calibration import run_anipose_calibration
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig, \
     CalibrationSolverMethod
-from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CornerObservation, CharucoCornersObservation
 from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
@@ -161,6 +160,11 @@ def _run_pyceres_path(
         video_metadata: dict[CameraIdString, VideoMetadata],
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the pyceres bundle adjustment solver."""
+    # Lazy import: pyceres is an optional dependency and its native (C++/Ceres)
+    # library is only loaded when the pyceres solver is actually selected. This
+    # keeps it out of the default (anipose) path entirely.
+    from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
+
     if len(all_observations) == 0:
         raise ValueError("No valid charuco observations found")
 

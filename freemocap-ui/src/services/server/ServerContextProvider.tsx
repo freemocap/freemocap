@@ -48,6 +48,7 @@ function sortedArraysEqual(a: string[], b: string[]): boolean {
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [isFailed, setIsFailed] = useState<boolean>(false);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
 
     // Tracker schemas — shipped by the backend on WS connect/reconfigure. Held
@@ -174,6 +175,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         const handleStateChange = (newState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
             setIsConnected(connected);
+            setIsFailed(newState === ConnectionState.FAILED);
 
             if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
                 canvasManagerRef.current?.terminateAllWorkers();
@@ -710,6 +712,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const contextValue = useMemo(() => ({
         isConnected,
+        isFailed,
         connect,
         disconnect,
         sendWebsocketMessage,
@@ -728,7 +731,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

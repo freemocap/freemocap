@@ -5,6 +5,7 @@ import {
   PanelGroup,
   PanelResizeHandle,
 } from "react-resizable-panels";
+import { useLocation } from "react-router-dom";
 import { SidePanelContent } from "@/layout/content/SidePanelContent";
 import BottomPanelContent from "@/layout/content/BottomPanelContent";
 import { useMenuActions } from "@/hooks/useMenuActions";
@@ -13,6 +14,9 @@ import { RecordingCompleteDialog } from "@/components/control-panels/recording-i
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
 import PromptTooltip from "@/components/ui-components/promptTooltip";
+import { useServer } from "@/services/server/ServerContextProvider";
+import { useAppSelector } from "@/store";
+import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
 
 export const BasePanelLayout = ({
   children,
@@ -26,8 +30,9 @@ export const BasePanelLayout = ({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isBottomCollapsed, setIsBottomCollapsed] = useState(true);
 
-  // TODO: Add server connection state logic here (useServer hook, connectionState, connectedCameraIds)
-  // TODO: Derive UI state from connection state (isFailed, isConnecting, showServiceUI, showConnectCameras)
+  const { isConnected, isFailed, connectedCameraIds } = useServer();
+  const location = useLocation();
+  const isCamerasLoading = useAppSelector(selectIsLoading);
 
   useEffect(() => {
     bottomPanelRef.current?.collapse();
@@ -63,56 +68,29 @@ export const BasePanelLayout = ({
       style={{ height: "100vh" }}
     >
       <FloatingOnboarding
-        target='[data-onboarding="calibration:what-is-calibration"]'
-        className=""
-      >
-        <PromptTooltip
-          
-          show={true}
-          title="How to Calibrate your cameras"
-          text={
-            "Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
-          }
-          image={true}
-          imageSrc="/images/charuco_board.webp"
-          position="pos-right"
-          variant="default"
-          button={true}
-          buttonText="Download ChArUco Board"
-          onButtonClick={() =>
-            window.open(
-              "https://docs.freemocap.org/documentation/multi-camera-calibration.html",
-              "_blank",
-            )
-          }
-          onClose={() => {}}
-        />
-      </FloatingOnboarding>
-      {/* TODO: Add logic for server connection state (showServiceUI, isFailed) to control visibility and behavior */}
-      <FloatingOnboarding
         target='[data-onboarding="connection:server-connection"]'
         className="z-110i"
       >
-        {/* when not failed  switch to title={isFailed ? "Service Unavailable" : "Connecting... */}
-        {/* text={isFailed             ? "Make sure you have the service running"            : "Websocket connecting, app functions will be available once connection is made"} */}
-        {/* variant={isFailed ? "warning" : "default" className={isFailed ? "" : "loading"} */}
-
         <PromptTooltip
-          className="loading"
-          show={true}
-          title="Connecting..."
-          text="Websocket connecting, app functions will be available once connection is made"
-          
+          className={isFailed ? "" : "loading"}
+          show={!isConnected}
+          title={isFailed ? "Service Unavailable" : "Connecting..."}
+          text={isFailed
+            ? "Make sure you have the service running"
+            : "Websocket connecting, app functions will be available once connection is made"}
           position="pos-bottom"
-          variant="default"
+          variant={isFailed ? "warning" : "default"}
           onClose={() => {}}
         />
-        </FloatingOnboarding>
+      </FloatingOnboarding>
 
-      {/* TODO: Add logic for camera connection state (showConnectCameras) to control visibility */}
       <FloatingOnboarding target='[data-onboarding="camera:connect-camera"]'>
         <PromptTooltip
-          show={true}
+          show={
+            location.pathname === '/streaming' &&
+            connectedCameraIds.length === 0 &&
+            !isCamerasLoading
+          }
           title="Connect Cameras"
           text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."
           position="pos-right"

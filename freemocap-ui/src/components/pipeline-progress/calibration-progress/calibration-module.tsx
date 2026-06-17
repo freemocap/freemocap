@@ -5,6 +5,8 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton.tsx";
 import CalibrationSettings from "./calibration-settings";
+import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
+import PromptTooltip from "@/components/ui-components/promptTooltip";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
@@ -73,6 +75,7 @@ const CalibrationModule = ({
   } = useCalibration();
 
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
+  const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
 
@@ -405,12 +408,34 @@ const CalibrationModule = ({
             <IconButton
               icon="explainer-icon"
               className="button sm"
-              onClick={() => {}} // shows onboarding tooltips
+              onClick={() => setShowCharucoInfo(prev => !prev)}
               tooltip
               tooltipText="How to calibrate"
               tooltipPosition="pos-left"
             />
-           
+            <FloatingOnboarding
+              target='[data-onboarding="calibration:what-is-calibration"]'
+              className=""
+            >
+              <PromptTooltip
+                show={showCharucoInfo}
+                title="How to Calibrate your cameras"
+                text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
+                image={true}
+                imageSrc="/images/charuco_board.webp"
+                position="pos-right"
+                variant="default"
+                button={true}
+                buttonText="Download ChArUco Board"
+                onButtonClick={() =>
+                  window.open(
+                    "https://docs.freemocap.org/documentation/multi-camera-calibration.html",
+                    "_blank",
+                  )
+                }
+                onClose={() => setShowCharucoInfo(false)}
+              />
+            </FloatingOnboarding>
           </div>
         </div>
       </div>

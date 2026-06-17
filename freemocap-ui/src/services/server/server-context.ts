@@ -7,6 +7,7 @@ import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/
 
 export interface ServerContextValue {
     isConnected: boolean;
+    isFailed: boolean;
     connect: () => void;
     disconnect: () => void;
     sendWebsocketMessage: (data: string | object) => void;

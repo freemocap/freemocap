@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellytracker.trackers.base_tracker.detector_helpers import SkeletonDetectorConfig
 from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
+from skellytracker.trackers.rtmpose_tracker.rtmpose_detector_config import RTMPoseDetectorConfig
 
 
 class CameraNodeConfig(BaseModel):

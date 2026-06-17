@@ -109,13 +109,13 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
             <SubactionHeader text="Charuco board settings" />
-            <div className="flex flex-row gap-1 items-center">
+            <div data-onboarding="calibration:charuco-settings" className="flex flex-row gap-1 items-center">
               <IconButton
                 icon="explainer-icon"
                 className="button sm"
                 onClick={() => {}} // Does nothing but clicks
                 tooltip
-                tooltipText="Learn about calibration"
+                tooltipText="Learn about ChArUco"
                 tooltipPosition="pos-left"
               />
             </div>

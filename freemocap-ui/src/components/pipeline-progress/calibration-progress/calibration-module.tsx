@@ -401,7 +401,7 @@ const CalibrationModule = ({
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
           <SubactionHeader text="Calibration" />
-          <div className="flex flex-row gap-1 items-center">
+          <div data-onboarding="calibration:what-is-calibration" className="flex flex-row gap-1 items-center">
             <IconButton
               icon="explainer-icon"
               className="button sm"

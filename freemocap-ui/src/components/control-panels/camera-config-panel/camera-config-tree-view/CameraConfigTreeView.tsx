@@ -44,7 +44,7 @@ export const CameraConfigTreeView: React.FC = () => {
                     </span>
                 )}
                 <div className="flex-1" />
-                <div className="button-group flex items-center gap-1 pos-rel">
+                <div data-onboarding="camera:connect-button" className="button-group flex items-center gap-1 pos-rel">
                     <CameraHeaderActions />
                 </div>
             </div>

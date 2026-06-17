@@ -93,16 +93,22 @@ export const BasePanelLayout = ({
         target='[data-onboarding="connection:server-connection"]'
         className="z-110i"
       >
+        {/* when not failed  switch to title={isFailed ? "Service Unavailable" : "Connecting... */}
+        {/* text={isFailed             ? "Make sure you have the service running"            : "Websocket connecting, app functions will be available once connection is made"} */}
+        {/* variant={isFailed ? "warning" : "default" className={isFailed ? "" : "loading"} */}
+
         <PromptTooltip
           className="loading"
           show={true}
           title="Connecting..."
           text="Websocket connecting, app functions will be available once connection is made"
+          
           position="pos-bottom"
           variant="default"
           onClose={() => {}}
         />
-      </FloatingOnboarding>
+        </FloatingOnboarding>
+
       {/* TODO: Add logic for camera connection state (showConnectCameras) to control visibility */}
       <FloatingOnboarding target='[data-onboarding="camera:connect-camera"]'>
         <PromptTooltip

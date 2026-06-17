@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
@@ -11,6 +11,7 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
+import { loadFromStorage, saveToStorage } from "@/store/persistence";
 import {
   calibrationAutoLoadDismissed,
   calibrationLoadedFromBundle,
@@ -19,18 +20,6 @@ import {
 } from "@/store/slices/calibration";
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
-
-/**
- * Represents the current operating mode of the application.
- * - "streaming": real-time camera capture mode (all calibration options available, including "Record and Calibrate")
- * - "playback": video playback mode ("Record and Calibrate" option should be hidden from the dropdown)
- *
- * TODO[INTEGRATION]: Replace this dummy state with the actual mode from the app's
- * global state or server. For example, you might fetch this from:
- * - A Redux selector like `useAppSelector(selectAppMode)`
- * - An IPC call to the backend
- * - A context provider
- */
 type AppMode = "streaming" | "playback";
 
 const SOURCE_ICONS: Record<CalibrationSource, string> = {
@@ -78,6 +67,23 @@ const CalibrationModule = ({
   const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
+
+  const hasAutoOpened = useRef(false);
+
+  useEffect(() => {
+    if (hasAutoOpened.current) return;
+    if (connectedCameraIds.length < 2) return;
+    const dismissed = loadFromStorage<boolean>("calibration-tooltip-dismissed", false);
+    if (!dismissed) {
+      setShowCharucoInfo(true);
+    }
+    hasAutoOpened.current = true;
+  }, [connectedCameraIds.length]);
+
+  const handleCloseCharucoInfo = useCallback(() => {
+    setShowCharucoInfo(false);
+    saveToStorage("calibration-tooltip-dismissed", true);
+  }, []);
 
   // Derive app mode from the current route, unless overridden by props
   const location = useLocation();
@@ -433,7 +439,7 @@ const CalibrationModule = ({
                     "_blank",
                   )
                 }
-                onClose={() => setShowCharucoInfo(false)}
+                onClose={handleCloseCharucoInfo}
               />
             </FloatingOnboarding>
           </div>

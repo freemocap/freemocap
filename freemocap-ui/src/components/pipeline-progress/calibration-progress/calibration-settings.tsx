@@ -6,6 +6,9 @@ import NameDropdownSelector from "@/components/ui-components/NameDropdownSelecto
 import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
 
+import {FloatingOnboarding} from "@/hooks/floatingOnboarding";
+import PromptTooltip from "@/components/ui-components/promptTooltip";
+
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 
 interface BoardPresetDims {

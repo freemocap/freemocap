@@ -109,7 +109,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
         )}
 
         <div className="tooltip-description-holder flex flex-row pos-rel">
-          <p className="text-white text md">{text}</p>
+          <p className="text-white text md" style={{ whiteSpace: "pre-line" }}>{text}</p>
         </div>
 
         {button && (

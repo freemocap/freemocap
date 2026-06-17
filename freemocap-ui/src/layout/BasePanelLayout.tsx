@@ -45,6 +45,26 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
         className="main-app-container flex flex-col"
         style={{ height: "100vh" }}
       >
+        <FloatingOnboarding
+          target='[data-onboarding="calibration:charuco-settings"]'
+          className=""
+        >
+          <PromptTooltip
+            show={true}
+            title="Understand board settings"
+            text={
+              "Preset: The type of tile-based charuco board, either 3×5 or 7×5.\n" +
+              "Square length: The exact dimension of each black square. Measure this square precisely in millimeters.\n" +
+              "Solver method: There are two options. Select the appropriate one depending on the use case."
+            }
+            image={true}
+            imageSrc="/images/charuco_settings.webp"
+            position="pos-right"
+            variant="default"
+            onClose={() => {}}
+          />
+        </FloatingOnboarding>
+
         {/* TODO: Add logic for server connection state (showServiceUI, isFailed) to control visibility and behavior */}
         <FloatingOnboarding
           target='[data-onboarding="connection:server-connection"]'

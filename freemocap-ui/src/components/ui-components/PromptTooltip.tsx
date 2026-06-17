@@ -119,7 +119,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
               iconClass={buttonIcon}
               buttonType={buttonType}
               onClick={onButtonClick}
-              className="flex-1 externallink tertiary full-width flex-inline text-left items-center full-width justify-center"
+              className="flex-1 bg-primary externallink tertiary full-width flex-inline text-left items-center full-width justify-center"
             />
           </div>
         )}

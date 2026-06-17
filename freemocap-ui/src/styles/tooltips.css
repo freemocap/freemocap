@@ -79,7 +79,7 @@
 
 .tooltip-inner {
   position: relative;
-  background: var(--color-bg-primary);
+  background: var(--color-bg-secondary);
   will-change: transform, opacity;
 }
 

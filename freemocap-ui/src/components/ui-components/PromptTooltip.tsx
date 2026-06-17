@@ -3,7 +3,7 @@ import clsx from "clsx";
 import IconButton from "./IconButton";
 import ButtonSm from "./ButtonSm";
 
-type TooltipPosition = "pos-top" | "pos-bottom" | "pos-left" | "pos-right";
+type TooltipPosition = "pos-top" | "pos-top-left" | "pos-top-right" | "pos-bottom" | "pos-bottom-left" | "pos-bottom-right" | "pos-left" | "pos-right";
 type TooltipVariant = "default" | "warning" | "boarding";
 
 interface PromptTooltipProps {

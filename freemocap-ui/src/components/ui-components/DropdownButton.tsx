@@ -10,6 +10,7 @@ interface DropdownButtonProps {
     textColor?: string;
     buttonType?: string;
     className?: string;
+    textClass?: string;
     dropdownClassName?: string; // Changed from DropdownclassName to dropdownClassName
     onClick?: () => void;
   };

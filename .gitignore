@@ -164,6 +164,7 @@ pyapp.zip
 upx.exe
 
 .docusaurus/
+*/.docusaurus/
 */.claude/*
 /.claude/
 /CLAUDE.md

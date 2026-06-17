@@ -178,17 +178,17 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
     const { t } = useTranslation();
     const [lastEntry, setLastEntry] = useState<LogRecord | null>(null);
     const [logActive, setLogActive] = useState(false);
-    const activityTimerRef = useRef<ReturnType<typeof setTimeout>>();
+    const [currentVersion, setCurrentVersion] = useState(-1);
+    const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastVersionRef = useRef(-1);
 
+    // Polling: only tracks version bumps — does not own the activity timer
     useEffect(() => {
         const poll = () => {
             const snap = getLogStore().getSnapshot();
             if (snap.version !== lastVersionRef.current) {
                 lastVersionRef.current = snap.version;
-                setLogActive(true);
-                if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
-                activityTimerRef.current = setTimeout(() => setLogActive(false), 2500);
+                setCurrentVersion(snap.version);
             }
             const entries = snap.entries;
             const visible = selectedLevels.length > 0
@@ -198,11 +198,19 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
         };
         poll();
         const id = setInterval(poll, LOG_POLL_INTERVAL_MS);
+        return () => clearInterval(id);
+    }, [getLogStore, selectedLevels]);
+
+    // Activity timer: owned by this effect, only re-fires when version actually changes
+    useEffect(() => {
+        if (currentVersion === -1) return;
+        setLogActive(true);
+        if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+        activityTimerRef.current = setTimeout(() => setLogActive(false), 1500);
         return () => {
-            clearInterval(id);
             if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
         };
-    }, [getLogStore, selectedLevels]);
+    }, [currentVersion]);
 
     if (!lastEntry) return (
         <div className="log-collapsed-summary flex items-center h-full gap-1">

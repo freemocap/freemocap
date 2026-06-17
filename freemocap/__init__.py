@@ -18,3 +18,9 @@ from skellylogs import configure_logging, LogLevels
 
 LOG_LEVEL = LogLevels.TRACE
 configure_logging(LOG_LEVEL)
+
+# Dump a Python traceback on native crashes (segfault / Windows access violation, e.g. 0xC0000005)
+# instead of dying silently. Spawned workers re-import this package, so they inherit this too.
+# Near-zero steady-state overhead — handlers stay dormant until a fatal signal actually fires.
+import faulthandler
+faulthandler.enable()

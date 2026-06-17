@@ -14,6 +14,15 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+# Load pyarrow FIRST, before the native libs pulled in by the imports below.
+# pandas>=3.0 uses the pyarrow-backed string dtype by default, so writing the
+# output CSV/parquet calls into pyarrow's native code. On Windows, if another
+# native lib in this module's import graph loads before pyarrow, pyarrow's Arrow
+# DLLs fail to initialize and the worker dies with a STATUS_ACCESS_VIOLATION
+# (0xC0000005) — a hard segfault, not a catchable exception. Importing pyarrow
+# up front makes it win the DLL load-order race. Do not remove or reorder.
+import pyarrow  # noqa: F401
+
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
@@ -22,8 +31,6 @@ if TYPE_CHECKING:
     pass
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
-# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observation import LegacyMediapipeObservation
-# from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage

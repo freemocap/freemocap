@@ -177,10 +177,19 @@ function applyFilters(entries: LogRecord[], selectedLevels: string[], searchText
 const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: ReturnType<typeof useServer>["getLogStore"]; selectedLevels: string[] }) => {
     const { t } = useTranslation();
     const [lastEntry, setLastEntry] = useState<LogRecord | null>(null);
+    const [logActive, setLogActive] = useState(false);
+    const activityTimerRef = useRef<ReturnType<typeof setTimeout>>();
+    const lastVersionRef = useRef(-1);
 
     useEffect(() => {
         const poll = () => {
             const snap = getLogStore().getSnapshot();
+            if (snap.version !== lastVersionRef.current) {
+                lastVersionRef.current = snap.version;
+                setLogActive(true);
+                if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+                activityTimerRef.current = setTimeout(() => setLogActive(false), 2500);
+            }
             const entries = snap.entries;
             const visible = selectedLevels.length > 0
                 ? entries.filter(e => selectedLevels.includes(e.levelname.toLowerCase()))
@@ -189,7 +198,10 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
         };
         poll();
         const id = setInterval(poll, LOG_POLL_INTERVAL_MS);
-        return () => clearInterval(id);
+        return () => {
+            clearInterval(id);
+            if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+        };
     }, [getLogStore, selectedLevels]);
 
     if (!lastEntry) return (
@@ -204,7 +216,7 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
     return (
         <div className="log-collapsed-summary flex items-center h-full gap-1 overflow-hidden">
             <p className="text bg text-gray">{t("serverLogs")}</p>
-            <p className="text sm text-gray">|</p>
+            <span className={clsx("log-activity-dot", logActive && "active")} />
             <span className={clsx("log-level-badge", level)}>{lastEntry.levelname}</span>
             <span className="log-timestamp">{lastEntry.asctime}</span>
             <span className="log-message-text text-nowrap overflow-hidden" style={{ textOverflow: "ellipsis" }}>

@@ -215,6 +215,28 @@
   margin: 8px 0;
 }
 
+/* ---- Activity dot ---- */
+
+.log-activity-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--color-text-secondary);
+  opacity: 0.25;
+  flex-shrink: 0;
+  transition: opacity var(--speed-1);
+}
+
+.log-activity-dot.active {
+  animation: log-activity-pulse 1.5s ease-in-out infinite;
+  opacity: 1;
+}
+
+@keyframes log-activity-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.3); }
+}
+
 /* ---- URL link ---- */
 
 .log-link {

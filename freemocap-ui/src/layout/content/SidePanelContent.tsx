@@ -1,6 +1,7 @@
-import React, {useMemo} from 'react';
+import React, {useCallback, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
+import {Panel, PanelGroup, PanelResizeHandle} from 'react-resizable-panels';
 import IconButton from '@/components/ui-components/IconButton';
 
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
@@ -37,6 +38,123 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     recordings: RecordingBrowserSection,
 };
 
+// Sections that are meant to grow and scroll internally (their content is
+// open-ended). They get a small fixed floor; every other section's floor is
+// measured from its own content so it can never be squashed (see useContentMinSizes).
+const GROWABLE_SECTIONS = new Set<SectionId>(['cameras', 'recordings']);
+
+// Starting share of available height per section, normalized across the visible
+// subset. Growable sections take the lion's share.
+const SECTION_WEIGHT: Record<SectionId, number> = {
+    recordings: 40,
+    cameras: 40,
+    calibration: 16,
+    recording_path: 10,
+    recording_control: 16,
+    process_mocap: 16,
+    mocap: 8,
+};
+
+// Pixel height of each resize divider (must match `.sidebar-section-divider` in components.css).
+const HANDLE_PX = 10;
+// Floor for growable sections — they scroll internally, so they may shrink freely.
+const GROWABLE_MIN_PCT = 8;
+// A single content section may not demand more than this share as its minimum,
+// so one tall section can never lock out everything else.
+const CONTENT_MIN_CAP_PCT = 70;
+
+// Normalize weights into defaultSize percentages for the visible subset, letting
+// the last panel absorb rounding so the group sums to exactly 100.
+const computeDefaultSizes = (sections: readonly SectionId[]): number[] => {
+    const totalWeight = sections.reduce((sum, id) => sum + SECTION_WEIGHT[id], 0);
+    let allocated = 0;
+    return sections.map((id, index) => {
+        const isLast = index === sections.length - 1;
+        const size = isLast
+            ? Math.max(0, 100 - allocated)
+            : Math.round((SECTION_WEIGHT[id] / totalWeight) * 100);
+        allocated += size;
+        return size;
+    });
+};
+
+/**
+ * Measures each non-growable section's natural content height and expresses it as
+ * a percentage of the panel group, fed back to react-resizable-panels as that
+ * panel's `minSize`. This makes the minimum size of a section track its content,
+ * so a section can never be dragged smaller than what it contains (which would
+ * otherwise clip its content and bleed it onto the neighbouring section).
+ */
+function useContentMinSizes(sections: readonly SectionId[]) {
+    const groupElRef = useRef<HTMLDivElement | null>(null);
+    const contentEls = useRef<Map<SectionId, HTMLElement>>(new Map());
+    const observerRef = useRef<ResizeObserver | null>(null);
+    const refCbCache = useRef<Map<SectionId, (el: HTMLElement | null) => void>>(new Map());
+    const [minPctById, setMinPctById] = useState<Partial<Record<SectionId, number>>>({});
+
+    const recompute = useCallback(() => {
+        const groupEl = groupElRef.current;
+        if (!groupEl) return;
+        const available = Math.max(1, groupEl.clientHeight - (sections.length - 1) * HANDLE_PX);
+        const next: Partial<Record<SectionId, number>> = {};
+        for (const id of sections) {
+            if (GROWABLE_SECTIONS.has(id)) {
+                next[id] = GROWABLE_MIN_PCT;
+                continue;
+            }
+            const el = contentEls.current.get(id);
+            const contentPx = el ? el.scrollHeight : 0;
+            next[id] = Math.min(CONTENT_MIN_CAP_PCT, Math.max(3, (contentPx / available) * 100));
+        }
+        setMinPctById((prev) => {
+            const unchanged = sections.every(
+                (id) => Math.abs((prev[id] ?? -1) - (next[id] ?? -1)) < 0.5,
+            );
+            return unchanged ? prev : next;
+        });
+    }, [sections]);
+
+    // Single observer watching the group and every measured content element.
+    // useLayoutEffect runs after refs are attached but before paint, so the first
+    // frame already has correct minimums (no squash flash).
+    useLayoutEffect(() => {
+        const observer = new ResizeObserver(() => recompute());
+        observerRef.current = observer;
+        if (groupElRef.current) observer.observe(groupElRef.current);
+        contentEls.current.forEach((el) => observer.observe(el));
+        recompute();
+        return () => {
+            observer.disconnect();
+            observerRef.current = null;
+        };
+    }, [recompute]);
+
+    const setGroupEl = useCallback((el: HTMLDivElement | null) => {
+        groupElRef.current = el;
+        if (el) observerRef.current?.observe(el);
+    }, []);
+
+    const registerContent = useCallback((id: SectionId) => {
+        let cb = refCbCache.current.get(id);
+        if (!cb) {
+            cb = (el: HTMLElement | null) => {
+                const prev = contentEls.current.get(id);
+                if (prev) observerRef.current?.unobserve(prev);
+                if (el) {
+                    contentEls.current.set(id, el);
+                    observerRef.current?.observe(el);
+                } else {
+                    contentEls.current.delete(id);
+                }
+            };
+            refCbCache.current.set(id, cb);
+        }
+        return cb;
+    }, []);
+
+    return {setGroupEl, registerContent, minPctById};
+}
+
 interface SidePanelContentProps {
     isCollapsed?: boolean;
     onToggleCollapse?: () => void;
@@ -71,6 +189,9 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
         ),
         [isStreaming, isPlayback, isActiveRecording],
     );
+
+    const defaultSizes = useMemo(() => computeDefaultSizes(visibleSections), [visibleSections]);
+    const { setGroupEl, registerContent, minPctById } = useContentMinSizes(visibleSections);
 
     const { t } = useTranslation();
 
@@ -113,12 +234,46 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     )}
                 </div>
 
-                {/* Sidebar Sections */}
-                <div className="playback-mode left-side-panel flex flex-col gap-1 min-h-0 h-full">
-                    {visibleSections.map((sectionId) => {
-                        const Component = SECTION_COMPONENTS[sectionId];
-                        return <Component key={sectionId} />;
-                    })}
+                {/* Sidebar Sections — vertically resizable (react-resizable-panels).
+                    Each section's minimum size is measured from its content so it can
+                    never be squashed below what it contains. */}
+                <div ref={setGroupEl} className="flex-1 min-h-0">
+                    <PanelGroup
+                        key={visibleSections.join('|')}
+                        direction="vertical"
+                        className="h-full"
+                    >
+                        {visibleSections.map((id, index) => {
+                            const Component = SECTION_COMPONENTS[id];
+                            const growable = GROWABLE_SECTIONS.has(id);
+                            const minSize = minPctById[id] ?? (growable ? GROWABLE_MIN_PCT : 4);
+                            return (
+                                <React.Fragment key={id}>
+                                    {index > 0 && (
+                                        <PanelResizeHandle className="sidebar-section-divider" />
+                                    )}
+                                    <Panel
+                                        id={id}
+                                        order={index}
+                                        defaultSize={defaultSizes[index]}
+                                        minSize={minSize}
+                                    >
+                                        {growable ? (
+                                            <div className="h-full min-h-0 flex flex-col">
+                                                <Component />
+                                            </div>
+                                        ) : (
+                                            <div className="h-full min-h-0 overflow-y">
+                                                <div ref={registerContent(id)} className="flex flex-col">
+                                                    <Component />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </Panel>
+                                </React.Fragment>
+                            );
+                        })}
+                    </PanelGroup>
                 </div>
             </div>
         </>

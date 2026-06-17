@@ -22,10 +22,10 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tasks.calibration.shared.groundplane_math import (
-    CharucoVelocityError,
+    CharucoGeometryError,
+    CharucoStabilityError,
     CharucoVisibilityError,
-    compute_board_basis_vectors,
-    find_still_charuco_frame,
+    estimate_board_groundplane,
 )
 from freemocap.core.tasks.calibration.shared.interpolate_trajectories import interpolate_trajectory_data
 
@@ -104,31 +104,26 @@ def set_charuco_board_as_groundplane(
     charuco3d_fr_id_xyz = charuco_3d_flat.reshape(num_frames, num_tracked_points, 3)
     logger.info(f"Charuco 3d data reconstructed with shape: {charuco3d_fr_id_xyz.shape}")
 
-    charuco_3d_xyz_interpolated = interpolate_trajectory_data(trajectory_data=charuco3d_fr_id_xyz)
-
-    try:
-        charuco_still_frame_idx = find_still_charuco_frame(
-            charuco_3d=charuco3d_fr_id_xyz,
-            squares_x=board.squares_x,
-            squares_y=board.squares_y,
-        )
-    except CharucoVisibilityError as e:
-        logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
-    except CharucoVelocityError as e:
-        logger.warning("Ground-plane alignment skipped — reverting to original calibration: %s", e, exc_info=True)
-        return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
-
-    charuco_frame = charuco_3d_xyz_interpolated[charuco_still_frame_idx]
-
-    x_hat, y_hat, z_hat = compute_board_basis_vectors(
-        charuco_frame=charuco_frame,
-        squares_x=board.squares_x,
-        squares_y=board.squares_y,
+    camera_centers = np.array(
+        [
+            -cam.extrinsics.rotation_matrix.T @ cam.extrinsics.translation
+            for cam in cameras
+        ]
     )
 
-    charuco_origin_in_world = charuco_frame[0]
-    rmat_charuco_to_world = np.column_stack([x_hat, y_hat, z_hat])
+    try:
+        rmat_charuco_to_world, charuco_origin_in_world = estimate_board_groundplane(
+            charuco3d_fr_id_xyz,
+            board_points=board.corner_positions_board_frame,
+            camera_centers=camera_centers,
+        )
+    except (CharucoStabilityError, CharucoVisibilityError, CharucoGeometryError) as e:
+        logger.warning(
+            "Ground-plane alignment skipped — reverting to original calibration: %s",
+            e,
+            exc_info=True,
+        )
+        return cameras, GroundPlaneSuccess(success=False, error=str(e)), None
 
     ground_plane_result = GroundPlaneResult(
         origin=charuco_origin_in_world,
@@ -181,9 +176,3 @@ def _adjust_world_reference_frame_to_charuco(
         rvecs_new[i] = new_rvec.flatten()
 
     return rvecs_new, tvecs_new
-
-
-# Keep old names as aliases for backward compatibility within this module.
-# (run_anipose_calibration.py is updated separately.)
-anipose_pin_camera_zero_to_origin = pin_camera_zero_to_origin
-set_charuco_board_as_groundplane_anipose = set_charuco_board_as_groundplane

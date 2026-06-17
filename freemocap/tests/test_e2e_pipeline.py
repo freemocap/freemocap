@@ -17,9 +17,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
-from freemocap.core.pipeline.pipeline_configs import (
-    CalibrationPipelineConfig,
-    MocapPipelineConfig,
+from freemocap.core.tasks.calibration.calibration_task_config import (
+    PosthocCalibrationPipelineConfig,
+)
+from freemocap.core.tasks.mocap.mocap_task_config import (
+    PosthocMocapPipelineConfig,
 )
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
@@ -111,7 +113,7 @@ def calibration_toml_path(test_data_path: Path, pipeline_manager: PosthocPipelin
     recording_info = _recording_info_from_path(test_data_path)
     pipeline = pipeline_manager.create_calibration_pipeline(
         recording_info=recording_info,
-        calibration_config=CalibrationPipelineConfig(),
+        calibration_config=PosthocCalibrationPipelineConfig(),
     )
     _wait_for_pipeline(pipeline)
 
@@ -188,7 +190,7 @@ def _run_mocap_and_wait(
     pipeline_manager: PosthocPipelineManager,
     calibration_toml_path_override: str | None,
 ) -> None:
-    mocap_config = MocapPipelineConfig.default_posthoc()
+    mocap_config = PosthocMocapPipelineConfig.default_posthoc()
     if calibration_toml_path_override is not None:
         mocap_config = mocap_config.model_copy(
             update={"calibration_toml_path": calibration_toml_path_override}

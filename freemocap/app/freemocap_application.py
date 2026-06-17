@@ -1,6 +1,7 @@
 """
-FreemocapApplication with SettingsManager integration.
-
+Top-level FreemocapApplication: owns the camera group manager, the realtime and
+posthoc pipeline managers, and the worker registry, and orchestrates recording and
+calibration/mocap pipeline operations.
 """
 import logging
 import multiprocessing

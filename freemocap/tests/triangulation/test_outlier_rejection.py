@@ -13,7 +13,8 @@ from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.triangulation.helpers.outlier_rejection import (
     triangulate_with_outlier_rejection,
 )
-from freemocap.core.tasks.triangulation import triangulate_simple, project_point_to_camera
+from freemocap.core.tasks.triangulation.helpers.triangulate_simple import triangulate_simple
+from freemocap.core.tasks.triangulation.helpers.project_point_to_camera import project_point_to_camera
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
@@ -62,6 +63,7 @@ def _make_synthetic_extrinsics() -> tuple[np.ndarray, list[CameraModel]]:
         cameras.append(
             CameraModel(
                 id=f"cam_{i}",
+                index=i,
                 image_size=(640, 480),
                 intrinsics=CameraIntrinsics(fx=500.0, fy=500.0, cx=320.0, cy=240.0),
                 extrinsics=CameraExtrinsics.from_rodrigues(
@@ -155,7 +157,7 @@ def test_triangulator_dispatch_across_input_shapes():
     arr_3d = pixel_obs.reshape(triangulator.n_cameras, 1, 2)             # (n_cameras, n_points=1, 2)
     arr_4d = pixel_obs.reshape(triangulator.n_cameras, 1, 1, 2)          # (n_cameras, n_frames=1, n_points=1, 2)
     dict_input = {
-        cam.name: pixel_obs[i].reshape(1, 1, 2)  # (n_frames, n_points, 2)
+        cam.id: pixel_obs[i].reshape(1, 1, 2)  # (n_frames, n_points, 2)
         for i, cam in enumerate(triangulator.cameras)
     }
 

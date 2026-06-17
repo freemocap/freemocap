@@ -17,8 +17,7 @@ from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, \
     apply_groundplane_to_cameras
-from freemocap.core.tasks.calibration.shared.groundplane_math import find_still_charuco_frame, \
-    compute_board_basis_vectors
+from freemocap.core.tasks.calibration.shared.groundplane_math import estimate_board_groundplane
 
 logger = logging.getLogger(__name__)
 
@@ -190,31 +189,22 @@ def estimate_charuco_groundplane(
         board=board,
     )
 
-    still_frame_idx = find_still_charuco_frame(
-        charuco_3d=charuco_3d,
-        squares_x=board.squares_x,
-        squares_y=board.squares_y,
+    camera_centers = np.array(
+        [
+            -cam.extrinsics.rotation_matrix.T @ cam.extrinsics.translation
+            for cam in cameras
+        ]
     )
-    logger.info(f"Using frame {still_frame_idx} for ground plane alignment")
 
-    frame_corners = charuco_3d[still_frame_idx]
-
-    origin = frame_corners[0]
-    if np.isnan(origin).any():
-        raise RuntimeError(
-            "Origin charuco corner contains NaN in the selected frame. "
-            "Cannot establish ground plane."
-        )
-
-    x_hat, y_hat, z_hat = compute_board_basis_vectors(
-        charuco_frame=frame_corners,
-        squares_x=board.squares_x,
-        squares_y=board.squares_y,
+    rotation_matrix, origin = estimate_board_groundplane(
+        charuco_3d,
+        board_points=board.corner_positions_board_frame,
+        camera_centers=camera_centers,
     )
 
     return GroundPlaneResult(
         origin=origin,
-        rotation_matrix=np.column_stack([x_hat, y_hat, z_hat]),
+        rotation_matrix=rotation_matrix,
         method="charuco",
     )
 

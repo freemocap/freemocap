@@ -14,7 +14,6 @@ dependencies = [
     "pydantic>=2.10.4",
     "numpydantic>=1.6.7",
     "scikit-learn>=1.7.2",
-    "pyceres>=2.5",
     "tomli-w>=1.2.0",
     "scipy-stubs~=1.17.1",
     "beartype>=0.19",
@@ -75,6 +74,9 @@ push = true
 # =============================================================================
 
 [dependency-groups]
+pyceres = [
+    "pyceres>=2.5",
+]
 dev = [
     "bumpver",
     "pip-tools",

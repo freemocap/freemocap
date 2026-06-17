@@ -505,7 +505,6 @@ dependencies = [
     { name = "numba" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
-    { name = "pyceres" },
     { name = "pydantic" },
     { name = "pyinstaller" },
     { name = "requests" },
@@ -531,6 +530,9 @@ dev = [
     { name = "pytest-timeout" },
     { name = "ruff" },
 ]
+pyceres = [
+    { name = "pyceres" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -541,7 +543,6 @@ requires-dist = [
     { name = "numba", specifier = ">=0.65.1" },
     { name = "numpydantic", specifier = ">=1.6.7" },
     { name = "opencv-contrib-python" },
-    { name = "pyceres", specifier = ">=2.5" },
     { name = "pydantic", specifier = ">=2.10.4" },
     { name = "pyinstaller", specifier = ">=6.11.0" },
     { name = "requests", specifier = ">=2.32.3" },
@@ -567,6 +568,7 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.0.0" },
     { name = "ruff", specifier = ">=0.9.0" },
 ]
+pyceres = [{ name = "pyceres", specifier = ">=2.5" }]
 
 [[package]]
 name = "freemocap-blender-addon"

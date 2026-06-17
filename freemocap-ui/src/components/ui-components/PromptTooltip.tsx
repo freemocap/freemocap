@@ -74,7 +74,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
     >
       <div
         className={clsx(
-          "tooltip-inner",
+          "floating-tooltip-inner",
           "gap-2",
           "flex",
           "flex-col",

@@ -67,6 +67,7 @@ export const BasePanelLayout = ({
         className=""
       >
         <PromptTooltip
+          
           show={true}
           title="How to Calibrate your cameras"
           text={
@@ -93,6 +94,7 @@ export const BasePanelLayout = ({
         className="z-110i"
       >
         <PromptTooltip
+          className="loading"
           show={true}
           title="Connecting..."
           text="Websocket connecting, app functions will be available once connection is made"

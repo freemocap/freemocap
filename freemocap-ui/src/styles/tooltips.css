@@ -79,8 +79,13 @@
 
 .tooltip-inner {
   position: relative;
-  background: var(--color-bg-secondary);
+  background: var(--color-bg-primary);
   will-change: transform, opacity;
+}
+.floating-tooltip-inner {
+
+  background: var(--color-bg-primary);
+ 
 }
 
 /* =========================================

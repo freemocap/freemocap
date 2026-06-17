@@ -348,7 +348,7 @@ const LogTerminalFull = ({
 
     const handleClear = () => {
         getLogStore().clear();
-        setSelectedLevels([]);
+        setSelectedLevels(LOG_LEVELS.map(l => l.toLowerCase()));
         setSearchText("");
         setShowSearch(false);
         setIsPaused(false);
@@ -488,7 +488,7 @@ const LogTerminalFull = ({
 
 export const LogTerminal = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
     const { getLogStore } = useServer();
-    const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+    const [selectedLevels, setSelectedLevels] = useState<string[]>(LOG_LEVELS.map(l => l.toLowerCase()));
     const [searchText, setSearchText] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [isPaused, setIsPaused] = useState(false);

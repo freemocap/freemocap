@@ -24,7 +24,8 @@ dependencies = [
     "skellyforge",
     #    "skellytracker[rtmpose-gpu]",
     #    "skellytracker[mediapipe]",
-    "skellytracker[recommended]",
+    "skellytracker[recommended]; sys_platform != 'darwin'",
+    "skellytracker[rtmpose-cpu,mediapipe]; sys_platform == 'darwin'",
     #skelly utils
     "skellylogs",
     "skellypings",
@@ -46,10 +47,20 @@ freemocap = "freemocap.__main__:run_main"
 [tool.setuptools]
 py-modules = ["freemocap"]
 
-[tool.uv]
-package = true
-exclude-dependencies = ["onnxruntime"] # fix erroneous inclusion of onnxruntime that happens alongside onnxruntime-gpu
-override-dependencies = ["numpy>=2.3.4"]  # fix cv2 vs rtmlib conflict on numpy version
+  [tool.uv]
+  package = true
+  environments = [
+      "sys_platform == 'darwin'",
+      "sys_platform == 'linux' and platform_machine == 'x86_64'",
+      "sys_platform == 'win32' and platform_machine == 'AMD64'",
+  ]
+  override-dependencies = [
+      "numpy>=2.3.4",  # fix cv2 vs rtmlib conflict on numpy version
+  ]
+
+  [[tool.uv.index]]
+  name = "nvidia"
+  url = "https://pypi.nvidia.com"
 
 [tool.bumpver]
 current_version = "v1.4.7"

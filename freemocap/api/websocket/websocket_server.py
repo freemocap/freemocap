@@ -276,6 +276,7 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error in frontend image relay: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
@@ -314,6 +315,8 @@ class WebsocketServer:
                 f"— ws state: {self.websocket.client_state}"
             )
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+
             raise
 
     async def _client_message_handler(self):
@@ -366,6 +369,8 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error handling client message: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+
             raise
         finally:
             logger.info("Ending client message handler...")

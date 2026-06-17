@@ -401,8 +401,8 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["recommended"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac" },
-    { name = "skellytracker", extras = ["rtmpose-cpu", "mediapipe"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac" },
+    { name = "skellytracker", extras = ["recommended"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development" },
+    { name = "skellytracker", extras = ["rtmpose-cpu", "mediapipe"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=development" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 
@@ -1873,7 +1873,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac#edc848ad7b9e3360187dab219d610139490f8812" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development#6b18c93ab6ce3f4218f5f3bc7c82d9ae246b9177" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

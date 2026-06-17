@@ -50,7 +50,7 @@ export const BasePanelLayout = ({children, onOpenWelcome}: { children?: React.Re
         {/* TODO: Add logic for server connection state (showServiceUI, isFailed) to control visibility and behavior */}
         <FloatingOnboarding
           target='[data-onboarding="connection:server-connection"]'
-          className="z-110"
+          className="z-110i"
         >
           <PromptTooltip
             show={true}

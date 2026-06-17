@@ -1,0 +1,164 @@
+---
+sidebar_position: 3
+title: Frontend State Management
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Frontend State Management
+
+State management uses **Redux Toolkit** with 12 slice reducers, two custom listener middlewares, and selective localStorage persistence. Rapidly-changing data (camera frames, keypoints) bypasses Redux entirely and lives in refs inside `ServerContextProvider`.
+
+## Redux Store Architecture
+
+The store is configured in `src/store/store.ts`:
+
+```typescript
+export const store = configureStore({
+    middleware: (getDefaultMiddleware) =>
+        getDefaultMiddleware()
+            .concat(cameraConfigListenerMiddleware.middleware)
+            .concat(persistenceListenerMiddleware.middleware),
+    reducer: {
+        cameras: cameraSlice.reducer,
+        recording: recordingSlice.reducer,
+        videos: videosSlice.reducer,
+        realtime: realtimeSlice.reducer,
+        calibration: calibrationSlice.reducer,
+        mocap: mocapSlice.reducer,
+        locale: localeSlice.reducer,
+        pipelines: pipelinesSlice.reducer,
+        blender: blenderSlice.reducer,
+        recordingStatus: recordingStatusSlice.reducer,
+        activeRecording: activeRecordingSlice.reducer,
+        playbackData: playbackDataReducer,
+    },
+});
+```
+
+Typed hooks are re-exported from `src/store/hooks.ts`:
+
+```typescript
+export const useAppDispatch = () => useDispatch<AppDispatch>();
+export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+```
+
+Always use these typed versions — never the raw `useDispatch` / `useSelector` from `react-redux`. The types catch mistakes at compile time.
+
+## Slice Reference
+
+Each slice owns one domain of state. Here's what each one holds and why it exists.
+
+### cameras
+**State**: List of detected cameras, each with `actualConfig` (what the hardware reports), `desiredConfig` (what the user wants), `connectionStatus`, `selected`, `realtimeEnabled`, `hasConfigMismatch`. Plus `isPaused`, `isLoading`, `autoApply`, `error`.
+
+**Why it exists**: Camera configuration is the foundation of the app. This slice tracks what cameras are available, whether they're connected, and whether their actual settings match what the user requested.
+
+### recording
+**State**: `isRecording`, `recordingDirectory`, `recordingName`, `startedAt`, `duration`, `config` (naming convention, delay, microphone, type preset, auto-process), `computed` path, `completionData`, `pendingOperation`, `countdown`.
+
+**Why it exists**: Video recording is a stateful operation with a lifecycle (idle → countdown → recording → complete). This slice manages that lifecycle and the naming/directory configuration.
+
+### videos
+**State**: `folder`, `files[]`, `selectedFile`, `playbackState`.
+
+**Why it exists**: Legacy video file management. In practice, playback now uses the `playbackData` slice and `PlaybackContext` instead. This slice is largely vestigial.
+
+<Tip shortInfo="The videos slice is mostly unused. Playback flows through playbackData slice + PlaybackContext. Be careful not to add new dependencies on the videos slice." />
+
+### realtime
+**State**: `pipelineConfig` (camera node config, aggregator config), `cameraGroupId`, `pipelineId`, `isConnected`, `isLoading`.
+
+**Why it exists**: The realtime pipeline streams CharUco tracking and skeleton data over WebSocket. This slice tracks whether the realtime pipeline is connected and what its configuration is.
+
+### calibration
+**State**: `config` (charuco board squares/rows/length, solver method, min shared views), `isRecording`, `recordingProgress`, `directoryInfo`, `loadedCalibration`.
+
+**Why it exists**: Calibration is a multi-step workflow: configure the CharUco board → start calibration recording → stop recording → run the calibration solver. This slice manages config and tracks progress through that workflow.
+
+### mocap
+**State**: `config` (MediaPipe detector settings: model complexity, confidence thresholds, segmentation, face refinements; skeleton filter settings: One Euro Filter, FABRIK, bone length estimation, point gating, prediction), `isRecording`, `recordingProgress`, `processingProgress`, `processingPhase`, `directoryInfo`, `calibrationTomlPath`.
+
+**Why it exists**: Mocap processing is the core workflow. This slice manages the MediaPipe pose detection config, the skeleton filter config, and tracks progress through recording and post-processing.
+
+### locale
+**State**: Current language code, previous language code.
+
+**Why it exists**: Manages i18n language state. The actual translation strings live in `i18next`, not Redux — this slice just tracks which language is active for UI indicators and persistence.
+
+### pipelines
+**State**: `activePipelines` (Record of `PipelineProgress` keyed by pipeline ID), `dismissedBasePipelineIds`, `showCompleted`, `filterText`, `snackbarVisible`.
+
+**Why it exists**: Pipeline progress messages arrive over WebSocket and need to be tracked across the UI (progress bar, snackbar notifications, the pipeline progress panel). This slice aggregates progress from both calibration and mocap pipelines.
+
+### blender
+**State**: `blenderExePath`, `detectedBlenderExePath`, `exportToBlenderEnabled`, `autoOpenBlendFile`, `isExporting`, `isDetecting`, `isOpening`, `lastBlendFilePath`.
+
+**Why it exists**: Blender integration (detect, export .blend, open in Blender) is a cross-cutting feature that multiple components interact with. This slice tracks Blender's availability and export state.
+
+### recordingStatus
+**State**: `byRecordingId` (Record of per-recording status entries), `recordingsList[]`, `recordingsIsLoading`.
+
+**Why it exists**: After a recording completes, the backend processes it through stages (synchronized videos, annotated videos, calibration, blend file). This slice tracks which stages are complete for each recording, fetched via REST.
+
+### activeRecording
+**State**: `baseDirectory`, `recordingName`, `origin` (`'pending-capture'` | `'just-captured'` | `'browsed'` | `'auto-latest'`), `layoutPreset`.
+
+**Why it exists**: The concept of a "currently active recording" is shared across many components — the recording info panel, the processing panel, the playback browser. This slice provides that shared identity.
+
+### playbackData
+**State**: `byRecordingId` cache of `PlaybackBundle` (fps, totalFrames, duration, video sources, timestamps, calibration data, tracker schema, status summary).
+
+**Why it exists**: Loading playback data from the backend is expensive (multiple REST calls). This slice caches loaded bundles so switching between recordings is fast.
+
+## Slice File Convention
+
+Every slice follows the same file structure. This is a strict convention — new slices must follow it:
+
+```
+slices/<domain>/
+├── <domain>-slice.ts      State definition, reducers, actions
+├── <domain>-thunks.ts     Async thunks (API calls)
+├── <domain>-types.ts      TypeScript types and Zod schemas
+├── <domain>-selectors.ts  Memoized selectors (createSelector)
+└── index.ts               Barrel re-exports
+```
+
+Selectors often cross-reference multiple slices. For example, `selectCanStartCalibrationRecording` composes state from `calibration` and `activeRecording`. The convention is to place a selector in the slice that "owns" the question being asked.
+
+## Middleware
+
+### persistenceListenerMiddleware (300ms debounce)
+
+Automatically persists selected slice state to localStorage. Runs after every Redux action, debounced at 300ms to avoid thrashing.
+
+**What gets persisted:**
+- `activeRecording` (name, baseDirectory, layoutPreset)
+- `recording.config`
+- `recording.directory`
+- `calibration.config`
+- `mocap.config`
+- `blender.settings` (exePath, exportEnabled, autoOpen)
+
+**What doesn't:** Camera state, pipeline progress, recording status, playback data, UI state. These are either ephemeral or can be refetched.
+
+LocalStorage keys use a `freemocap:` prefix to avoid collisions.
+
+### cameraConfigListenerMiddleware (350ms debounce)
+
+Watches for changes to camera `desiredConfig`. When `autoApply` is true and a config changes, it automatically dispatches `camerasConnectOrUpdate` to push the new config to the backend. Debounced at 350ms to batch rapid changes (e.g., dragging a slider).
+
+## Redux vs Context vs Refs
+
+| Mechanism | What uses it | Triggers re-render? | Persisted? |
+|---|---|---|---|
+| **Redux** | Config, UI state, recording identity | Yes | Selectively (localStorage) |
+| **ServerContext** | WebSocket state, frame/keypoint streams, overlay visibility | No (uses refs internally) | No |
+| **PlaybackContext** | Loaded videos, frame timestamps, source selection | Yes | No |
+| **AutoUpdateContext** | Electron auto-updater state | Yes | No |
+| **ViewportStateContext** | Three.js scene state | Yes | No |
+| **useRef** (in ServerContextProvider) | Frame payloads, keypoints, rigid bodies, overlay data | No | No |
+
+The rule: if data changes at display-refresh rate (60fps), it goes in a ref. If it needs to survive navigation, it goes in Redux. If it's shared across a specific subtree, it goes in Context.

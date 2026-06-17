@@ -1,0 +1,245 @@
+---
+sidebar_position: 5
+title: Frontend Backend Communication
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Backend Communication (Frontend Side)
+
+The frontend talks to the Python backend over three channels: **REST** for commands, **WebSocket** for streaming data, and **Electron IPC** for desktop operations. All three are managed through the service layer in `src/services/`.
+
+## Service Layer Overview
+
+```
+src/services/
+├── server/
+│   ├── ServerContextProvider.tsx     Central service manager (~700 lines)
+│   ├── server-context.ts            ServerContext interface + useServer hook
+│   └── server-helpers/
+│       ├── websocket-connection.ts   WebSocket wrapper with auto-reconnect
+│       ├── websocket-message-types.ts Type guards for message discrimination
+│       ├── frame-processor/          Binary frame parsing + JPEG decode worker
+│       │   ├── frame-processor.ts    Main frame processing logic
+│       │   ├── binary-frame-parser.ts Binary frame header parsing
+│       │   ├── binary-protocol.ts    Frame protocol constants
+│       │   └── frame-decode.worker.ts Web Worker for JPEG decoding
+│       ├── image-overlay/            2D overlay compositing on camera feeds
+│       │   ├── image-overlay-system.ts    Central overlay manager
+│       │   ├── overlay-renderer-factory.ts Creates renderers per tracker type
+│       │   ├── charuco-overlay-renderer.ts CharUco marker overlay
+│       │   └── mediapipe-overlay-renderer.ts MediaPipe skeleton overlay
+│       ├── canvas-manager.ts         Per-camera offscreen canvas rendering
+│       ├── offscreen-renderer.worker.ts Web Worker for canvas compositing
+│       ├── framerate-store.ts        Observable framerate data
+│       ├── log-store.ts              Buffered server logs with localStorage
+│       ├── console-log-bridge.ts     Intercepts console.log → log store
+│       └── tracked-object-definition.ts Tracker schema types
+└── electron-ipc/
+    ├── electron-ipc.ts               isElectron() guard
+    ├── electron-ipc-client.ts        tRPC proxy client over Electron IPC
+    └── index.ts
+```
+
+## ServerContextProvider
+
+`ServerContextProvider.tsx` is the largest single file in the frontend (~700 lines). It manages everything that depends on the WebSocket connection. Its responsibilities grew together because they share one WebSocket, one rAF loop, and one lifecycle — but this is the current state, not the target architecture. A refactor to break it into focused pieces (connection management, frame pipeline, overlay system) is planned but deferred.
+
+### What it owns
+- `WebSocketConnection` — raw WebSocket with auto-reconnect and heartbeat
+- `FrameProcessor` — binary JPEG frame parsing and decoding (in a Web Worker)
+- `CanvasManager` — per-camera offscreen canvas renderers
+- `OverlayManager` / `OverlayRendererFactory` — 2D overlay compositing (CharUco markers, MediaPipe skeletons)
+- `FramerateStore` — observable framerate data (both backend-reported and browser-measured FPS)
+- `LogStore` — buffered server logs with localStorage persistence
+
+### What it provides (via React Context)
+- `isConnected`, `connect(host, port)`, `disconnect()`
+- `sendWebsocketMessage(type, payload)` — send arbitrary JSON messages
+- `setCanvasForCamera(cameraId, canvas)` — register a canvas element for a camera
+- `getFps()`, `getServerFps()` — read current framerate
+- `subscribeToKeypointsRaw(callback)`, `subscribeToKeypointsFiltered(callback)`, `subscribeToRigidBodies(callback)` — subscribe to 3D data streams
+- `setOverlayVisibility(trackerId, visible)` — toggle overlay rendering
+- `trackerSchemas`, `activeTrackerId`, `getActiveSchema()` — tracker metadata
+
+### Lifecycle
+
+```
+Mount → create service instances → connect WebSocket → start rAF loop
+                                                                │
+                                                      ┌─────────┴──────────┐
+                                                      │  every frame:       │
+                                                      │  1. ack frame       │
+                                                      │  2. dispatch JSON    │
+                                                      │  3. decode binary    │
+                                                      │  4. measure FPS      │
+                                                      └────────────────────┘
+Unmount → stop rAF loop → disconnect WebSocket → destroy services
+```
+
+## WebSocket Connection
+
+The WebSocket wrapper (`websocket-connection.ts`) provides:
+
+- **Auto-reconnect** with exponential backoff: 1s → 2s → 4s → 8s → 16s (max 5 attempts, then stops)
+- **Heartbeat**: ping/pong every 30 seconds to detect dead connections
+- **Message dispatch**: routes binary messages to the frame processor, JSON messages through type guards
+
+Message types are discriminated by first byte or JSON shape:
+
+| Type | Direction | Format | Purpose |
+|---|---|---|---|
+| Binary frame | Server → Client | `[msgType:1B][frameNum:4B][JPEG data...]` | Camera frames |
+| Binary keypoints | Server → Client | `[msgType:1B][keypoints:Float32Array]` | 3D keypoint positions |
+| JSON: log | Server → Client | `{type: "log", level, message, timestamp}` | Server logs |
+| JSON: framerate | Server → Client | `{type: "framerate", fps, server_fps}` | FPS metrics |
+| JSON: frontend_payload | Server → Client | `{type: "frontend_payload", payload_type, data}` | Keypoints, rigid bodies, overlays, pupil data |
+| JSON: posthoc_progress | Server → Client | `{type: "posthoc_progress", pipeline_id, phase, progress}` | Pipeline stage progress |
+| JSON: tracker_schema | Server → Client | `{type: "tracker_schema", schema}` | Tracker metadata |
+| JSON: command | Client → Server | Various shapes | Commands (connect, disconnect, etc.) |
+
+## The rAF Processing Loop
+
+Why `requestAnimationFrame` instead of processing WebSocket messages as they arrive?
+
+**WebSocket messages can storm.** With N cameras at 30fps, the server sends N binary frames every ~33ms. If you process each message with `await` (for decoding), the event loop yields between messages. A storm of messages means you never finish processing one batch before the next arrives — the microtask queue fills, the main thread starves, and the UI freezes.
+
+**rAF gives you one tick per frame.** The loop runs at display refresh rate (typically 60Hz). Each tick, it drains all queued messages, processes them, and renders. Then it waits for the next frame. This guarantees the UI stays responsive.
+
+### Loop Structure (each tick)
+
+```
+1. ACK FRAME NUMBER
+   Send the latest frame number back to the server immediately.
+   This lets the server pipeline the next batch of frames while
+   we decode the current batch.
+
+2. DISPATCH JSON PAYLOADS (synchronous)
+   Drain any buffered JSON messages:
+   - Keypoints → notify subscribers (Three.js update)
+   - Rigid bodies → notify subscribers
+   - Overlays → queue for overlay compositing
+   - Logs → push to LogStore
+   - Pipeline progress → dispatch to Redux
+   - Framerate → update FramerateStore
+
+3. DECODE BINARY FRAMES (asynchronous, non-blocking)
+   JPEG frames are decoded in a Web Worker so the main thread
+   stays free. Decoded frames are posted back and rendered
+   to their per-camera canvases.
+
+4. MEASURE FRONTEND FRAMERATE
+   Track inter-arrival times between decoded frames to compute
+   the effective frontend FPS.
+```
+
+<Tip shortInfo="The frame acknowledgment (step 1) happens before decoding (step 3). This is critical: it means the backend can pipeline the next batch of frames while the frontend decodes the current batch. Without this, throughput drops by ~2x." />
+
+## REST API (`ServerUrls`)
+
+The `ServerUrls` singleton (`src/constants/server-urls.ts`) centralizes all REST endpoint URLs. Default backend: `localhost:53117`.
+
+### Endpoint Categories
+
+**Camera Management (SkellyCam)**
+- `POST /skellycam/camera/detect` — Detect connected USB cameras
+- `POST /skellycam/camera/group/apply` — Connect cameras with configurations
+- `DELETE /skellycam/camera/group/close/all` — Disconnect all cameras
+- `GET /skellycam/camera/group/all/pause_unpause` — Toggle camera stream pause
+- `POST /skellycam/camera/group/all/record/start` — Start recording on all cameras
+- `GET /skellycam/camera/group/all/record/stop` — Stop recording
+
+**Playback**
+- `GET /freemocap/playback/recordings` — List all recordings
+- `GET /freemocap/playback/{id}/videos` — List videos in a recording
+- `GET /freemocap/playback/{id}/videos/{video_id}` — Stream a video file
+- `GET /freemocap/playback/{id}/timestamps` — Get all timestamps
+- `GET /freemocap/playback/{id}/status` — Get recording status
+- `GET /freemocap/playback/{id}/bundle` — Get full playback bundle
+
+**Calibration**
+- `POST /freemocap/calibration/recording/start` — Start calibration recording
+- `POST /freemocap/calibration/recording/stop` — Stop calibration recording
+- `POST /freemocap/calibration/recording/calibrate` — Run calibration solver
+
+**Mocap**
+- `POST /freemocap/mocap/recording/start` — Start mocap recording
+- `POST /freemocap/mocap/recording/stop` — Stop mocap recording
+- `POST /freemocap/mocap/recording/process` — Run mocap post-processing
+
+**Realtime**
+- `POST /freemocap/realtime/apply` — Apply realtime pipeline config
+- `DELETE /freemocap/realtime/all/close` — Close realtime pipeline
+
+**Posthoc**
+- `POST /freemocap/posthoc/pipeline/{id}` — Stop a specific pipeline
+- `POST /freemocap/posthoc/pipeline` — Stop all pipelines
+
+**Blender**
+- `GET /freemocap/blender/detect` — Detect Blender installation
+- `POST /freemocap/blender/export` — Export to .blend
+- `GET /freemocap/blender/open` — Open in Blender
+
+**System**
+- `GET /health` — Health check
+- `GET /shutdown` — Shut down server
+
+## Electron IPC (tRPC)
+
+For Electron-specific operations, the frontend uses a **tRPC proxy client** over Electron's IPC bridge.
+
+### How it works
+1. The Electron main process exposes an API via `contextBridge` as `window.electronAPI`
+2. `electron-ipc-client.ts` creates a tRPC proxy that calls `window.electronAPI.invoke(path, input)`
+3. Data is serialized with `superjson` (handles Dates, Maps, Sets, etc.)
+4. The `isElectron()` guard lets the same code run in a browser (Electron IPC calls just no-op)
+
+### Available operations
+- File system: open folder dialogs, directory validation, read assets
+- Telemetry: enable/disable
+- Menu actions: forward native menu events to the renderer
+- Auto-update: check for updates, download progress, install
+
+## Data Flow: Which Data Takes Which Path
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ DATA TYPE          │ CHANNEL      │ ENDPOINT / MESSAGE       │
+├─────────────────────────────────────────────────────────────┤
+│ Camera frames      │ WebSocket    │ Binary (msgType 0)       │
+│                    │              │ → rAF → FrameProcessor   │
+│                    │              │ → CanvasManager → <canvas>│
+├─────────────────────────────────────────────────────────────┤
+│ Keypoints (3D)     │ WebSocket    │ Binary (msgType 3)       │
+│                    │              │ → rAF → subscriber Set    │
+│                    │              │ → Three.js scene          │
+├─────────────────────────────────────────────────────────────┤
+│ Rigid bodies       │ WebSocket    │ JSON frontend_payload    │
+│                    │              │ → rAF → subscriber Set    │
+│                    │              │ → Three.js scene          │
+├─────────────────────────────────────────────────────────────┤
+│ Overlays           │ WebSocket    │ JSON frontend_payload    │
+│ (CharUco, skel.)   │              │ → rAF → OverlayManager   │
+│                    │              │ → CanvasManager           │
+├─────────────────────────────────────────────────────────────┤
+│ Commands           │ REST         │ Various POST/GET          │
+│ (detect, record,   │              │ → Redux thunk             │
+│  calibrate, etc.)  │              │ → state update            │
+├─────────────────────────────────────────────────────────────┤
+│ Pipeline progress  │ WebSocket    │ JSON posthoc_progress     │
+│                    │              │ → rAF → Redux dispatch    │
+├─────────────────────────────────────────────────────────────┤
+│ Server logs        │ WebSocket    │ JSON log                 │
+│                    │              │ → rAF → LogStore          │
+│                    │              │ → Redux (log slice)       │
+├─────────────────────────────────────────────────────────────┤
+│ Framerate stats    │ WebSocket    │ JSON framerate           │
+│                    │ + local      │ → rAF → FramerateStore   │
+├─────────────────────────────────────────────────────────────┤
+│ Electron ops       │ Electron IPC │ tRPC proxy               │
+│ (file dialogs,     │              │ → main process            │
+│  menus, updates)   │              │                           │
+└─────────────────────────────────────────────────────────────┘
+```

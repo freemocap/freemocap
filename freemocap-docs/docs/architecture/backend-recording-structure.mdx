@@ -1,0 +1,135 @@
+---
+sidebar_position: 12
+title: Recording Structure
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Recording Structure
+
+Every recording session — whether calibration, mocap, or both — produces a structured folder on disk. The `RecordingStructure` Pydantic model defines the canonical layout, and `RecordingStatus` tracks which processing stages are complete.
+
+## Canonical Layout
+
+```
+~/freemocap_data/recordings/
+└── {recording_name}/
+    ├── videos/
+    │   ├── synchronized/          # Frame-synchronized camera videos
+    │   │   ├── camera_0.mp4
+    │   │   ├── camera_1.mp4
+    │   │   └── ...
+    │   └── annotated/             # Videos with detection overlays
+    │       ├── camera_0_annotated.mp4
+    │       └── ...
+    ├── output_data/               # Per-stage processed artifacts
+    │   ├── mediapipe_body_3d_xyz.npy
+    │   ├── mediapipe_face_3d_xyz.npy
+    │   ├── mediapipe_right_hand_3d_xyz.npy
+    │   ├── mediapipe_left_hand_3d_xyz.npy
+    │   ├── mediapipe_body_total_body_center_of_mass.npy
+    │   ├── mediapipe_body_segment_center_of_mass.npy
+    │   ├── calibration_observations.json
+    │   └── ...
+    ├── logs/                      # Per-recording log files
+    ├── {name}_calibration.toml    # Authoritative calibration data
+    ├── {name}_recording_info.json # Camera configs + recording type tags
+    ├── {name}_data.parquet        # Primary mocap data store
+    └── {name}.blend               # Blender export (optional)
+```
+
+## RecordingStructure Model
+
+The `RecordingStructure` Pydantic model (`system/recording_structure/recording_structure.py`, 179 lines) provides computed properties for all canonical paths:
+
+```python
+class RecordingStructure(BaseModel):
+    base_directory: Path
+    recording_name: str
+
+    # Computed properties
+    @property
+    def full_path(self) -> Path: ...
+    @property
+    def synchronized_videos_dir(self) -> Path: ...
+    @property
+    def annotated_videos_dir(self) -> Path: ...
+    @property
+    def output_data_dir(self) -> Path: ...
+    @property
+    def calibration_toml_path(self) -> Path: ...
+    @property
+    def data_parquet_path(self) -> Path: ...
+    @property
+    def blend_file_path(self) -> Path: ...
+    @property
+    def recording_info_json_path(self) -> Path: ...
+```
+
+`validate_layout()` checks both canonical and legacy layouts, providing backward compatibility with recordings from older versions.
+
+## Default Paths
+
+Defined in `system/default_paths.py` (84 lines):
+
+| Path | Default |
+|---|---|
+| Base data folder | `~/freemocap_data/` |
+| Recordings folder | `~/freemocap_data/recordings/` |
+| Test data | `~/freemocap_data/recordings/freemocap_test_data/` |
+| Logs | `~/freemocap_data/logs_info_and_settings/logs/` |
+| Latest calibration symlink | `~/freemocap_data/last_successful_calibration.toml` |
+
+## Recording Info
+
+Each recording saves a `recording_info.json` alongside its data:
+
+```json
+{
+    "recording_name": "my_session",
+    "recording_type": "calibration",  // or "mocap"
+    "camera_configs": { ... },        // Per-camera settings at record time
+    "created_at": "2026-06-17T14:00:00"
+}
+```
+
+This provides a self-contained record of how the recording was captured, making it possible to reprocess later with different parameters.
+
+## Recording Status
+
+The `RecordingStatus` model (`system/recording_status/recording_status.py`, 256 lines) tracks which processing stages are complete for a given recording.
+
+### Five Stages
+
+| Stage | What it checks | Key indicator |
+|---|---|---|
+| Raw videos | Original camera footage exists | `synchronized/` directory has video files |
+| Calibration | Camera parameters estimated | `{name}_calibration.toml` exists and is valid |
+| Blender inputs | Required .npy files generated | All 6 body/face/hand/COM .npy files present |
+| Annotated videos | Detection overlay videos rendered | `annotated/` directory has annotated video files |
+| Blender scene | .blend file exported | `{name}.blend` exists and is non-empty |
+
+### Blender Export Readiness
+
+`blender_export_ready` is `True` when all required .npy files exist:
+```
+mediapipe_body_3d_xyz.npy
+mediapipe_right_hand_3d_xyz.npy
+mediapipe_left_hand_3d_xyz.npy
+mediapipe_face_3d_xyz.npy
+mediapipe_body_total_body_center_of_mass.npy
+mediapipe_body_segment_center_of_mass.npy
+```
+
+### Usage
+
+`compute_recording_status()` is called by:
+- **Playback router**: to report which stages are complete for each recording in the browser
+- **Blender router**: to check if a recording is ready for Blender export
+- **Frontend**: displays stage-by-stage status in the `ActiveRecordingPage` and `RecordingBrowser`
+
+### RecordingStatusSummary (Frontend Type)
+
+The frontend mirrors this with a `RecordingStatusSummary` type used in Redux (`recordingStatus` slice) and the `PipelineProgressPanel` component. The backend and frontend models must agree on stage names and status values.

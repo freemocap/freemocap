@@ -4,12 +4,15 @@ requires-python = ">=3.11"
 resolution-markers = [
     "sys_platform == 'win32'",
     "sys_platform == 'emscripten'",
-    "sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "sys_platform != 'darwin' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "sys_platform == 'darwin'",
 ]
 
 [manifest]
-overrides = [{ name = "numpy", specifier = ">=2.3.4" }]
-excludes = ["onnxruntime"]
+overrides = [
+    { name = "numpy", specifier = ">=2.3.4" },
+    { name = "tensorrt", marker = "sys_platform == 'darwin'" },
+]
 
 [[package]]
 name = "absl-py"
@@ -102,7 +105,7 @@ name = "build"
 version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "os_name == 'nt'" },
+    { name = "colorama", marker = "os_name == 'nt' and sys_platform != 'darwin'" },
     { name = "packaging" },
     { name = "pyproject-hooks" },
 ]
@@ -514,7 +517,9 @@ dependencies = [
     { name = "skellyforge" },
     { name = "skellylogs" },
     { name = "skellypings" },
-    { name = "skellytracker", extra = ["recommended"] },
+    { name = "skellytracker" },
+    { name = "skellytracker", extra = ["mediapipe", "rtmpose-cpu"], marker = "sys_platform == 'darwin'" },
+    { name = "skellytracker", extra = ["recommended"], marker = "sys_platform != 'darwin'" },
     { name = "tomli-w" },
 ]
 
@@ -552,7 +557,8 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["recommended"], git = "https://github.com/freemocap/skellytracker?branch=development" },
+    { name = "skellytracker", extras = ["recommended"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac" },
+    { name = "skellytracker", extras = ["rtmpose-cpu", "mediapipe"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 
@@ -800,7 +806,7 @@ name = "macholib"
 version = "1.16.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "altgraph" },
+    { name = "altgraph", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/10/2f/97589876ea967487978071c9042518d28b958d87b17dceb7cdc1d881f963/macholib-1.16.4.tar.gz", hash = "sha256:f408c93ab2e995cd2c46e34fe328b130404be143469e41bc366c807448979362", size = 59427, upload-time = "2025-11-22T08:28:38.373Z" }
 wheels = [
@@ -1128,7 +1134,7 @@ name = "nvidia-cublas-cu12"
 version = "12.9.2.10"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cuda-nvrtc-cu12" },
+    { name = "nvidia-cuda-nvrtc-cu12", marker = "sys_platform != 'darwin'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f7/a2/c96163a0fff1839c0c9548bbdeae7b853b867009e33b9b9264adc238b1cf/nvidia_cublas_cu12-12.9.2.10-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:5572131a59c3eebeeb1c4c8144f772d49372c20124916e072a0e3fc30df421d5", size = 575012079, upload-time = "2026-04-08T18:51:47.303Z" },
@@ -1161,7 +1167,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.23.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/19/e70f60a82986f65111d30ffd1744ed3478a3f8cd67bcdac38bf00d57d9da/nvidia_cudnn_cu12-9.23.2.1-py3-none-manylinux_2_27_aarch64.whl", hash = "sha256:3adf706a93367d400b4e7668fc14834c7551c9122eeb22f8aec6435b18da5b6f", size = 778221490, upload-time = "2026-06-16T03:36:51.086Z" },
@@ -1174,7 +1180,7 @@ name = "nvidia-cufft-cu12"
 version = "11.4.1.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-nvjitlink-cu12", marker = "sys_platform != 'darwin'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/2b/76445b0af890da61b501fde30650a1a4bd910607261b209cccb5235d3daa/nvidia_cufft_cu12-11.4.1.4-py3-none-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:1a28c9b12260a1aa7a8fd12f5ebd82d027963d635ba82ff39a1acfa7c4c0fbcf", size = 200822453, upload-time = "2025-06-05T20:05:27.889Z" },
@@ -1225,14 +1231,31 @@ wheels = [
 ]
 
 [[package]]
+name = "onnxruntime"
+version = "1.27.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers", marker = "sys_platform == 'darwin'" },
+    { name = "numpy", marker = "sys_platform == 'darwin'" },
+    { name = "packaging", marker = "sys_platform == 'darwin'" },
+    { name = "protobuf", marker = "sys_platform == 'darwin'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d4/e4/5353d7e09ced4a8f473f843223fc75d726b2b5519dcefc12f22a6c92852d/onnxruntime-1.27.0-cp311-cp311-macosx_14_0_arm64.whl", hash = "sha256:8ba14a38c570087f3cdb8cfba33f7a38a1e826c1e5b29e17c28ceda0cc910016", size = 18416484, upload-time = "2026-06-15T22:43:43.894Z" },
+    { url = "https://files.pythonhosted.org/packages/c3/b7/dd3a524ed93a820dff1af902d0412957ab12499953333e9daa01af5bc480/onnxruntime-1.27.0-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:a14c2ce45312def86b77aea651f46565e45960cf5f0721bfdff449165086ab76", size = 18433506, upload-time = "2026-06-15T22:43:47.026Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/2b/54208fd03ad410480bc17edf4869376362da8bbf46fe186ddf4cb5cc20fe/onnxruntime-1.27.0-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:b3e5b58b8c89c2b20e086e890aa9527377e5c240dc3ecc1640d18e07705eeb1c", size = 18432958, upload-time = "2026-06-15T22:42:53.105Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/37/48ab79c39b58a7c9f6f5aac1fa0ff2b993eb2643393d6ed9e839ddb6f347/onnxruntime-1.27.0-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:0874edc171f470fc4dd2bbb60bc0989612ed1a8b89b365cda016630a93227f13", size = 18433941, upload-time = "2026-06-15T22:42:58.867Z" },
+]
+
+[[package]]
 name = "onnxruntime-gpu"
 version = "1.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "flatbuffers" },
-    { name = "numpy" },
-    { name = "packaging" },
-    { name = "protobuf" },
+    { name = "flatbuffers", marker = "sys_platform != 'darwin'" },
+    { name = "numpy", marker = "sys_platform != 'darwin'" },
+    { name = "packaging", marker = "sys_platform != 'darwin'" },
+    { name = "protobuf", marker = "sys_platform != 'darwin'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/fd/f754a292136deebe4fba28443374f6c5f6dcb6a125270755dd54473dce06/onnxruntime_gpu-1.27.0-cp311-cp311-win_amd64.whl", hash = "sha256:c68799b35fc4818e6c1d50f5270681bf5ab8a652ac118e11a987b23f488e18dd", size = 213618726, upload-time = "2026-06-15T22:42:50.855Z" },
@@ -1256,6 +1279,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/67/905c2c9364dcd450a0997a489fd3976a10a83cd1ebcbd3d039bb2525b54c/opencv_contrib_python-4.12.0.88-cp37-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:ac2627dcdf5bd625706949ada7994524320b656a991315ff6ae70043fc983689", size = 73160002, upload-time = "2025-07-07T09:16:45.815Z" },
     { url = "https://files.pythonhosted.org/packages/5a/78/8110f1de88155241d9df6a701e2e589734a8bf3dbe1fd1a3cd29243c732a/opencv_contrib_python-4.12.0.88-cp37-abi3-win32.whl", hash = "sha256:fe3a5cbc1467c3620aeda3afd8d363886298a6fc85b48d62b2991afab65076c5", size = 36169774, upload-time = "2025-07-07T09:16:54.401Z" },
     { url = "https://files.pythonhosted.org/packages/7f/8c/ec631100261b0fca25cafd1e1a06592e50b3cda8aa08e7c4c14d7b4d7115/opencv_contrib_python-4.12.0.88-cp37-abi3-win_amd64.whl", hash = "sha256:62c20c14fdd794c9d0fbc780b3d52a74bc967d205664d25b3906951abedc9f65", size = 45262376, upload-time = "2025-07-07T09:17:02.868Z" },
+]
+
+[[package]]
+name = "opencv-python"
+version = "4.13.0.92"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'darwin'" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/6f/5a28fef4c4a382be06afe3938c64cc168223016fa520c5abaf37e8862aa5/opencv_python-4.13.0.92-cp37-abi3-macosx_13_0_arm64.whl", hash = "sha256:caf60c071ec391ba51ed00a4a920f996d0b64e3e46068aac1f646b5de0326a19", size = 46247052, upload-time = "2026-02-05T07:01:25.046Z" },
+    { url = "https://files.pythonhosted.org/packages/08/ac/6c98c44c650b8114a0fb901691351cfb3956d502e8e9b5cd27f4ee7fbf2f/opencv_python-4.13.0.92-cp37-abi3-macosx_14_0_x86_64.whl", hash = "sha256:5868a8c028a0b37561579bfb8ac1875babdc69546d236249fff296a8c010ccf9", size = 32568781, upload-time = "2026-02-05T07:01:41.379Z" },
 ]
 
 [[package]]
@@ -1809,11 +1844,11 @@ name = "pyobjc-framework-avfoundation"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
-    { name = "pyobjc-framework-coreaudio" },
-    { name = "pyobjc-framework-coremedia" },
-    { name = "pyobjc-framework-quartz" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-coreaudio", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-coremedia", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-quartz", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/f5/d4/88d226694f8e598138fbc26808bb2d3a0637500691e42d15c64f3a8c1258/pyobjc_framework_avfoundation-12.2.tar.gz", hash = "sha256:d06443acf26f3f3e16e8a9bfad42db900af3b8c3ca34c5676343d2f8e001f56b", size = 410281, upload-time = "2026-05-30T12:31:11.224Z" }
 wheels = [
@@ -1832,7 +1867,7 @@ name = "pyobjc-framework-cocoa"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6d/cc/927169225e72bab9c9b44285656768fb75052a0bc85fdbca62740e1ca43c/pyobjc_framework_cocoa-12.2.tar.gz", hash = "sha256:20b392e2b7241caad0538dfde12143343e5dfe48f72e7df660a7548e635903dc", size = 3125555, upload-time = "2026-05-30T12:35:09.273Z" }
 wheels = [
@@ -1851,8 +1886,8 @@ name = "pyobjc-framework-coreaudio"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c3/d0/6e4adb375b81c06fbf28d758ea60281cf78f5675a68f7f3613d5ca28aa71/pyobjc_framework_coreaudio-12.2.tar.gz", hash = "sha256:1990be9a9311869b551e6a997ee84bee12ea38fc978d5fa7fc0119caff2f9ba5", size = 78669, upload-time = "2026-05-30T12:35:28.189Z" }
 wheels = [
@@ -1871,8 +1906,8 @@ name = "pyobjc-framework-coremedia"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/6e/63/9b25f9abb14e8faee219e72953c3cc4bed48b0de4b86f767f073fd2fdc35/pyobjc_framework_coremedia-12.2.tar.gz", hash = "sha256:95ed2063cc48d73f6eb06f4e603372515b5b009bd2d6e547f90bbe9e64217206", size = 98236, upload-time = "2026-05-30T12:36:10.943Z" }
 wheels = [
@@ -1891,8 +1926,8 @@ name = "pyobjc-framework-quartz"
 version = "12.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "sys_platform == 'darwin'" },
+    { name = "pyobjc-framework-cocoa", marker = "sys_platform == 'darwin'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/91/a3/5ae4c90c13999b46315f549694f25c374c48a9f7ab18f98ace6e74f4a5c1/pyobjc_framework_quartz-12.2.tar.gz", hash = "sha256:b343395d4790323b0376fe20c83ac468510ba19f65429323ca211708c939d107", size = 3215525, upload-time = "2026-05-30T12:44:27.759Z" }
 wheels = [
@@ -2063,6 +2098,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ac/c3/e2a2b89f2d3e2179abd6d00ebd70bff6273f37fb3e0cc209f48b39d00cbf/requests-2.34.2.tar.gz", hash = "sha256:f288924cae4e29463698d6d60bc6a4da69c89185ad1e0bcc4104f584e960b9ed", size = 142856, upload-time = "2026-05-14T19:25:27.735Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl", hash = "sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0", size = 73075, upload-time = "2026-05-14T19:25:26.443Z" },
+]
+
+[[package]]
+name = "rtmlib"
+version = "0.0.14"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy", marker = "sys_platform == 'darwin'" },
+    { name = "onnxruntime", marker = "sys_platform == 'darwin'" },
+    { name = "opencv-contrib-python", marker = "sys_platform == 'darwin'" },
+    { name = "opencv-python", marker = "sys_platform == 'darwin'" },
+    { name = "tqdm", marker = "sys_platform == 'darwin'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/74/b3a33e88f1961a3fa80d7a6a3e2910670ebbb10b9c1d06d334ac2115843b/rtmlib-0.0.14.tar.gz", hash = "sha256:2d3090b1e93f7eddcedb01233f2181fb6f974ab3250e356eb94eae872358317a", size = 40656, upload-time = "2025-11-05T16:54:56.993Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c4/d5/3c55515efe506ea33c221e29b12d9d9ddfff7e4995eb8fbcb47589fbdcb3/rtmlib-0.0.14-py3-none-any.whl", hash = "sha256:dbba2a0a8d7de7bfd8bfb3fa557607f7a9ad6266ace3ceff89665c2d743bfe58", size = 51464, upload-time = "2025-11-05T16:54:55.732Z" },
 ]
 
 [[package]]
@@ -2327,7 +2378,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development#671ae8812b1e11f2998558b798e24342f1a353ec" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=philip%2Frtmpose_mac#9cf53ace926bcc44419be5d141960f9383d10017" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },
@@ -2340,15 +2391,22 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+mediapipe = [
+    { name = "mediapipe", marker = "sys_platform == 'darwin'" },
+]
 recommended = [
-    { name = "mediapipe" },
-    { name = "nvidia-cublas-cu12" },
-    { name = "nvidia-cuda-runtime-cu12" },
-    { name = "nvidia-cudnn-cu12" },
-    { name = "nvidia-cufft-cu12" },
-    { name = "onnx" },
-    { name = "onnxruntime-gpu" },
-    { name = "tensorrt" },
+    { name = "mediapipe", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "onnx", marker = "sys_platform != 'darwin'" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin'" },
+]
+rtmpose-cpu = [
+    { name = "onnx", marker = "sys_platform == 'darwin'" },
+    { name = "onnxruntime", marker = "sys_platform == 'darwin'" },
+    { name = "rtmlib", marker = "sys_platform == 'darwin'" },
 ]
 
 [[package]]
@@ -2388,50 +2446,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/46/58/8c37dea7bbf769b20
 wheels = [
     { url = "https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl", hash = "sha256:f0b0622e567335c8fabaaa659f1b33bcb6ddfe2e496071b743aa113f8774f2d3", size = 39814, upload-time = "2026-03-04T18:55:31.284Z" },
 ]
-
-[[package]]
-name = "tensorrt"
-version = "11.1.0.106"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tensorrt-cu13" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/0e/af/215ec5632aa002fcc061b18f9e16f718a5e3d51d04712713f0a154e2ba07/tensorrt-11.1.0.106.tar.gz", hash = "sha256:18ee99dc9cb0b2c14d12a68e1a062a79699c05a684ae564390130a1293af059a", size = 16664, upload-time = "2026-06-16T17:26:20.666Z" }
-
-[[package]]
-name = "tensorrt-cu13"
-version = "11.1.0.106"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "tensorrt-cu13-bindings" },
-    { name = "tensorrt-cu13-libs" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/27/85/b71d95375f67b3b54450aa1b313d099e69987aaf669f47313abe2da49d5d/tensorrt_cu13-11.1.0.106.tar.gz", hash = "sha256:7511c9fa102306c5841a3a261a18a99eab3a5e4bf2e1f64a34f3331475f8e804", size = 17979, upload-time = "2026-06-16T17:26:20.17Z" }
-
-[[package]]
-name = "tensorrt-cu13-bindings"
-version = "11.1.0.106"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/a4/dc/a57c98cbee7d66af75d8cefa03a7a3262430a20d886781b16c430205b5a9/tensorrt_cu13_bindings-11.1.0.106-cp311-none-manylinux_2_28_x86_64.whl", hash = "sha256:14b6073352fddc66fc859956b86a8e601f9a35ce15e8d331026a7f7947e4e683", size = 1240726, upload-time = "2026-06-16T17:28:07.464Z" },
-    { url = "https://files.pythonhosted.org/packages/51/0f/167224b106cea2bd0ce86fe258e567490c04ad15a90b71cad4497a7bb5a5/tensorrt_cu13_bindings-11.1.0.106-cp311-none-manylinux_2_35_aarch64.whl", hash = "sha256:91f8c83f4c8a8e793479d5a619996073d53487dae2ea58cdffbb06744ded8b8f", size = 1227555, upload-time = "2026-06-16T17:28:56.539Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/5c/5e332300d111e09dbfbb85e79245716fb7967a834c86062246c362c0fb32/tensorrt_cu13_bindings-11.1.0.106-cp311-none-win_amd64.whl", hash = "sha256:32a961b9c262d2fba49b63433f855ac11921e83495c29c48b57e14ae3280bdb7", size = 886201, upload-time = "2026-06-16T17:29:09.348Z" },
-    { url = "https://files.pythonhosted.org/packages/35/db/3d72889bd9ec71e981869bed490742255bc011c9d0094c73867f83776931/tensorrt_cu13_bindings-11.1.0.106-cp312-none-manylinux_2_28_x86_64.whl", hash = "sha256:c02e93843a7bbe0b1cba15fb1fa01424d240f9037326e66d21628a2f1fcf2bf2", size = 1239408, upload-time = "2026-06-16T17:29:20.619Z" },
-    { url = "https://files.pythonhosted.org/packages/76/aa/3673ea48abfeb5e75ff7566a89e1dc7b8542dd22711c8ff999cef9faf796/tensorrt_cu13_bindings-11.1.0.106-cp312-none-manylinux_2_35_aarch64.whl", hash = "sha256:2b34be566802da851f9fd6cb86428431e5d14ea527405ee86d0e3d3551ea41d3", size = 1214006, upload-time = "2026-06-16T17:29:42.57Z" },
-    { url = "https://files.pythonhosted.org/packages/0b/a8/549fedb7a8c0b10f03f2bf27d2d38fdb8e04b4d713cf3696b79d5f95bc86/tensorrt_cu13_bindings-11.1.0.106-cp312-none-win_amd64.whl", hash = "sha256:42864885cfc87f904ee30eb817a3aa8062608a6b5b0cb3cea72feb557d83c047", size = 885665, upload-time = "2026-06-16T17:30:04.787Z" },
-    { url = "https://files.pythonhosted.org/packages/22/8c/cc33158fbf493959df03869082c734fe47c1b35e206206655b5bb4747af6/tensorrt_cu13_bindings-11.1.0.106-cp313-none-manylinux_2_28_x86_64.whl", hash = "sha256:cc0c63553a3015f1a9c6acdf9883ae636dbeb6607ace40041f4bd45487887cca", size = 1239441, upload-time = "2026-06-16T17:30:25.306Z" },
-    { url = "https://files.pythonhosted.org/packages/92/7f/8d1d9c555839fce2fd28a2466af56944b386f3b351cc8ff7f2aef13491ce/tensorrt_cu13_bindings-11.1.0.106-cp313-none-manylinux_2_35_aarch64.whl", hash = "sha256:4ebbaa9dc5aab768bef1ff1427a0cf5334bbbb5e3438a156e2ba94e4559c55dc", size = 1214005, upload-time = "2026-06-16T17:30:48.112Z" },
-    { url = "https://files.pythonhosted.org/packages/14/33/2591cc62739c035c4475525c7350809333802b8c9dbb80140966365e549a/tensorrt_cu13_bindings-11.1.0.106-cp313-none-win_amd64.whl", hash = "sha256:0c80f92cc018acdc7be99d19caa97fbf7773173ca3f28c1d5d90d943540b8eb0", size = 885570, upload-time = "2026-06-16T17:31:11.129Z" },
-    { url = "https://files.pythonhosted.org/packages/38/06/8f7aeac937fc4a9569bfe7cdbe0fbdcaffc99cbfc1207be0a23bf5fe31d5/tensorrt_cu13_bindings-11.1.0.106-cp314-none-manylinux_2_28_x86_64.whl", hash = "sha256:04d1209c30d05c0ee22b31b0c80413ed9b8a3ca8aac3e76f46168dd2f71a88b7", size = 1242358, upload-time = "2026-06-16T17:31:31.811Z" },
-    { url = "https://files.pythonhosted.org/packages/36/c1/61f6a6542a90c41c0783e4bbda36691c32f02bf122493b1847129469d8d4/tensorrt_cu13_bindings-11.1.0.106-cp314-none-manylinux_2_35_aarch64.whl", hash = "sha256:cac43a80f8dd65f75f1929f56d5e5607aaf071e5f6d092692dc303cb36382251", size = 1218636, upload-time = "2026-06-16T17:31:58.175Z" },
-    { url = "https://files.pythonhosted.org/packages/5f/e7/ca3c8b37ce1a055ed5b97b5d2500545be16057fa78e761bcc77562c3084f/tensorrt_cu13_bindings-11.1.0.106-cp314-none-win_amd64.whl", hash = "sha256:d6e119194831dfe21c6f1c0ed1a58172ba53917cf423b885fc850b5fc67996cb", size = 886842, upload-time = "2026-06-16T17:32:15.854Z" },
-]
-
-[[package]]
-name = "tensorrt-cu13-libs"
-version = "11.1.0.106"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/db/f5/babf00011cdb6bbed9743cc885a39399aebc37197dbb6f8bbe7e03dab7fc/tensorrt_cu13_libs-11.1.0.106.tar.gz", hash = "sha256:6d2fe9e98847775122566c58b32691631dff8d8152b724d92447e93a23dfbefb", size = 15747, upload-time = "2026-06-16T19:40:06.288Z" }
 
 [[package]]
 name = "threadpoolctl"

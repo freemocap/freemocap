@@ -84,20 +84,22 @@ export const BasePanelLayout = ({
         />
       </FloatingOnboarding>
 
-      <FloatingOnboarding target='[data-onboarding="camera:connect-camera"]'>
-        <PromptTooltip
-          show={
-            location.pathname === '/streaming' &&
-            connectedCameraIds.length === 0 &&
-            !isCamerasLoading
-          }
-          title="Connect Cameras"
-          text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."
-          position="pos-right"
-          variant="boarding"
-          onClose={() => {}}
-        />
-      </FloatingOnboarding>
+<FloatingOnboarding target='[data-onboarding="camera:connect-camera"]'>
+  <PromptTooltip
+    show={
+      isConnected &&                 // <-- wait for successful connection
+      !isFailed &&                   // <-- optional extra safety
+      location.pathname === "/streaming" &&
+      connectedCameraIds.length === 0 &&
+      !isCamerasLoading
+    }
+    title="Connect Cameras"
+    text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."
+    position="pos-right"
+    variant="boarding"
+    onClose={() => {}}
+  />
+</FloatingOnboarding>
 
       <PanelGroup className="app-container flex-1" direction="vertical">
         {/* Top section (horizontal panels) */}

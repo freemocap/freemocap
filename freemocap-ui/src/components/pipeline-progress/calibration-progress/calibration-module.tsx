@@ -1,14 +1,17 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import DropdownButton from "@/components/ui-components/DropdownButton.tsx";
 import CalibrationSettings from "./calibration-settings";
+import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
+import PromptTooltip from "@/components/ui-components/promptTooltip";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
+import { loadFromStorage, saveToStorage } from "@/store/persistence";
 import {
   calibrationAutoLoadDismissed,
   calibrationLoadedFromBundle,
@@ -17,18 +20,6 @@ import {
 } from "@/store/slices/calibration";
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
-
-/**
- * Represents the current operating mode of the application.
- * - "streaming": real-time camera capture mode (all calibration options available, including "Record and Calibrate")
- * - "playback": video playback mode ("Record and Calibrate" option should be hidden from the dropdown)
- *
- * TODO[INTEGRATION]: Replace this dummy state with the actual mode from the app's
- * global state or server. For example, you might fetch this from:
- * - A Redux selector like `useAppSelector(selectAppMode)`
- * - An IPC call to the backend
- * - A context provider
- */
 type AppMode = "streaming" | "playback";
 
 const SOURCE_ICONS: Record<CalibrationSource, string> = {
@@ -73,8 +64,26 @@ const CalibrationModule = ({
   } = useCalibration();
 
   const [showCalibrationSettings, setShowCalibrationSettings] = useState(false);
+  const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
+
+  const hasAutoOpened = useRef(false);
+
+  useEffect(() => {
+    if (hasAutoOpened.current) return;
+    if (connectedCameraIds.length < 2) return;
+    const dismissed = loadFromStorage<boolean>("calibration-tooltip-dismissed", false);
+    if (!dismissed) {
+      setShowCharucoInfo(true);
+    }
+    hasAutoOpened.current = true;
+  }, [connectedCameraIds.length]);
+
+  const handleCloseCharucoInfo = useCallback(() => {
+    setShowCharucoInfo(false);
+    saveToStorage("calibration-tooltip-dismissed", true);
+  }, []);
 
   // Derive app mode from the current route, unless overridden by props
   const location = useLocation();
@@ -401,15 +410,38 @@ const CalibrationModule = ({
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
           <SubactionHeader text="Calibration" />
-          <div className="flex flex-row gap-1 items-center">
+          <div data-onboarding="calibration:what-is-calibration" className="flex flex-row pos-rel gap-1 items-center">
             <IconButton
               icon="explainer-icon"
               className="button sm"
-              onClick={() => {}} // shows onboarding tooltips
+              onClick={() => setShowCharucoInfo(prev => !prev)}
               tooltip
               tooltipText="How to calibrate"
               tooltipPosition="pos-left"
             />
+            <FloatingOnboarding
+              target='[data-onboarding="calibration:what-is-calibration"]'
+              className=""
+            >
+              <PromptTooltip
+                show={showCharucoInfo}
+                title="How to Calibrate your cameras"
+                text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
+                image={true}
+                imageSrc="/images/charuco_board.webp"
+                position="pos-right"
+                variant="default"
+                button={true}
+                buttonText="Download ChArUco Board"
+                onButtonClick={() =>
+                  window.open(
+                    "https://docs.freemocap.org/documentation/multi-camera-calibration.html",
+                    "_blank",
+                  )
+                }
+                onClose={handleCloseCharucoInfo}
+              />
+            </FloatingOnboarding>
           </div>
         </div>
       </div>

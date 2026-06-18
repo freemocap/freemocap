@@ -1,10 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
+
+import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
+import PromptTooltip from "@/components/ui-components/promptTooltip";
 
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 
@@ -24,7 +33,7 @@ const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
 
 const solverLabelToMethod: Record<string, CalibrationSolverMethod> = {
   "Anipose legacy": "anipose",
-  "Accurate": "pyceres",
+  Accurate: "pyceres",
 };
 
 const solverMethodToLabel: Record<CalibrationSolverMethod, string> = {
@@ -47,7 +56,10 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+      if (
+        modalRef.current &&
+        !modalRef.current.contains(event.target as Node)
+      ) {
         handleClose();
       }
     };
@@ -66,7 +78,10 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
   const currentPreset = useMemo<BoardPreset>(() => {
     for (const [preset, dims] of Object.entries(BOARD_PRESETS)) {
-      if (dims.squares_x === board.squares_x && dims.squares_y === board.squares_y) {
+      if (
+        dims.squares_x === board.squares_x &&
+        dims.squares_y === board.squares_y
+      ) {
         return preset as BoardPreset;
       }
     }
@@ -74,6 +89,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   }, [board.squares_x, board.squares_y]);
 
   const [forcedCustom, setForcedCustom] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(true);
 
   const displayedPreset: BoardPreset = forcedCustom ? "Custom" : currentPreset;
 
@@ -101,22 +117,42 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   );
 
   return (
-    <div
-      className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1"
-    >
-      <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1" ref={modalRef} onClick={(e) => e.stopPropagation()}>
+    <div className="z-10 calibration-settings-flyout pos-fixed draggable border-1 border-black elevated-sharp flex flex-col p-1 bg-dark br-2 reveal fadeIn gap-1">
+      <div
+        className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1"
+        ref={modalRef}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
+
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
             <SubactionHeader text="Charuco board settings" />
-            <div className="flex flex-row gap-1 items-center">
+            <div
+              data-onboarding="calibration:charuco-settings"
+              className="flex flex-row pos-rel gap-1 items-center"
+            >
               <IconButton
                 icon="explainer-icon"
                 className="button sm"
-                onClick={() => {}} // Does nothing but clicks
+                onClick={() => setShowTooltip(prev => !prev)}
                 tooltip
-                tooltipText="Learn about calibration"
+                tooltipText="Learn about ChArUco"
                 tooltipPosition="pos-left"
+              />
+              <PromptTooltip
+                show={showTooltip}
+                title="Understand board settings"
+                text={
+                  "Preset: The type of tile-based charuco board, either 3×5 or 7×5.\n" +
+                  "Square length: The exact dimension of each black square. Measure this square precisely in millimeters.\n" +
+                  "Solver method: There are two options. Select the appropriate one depending on the use case."
+                }
+                image={true}
+                imageSrc="/images/charuco_settings.webp"
+                position="pos-right"
+                variant="default"
+                onClose={() => setShowTooltip(false)}
               />
             </div>
           </div>
@@ -144,7 +180,11 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
             step={1}
             unit=""
             disabled={displayedPreset !== "Custom"}
-            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_x: v } })}
+            onChange={(v) =>
+              updateCalibrationConfig({
+                charucoBoard: { ...board, squares_x: v },
+              })
+            }
           />
         </div>
 
@@ -158,7 +198,11 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
             step={1}
             unit=""
             disabled={displayedPreset !== "Custom"}
-            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, squares_y: v } })}
+            onChange={(v) =>
+              updateCalibrationConfig({
+                charucoBoard: { ...board, squares_y: v },
+              })
+            }
           />
         </div>
 
@@ -173,7 +217,11 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
             max={9999999}
             step={0.1}
             unit="mm"
-            onChange={(v) => updateCalibrationConfig({ charucoBoard: { ...board, square_length_mm: v } })}
+            onChange={(v) =>
+              updateCalibrationConfig({
+                charucoBoard: { ...board, square_length_mm: v },
+              })
+            }
           />
         </div>
 

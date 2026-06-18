@@ -116,7 +116,12 @@ button.quaternary {
 }
 
 .button.sm.externallink:after {
-  content: var(--externallink-icon);
+  content: "";
+  background-image: var(--externallink-icon);
+  transform-origin: center center;
+      background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
 }
 
 .button.sm.dropdown:after {

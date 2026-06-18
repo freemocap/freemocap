@@ -664,9 +664,8 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                   )}
                   {rec.fps != null && rec.fps > 0 && (
                     <span
-                      className="text-nowrap text md tag"
+                      className="text-nowrap text md tag camera-config-chip tag text-gray"
                       title={t("recordingCaptureFps")}
-                      className="camera-config-chip tag text-gray"
                     >
                       {`${rec.fps} fps`}
                     </span>

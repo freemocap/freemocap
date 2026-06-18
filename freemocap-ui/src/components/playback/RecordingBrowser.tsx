@@ -11,6 +11,7 @@ import { useRecordingStatus } from "@/hooks/useRecordingStatus";
 import { useAppDispatch, useAppSelector } from "@/store";
 import {
   activeRecordingSet,
+  selectActiveRecordingBaseDirectory,
   splitParentAndName,
 } from "@/store/slices/active-recording/active-recording-slice";
 import {
@@ -172,12 +173,13 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
   const recordings = useAppSelector(selectRecordingsList);
   const recordingsFetchedAt = useAppSelector(selectRecordingsFetchedAt);
   const isLoadingList = useAppSelector(selectRecordingsIsLoading);
+  const baseDirectory = useAppSelector(selectActiveRecordingBaseDirectory);
 
   const [isLoadingRecording, setIsLoadingRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingPath, setLoadingPath] = useState<string | null>(null);
 
-  const [manualPath, setManualPath] = useState("");
+  const [manualPath, setManualPath] = useState(baseDirectory);
   const [filterText, setFilterText] = useState("");
   const [showFilter, setShowFilter] = useState(false);
   const [sortField, setSortField] = useState<SortField>("date");
@@ -425,8 +427,8 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
             onClick={handleBrowseDirectory}
             title="Click to select recording folder"
             disabled={!isElectron}
-            className="select-path bg-middark flex-1 w-full min-w-full border-1 border-mid-black"
-            textClass="text-wrap flex-1"
+            className="select-path bg-middark flex-1 w-full min-w-full border-1 border-mid-black min-w-0"
+            textClass="recording-path-preview text-wrap flex-1 min-w-0 text md"
           />
         </div>
       </div>

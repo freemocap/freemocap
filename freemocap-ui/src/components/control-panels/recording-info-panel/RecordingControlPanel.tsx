@@ -5,15 +5,11 @@ import {
   delaySecondsChanged,
   micDeviceIndexChanged,
   pendingOperationSet,
-  recordingTypePresetChanged,
   useDelayStartToggled,
 } from "@/store/slices/recording/recording-slice";
-import type { RecordingTypePreset } from "@/store/slices/recording/recording-types";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { startRecording, stopRecording } from "@/store";
-import { calibrateRecording } from "@/store/slices/calibration/calibration-thunks";
 import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
-import { PresetPicker } from "@/components/common/PresetPicker";
 import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import { useServer } from "@/services/server/ServerContextProvider";
@@ -23,15 +19,6 @@ import { useTranslation } from "react-i18next";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
 
-export const RECORDING_TYPE_OPTIONS: {
-  value: RecordingTypePreset;
-  label: string;
-}[] = [
-  { value: "none", label: "None" },
-  { value: "calibration", label: "Calibration" },
-  { value: "mocap", label: "Mocap" },
-];
-
 export const RecordingControlPanel: React.FC = () => {
   const dispatch = useAppDispatch();
   const recordingInfo = useAppSelector((state) => state.recording);
@@ -40,7 +27,6 @@ export const RecordingControlPanel: React.FC = () => {
     useDelayStart,
     delaySeconds,
     micDeviceIndex,
-    recordingTypePreset,
     autoProcess,
   } = config;
 
@@ -84,7 +70,6 @@ export const RecordingControlPanel: React.FC = () => {
   const handleStartRecording = async (): Promise<void> => {
     const ts = getTimestampString();
     const nameParts = config.useTimestamp ? [ts] : [config.baseName];
-    if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
     if (config.recordingTag) nameParts.push(config.recordingTag);
     const recordingName = nameParts.join("_");
     const subfolderName = config.createSubfolder
@@ -123,9 +108,7 @@ export const RecordingControlPanel: React.FC = () => {
       dispatch(pendingOperationSet({ type: "stop", timestamp: Date.now() }));
       try {
         const result = await dispatch(stopRecording()).unwrap();
-        if (result && autoProcess && recordingTypePreset === "calibration") {
-          dispatch(calibrateRecording());
-        } else if (result && autoProcess && recordingTypePreset === "mocap") {
+        if (result && autoProcess) {
           dispatch(processMocapRecording());
         }
       } catch (error) {
@@ -180,30 +163,20 @@ export const RecordingControlPanel: React.FC = () => {
           onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
           onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
         />
-        {/* Preset + auto-process */}
+        {/* Auto-process */}
         <div className="flex flex-start flex-col items-center gap-1">
-          <PresetPicker
-            value={recordingTypePreset}
-            options={RECORDING_TYPE_OPTIONS}
-            onChange={(v) => dispatch(recordingTypePresetChanged(v))}
-            disabled={recordingInfo.isRecording}
-          />
           <ToggleComponent
             text="Auto Process Mocap"
             isToggled={autoProcess}
             onToggle={(v) => dispatch(autoProcessToggled(v))}
-            disabled={
-              recordingTypePreset === "none" || recordingInfo.isRecording
-            }
+            disabled={recordingInfo.isRecording}
           />
         </div>
         {autoProcess && (
           <div
             className={
               "streaming-mode mocap-settings-button " +
-              (recordingTypePreset !== "none" && !recordingInfo.isRecording
-                ? ""
-                : "disabled ") +
+              (!recordingInfo.isRecording ? "" : "disabled ") +
               "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
             }
             onClick={handleToggleSettings}

@@ -6,11 +6,9 @@ import {
   customSubfolderNameChanged,
   recordingInfoUpdated,
   recordingTagChanged,
-  recordingTypePresetChanged,
   useIncrementToggled,
   useTimestampToggled,
 } from "@/store/slices/recording/recording-slice";
-import type { RecordingTypePreset } from "@/store/slices/recording/recording-types";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { getTimestampString } from "@/components/control-panels/recording-info-panel/getTimestampString";
 import { RecordingPathModal } from "./RecordingPathModal";
@@ -30,7 +28,6 @@ export const RecordingPathPanel: React.FC = () => {
     baseName,
     customSubfolderName,
     recordingTag,
-    recordingTypePreset,
   } = recordingInfo.config;
 
   const [pathModalOpen, setPathModalOpen] = useState(false);
@@ -58,8 +55,6 @@ export const RecordingPathPanel: React.FC = () => {
 
   // Build display path for the read-only preview
   const previewNameParts = useTimestamp ? [previewTimestamp] : [baseName];
-  if (recordingTypePreset !== "none")
-    previewNameParts.push(recordingTypePreset);
   if (recordingTag) previewNameParts.push(recordingTag);
   if (useIncrement) previewNameParts.push(String(currentIncrement));
   const previewName = previewNameParts.join("_");
@@ -74,7 +69,6 @@ export const RecordingPathPanel: React.FC = () => {
     recordingTag,
     useTimestamp,
     baseName,
-    recordingTypePreset,
     useIncrement,
     currentIncrement,
     createSubfolder,

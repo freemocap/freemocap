@@ -44,7 +44,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
   --blender-icon: url("../assets/icons/blender_icon.svg");
   --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
-
+  --stop-alert-icon: url("../assets/icons/stop_alert_icon.svg");
+  --stop-icon: url("../assets/icons/stop_icon.svg");
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
   --github-icon: url("../assets/icons/github_icon.svg");
@@ -134,6 +135,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.stop-alert-icon {
+  background-image: var(--stop-alert-icon);
+}
+.stop-icon {
+  background-image: var(--stop-icon);
 }
 .sort-icon {
   background-image: var(--sort-icon);

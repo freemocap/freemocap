@@ -197,7 +197,7 @@ export default function PipelineGroupCard({
             {group.isActive && (
               <IconButton
                 title="Stop pipeline"
-                icon="close-icon"
+                icon="stop-alert-icon"
                 className="icon-size-25 p-01"
                 onClick={() => dispatch(stopPipeline(group.basePipelineId))}
                 style={{ color: "var(--color-error)" }}

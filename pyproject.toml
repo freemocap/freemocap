@@ -50,6 +50,11 @@ packages = ["freemocap"]
 package = true
 exclude-dependencies = ["onnxruntime"] # fix erroneous inclusion of onnxruntime that happens alongside onnxruntime-gpu
 override-dependencies = ["numpy>=2.3.4"]  # fix cv2 vs rtmlib conflict on numpy version
+# Keep onnxruntime-gpu on its CUDA 12 build. ORT 1.27+ moved its PyPI build to CUDA 13
+# (links cublasLt64_13.dll etc.), which fails to load against the cu12 nvidia libs that
+# skellytracker[recommended] ships and silently falls back to CPU. Capping <1.27 keeps
+# the GPU path working with the widest GPU/driver support. See skellytracker pyproject.
+constraint-dependencies = ["onnxruntime-gpu<1.27"]
 
 [tool.bumpver]
 current_version = "v1.4.7"

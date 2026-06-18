@@ -544,3 +544,20 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;
 }
+
+.is-menu {
+    position: relative;
+}
+
+.is-menu::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 5px 5px;
+    border-color: transparent transparent var(--color-text-muted) transparent;
+    pointer-events: none;
+}

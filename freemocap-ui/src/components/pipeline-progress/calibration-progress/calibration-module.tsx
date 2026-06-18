@@ -18,6 +18,7 @@ import {
   loadCalibrationToml,
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
+import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
 type AppMode = "streaming" | "playback";
@@ -43,8 +44,9 @@ const CalibrationModule = ({
 }: CalibrationModuleProps) => {
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
-  const { connectedCameraIds } = useServer();
+  const { connectedCameraIds, isConnected, isFailed } = useServer();
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
+  const isCamerasLoading = useAppSelector(selectIsLoading);
 
   const noCamerasConnected = connectedCameraIds.length === 0;
 
@@ -70,23 +72,32 @@ const CalibrationModule = ({
 
   const hasAutoOpened = useRef(false);
 
+  // Derive app mode from the current route, unless overridden by props
+  const location = useLocation();
+
   useEffect(() => {
+    // Only auto-show the calibration tooltip when:
+    // - WebSocket is connected and not failed
+    // - On /streaming page
+    // - Cameras are connected (at least one)
+    // - Cameras are not still loading
+    if (!isConnected || isFailed) return;
+    if (location.pathname !== "/streaming") return;
+    if (connectedCameraIds.length === 0) return;
+    if (isCamerasLoading) return;
     if (hasAutoOpened.current) return;
-    if (connectedCameraIds.length < 2) return;
     const dismissed = loadFromStorage<boolean>("calibration-tooltip-dismissed", false);
     if (!dismissed) {
       setShowCharucoInfo(true);
     }
     hasAutoOpened.current = true;
-  }, [connectedCameraIds.length]);
+  }, [connectedCameraIds.length, isConnected, isFailed, isCamerasLoading, location.pathname]);
 
   const handleCloseCharucoInfo = useCallback(() => {
     setShowCharucoInfo(false);
     saveToStorage("calibration-tooltip-dismissed", true);
   }, []);
 
-  // Derive app mode from the current route, unless overridden by props
-  const location = useLocation();
   const appMode: AppMode = appModeOverride ?? (location.pathname === "/playback" ? "playback" : "streaming");
 
   // Cycling calibration messages during recording
@@ -421,7 +432,6 @@ const CalibrationModule = ({
             />
             <FloatingOnboarding
               target='[data-onboarding="calibration:what-is-calibration"]'
-              className=""
             >
               <PromptTooltip
                 show={showCharucoInfo}

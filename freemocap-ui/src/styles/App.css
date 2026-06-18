@@ -109,6 +109,10 @@ a.link:hover {
 .z-8 { z-index: 8; }
 .z-9 { z-index: 9; }
 .z-10 { z-index: 10; }
+
+.z-50 { z-index: 50; }
+.z-100 { z-index: 100; }
+.z-200 { z-index: 200; }
 .z-110i { z-index: 110!important; }
 .z-111 { z-index: 111!important; }
 
@@ -635,4 +639,83 @@ body,
   overflow-wrap: break-word;
   text-wrap: wrap;
   text-wrap-mode: wrap;
+}
+
+
+
+/* =========================
+   FONT FAMILY
+   ========================= */
+
+.font-mono {
+  font-family: monospace;
+}
+
+
+/* =========================
+   TABLE
+   ========================= */
+
+.border-collapse {
+  border-collapse: collapse;
+}
+
+/* =========================
+   BORDER DIRECTION
+   ========================= */
+
+.border-b {
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+.border-b-1 {
+  border-bottom: 1px solid;
+}
+
+.border-b-secondary {
+  border-bottom: 1px solid var(--color-border-secondary);
+}
+
+/* =========================
+   DIVIDER / SEPARATOR
+   ========================= */
+
+.divider {
+  height: 1px;
+  background-color: var(--color-border-secondary);
+  margin: 4px 0 8px 0;
+}
+
+
+
+/* =========================
+   MIN/MAX WIDTH EXTENDED
+   ========================= */
+
+.min-w-480 {
+  min-width: 480px;
+}
+
+.max-w-720 {
+  max-width: 720px;
+}
+
+/* =========================
+   SPLASH OVERLAY
+   ========================= */
+
+.splash-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+/* =========================
+   TRUNCATE / TEXT OVERFLOW
+   ========================= */
+
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

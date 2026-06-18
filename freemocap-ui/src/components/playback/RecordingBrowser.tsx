@@ -347,10 +347,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
       {/* Folder selector */}
       <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center">
         <div className="flex flex-col flex-start items-center w-full gap-2">
-          <div className="flex flex-row flex-wrap justify-content-space-between w-full">
-            <SubactionHeader text="Folder Directory" />
-            <div className="folder-directory-tool-bar flex flex-row gap-1 items-center">
-              <div className="flex items-center flex-row">
+          <div className="recording-list-header flex gap-1 flex-row flex-wrap justify-content-space-between w-full">
+              <div className="flex flex-row gap-1">
+
+              <SubactionHeader text="Folder Directory" />
+              <div className="n-list-counter flex items-center flex-row">
                 {recordings.length > 0 && (
                   <p className="tag camera-status-badge">
                     {filterText
@@ -360,6 +361,8 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                 )}
                 <SubactionHeader text={t("recordings")} />
               </div>
+            </div>
+            <div className="folder-directory-tool-bar flex flex-row gap-1 items-center">
               <IconButton
                 title={showFilter ? t("hideFilter") : t("filter")}
                 icon={showFilter ? "filter-active-icon" : "filter-icon"}

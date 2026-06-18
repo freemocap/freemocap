@@ -555,7 +555,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
             : undefined
         }
       >
-        <div className="flex flex-row items-center w-full justify-content-space-between">
+        <div className="flex flex-row items-center w-full justify-content-space-between pos-rel">
           <button
             className={clsx(
               "flex flex-row br-1 flex-1 gap-1 p-2 items-center gap-1 text-left",
@@ -566,17 +566,49 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
               opacity: isAnyLoading && !isLoading ? 0.8 : 1,
             }}
           >
-            <div className="flex-1">
-              <div className="flex flex-row items-center gap-1 mb-1">
-                <p
-                  className="text md text-white recording-name m-0"
-                  style={{
-                    fontWeight: 600,
-                    color: isActive ? "var(--color-info)" : undefined,
-                  }}
-                >
-                  {rec.name}
-                </p>
+            <div className="flex flex-col flex-1">
+              <div className="title-group flex flex-row mr-18 items-center gap-1 mb-1 justify-content-space-between flex-wrap">
+                <div className="title flex flex-row items-center">
+
+                  <p
+                    className="text md text-white recording-name m-0 text-nowrap flex flex-row"
+                    style={{
+                      fontWeight: 600,
+                      color: isActive ? "var(--color-info)" : undefined,
+                    }}
+                  >
+                    {rec.name}
+                  </p>
+                </div>
+                              <div className="title-info-group flex flex-row items-center gap-1">
+                {summary && (
+                  <span
+                    title={
+                      ready
+                        ? "All pipeline stages complete — ready for Blender"
+                        : `${stagesComplete}/${stagesTotal} pipeline stages complete`
+                    }
+                    className="stage-group text-nowrap text md mr-2 text-gray"
+                    style={{
+                      color: ready
+                        ? "var(--color-success)"
+                        : "var(--log-trace)",
+                    }}
+                  >
+                    {ready
+                      ? "Blender ready"
+                      : `${stagesComplete}/${stagesTotal} stages`}
+                  </span>
+                )}
+                {parsedDate && (
+                  <span
+                    title={parsedDate.toLocaleString()}
+                    className="flex flex-row text-nowrap time-group text md text-gray"
+                  >
+                    {formatRelativeTime(parsedDate)}
+                  </span>
+                )}
+              </div>
                 {/* Commented out: loaded in playback badge
                 {isActive && (
                   <span className="tag text sm">
@@ -598,96 +630,71 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                   </span>
                 )}
               </div>
-
-              <div className="flex flex-row items-center flex-wrap gap-1">
-                <span className="text md text-gray tag" title="Camera streams">
-                  {`${rec.video_count} cam${rec.video_count !== 1 ? "s" : ""}`}
-                </span>
-
-                {rec.total_size_bytes != null && rec.total_size_bytes > 0 && (
-                  <span
-                    className="text md text-gray tag"
-                    title="Total size on disk"
-                  >
-                    {formatBytes(rec.total_size_bytes)}
+              <div className="flex flex-row items-center gap-1 data-group-container flex-wrap">
+                <div className="flex flex-row items-center gap-1 data-group-1">
+                  <span className="text flex flex-row text-nowrap md text-gray tag" title="Camera streams">
+                    {`${rec.video_count} cam${rec.video_count !== 1 ? "s" : ""}`}
                   </span>
-                )}
-
-                {rec.duration_seconds != null && rec.duration_seconds > 0 && (
+                  {rec.total_size_bytes != null && rec.total_size_bytes > 0 && (
+                    <span
+                      className="text md text-gray text-nowrap tag"
+                      title="Total size on disk"
+                    >
+                      {formatBytes(rec.total_size_bytes)}
+                    </span>
+                  )}
+                  {rec.duration_seconds != null && rec.duration_seconds > 0 && (
+                    <span
+                      className="text md text-gray text-nowrap tag"
+                      title="Recording duration"
+                    >
+                      {formatDuration(rec.duration_seconds)}
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-row items-center gap-1 data-group-2">
+                
+                
+                
+                  {rec.total_frames != null && rec.total_frames > 0 && (
+                    <span
+                      title={t("frameCountPerCamera")}
+                      className="text-nowrap tag camera-config-chip text-gray"
+                    >
+                      {`${rec.total_frames.toLocaleString()} frames`}
+                    </span>
+                  )}
+                  {rec.fps != null && rec.fps > 0 && (
+                    <span
+                      className="text-nowrap text md tag"
+                      title={t("recordingCaptureFps")}
+                      className="camera-config-chip tag text-gray"
+                    >
+                      {`${rec.fps} fps`}
+                    </span>
+                  )}
+                </div>
+                            </div>
+                            <div className="load-container pos-abs" style={{ minWidth: 36 }}>
+                {isLoading ? (
                   <span
-                    className="text md text-gray tag"
-                    title="Recording duration"
-                  >
-                    {formatDuration(rec.duration_seconds)}
-                  </span>
-                )}
-
-                {rec.total_frames != null && rec.total_frames > 0 && (
+                    className="icon loader-icon icon-size-16"
+                    style={{ color: "var(--color-info)" }}
+                  />
+                ) : (
                   <span
-                    title={t("frameCountPerCamera")}
-                    className="tag camera-config-chip text-gray"
-                  >
-                    {`${rec.total_frames.toLocaleString()} frames`}
-                  </span>
+                    className="icon load-icon icon-size-16"
+                    style={{ color: "var(--color-info)" }}
+                  />
                 )}
-
-                {rec.fps != null && rec.fps > 0 && (
-                  <span
-                    title={t("recordingCaptureFps")}
-                    className="camera-config-chip tag text-gray"
-                  >
-                    {`${rec.fps} fps`}
-                  </span>
-                )}
-
-                {summary && (
-                  <span
-                    title={
-                      ready
-                        ? "All pipeline stages complete — ready for Blender"
-                        : `${stagesComplete}/${stagesTotal} pipeline stages complete`
-                    }
-                    className="text md tag"
-                    style={{
-                      color: ready
-                        ? "var(--color-success)"
-                        : "var(--log-trace)",
-                    }}
-                  >
-                    {ready
-                      ? "Blender ready"
-                      : `${stagesComplete}/${stagesTotal} stages`}
-                  </span>
-                )}
-                {parsedDate && (
-                  <span
-                    title={parsedDate.toLocaleString()}
-                    className="text md text-gray"
-                  >
-                    {formatRelativeTime(parsedDate)}
-                  </span>
-                )}
+                            </div>
               </div>
-            </div>
-            <div className="load-container pos-abs" style={{ minWidth: 36 }}>
-              {isLoading ? (
-                <span
-                  className="icon loader-icon icon-size-16"
-                  style={{ color: "var(--color-info)" }}
-                />
-              ) : (
-                <span
-                  className="icon load-icon icon-size-16"
-                  style={{ color: "var(--color-info)" }}
-                />
-              )}
-            </div>
           </button>
 
           <IconButton
             title={expanded ? "Hide folder detail" : "Show folder detail"}
             icon="arrowdown-icon"
-            className="icon-size-25 mr-2"
+            className="pos-abs top-2 right-0 icon-size-25 "
             onClick={toggleExpand}
             style={{
               transform: expanded ? "rotate(180deg)" : "rotate(0deg)",

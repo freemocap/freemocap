@@ -386,15 +386,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
               />
 
               <IconButton
-                title={
-                  sortDir === "desc" ? t("sortDescending") : t("sortAscending")
-                }
+                title={t("sortBy", { direction: t(sortDir === "desc" ? "descending" : "ascending") })}
                 icon={sortDir === "desc" ? "sort-icon" : "sortup-icon"}
                 className="icon-size-25"
                 tooltip={true}
-                tooltipText={
-                  sortDir === "desc" ? t("sortDescending") : t("sortAscending")
-                }
+                tooltipText={t("sortBy", { direction: t(sortDir === "desc" ? "descending" : "ascending") })}
                 tooltipPosition="pos-bottom"
                 onClick={toggleSortDir}
               />

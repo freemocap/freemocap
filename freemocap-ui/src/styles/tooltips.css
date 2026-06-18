@@ -82,6 +82,11 @@
   background: var(--color-bg-primary);
   will-change: transform, opacity;
 }
+.floating-tooltip-inner {
+
+  background: var(--color-bg-primary);
+ 
+}
 
 /* =========================================
    POSITION : BOTTOM

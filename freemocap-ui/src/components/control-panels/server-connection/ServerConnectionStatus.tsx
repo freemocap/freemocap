@@ -193,7 +193,8 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                             text={t('launchServer')}
                                             onClick={startServer}
                                             disabled={serverRunning || serverLoading}
-                                            className="primary flex-1"
+                                            className="secondary"
+                                            
                                         />
                                         <ButtonSm
                                             text={t('stopServer')}
@@ -206,6 +207,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                             onClick={resetServer}
                                             disabled={!serverRunning || serverLoading}
                                             className="flex-1"
+                                            buttonType="button sm quaternary"
                                         />
                                     </div>
 

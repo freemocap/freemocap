@@ -20,29 +20,16 @@ const MIN_HEIGHT = 100;
 
 type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
-const CURSOR: Record<ResizeHandle, string> = {
-    n: 'ns-resize',    s: 'ns-resize',
-    e: 'ew-resize',    w: 'ew-resize',
-    ne: 'nesw-resize', sw: 'nesw-resize',
-    nw: 'nwse-resize', se: 'nwse-resize',
+const HANDLE_CLASS: Record<ResizeHandle, string> = {
+    n:  'resize-handle resize-handle-n',
+    s:  'resize-handle resize-handle-s',
+    e:  'resize-handle resize-handle-e',
+    w:  'resize-handle resize-handle-w',
+    ne: 'resize-handle resize-handle-ne',
+    nw: 'resize-handle resize-handle-nw',
+    se: 'resize-handle resize-handle-se',
+    sw: 'resize-handle resize-handle-sw',
 };
-
-const EDGE = 6;
-const CORN = 14;
-
-function handleStyle(h: ResizeHandle): React.CSSProperties {
-    const base: React.CSSProperties = {position: 'absolute', zIndex: 10};
-    switch (h) {
-        case 'n':  return {...base, top: -EDGE/2, left: CORN, right: CORN, height: EDGE, cursor: CURSOR.n};
-        case 's':  return {...base, bottom: -EDGE/2, left: CORN, right: CORN, height: EDGE, cursor: CURSOR.s};
-        case 'e':  return {...base, right: -EDGE/2, top: CORN, bottom: CORN, width: EDGE, cursor: CURSOR.e};
-        case 'w':  return {...base, left: -EDGE/2, top: CORN, bottom: CORN, width: EDGE, cursor: CURSOR.w};
-        case 'nw': return {...base, top: -EDGE/2, left: -EDGE/2, width: CORN, height: CORN, cursor: CURSOR.nw};
-        case 'ne': return {...base, top: -EDGE/2, right: -EDGE/2, width: CORN, height: CORN, cursor: CURSOR.ne};
-        case 'sw': return {...base, bottom: -EDGE/2, left: -EDGE/2, width: CORN, height: CORN, cursor: CURSOR.sw};
-        case 'se': return {...base, bottom: -EDGE/2, right: -EDGE/2, width: CORN, height: CORN, cursor: CURSOR.se};
-    }
-}
 
 const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
@@ -54,25 +41,29 @@ export default function PipelineProgressSnackbar() {
     const dismissedIds = useAppSelector(selectDismissedBasePipelineIds);
     const [collapsed, setCollapsed] = React.useState(false);
 
-    const [dragPos, setDragPos] = React.useState<{left: number; top: number} | null>(null);
+    const [dragPos, setDragPos] = React.useState<{left: number; bottom: number} | null>(null);
     const [size, setSize] = React.useState({width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT});
 
     const containerRef = React.useRef<HTMLDivElement>(null);
     const dragRef = React.useRef<{
-        startMx: number; startMy: number; startLeft: number; startTop: number;
+        startMx: number; startMy: number; startLeft: number; startBottom: number;
     } | null>(null);
     const resizeRef = React.useRef<{
         handle: ResizeHandle;
         startMx: number; startMy: number;
         startW: number; startH: number;
-        startLeft: number; startTop: number;
+        startLeft: number; startBottom: number;
     } | null>(null);
 
     const handleHeaderMouseDown = React.useCallback((e: React.MouseEvent) => {
         if (e.button !== 0) return;
         const rect = containerRef.current?.getBoundingClientRect();
         if (!rect) return;
-        dragRef.current = {startMx: e.clientX, startMy: e.clientY, startLeft: rect.left, startTop: rect.top};
+        dragRef.current = {
+            startMx: e.clientX, startMy: e.clientY,
+            startLeft: rect.left,
+            startBottom: window.innerHeight - rect.top - rect.height,
+        };
         e.preventDefault();
     }, []);
 
@@ -86,7 +77,8 @@ export default function PipelineProgressSnackbar() {
             handle,
             startMx: e.clientX, startMy: e.clientY,
             startW: rect.width, startH: rect.height,
-            startLeft: rect.left, startTop: rect.top,
+            startLeft: rect.left,
+            startBottom: window.innerHeight - rect.top - rect.height,
         };
     }, []);
 
@@ -97,16 +89,16 @@ export default function PipelineProgressSnackbar() {
                 const dy = e.clientY - dragRef.current.startMy;
                 setDragPos({
                     left: Math.max(0, dragRef.current.startLeft + dx),
-                    top: Math.max(0, dragRef.current.startTop + dy),
+                    bottom: Math.max(0, dragRef.current.startBottom - dy),
                 });
             }
             if (resizeRef.current) {
-                const {handle, startMx, startMy, startW, startH, startLeft, startTop} = resizeRef.current;
+                const {handle, startMx, startMy, startW, startH, startLeft, startBottom} = resizeRef.current;
                 const dx = e.clientX - startMx;
                 const dy = e.clientY - startMy;
 
                 let newW = startW, newH = startH;
-                let newLeft = startLeft, newTop = startTop;
+                let newLeft = startLeft, newBottom = startBottom;
                 let posChanged = false;
 
                 if (handle.includes('e')) newW = Math.max(MIN_WIDTH, startW + dx);
@@ -118,12 +110,12 @@ export default function PipelineProgressSnackbar() {
                 }
                 if (handle.includes('n')) {
                     newH = Math.max(MIN_HEIGHT, startH - dy);
-                    newTop = startTop + startH - newH;
+                    newBottom = startBottom + startH - newH;
                     posChanged = true;
                 }
 
                 setSize({width: newW, height: newH});
-                if (posChanged) setDragPos({left: newLeft, top: newTop});
+                if (posChanged) setDragPos({left: newLeft, bottom: newBottom});
             }
         };
         const onUp = () => { dragRef.current = null; resizeRef.current = null; };
@@ -152,99 +144,108 @@ export default function PipelineProgressSnackbar() {
     if (!open) return null;
 
     const containerStyle: React.CSSProperties = dragPos
-        ? {position: 'fixed', left: dragPos.left, top: dragPos.top, zIndex: 1400, width: size.width, ...(collapsed ? {} : {height: size.height})}
-        : {position: 'fixed', bottom: 8, right: 8, zIndex: 1400, width: size.width, ...(collapsed ? {} : {height: size.height})};
+        ? {left: dragPos.left, bottom: dragPos.bottom, width: size.width}
+        : {width: size.width};
 
     return (
-        <div ref={containerRef} style={containerStyle}>
+        <div
+            ref={containerRef}
+            className={`snackbar-main-container-modal border-1 bg-dark br-3 p-1 ${dragPos ? 'snackbar-container-dragged' : 'snackbar-container'}`}
+            style={containerStyle}
+        >
             {HANDLES.filter(h => !collapsed || h === 'e' || h === 'w').map(h => (
-                <div key={h} style={handleStyle(h)} onMouseDown={(e) => startResize(h, e)}/>
+                <div key={h} className={HANDLE_CLASS[h]} onMouseDown={(e) => startResize(h, e)}/>
             ))}
 
-            <div className="bg-middark flex flex-col w-full overflow-hidden" style={{
+            <div className={
+                `pipeline-progress-toast-flyout bg-middark flex flex-col w-full overflow-hidden` +
+                ` pipeline-toast-flyout shadow-lg` +
+                (hasRunningVisible ? ' pipeline-toast-flyout--running' : '')
+            } style={{
                 height: collapsed ? 'auto' : '100%',
-                borderRadius: 8,
-                border: `1px solid ${hasRunningVisible ? '#FF00FF' : 'transparent'}`,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
             }}>
                 <div
                     onMouseDown={handleHeaderMouseDown}
-                    className="flex flex-row items-center flex-shrink-0"
+                    className="flex flex-row items-center flex-shrink-0 px-2 pt-1 pb-1 gap-2 cursor-grab select-none"
                     style={{
-                        padding: '6px 8px',
                         borderBottom: collapsed ? 'none' : '1px solid var(--color-border-secondary)',
-                        cursor: 'grab',
-                        userSelect: 'none',
                     }}
                 >
                     {collapsed ? (
                         <div className="flex-1 min-w-0 mr-1">
                             <div className="flex flex-row items-center justify-content-space-between" style={{marginBottom: 2}}>
-                                <p className="text sm flex-1 mr-1 m-0" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.72rem'}}>
+                                <p className="text flex-1 mr-1 m-0 truncate">
                                     {summaryLabel}
                                 </p>
-                                <p className="text sm text-gray flex-shrink-0 m-0" style={{fontSize: '0.68rem'}}>
+                                <p className="text  text-gray flex-shrink-0 m-0">
                                     {summaryProgress}%
                                 </p>
                             </div>
                             {summaryGroup?.isActive && (
-                                <div className="update-progress-track" style={{height: 3, borderRadius: 2}}>
-                                    <div className="update-progress-fill h-full" style={{width: `${summaryProgress}%`, borderRadius: 2}}/>
+                                <div className="update-progress-track progress-track-sm">
+                                    <div className="update-progress-fill h-full progress-fill-sm" style={{width: `${summaryProgress}%`}}/>
                                 </div>
                             )}
                         </div>
                     ) : (
-                        <p className="text md text-white flex-1 m-0" style={{fontWeight: 600}}>Pipeline Progress</p>
+                        <p className="text md text-white flex-1 m-0 ">Pipeline Progress</p>
                     )}
 
                     {hasRunningVisible && (
-                        <div className="flex-shrink-0 mr-1" style={{
-                            width: 7, height: 7, borderRadius: '50%', backgroundColor: 'var(--color-info)',
+                        <div className="flex-shrink-0 mr-1 w-7 h-7 rounded-full bg-info" style={{
                             animation: 'fmcPulse 1.4s ease-in-out infinite',
                         }}/>
                     )}
 
                     <IconButton
-                        icon={collapsed ? 'expand-icon' : 'collapse-icon'}
+                        icon="clear-icon"
+                        className="icon-size-25 p-01 mr-2"
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={() => dispatch(allPipelinesCleared())}
+                        disabled={visibleGroups.length === 0}
+                        tooltip={true}
+                        tooltipText="Clear all pipelines"
+                        tooltipPosition="pos-bottom"
+                    />
+                    <IconButton
+                        icon={collapsed ? 'arrowup-icon' : 'arrowdown-icon'}
                         className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => setCollapsed(c => !c)}
+                        tooltip={true}
+                        tooltipText={collapsed ? "Expand" : "Collapse"}
+                        tooltipPosition="pos-bottom"
                     />
 
                     {hasRunningVisible && (
                         <IconButton
                             icon="close-icon"
-                            className="icon-size-25 p-01"
+                            className="icon-size-25 p-01 text-error"
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
-                            title="Stop all pipelines"
-                            style={{color: 'var(--color-error)'}}
+                            tooltip={true}
+                            tooltipText="Stop all pipelines"
+                            tooltipPosition="pos-bottom"
                         />
                     )}
 
-                    <IconButton
-                        icon="clear-icon"
-                        className="icon-size-25 p-01"
-                        onMouseDown={e => e.stopPropagation()}
-                        onClick={() => dispatch(allPipelinesCleared())}
-                        disabled={visibleGroups.length === 0}
-                        title="Clear all pipelines"
-                    />
 
                     <IconButton
                         icon="close-icon"
                         className="icon-size-25 p-01"
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
+                        tooltip={true}
+                        tooltipText="Close"
+                        tooltipPosition="pos-bottom"
                     />
 
-                    <span className="icon settings-icon icon-size-20 flex-shrink-0" style={{color: 'var(--color-text-disabled)', marginLeft: 2, cursor: 'grab'}}/>
                 </div>
 
                 {!collapsed && (
-                    <div className="overflow-y flex-1 min-h-0">
+                    <div className="overflow-y flex-1 min-h-0 inner-content">
                         {visibleGroups.length === 0 ? (
-                            <div className="flex justify-center" style={{paddingTop: 16, paddingBottom: 16}}>
+                            <div className="flex justify-center py-4">
                                 <p className="text sm text-gray">No active pipelines</p>
                             </div>
                         ) : (

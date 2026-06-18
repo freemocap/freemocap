@@ -89,7 +89,25 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   }, [board.squares_x, board.squares_y]);
 
   const [forcedCustom, setForcedCustom] = useState(false);
-  const [showTooltip, setShowTooltip] = useState(true);
+  const [showTooltip, setShowTooltip] = useState(() => {
+    return !localStorage.getItem("calibration:onboarding:dismissed");
+  });
+
+  const closeTooltip = useCallback(() => {
+    setShowTooltip(false);
+    localStorage.setItem("calibration:onboarding:dismissed", "true");
+  }, []);
+
+  const toggleTooltip = useCallback(() => {
+    setShowTooltip((prev) => {
+      const next = !prev;
+      if (next) {
+        // User is opening it manually — remove dismissed flag so closing will re-dismiss
+        localStorage.removeItem("calibration:onboarding:dismissed");
+      }
+      return next;
+    });
+  }, []);
 
   const displayedPreset: BoardPreset = forcedCustom ? "Custom" : currentPreset;
 
@@ -135,7 +153,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
               <IconButton
                 icon="explainer-icon"
                 className="button sm"
-                onClick={() => setShowTooltip(prev => !prev)}
+                onClick={toggleTooltip}
                 tooltip
                 tooltipText="Learn about ChArUco"
                 tooltipPosition="pos-left"
@@ -152,7 +170,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
                 imageSrc="/images/charuco_settings.webp"
                 position="pos-right"
                 variant="default"
-                onClose={() => setShowTooltip(false)}
+                onClose={closeTooltip}
               />
             </div>
           </div>

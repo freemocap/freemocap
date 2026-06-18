@@ -44,12 +44,12 @@ const StageRow: React.FC<{ name: string; complete: boolean; present: number; tot
                 
                 onClick={() => setOpen(v => !v)}
             >
-                <span className={`icon icon-size-20 ${complete ? 'upToDate-icon' : 'close-icon'}`} />
-                <span className="text sm text-white flex-1">{label}</span>
-                <span className="icon icon-size-20 collapse-icon" style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                <span className={`icon icon-size-20 ${complete ? 'upToDate-icon' : 'warning-icon'}`} />
+                <span className="text md text-white flex-1">{label}</span>
+                <span className="icon icon-size-20 arrowdown-icon" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
             {open && children && (
-                <div className="p-1 pt-0">{children}</div>
+                <div className="px-2 pb-2">{children}</div>
             )}
         </div>
     );
@@ -92,37 +92,41 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
     return (
         <div className="br-1 border-1 border-mid-black overflow-hidden">
             <div
-                className="flex flex-row items-center gap-1 p-1"
+                className="flex flex-row items-center gap-1 pl-2 p-2"
                
                 onClick={() => setExpanded(v => !v)}
             >
-                <span className="icon info-icon icon-size-20" style={{ backgroundImage: 'url("data:image/svg+xml,%3csvg width=\'16\' height=\'16\' viewBox=\'0 0 16 16\' fill=\'none\' xmlns=\'http://www.w3.org/2000/svg\'%3e%3ccircle cx=\'8\' cy=\'8\' r=\'6\' stroke=\'%232ba4ff\' stroke-width=\'1.5\'/%3e%3cpath d=\'M8 7v4M8 5.5v.5\' stroke=\'%232ba4ff\' stroke-width=\'1.5\' stroke-linecap=\'round\'/%3e%3c/svg%3e")' }} />
-                <span className="text sm text-gray flex-1">Recording folder</span>
-                <span className={`tag text sm ${summaryColor}`}>{summaryLabel}</span>
+                <span className="icon explainer-icon icon-size-20"/>
+                <span className="text md text-gray flex-1">Recording folder</span>
+                <span className={`tag text md ${summaryColor}`}>{summaryLabel}</span>
                 {onRefresh && (
                     <IconButton
                         icon={isLoading ? "loader-icon" : "rotate-icon"}
                         onClick={(e) => { e.stopPropagation(); onRefresh(); }}
                         disabled={isLoading}
-                        title="Re-check folder"
+                        
+                        tooltip={true}
+                        tooltipPosition="pos-bottom-right"
+                        tooltipText="Re-check folder"
+                        
                     />
                 )}
-                <span className="icon icon-size-20 collapse-icon" style={{ transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }} />
+                <span className="icon icon-size-20 arrowdown-icon" style={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
             </div>
 
             {expanded && (
                 <div className="flex flex-col gap-1 p-2">
                     {error && (
                         <div className="toast-notification error">
-                            <p className="text sm">{error}</p>
+                            <p className="text md">{error}</p>
                         </div>
                     )}
 
                     {!folderExists && (
                         <div className="toast-notification">
-                            <p className="text sm text-warning">Recording folder does not exist yet. It will be created when you start recording.</p>
+                            <p className="text md text-warning">Recording folder does not exist yet. It will be created when you start recording.</p>
                             {recordingFolderPath && (
-                                <p className="text sm text-gray mt-1" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                <p className="text md text-gray mt-1" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                                     {recordingFolderPath}
                                 </p>
                             )}
@@ -131,15 +135,15 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
 
                     {activeCalibrationTomlPath && (
                         <div>
-                            <p className="text sm text-gray">Active calibration TOML:</p>
-                            <p className="text sm" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
+                            <p className="text md text-gray">Active calibration TOML:</p>
+                            <p className="text md" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
                                 {activeCalibrationTomlPath}
                             </p>
                         </div>
                     )}
 
                     {!status && !isLoading && !error && (
-                        <p className="text sm text-gray">No status loaded.</p>
+                        <p className="text md text-gray">No status loaded.</p>
                     )}
 
                     {status && (
@@ -153,23 +157,27 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                                     total={stage.total_count}
                                 >
                                     {stage.files.length === 0 ? (
-                                        <p className="text sm text-gray">No files found.</p>
+                                        <p className="text md text-gray">No files found.</p>
                                     ) : (
                                         <div className="flex flex-col gap-1">
                                             {stage.files.map((f) => (
                                                 <div
                                                     key={f.path ?? f.name}
-                                                    className="flex flex-row items-center gap-1"
+                                                    className="flex flex-row flex-wrap items-center gap-1"
                                                     style={{ fontFamily: 'monospace' }}
                                                 >
-                                                    <span className={`icon icon-size-12 ${f.exists ? 'upToDate-icon' : 'close-icon'}`} />
-                                                    <span className={`text sm flex-1 ${f.exists ? 'text-white' : 'text-gray'}`} style={{ wordBreak: 'break-all' }}>
-                                                        {f.name}
-                                                    </span>
+                                                   <div className="flex flex-row gap-1">
+                                                        <span className={`icon icon-size-12 ${f.exists ? 'upToDate-icon' : 'close-icon'}`} />
+                                                        <span className={`text md flex-1 ${f.exists ? 'text-white' : 'text-gray'}`} style={{ wordBreak: 'break-all' }}>
+                                                            {f.name}
+                                                        </span>
+                                                    </div>
                                                     {f.exists && (
                                                         <>
-                                                            <span className="text sm text-gray">{humanizeBytes(f.size_bytes)}</span>
-                                                            <span className="text sm text-gray">{formatTimestamp(f.modified_timestamp)}</span>
+                                                             <div className="flex flex-row gap-1">
+                                                                <span className="text md text-gray tag">{humanizeBytes(f.size_bytes)}</span>
+                                                                <span className="text md text-gray tag">{formatTimestamp(f.modified_timestamp)}</span>
+                                                            </div>
                                                         </>
                                                     )}
                                                 </div>

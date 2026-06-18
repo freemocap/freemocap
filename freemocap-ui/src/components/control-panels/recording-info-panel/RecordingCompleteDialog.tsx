@@ -93,7 +93,7 @@ export const RecordingCompleteDialog: React.FC = () => {
   return (
     <div className="splash-overlay inset-0" onClick={handleClose}>
       <div
-        className="recording-completed-main-modal border-1 border-black elevated-sharp pos-rel bg-dark  br-2 flex flex-col p-1 w-full min-w-480 max-w-720"
+        className="recording-completed-main-modal border-1 border-black elevated-sharp pos-rel bg-dark  br-2 flex flex-col p-1 w-full min-w-480 max-w-600"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">

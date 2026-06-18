@@ -184,3 +184,20 @@
     background-position: -200% 0;
   }
 }
+
+/* =========================
+   Pulse Animation
+   ========================= */
+
+@keyframes fmcPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.pulse-dot {
+  animation: fmcPulse 1.4s ease-in-out infinite;
+}

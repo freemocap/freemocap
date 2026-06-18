@@ -168,6 +168,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
 
     const [manualPath, setManualPath] = useState('');
     const [filterText, setFilterText] = useState('');
+    const [showFilter, setShowFilter] = useState(false);
     const [sortField, setSortField] = useState<SortField>('date');
     const [sortDir, setSortDir] = useState<SortDirection>('desc');
 
@@ -302,18 +303,84 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
     };
 
     return (
-        <div className="playback-file-directory-inner-content flex playback-page-content pos-rel flex flex-col gap-1 h-full overflow-hidden">
+        <div className="playback-file-directory-inner-content flex playback-page-content pos-rel flex flex-col h-full overflow-hidden">
             {/* Folder selector */}
             <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center">
-                <div className="flex flex-col flex-start gap-1 items-center w-full">
-                    <SubactionHeader text="Folder Directory" />
+                <div className="flex flex-col flex-start items-center w-full gap-2">
+                    <div className='flex flex-row flex-wrap justify-content-space-between w-full'>
+                        <SubactionHeader text="Folder Directory" />
+                        <div className='folder-directory-tool-bar flex flex-row gap-1 items-center'>
+                            <div className="flex items-center flex-row">
+                                {recordings.length > 0 && (
+                                    <p className="tag camera-status-badge">
+                                        {filterText
+                                            ? `${filteredSorted.length} / ${recordings.length}`
+                                            : recordings.length}
+                                    </p>
+                                )}
+                                <SubactionHeader text={t("recordings")} />
+                            </div>
+                            <IconButton
+                                title={showFilter ? t("hideFilter") : t("filter")}
+                                icon={showFilter ? "filter-active-icon" : "filter-icon"}
+                                className="icon-size-25"
+                                tooltip={true}
+                                tooltipText={showFilter ? t("hideFilter") : t("filter")}
+                                tooltipPosition="pos-bottom"
+                                onClick={() => {
+                                    if (showFilter) {
+                                        setFilterText('');
+                                        setShowFilter(false);
+                                    } else {
+                                        setShowFilter(true);
+                                    }
+                                }}
+                                style={{
+                                    backgroundColor: showFilter ? 'var(--color-info)' : 'transparent',
+                                }}
+                            />
+                            
+                            <IconButton
+                                title={sortDir === 'desc' ? t('sortDescending') : t('sortAscending')}
+                                icon={sortDir === 'desc' ? 'sort-icon' : 'sortup-icon'}
+                                className="icon-size-25"
+                                tooltip={true}
+                                tooltipText={sortDir === 'desc' ? t('sortDescending') : t('sortAscending')}
+                                tooltipPosition="pos-bottom"
+                                onClick={toggleSortDir}
+                            />
+                       
+                            <select
+                                className="sort-select input-field"
+                                value={sortField}
+                                onChange={(e) => setSortField(e.target.value as SortField)}
+                                style={{ width: '63px', minWidth: '63px', maxWidth: '63px' }}
+                            >
+                                {SORT_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                        {t(opt.labelKey)}
+                                    </option>
+                                ))}
+                            </select>
+                                 <IconButton
+                                title={t("refresh")}
+                                icon="rotate-icon"
+                                className="icon-size-25"
+                                tooltip={true}
+                                tooltipText={t("refresh")}
+                                tooltipPosition="pos-bottom-right"
+                                onClick={() => fetchRecordings(true)}
+                                disabled={isLoadingList}
+                            />
+                        </div>
+                    </div>
                     <ButtonSm
                         iconClass="subfolder-icon"
                         text={manualPath || "Select recording folder"}
                         onClick={handleBrowseDirectory}
                         title="Click to select recording folder"
                         disabled={!isElectron}
-                        className="select-path bg-middark flex-1 w-full min-w-full"
+                        className="select-path bg-middark flex-1 w-full min-w-full border-1 border-mid-black"
                         textClass="text-wrap flex-1"
                     />
                 </div>
@@ -322,57 +389,20 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
             {error && <p className="pl-2 flex flex-row text sm text-error">{error}</p>}
 
             {/* Header + list wrapper */}
-            <div className="flex flex-col flex-1 overflow-hidden bg-middark br-1 p-1 gap-2">
+            <div className="flex flex-col flex-1 overflow-hidden bg-middark br-1 p-1 gap-1">
                 {/* Header bar */}
-                <div className="recording-group flex flex-row flex-wrap flex-start items-center gap-1 justify-content-space-between">
-                    <div className="flex header-holder-for-recording items-center gap-1">
-                        {recordings.length > 0 && (
-                            <p className="tag camera-status-badge">
-                                {filterText
-                                    ? `${filteredSorted.length} / ${recordings.length}`
-                                    : recordings.length}
-                            </p>
-                        )}
-                        <SubactionHeader text={t("recordings")} />
-                    </div>
-
-                    <div className="flex flex-wrap flex-row items-center gap-1 justify-content-space-between min-w-full">
-                        <div className="input-with-string flex flex-1">
+                <div className="pb-1 recording-group flex flex-row flex-wrap flex-start items-center gap-1 justify-content-space-between">
+                    {showFilter && (
+                        <div className="flex flex-row input-with-string flex-1">
                             <input
                                 className="input-field"
                                 placeholder={t("filter")}
                                 value={filterText}
                                 onChange={(e) => setFilterText(e.target.value)}
+                                autoFocus
                             />
                         </div>
-                        <select
-                            className="sort-select input-field"
-                            value={sortField}
-                            onChange={(e) => setSortField(e.target.value as SortField)}
-                        >
-                            {SORT_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {t(opt.labelKey)}
-                                </option>
-                            ))}
-                        </select>
-                        <ButtonSm
-                            text={sortDir === 'desc' ? '↓' : '↑'}
-                            onClick={toggleSortDir}
-                            tooltip={true}
-                            tooltipText={sortDir === 'desc' ? t('sortDescending') : t('sortAscending')}
-                            tooltipPosition="pos-bottom"
-                        />
-                        <ButtonSm
-                            text={t("refresh")}
-                            onClick={() => fetchRecordings(true)}
-                            disabled={isLoadingList}
-                            iconClass="rotate-icon"
-                            tooltip={true}
-                            tooltipText={t("refresh")}
-                            tooltipPosition="pos-bottom"
-                        />
-                    </div>
+                    )}
                 </div>
 
                 {/* List */}
@@ -388,7 +418,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({ onRecordingL
                         </p>
                     </div>
                 ) : (
-                    <div className="recording-list flex-1 overflow-y br-2 p-1">
+                    <div className="recording-list flex-1 overflow-y">
                         {filteredSorted.map((rec) => (
                             <RecordingRow
                                 key={rec.path}

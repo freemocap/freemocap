@@ -695,7 +695,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
         </div>
 
         {expanded && (
-          <div className="pl-4 pr-4 pb-4">
+          <div className="px-2 pb-2 w-full">
             <RecordingStatusPanel
               status={detailedStatus}
               isLoading={statusLoading}

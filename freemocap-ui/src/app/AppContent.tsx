@@ -11,8 +11,8 @@ import { useTranslation } from "react-i18next";
 import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
-import {FloatingOnboarding} from "@/hooks/floatingOnboarding.tsx";
-import PromptTooltip from "@/components/ui-components/promptTooltip";
+import {FloatingOnboarding} from "@/hooks/floatingOnboarding";
+import PromptTooltip from "@/components/ui-components/PromptTooltip";
 
 export const AppContent = function () {
     const { i18n } = useTranslation();

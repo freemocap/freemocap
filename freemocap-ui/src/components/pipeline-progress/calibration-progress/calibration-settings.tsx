@@ -13,7 +13,7 @@ import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
 
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
-import PromptTooltip from "@/components/ui-components/promptTooltip";
+import PromptTooltip from "@/components/ui-components/PromptTooltip";
 
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 

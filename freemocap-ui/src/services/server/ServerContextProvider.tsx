@@ -118,16 +118,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // per-frame Array.from().sort() allocations when the camera list hasn't changed.
     const lastCameraIdsRef = useRef<string[]>([]);
 
-    // Tracks what ran in the most recent rAF tick for jank diagnosis.
-    const lastTickRef = useRef({
-        sentAck: false,
-        processedJson: false,
-        processedBinaryKP: false,
-        startedDecode: false,
-        decodingInProgress: false,
-        wsMessageCount: 0,   // WS messages received since last tick
-    });
-    const wsMessagesSinceLastTickRef = useRef(0);
 
     // Initialize services once
     useEffect(() => {
@@ -389,52 +379,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // rAF-driven processing loop. Non-async so the next rAF is always
         // registered immediately — the async decode+dispatch chain runs via
         // .then() and never blocks rAF re-registration.
-        let lastRafTime = 0;
-        let lastBodyDuration = 0;
         let decodeStartTime = 0;
         const processFrameLoop = (): void => {
-            const now = performance.now();
-            const rafGap = lastRafTime > 0 ? now - lastRafTime : 0;
-            // Time the body: measure from now to just before we register next rAF.
-            // This separates "our body was slow" from "browser delayed the next rAF".
-            const bodyStart = now;
-            lastRafTime = now;
-
-            // if (rafGap > 50) {
-            //     const prev = lastTickRef.current;
-            //     const decoding = processingFrameRef.current;
-            //     const tag = decoding
-            //         ? `decode-busy (${(now - decodeStartTime).toFixed(0)}ms)`
-            //         : 'main-thread jank';
-            //     console.warn(
-            //         `rAF gap: ${rafGap.toFixed(0)}ms [${tag}] prevBody:${lastBodyDuration.toFixed(0)}ms` +
-            //         ` | prev: ack=${prev.sentAck} json=${prev.processedJson}` +
-            //         ` binKP=${prev.processedBinaryKP} decode=${prev.startedDecode}` +
-            //         ` decoding=${prev.decodingInProgress} wsMsg=${prev.wsMessageCount}` +
-            //         ` | cur: pendJson=${pendingJsonPayloadRef.current !== null}` +
-            //         ` pendBinKP=${pendingKeypointsRef.current !== null}` +
-            //         ` pendImg=${pendingPayloadRef.current !== null}`
-            //     );
-            // }
-
-            // Snapshot tick activity for the next jank report
-            const tick = {
-                sentAck: false,
-                processedJson: false,
-                processedBinaryKP: false,
-                startedDecode: false,
-                decodingInProgress: processingFrameRef.current,
-                wsMessageCount: wsMessagesSinceLastTickRef.current,
-            };
-            wsMessagesSinceLastTickRef.current = 0;
-
             // Ack the most-recently-received image frame immediately — before
             // decode starts. This unblocks the backend's result_consumed_event
             // ~100-150ms earlier, allowing it to pipeline the next frame.
             if (pendingAckFrameNumberRef.current !== null) {
                 ws.send({type: 'frameAcknowledgment', frameNumber: pendingAckFrameNumberRef.current});
                 pendingAckFrameNumberRef.current = null;
-                tick.sentAck = true;
             }
 
             // Dispatch buffered JSON payload (keypoints, overlays, rigid bodies).
@@ -444,7 +396,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 const jsonPayload = pendingJsonPayloadRef.current;
                 pendingJsonPayloadRef.current = null;
                 dispatchJsonPayload(jsonPayload);
-                tick.processedJson = true;
             }
 
             // Decode any buffered binary keypoints frame after the JSON
@@ -457,7 +408,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingKeypointsRef.current = null;
                 try {
                     dispatchBinaryKeypoints(buf);
-                    tick.processedBinaryKP = true;
                 } catch (err) {
                     console.error('Error parsing binary keypoints message:', err);
                 }
@@ -468,7 +418,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
                 decodeStartTime = performance.now();
-                tick.startedDecode = true;
                 frameProcessorRef.current!.processFramePayload(payload)
                     .then(result => {
                         const decodeMs = performance.now() - decodeStartTime;
@@ -479,15 +428,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     .finally(() => { processingFrameRef.current = false; });
             }
 
-            lastBodyDuration = performance.now() - bodyStart;
-            lastTickRef.current = tick;
             frameLoopRef.current = requestAnimationFrame(processFrameLoop);
         };
 
         frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
         const handleMessage = (event: MessageEvent): void => {
-            wsMessagesSinceLastTickRef.current++;
             // Handle binary frame data: demux on the first byte. Image frames
             // start with MessageType.PAYLOAD_HEADER (0); keypoints messages
             // start with KEYPOINTS_PAYLOAD_HEADER (3). Older unprocessed

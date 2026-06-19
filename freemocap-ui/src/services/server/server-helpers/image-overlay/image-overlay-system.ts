@@ -288,10 +288,15 @@ export abstract class BaseOverlayRenderer {
     }
 
     /**
-     * Create final bitmap from canvas
+     * Create final bitmap from canvas.
+     *
+     * Uses transferToImageBitmap() rather than createImageBitmap(canvas): it's a
+     * synchronous, zero-copy move of the canvas backing store (vs an async pixel
+     * copy), producing an identical bitmap. The canvas is reset to transparent
+     * afterward, which is fine — prepareCanvas() repaints it in full next frame.
      */
     protected async createBitmap(sourceBitmap: ImageBitmap): Promise<ImageBitmap> {
-        const compositeBitmap = await createImageBitmap(this.offscreenCanvas);
+        const compositeBitmap = this.offscreenCanvas.transferToImageBitmap();
         sourceBitmap.close();
         return compositeBitmap;
     }

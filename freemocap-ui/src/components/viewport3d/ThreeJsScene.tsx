@@ -59,7 +59,9 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
     return (
         <>
             <DataInvalidator />
-            <FrameProfiler />
+            {/* Dev-only: queues a microtask + perf.now() every rendered frame.
+                Gated out of production so it adds zero per-frame overhead. */}
+            {import.meta.env.DEV && <FrameProfiler />}
             <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
             <KeypointsRenderer />

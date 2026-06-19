@@ -1,112 +1,140 @@
-export const workerCode = `
-let offscreenCanvas;
-let ctx;
-let pendingFrame = null;
-let isRendering = false;
-let lastRenderTime = 0;
-let stats = {
-    framesRendered: 0,
-    framesDropped: 0,
-    totalRenderTime: 0
-};
+// offscreen-renderer.worker.ts
+//
+// Per-camera module Web Worker that owns one camera's display <canvas> (via
+// OffscreenCanvas) AND composites that camera's 2D overlay. Each camera has its
+// own worker, so overlay compositing runs in PARALLEL across cameras instead of
+// serializing in the single decode worker. The decode worker now returns raw
+// bitmaps; this worker draws the CharUco / skeleton overlay on top before display.
 
-let renderLoopScheduled = false;
+import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
+import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
+import type { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
-function scheduleRenderLoop() {
-    if (!renderLoopScheduled) {
-        renderLoopScheduled = true;
+// tsconfig uses the DOM lib (no WebWorker lib); cast self for postMessage.
+const workerScope = self as unknown as Worker;
+
+const OVERLAY_STALE_MS = 500;
+
+let offscreenCanvas: OffscreenCanvas | null = null;
+let ctx: ImageBitmapRenderingContext | null = null;
+
+let pendingFrame: ImageBitmap | null = null;
+let renderScheduled = false;
+
+// This worker handles exactly one camera, so a single OverlayManager + a single
+// latest observation per type is all the state it needs.
+const overlayManager = new OverlayManager();
+let latestCharuco: CharucoObservation | null = null;
+let latestMediapipe: MediapipeObservation | null = null;
+let lastOverlayTime = 0;
+let charucoEnabled = true;
+let skeletonEnabled = true;
+
+interface InitMessage { type: "init"; canvas: OffscreenCanvas; }
+interface FrameMessage { type: "frame"; bitmap: ImageBitmap; }
+interface OverlaysMessage {
+    type: "overlays";
+    charuco: CharucoObservation | null;
+    skeleton: MediapipeObservation | null;
+}
+interface VisibilityMessage { type: "visibility"; charuco: boolean; skeleton: boolean; }
+interface SchemaMessage {
+    type: "schema";
+    schemas: Record<string, TrackedObjectDefinition>;
+    activeId: string | null;
+}
+type InboundMessage = InitMessage | FrameMessage | OverlaysMessage | VisibilityMessage | SchemaMessage;
+
+self.addEventListener("message", (event: MessageEvent) => {
+    const msg = event.data as InboundMessage;
+    switch (msg.type) {
+        case "init":
+            offscreenCanvas = msg.canvas;
+            ctx = offscreenCanvas.getContext("bitmaprenderer");
+            workerScope.postMessage({ type: "initialized" });
+            break;
+        case "frame":
+            handleFrame(msg.bitmap);
+            break;
+        case "overlays":
+            // null means "no update this message" (not "clear") — staleness evicts.
+            if (msg.charuco !== null) latestCharuco = msg.charuco;
+            if (msg.skeleton !== null) latestMediapipe = msg.skeleton;
+            lastOverlayTime = performance.now();
+            break;
+        case "visibility":
+            charucoEnabled = msg.charuco;
+            skeletonEnabled = msg.skeleton;
+            if (!charucoEnabled) latestCharuco = null;
+            if (!skeletonEnabled) latestMediapipe = null;
+            break;
+        case "schema":
+            overlayManager.setTrackerSchemas(msg.schemas, msg.activeId ?? undefined);
+            break;
+    }
+});
+
+function handleFrame(rawBitmap: ImageBitmap): void {
+    if (!rawBitmap || rawBitmap.width <= 0 || rawBitmap.height <= 0) {
+        if (rawBitmap) rawBitmap.close();
+        return;
+    }
+
+    const overlayFresh = performance.now() - lastOverlayTime <= OVERLAY_STALE_MS;
+    if (!overlayFresh) {
+        latestCharuco = null;
+        latestMediapipe = null;
+    }
+    const charucoObs = charucoEnabled && overlayFresh ? latestCharuco : null;
+    const mediapipeObs = skeletonEnabled && overlayFresh ? latestMediapipe : null;
+
+    if (charucoObs || mediapipeObs) {
+        // processFrame closes the raw bitmap and returns the composited one.
+        // transferToImageBitmap makes this resolve synchronously, so .then()
+        // callbacks for successive frames run in arrival order.
+        overlayManager
+            .processFrame("", rawBitmap, charucoObs, mediapipeObs)
+            .then((composite) => setPending(composite))
+            .catch((err) => {
+                rawBitmap.close();
+                console.error("Overlay composite error", err);
+            });
+    } else {
+        setPending(rawBitmap);
+    }
+}
+
+function setPending(bitmap: ImageBitmap): void {
+    // Frame-dropping: keep only the latest. Close any frame this supersedes.
+    if (pendingFrame) pendingFrame.close();
+    pendingFrame = bitmap;
+    scheduleRender();
+}
+
+function scheduleRender(): void {
+    if (!renderScheduled) {
+        renderScheduled = true;
         requestAnimationFrame(renderLoop);
     }
 }
 
-self.onmessage = (e) => {
-    const { type } = e.data;
-    
-    switch (type) {
-        case 'init':
-            initCanvas(e.data);
-            break;
-            
-        case 'frame':
-            handleFrame(e.data);
-            break;
-            
-        case 'getStats':
-            self.postMessage({ type: 'stats', stats });
-            break;
+function renderLoop(): void {
+    renderScheduled = false;
+    if (!pendingFrame || !ctx || !offscreenCanvas) return;
+
+    const frame = pendingFrame;
+    pendingFrame = null;
+
+    // Match canvas size to the frame (handles rotation / resolution changes).
+    if (offscreenCanvas.width !== frame.width || offscreenCanvas.height !== frame.height) {
+        offscreenCanvas.width = frame.width;
+        offscreenCanvas.height = frame.height;
     }
-};
 
-function initCanvas(data) {
-    offscreenCanvas = data.canvas;
-    
-    // Use ImageBitmapRenderingContext - fastest for bitmap streaming
-    ctx = offscreenCanvas.getContext('bitmaprenderer');
+    // transferFromImageBitmap detaches (consumes) the bitmap.
+    ctx.transferFromImageBitmap(frame);
 
-    self.postMessage({ type: 'initialized' });
+    // If another frame arrived while rendering, keep going.
+    if (pendingFrame) scheduleRender();
 }
-
-function handleFrame(data) {
-    const bitmap = data.bitmap;
-    
-    // Validate bitmap dimensions
-    if (!bitmap || bitmap.width <= 0 || bitmap.height <= 0) {
-        console.error('Invalid bitmap dimensions:', bitmap?.width, bitmap?.height);
-        if (bitmap) bitmap.close();
-        return;
-    }
-    
-    // Resize canvas to match bitmap dimensions if they differ
-    // This handles rotation changes and different camera resolutions
-    if (offscreenCanvas.width !== bitmap.width || offscreenCanvas.height !== bitmap.height) {
-        offscreenCanvas.width = bitmap.width;
-        offscreenCanvas.height = bitmap.height;
-        // Resizing automatically clears the canvas, preventing old frame artifacts
-    }
-    
-    // Frame dropping strategy: keep only latest frame
-    if (pendingFrame) {
-        pendingFrame.close(); // Clean up skipped frame
-        stats.framesDropped++;
-    }
-    pendingFrame = bitmap;
-
-    // Wake up the render loop if it is idle.
-    scheduleRenderLoop();
-}
-
-function renderLoop() {
-    renderLoopScheduled = false;
-    const startTime = performance.now();
-    
-    if (pendingFrame && !isRendering) {
-        isRendering = true;
-        
-        const frame = pendingFrame;
-        pendingFrame = null;
-        
-        // transferFromImageBitmap detaches the bitmap (ownership transferred to canvas).
-        // Explicit close() afterwards as a safety net for browser edge cases.
-        ctx.transferFromImageBitmap(frame);
-        frame.close();
-        
-        // Update stats
-        stats.framesRendered++;
-        const renderTime = performance.now() - startTime;
-        stats.totalRenderTime += renderTime;
-        
-        // Warn if frame took too long
-        if (renderTime > 16.67) {
-            console.warn(\`Slow frame: \${renderTime.toFixed(2)}ms\`);
-        }
-        
-        isRendering = false;
-        lastRenderTime = performance.now();
-
-        // If another frame arrived while we were rendering, keep going.
-        if (pendingFrame) {
-            scheduleRenderLoop();
-        }
-    }
-}
-`;

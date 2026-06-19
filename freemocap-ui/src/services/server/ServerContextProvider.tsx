@@ -10,9 +10,6 @@ import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
 import {installConsoleLogBridge} from "@/services/server/server-helpers/console-log-bridge";
-import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
-import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
-import {MediapipeObservation} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 import {
     FrontendPayloadMessage,
     isFramerateUpdate,
@@ -64,19 +61,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
-    const overlayManagerRef = useRef<OverlayManager | null>(null);
-
-    // Overlay data refs - NO REACT STATE to avoid re-renders!
-    const latestCharucoRef = useRef<Map<string, CharucoObservation>>(new Map());
-    const latestMediapipeRef = useRef<Map<string, MediapipeObservation>>(new Map());
-    // Tracks when each camera last received overlay data; used to evict stale
-    // overlays when the pipeline stops or a camera is removed from it.
-    const OVERLAY_STALE_MS = 500;
-    const lastOverlayTimeRef = useRef<Map<string, number>>(new Map());
-
-    // Overlay visibility flags - toggled by UI, applied in dispatchFrames
-    const charucoEnabledRef = useRef<boolean>(true);
-    const skeletonEnabledRef = useRef<boolean>(true);
+    // Overlay compositing (CharUco / skeleton observations, visibility, schema, and
+    // the per-frame draw) now lives entirely inside the FrameProcessor's decode
+    // worker — off the main thread. This component only forwards state to it.
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
@@ -129,7 +116,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
-        overlayManagerRef.current = new OverlayManager();
 
         // Persist logs on tab close / navigation so the last batch isn't lost.
         const handleBeforeUnload = (): void => {
@@ -152,7 +138,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (frameProcessorRef.current) {
                 frameProcessorRef.current.reset();
             }
-            overlayManagerRef.current?.clearAll();
         };
     }, []);
 
@@ -179,10 +164,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 trackedPointsRef.current = null;
                 rigidBodiesRef.current = new Map();
                 keypointsFilteredRef.current = null;
-                latestCharucoRef.current.clear();
-                latestMediapipeRef.current.clear();
-                lastOverlayTimeRef.current.clear();
-                overlayManagerRef.current?.clearAll();
+                // Overlay state lives in the per-camera canvas workers, which were
+                // just terminated by terminateAllWorkers(); new workers re-receive
+                // the stored visibility/schema from CanvasManager on recreate.
                 trackerSchemasRef.current = {};
                 activeTrackerIdRef.current = null;
                 setTrackerSchemas({});
@@ -194,10 +178,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         let lastFrontendFrameTime = 0;
         const frontendDurations: number[] = [];
 
-        // Process a decoded frame result: update camera list, dispatch to workers.
-        // Synchronous — overlay compositing is fire-and-forget so it never blocks
-        // the rAF loop. The ack is sent at the top of processFrameLoop, well before
-        // decode finishes, so the backend pipelines the next frame sooner.
+        // Route decoded (and already-overlay-composited) frames to the per-camera
+        // canvas workers. The decode worker did the parsing, JPEG decode AND overlay
+        // compositing, so the main thread only updates the camera list and forwards
+        // the finished bitmaps. The ack is sent at the top of processFrameLoop, well
+        // before decode finishes, so the backend pipelines the next frame sooner.
         const dispatchFrames = (
             result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
         ): void => {
@@ -226,8 +211,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         const removedCameras = prevIds.filter(id => !cameraIds.has(id));
                         for (const cameraId of removedCameras) {
                             canvasManagerRef.current?.terminateWorker(cameraId);
-                            latestCharucoRef.current.delete(cameraId);
-                            latestMediapipeRef.current.delete(cameraId);
                         }
                         return newIds;
                     }
@@ -235,45 +218,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 });
             }
 
-            // Composite overlays onto frames and dispatch to canvas workers.
-            // Fire-and-forget: overlay compositing runs asynchronously and never
-            // blocks the rAF loop. The canvas worker renders the composited bitmap
-            // when it arrives (overwriting any earlier raw frame for that camera).
-            const overlayManager = overlayManagerRef.current!;
             for (const frameData of frames) {
-                const overlayAge = performance.now() - (lastOverlayTimeRef.current.get(frameData.cameraId) ?? 0);
-                const overlayFresh = overlayAge <= OVERLAY_STALE_MS;
-                if (!overlayFresh) {
-                    latestCharucoRef.current.delete(frameData.cameraId);
-                    latestMediapipeRef.current.delete(frameData.cameraId);
-                    lastOverlayTimeRef.current.delete(frameData.cameraId);
-                }
-                const charucoObs = (charucoEnabledRef.current && overlayFresh)
-                    ? latestCharucoRef.current.get(frameData.cameraId) ?? null
-                    : null;
-                const mediapipeObs = (skeletonEnabledRef.current && overlayFresh)
-                    ? latestMediapipeRef.current.get(frameData.cameraId) ?? null
-                    : null;
-
-                if (charucoObs || mediapipeObs) {
-                    overlayManager.processFrame(
-                        frameData.cameraId,
-                        frameData.bitmap,
-                        charucoObs,
-                        mediapipeObs,
-                    ).then(compositeBitmap => {
-                        canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, compositeBitmap);
-                    }).catch(err => {
-                        // On the success path the source bitmap is closed inside
-                        // the overlay renderer; on error it may not be, so close it
-                        // here to avoid leaking a decoded frame (close() is a no-op
-                        // if it was already closed mid-composite).
-                        frameData.bitmap.close();
-                        console.error('Overlay error for camera', frameData.cameraId, err);
-                    });
-                } else {
-                    canvasManagerRef.current!.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
-                }
+                canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
             }
 
             // Measure display fps from decoded frame arrivals — fires every frame
@@ -312,18 +258,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // Called from the rAF loop (not from the WebSocket handler) so subscriber
         // work happens during the animation frame, not mid-message-storm.
         const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
-            const overlayNow = performance.now();
-            if (payload.charuco_overlays) {
-                for (const [cameraId, charuco] of Object.entries(payload.charuco_overlays)) {
-                    latestCharucoRef.current.set(cameraId, charuco as CharucoObservation);
-                    lastOverlayTimeRef.current.set(cameraId, overlayNow);
-                }
-            }
-            if (payload.skeleton_overlays) {
-                for (const [cameraId, skeleton] of Object.entries(payload.skeleton_overlays)) {
-                    latestMediapipeRef.current.set(cameraId, skeleton as MediapipeObservation);
-                    lastOverlayTimeRef.current.set(cameraId, overlayNow);
-                }
+            // Route overlay observations to the per-camera canvas workers, which
+            // hold the latest per camera and composite them in parallel, off main.
+            if (payload.charuco_overlays || payload.skeleton_overlays) {
+                canvasManagerRef.current?.updateOverlays(
+                    payload.charuco_overlays,
+                    payload.skeleton_overlays,
+                );
             }
 
             if (payload.keypoints_raw) {
@@ -475,7 +416,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         activeTrackerIdRef.current = firstId;
                         setTrackerSchemas(schemas);
                         setActiveTrackerId(firstId);
-                        overlayManagerRef.current?.setTrackerSchemas(schemas, firstId ?? undefined);
+                        // The skeleton overlay renderers (now in the per-camera
+                        // canvas workers) need the schema to resolve connections.
+                        canvasManagerRef.current?.setSchema(schemas, firstId);
                     }
                     // Handle framerate updates — backend_framerate stored; frontend_framerate
                     // is now measured locally in dispatchJsonPayload so we skip it here.
@@ -629,10 +572,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     }, []);
 
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
-        charucoEnabledRef.current = charuco;
-        skeletonEnabledRef.current = skeleton;
-        if (!charuco) latestCharucoRef.current.clear();
-        if (!skeleton) latestMediapipeRef.current.clear();
+        canvasManagerRef.current?.setOverlayVisibility(charuco, skeleton);
     }, []);
 
     const getActiveSchema = useCallback((): TrackedObjectDefinition | null => {

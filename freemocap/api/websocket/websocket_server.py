@@ -182,7 +182,7 @@ class WebsocketServer:
                 for update_message in posthoc_progress:
                     await self._send_msgspec_json(update_message)
 
-                if not self.last_frame_acknowledged():
+                if not self.last_frame_acknowledged():# or True: #JSM - bypassing frame ack check for now
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure >= BACKPRESSURE_RESET_THRESHOLD:
                         # Frontend is too far behind. Reset rather than stalling the aggregator

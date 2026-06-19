@@ -13,7 +13,7 @@ import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { RecordingCompleteDialog } from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
-import PromptTooltip from "@/components/ui-components/promptTooltip";
+import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useAppSelector } from "@/store";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";

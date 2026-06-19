@@ -44,18 +44,17 @@ const Linkify = ({ text }: { text: string }) => {
 // ---------------------------------------------------------------------------
 
 const countLines = (text: string): number => {
-    if (!text) return 1;
+    const t = text.trimEnd();
+    if (!t) return 1;
     let count = 1;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === "\n") count++;
+    for (let i = 0; i < t.length; i++) {
+        if (t[i] === "\n") count++;
     }
     return count;
 };
 
 const getRowHeight = (log: LogRecord): number => {
-    const lines = countLines(log.message);
-    if (lines === 1) return LINE_HEIGHT + ROW_PADDING;
-    return LINE_HEIGHT + lines * LINE_HEIGHT + ROW_PADDING;
+    return countLines(log.message) * LINE_HEIGHT + ROW_PADDING;
 };
 
 const buildPrefixHeights = (logs: LogRecord[]): number[] => {
@@ -85,7 +84,8 @@ const findStartIndex = (prefixHeights: number[], y: number): number => {
 const LogEntryRow = React.memo(({ log, style }: { log: LogRecord; style: React.CSSProperties }) => {
     const [expanded, setExpanded] = useState(false);
     const level = log.levelname.toLowerCase();
-    const multiLine = log.message.includes("\n");
+    const message = log.message.trimEnd();
+    const multiLine = message.includes("\n");
 
     return (
         <div
@@ -97,13 +97,13 @@ const LogEntryRow = React.memo(({ log, style }: { log: LogRecord; style: React.C
                 <span className="log-timestamp">{log.asctime}</span>
                 <span className={clsx("log-level-badge", level)}>{log.levelname}</span>
                 <span className="log-message-text">
-                    <Linkify text={multiLine ? log.message.split("\n")[0] : log.message} />
+                    <Linkify text={multiLine ? message.split("\n")[0] : message} />
                 </span>
             </div>
 
             {multiLine && (
                 <div className="log-multiline-body">
-                    <Linkify text={log.message.split("\n").slice(1).join("\n")} />
+                    <Linkify text={message.split("\n").slice(1).join("\n")} />
                 </div>
             )}
 

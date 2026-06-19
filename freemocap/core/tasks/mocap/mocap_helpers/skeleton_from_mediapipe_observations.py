@@ -16,6 +16,7 @@ from freemocap.core.tasks.calibration.shared.calibration_result import Calibrati
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from skellycam.core.types.type_overloads import CameraIdString
 
+from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_batch_to_3d
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
 logger = logging.getLogger(__name__)
@@ -54,19 +55,21 @@ def skeleton_from_mediapipe_observation_recorders(
         logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 
-    # Load calibration and build triangulator matched to our camera IDs
-    calibration = CalibrationResult.load_anipose_toml(Path(path_to_calibration_toml))
     camera_ids = list(data2d_by_camera.keys())
 
-    triangulator = Triangulator.from_calibration_for_cameras(
-        calibration=calibration,
-        camera_ids=camera_ids,
-    )
-
-    result = triangulator.triangulate(
-        data2d=data2d_by_camera,
-        config=triangulation_config,
-    )
+    if len(camera_ids) == 1:
+        data2d = data2d_by_camera[camera_ids[0]]
+        result = project_2d_batch_to_3d(data2d=data2d)
+    else:
+        calibration = CalibrationResult.load_anipose_toml(Path(path_to_calibration_toml))
+        triangulator = Triangulator.from_calibration_for_cameras(
+            calibration=calibration,
+            camera_ids=camera_ids,
+        )
+        result = triangulator.triangulate(
+            data2d=data2d_by_camera,
+            config=triangulation_config,
+        )
     raw_3d = result.points_3d
 
     # Persist per-camera weights as a sibling NPY (only useful when outlier rejection is on,
@@ -103,7 +106,7 @@ def skeleton_from_mediapipe_observation_recorders(
     )
 
 
-    if not calibration.groundplane_aligned:
+    if len(camera_ids) > 1 and not calibration.groundplane_aligned:
         try:
             logger.debug("Groundplane undefined in calibration - aligning to skeleton feet")
             skeleton.put_skeleton_on_ground()

@@ -8,6 +8,7 @@ import {
     pauseUnpauseCameras,
 } from "@/store/slices/cameras/cameras-thunks";
 import {recommendExposureForAll, selectConnectedCameras, selectIsLoading, selectIsPaused} from "@/store/slices/cameras";
+import {selectIsAnyRecording} from "@/store/slices/recording/recording-slice";
 import {useTranslation} from 'react-i18next';
 import IconButton from "@/components/ui-components/IconButton";
 import ButtonSm from "@/components/ui-components/ButtonSm";
@@ -20,7 +21,7 @@ export const CameraHeaderActions: React.FC = () => {
     const isLoading = useAppSelector(selectIsLoading);
     const isPaused = useAppSelector(selectIsPaused);
     const connectedCameras = useAppSelector(selectConnectedCameras);
-    const isRecording = useAppSelector(state => state.recording.isRecording);
+    const isRecording = useAppSelector(selectIsAnyRecording);
 
     useEffect(() => {
         if (isStoppingCameras && connectedCameras.length === 0) {

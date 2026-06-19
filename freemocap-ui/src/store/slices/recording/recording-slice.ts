@@ -219,3 +219,14 @@ export const {
     countdownSet,
 } = recordingSlice.actions;
 
+/**
+ * Shared selector: returns true when ANY recording mode is active
+ * (regular recording, calibration recording, or mocap recording).
+ * Use this for UI elements that should respond to any recording —
+ * camera red outlines, disabling camera controls, etc.
+ */
+export const selectIsAnyRecording = (state: RootState): boolean =>
+    state.recording.isRecording ||
+    state.calibration.isRecording ||
+    state.mocap.isRecording;
+

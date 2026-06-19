@@ -15,7 +15,7 @@ class CameraNodeConfig(BaseModel):
     # (N cameras), which prevents the ONNX Runtime GPU arena from growing on
     # frames with spurious detections (the cause of intermittent OOMs). Bump to
     # a higher value or None when multi-person tracking lands.
-    skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="performance",
+    skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="lightweight",
                                                                                                                 confidence_threshold=5,
                                                                                                                 max_persons=1))
     # skeleton_detector_config: LegacyMediapipeDetectorConfig|None = Field(default_factory=LegacyMediapipeDetectorConfig)

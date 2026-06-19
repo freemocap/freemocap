@@ -43,18 +43,6 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
 // measured from its own content so it can never be squashed (see useContentMinSizes).
 const GROWABLE_SECTIONS = new Set<SectionId>(['cameras', 'recordings']);
 
-// Starting share of available height per section, normalized across the visible
-// subset. Growable sections take the lion's share.
-const SECTION_WEIGHT: Record<SectionId, number> = {
-    recordings: 40,
-    cameras: 40,
-    calibration: 16,
-    recording_path: 10,
-    recording_control: 16,
-    process_mocap: 16,
-    mocap: 8,
-};
-
 // Pixel height of each resize divider (must match `.sidebar-section-divider` in components.css).
 const HANDLE_PX = 10;
 // Floor for growable sections — they scroll internally, so they may shrink freely.
@@ -63,16 +51,27 @@ const GROWABLE_MIN_PCT = 8;
 // so one tall section can never lock out everything else.
 const CONTENT_MIN_CAP_PCT = 70;
 
-// Normalize weights into defaultSize percentages for the visible subset, letting
-// the last panel absorb rounding so the group sums to exactly 100.
+// Give each non-growable section GROWABLE_MIN_PCT at startup; the growable
+// section(s) absorb all remaining space so cameras/recordings starts at max.
 const computeDefaultSizes = (sections: readonly SectionId[]): number[] => {
-    const totalWeight = sections.reduce((sum, id) => sum + SECTION_WEIGHT[id], 0);
+    const nonGrowableCount = sections.filter(id => !GROWABLE_SECTIONS.has(id)).length;
+    const growableCount = sections.filter(id => GROWABLE_SECTIONS.has(id)).length;
+
+    if (growableCount === 0) {
+        const each = Math.round(100 / sections.length);
+        return sections.map((_, i) =>
+            i === sections.length - 1 ? 100 - each * (sections.length - 1) : each,
+        );
+    }
+
+    const nonGrowableEach = GROWABLE_MIN_PCT;
+    const growableEach = (100 - nonGrowableCount * nonGrowableEach) / growableCount;
+
     let allocated = 0;
     return sections.map((id, index) => {
         const isLast = index === sections.length - 1;
-        const size = isLast
-            ? Math.max(0, 100 - allocated)
-            : Math.round((SECTION_WEIGHT[id] / totalWeight) * 100);
+        const raw = GROWABLE_SECTIONS.has(id) ? growableEach : nonGrowableEach;
+        const size = isLast ? Math.max(0, 100 - allocated) : Math.round(raw);
         allocated += size;
         return size;
     });
@@ -249,7 +248,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             const minSize = minPctById[id] ?? (growable ? GROWABLE_MIN_PCT : 4);
                             return (
                                 <React.Fragment key={id}>
-                                    {index > 0 && (
+                                    {index > 0 && index < visibleSections.length - 1 && (
                                         <PanelResizeHandle className="sidebar-section-divider" />
                                     )}
                                     <Panel

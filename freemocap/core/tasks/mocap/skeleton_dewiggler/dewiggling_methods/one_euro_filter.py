@@ -18,9 +18,12 @@ Reference:
      Interactive Systems"
     https://cristal.univ-lille.fr/~casiez/1euro/
 
-Usage:
+Usage (positions in millimetres):
+    # cutoff(Hz) = min_cutoff + beta * |velocity_mm_s|
+    # At 1.0 Hz min_cutoff + beta=0.007: walking (500 mm/s) → 4.5 Hz cutoff (snappy),
+    # stationary → 1.0 Hz cutoff (settles in ~0.4 s at 30 fps).
     filter_3d = OneEuroFilter3D(t0=0.0, x0=initial_position,
-                                 min_cutoff=0.004, beta=0.7)
+                                 min_cutoff=1.0, beta=0.007)
     for t, raw_pos in stream:
         if raw_pos is not None:
             smooth_pos = filter_3d(t=t, x=raw_pos)

@@ -44,11 +44,18 @@ class SimpleRealtimeKeypointFilter:
     for any non-zero velocity.  The defaults assume mm-space coordinates.
     """
 
-    # Minimum cutoff at rest (Hz). 0.005 → half-life ~32 s at zero velocity.
-    min_cutoff: float = 0.005
-    # Speed coefficient (1/mm).  0.001 → 1 m/s velocity adds 1 Hz to cutoff.
-    beta: float = 0.001
-    # Cutoff for derivative (velocity-estimate) filter (Hz).
+    # Minimum cutoff frequency (Hz) when the keypoint is nearly stationary.
+    #   adaptive cutoff(Hz) = min_cutoff + beta * |velocity_mm_s|
+    # Variable framerate is handled via actual elapsed time — behaviour is the
+    # same at 15 fps or 60 fps without any extra configuration.
+    # 1.0 Hz → settles in ~0.4 s at 30 fps; raise if skeleton feels dragged.
+    min_cutoff: float = 1.0
+    # Speed coefficient (1/mm). Raises the cutoff in proportion to velocity (mm/s).
+    # 0.007 → walking speed (500 mm/s) adds 3.5 Hz, making the filter snappy.
+    # Keep in range 0.003–0.02 for mm-space data.
+    # WARNING: beta = 0.3 (meter-space convention) is ~1000× too high for mm data.
+    beta: float = 0.007
+    # Cutoff for the velocity-estimate filter (Hz); 1.0 is a safe default.
     d_cutoff: float = 1.0
     max_prediction_frames: int = 3
     prediction_velocity_decay: float = 0.5

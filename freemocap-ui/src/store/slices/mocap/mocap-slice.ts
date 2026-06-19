@@ -130,10 +130,24 @@ export function detectPreset(
     return "custom";
 }
 
-/** Default RealtimeFilterConfig matching backend defaults. */
+/**
+ * Default RealtimeFilterConfig.
+ *
+ * One Euro Filter tuning (positions are in millimetres):
+ *   adaptive cutoff (Hz) = min_cutoff + beta * |velocity_mm_s|
+ *
+ * min_cutoff (Hz) — settling speed when stationary:
+ *   1.0 Hz → ~0.4 s at 30 fps (default, snappy settling)
+ *   0.5 Hz → ~0.8 s, 2.0 Hz → ~0.2 s
+ *
+ * beta (1/mm) — responsiveness during motion:
+ *   0.007 → walking (500 mm/s) adds 3.5 Hz; fast swing (2000 mm/s) → ~15 Hz
+ *   Range 0.003–0.02 is appropriate for mm-space data.
+ *   NOTE: beta = 0.3 (meter-space convention) is ~1000× too high.
+ */
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
-    min_cutoff: 0.005,
-    beta: 0.3,
+    min_cutoff: 1.0,
+    beta: 0.007,
     d_cutoff: 1.0,
     fabrik_tolerance: 1e-4,
     fabrik_max_iterations: 20,

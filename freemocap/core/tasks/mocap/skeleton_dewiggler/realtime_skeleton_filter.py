@@ -79,22 +79,51 @@ class RealtimeFilterConfig(BaseModel):
     """
 
     # ---- One Euro Filter ----
-    # Minimum cutoff frequency applied when velocity ≈ 0.
-    #   0.01 Hz → half-life ~16 s at rest (very heavy smoothing).
-    #   Lower = more aggressive jitter removal on static / slow-moving points.
-    #   Raise this (e.g. 0.05–0.2) if the filtered skeleton feels "floaty."
-    min_cutoff: float = 0.05
-    # Speed coefficient.  Together with the measured velocity (mm/s) it
-    # determines how much the cutoff rises above min_cutoff during motion.
-    #   cutoff = min_cutoff + beta * |velocity|
-    #   beta = 0.001  →  1 m/s (1000 mm/s) adds 1 Hz to the cutoff.
-    #   Lower  = stays smoother during slow movement (less jitter, more lag).
-    #   Higher = opens up faster during fast movement (less lag, more jitter).
-    beta: float = 0.001
-    # Cutoff frequency for the derivative (velocity-estimate) filter.
-    # Lower = velocity estimate is smoother → cutoff adapts more gradually.
-    #   1.0 Hz is a reasonable default; reduce to 0.3–0.5 if triangulation
-    #   noise creates spurious velocity spikes that open the filter too much.
+    # Minimum cutoff frequency (Hz) applied when the keypoint is stationary.
+    # Goal: settle quickly when motion stops while suppressing static jitter.
+    #
+    #   adaptive cutoff(Hz) = min_cutoff + beta * |velocity_mm_s|
+    #
+    # Variable framerate is handled automatically — the filter uses actual elapsed
+    # time (seconds) between calls, so behaviour is consistent at 15 fps or 60 fps.
+    #
+    # Settling time at ~30 fps (time to reach 97% of target after motion stops):
+    #   0.1 Hz → ~3.0 s  (heavy smoothing, floaty / dragged feel)
+    #   0.5 Hz → ~0.8 s
+    #   1.0 Hz → ~0.4 s  ← default, responsive settling
+    #   2.0 Hz → ~0.2 s  (light smoothing, more jitter visible)
+    #   5.0 Hz → ~0.1 s  (near pass-through)
+    #
+    # If the skeleton drags behind motion: raise min_cutoff (or raise beta).
+    # If the skeleton jitters while still: lower min_cutoff.
+    min_cutoff: float = 1.0
+
+    # Speed coefficient (units: 1/mm).
+    # Determines how quickly the effective cutoff rises with keypoint velocity.
+    # Because positions are in millimetres, velocity is in mm/s and beta is in 1/mm.
+    #
+    #   cutoff(Hz) = min_cutoff + beta * |velocity_mm_s|
+    #
+    # Example with beta = 0.007 and min_cutoff = 1.0:
+    #   Still         ( 0 mm/s): cutoff = 1.0 Hz  (~0.4 s settling at 30 fps)
+    #   Slow gesture  (100 mm/s): cutoff = 1.7 Hz  (slightly more responsive)
+    #   Walking speed (500 mm/s): cutoff = 4.5 Hz  (snappy, ~1-2 frame lag)
+    #   Fast swing   (2000 mm/s): cutoff = 15 Hz   (near pass-through at 30 fps)
+    #
+    # IMPORTANT: beta is in units of 1/mm, NOT 1/m.
+    # beta = 0.3 (meter-space convention) becomes 300 Hz at 1 m/s → pass-through.
+    # Appropriate range for mm-space mocap data: 0.003 – 0.02.
+    #
+    # Raise beta → less lag during fast movement, more jitter during slow.
+    # Lower beta → more uniform smoothing regardless of speed.
+    beta: float = 0.01
+
+    # Cutoff frequency for the derivative (velocity-estimate) filter (Hz).
+    # Controls how quickly the adaptive cutoff reacts to velocity changes.
+    #   Lower = smoother velocity estimate → cutoff adapts more gradually.
+    #   Higher = faster adaptation → more responsive to sudden speed changes.
+    # 1.0 Hz is a safe default (velocity estimate settles in ~0.3 s at 30 fps).
+    # Reduce to 0.3–0.5 if triangulation noise causes spurious velocity spikes.
     d_cutoff: float = 1.0
 
     # FABRIK params

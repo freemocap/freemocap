@@ -494,7 +494,6 @@ const CalibrationModule = ({
             iconClass: "calibrate-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
-            textClass: "text-center text bg",
           }}
           dropdownItems={dropdownItems}
           dropdownClassName=""

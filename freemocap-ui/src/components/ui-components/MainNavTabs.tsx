@@ -82,16 +82,16 @@ export const MainNavTabs = () => {
                 {NAV_TABS.map((tab, idx) => {
                     const isActive = idx === activeIdx;
                     return (
-                        <button
+                        <div
                             key={tab.path}
-                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center${isActive ? ' bg-dark' : ''}`}
+                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center cursor-pointer${isActive ? ' bg-dark' : ''}`}
                             onClick={() => handleClick(tab.path)}
                         >
                             {tab.path === '/active-recording'
                                 ? <ActiveRecordingLabel />
                                 : <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
                             }
-                        </button>
+                        </div>
                     );
                 })}
             </div>

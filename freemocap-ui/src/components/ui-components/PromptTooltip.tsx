@@ -74,7 +74,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
     >
       <div
         className={clsx(
-          "tooltip-inner",
+          "floating-tooltip-inner",
           "gap-2",
           "flex",
           "flex-col",
@@ -109,7 +109,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
         )}
 
         <div className="tooltip-description-holder flex flex-row pos-rel">
-          <p className="text-white text md">{text}</p>
+          <p className="text-white text md" style={{ whiteSpace: "pre-line" }}>{text}</p>
         </div>
 
         {button && (
@@ -119,7 +119,7 @@ const PromptTooltip: React.FC<PromptTooltipProps> = ({
               iconClass={buttonIcon}
               buttonType={buttonType}
               onClick={onButtonClick}
-              className="flex-1 externallink tertiary full-width flex-inline text-left items-center full-width justify-center"
+              className="flex-1 bg-primary externallink tertiary full-width flex-inline text-left items-center full-width justify-center"
             />
           </div>
         )}

@@ -144,7 +144,7 @@ export default function useDraggableTooltips(): void {
         if (!dragging && Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD) {
           dragging = true;
           toggleUserSelect(false);
-          el.style.zIndex = "9999";
+          el.style.zIndex = "";
           
           // Ensure parent has position context for nested elements
           if (window.getComputedStyle(el).position === "static") {

@@ -12,7 +12,6 @@ interface RecordingPathModalProps {
     recordingTag: string;
     useTimestamp: boolean;
     baseName: string;
-    recordingTypePreset: string;
     useIncrement: boolean;
     currentIncrement: number;
     createSubfolder: boolean;

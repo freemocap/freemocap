@@ -1,8 +1,5 @@
 import {z} from 'zod';
 
-export const RecordingTypePresetSchema = z.enum(['none', 'calibration', 'mocap']);
-export type RecordingTypePreset = z.infer<typeof RecordingTypePresetSchema>;
-
 export const RecordingConfigSchema = z.object({
     // Recording behavior settings
     useDelayStart: z.boolean(),
@@ -19,9 +16,8 @@ export const RecordingConfigSchema = z.object({
     createSubfolder: z.boolean(),
     customSubfolderName: z.string(),
 
-    // Device & preset settings
+    // Device settings
     micDeviceIndex: z.number(),
-    recordingTypePreset: RecordingTypePresetSchema,
     autoProcess: z.boolean(),
 });
 

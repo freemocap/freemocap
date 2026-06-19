@@ -36,12 +36,14 @@ export type LogRecord = z.infer<typeof LogRecordSchema>;
 
 const MAX_ENTRIES = 10_000;
 // Only the most recent slice is persisted to localStorage. Serializing the full
-// 10k-entry in-memory buffer on every save was a ~main-thread stall on the save
-// interval; persisting the tail keeps writes small while logs survive restarts.
-const MAX_PERSISTED_ENTRIES = 1_000;
+// 10k-entry in-memory buffer on every save was a ~84ms main-thread stall on the
+// save interval (seen in profiles); persisting a small tail keeps writes cheap
+// while logs still survive restarts. The full 10k stays in memory for scrollback.
+const MAX_PERSISTED_ENTRIES = 300;
 const STORAGE_KEY = 'freemocap_log_store';
-// Longer interval (was 5s) so the synchronous JSON.stringify + localStorage write
-// happens far less often. The dirty flag still gates writes to real changes.
+// Longer interval (was 5s) so the JSON.stringify + localStorage write happens far
+// less often. The periodic write is also deferred to requestIdleCallback so it
+// never blocks a render frame. The dirty flag still gates writes to real changes.
 const AUTO_SAVE_INTERVAL_MS = 20_000;
 
 export type LogSnapshot = {
@@ -86,6 +88,9 @@ export class LogStore {
     /** Periodic save timer handle. */
     private saveInterval: ReturnType<typeof setInterval> | null = null;
 
+    /** Pending idle-callback handle for a deferred persist (so we don't double-schedule). */
+    private idlePersistHandle: number | null = null;
+
     constructor() {
         this.restoreFromLocalStorage();
         this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
@@ -97,6 +102,15 @@ export class LogStore {
             clearInterval(this.saveInterval);
             this.saveInterval = null;
         }
+        if (this.idlePersistHandle !== null) {
+            const cic = (globalThis as typeof globalThis & {
+                cancelIdleCallback?: (handle: number) => void;
+            }).cancelIdleCallback;
+            if (cic) cic(this.idlePersistHandle);
+            else clearTimeout(this.idlePersistHandle);
+            this.idlePersistHandle = null;
+        }
+        // Final flush is synchronous — idle callbacks won't run during unload.
         this.persistToLocalStorage();
     }
 
@@ -169,9 +183,19 @@ export class LogStore {
     // ── private persistence helpers ──────────────────────────────────────
 
     private persistIfDirty(): void {
-        if (this.dirty) {
+        if (!this.dirty || this.idlePersistHandle !== null) return;
+        // Defer the serialize + write to idle time so it can't land inside a
+        // streaming render frame. Falls back to a macrotask where rIC is absent.
+        const ric = (globalThis as typeof globalThis & {
+            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        }).requestIdleCallback;
+        const run = (): void => {
+            this.idlePersistHandle = null;
             this.persistToLocalStorage();
-        }
+        };
+        this.idlePersistHandle = ric
+            ? ric(run, { timeout: AUTO_SAVE_INTERVAL_MS })
+            : (setTimeout(run, 0) as unknown as number);
     }
 
     private persistToLocalStorage(): void {

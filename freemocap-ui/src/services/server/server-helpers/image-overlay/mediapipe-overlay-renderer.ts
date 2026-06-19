@@ -30,6 +30,12 @@ export interface MediapipeObservation {
     points: MediapipePoint[];
 }
 
+// Debug HUD (frame number + tracker/point counts) drawn on top of every camera
+// feed. It's redrawn every frame per camera — two stroked+filled text draws plus
+// a font set each — which showed up as ~12% of main-thread time during streaming.
+// Off by default; flip to true when debugging the overlay pipeline.
+const SHOW_SKELETON_DEBUG_HUD = false;
+
 // Classification used for colour routing. Kept deliberately loose — any name
 // containing "left" / "right" is treated as a side, otherwise center.
 type Side = 'left' | 'right' | 'center';
@@ -171,7 +177,9 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         }
 
         this.drawAllPoints(pointMap);
-        this.drawInfo(observation);
+        if (SHOW_SKELETON_DEBUG_HUD) {
+            this.drawInfo(observation);
+        }
 
         this.ctx.restore();
     }

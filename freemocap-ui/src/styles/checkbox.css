@@ -134,7 +134,9 @@
     transform 120ms ease,
     background-color 120ms ease;
 
-  will-change: transform;
+  /* No permanent will-change: it forces a standing GPU layer for every checkbox
+     mark (many in the camera config tree). The toggle transition is rare, so let
+     the browser promote on demand instead. */
 
   z-index: 1;
 }

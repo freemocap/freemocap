@@ -35,8 +35,14 @@ export const LogRecordSchema = z.object({
 export type LogRecord = z.infer<typeof LogRecordSchema>;
 
 const MAX_ENTRIES = 10_000;
+// Only the most recent slice is persisted to localStorage. Serializing the full
+// 10k-entry in-memory buffer on every save was a ~main-thread stall on the save
+// interval; persisting the tail keeps writes small while logs survive restarts.
+const MAX_PERSISTED_ENTRIES = 1_000;
 const STORAGE_KEY = 'freemocap_log_store';
-const AUTO_SAVE_INTERVAL_MS = 5_000;
+// Longer interval (was 5s) so the synchronous JSON.stringify + localStorage write
+// happens far less often. The dirty flag still gates writes to real changes.
+const AUTO_SAVE_INTERVAL_MS = 20_000;
 
 export type LogSnapshot = {
     entries: LogRecord[];
@@ -170,7 +176,12 @@ export class LogStore {
 
     private persistToLocalStorage(): void {
         try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(this.entries));
+            // Persist only the most recent slice — serializing all 10k entries
+            // on the main thread was the source of a periodic save-interval stall.
+            const toPersist = this.entries.length > MAX_PERSISTED_ENTRIES
+                ? this.entries.slice(this.entries.length - MAX_PERSISTED_ENTRIES)
+                : this.entries;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
             this.dirty = false;
         } catch {
             // localStorage full or unavailable — silently ignore

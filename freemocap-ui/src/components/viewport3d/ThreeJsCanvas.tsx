@@ -33,6 +33,19 @@ VIEWPORT_WORKER.addEventListener("messageerror", (e) =>
   console.error("[ThreeJsCanvas] worker messageerror", e),
 );
 
+// Vite HMR re-evaluates this module on every edit. Without disposing, each hot
+// update spawns a NEW worker (its own WebGL context + Three scene) while the old
+// one keeps running forever — a worker/context leak across a dev session that
+// inflates heap and the Documents/worker counts in the profiler.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => VIEWPORT_WORKER.terminate());
+}
+
+// Shared across mounts: a deferred teardown handle. React.StrictMode unmounts and
+// immediately remounts in dev; we schedule the worker teardown on unmount and let
+// the remount cancel it, so it only actually fires on genuine navigation away.
+let pendingViewportTeardown: ReturnType<typeof setTimeout> | null = null;
+
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
   useEffect(() => {
@@ -137,6 +150,26 @@ export function ThreeJsCanvas() {
       },
       [offscreen],
     );
+  }, []);
+
+  // Tear down the worker's Three root on unmount so its WebGL context + scene are
+  // released while the viewport isn't shown. Kept in its own effect (not coupled
+  // to the transfer-once init effect, which early-returns on a StrictMode remount
+  // and would otherwise never register a cleanup). The teardown is deferred and
+  // canceled by an immediate remount, so StrictMode's dev double-invoke doesn't
+  // kill the live scene — only real navigation away triggers it. The worker also
+  // disposes any prior root on the next `init`, so re-entry rebuilds cleanly.
+  useEffect(() => {
+    if (pendingViewportTeardown !== null) {
+      clearTimeout(pendingViewportTeardown);
+      pendingViewportTeardown = null;
+    }
+    return () => {
+      pendingViewportTeardown = setTimeout(() => {
+        VIEWPORT_WORKER.postMessage({ type: "teardown" });
+        pendingViewportTeardown = null;
+      }, 0);
+    };
   }, []);
 
   useEffect(() => {

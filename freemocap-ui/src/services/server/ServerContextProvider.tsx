@@ -273,7 +273,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         mediapipeObs,
                     ).then(compositeBitmap => {
                         canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, compositeBitmap);
-                    }).catch(err => console.error('Overlay error for camera', frameData.cameraId, err));
+                    }).catch(err => {
+                        // On the success path the source bitmap is closed inside
+                        // the overlay renderer; on error it may not be, so close it
+                        // here to avoid leaking a decoded frame (close() is a no-op
+                        // if it was already closed mid-composite).
+                        frameData.bitmap.close();
+                        console.error('Overlay error for camera', frameData.cameraId, err);
+                    });
                 } else {
                     canvasManagerRef.current!.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
                 }

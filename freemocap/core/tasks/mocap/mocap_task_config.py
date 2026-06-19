@@ -38,23 +38,3 @@ class PosthocMocapPipelineConfig(BaseModel):
         description="If True, open the .blend file in Blender after export completes.",
     )
 
-
-    @classmethod
-    def default_realtime(cls) -> "PosthocMocapPipelineConfig":
-        # return cls(detector_config=RTMPoseDetectorConfig())
-        return cls(skeleton_detector_config=RTMPoseDetectorConfig())
-
-    @classmethod
-    def default_posthoc(cls) -> "PosthocMocapPipelineConfig":
-        return cls(skeleton_detector_config=RTMPoseDetectorConfig())
-
-    # @classmethod
-    # def default_realtime(cls) -> "PosthocMocapPipelineConfig":
-    #     # return cls(detector_config=RTMPoseDetectorConfig())
-    #     return cls(detector_config=MediapipeDetectorConfig(
-    #         pose_config=MediapipePoseConfig(model_complexity=MediapipePoseModelComplexity.LITE)
-    #     ))
-    #
-    # @classmethod
-    # def default_posthoc(cls) -> "PosthocMocapPipelineConfig":
-    #     return cls(detector_config=LegacyMediapipeDetectorConfig())

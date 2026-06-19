@@ -190,7 +190,7 @@ def _run_mocap_and_wait(
     pipeline_manager: PosthocPipelineManager,
     calibration_toml_path_override: str | None,
 ) -> None:
-    mocap_config = PosthocMocapPipelineConfig.default_posthoc()
+    mocap_config = PosthocMocapPipelineConfig()
     if calibration_toml_path_override is not None:
         mocap_config = mocap_config.model_copy(
             update={"calibration_toml_path": calibration_toml_path_override}

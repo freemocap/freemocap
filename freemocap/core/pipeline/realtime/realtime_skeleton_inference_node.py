@@ -356,6 +356,12 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
         engine_cache_dir=inf_config.engine_cache_dir,
         max_batch_size=inf_config.max_batch_size,
         on_provider_missing="fallback" if inf_config.fallback_on_missing_provider else "raise",
+        # Forward the per-frame detector knobs that the centralized path would
+        # otherwise drop. `max_persons` bounds the pose batch (single-person =
+        # 1 crop/camera) so the ONNX arena can't grow without limit; `device_id`
+        # lets an explicit GPU choice override auto-selection.
+        max_persons=skel_config.max_persons,
+        device_id=skel_config.device_id,
     )
 
     try:

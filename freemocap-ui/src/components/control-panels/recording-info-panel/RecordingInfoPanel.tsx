@@ -31,7 +31,7 @@ import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecor
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
 import { useServer } from "@/services/server/ServerContextProvider";
-import { getTimestampString } from "@/components/control-panels/recording-info-panel/getTimestampString";
+import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
 import { RecordingPathModal } from "./RecordingPathModal";
 import TextSelector from "@/components/ui-components/TextSelector";

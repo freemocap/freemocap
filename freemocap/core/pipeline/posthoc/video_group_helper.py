@@ -375,7 +375,7 @@ class VideoGroupHelper(BaseModel):
     def frame_count(self) -> int:
         frame_counts = {video.metadata.frame_count for video in self.videos.values()}
         if len(frame_counts) != 1:
-            raise ValueError("All videos in VideoGroup must have the same frame count.")
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
         return list(frame_counts)[0]
 
     @model_validator(mode="after")
@@ -383,7 +383,7 @@ class VideoGroupHelper(BaseModel):
         if len(self.videos) == 0:
             raise ValueError("VideoGroup must contain at least one video.")
         if len(set(video.metadata.frame_count for video in self.videos.values())) != 1:
-            raise ValueError("All videos in VideoGroup must have the same frame count.")
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
         return self
 
     @classmethod
@@ -401,9 +401,15 @@ class VideoGroupHelper(BaseModel):
         indices = [pv.camera_index for pv in parsed_list]
         reindex_applied = -1 in indices or len(set(indices)) < len(indices)
         if reindex_applied:
+            filename_index_list = ", ".join(
+                f"{path.name} (idx={pv.camera_index}, id={pv.camera_id})"
+                for pv, path in zip(parsed_list, paths)
+            )
             logger.warning(
                 f"Camera indices are ambiguous or colliding ({indices}); "
                 f"re-assigning by alphabetical filename order. "
+                f"This usually means the folder contains videos from more than one recording "
+                f"(stale/leftover files). Files: {filename_index_list}. "
                 f"Verify the camera_id → video mapping is correct."
             )
             for i, pv in enumerate(parsed_list):
@@ -501,6 +507,27 @@ class VideoGroupHelper(BaseModel):
         for camera_id in self.camera_ids:
             lines.append(f"    {camera_id}")
         return "\n".join(lines)
+
+
+def _frame_count_mismatch_detail(videos: dict[CameraIdString, "VideoHelper"]) -> str:
+    """Build a diagnostic message listing each video's frame count.
+
+    A frame-count mismatch almost always means the videos folder contains clips from more
+    than one recording session (e.g. stale/leftover files from a previous capture), so the
+    glob picked up an incoherent set. The terse "all videos must have the same frame count"
+    message hid that; this spells out exactly which files disagree.
+    """
+    lines = [
+        f"    {camera_id}: {video.metadata.frame_count} frames  ({video.video_path})"
+        for camera_id, video in videos.items()
+    ]
+    return (
+        "All videos in a VideoGroup must have the same frame count, but they differ:\n"
+        + "\n".join(lines)
+        + "\nThis usually means the synchronized_videos/ folder contains videos from more "
+        "than one recording (stale or leftover files). Check for and remove videos that do "
+        "not belong to this recording."
+    )
 
 
 def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:

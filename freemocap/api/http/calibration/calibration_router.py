@@ -5,6 +5,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, ConfigDict
+from skellycam.core.recorders.videos.parse_video_filename import VIDEO_EXTENSIONS
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
@@ -82,6 +83,45 @@ class CalibrateRecordingResponse(BaseModel):
     pipeline_id: str | None = None
 
 
+# ==================== Helpers ====================
+
+
+def _reject_if_recording_directory_not_empty(recording_info: RecordingInfo) -> None:
+    """Refuse to start a NEW calibration recording into a directory that already holds videos.
+
+    Starting a recording in a populated `synchronized_videos/` would mix videos from
+    different capture sessions (different camera sets / frame counts), which silently breaks
+    the posthoc calibration pipeline. Under normal operation the frontend mints a fresh
+    timestamped directory, so this only fires on a regression or a misbehaving client.
+
+    Builds the path manually rather than via `RecordingInfo.videos_folder` /
+    `full_recording_path`, because those properties `mkdir(...)` as a side effect and a
+    refusal must not create empty directories.
+    """
+    videos_dir = (
+        Path(recording_info.recording_directory).expanduser()
+        / recording_info.recording_name
+        / "synchronized_videos"
+    )
+    if not videos_dir.is_dir():
+        return
+    existing_videos = sorted(
+        p for p in videos_dir.iterdir()
+        if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+    )
+    if existing_videos:
+        file_list = ", ".join(p.name for p in existing_videos)
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Refusing to start a calibration recording in '{videos_dir.parent}': its "
+                f"synchronized_videos/ already contains {len(existing_videos)} video file(s) "
+                f"({file_list}). Starting a new recording here would mix videos from different "
+                f"sessions. Use a fresh recording directory."
+            ),
+        )
+
+
 # ==================== Endpoints ====================
 
 
@@ -92,9 +132,12 @@ async def start_calibration_recording(
     """Start calibration recording with given config."""
     try:
         recording_info = request.to_recording_info()
+        _reject_if_recording_directory_not_empty(recording_info)
         await get_freemocap_app().start_recording_all(recording_info=recording_info)
         logger.info(f"Starting calibration recording: {recording_info}")
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception(f"Error starting calibration recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))

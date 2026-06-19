@@ -6,6 +6,7 @@ import {serverUrls} from "@/services";
 import {electronIpc} from "@/services/electron-ipc/electron-ipc";
 import type {LoadedCalibration} from "./calibration-slice";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 
 export const loadCalibrationForRecording = createAsyncThunk<
     LoadedCalibration | null,
@@ -70,11 +71,18 @@ export const startCalibrationRecording = createAsyncThunk<
         try {
             const state = getState();
             const calibrationTaskConfig = state.calibration.config;
-            const calibrationRecordingDirectory = selectCalibrationRecordingPath(state);
 
-            if (!calibrationRecordingDirectory) {
-                return rejectWithValue('Recording directory is not set');
+            // Starting a calibration recording is a NEW capture, so it must mint a fresh
+            // timestamped directory — NOT reuse the currently selected/active recording path
+            // (that's what `calibrateRecording` does, to re-process an existing recording).
+            // Using the active path here let new videos pile into an old recording folder,
+            // mixing camera sets / frame counts and breaking posthoc calibration.
+            const recordingsRoot = state.recording.recordingDirectory;
+            if (!recordingsRoot) {
+                return rejectWithValue('Recordings directory is not set');
             }
+            const base = recordingsRoot.replace(/[\\/]+$/, '');
+            const calibrationRecordingDirectory = `${base}/${getTimestampString()}_calibration`;
 
             console.log('🎬 Starting calibration recording with:', {
                 calibrationRecordingDirectory,

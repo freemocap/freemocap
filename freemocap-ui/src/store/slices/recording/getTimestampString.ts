@@ -1,3 +1,11 @@
+/**
+ * Generate a filesystem-safe recording timestamp like `2026-06-18_19-42-31_GMT-4`.
+ *
+ * This is the single source of truth for new-recording timestamps. It is used both
+ * for the live "what will the next recording be called" preview and to mint a fresh
+ * recording id at the moment a capture actually starts. Import this rather than
+ * re-implementing the format.
+ */
 export const getTimestampString = (): string => {
     const now = new Date();
 
@@ -20,10 +28,5 @@ export const getTimestampString = (): string => {
         partMap[part.type] = part.value;
     });
 
-    return `${partMap.year}-${partMap.month}-${partMap.day}_${
-        partMap.hour
-    }-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(
-        ":",
-        ""
-    )}`;
+    return `${partMap.year}-${partMap.month}-${partMap.day}_${partMap.hour}-${partMap.minute}-${partMap.second}_${partMap.timeZoneName.replace(":", "")}`;
 };

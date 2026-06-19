@@ -15,6 +15,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development vite",
     "build": "tsc && vite build && electron-builder",
+    "build:dev": "tsc && vite build && electron-builder --config.mac.hardenedRuntime=false --config.mac.notarize=false",
     "preview": "vite preview",
     "pree2e": "vite build --mode=test",
     "e2e": "playwright test"

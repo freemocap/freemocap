@@ -39,6 +39,8 @@
   "mac": {
     "icon": "../shared/freemocap-logo/freemocap-logo.png",
     "category": "public.app-category.video",
+    "entitlements": "entitlements.mac.plist",
+    "entitlementsInherit": "entitlements.mac.plist",
     "target": [
       {
         "target": "dmg",

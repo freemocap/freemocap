@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import clsx from "clsx";
 import SegmentedControl from "@/components/ui-components/SegmentedControl";
-import Checkbox from "@/components/ui-components/Checkbox";
 import type { PlaybackSettings } from "./SyncedVideoPlayer";
 import { useTranslation } from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";

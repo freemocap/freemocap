@@ -20,6 +20,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
+from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
@@ -172,6 +173,11 @@ class CalibrationStateTracker:
         or None if no valid calibration is loaded or triangulation failed.
         """
         if not self.is_valid:
+            # Single-camera: projection doesn't need calibration
+            if len(frame_observations_by_camera) == 1:
+                obs = next(iter(frame_observations_by_camera.values()))
+                self._consecutive_failure_count = 0
+                return project_2d_observation_to_3d(observation=obs)
             return None
 
         if triangulation_config is None:
@@ -197,8 +203,13 @@ class CalibrationStateTracker:
                     )
                 matched_obs_by_cam[self._cam_id_name_cache[cam_id]] = obs
 
-            if len(matched_obs_by_cam) < 2:
+            if len(matched_obs_by_cam) == 0:
                 return {}
+            if len(matched_obs_by_cam) == 1:
+                obs = next(iter(matched_obs_by_cam.values()))
+                result = project_2d_observation_to_3d(observation=obs)
+                self._consecutive_failure_count = 0
+                return result
 
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.

@@ -475,7 +475,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 filtered_keypoints: dict[str, np.ndarray] = {}
                 skeleton_keypoints: dict[str, np.ndarray] = {}
                 rigid_body_poses: dict[str, RigidBodyPose] = {}
-                if calibration.is_valid and aggregator_config.triangulation_enabled:
+                if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
                         cam_id: output.skeleton_observation

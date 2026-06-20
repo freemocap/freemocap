@@ -798,6 +798,9 @@ a.link:hover {
 .br-5 {
   border-radius: 18px;
 }
+.br-100 {
+  border-radius: 100%;
+}
 
 /* =========================
    BORDER SIZES

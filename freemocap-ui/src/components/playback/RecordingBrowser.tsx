@@ -348,9 +348,9 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
     <div className="playback-file-directory-inner-content flex playback-page-content pos-rel flex flex-col h-full overflow-hidden">
       {/* Folder selector */}
       <div className="load-group bg-middark br-1 p-1 flex flex-start flex-wrap gap-1 items-center">
-        <div className="flex flex-col flex-start items-center w-full gap-2">
+        {/* <div className="flex flex-col flex-start items-center w-full gap-2"> */}
           <div className="recording-list-header flex gap-1 flex-row flex-wrap justify-content-space-between w-full">
-              <div className="flex flex-row gap-1">
+              <div className="folder-directory-title-group flex flex-row gap-1">
 
               <SubactionHeader text="Folder Directory" />
               <div className="n-list-counter flex items-center flex-row">
@@ -409,7 +409,20 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                   </option>
                 ))}
               </select>
-              <IconButton
+              
+            </div>
+          </div>
+          <div className="folder-path-selection-group flex gap-1 flex-row flex-nowrap items-center flex-row justify-content-space-between w-full">
+            <ButtonSm
+              iconClass="subfolder-icon"
+              text={manualPath || "Select recording folder"}
+              onClick={handleBrowseDirectory}
+              title="Click to select recording folder"
+              disabled={!isElectron}
+              className="select-path bg-middark min-w-0 border-1 w-full border-mid-black"
+              textClass="text-gray text-nowrap text md text-align-left flex flex-end"
+            />
+            <IconButton
                 title={t("refresh")}
                 icon="rotate-icon"
                 className="icon-size-25"
@@ -419,19 +432,9 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                 onClick={() => fetchRecordings(true)}
                 disabled={isLoadingList}
               />
-            </div>
           </div>
-          <ButtonSm
-            iconClass="subfolder-icon"
-            text={manualPath || "Select recording folder"}
-            onClick={handleBrowseDirectory}
-            title="Click to select recording folder"
-            disabled={!isElectron}
-            className="select-path bg-middark flex-1 w-full min-w-full border-1 border-mid-black min-w-0"
-            textClass="recording-path-preview text-wrap flex-1 min-w-0 text md"
-          />
         </div>
-      </div>
+      {/* </div> */}
 
       {error && (
         <p className="pl-2 flex flex-row text md tagtext-error">{error}</p>
@@ -691,7 +694,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
           <IconButton
             title={expanded ? "Hide folder detail" : "Show folder detail"}
             icon="arrowdown-icon"
-            className="pos-abs top-2 right-0 icon-size-25 "
+            className="pos-abs top-2 right-2 icon-size-25 br-100"
             onClick={toggleExpand}
             style={{
               transform: expanded ? "rotate(180deg)" : "rotate(0deg)",

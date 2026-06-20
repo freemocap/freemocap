@@ -9,49 +9,52 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # API Boundary
 
-This page documents the complete contract between the React frontend and the Python backend. Everything here is observable from the frontend side — the backend internals that implement these endpoints are documented (eventually) in the Backend Architecture page.
+This page documents the complete contract between the React frontend and the Python backend. Everything here is observable from the frontend side — the backend internals that implement these endpoints are documented in the Backend Architecture pages.
 
 ## REST API Reference
 
 Base URL: `http://localhost:53117` (configurable via `ServerUrls` singleton).
 
-### Camera Management
+### Camera Management (SkellyCam)
 
 ```
 POST    /skellycam/camera/detect
         Detect connected USB cameras.
-        Response: { cameras: [{ id, name, index, capabilities }] }
+        Response: DetectedCamerasResponse { cameras: CameraDeviceInfo[] }
+        CameraDeviceInfo: { camera_id, index, name, vendor_id, product_id, path, backend_id, backend_name }
 
 POST    /skellycam/camera/group/apply
         Connect to cameras with desired configurations.
-        Body: { configs: CameraConfig[] }
-        Response: { cameras: Camera[] }
+        Body: CameraGroupCreateRequest { camera_configs: dict[CameraIdString, CameraConfig] }
+        Note: field is camera_configs (not configs), and it's a dict keyed by camera ID, not an array.
 
 DELETE  /skellycam/camera/group/close/all
         Disconnect all cameras.
-
-POST    /skellycam/camera/update
-        Update a single camera's configuration.
-        Body: { camera_id, config: CameraConfig }
 
 GET     /skellycam/camera/group/all/pause_unpause
         Toggle pause state of all camera streams.
 
 GET     /skellycam/camera/microphone/detect
         Detect available microphones.
-        Response: { microphones: [{ id, name }] }
+        Response: DetectedMicrophonesResponse { microphones: dict[int, str] }
+        Note: response is a dict mapping index→name, not a list of {id, name} objects.
 ```
+
+<Tip shortInfo="There is no POST /skellycam/camera/update endpoint. Camera configuration updates flow through the camera group apply/reapply cycle." />
 
 ### Recording
 
 ```
 POST    /skellycam/camera/group/all/record/start
         Start recording on all connected cameras.
-        Body: { recording_name, directory, config }
+        Body: StartRecordingRequest { recording_name, recording_directory, mic_device_index }
 
 GET     /skellycam/camera/group/all/record/stop
         Stop recording on all cameras.
-        Response: { recording_id, duration, file_sizes }
+        Response: list[StopRecordingResponse]
+        Each entry: { recording_name, recording_path, number_of_cameras, number_of_frames,
+                      total_duration_sec, mean_framerate, mean_inter_camera_sync_ms,
+                      framerate_stats, frame_duration_stats, inter_camera_grab_range_ms_stats }
 ```
 
 ### Playback
@@ -59,11 +62,14 @@ GET     /skellycam/camera/group/all/record/stop
 ```
 GET     /freemocap/playback/recordings
         List all available recordings.
-        Response: { recordings: [{ id, name, path, size, duration, fps, camera_count }] }
+        Response: list[RecordingListEntry]
+        Each entry: { name, path, video_count, total_size_bytes, created_timestamp,
+                      total_frames, duration_seconds, fps, status_summary, status, layout_validation }
 
 GET     /freemocap/playback/{recording_id}/videos
         List videos for a recording.
-        Response: { videos: [{ video_id, camera_id, path, duration, fps }] }
+        Response: VideoSourcesResponse { preferred_source, sources: { "annotated": VideoSourceInfo, "synchronized": VideoSourceInfo } }
+        Each VideoSourceInfo: { video_id, filename, size_bytes, stream_url }
 
 GET     /freemocap/playback/{recording_id}/videos/{video_id}
         Stream a video file (supports HTTP Range for seeking).
@@ -76,12 +82,28 @@ GET     /freemocap/playback/{recording_id}/videos/{video_id}/timestamps
         Get timestamps for a specific video.
 
 GET     /freemocap/playback/{recording_id}/status
-        Get playback availability status.
-        Response: { has_blend_file, has_annotated_videos, stages[], synchronized_video_count }
+        Get playback availability status (full RecordingStatus model).
 
 GET     /freemocap/playback/{recording_id}/bundle
-        Get full playback bundle (videos, timestamps, calibration, tracker schema).
-        Response: { fps, total_frames, duration, sources, timestamps, calibration, tracker_schema }
+        Get full playback bundle.
+        Response: RecordingBundle { recording_id, recording_fps, total_frames, duration_seconds,
+                                    videos: VideoSourcesResponse, timestamps, calibration,
+                                    tracker_schema, status_summary }
+
+GET     /freemocap/playback/{recording_id}/parquet
+        Serve the recording's freemocap_data_by_frame.parquet file.
+
+GET     /freemocap/playback/{recording_id}/calibration
+        Return parsed camera calibration/pose data from the recording's calibration TOML.
+
+GET     /freemocap/playback/{recording_id}/tracker-schema
+        Return the tracker schema (tracked points + connections) for a recording.
+
+GET     /freemocap/playback/viewer (include_in_schema=False)
+        Serve the parquet skeleton viewer HTML page.
+
+GET     /freemocap/playback/parquet (include_in_schema=False)
+        Serve a parquet file by absolute path query parameter.
 ```
 
 ### Calibration
@@ -89,7 +111,7 @@ GET     /freemocap/playback/{recording_id}/bundle
 ```
 POST    /freemocap/calibration/recording/start
         Start a calibration recording.
-        Body: { charuco_config, recording_directory }
+        Body: CalibrateRecordingRequest { calibrationTaskConfig, calibrationRecordingDirectory }
 
 POST    /freemocap/calibration/recording/stop
         Stop the calibration recording.
@@ -104,7 +126,7 @@ POST    /freemocap/calibration/recording/calibrate
 ```
 POST    /freemocap/mocap/recording/start
         Start a mocap recording.
-        Body: { detector_config, filter_config, recording_directory }
+        Body: StartMocapRecordingRequest { mocapRecordingDirectory, mocapTaskConfig }
 
 POST    /freemocap/mocap/recording/stop
         Stop the mocap recording.
@@ -119,7 +141,7 @@ POST    /freemocap/mocap/recording/process
 ```
 POST    /freemocap/realtime/apply
         Create or update the realtime pipeline.
-        Body: { pipeline_config }
+        Body: RealtimePipelineConnectRequest { cameraConfigs, realtimeCameraIds, realtimeConfig }
 
 DELETE  /freemocap/realtime/all/close
         Close the realtime pipeline.
@@ -128,10 +150,10 @@ DELETE  /freemocap/realtime/all/close
 ### Posthoc Pipeline Control
 
 ```
-POST    /freemocap/posthoc/pipeline/{pipeline_id}
+DELETE  /freemocap/posthoc/pipeline/{pipeline_id}
         Stop a specific running pipeline.
 
-POST    /freemocap/posthoc/pipeline
+DELETE  /freemocap/posthoc/pipeline
         Stop all running pipelines.
 ```
 
@@ -140,26 +162,41 @@ POST    /freemocap/posthoc/pipeline
 ```
 GET     /freemocap/blender/detect
         Find installed Blender executables.
-        Response: { blender_exe_path, version }
+        Response: DetectBlenderResponse { blender_exe_path, found, message }
+
+POST    /freemocap/blender/addon/install
+        Install the freemocap_blender_addon into detected Blender.
+        Body: InstallAddonRequest
 
 POST    /freemocap/blender/export
         Export recording to .blend file.
-        Body: { recording_id, blender_exe_path }
+        Body: ExportToBlenderRequest { recordingFolderPath, blenderExePath, autoOpenBlendFile }
         Response: { blend_file_path }
 
-GET     /freemocap/blender/open
-        Open a .blend file in Blender.
-        Body: { blend_file_path }
+POST    /freemocap/blender/open
+        Open a recording's .blend file in Blender.
+        Body: OpenInBlenderRequest { recordingFolderPath, blenderExePath }
 ```
 
 ### System
 
 ```
 GET     /health
-        Health check. Returns 200 if server is running.
+        Health check. Returns "Hello" with 200.
 
 GET     /shutdown
         Gracefully shut down the server.
+```
+
+### SkellyCam Playback Router (undocumented in frontend)
+
+The skellycam package also mounts its own playback router under `/skellycam/playback/`:
+```
+GET     /skellycam/playback/recordings
+GET     /skellycam/playback/{recording_id}/videos
+GET     /skellycam/playback/{recording_id}/videos/{video_id}
+GET     /skellycam/playback/{recording_id}/timestamps
+GET     /skellycam/playback/{recording_id}/videos/{video_id}/timestamps
 ```
 
 <Tip shortInfo="The API is evolving toward a recording-centric structure. See the API Notes page for the planned restructuring around /freemocap/recordings/{id}/... endpoints." />
@@ -168,30 +205,60 @@ GET     /shutdown
 
 WebSocket URL: `ws://localhost:53117/websocket/connect`
 
+<Tip shortInfo="A second WebSocket endpoint exists at ws://localhost:53117/skellycam/websocket/connect for skellycam-specific communication. It runs a separate WebsocketServer class." />
+
 ### Server → Client Messages
 
 #### Binary Messages
 
 **Frame Message** (msgType `0x00`)
 ```
-Byte 0:     Message type (0x00 = image frame)
-Bytes 1-4:  Frame number (uint32, little-endian)
-Bytes 5+:   JPEG image data
+Payload Header (16 bytes):
+  Byte 0:     message_type = 0 (PAYLOAD_HEADER)
+  Bytes 1-8:  frame_number (int64, little-endian)
+  Bytes 9-12: number_of_cameras (int32)
+
+Per camera:
+  Frame Header (44 bytes):
+    Byte 0:     message_type = 1 (FRAME_HEADER)
+    Bytes 1-8:  frame_number (int64)
+    Bytes 9-24: camera_id (string, 16 bytes)
+    Bytes 25-28: camera_index (int32)
+    Bytes 29-32: image_width (int32)
+    Bytes 33-36: image_height (int32)
+    Bytes 37-40: color_channels (int32)
+    Bytes 41-44: jpeg_string_length (int32)
+  JPEG data (jpeg_string_length bytes)
+
+Payload Footer (16 bytes): mirrors header with message_type = 2
 ```
 
 **Keypoints Message** (msgType `0x03`)
 ```
-Byte 0:     Message type (0x03 = keypoints)
-Bytes 1+:   Keypoints payload (interleaved Float32Array)
+Payload Header (24 bytes):
+  Byte 0:     message_type = 3 (KEYPOINTS_HEADER)
+  Bytes 1-8:  frame_number (int64)
+  Bytes 9-12: num_blocks (uint32)
+
+Per block:
+  Block Header (44 bytes):
+    message_type = 4, block_kind, dtype_code, dims,
+    camera_id (string, 16 bytes), tracker_id (string, 32 bytes),
+    num_points (uint32), data_byte_length (uint32)
+  Block Data: interleaved x/y(/z)/visibility per point, row-major
+
+Payload Footer (24 bytes): message_type = 5
 ```
+
+<Tip shortInfo="The binary keypoints protocol is gated behind an environment variable. When disabled, keypoints are sent via JSON frontend_payload messages instead. The binary format is defined in api/websocket/binary_keypoints_protocol.py (124 lines)." />
 
 #### JSON Messages
 
 **Log Message**
 ```json
 {
-    "type": "log",
-    "level": "INFO",
+    "message_type": "log_record",
+    "levelname": "INFO",
     "message": "Camera 0 connected",
     "timestamp": 1623456789.123
 }
@@ -201,16 +268,17 @@ Log levels: `TRACE`, `DEBUG`, `INFO`, `SUCCESS`, `API`, `WARNING`, `ERROR`, `CRI
 **Framerate Message**
 ```json
 {
-    "type": "framerate",
-    "fps": 29.97,
-    "server_fps": 30.0
+    "message_type": "framerate_update",
+    "camera_group_id": "group_1",
+    "backend_framerate": { "fps": 29.97, "frame_count": 120, ... },
+    "frontend_framerate": { "fps": 29.95, "frame_count": 119, ... }
 }
 ```
 
 **Frontend Payload**
 ```json
 {
-    "type": "frontend_payload",
+    "message_type": "frontend_payload",
     "payload_type": "keypoints_raw | keypoints_filtered | rigid_body_poses | charuco_overlays | skeleton_overlays | pupil_data",
     "data": { ... }
 }
@@ -219,38 +287,58 @@ Log levels: `TRACE`, `DEBUG`, `INFO`, `SUCCESS`, `API`, `WARNING`, `ERROR`, `CRI
 **Posthoc Progress**
 ```json
 {
-    "type": "posthoc_progress",
+    "message_type": "posthoc_progress",
     "pipeline_id": "cal_abc123",
     "pipeline_type": "calibration | mocap",
     "phase": "processing_videos",
-    "progress": 45.5,
+    "progress_fraction": 0.455,
     "detail": "Processing video 3/6",
     "recording_name": "my_recording"
 }
 ```
+Note: `progress_fraction` is a float from 0.0 to 1.0 (not a percentage).
 
 Pipeline phases: `queued` → `setting_up` → `processing_videos` → `aggregating` → `finalizing` → `complete` (or `failed`).
 
-**Tracker Schema**
+**Tracker Schemas**
 ```json
 {
-    "type": "tracker_schema",
-    "schema": {
-        "tracker_id": "mediapipe_pose",
-        "keypoint_names": ["nose", "left_eye", ...],
-        "connections": [[0, 1], [1, 2], ...]
+    "message_type": "tracker_schemas",
+    "schemas": {
+        "mediapipe_pose": {
+            "keypoint_names": ["nose", "left_eye", ...],
+            "connections": [[0, 1], [1, 2], ...]
+        }
     }
 }
 ```
+Note: message type is `"tracker_schemas"` (plural). The `schemas` field is a dict of tracker_id → TrackedObjectDefinition — multiple schemas are sent in one message.
 
 ### Client → Server Messages
 
+The client sends JSON messages to the server over the WebSocket. The critical message for backpressure is:
+
 ```json
-{ "type": "connect", "host": "localhost", "port": 53117 }
-{ "type": "disconnect" }
-{ "type": "ping" }
-{ "type": "pong" }
+{ "frameNumber": 42 }
 ```
+
+This acknowledges receipt of frame N, allowing the server to send the next batch. If the client never sends frame acknowledgments, the image relay stalls after a backpressure threshold.
+
+Other messages include `ping`/`pong` for heartbeat, and `displayImageSizes` for overlay scaling hints. The `websocket.disconnect` event is handled at the Starlette WebSocket message layer, not as a JSON message type.
+
+## Client-to-Server Frame Acknowledgment (Backpressure)
+
+The backpressure protocol is critical for realtime performance:
+
+```
+Backend produces frame N → sends to frontend
+                         → waits for ack (frame number N)
+Frontend receives frame N → processes in rAF loop
+                          → sends ack {"frameNumber": N}
+Backend receives ack → allowed to send frame N+1
+```
+
+This prevents the backend from flooding the frontend with frames faster than it can render them. The frontend acks the frame number immediately at the top of its rAF loop (before decoding), so the backend can pipeline the next batch while the frontend decodes the current one. Warnings are logged at multiples of the backpressure threshold (300 frames), and a reset clears internal state if the frontend falls too far behind.
 
 ## Error Handling Across the Boundary
 

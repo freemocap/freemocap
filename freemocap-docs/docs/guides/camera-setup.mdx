@@ -1,0 +1,93 @@
+---
+sidebar_position: 2
+title: Camera Setup
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Camera Setup
+
+FreeMoCap works with standard USB cameras. This guide covers hardware selection, physical setup, and configuration.
+
+## Supported Cameras
+
+Any USB camera accessible via OpenCV's `VideoCapture` backend should work. Tested configurations:
+
+| Camera | Resolution | FPS | Notes |
+|---|---|---|---|
+| Logitech C920 | 1080p / 720p | 30 / 60 | Widely used, reliable |
+| Logitech C922 | 1080p / 720p | 30 / 60 | Similar to C920 with better low light |
+| Logitech Brio | 4K / 1080p | 30 / 60 | Higher resolution, wider FOV |
+| Elgato Cam Link | 1080p | 60 | HDMI capture (use with DSLR/mirrorless) |
+| Generic USB webcams | Variable | Variable | May work, quality varies |
+
+<Tip shortInfo="Camera detection and configuration is handled by SkellyCam. See the SkellyCam documentation at freemocap.github.io/skellycam for detailed camera compatibility and advanced configuration." />
+
+## Camera Count Recommendations
+
+| Cameras | Quality | Use case |
+|---|---|---|
+| 2 | Basic | Single-plane motion, limited occlusion handling |
+| 3-4 | Good | General mocap, most body movements |
+| 5-6 | Better | Full-body with occlusion handling |
+| 7+ | Best | High-precision, complex movements, multiple subjects |
+
+More cameras improve triangulation accuracy and reduce occlusion issues, but increase USB bandwidth requirements and GPU load.
+
+## Physical Setup
+
+### Camera Placement
+
+- **Elevation**: Cameras should be slightly above the capture volume, angled down (~15-30°)
+- **Spacing**: Distribute cameras evenly around the capture volume. Avoid clustering cameras on one side.
+- **Distance**: Cameras should be far enough to see the full body throughout the movement range
+- **Background**: Avoid busy backgrounds — they increase false positive detections
+
+### USB Bandwidth
+
+USB cameras consume significant bandwidth. Key considerations:
+
+- Use separate USB controllers when possible (not just different ports on the same hub)
+- USB 3.0 provides more bandwidth than USB 2.0
+- Lower resolution = less bandwidth = more cameras on one controller
+- If cameras disconnect or drop frames, spread them across USB controllers
+
+### Lighting
+
+- Bright, even lighting improves detection accuracy
+- Avoid backlighting (subject dark against bright background)
+- Avoid harsh shadows that obscure body parts
+- Diffuse lighting works best
+
+## Calibration Board
+
+FreeMoCap uses a **ChArUco board** for camera calibration. You need a printed ChArUco board:
+
+- **Board files** are in `shared/charuco/` in the repository
+- Print on rigid material (foam board, cardboard) for flatness
+- Standard board: 5×7 squares, with ArUco markers in the white squares
+- The board dimensions must match the calibration config in the UI
+
+## Camera Configuration
+
+Cameras are configured through the FreeMoCap UI (sidebar → Camera Config Tree). Key settings:
+
+| Setting | Recommendation |
+|---|---|
+| Resolution | 720p (good balance of quality and bandwidth) |
+| Framerate | 30 FPS minimum, 60 FPS for fast movements |
+| Exposure | Manual, fixed (auto-exposure changes during recording cause calibration drift) |
+| Focus | Manual, fixed on the capture volume |
+| White balance | Manual, fixed |
+
+<Tip shortInfo="Fixed exposure and focus are critical for calibration stability. If auto-exposure changes mid-session, the calibration can drift because the detected feature positions shift with brightness changes." />
+
+## Multiple Camera Synchronization
+
+FreeMoCap uses software synchronization — cameras are not hardware-genlocked. Frame timestamps are aligned in post-processing using the recording's inter-camera timing data. For best results:
+
+- Use cameras that support consistent framerates (not variable frame rate)
+- Keep recording sessions under 30 minutes to minimize sync drift
+- The `mean_inter_camera_sync_ms` metric in recording responses shows sync quality

@@ -55,7 +55,7 @@ All pipeline components inherit from a shared set of ABCs in `core/pipeline/abcs
 Every node in a pipeline (source or aggregator) extends `BaseNode`. It provides:
 
 - **Lifecycle**: `start()` spawns a child process via `ManagedWorker`; `shutdown()` signals it to stop; `is_alive` checks if the process is still running
-- **Shutdown signal**: Each node holds a `shutdown_self_flag` (`multiprocessing.Event`) checked in its main loop
+- **Shutdown signal**: Each node holds a `shutdown_self_flag` (`multiprocessing.Value('b', False)`, a synchronized bool) checked in its main loop
 - **Global kill**: Nodes also check `global_kill_flag` — the nuclear option that stops everything
 - **Windows spawn staggering**: 0.25s delay between child process starts to avoid `spawn` mode race conditions
 
@@ -79,7 +79,7 @@ Shared IPC primitives owned by each pipeline:
 | `heartbeat_timestamp` | Last heartbeat from each child node |
 | `ws_queue` | Queue for messages destined for the WebSocket |
 
-The `should_continue` property checks all three stop conditions: `not shutdown_flag.is_set() and not global_kill_flag.value and ws_queue is not None`.
+The `should_continue` property checks all three stop conditions: `not global_kill_flag.value and not pipeline_shutdown_flag.value and check_main_process_heartbeat(...)`. This ensures nodes stop if either the global kill switch is triggered, their pipeline is shut down, or the main process has died.
 
 Two shutdown authorities:
 - `shutdown_pipeline()` — stops this pipeline, leaves everything else running
@@ -120,13 +120,13 @@ RealtimePipeline.get_latest_frontend_payload() (main process)
 WebSocket → Frontend
 ```
 
-### CameraNode (`camera_node.py`, 258 lines)
+### CameraNode (`camera_node.py`, ~258 lines)
 
 Each camera gets its own child process running a `CameraNode`:
 
 1. **Reads frames** from the camera's `CameraSharedMemoryRingBuffer` (shared memory, no copy)
 2. **Blocks on `ProcessFrameNumberTopic`** — the aggregator tells it which frame to process (up to 5ms timeout)
-3. **Runs detectors inline**: `RTMPoseDetector` for skeleton, `CharucoDetector` for calibration markers
+3. **Runs detectors inline**: `RTMPoseDetector` for skeleton, `CharucoDetector` (from skellytracker) for calibration markers
 4. **Applies image rotation** from camera metadata (if the camera is physically rotated)
 5. **Verifies frame_number** matches the requested frame — detects ring buffer overwrites (camera writing faster than pipeline reads)
 6. **Publishes `CameraNodeOutputMessage`** per frame (observations + metadata)
@@ -134,7 +134,7 @@ Each camera gets its own child process running a `CameraNode`:
 
 In **centralized GPU mode**, CameraNodes skip skeleton detection — the `RealtimeSkeletonInferenceNode` handles it separately.
 
-### RealtimeSkeletonInferenceNode (`realtime_skeleton_inference_node.py`, 430 lines)
+### RealtimeSkeletonInferenceNode (`realtime_skeleton_inference_node.py`, ~435 lines)
 
 Optional dedicated GPU worker for batched ONNX inference. When enabled:
 
@@ -144,22 +144,22 @@ Optional dedicated GPU worker for batched ONNX inference. When enabled:
 4. **Calls `session.predict_batch(images)`** — one ONNX `session.run` per multi-camera frame
 5. **Publishes `SkeletonInferenceResultMessage`** — per-camera skeleton observations keyed by frame_number
 6. **GPU OOM recovery**: catches `MemoryError`, rebuilds session (up to 3 retries), skips the affected frame
-7. **TensorRT engine compilation** on first run (1–3 minutes, cached on subsequent runs)
+7. **TensorRT engine compilation** available when configured with execution provider `"trt"` (1–3 minutes on first run, cached on subsequent runs). The default execution provider is `"cuda"`.
 
-### RealtimeAggregatorNode (`realtime_aggregator_node.py`, 621 lines)
+### RealtimeAggregatorNode (`realtime_aggregator_node.py`, ~621 lines)
 
 The aggregator is where the real work happens. It runs as a child process:
 
-1. **Owns a `CalibrationStateTracker`** for hot-reloadable calibration (loads on creation, polls for changes every 1s)
+1. **Owns a `CalibrationStateTracker`** for hot-reloadable calibration (loads on creation, polls for changes when called)
 2. **Collects `CameraNodeOutputMessage`** from all cameras (blocks up to 5ms per camera)
 3. **In GPU mode**: waits for `SkeletonInferenceResultMessage`, splices per-camera skeletons into camera outputs
 4. **Optimistically requests next frame** before processing the current one (parallelism: cameras work on frame N+1 while aggregator processes frame N)
-5. **Triangulation**: DLT via `Triangulator`, reprojection error gating
+5. **Triangulation**: DLT via `calibration.try_angulate()` (which uses the `Triangulator` class internally), reprojection error gating
 6. **Filtering pipeline**: `SimpleRealtimeKeypointFilter` (OneEuro on raw) → `RealtimePointGate` (velocity check) → `RealtimeSkeletonFilter` (OneEuro + FABRIK bone constraint)
 7. **All processing in `dict[str, ndarray]`** until final `Point3d` conversion (avoids per-point object overhead)
 8. **Backpressure**: `result_ready_event` / `result_consumed_event` pair — the aggregator waits for the main process to consume the previous result before producing the next one
 
-### RealtimePipelineManager (`realtime_pipeline_manager.py`, 156 lines)
+### RealtimePipelineManager (`realtime_pipeline_manager.py`, ~156 lines)
 
 - Maintains `pipelines: dict[PipelineIdString, RealtimePipeline]`
 - **One pipeline per camera group** (singleton by camera ID set)
@@ -195,7 +195,7 @@ PosthocAggregatorNode (child process)
 Output files on disk → Playback via REST API
 ```
 
-### VideoNode (`video_node.py`, 340 lines)
+### VideoNode (`video_node.py`, ~340 lines)
 
 Each video gets a child process:
 
@@ -208,7 +208,7 @@ Each video gets a child process:
 5. **Progress per frame**: `VideoNodeProgressMessage` at each phase transition
 6. **On error**: logs exception, sends FAILED progress, calls `ipc.shutdown_pipeline()` (pipeline-local — does NOT trigger global kill)
 
-### VideoGroupHelper (`video_group_helper.py`, 555 lines)
+### VideoGroupHelper (`video_group_helper.py`, ~581 lines)
 
 Manages the set of video files for a posthoc pipeline:
 
@@ -217,7 +217,7 @@ Manages the set of video files for a posthoc pipeline:
 - **Source resolution**: prefers manifest's `videos` map (authoritative camera_id → filename); falls back to filename parsing with collision detection
 - **Validates** all videos have the same frame count
 
-### PosthocPipelineManager (`posthoc_pipeline_manager.py`, 216 lines)
+### PosthocPipelineManager (`posthoc_pipeline_manager.py`, ~216 lines)
 
 - `pipelines: dict[PipelineIdString, PosthocPipeline]`
 - **Fire-and-forget**: creates pipelines that run to completion independently
@@ -257,15 +257,34 @@ BUILDING_RECORDERS → TRIANGULATING → EXPORTING_BLENDER
 ```python
 @dataclass
 class PipelineProgressMessage:
-    pipeline_id: str
-    pipeline_type: PosthocPipelineType  # CALIBRATION or MOCAP
-    phase: str                          # Current phase enum value
-    progress_fraction: float            # 0.0 to 1.0
-    detail: str                         # Human-readable status
-    recording_name: str
-    recording_path: str
+    message_type: str = "posthoc_progress"
+    pipeline_id: str = ""
+    pipeline_type: str = ""              # "calibration" or "mocap"
+    phase: str = ""                      # Current phase enum value
+    progress_fraction: float = 0.0       # 0.0 to 1.0
+    detail: str = ""                     # Human-readable status
+    recording_name: str = ""
+    recording_path: str = ""
 ```
 
 Video node progress adds `camera_id`. Aggregator progress uses the base message. The frontend groups progress by `pipeline_id` and displays per-stage completion in the pipeline progress panel.
 
 <Tip shortInfo="Progress messages are JSON over WebSocket, not REST. This means the frontend gets live progress without polling. The frontend's rAF loop dispatches them to Redux, which triggers UI updates in the PipelineProgressPanel and PipelineProgressSnackbar components." />
+
+## Additional Pipeline Components
+
+Several pipeline components exist in the codebase without dedicated documentation sections yet:
+
+| Component | File | Lines | Purpose |
+|---|---|---|---|
+| `RealtimePipeline` | `realtime_pipeline.py` | ~371 | Pipeline dataclass: create, start, shutdown, config update for realtime pipelines |
+| `PosthocPipeline` | `posthoc_pipeline.py` | ~221 | Pipeline dataclass: create, start, shutdown for posthoc pipelines |
+| `PosthocAggregationNode` | `posthoc_aggregation_node.py` | ~286 | Collects all VideoNode outputs by frame, delegates to task function |
+| `CameraNodeConfig` | `camera_node_config.py` | ~25 | Pydantic model for CameraNode configuration |
+| `RealtimeAggregatorNodeConfig` | `realtime_aggregator_node_config.py` | ~24 | Pydantic model for AggregatorNode configuration |
+| `RealtimePipelineConfig` | `realtime_pipeline_config.py` | ~28 | Pydantic model for RealtimePipeline configuration |
+| `RealtimeSkeletonInferenceNodeConfig` | `realtime_skeleton_inference_node_config.py` | ~36 | Pydantic model for SkeletonInferenceNode configuration |
+| `PipelineStageTimer` | `pipeline_stage_timer.py` | ~69 | Per-node accumulator for stage timing measurements |
+| `PipelineTimingReporter` | `pipeline_timing_reporter.py` | ~291 | Subscribes to timing data, prints consolidated report tables |
+| `TaskProgressReporter` | `task_progress_reporter.py` | ~50 | Typed progress-reporting interface for task functions |
+| `SimpleRealtimeKeypointFilter` | `realtime_keypoint_filter.py` | ~123 | One Euro filter with gap-filling for realtime keypoints |

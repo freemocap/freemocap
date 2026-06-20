@@ -28,10 +28,10 @@ The Anipose solver is the workhorse of FreeMoCap calibration. It's based on the 
 **Willing to contribute back**: If the aniposelib maintainers are interested in integrating our modifications upstream, we're happy to collaborate on that. The core algorithm is the same — bundle adjustment via SciPy's `least_squares` — but the integration layer is substantially different.
 
 **Files in `core/tasks/calibration/anipose_calibration/`:**
-- `freemocap_anipose.py` — FreeMoCap interface to aniposelib
-- `run_anipose_calibration.py` — Orchestrates the full calibration pipeline
-- `bundle_adjust.py` — Bundle adjustment logic
-- `camera_model_solver_ops.py` — Camera model construction from solver output
+- `run_anipose_calibration.py` — Orchestrates the full calibration pipeline (top-level)
+- `helpers/freemocap_anipose.py` — FreeMoCap interface to aniposelib
+- `helpers/bundle_adjust.py` — Bundle adjustment logic
+- `helpers/camera_model_solver_ops.py` — Camera model construction from solver output
 
 ### PyCeres (In Development)
 
@@ -43,14 +43,20 @@ A Google Ceres-based bundle adjustment via the PyCeres wrapper. Currently in dev
 
 ## CalibrationResult Model
 
-The output of calibration is a `CalibrationResult` (Pydantic model, 220 lines):
+The output of calibration is a `CalibrationResult` (Pydantic model, ~219 lines):
 
 ```python
 class CalibrationResult(BaseModel):
     cameras: list[CameraModel]          # One per calibrated camera
     board: CharucoBoardDefinition       # Board geometry
-    reprojection_error: float           # Aggregate reprojection error (pixels)
-    solver_stats: dict                  # Solver-specific statistics
+    reprojection_error_px: float        # Aggregate reprojection error (pixels)
+    initial_cost: float                 # Initial solver cost
+    final_cost: float                   # Final solver cost
+    n_iterations: int                   # Number of solver iterations
+    time_seconds: float                 # Solver runtime
+    n_observations_used: int            # Observations accepted
+    n_observations_rejected: int        # Observations rejected
+    groundplane_aligned: bool           # Whether groundplane alignment was applied
 ```
 
 Each `CameraModel` contains:
@@ -58,14 +64,14 @@ Each `CameraModel` contains:
 - **Extrinsics**: rodrigues rotation vector, translation vector, rotation matrix
 - **World pose**: position (x, y, z) and orientation in world coordinates
 
-Serializes to / deserializes from anipose-compatible TOML format. Provides `get_triangulator()` for building a `Triangulator` from the calibration result.
+Serializes to / deserializes from anipose-compatible TOML format. Provides `get_triangulator()` and `get_triangulator_for_cameras(camera_ids)` for building `Triangulator` instances from the calibration result.
 
 ## CalibrationStateTracker (Realtime)
 
-Used by `RealtimeAggregatorNode` for live calibration during realtime sessions (`calibration_state.py`, 368 lines):
+Used by `RealtimeAggregatorNode` for live calibration during realtime sessions (`calibration_state.py`, ~378 lines):
 
 - **Optimistic load on creation**: loads the most recent calibration TOML immediately
-- **Hot-reload**: polls for file changes every 1 second — if you run a new calibration on disk, the realtime pipeline picks it up without restarting
+- **Hot-reload**: checks for file changes when `check_for_update()` is called by the aggregator's main loop (at approximately 1 second intervals)
 - **`try_angulate()`**: triangulation with reprojection error gating
   - Fast path for RTMPose observations (vectorized stacking)
   - Fallback for CharUco observations
@@ -75,7 +81,7 @@ Used by `RealtimeAggregatorNode` for live calibration during realtime sessions (
 
 ## Posthoc Calibration Task
 
-Orchestrated by `posthoc_calibration_task.py` (337 lines):
+Orchestrated by `posthoc_calibration_task.py` (~340 lines):
 
 1. Receives collected observations from all VideoNodes
 2. Validates all are `CharucoObservation`, converts to shared `CharucoCornersObservation` format

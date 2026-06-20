@@ -1,0 +1,87 @@
+---
+sidebar_position: 1
+title: GPU & ONNX Setup
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# GPU & ONNX Runtime Setup
+
+FreeMoCap uses ONNX Runtime for GPU-accelerated pose detection via RTMPose. GPU acceleration significantly improves realtime pipeline throughput — especially with multiple cameras.
+
+## How GPU Detection Works
+
+On startup, the Python backend (`freemocap/app/app.py`) detects system capabilities:
+
+- **NVIDIA GPUs**: queried via `nvidia-smi`
+- **AMD GPUs**: detected via ROCm
+- **Apple Silicon**: MPS / CoreML detection
+- **ONNX Runtime**: checks available execution providers (CUDA, TensorRT, CoreML, DirectML, CPU)
+
+The detected capabilities are logged at startup and influence which execution providers are available for pipeline configuration.
+
+## Supported Execution Providers
+
+| Provider | Hardware | Notes |
+|---|---|---|
+| **CUDA** | NVIDIA GPU | Default for NVIDIA GPUs. Requires CUDA toolkit + cuDNN. |
+| **TensorRT** | NVIDIA GPU | Optimized inference engine. 1-3 min compilation on first run, cached thereafter. Higher throughput than CUDA. |
+| **CoreML** | Apple Silicon (M1/M2/M3) | Apple Neural Engine acceleration on macOS. |
+| **DirectML** | Any GPU (Windows) | Windows GPU abstraction layer. Works with AMD, Intel, and NVIDIA. |
+| **CPU** | Any | Always available as fallback. |
+
+## Configuration
+
+### Realtime Pipeline
+
+GPU inference mode is configured in the `RealtimeSkeletonInferenceNodeConfig`:
+
+```python
+# Centralized GPU mode (one CUDA context, batched inference)
+RealtimeSkeletonInferenceNodeConfig(
+    use_centralized_inference=True,
+    execution_provider="cuda",       # or "trt", "coreml", "directml"
+    on_provider_missing="fallback",  # fall back to CPU if GPU unavailable
+)
+```
+
+When `use_centralized_inference=True`, a single `RealtimeSkeletonInferenceNode` handles skeleton detection for all cameras in one batched ONNX session — avoiding per-camera GPU context overhead.
+
+### Inline Mode (Per-Camera)
+
+When `use_centralized_inference=False`, each `CameraNode` runs its own `RTMPoseDetector` inline. This is the legacy path and uses more GPU memory but has no inter-camera dependency.
+
+## GPU OOM Recovery
+
+The `RealtimeSkeletonInferenceNode` handles GPU out-of-memory errors gracefully:
+
+1. Catches `MemoryError` during inference
+2. Destroys the current ONNX session
+3. Rebuilds the session (up to 3 retries)
+4. Skips the affected frame and continues with the next
+
+This prevents a single OOM event from killing the entire pipeline.
+
+## Performance Considerations
+
+| Mode | GPU Memory | Latency | Best for |
+|---|---|---|---|
+| Centralized GPU (CUDA) | Lower (one session) | Lower (batched) | 3+ cameras, production use |
+| Centralized GPU (TensorRT) | Lowest (optimized) | Lowest (compiled) | 4+ cameras, sustained recording |
+| Inline GPU | Higher (N sessions) | Higher (per-camera) | 1-2 cameras, quick setup |
+| CPU only | N/A | Highest | Testing, fallback |
+
+## Troubleshooting
+
+**"ONNX Runtime not finding CUDA"**
+→ Ensure CUDA toolkit and cuDNN are installed and on `PATH`. The bundled PyInstaller executable includes CUDA DLLs.
+
+**"TensorRT compilation hangs"**
+→ First run compiles TRT engines (1-3 min). Subsequent runs use cached engines. If it hangs indefinitely, switch to CUDA provider.
+
+**"GPU OOM with many cameras"**
+→ Reduce camera resolution, switch to centralized GPU mode, or use a GPU with more VRAM.
+
+<Tip shortInfo="GPU setup is automated in the bundled release — the PyInstaller spec includes CUDA DLLs. Manual GPU setup is only needed for development installs from source." />

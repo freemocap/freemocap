@@ -24,15 +24,16 @@ Every recording session — whether calibration, mocap, or both — produces a s
     │   └── annotated/             # Videos with detection overlays
     │       ├── camera_0_annotated.mp4
     │       └── ...
-    ├── output_data/               # Per-stage processed artifacts
+    ├── output/                     # Per-stage processed artifacts (canonical)
     │   ├── mediapipe_body_3d_xyz.npy
     │   ├── mediapipe_face_3d_xyz.npy
-    │   ├── mediapipe_right_hand_3d_xyz.npy
-    │   ├── mediapipe_left_hand_3d_xyz.npy
+    │   ├── mediapipe_right_hand_right_hand.npy
+    │   ├── mediapipe_left_hand_left_hand.npy
     │   ├── mediapipe_body_total_body_center_of_mass.npy
     │   ├── mediapipe_body_segment_center_of_mass.npy
     │   ├── calibration_observations.json
     │   └── ...
+    │   (legacy: output_data/ also supported for backward compatibility)
     ├── logs/                      # Per-recording log files
     ├── {name}_calibration.toml    # Authoritative calibration data
     ├── {name}_recording_info.json # Camera configs + recording type tags
@@ -42,7 +43,7 @@ Every recording session — whether calibration, mocap, or both — produces a s
 
 ## RecordingStructure Model
 
-The `RecordingStructure` Pydantic model (`system/recording_structure/recording_structure.py`, 179 lines) provides computed properties for all canonical paths:
+The `RecordingStructure` Pydantic model (`system/recording_structure/recording_structure.py`, ~178 lines) provides computed properties for all canonical paths:
 
 ```python
 class RecordingStructure(BaseModel):
@@ -57,22 +58,22 @@ class RecordingStructure(BaseModel):
     @property
     def annotated_videos_dir(self) -> Path: ...
     @property
-    def output_data_dir(self) -> Path: ...
+    def output_dir(self) -> Path: ...
     @property
     def calibration_toml_path(self) -> Path: ...
     @property
     def data_parquet_path(self) -> Path: ...
     @property
-    def blend_file_path(self) -> Path: ...
+    def blend_path(self) -> Path: ...
     @property
-    def recording_info_json_path(self) -> Path: ...
+    def recording_info_path(self) -> Path: ...
 ```
 
-`validate_layout()` checks both canonical and legacy layouts, providing backward compatibility with recordings from older versions.
+`validate_layout()` checks both canonical (`output/`) and legacy (`output_data/`) layouts, providing backward compatibility with recordings from older versions.
 
 ## Default Paths
 
-Defined in `system/default_paths.py` (84 lines):
+Defined in `system/default_paths.py` (~83 lines):
 
 | Path | Default |
 |---|---|
@@ -80,7 +81,7 @@ Defined in `system/default_paths.py` (84 lines):
 | Recordings folder | `~/freemocap_data/recordings/` |
 | Test data | `~/freemocap_data/recordings/freemocap_test_data/` |
 | Logs | `~/freemocap_data/logs_info_and_settings/logs/` |
-| Latest calibration symlink | `~/freemocap_data/last_successful_calibration.toml` |
+| Latest calibration | `~/freemocap_data/calibrations/last_successful_camera_calibration.toml` |
 
 ## Recording Info
 
@@ -99,16 +100,16 @@ This provides a self-contained record of how the recording was captured, making 
 
 ## Recording Status
 
-The `RecordingStatus` model (`system/recording_status/recording_status.py`, 256 lines) tracks which processing stages are complete for a given recording.
+The `RecordingStatus` model (`system/recording_status/recording_status.py`, ~255 lines) tracks which processing stages are complete for a given recording.
 
 ### Five Stages
 
 | Stage | What it checks | Key indicator |
 |---|---|---|
-| Raw videos | Original camera footage exists | `synchronized/` directory has video files |
+| Synchronized videos | Original camera footage exists | `synchronized_videos/` has video files |
 | Calibration | Camera parameters estimated | `{name}_calibration.toml` exists and is valid |
-| Blender inputs | Required .npy files generated | All 6 body/face/hand/COM .npy files present |
-| Annotated videos | Detection overlay videos rendered | `annotated/` directory has annotated video files |
+| Blender input data (.npy) | Required .npy files generated | All 6 body/face/hand/COM .npy files present |
+| Annotated videos | Detection overlay videos rendered | `annotated_videos/` has annotated video files |
 | Blender scene | .blend file exported | `{name}.blend` exists and is non-empty |
 
 ### Blender Export Readiness
@@ -116,8 +117,8 @@ The `RecordingStatus` model (`system/recording_status/recording_status.py`, 256 
 `blender_export_ready` is `True` when all required .npy files exist:
 ```
 mediapipe_body_3d_xyz.npy
-mediapipe_right_hand_3d_xyz.npy
-mediapipe_left_hand_3d_xyz.npy
+mediapipe_right_hand_right_hand.npy
+mediapipe_left_hand_left_hand.npy
 mediapipe_face_3d_xyz.npy
 mediapipe_body_total_body_center_of_mass.npy
 mediapipe_body_segment_center_of_mass.npy

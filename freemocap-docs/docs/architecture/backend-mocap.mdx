@@ -94,7 +94,7 @@ Estimates 6-DOF poses for body segments (e.g., torso, upper arm) from pairs of k
 
 ## Triangulation
 
-The `Triangulator` (`core/tasks/triangulation/triangulator.py`, 579 lines) is a pure DLT implementation with no anipose dependency:
+The `Triangulator` (`core/tasks/triangulation/triangulator.py`, ~578 lines) is a pure DLT implementation with no anipose dependency:
 
 1. **Precomputation**: On initialization, precomputes extrinsics matrices, rodrigues vectors, camera matrices, and distortion coefficients from the `CalibrationResult`
 2. **Undistort**: Corrects 2D observations using camera intrinsics + distortion coefficients
@@ -104,11 +104,11 @@ The `Triangulator` (`core/tasks/triangulation/triangulator.py`, 579 lines) is a 
 
 **Performance**: All operations are vectorized over P points simultaneously. `_batch_outlier_rejection()` runs O(combinations) SVD calls, not O(P × combinations).
 
-**Input formats**: Accepts `dict[camera_id, ndarray]` (single frame) or `dict[camera_id, ndarray]` where arrays are 3D (multi-frame batch).
+**Input formats**: Accepts `dict[camera_id, ndarray]` (single frame), 3D numpy arrays `(n_cameras, n_points, 2)` for single-frame batches, or 4D numpy arrays `(n_cameras, n_frames, n_points, 2)` for multi-frame batches.
 
 ## Posthoc Mocap Task
 
-Orchestrated by `posthoc_mocap_task.py` (144 lines):
+Orchestrated by `posthoc_mocap_task.py` (~150 lines):
 
 1. Receives collected observations from all VideoNodes
 2. Builds `BaseRecorder` per camera (for saving per-camera detection data)
@@ -125,8 +125,8 @@ After mocap processing, a recording folder contains:
 | File | Content |
 |---|---|
 | `mediapipe_body_3d_xyz.npy` | Body keypoints in 3D (num_frames × num_keypoints × 3) |
-| `mediapipe_right_hand_3d_xyz.npy` | Right hand keypoints |
-| `mediapipe_left_hand_3d_xyz.npy` | Left hand keypoints |
+| `mediapipe_right_hand_right_hand.npy` | Right hand keypoints |
+| `mediapipe_left_hand_left_hand.npy` | Left hand keypoints |
 | `mediapipe_face_3d_xyz.npy` | Face mesh keypoints |
 | `mediapipe_body_total_body_center_of_mass.npy` | Whole-body center of mass trajectory |
 | `mediapipe_body_segment_center_of_mass.npy` | Per-segment center of mass trajectories |
@@ -139,7 +139,7 @@ After mocap processing, a recording folder contains:
 
 Triggered after mocap processing (or manually via REST API). The export flow:
 
-1. **Checks required .npy files** exist in `output_data/`
+1. **Checks required .npy files** exist in `output/`
 2. **Detects Blender executable** (auto-detect or user-specified path)
 3. **Runs Blender in `--background` mode** with `--python run_blender_export.py`
 4. **Injects `freemocap_blender_addon`** site-packages into Blender's `sys.path` (no addon installation into Blender's user preferences needed)

@@ -22,7 +22,7 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
-from freemocap.core.pipeline.realtime.realtime_keypoint_filter import SimpleRealtimeKeypointFilter
+from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -137,9 +137,9 @@ class CameraNode(SourceNode):
                 config=config.skeleton_detector_config,
             )
 
-        keypoint_filter: SimpleRealtimeKeypointFilter | None = None
+        keypoint_filter: RealtimeKeypointFilter | None = None
         if config.enable_keypoint_filter:
-            keypoint_filter = SimpleRealtimeKeypointFilter(
+            keypoint_filter = RealtimeKeypointFilter(
                 dims=2,
                 min_cutoff=config.keypoint_filter_min_cutoff,
                 beta=config.keypoint_filter_beta,
@@ -183,7 +183,7 @@ class CameraNode(SourceNode):
 
                     # Recreate keypoint filter if config changed.
                     if new_config.enable_keypoint_filter:
-                        keypoint_filter = SimpleRealtimeKeypointFilter(
+                        keypoint_filter = RealtimeKeypointFilter(
                             dims=2,
                             min_cutoff=new_config.keypoint_filter_min_cutoff,
                             beta=new_config.keypoint_filter_beta,

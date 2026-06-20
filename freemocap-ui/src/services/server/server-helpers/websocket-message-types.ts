@@ -57,6 +57,7 @@ export interface FrontendPayloadMessage {
     keypoints_raw: Record<string, Point3d>
     keypoints_filtered: Record<string, Point3d>
     rigid_body_poses: Record<string, RigidBodyPose>;
+    center_of_mass: Point3d | null;
 }
 
 export function isFrontendPayload(data: any): data is FrontendPayloadMessage {

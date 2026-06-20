@@ -1,7 +1,7 @@
 import React, {useCallback, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
-import {Panel, PanelGroup, PanelResizeHandle} from 'react-resizable-panels';
+import {ImperativePanelGroupHandle, Panel, PanelGroup, PanelResizeHandle} from 'react-resizable-panels';
 import IconButton from '@/components/ui-components/IconButton';
 
 import {CameraConfigTreeView} from '@/components/control-panels/camera-config-panel/camera-config-tree-view/CameraConfigTreeView';
@@ -51,30 +51,32 @@ const GROWABLE_MIN_PCT = 8;
 // so one tall section can never lock out everything else.
 const CONTENT_MIN_CAP_PCT = 70;
 
-// Give each non-growable section GROWABLE_MIN_PCT at startup; the growable
-// section(s) absorb all remaining space so cameras/recordings starts at max.
-const computeDefaultSizes = (sections: readonly SectionId[]): number[] => {
-    const nonGrowableCount = sections.filter(id => !GROWABLE_SECTIONS.has(id)).length;
+// Build a panel layout (percentages that sum to 100) in which every non-growable
+// section sits at its floor — its measured content height as a percentage
+// (`minById[id]`), or GROWABLE_MIN_PCT before measurement — and the growable
+// section(s) absorb ALL remaining space. This is the "cameras maximized, nothing
+// crushed below its content" layout, used both as the first-paint default and as
+// the layout we imperatively re-assert once content has been measured.
+const computeLayout = (
+    sections: readonly SectionId[],
+    minById: Partial<Record<SectionId, number>>,
+): number[] => {
     const growableCount = sections.filter(id => GROWABLE_SECTIONS.has(id)).length;
 
     if (growableCount === 0) {
-        const each = Math.round(100 / sections.length);
-        return sections.map((_, i) =>
-            i === sections.length - 1 ? 100 - each * (sections.length - 1) : each,
-        );
+        const each = 100 / sections.length;
+        return sections.map(() => each);
     }
 
-    const nonGrowableEach = GROWABLE_MIN_PCT;
-    const growableEach = (100 - nonGrowableCount * nonGrowableEach) / growableCount;
+    const nonGrowableFloor = (id: SectionId): number => minById[id] ?? GROWABLE_MIN_PCT;
+    const nonGrowableTotal = sections
+        .filter(id => !GROWABLE_SECTIONS.has(id))
+        .reduce((sum, id) => sum + nonGrowableFloor(id), 0);
+    const growableEach = (100 - nonGrowableTotal) / growableCount;
 
-    let allocated = 0;
-    return sections.map((id, index) => {
-        const isLast = index === sections.length - 1;
-        const raw = GROWABLE_SECTIONS.has(id) ? growableEach : nonGrowableEach;
-        const size = isLast ? Math.max(0, 100 - allocated) : Math.round(raw);
-        allocated += size;
-        return size;
-    });
+    return sections.map(id =>
+        GROWABLE_SECTIONS.has(id) ? growableEach : nonGrowableFloor(id),
+    );
 };
 
 /**
@@ -189,8 +191,34 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
         [isStreaming, isPlayback, isActiveRecording],
     );
 
-    const defaultSizes = useMemo(() => computeDefaultSizes(visibleSections), [visibleSections]);
+    const defaultSizes = useMemo(() => computeLayout(visibleSections, {}), [visibleSections]);
     const { setGroupEl, registerContent, minPctById } = useContentMinSizes(visibleSections);
+
+    const panelGroupRef = useRef<ImperativePanelGroupHandle>(null);
+    const userResizedRef = useRef(false);
+    const layoutKey = visibleSections.join('|');
+
+    // A new set of sections (route change) gets a fresh maximized default — the
+    // user hasn't expressed a preference for it yet.
+    useLayoutEffect(() => {
+        userResizedRef.current = false;
+    }, [layoutKey]);
+
+    // Keep cameras maximized (every other section at its measured content floor)
+    // until the user drags a divider. This must be imperative: the panel library
+    // applies defaultSize once at mount, then re-clamps the *current* layout when
+    // the measured minSizes arrive on a later render, permanently stealing that
+    // space back from cameras. Re-asserting on every floor change (rather than
+    // once) also survives the startup window resize (launch → maximize), which
+    // would otherwise leave cameras stuck at the small-window proportions.
+    useLayoutEffect(() => {
+        if (userResizedRef.current) return;
+        const allFloorsMeasured = visibleSections.every(
+            id => GROWABLE_SECTIONS.has(id) || minPctById[id] != null,
+        );
+        if (!allFloorsMeasured) return;
+        panelGroupRef.current?.setLayout(computeLayout(visibleSections, minPctById));
+    }, [visibleSections, minPctById]);
 
     const { t } = useTranslation();
 
@@ -238,6 +266,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     never be squashed below what it contains. */}
                 <div ref={setGroupEl} className="flex-1 min-h-0">
                     <PanelGroup
+                        ref={panelGroupRef}
                         key={visibleSections.join('|')}
                         direction="vertical"
                         className="h-full"
@@ -249,7 +278,12 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             return (
                                 <React.Fragment key={id}>
                                     {index > 0 && index < visibleSections.length - 1 && (
-                                        <PanelResizeHandle className="sidebar-section-divider" />
+                                        <PanelResizeHandle
+                                            className="sidebar-section-divider"
+                                            onDragging={(isDragging) => {
+                                                if (isDragging) userResizedRef.current = true;
+                                            }}
+                                        />
                                     )}
                                     <Panel
                                         id={id}

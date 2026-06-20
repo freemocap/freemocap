@@ -155,7 +155,7 @@ The aggregator is where the real work happens. It runs as a child process:
 3. **In GPU mode**: waits for `SkeletonInferenceResultMessage`, splices per-camera skeletons into camera outputs
 4. **Optimistically requests next frame** before processing the current one (parallelism: cameras work on frame N+1 while aggregator processes frame N)
 5. **Triangulation**: DLT via `Triangulator`, reprojection error gating
-6. **Filtering pipeline**: `SimpleRealtimeKeypointFilter` (OneEuro on raw) → `RealtimePointGate` (velocity check) → `RealtimeSkeletonFilter` (OneEuro + FABRIK bone constraint)
+6. **Filtering pipeline**: `RealtimeKeypointFilter` (OneEuro on raw) → `RealtimePointGate` (velocity check) → `RealtimeSkeletonFilter` (OneEuro + FABRIK bone constraint)
 7. **All processing in `dict[str, ndarray]`** until final `Point3d` conversion (avoids per-point object overhead)
 8. **Backpressure**: `result_ready_event` / `result_consumed_event` pair — the aggregator waits for the main process to consume the previous result before producing the next one
 

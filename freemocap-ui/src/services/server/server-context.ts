@@ -2,8 +2,10 @@ import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
 import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
-import type { RigidBodyPose } from '@/components/viewport3d';
+import type { Point3d, RigidBodyPose } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
+
+export type CoMCallback = (point: Point3d | null) => void;
 
 export interface ServerContextValue {
     isConnected: boolean;
@@ -20,6 +22,7 @@ export interface ServerContextValue {
     subscribeToKeypointsRaw: (cb: KeypointsCallback) => () => void;
     subscribeToKeypointsFiltered: (cb: KeypointsCallback) => () => void;
     subscribeToRigidBodies: (cb: (poses: Map<string, RigidBodyPose>) => void) => () => void;
+    subscribeToCenterOfMass: (cb: CoMCallback) => () => void;
     getLatestKeypointsRaw: () => KeypointsFrame | null;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
     trackerSchemas: Record<string, TrackedObjectDefinition>;

@@ -59,6 +59,30 @@ interface ConnectionLayer {
 export function ConnectionRenderer() {
     const { activeTrackerId, trackerSchemas, calibrationConfig } = useWorkerData();
     const { subscribeToKeypointsRaw, subscribeToKeypointsFiltered } = useKeypointsSource();
+
+    // Precompute charuco grid segment name-pairs — the grid topology depends
+    // only on board dimensions, so this memoizes it and avoids recomputing
+    // string templates + nested loops on every animation frame.
+    const charucoSegments = useMemo(() => {
+        const segs: { cornerA: string; cornerB: string }[] = [];
+        const sx = calibrationConfig.charucoBoard.squares_x;
+        const sy = calibrationConfig.charucoBoard.squares_y;
+        if (sx < 2 || sy < 2) return segs;
+        const cols = sx - 1;
+        const rows = sy - 1;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const id = r * cols + c;
+                if (c < cols - 1) {
+                    segs.push({ cornerA: `CharucoCorner-${id}`, cornerB: `CharucoCorner-${id + 1}` });
+                }
+                if (r < rows - 1) {
+                    segs.push({ cornerA: `CharucoCorner-${id}`, cornerB: `CharucoCorner-${id + cols}` });
+                }
+            }
+        }
+        return segs;
+    }, [calibrationConfig.charucoBoard.squares_x, calibrationConfig.charucoBoard.squares_y]);
     const { statsRef } = useViewportState();
     const { invalidate, size } = useThree();
 
@@ -163,7 +187,21 @@ export function ConnectionRenderer() {
     useEffect(() => () => { faceGeo.dispose(); faceMat.dispose(); }, [faceGeo, faceMat]);
 
     // Populate helpers shared by both subscriptions.
-    const populateMap = (m: Map<string, Point3d>, frame: KeypointsFrame) => {
+    const CHARUCO_PREFIX = "CharucoCorner-";
+    const ARUCO_PREFIX = "ArucoMarkerCorner-";
+    const isCalibPoint = (name: string) =>
+        name.startsWith(CHARUCO_PREFIX) || name.startsWith(ARUCO_PREFIX);
+
+    const populateMap = (
+        m: Map<string, Point3d>,
+        frame: KeypointsFrame,
+        clearCalibFirst = false,
+    ) => {
+        if (clearCalibFirst) {
+            for (const key of m.keys()) {
+                if (isCalibPoint(key)) m.delete(key);
+            }
+        }
         const { pointNames, interleaved } = frame;
         for (let i = 0; i < pointNames.length; i++) {
             const off = i * 4;
@@ -184,13 +222,16 @@ export function ConnectionRenderer() {
         }
     };
 
-    // Raw keypoints: cached separately so hand/face endpoints can be looked up
-    // even when the filtered trajectory (rigid_3d_xyz) doesn't carry them.
+    // Raw keypoints arrive in two blocks within the same binary message:
+    // (1) RTMPose 133-point schema block, (2) calib3d block with embedded
+    // charuco/aruco names. Both fire before the next useFrame. For the
+    // calib3d block we clear old calibration entries first (corners come
+    // and go). For the RTMPose block we upsert (same 133 names overwritten).
     useEffect(() => {
         return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
             const raw = rawPointsRef.current;
-            raw.clear();
-            populateMap(raw, frame);
+            const hasCalib = frame.pointNames.some(isCalibPoint);
+            populateMap(raw, frame, hasCalib);
             mergeRawIntoPoints();
             dirtyRef.current = true;
             invalidate();
@@ -253,9 +294,8 @@ export function ConnectionRenderer() {
 
         visibleCount += writeSegments(bodyPos, bodyCol, binned.body);
 
-        // Charuco grid connections — appended after body schema segments.
-        const cols = calibrationConfig.charucoBoard.squares_x - 1;
-        const rows = calibrationConfig.charucoBoard.squares_y - 1;
+        // Charuco grid connections — iterate precomputed segment name-pairs
+        // (memoized above, only rebuilt when board dimensions change).
         const pts = pointsRef.current;
         let segIdx = binned.body.length;
         const cr = SKELETON_COLORS.charuco.r;
@@ -263,43 +303,24 @@ export function ConnectionRenderer() {
         const cb = SKELETON_COLORS.charuco.b;
         const maxBodySlots = binned.body.length + MAX_SEGMENT_EXTRAS;
 
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const id = r * cols + c;
-                const pt = pts.get(`CharucoCorner-${id}`);
-
-                if (c < cols - 1 && segIdx < maxBodySlots) {
-                    const right = pts.get(`CharucoCorner-${id + 1}`);
-                    const base = segIdx * 6;
-                    if (pt && right) {
-                        bodyPos[base]     = pt.x;    bodyPos[base + 1] = pt.y;    bodyPos[base + 2] = pt.z;
-                        bodyPos[base + 3] = right.x; bodyPos[base + 4] = right.y; bodyPos[base + 5] = right.z;
-                        bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
-                        bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
-                        visibleCount++;
-                    } else {
-                        for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-                        for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
-                    }
-                    segIdx++;
-                }
-
-                if (r < rows - 1 && segIdx < maxBodySlots) {
-                    const below = pts.get(`CharucoCorner-${id + cols}`);
-                    const base = segIdx * 6;
-                    if (pt && below) {
-                        bodyPos[base]     = pt.x;    bodyPos[base + 1] = pt.y;    bodyPos[base + 2] = pt.z;
-                        bodyPos[base + 3] = below.x; bodyPos[base + 4] = below.y; bodyPos[base + 5] = below.z;
-                        bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
-                        bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
-                        visibleCount++;
-                    } else {
-                        for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-                        for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
-                    }
-                    segIdx++;
-                }
+        for (let i = 0; i < charucoSegments.length && segIdx < maxBodySlots; i++) {
+            const { cornerA, cornerB } = charucoSegments[i];
+            const a = pts.get(cornerA);
+            const b = pts.get(cornerB);
+            const base = segIdx * 6;
+            const aOk = a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(a.z);
+            const bOk = b && Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.z);
+            if (aOk && bOk) {
+                bodyPos[base]     = a.x; bodyPos[base + 1] = a.y; bodyPos[base + 2] = a.z;
+                bodyPos[base + 3] = b.x; bodyPos[base + 4] = b.y; bodyPos[base + 5] = b.z;
+                bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
+                bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
+                visibleCount++;
+            } else {
+                for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
+                for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
             }
+            segIdx++;
         }
 
         // Aruco marker outline squares — 4 orange edges per detected marker.

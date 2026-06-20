@@ -19,7 +19,6 @@ since the coordinate frame may change.
 """
 import logging
 import multiprocessing.synchronize
-import os
 import queue
 import threading
 import time
@@ -35,21 +34,14 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellyforge.data_models.trajectory_3d import Point3d
 
+from freemocap.api.websocket.binary_keypoints_protocol import BINARY_KEYPOINTS_ENABLED
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
-    SkeletonDefinition
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate, \
-    GateResult
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
-from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
-    RealtimeSkeletonFilter, FilterResult
-from freemocap.core.pipeline.realtime.realtime_keypoint_filter import SimpleRealtimeKeypointFilter
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -76,12 +68,6 @@ logger = logging.getLogger(__name__)
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 
-# Skip Point3d Pydantic object creation when the binary keypoints path is
-# active — the aggregator runs in a subprocess so it reads the env var here
-# at import time, matching the flag check in realtime_pipeline.py.
-_BINARY_KEYPOINTS_ENABLED: bool = os.environ.get("FREEMOCAP_BINARY_KEYPOINTS", "0") == "1"
-
-
 def _merge_triangulated_arrays(
         *,
         triangulated: dict[str, np.ndarray] | None,
@@ -107,62 +93,6 @@ def _arrays_to_point3d(arrays: dict[str, np.ndarray]) -> dict[str, Point3d]:
         name: Point3d(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
         for name, arr in arrays.items()
     }
-
-
-def _create_skeleton_filter(
-        *,
-        filter_config: RealtimeFilterConfig,
-) -> RealtimeSkeletonFilter:
-    """Create the skeleton filter with mediapipe body skeleton and anthropometric prior."""
-    skeleton = SkeletonDefinition.mediapipe_body()
-    prior = AnthropometricPrior.mediapipe_body()
-    return RealtimeSkeletonFilter.create(
-        skeleton=skeleton,
-        prior=prior,
-        config=filter_config,
-    )
-
-
-def _filter_skeleton_arrays(
-        *,
-        point_arrays: dict[str, np.ndarray],
-        skeleton_filter: RealtimeSkeletonFilter,
-        t: float,
-) -> dict[str, np.ndarray]:
-    """
-    Run the skeleton filter on triangulated point arrays, returning filtered results.
-
-    Operates entirely on dict[str, ndarray] — no Point3d conversion.
-    """
-    skeleton_keypoint_names = skeleton_filter.skeleton.keypoint_names
-
-    skeleton_positions: dict[str, np.ndarray] = {
-        name: arr for name, arr in point_arrays.items()
-        if name in skeleton_keypoint_names
-    }
-
-    if not skeleton_positions:
-        return point_arrays
-
-    filter_result: FilterResult = skeleton_filter.process_frame(
-        t=t,
-        positions=skeleton_positions,
-    )
-
-    # Build output: filtered skeleton + unmodified non-skeleton points
-    result: dict[str, np.ndarray] = {}
-    for name, arr in point_arrays.items():
-        if name in filter_result.positions:
-            result[name] = filter_result.positions[name]
-        else:
-            result[name] = arr
-
-    # Add predicted keypoints that weren't in this frame
-    for name in filter_result.predicted_names:
-        if name not in result and name in filter_result.positions:
-            result[name] = filter_result.positions[name]
-
-    return result
 
 
 @dataclass
@@ -260,22 +190,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 f"calibration — triangulation disabled"
             )
 
-        # Initialize skeleton filter for 3D smoothing + bone length constraint
         filter_config = aggregator_config.realtime_filter_config
-        skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
-
-        # Initialize velocity gate for rejecting teleportation spikes
-        point_gate = RealtimePointGate(
-            max_velocity_m_per_s=filter_config.max_velocity_m_per_s,
-            max_rejected_streak=filter_config.max_rejected_streak,
-        )
-
-        # Lightweight One Euro filter: smooths raw keypoints and gap-fills brief occlusions
-        keypoint_filter = SimpleRealtimeKeypointFilter(
-            min_cutoff=filter_config.min_cutoff,
-            beta=filter_config.beta,
-            d_cutoff=filter_config.d_cutoff,
-        )
 
         camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage | None] = {
             cam_id: None for cam_id in camera_ids
@@ -333,10 +248,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"hot-reloaded calibration from {calibration.calibration_path}"
                         )
-                        # Coordinate frame may have changed — reset filter + gate
-                        keypoint_filter.reset()
-                        skeleton_filter.reset()
-                        point_gate.reset()
+                        # Coordinate frame may have changed.
+                        pass
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -518,49 +431,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if timer is not None:
                             timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
 
-                    # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
+                    # Pass triangulated data straight through — velocity gate
+                    # and skeleton FABRIK are disabled until the 2D→3D filter
+                    # pipeline is rebuilt around the camera-node 1€ filter.
                     if raw_keypoints:
-                        t0 = time.perf_counter() if timer is not None else 0.0
-                        filtered_keypoints = keypoint_filter.filter(
-                            t=time.perf_counter(),
-                            raw_keypoints=raw_keypoints,
-                        )
-                        if timer is not None:
-                            timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
-
-                    # Velocity gate: reject teleportation spikes
-                    if aggregator_config.filter_enabled:
-                        if raw_keypoints:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            gate_result: GateResult = point_gate.gate(
-                                t=time.perf_counter(),
-                                points=raw_keypoints,
-                            )
-                            _merge_triangulated_arrays(
-                                triangulated=gate_result.positions,
-                                into=filtered_keypoints,
-                            )
-                            if timer is not None:
-                                timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
-
-                        # Filter + constrain skeleton keypoints
-                        if filtered_keypoints and aggregator_config.skeleton_enabled:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            filtered_keypoints = _filter_skeleton_arrays(
-                                point_arrays=filtered_keypoints,
-                                skeleton_filter=skeleton_filter,
-                                t=time.perf_counter(),
-                            )
-                            if timer is not None:
-                                timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
-
-                    # # Estimate rigid body segment poses
-                    # if filtered_keypoints and config.skeleton_enabled and skeleton_filter.current_bone_lengths:
-                    #     skeleton_trajectories = estimate_rigid_bodies(
-                    #         positions=filtered_keypoints,
-                    #         skeleton=skeleton_filter.skeleton,
-                    #         bone_lengths=skeleton_filter.current_bone_lengths,
-                    #     )
+                        filtered_keypoints = {k: v.copy() for k, v in raw_keypoints.items()}
 
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
@@ -583,15 +458,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=frame_n_outputs,
-                        # When the binary path is active, skip the per-point
-                        # Pydantic object creation — the raw arrays field is
-                        # what the serializer actually reads.
+                        # Binary keypoints carries all 3D points (RTMPose +
+                        # charuco/aruco). JSON keypoints stay empty — the
+                        # binary serializer reads keypoints_*_arrays directly.
                         keypoints_raw=(
-                            {} if _BINARY_KEYPOINTS_ENABLED
+                            {} if BINARY_KEYPOINTS_ENABLED
                             else _arrays_to_point3d(raw_keypoints)
                         ),
                         keypoints_filtered=(
-                            {} if _BINARY_KEYPOINTS_ENABLED
+                            {} if BINARY_KEYPOINTS_ENABLED
                             else _arrays_to_point3d(filtered_keypoints)
                         ),
                         keypoints_raw_arrays=raw_keypoints,

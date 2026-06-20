@@ -69,9 +69,10 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const lastPointNamesRef = useRef<readonly string[] | null>(null);
     const nextIdx = useRef(0);
 
-    // Low-poly sphere (6×4 = 24 tris vs 8×6 = 48). MeshBasicMaterial skips all
-    // lighting calculations — significant savings at 1024 instanced meshes.
-    const geo = useMemo(() => new SphereGeometry(50, 6, 4), []);
+    // Ultra-low-poly sphere (4×3 = 12 tris). At the tiny rendered size
+    // (radius 0.02–0.12 world units) this is visually identical to 6×4.
+    // MeshBasicMaterial skips all lighting calculations.
+    const geo = useMemo(() => new SphereGeometry(50, 4, 3), []);
     const mat = useMemo(() => new MeshBasicMaterial({ color: "#ffffff" }), []);
 
     useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);

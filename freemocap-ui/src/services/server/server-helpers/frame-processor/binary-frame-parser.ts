@@ -9,6 +9,43 @@ import {
     PAYLOAD_HEADER_SIZE,
 } from './binary-protocol';
 
+// ---------------------------------------------------------------------------
+// CPU JPEG decode (pure JS) — avoids GPU contention with the Three.js viewport.
+//
+// When enabled, JPEG bytes are decoded via jpeg-js which runs entirely on the
+// CPU. The resulting raw pixel data is wrapped in ImageData, then in an
+// ImageBitmap via createImageBitmap(imageData) — which is near-instant because
+// no format decode is needed. This keeps the browser's hardware JPEG decoder
+// free for other work and eliminates GPU command-queue stalls that cause R3F
+// frame cost spikes.
+//
+// jpeg-js is pure JavaScript (no WASM), so it works in any Worker context
+// without Vite WASM-loading issues.
+//
+// Flip this to false to revert to the original GPU-accelerated path
+// (createImageBitmap from a JPEG Blob) for A/B comparison.
+// ---------------------------------------------------------------------------
+const USE_CPU_JPEG_DECODE = true;
+
+// Lazily-resolved pure-JS decoder — loaded once on first use, cached forever.
+let _cpuDecodePromise: Promise<
+    (jpegData: Uint8Array) => { width: number; height: number; data: Uint8Array }
+> | null = null;
+
+function getCpuDecoder(): Promise<
+    (jpegData: Uint8Array) => { width: number; height: number; data: Uint8Array }
+> {
+    if (!_cpuDecodePromise) {
+        _cpuDecodePromise = import("jpeg-js").then((m) => {
+            console.log("[binary-frame-parser] jpeg-js pure-JS decoder loaded (CPU path)");
+            const decode = m.default.decode;
+            // useTArray: true → returns Uint8Array instead of Node Buffer (browser compat)
+            return (jpegData: Uint8Array) => decode(jpegData, { useTArray: true });
+        });
+    }
+    return _cpuDecodePromise;
+}
+
 export interface ParsedFrame {
     cameraId: string;
     cameraIndex: number;
@@ -225,12 +262,37 @@ export async function parseMultiFramePayload(
     // Trim array to actual size.
     frameMetadata.length = validFrameCount;
 
-    // Create ImageBitmaps in parallel
+    // Decode JPEG → ImageBitmap for every camera in parallel.
+    //
+    // Two paths, toggled by USE_CPU_JPEG_DECODE:
+    //   GPU – createImageBitmap(Blob)  → hardware JPEG decoder (fast per-image
+    //         but serialises on the GPU and contends with WebGL rendering).
+    //   CPU – jpeg-js pure-JS decode → raw ImageData → createImageBitmap
+    //         (wraps already-decoded pixels; no GPU decode step).  Runs on CPU
+    //         so it parallelises across cores and leaves the GPU free.
     const bitmapPromises = frameMetadata.map(async (metadata) => {
         try {
             const jpegData = new Uint8Array(data, metadata.jpegStart, metadata.jpegLength);
-            const blob = new Blob([jpegData], { type: 'image/jpeg' });
-            const bitmap = await createImageBitmap(blob, BITMAP_OPTIONS);
+            let bitmap: ImageBitmap;
+
+            if (USE_CPU_JPEG_DECODE) {
+                // CPU-only pure-JS decode → ImageData → ImageBitmap
+                const decodeJpeg = await getCpuDecoder();
+                const raw = decodeJpeg(jpegData); // synchronous; {data:Uint8Array, width, height}
+                // Zero-copy Uint8ClampedArray view over the decoded buffer —
+                // ImageData constructor makes one copy internally (unavoidable).
+                const clamped = new Uint8ClampedArray(
+                    raw.data.buffer,
+                    raw.data.byteOffset,
+                    raw.data.byteLength,
+                );
+                const imageData = new ImageData(clamped, raw.width, raw.height);
+                bitmap = await createImageBitmap(imageData);
+            } else {
+                // GPU-accelerated path (original)
+                const blob = new Blob([jpegData], { type: 'image/jpeg' });
+                bitmap = await createImageBitmap(blob, BITMAP_OPTIONS);
+            }
 
             return {
                 cameraId: metadata.cameraId,
@@ -239,7 +301,7 @@ export async function parseMultiFramePayload(
                 width: metadata.width,
                 height: metadata.height,
                 colorChannels: metadata.colorChannels,
-                bitmap: bitmap,
+                bitmap,
             } as ParsedFrame;
         } catch (error) {
             console.error(`Failed to create bitmap for camera ${metadata.cameraId}:`, error);

@@ -80,6 +80,16 @@
   50% { opacity: 1; }
 }
 
+/* Recording border pulse: used by CameraViewsGrid inline animation.
+   Animates border-color and box-shadow on the compositor (only opacity changes
+   go to the GPU, but this runs on the camera grid container, not per-tile,
+   so repaint cost is bounded). */
+@keyframes recordingBorderPulse {
+  0% { border-color: var(--color-danger); box-shadow: 0 0 4px var(--red-500-alpha-40); }
+  50% { border-color: var(--color-danger-muted); box-shadow: 0 0 8px var(--red-500-alpha-15); }
+  100% { border-color: var(--color-danger); box-shadow: 0 0 4px var(--red-500-alpha-40); }
+}
+
 /* ============================================================
    React Grid Layout Overrides
    ============================================================ */

@@ -28,6 +28,12 @@ export interface MediapipeObservation {
     image_width: number;
     image_height: number;
     points: MediapipePoint[];
+    // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
+    bbox_x1?: number;
+    bbox_y1?: number;
+    bbox_x2?: number;
+    bbox_y2?: number;
+    bbox_from_detector?: boolean;
 }
 
 // Debug HUD (frame number + tracker/point counts) drawn on top of every camera
@@ -177,11 +183,44 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         }
 
         this.drawAllPoints(pointMap);
+
+        // Debug: draw person bounding box.
+        this.drawBbox(observation);
+
         if (SHOW_SKELETON_DEBUG_HUD) {
             this.drawInfo(observation);
         }
 
         this.ctx.restore();
+    }
+
+    private drawBbox(obs: MediapipeObservation): void {
+        const { bbox_x1, bbox_y1, bbox_x2, bbox_y2, bbox_from_detector } = obs;
+        if (bbox_x1 === undefined || bbox_y1 === undefined
+            || bbox_x2 === undefined || bbox_y2 === undefined) return;
+        if (!isFinite(bbox_x1) || !isFinite(bbox_y1)
+            || !isFinite(bbox_x2) || !isFinite(bbox_y2)) return;
+
+        const color = bbox_from_detector ? '#00FF00' : '#FF8C00'; // green=YOLOX, orange=track
+        const label = bbox_from_detector ? 'YOLOX' : 'track';
+        const w = bbox_x2 - bbox_x1;
+        const h = bbox_y2 - bbox_y1;
+        if (w <= 0 || h <= 0) return;
+
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeRect(bbox_x1, bbox_y1, w, h);
+
+        // Label at top-left of bbox.
+        this.drawText(
+            label,
+            bbox_x1,
+            Math.max(bbox_y1 - 4, 12),
+            10,
+            color,
+            this.TEXT_STROKE,
+            2,
+        );
     }
 
     private styleFor(name: string): DrawStyle {

@@ -253,22 +253,6 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                                 images, states_list,
                             )
                         )
-                        # ---- Debug: log bbox source + coords per camera ----
-                        for cid, old_st, new_st in zip(
-                            ordered_camera_ids, states_list, updated_states,
-                        ):
-                            used_yolo = new_st.last_detection_time > old_st.last_detection_time
-                            source = "YOLOX" if used_yolo else "track"
-                            bb = new_st.bbox
-                            bb_str = (
-                                f"x1={bb[0]:.0f} y1={bb[1]:.0f} "
-                                f"x2={bb[2]:.0f} y2={bb[3]:.0f} "
-                                f"w={bb[2]-bb[0]:.0f} h={bb[3]-bb[1]:.0f}"
-                            ) if bb is not None else "NONE"
-                            logger.info(
-                                f"  cam={cid} src={source} skips={new_st.consecutive_skips} "
-                                f"conf={new_st.pose_confidence:.3f} bbox=[{bb_str}]"
-                            )
                         # Write back updated states.
                         for cid, new_state in zip(
                             ordered_camera_ids, updated_states,
@@ -331,14 +315,25 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
                 # ---- Build per-camera observations ----
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
-                for camera_id, image, (keypoints, scores) in zip(
-                        ordered_camera_ids, images, batch_results,
+                bboxes = session.last_bboxes
+                bbox_from_det = session.last_bboxes_from_detector
+                for idx, (camera_id, image, (keypoints, scores)) in enumerate(
+                        zip(ordered_camera_ids, images, batch_results),
                 ):
+                    raw_bb = bboxes[idx] if bboxes and idx < len(bboxes) else None
+                    cam_bbox = (
+                        np.asarray(raw_bb, dtype=np.float64) if raw_bb is not None and len(raw_bb) > 0 else None
+                    )
+                    cam_bbox_src = (
+                        bbox_from_det[idx] if bbox_from_det and idx < len(bbox_from_det) else True
+                    )
                     per_camera_skeleton[camera_id] = RTMPoseObservation.from_detection_results(
                         frame_number=requested_frame_number,
                         keypoints=keypoints,
                         scores=scores,
                         image_size=(int(image.shape[0]), int(image.shape[1])),
+                        bbox=cam_bbox,
+                        bbox_from_detector=cam_bbox_src,
                     )
                 # Cameras whose frame we couldn't read get None — aggregator
                 # treats this as "no skeleton this frame for this camera"

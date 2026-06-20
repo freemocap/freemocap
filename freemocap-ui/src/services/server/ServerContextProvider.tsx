@@ -267,13 +267,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 );
             }
 
-            if (payload.keypoints_raw) {
+            // `{}` is truthy in JS but means "no keypoints" when the binary
+            // path is active (aggregator sets these to empty dicts to skip
+            // Pydantic creation). Only dispatch when there are actual keys.
+            if (payload.keypoints_raw && Object.keys(payload.keypoints_raw).length > 0) {
                 const frame = pointDictToFrame(payload.keypoints_raw as Record<string, {x:number;y:number;z:number}>);
                 trackedPointsRef.current = frame;
                 for (const cb of trackedPointsSubscribersRef.current) cb(frame);
             }
 
-            if (payload.keypoints_filtered) {
+            if (payload.keypoints_filtered && Object.keys(payload.keypoints_filtered).length > 0) {
                 const frame = pointDictToFrame(payload.keypoints_filtered as Record<string, {x:number;y:number;z:number}>);
                 keypointsFilteredRef.current = frame;
                 for (const cb of keypointsFilteredSubscribersRef.current) cb(frame);

@@ -248,7 +248,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             const minSize = minPctById[id] ?? (growable ? GROWABLE_MIN_PCT : 4);
                             return (
                                 <React.Fragment key={id}>
-                                    {index > 0 && index < visibleSections.length - 1 && (
+                                    {index > 0 && (
                                         <PanelResizeHandle className="sidebar-section-divider" />
                                     )}
                                     <Panel

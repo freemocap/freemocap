@@ -28,7 +28,7 @@ export const AppContent = function () {
     }, [dispatch]);
 
     return (
-        <HashRouter>
+        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AutoUpdateProvider>
                 <PlaybackProvider>
                     <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>

@@ -43,7 +43,7 @@ function FrameProfiler() {
         // tick but before the next browser task, giving a real intra-frame cost.
         queueMicrotask(() => {
             const elapsed = performance.now() - t0;
-            if (elapsed > 8) console.warn(`R3F frame cost: ${elapsed.toFixed(1)}ms`);
+            if (elapsed > 8) console.debug(`R3F frame cost: ${elapsed.toFixed(1)}ms`);
         });
     });
     return null;

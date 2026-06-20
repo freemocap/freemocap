@@ -31,12 +31,12 @@ function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
   return false;
 }
 
-console.log("[ThreeJsCanvas] creating viewport3d worker");
+console.debug("[ThreeJsCanvas] creating viewport3d worker");
 export const VIEWPORT_WORKER = new Worker(
   new URL("./viewport3d.worker.tsx", import.meta.url),
   { type: "module" },
 );
-console.log("[ThreeJsCanvas] viewport3d worker created", VIEWPORT_WORKER);
+console.debug("[ThreeJsCanvas] viewport3d worker created", VIEWPORT_WORKER);
 VIEWPORT_WORKER.addEventListener("error", (e) =>
   console.error("[ThreeJsCanvas] worker error", e),
 );

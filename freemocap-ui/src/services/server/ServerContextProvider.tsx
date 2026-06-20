@@ -24,7 +24,7 @@ import {
     isKeypointsMessage,
     parseKeypointsMessage,
 } from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
-import {RigidBodyPose} from "@/components/viewport3d";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {
     KeypointsCallback,
     KeypointsFrame,
@@ -78,6 +78,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const rigidBodiesSubscribersRef = useRef<Set<(poses: Map<string, RigidBodyPose>) => void>>(new Set());
     const keypointsFilteredRef = useRef<KeypointsFrame | null>(null);
     const keypointsFilteredSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
+    const centerOfMassSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
 
 
     // Holds the latest binary payload received from the WebSocket.
@@ -293,6 +294,23 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 }
                 rigidBodiesRef.current = posesMap;
                 for (const cb of rigidBodiesSubscribersRef.current) cb(posesMap);
+            }
+
+            if (payload.center_of_mass) {
+                const comPoint: Point3d = {
+                    x: (payload.center_of_mass as Point3d).x,
+                    y: (payload.center_of_mass as Point3d).y,
+                    z: (payload.center_of_mass as Point3d).z,
+                };
+                if (centerOfMassSubscribersRef.current.size > 0) {
+                    console.log(`[CoM dispatch] x=${comPoint.x.toFixed(3)} y=${comPoint.y.toFixed(3)} z=${comPoint.z.toFixed(3)} subs=${centerOfMassSubscribersRef.current.size}`);
+                }
+                for (const cb of centerOfMassSubscribersRef.current) cb(comPoint);
+            } else {
+                // Log once when CoM is missing from payload
+                if (centerOfMassSubscribersRef.current.size > 0) {
+                    console.warn(`[CoM dispatch] center_of_mass is ${payload.center_of_mass === null ? 'null' : 'undefined'} in payload (frame ${payload.frame_number})`);
+                }
             }
         };
 
@@ -581,6 +599,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
+    const subscribeToCenterOfMass = useCallback((cb: (point: Point3d | null) => void): () => void => {
+        centerOfMassSubscribersRef.current.add(cb);
+        return () => {
+            centerOfMassSubscribersRef.current.delete(cb);
+        };
+    }, []);
+
     const getLatestKeypointsRaw = useCallback((): KeypointsFrame | null => {
         return trackedPointsRef.current;
     }, []);
@@ -630,12 +655,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToKeypointsRaw,
         subscribeToKeypointsFiltered,
         subscribeToRigidBodies,
+        subscribeToCenterOfMass,
         getLatestKeypointsRaw,
         setOverlayVisibility,
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, subscribeToCenterOfMass, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

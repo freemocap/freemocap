@@ -14,6 +14,7 @@ from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
@@ -122,6 +123,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     keypoints_raw_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     keypoints_filtered_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
+    center_of_mass_result: CenterOfMassResult | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

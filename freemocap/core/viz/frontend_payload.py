@@ -1,6 +1,7 @@
 import logging
 
 import msgspec
+import numpy as np
 from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString, MultiframeTimestampFloat
@@ -34,6 +35,7 @@ class FrontendPayload(msgspec.Struct):
     keypoints_raw: dict[TrackedPointNameString, Point3d] | None = None
     keypoints_filtered: dict[TrackedPointNameString, Point3d] | None = None
     rigid_body_poses: dict[str, RigidBodyPose] | None = None
+    center_of_mass: Point3d | None = None
 
     @classmethod
     def from_aggregation_output(
@@ -41,6 +43,16 @@ class FrontendPayload(msgspec.Struct):
             aggregation_output: AggregationNodeOutputMessage,
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output."""
+        com = aggregation_output.center_of_mass_result
+        com_point = None
+        if com is not None and not np.any(np.isnan(com.total_body_com)):
+            com_arr = com.total_body_com
+            com_point = Point3d(
+                x=float(com_arr[0]),
+                y=float(com_arr[1]),
+                z=float(com_arr[2]),
+            )
+
         return cls(
             frame_number=aggregation_output.frame_number,
             camera_group_id=aggregation_output.camera_group_id,
@@ -50,6 +62,7 @@ class FrontendPayload(msgspec.Struct):
             keypoints_raw=aggregation_output.keypoints_raw,
             keypoints_filtered=aggregation_output.keypoints_filtered,
             rigid_body_poses=aggregation_output.rigid_body_poses,
+            center_of_mass=com_point,
         )
 
 @dataclass(slots=True, frozen=True)

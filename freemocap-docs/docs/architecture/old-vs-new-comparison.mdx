@@ -46,15 +46,15 @@ The philosophy shift: styles moved from JavaScript to CSS. When porting an old c
 | Old UI | New UI |
 |---|---|
 | Sidebar sections drag-reorderable via `@dnd-kit` | Sidebar sections are static |
-| Bottom panel: tabbed (framerate + pipeline tabs) | Bottom panel: framerate left, log terminal right (streaming); log terminal only (playback/active-recording) |
+| Bottom panel: tabbed (framerate + pipeline tabs) | Bottom panel: framerate left, log terminal right (streaming/active-recording); log terminal only (playback) |
 | Bottom panel always visible | Bottom panel collapsed by default |
 
 ### Redux Slices
 
-| Old UI (13 slices) | New UI (12 slices) |
+| Old UI (14 slices) | New UI (13 slices) |
 |---|---|
 | `pupilLabs` | **Removed** |
-| All other 12 slices | Same structure, same names |
+| All other 13 slices | Same structure, same names (plus `theme` slice exists on disk but is not registered in the store) |
 
 The `locale` slice exists in both but the keyboard shortcut toggle (`Ctrl+Shift+L`) is commented out in the new UI. Language switching still works through the `LanguageSwitcher` component dropdown.
 

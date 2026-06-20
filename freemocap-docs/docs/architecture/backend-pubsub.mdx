@@ -28,7 +28,7 @@ graph LR
     end
 
     subgraph "Main Process"
-        RELAY["PubSubRelay<br/>(daemon thread)"]
+        RELAY["PubSubRelay<br/>(background thread)"]
         TOPIC["CameraNodeOutputTopic<br/>publication Queue"]
         SUB1["subscription Queue"]
     end
@@ -44,7 +44,7 @@ graph LR
     SUB1 -->|"Queue.get()"| ASUB
 ```
 
-**One relay thread per pipeline** (not global). Each pipeline has its own isolated pub/sub bus with its own `PubSubRelay` daemon thread.
+**One relay thread per pipeline** (not global). Each pipeline has its own isolated pub/sub bus with its own `PubSubRelay` background thread.
 
 ## Core Classes
 
@@ -56,10 +56,10 @@ Base dataclass for all messages. Subtypes include:
 |---|---|
 | `ProcessFrameNumberMessage` | `frame_number: int` — which frame to process |
 | `PipelineConfigUpdateMessage` | `pipeline_config` — new configuration |
-| `CameraNodeOutputMessage` | `camera_id`, `frame_number`, charuco observation, skeleton observation |
+| `CameraNodeOutputMessage` | `camera_id`, `frame_number`, charuco observation, skeleton observation (in inline mode: both; in centralized GPU mode: charuco only, skeletons come via `SkeletonInferenceResultMessage`) |
 | `SkeletonInferenceResultMessage` | `frame_number`, per-camera skeleton observations |
 | `VideoNodeOutputMessage` | `camera_id`, `frame_number`, observation |
-| `AggregationNodeOutputMessage` | `frame_number`, `pipeline_id`, keypoints (raw + filtered), rigid bodies |
+| `AggregationNodeOutputMessage` | `frame_number`, `pipeline_id`, `camera_group_id`, `camera_node_outputs`, `keypoints_raw_arrays`, `keypoints_filtered_arrays`, rigid bodies, `pipeline_config` |
 | `PipelineTimingMessage` | `node_kind`, `node_label`, `camera_id`, timing samples |
 
 ### PubSubTopicABC[MessageType]
@@ -79,7 +79,7 @@ CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 
 ### PubSubRelay
 
-A daemon thread in the main process:
+A background thread in the main process (created with `daemon=False`):
 
 - Polls all topic publication queues every **1ms** when idle
 - Distributes each message to all subscribers for that topic

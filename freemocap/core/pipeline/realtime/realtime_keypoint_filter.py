@@ -1,5 +1,5 @@
 """
-SimpleRealtimeKeypointFilter: lightweight One Euro filter for the realtime pipeline.
+RealtimeKeypointFilter: lightweight One Euro filter for the realtime pipeline.
 
 Applies per-keypoint One Euro smoothing to 2D or 3D positions and predicts
 (extrapolates) positions for keypoints that temporarily disappear, so the
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class SimpleRealtimeKeypointFilter:
+class RealtimeKeypointFilter:
     """One Euro filter applied per-keypoint with velocity-decay gap filling.
 
     Works with 2D (pixel) or 3D (world) keypoints via the ``dims`` parameter.

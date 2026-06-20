@@ -7,6 +7,7 @@ import {KeypointsRenderer} from "./renderers/KeypointsRenderer";
 import {FaceRenderer} from "@/components/viewport3d/renderers/FaceRenderer";
 import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRenderer";
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
+import {CenterOfMassRenderer} from "@/components/viewport3d/renderers/CenterOfMassRenderer";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
@@ -65,6 +66,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
             <KeypointsRenderer />
+            <CenterOfMassRenderer />
             {/*{visibility.rigidBodies && <RigidBodyRenderer />}*/}
             {visibility.connections && <ConnectionRenderer />}
             {visibility.face && <FaceRenderer />}

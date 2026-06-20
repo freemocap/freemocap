@@ -57,6 +57,16 @@ if (import.meta.hot) {
 // the remount cancel it, so it only actually fires on genuine navigation away.
 let pendingViewportTeardown: ReturnType<typeof setTimeout> | null = null;
 
+function CenterOfMassForwarder() {
+  const server = useServer();
+  useEffect(() => {
+    return server.subscribeToCenterOfMass((point) => {
+      VIEWPORT_WORKER.postMessage({ type: "centerOfMass", data: point });
+    });
+  }, [server]);
+  return null;
+}
+
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
   useEffect(() => {
@@ -327,6 +337,7 @@ export function ThreeJsCanvas() {
   return (
     <ViewportStateProvider>
       <VisibilityForwarder />
+      <CenterOfMassForwarder />
       <WorkerStatsReceiver />
       <div
         ref={containerRef}

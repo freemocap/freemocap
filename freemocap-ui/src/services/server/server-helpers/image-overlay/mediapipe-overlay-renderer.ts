@@ -155,7 +155,11 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         sourceBitmap: ImageBitmap,
         observation: MediapipeObservation | null,
     ): Promise<ImageBitmap> {
-        this.prepareCanvas(sourceBitmap);
+        this.prepareCanvas(
+            sourceBitmap,
+            observation?.image_width,
+            observation?.image_height,
+        );
 
         if (observation) {
             this.drawSkeletonOverlay(observation);
@@ -167,11 +171,13 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
     private drawSkeletonOverlay(observation: MediapipeObservation): void {
         this.ctx.save();
 
+        const { scaleX, scaleY } = this;
+
         const pointMap = new Map<string, Point2D>();
         for (const p of observation.points) {
             pointMap.set(p.name, {
-                x: p.x,
-                y: p.y,
+                x: p.x * scaleX,
+                y: p.y * scaleY,
                 id: p.name,
                 visibility: p.visibility,
             });
@@ -201,21 +207,27 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         if (!isFinite(bbox_x1) || !isFinite(bbox_y1)
             || !isFinite(bbox_x2) || !isFinite(bbox_y2)) return;
 
+        const { scaleX, scaleY } = this;
+        const x1 = bbox_x1 * scaleX;
+        const y1 = bbox_y1 * scaleY;
+        const x2 = bbox_x2 * scaleX;
+        const y2 = bbox_y2 * scaleY;
+
         const color = bbox_from_detector ? '#00FF00' : '#FF8C00'; // green=YOLOX, orange=track
         const label = bbox_from_detector ? 'YOLOX' : 'track';
-        const w = bbox_x2 - bbox_x1;
-        const h = bbox_y2 - bbox_y1;
+        const w = x2 - x1;
+        const h = y2 - y1;
         if (w <= 0 || h <= 0) return;
 
         this.ctx.strokeStyle = color;
         this.ctx.lineWidth = 1.5;
-        this.ctx.strokeRect(bbox_x1, bbox_y1, w, h);
+        this.ctx.strokeRect(x1, y1, w, h);
 
         // Label at top-left of bbox.
         this.drawText(
             label,
-            bbox_x1,
-            Math.max(bbox_y1 - 4, 12),
+            x1,
+            Math.max(y1 - 4, 12),
             10,
             color,
             this.TEXT_STROKE,

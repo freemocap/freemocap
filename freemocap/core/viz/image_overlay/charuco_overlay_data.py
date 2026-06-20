@@ -42,7 +42,7 @@ class CharucoOverlayData(msgspec.Struct):
             *,
             camera_id: CameraIdString,
             observation: CharucoObservation,
-            scale: float = .5, ):
+            scale: float = 1.0, ):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.
 

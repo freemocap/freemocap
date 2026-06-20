@@ -55,7 +55,7 @@ class SkeletonOverlayData(msgspec.Struct):
             *,
             camera_id: CameraIdString,
             observation: RTMPoseObservation,
-            scale: float = 0.5,
+            scale: float = 1.0,
     ) -> "SkeletonOverlayData":
         """Flatten an RTMPose COCO-WholeBody observation into the schema-driven
         payload.

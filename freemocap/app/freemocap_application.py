@@ -182,6 +182,29 @@ class FreemocapApplication:
         return realtime_pipeline_packets, posthoc_progress
 
     # ------------------------------------------------------------------
+    # State projection (websocket APP_STATE snapshot)
+    # ------------------------------------------------------------------
+
+    def to_state_dict(self) -> dict:
+        """Serializable snapshot of observed server state for the websocket APP_STATE message.
+
+        Superset of skellycam's camera-group state plus the realtime pipelines this app
+        owns. The websocket relay adds `server_pid` to the envelope.
+        """
+        return {
+            **self.camera_group_manager.to_state_dict(),
+            "realtime_pipelines": [
+                {
+                    "id": pipeline.id,
+                    "camera_group_id": pipeline.camera_group_id,
+                    "camera_ids": list(pipeline.camera_ids),
+                    "alive": pipeline.alive,
+                }
+                for pipeline in self.realtime_pipeline_manager.pipelines.values()
+            ],
+        }
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 

@@ -12,7 +12,6 @@ import asyncio
 import logging
 import multiprocessing
 import multiprocessing.synchronize
-import os
 import uuid
 from dataclasses import dataclass
 from queue import Empty
@@ -33,6 +32,7 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
+from freemocap.api.websocket.binary_keypoints_protocol import BINARY_KEYPOINTS_ENABLED
 from freemocap.core.viz.frontend_keypoints_serializer import build_keypoints_payload
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -44,12 +44,6 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-# Step 1 of the JSON→binary keypoints refactor is gated behind this env var so
-# the JSON path stays the default until both ends are validated end-to-end.
-# Set FREEMOCAP_BINARY_KEYPOINTS=1 to enable.
-_BINARY_KEYPOINTS_ENABLED: bool = os.environ.get("FREEMOCAP_BINARY_KEYPOINTS", "0") == "1"
 
 
 class RealtimePipelineState(BaseModel):
@@ -354,7 +348,7 @@ class RealtimePipeline:
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
             keypoints_binary_payload: bytearray | None = None
-            if _BINARY_KEYPOINTS_ENABLED:
+            if BINARY_KEYPOINTS_ENABLED:
                 keypoints_binary_payload = build_keypoints_payload(
                     frame_number=aggregation_output.frame_number,
                     tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,

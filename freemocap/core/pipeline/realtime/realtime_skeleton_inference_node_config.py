@@ -33,4 +33,17 @@ class RealtimeSkeletonInferenceNodeConfig(BaseModel):
     #         cached to engine_cache_dir on all subsequent runs.
     # "cuda": CUDA EP — requires NVIDIA GPU + onnxruntime-gpu, no extra install.
     # "cpu":  CPU EP — no GPU required, slowest.
-    execution_provider: ExecutionProviderName = "cuda"#"trt"
+    execution_provider: ExecutionProviderName = "cuda"
+    # Downscale images before YOLOX person detection (0 < scale ≤ 1.0).
+    # Lower = faster YOLOX pass, but too low may miss small/distant people.
+    # The RTMPose skeleton estimator always crops from the original full-res
+    # image, so pose accuracy is unaffected — only detection recall changes.
+    # 0.5 = half resolution. 1.0 = no downscaling (most reliable).
+    yolox_image_scale: float = 1.0
+    # When True, skip YOLOX by reusing the previous frame's keypoint-derived
+    # bbox (expanded by a small margin). YOLOX re-runs every ~5 seconds and
+    # whenever pose confidence drops.
+    enable_tracking_skip: bool = True
+    # When True, writes debug frames with bbox overlays to
+    # {freemocap_data}/debug_bboxes/. Green = YOLOX bbox, orange = tracking.
+    debug_draw_bboxes: bool = True

@@ -19,7 +19,6 @@ since the coordinate frame may change.
 """
 import logging
 import multiprocessing.synchronize
-import os
 import queue
 import threading
 import time
@@ -35,6 +34,7 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellyforge.data_models.trajectory_3d import Point3d
 
+from freemocap.api.websocket.binary_keypoints_protocol import BINARY_KEYPOINTS_ENABLED
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -75,12 +75,6 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
-
-# Skip Point3d Pydantic object creation when the binary keypoints path is
-# active — the aggregator runs in a subprocess so it reads the env var here
-# at import time, matching the flag check in realtime_pipeline.py.
-_BINARY_KEYPOINTS_ENABLED: bool = os.environ.get("FREEMOCAP_BINARY_KEYPOINTS", "0") == "1"
-
 
 def _merge_triangulated_arrays(
         *,
@@ -587,11 +581,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # Pydantic object creation — the raw arrays field is
                         # what the serializer actually reads.
                         keypoints_raw=(
-                            {} if _BINARY_KEYPOINTS_ENABLED
+                            {} if BINARY_KEYPOINTS_ENABLED
                             else _arrays_to_point3d(raw_keypoints)
                         ),
                         keypoints_filtered=(
-                            {} if _BINARY_KEYPOINTS_ENABLED
+                            {} if BINARY_KEYPOINTS_ENABLED
                             else _arrays_to_point3d(filtered_keypoints)
                         ),
                         keypoints_raw_arrays=raw_keypoints,

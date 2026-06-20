@@ -56,6 +56,9 @@ from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
     RTMPoseSession,
     RTMPoseSessionConfig,
 )
+from skellytracker.trackers.rtmpose_tracker.rtmpose_tracking_state import (
+    PersonTrackingState,
+)
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -162,6 +165,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         frame_recarrays: dict[CameraIdString, np.recarray | None] = {
             cam_id: None for cam_id in camera_ids
         }
+        # Per-camera tracking state for YOLOX-skip logic. When tracking is
+        # enabled, these are threaded through predict_batch_with_tracking()
+        # and updated each frame with the latest bbox + pose confidence.
+        tracking_states: dict[CameraIdString, PersonTrackingState] = {
+            cam_id: PersonTrackingState() for cam_id in camera_ids
+        }
 
         try:
             logger.debug(
@@ -234,7 +243,48 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter() if timer is not None else 0.0
                 try:
-                    batch_results = session.predict_batch(images)
+                    if session._tracking_enabled:
+                        # Build tracking state list parallel to ordered_camera_ids.
+                        states_list = [
+                            tracking_states[cid] for cid in ordered_camera_ids
+                        ]
+                        batch_results, updated_states = (
+                            session.predict_batch_with_tracking(
+                                images, states_list,
+                            )
+                        )
+                        # ---- Debug: log bbox source + coords per camera ----
+                        for cid, old_st, new_st in zip(
+                            ordered_camera_ids, states_list, updated_states,
+                        ):
+                            used_yolo = new_st.last_detection_time > old_st.last_detection_time
+                            source = "YOLOX" if used_yolo else "track"
+                            bb = new_st.bbox
+                            bb_str = (
+                                f"x1={bb[0]:.0f} y1={bb[1]:.0f} "
+                                f"x2={bb[2]:.0f} y2={bb[3]:.0f} "
+                                f"w={bb[2]-bb[0]:.0f} h={bb[3]-bb[1]:.0f}"
+                            ) if bb is not None else "NONE"
+                            logger.info(
+                                f"  cam={cid} src={source} skips={new_st.consecutive_skips} "
+                                f"conf={new_st.pose_confidence:.3f} bbox=[{bb_str}]"
+                            )
+                        # Write back updated states.
+                        for cid, new_state in zip(
+                            ordered_camera_ids, updated_states,
+                        ):
+                            tracking_states[cid] = new_state
+
+                        # ---- Debug: draw bboxes on inference images ----
+                        if pipeline_config.skeleton_inference_node_config.debug_draw_bboxes:
+                            _debug_write_bbox_frames(
+                                camera_ids=ordered_camera_ids,
+                                images=images,
+                                tracking_states=updated_states,
+                                frame_number=requested_frame_number,
+                            )
+                    else:
+                        batch_results = session.predict_batch(images)
                 except Exception as mem_err:
                     # Catch Python MemoryError (raised by rtmpose_session when it
                     # detects a BFC Arena OOM) and any ONNX RuntimeException that
@@ -362,6 +412,8 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
         # lets an explicit GPU choice override auto-selection.
         max_persons=skel_config.max_persons,
         device_id=skel_config.device_id,
+        yolox_image_scale=inf_config.yolox_image_scale,
+        enable_tracking_skip=inf_config.enable_tracking_skip,
     )
 
     try:
@@ -433,3 +485,43 @@ def _read_frames(
         ordered_camera_ids.append(camera_id)
 
     return images, ordered_camera_ids
+
+
+def _debug_write_bbox_frames(
+    *,
+    camera_ids: list[str],
+    images: list[NDArray[np.uint8]],
+    tracking_states: list[object],  # PersonTrackingState
+    frame_number: int,
+) -> None:
+    """Write debug images with bbox overlays (every 10th frame).
+
+    Green = YOLOX, orange = tracking-predicted.
+    """
+    if frame_number % 10 != 0:
+        return
+    import os
+    from pathlib import Path
+
+    out_dir = Path(os.environ.get("FREEMOCAP_DATA", Path.home() / "freemocap_data")) / "debug_bboxes"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    GREEN = (0, 255, 0)
+    ORANGE = (0, 165, 255)
+
+    for cid, img, st in zip(camera_ids, images, tracking_states):
+        bb = getattr(st, "bbox", None)
+        if bb is None:
+            continue
+        bbox_arr = bb[0] if bb.ndim == 2 else bb
+        x1, y1, x2, y2 = int(bbox_arr[0]), int(bbox_arr[1]), int(bbox_arr[2]), int(bbox_arr[3])
+        # This frame used YOLOX iff last_detection_time was just updated.
+        from_detector = getattr(st, "last_detection_time", 0.0) > 0.0
+        color = GREEN if from_detector else ORANGE
+        label = "YOLOX" if from_detector else f"track(skips={getattr(st, 'consecutive_skips', 0)})"
+
+        debug_img = img.copy()
+        cv2.rectangle(debug_img, (x1, y1), (x2, y2), color, 2)
+        cv2.putText(debug_img, label, (x1, max(y1 - 6, 12)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        cv2.imwrite(str(out_dir / f"f{frame_number:06d}_{cid}.jpg"), debug_img)

@@ -92,6 +92,15 @@ export function ConnectionRenderer() {
     const prevArucoNamesRef = useRef<Set<string>>(new Set());
     const arucoNameCacheRef = useRef<Map<string, {markerId: number; cornerIdx: number}>>(new Map());
     const dirtyRef = useRef(false);
+    const arucoChangedRef = useRef(true); // true on first frame to force build
+
+    // Previous frame segment counts — used to short-circuit tail zeroing.
+    // Tail slots are pre-filled with 1e5/0 at buffer creation and only need
+    // zeroing when segments are REMOVED (rare). In steady state, zeroing
+    // is skipped, saving ~18,000 Float32Array writes/frame.
+    const prevBodySegIdxRef = useRef(0);
+    const prevHandSegIdxRef = useRef(0);
+    const prevFaceSegIdxRef = useRef(0);
 
     // Build the segment list whenever the active schema changes.
     const activeSchema = useMemo(() => {
@@ -233,6 +242,24 @@ export function ConnectionRenderer() {
             const hasCalib = frame.pointNames.some(isCalibPoint);
             populateMap(raw, frame, hasCalib);
             mergeRawIntoPoints();
+
+            // Detect aruco name changes from the incoming frame — O(N_incoming)
+            // instead of scanning all merged points in useFrame.
+            if (hasCalib) {
+                const prevNames = prevArucoNamesRef.current;
+                const incomingAruco: string[] = [];
+                for (const name of frame.pointNames) {
+                    if (name.startsWith(ARUCO_PREFIX)) incomingAruco.push(name);
+                }
+                if (incomingAruco.length !== prevNames.size) {
+                    arucoChangedRef.current = true;
+                } else {
+                    for (const n of incomingAruco) {
+                        if (!prevNames.has(n)) { arucoChangedRef.current = true; break; }
+                    }
+                }
+            }
+
             dirtyRef.current = true;
             invalidate();
         });
@@ -330,41 +357,34 @@ export function ConnectionRenderer() {
 
         const ARUCO_PREFIX = "ArucoMarkerCorner-";
         const arucoMarkers = arucoMarkersRef.current;
-        const prevNames = prevArucoNamesRef.current;
+        const nameCache = arucoNameCacheRef.current;
 
-        let arucoChanged = false;
-        let newArucoCount = 0;
-        for (const name of pts.keys()) {
-            if (!name.startsWith(ARUCO_PREFIX)) continue;
-            newArucoCount++;
-            if (!prevNames.has(name)) { arucoChanged = true; }
-        }
-        if (newArucoCount !== prevNames.size) arucoChanged = true;
-
-        if (arucoChanged) {
+        // Only rebuild the marker map when aruco names changed (detected in the
+        // raw subscription callback). In steady state, just update corner
+        // positions by iterating the name cache directly — O(A) where A=4-16.
+        if (arucoChangedRef.current) {
+            arucoChangedRef.current = false;
             arucoMarkers.clear();
-            prevNames.clear();
-            arucoNameCacheRef.current.clear();
+            prevArucoNamesRef.current.clear();
+            nameCache.clear();
             for (const [name, pt] of pts.entries()) {
                 if (!name.startsWith(ARUCO_PREFIX)) continue;
-                prevNames.add(name);
+                prevArucoNamesRef.current.add(name);
                 const rest = name.slice(ARUCO_PREFIX.length);
                 const sep = rest.indexOf("-");
                 if (sep === -1) continue;
                 const markerId = parseInt(rest.slice(0, sep));
                 const cornerIdx = parseInt(rest.slice(sep + 1));
-                arucoNameCacheRef.current.set(name, {markerId, cornerIdx});
+                nameCache.set(name, {markerId, cornerIdx});
                 if (!arucoMarkers.has(markerId)) {
                     arucoMarkers.set(markerId, [undefined, undefined, undefined, undefined]);
                 }
                 arucoMarkers.get(markerId)![cornerIdx] = pt;
             }
         } else {
-            const nameCache = arucoNameCacheRef.current;
-            for (const [name, pt] of pts.entries()) {
-                if (!name.startsWith(ARUCO_PREFIX)) continue;
-                const cached = nameCache.get(name);
-                if (!cached) continue;
+            for (const [name, cached] of nameCache) {
+                const pt = pts.get(name);
+                if (!pt) continue;
                 const corners = arucoMarkers.get(cached.markerId);
                 if (corners) corners[cached.cornerIdx] = pt;
             }
@@ -392,12 +412,17 @@ export function ConnectionRenderer() {
             }
         }
 
-        // Zero out unused tail slots in body buffer.
-        for (let i = segIdx; i < maxBodySlots; i++) {
-            const base = i * 6;
-            for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-            for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
+        // Zero out tail slots only when segments were removed (rare).
+        // The buffer is pre-filled with 1e5/0 — slots never written to
+        // are already zero. Only newly-unused slots need clearing.
+        if (segIdx < prevBodySegIdxRef.current) {
+            for (let i = segIdx; i < prevBodySegIdxRef.current; i++) {
+                const base = i * 6;
+                for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
+                for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
+            }
         }
+        prevBodySegIdxRef.current = segIdx;
 
         bodyPosAttr.needsUpdate = true;
         bodyColAttr.needsUpdate = true;
@@ -409,11 +434,15 @@ export function ConnectionRenderer() {
             const hPos = hPosAttr.data.array as Float32Array;
             const hCol = hColAttr.data.array as Float32Array;
             visibleCount += writeSegments(hPos, hCol, binned.hand);
-            for (let i = binned.hand.length, n = hPos.length / 6; i < n; i++) {
-                const base = i * 6;
-                for (let j = 0; j < 6; j++) hPos[base + j] = 1e5;
-                for (let j = 0; j < 6; j++) hCol[base + j] = 0;
+            const handSegIdx = binned.hand.length;
+            if (handSegIdx < prevHandSegIdxRef.current) {
+                for (let i = handSegIdx; i < prevHandSegIdxRef.current; i++) {
+                    const base = i * 6;
+                    for (let j = 0; j < 6; j++) hPos[base + j] = 1e5;
+                    for (let j = 0; j < 6; j++) hCol[base + j] = 0;
+                }
             }
+            prevHandSegIdxRef.current = handSegIdx;
             hPosAttr.needsUpdate = true;
             hColAttr.needsUpdate = true;
         }
@@ -425,11 +454,15 @@ export function ConnectionRenderer() {
             const fPos = fPosAttr.data.array as Float32Array;
             const fCol = fColAttr.data.array as Float32Array;
             visibleCount += writeSegments(fPos, fCol, binned.face);
-            for (let i = binned.face.length, n = fPos.length / 6; i < n; i++) {
-                const base = i * 6;
-                for (let j = 0; j < 6; j++) fPos[base + j] = 1e5;
-                for (let j = 0; j < 6; j++) fCol[base + j] = 0;
+            const faceSegIdx = binned.face.length;
+            if (faceSegIdx < prevFaceSegIdxRef.current) {
+                for (let i = faceSegIdx; i < prevFaceSegIdxRef.current; i++) {
+                    const base = i * 6;
+                    for (let j = 0; j < 6; j++) fPos[base + j] = 1e5;
+                    for (let j = 0; j < 6; j++) fCol[base + j] = 0;
+                }
             }
+            prevFaceSegIdxRef.current = faceSegIdx;
             fPosAttr.needsUpdate = true;
             fColAttr.needsUpdate = true;
         }

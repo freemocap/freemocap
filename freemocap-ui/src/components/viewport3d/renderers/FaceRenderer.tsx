@@ -35,6 +35,10 @@ export function FaceRenderer() {
     const nameToIdx = useRef<Map<string, number>>(new Map());
     const nextIdx = useRef(0);
     const dirtyRef = useRef(false);
+    // MediaPipe-style face contour data uses face.{group}_{index} naming
+    // (e.g. face.lips_61). RTMPose uses face_0000 which doesn't match.
+    // Skip the contour line loop unless we've seen face.* data.
+    const hasContourDataRef = useRef(false);
 
     const dotGeo = useMemo(() => {
         const g = new BufferGeometry();
@@ -74,6 +78,7 @@ export function FaceRenderer() {
             const face = pointsRef.current;
             face.clear();
             const { pointNames, interleaved } = frame;
+            let hasContourNames = false;
             for (let i = 0; i < pointNames.length; i++) {
                 if (!pointNames[i].startsWith("face_")) continue;
                 const off = i * 4;
@@ -82,7 +87,10 @@ export function FaceRenderer() {
                 const y = interleaved[off + 1];
                 const z = interleaved[off + 2];
                 face.set(pointNames[i], { x, y, z });
+                // face.{group}_{index} → MediaPipe contour data present
+                if (pointNames[i].startsWith("face.")) hasContourNames = true;
             }
+            if (hasContourNames) hasContourDataRef.current = true;
             dirtyRef.current = true;
 
             for (const name of face.keys()) {
@@ -118,24 +126,28 @@ export function FaceRenderer() {
         dotGeo.attributes.position.needsUpdate = true;
         dotGeo.setDrawRange(0, nextIdx.current);
 
-        // Update line segments
-        const linePositions = lineGeo.attributes.position.array as Float32Array;
-        let i = 0;
-        for (const group of FACE_CONTOUR_GROUPS) {
-            for (const [ai, bi] of group.connections) {
-                const a = pts.get(`${group.prefix}_${ai}`);
-                const b = pts.get(`${group.prefix}_${bi}`);
-                const base = i * 6;
-                if (a && b) {
-                    linePositions[base] = a.x; linePositions[base+1] = a.y; linePositions[base+2] = a.z;
-                    linePositions[base+3] = b.x; linePositions[base+4] = b.y; linePositions[base+5] = b.z;
-                } else {
-                    for (let j = 0; j < 6; j++) linePositions[base + j] = 1e5;
+        // Update line segments — only when MediaPipe-style face contour data
+        // (face.lips_61 etc.) exists. RTMPose face_0000 names don't match
+        // the contour group prefixes, so this is dead work otherwise.
+        if (hasContourDataRef.current) {
+            const linePositions = lineGeo.attributes.position.array as Float32Array;
+            let i = 0;
+            for (const group of FACE_CONTOUR_GROUPS) {
+                for (const [ai, bi] of group.connections) {
+                    const a = pts.get(`${group.prefix}_${ai}`);
+                    const b = pts.get(`${group.prefix}_${bi}`);
+                    const base = i * 6;
+                    if (a && b) {
+                        linePositions[base] = a.x; linePositions[base+1] = a.y; linePositions[base+2] = a.z;
+                        linePositions[base+3] = b.x; linePositions[base+4] = b.y; linePositions[base+5] = b.z;
+                    } else {
+                        for (let j = 0; j < 6; j++) linePositions[base + j] = 1e5;
+                    }
+                    i++;
                 }
-                i++;
             }
+            lineGeo.attributes.position.needsUpdate = true;
         }
-        lineGeo.attributes.position.needsUpdate = true;
 
         dirtyRef.current = false;
         statsRef.current.facePoints = count;

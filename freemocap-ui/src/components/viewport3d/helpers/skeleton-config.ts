@@ -142,10 +142,13 @@ export function buildSegmentsFromSchema(
             colors.push(getSegmentColor(a, b, def.color_hints));
         }
 
-        // If the schema includes face landmarks (by name-class), layer the
-        // legacy MediaPipe face contours on top.
-        const hasFace = def.tracked_points.some(n => classifyPointName(n) === 'face');
-        if (hasFace) {
+        // Only append MediaPipe-style face contours when the schema uses
+        // face.{group}_{index} naming (e.g. face.lips_61). RTMPose-style
+        // face_0000 names don't match and would produce dead segments.
+        const hasMediaPipeFace = def.tracked_points.some(
+            n => classifyPointName(n) === 'face' && n.startsWith('face.'),
+        );
+        if (hasMediaPipeFace) {
             const faceSegs = buildFaceContourSegments();
             const faceCols = buildFaceContourColors();
             for (const key of Object.keys(faceSegs)) {
@@ -158,6 +161,7 @@ export function buildSegmentsFromSchema(
     return {segments, colors};
 }
 
-// Extra capacity beyond the schema's segments — charuco grid connections are
-// computed in ConnectionRenderer and need their own slots.
-export const MAX_SEGMENT_EXTRAS = 800;
+// Extra capacity beyond schema segments for calibration marker edges.
+// Real max: ~38 charuco grid edges + ~16 aruco marker edges ≈ 54. 100
+// provides safety margin without bloating the GPU buffer.
+export const MAX_SEGMENT_EXTRAS = 100;

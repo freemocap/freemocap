@@ -73,6 +73,9 @@ export function ViewportOverlay({
   const toggleConnections = useCallback(() => toggle("connections"), [toggle]);
   const toggleCameras = useCallback(() => toggle("cameras"), [toggle]);
   const toggleCenterOfMass = useCallback(() => toggle("centerOfMass"), [toggle]);
+  const toggleComSphere = useCallback(() => toggle("centerOfMassSphere"), [toggle]);
+  const toggleComProjection = useCallback(() => toggle("centerOfMassProjection"), [toggle]);
+  const toggleComConnection = useCallback(() => toggle("centerOfMassConnection"), [toggle]);
 
   return (
     <>
@@ -141,12 +144,28 @@ export function ViewportOverlay({
               checked={visibility.cameras}
               onChange={toggleCameras}
             />
-            <VisToggle
+            <CollapsibleVisibilityGroup
               label="Center of Mass"
-              countRef={comCountRef}
               checked={visibility.centerOfMass}
-              onChange={toggleCenterOfMass}
-            />
+              onToggle={toggleCenterOfMass}
+              countRef={comCountRef}
+            >
+              <VisToggle
+                label="COM Sphere"
+                checked={visibility.centerOfMassSphere}
+                onChange={toggleComSphere}
+              />
+              <VisToggle
+                label="Vertical Projection"
+                checked={visibility.centerOfMassProjection}
+                onChange={toggleComProjection}
+              />
+              <VisToggle
+                label="COM-VP Connection"
+                checked={visibility.centerOfMassConnection}
+                onChange={toggleComConnection}
+              />
+            </CollapsibleVisibilityGroup>
             <p className="text sm mt-1 block" style={{ color: "#888" }}>
               Total points: <span ref={totalPointsRef}>0</span>
               <br />
@@ -182,6 +201,81 @@ export function ViewportOverlay({
     </>
   );
 }
+
+/**
+ * Reusable collapsible visibility group with a master toggle and
+ * expandable sub-item toggles. Toggle switches align vertically
+ * across nesting levels via a fixed-width toggle column.
+ */
+const COLLAPSE_ICON_STYLE: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 18,
+  height: 18,
+  fontSize: 10,
+  color: "#888",
+  transition: "transform 0.15s",
+  flexShrink: 0,
+};
+
+const CollapsibleVisibilityGroup = memo(function CollapsibleVisibilityGroup({
+  label,
+  checked,
+  onToggle,
+  countRef,
+  children,
+}: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+  countRef?: React.RefObject<HTMLSpanElement | null>;
+  children: React.ReactNode;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const labelNode = countRef ? (
+    <span>
+      {label} (<span ref={countRef}>0</span>)
+    </span>
+  ) : (
+    label
+  );
+
+  return (
+    <div className="flex flex-col">
+      <div
+        className="flex flex-row items-center justify-content-space-between gap-1"
+        style={{ margin: "2px 0", cursor: "pointer" }}
+      >
+        <span
+          className="flex flex-row items-center gap-1"
+          style={{ fontSize: "0.7rem", color: "#ccc", flex: 1 }}
+          onClick={() => setExpanded((e) => !e)}
+        >
+          <span
+            style={{
+              ...COLLAPSE_ICON_STYLE,
+              transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+            }}
+          >
+            ▾
+          </span>
+          {labelNode}
+        </span>
+        <div
+          className={`icon toggle-container sm ${checked ? "on" : "off"}`}
+          onClick={onToggle}
+        >
+          <div className="icon toggle-circle" />
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ paddingLeft: 26, opacity: 0.85 }}>{children}</div>
+      )}
+    </div>
+  );
+});
 
 const VisToggle = memo(function VisToggle({
   label,

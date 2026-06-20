@@ -302,15 +302,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     y: (payload.center_of_mass as Point3d).y,
                     z: (payload.center_of_mass as Point3d).z,
                 };
-                if (centerOfMassSubscribersRef.current.size > 0) {
-                    console.log(`[CoM dispatch] x=${comPoint.x.toFixed(3)} y=${comPoint.y.toFixed(3)} z=${comPoint.z.toFixed(3)} subs=${centerOfMassSubscribersRef.current.size}`);
-                }
                 for (const cb of centerOfMassSubscribersRef.current) cb(comPoint);
-            } else {
-                // Log once when CoM is missing from payload
-                if (centerOfMassSubscribersRef.current.size > 0) {
-                    console.warn(`[CoM dispatch] center_of_mass is ${payload.center_of_mass === null ? 'null' : 'undefined'} in payload (frame ${payload.frame_number})`);
-                }
             }
         };
 

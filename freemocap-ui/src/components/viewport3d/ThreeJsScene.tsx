@@ -66,7 +66,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
             <KeypointsRenderer />
-            <CenterOfMassRenderer />
+            {visibility.centerOfMass && <CenterOfMassRenderer />}
             {/*{visibility.rigidBodies && <RigidBodyRenderer />}*/}
             {visibility.connections && <ConnectionRenderer />}
             {visibility.face && <FaceRenderer />}

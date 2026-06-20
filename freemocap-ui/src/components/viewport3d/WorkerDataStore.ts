@@ -10,7 +10,7 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
+import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
@@ -58,6 +58,7 @@ const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSche
 const calibChan = makeChannel<LoadedCalibration | null>(null);
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
+const comChan = makeChannel<Point3d | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -76,6 +77,8 @@ export const workerDataStore: KeypointsSource & {
     getCalibrationConfig: () => CalibrationConfig;
     subscribeToVisibility: (cb: Listener<ViewportVisibility>) => () => void;
     getVisibility: () => ViewportVisibility;
+    subscribeToCenterOfMass: (cb: Listener<Point3d | null>) => () => void;
+    getLatestCenterOfMass: () => Point3d | null;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
@@ -114,6 +117,10 @@ export const workerDataStore: KeypointsSource & {
     subscribeToVisibility: visibilityChan.subscribe,
     getVisibility: visibilityChan.getLatest,
 
+    // Center of mass
+    subscribeToCenterOfMass: comChan.subscribe,
+    getLatestCenterOfMass: comChan.getLatest,
+
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
@@ -137,6 +144,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "visibility":
                 visibilityChan.dispatch(data as ViewportVisibility);
+                break;
+            case "centerOfMass":
+                comChan.dispatch(data as Point3d | null);
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);

@@ -21,6 +21,7 @@ export function ViewportOverlay({
   const facePointsCountRef = useRef<HTMLSpanElement | null>(null);
   const connectionsCountRef = useRef<HTMLSpanElement | null>(null);
   const camerasCountRef = useRef<HTMLSpanElement | null>(null);
+  const comCountRef = useRef<HTMLSpanElement | null>(null);
   const totalPointsRef = useRef<HTMLSpanElement | null>(null);
   const totalBodiesRef = useRef<HTMLSpanElement | null>(null);
 
@@ -39,6 +40,8 @@ export function ViewportOverlay({
         connectionsCountRef.current.textContent = String(s.connections);
       if (camerasCountRef.current)
         camerasCountRef.current.textContent = String(s.cameras);
+      if (comCountRef.current)
+        comCountRef.current.textContent = String(s.centerOfMass);
       if (totalPointsRef.current)
         totalPointsRef.current.textContent = String(
           s.keypointsRaw + s.keypointsFiltered + s.facePoints,
@@ -69,6 +72,7 @@ export function ViewportOverlay({
   const toggleFace = useCallback(() => toggle("face"), [toggle]);
   const toggleConnections = useCallback(() => toggle("connections"), [toggle]);
   const toggleCameras = useCallback(() => toggle("cameras"), [toggle]);
+  const toggleCenterOfMass = useCallback(() => toggle("centerOfMass"), [toggle]);
 
   return (
     <>
@@ -136,6 +140,12 @@ export function ViewportOverlay({
               countRef={camerasCountRef}
               checked={visibility.cameras}
               onChange={toggleCameras}
+            />
+            <VisToggle
+              label="Center of Mass"
+              countRef={comCountRef}
+              checked={visibility.centerOfMass}
+              onChange={toggleCenterOfMass}
             />
             <p className="text sm mt-1 block" style={{ color: "#888" }}>
               Total points: <span ref={totalPointsRef}>0</span>

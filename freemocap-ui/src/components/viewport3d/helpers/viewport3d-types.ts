@@ -30,6 +30,9 @@ export interface ViewportVisibility {
     connections: boolean;
     cameras: boolean;
     centerOfMass: boolean;
+    centerOfMassSphere: boolean;
+    centerOfMassProjection: boolean;
+    centerOfMassConnection: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -41,6 +44,9 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     connections: true,
     cameras: true,
     centerOfMass: true,
+    centerOfMassSphere: true,
+    centerOfMassProjection: true,
+    centerOfMassConnection: true,
 };
 
 /** Live stats from each renderer. */

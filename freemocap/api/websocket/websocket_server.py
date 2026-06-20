@@ -348,7 +348,14 @@ class WebsocketServer:
                                 if "frameNumber" in data:
                                     # Existing frame acknowledgment handling
                                     self.last_received_frontend_confirmation = data["frameNumber"]
-                                    self._display_image_sizes = data.get("displayImageSizes", None)
+                                    raw_sizes = data.get("displayImageSizes", None)
+                                    if raw_sizes is not None:
+                                        self._display_image_sizes = {
+                                            cam_id: {k: float(v) for k, v in dims.items()}
+                                            for cam_id, dims in raw_sizes.items()
+                                        }
+                                    else:
+                                        self._display_image_sizes = None
                                 else:
                                     logger.debug(f"Received unhandled JSON message: {list(data.keys())}")
 

@@ -267,16 +267,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 );
             }
 
-            // `{}` is truthy in JS but means "no keypoints" when the binary
-            // path is active (aggregator sets these to empty dicts to skip
-            // Pydantic creation). Only dispatch when there are actual keys.
-            if (payload.keypoints_raw && Object.keys(payload.keypoints_raw).length > 0) {
+            // JSON keypoints are empty when binary keypoints is active.
+            // Only dispatch when there are actual keys (legacy JSON path).
+            if (payload.keypoints_raw && Object.keys(payload.keypoints_raw as object).length > 0) {
                 const frame = pointDictToFrame(payload.keypoints_raw as Record<string, {x:number;y:number;z:number}>);
                 trackedPointsRef.current = frame;
                 for (const cb of trackedPointsSubscribersRef.current) cb(frame);
             }
 
-            if (payload.keypoints_filtered && Object.keys(payload.keypoints_filtered).length > 0) {
+            if (payload.keypoints_filtered && Object.keys(payload.keypoints_filtered as object).length > 0) {
                 const frame = pointDictToFrame(payload.keypoints_filtered as Record<string, {x:number;y:number;z:number}>);
                 keypointsFilteredRef.current = frame;
                 for (const cb of keypointsFilteredSubscribersRef.current) cb(frame);
@@ -297,19 +296,22 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         const dispatchBinaryKeypoints = (buf: ArrayBuffer): void => {
             const parsed = parseKeypointsMessage(buf);
             for (const block of parsed.blocks) {
-                const schema = trackerSchemasRef.current[block.trackerId];
-                if (!schema) {
-                    // Schema handshake hasn't arrived yet — drop silently.
-                    continue;
+                // Resolve point names: embedded in the block (calib corners)
+                // or from the pre-shared tracker schema (RTMPose).
+                let pointNames: readonly string[] | null = null;
+                if (block.pointNames) {
+                    pointNames = block.pointNames;
+                } else {
+                    const schema = trackerSchemasRef.current[block.trackerId];
+                    if (!schema) continue; // schema not arrived yet — drop
+                    pointNames = schema.tracked_points;
                 }
-                // Cast to Float32Array (the serializer always uses float32).
+
                 const interleaved = block.interleaved instanceof Float32Array
                     ? block.interleaved
                     : new Float32Array(block.interleaved);
-                const frame: KeypointsFrame = {
-                    pointNames: schema.tracked_points,
-                    interleaved,
-                };
+                const frame: KeypointsFrame = { pointNames, interleaved };
+
                 if (block.kind === BLOCK_KIND.KEYPOINTS_RAW_3D) {
                     trackedPointsRef.current = frame;
                     for (const cb of trackedPointsSubscribersRef.current) cb(frame);

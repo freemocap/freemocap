@@ -94,54 +94,55 @@ export function ViewportOverlay({
           />
         </div>
 
-        <VisToggle
-          label="Environment"
-          checked={visibility.environment}
-          onChange={toggleEnvironment}
-        />
-        <VisToggle
-          label="Raw"
-          countRef={rawCountRef}
-          checked={visibility.keypointsRaw}
-          onChange={toggleKeypointsRaw}
-        />
-        <VisToggle
-          label="Filtered"
-          countRef={filteredCountRef}
-          checked={visibility.keypointsFiltered}
-          onChange={toggleFiltered}
-        />
-        <VisToggle
-          label="Rigid bodies"
-          countRef={rigidBodiesCountRef}
-          checked={visibility.rigidBodies}
-          onChange={toggleRigidBodies}
-        />
-        <VisToggle
-          label="Face"
-          countRef={facePointsCountRef}
-          checked={visibility.face}
-          onChange={toggleFace}
-        />
-        <VisToggle
-          label="Connections"
-          countRef={connectionsCountRef}
-          checked={visibility.connections}
-          onChange={toggleConnections}
-        />
-        <VisToggle
-          label="Cameras"
-          countRef={camerasCountRef}
-          checked={visibility.cameras}
-          onChange={toggleCameras}
-        />
-
         {expanded && (
-          <p className="text sm mt-1 block" style={{ color: "#888" }}>
-            Total points: <span ref={totalPointsRef}>0</span>
-            <br />
-            Total bodies: <span ref={totalBodiesRef}>0</span>
-          </p>
+          <>
+            <VisToggle
+              label="Environment"
+              checked={visibility.environment}
+              onChange={toggleEnvironment}
+            />
+            <VisToggle
+              label="Raw"
+              countRef={rawCountRef}
+              checked={visibility.keypointsRaw}
+              onChange={toggleKeypointsRaw}
+            />
+            <VisToggle
+              label="Filtered"
+              countRef={filteredCountRef}
+              checked={visibility.keypointsFiltered}
+              onChange={toggleFiltered}
+            />
+            <VisToggle
+              label="Rigid bodies"
+              countRef={rigidBodiesCountRef}
+              checked={visibility.rigidBodies}
+              onChange={toggleRigidBodies}
+            />
+            <VisToggle
+              label="Face"
+              countRef={facePointsCountRef}
+              checked={visibility.face}
+              onChange={toggleFace}
+            />
+            <VisToggle
+              label="Connections"
+              countRef={connectionsCountRef}
+              checked={visibility.connections}
+              onChange={toggleConnections}
+            />
+            <VisToggle
+              label="Cameras"
+              countRef={camerasCountRef}
+              checked={visibility.cameras}
+              onChange={toggleCameras}
+            />
+            <p className="text sm mt-1 block" style={{ color: "#888" }}>
+              Total points: <span ref={totalPointsRef}>0</span>
+              <br />
+              Total bodies: <span ref={totalBodiesRef}>0</span>
+            </p>
+          </>
         )}
       </div>
 

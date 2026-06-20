@@ -20,6 +20,17 @@ import { type ViewportStats } from "./helpers/viewport3d-types";
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
+/** Returns true if at least one point in the frame is visible (vis > 0 and coords finite). */
+function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
+  const arr = frame.interleaved;
+  for (let i = 0; i < arr.length; i += 4) {
+    if (arr[i + 3] > 0 && isFinite(arr[i]) && isFinite(arr[i + 1]) && isFinite(arr[i + 2])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 console.log("[ThreeJsCanvas] creating viewport3d worker");
 export const VIEWPORT_WORKER = new Worker(
   new URL("./viewport3d.worker.tsx", import.meta.url),
@@ -174,12 +185,14 @@ export function ThreeJsCanvas() {
 
   useEffect(() => {
     return subscribeToKeypointsRaw((frame) => {
+      if (!_frameHasVisiblePoints(frame)) return;
       VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: frame });
     });
   }, [subscribeToKeypointsRaw]);
 
   useEffect(() => {
     return subscribeToKeypointsFiltered((frame) => {
+      if (!_frameHasVisiblePoints(frame)) return;
       VIEWPORT_WORKER.postMessage({ type: "keypointsFiltered", data: frame });
     });
   }, [subscribeToKeypointsFiltered]);

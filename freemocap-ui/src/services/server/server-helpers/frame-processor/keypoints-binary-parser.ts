@@ -38,6 +38,11 @@ export interface KeypointBlock {
      * visibility 0.
      */
     interleaved: Float32Array | Float64Array;
+    /**
+     * Point names, either from a pre-shared schema or embedded in the block
+     * (for blocks with trackerId="calib3d" that carry their own names blob).
+     */
+    pointNames: ReadonlyArray<string> | null;
 }
 
 export interface ParsedKeypointsMessage {
@@ -90,22 +95,45 @@ export function parseKeypointsMessage(buf: ArrayBuffer): ParsedKeypointsMessage 
         const numPoints = blockView.getUint32(KEYPOINTS_BLOCK_HEADER_FIELDS.num_points.offset, true);
         const dataByteLength = blockView.getUint32(KEYPOINTS_BLOCK_HEADER_FIELDS.data_byte_length.offset, true);
 
-        const expectedDataBytes = numPoints * (dims + 1) * dtypeByteSize(dtypeCode);
-        if (dataByteLength !== expectedDataBytes) {
-            throw new Error(
-                `Block ${b} data_byte_length=${dataByteLength} does not match expected ${expectedDataBytes}`,
-            );
-        }
+        const expectedFloatBytes = numPoints * (dims + 1) * dtypeByteSize(dtypeCode);
 
         cursor += KEYPOINTS_BLOCK_HEADER_SIZE;
         if (cursor + dataByteLength > buf.byteLength) {
             throw new Error(`Block ${b} data runs past end of buffer`);
         }
 
+        // Embedded point names (used when tracker_id doesn't match a schema).
+        // Format: [4 bytes names_len] [names_len bytes of \0-delimited strings] [float data]
+        let pointNames: string[] | null = null;
+        let floatOffset = cursor;
+
+        if (dataByteLength > expectedFloatBytes && dataByteLength >= expectedFloatBytes + 4) {
+            const namesLen = new DataView(buf, cursor, 4).getUint32(0, true);
+            cursor += 4;
+            if (namesLen > 0 && cursor + namesLen + expectedFloatBytes <= cursor - 4 + dataByteLength) {
+                const namesBuf = new Uint8Array(buf, cursor, namesLen);
+                let start = 0;
+                const names: string[] = [];
+                for (let i = 0; i <= namesLen; i++) {
+                    if (i === namesLen || namesBuf[i] === 0) {
+                        if (i > start) {
+                            names.push(new TextDecoder().decode(namesBuf.slice(start, i)));
+                        }
+                        start = i + 1;
+                    }
+                }
+                if (names.length === numPoints) {
+                    pointNames = names;
+                    floatOffset = cursor + namesLen;
+                }
+            }
+            cursor = floatOffset - KEYPOINTS_BLOCK_HEADER_SIZE; // reset for float read
+        }
+
         const elementCount = numPoints * (dims + 1);
         const interleaved = dtypeCode === DTYPE_CODE.FLOAT32
-            ? new Float32Array(buf, cursor, elementCount)
-            : new Float64Array(buf, cursor, elementCount);
+            ? new Float32Array(buf, floatOffset, elementCount)
+            : new Float64Array(buf, floatOffset, elementCount);
 
         blocks.push({
             kind,
@@ -115,8 +143,9 @@ export function parseKeypointsMessage(buf: ArrayBuffer): ParsedKeypointsMessage 
             dims: dims as 2 | 3,
             dtypeCode,
             interleaved,
+            pointNames,
         });
-        cursor += dataByteLength;
+        cursor = floatOffset + expectedFloatBytes;
     }
 
     if (cursor + KEYPOINTS_PAYLOAD_FOOTER_SIZE > buf.byteLength) {

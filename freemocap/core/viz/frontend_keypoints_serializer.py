@@ -74,12 +74,26 @@ def _build_block(
         point_names: tuple[str, ...] | list[str],
         sparse_arrays: dict[str, np.ndarray],
         camera_id: str = "",
+        embed_names: bool = False,
 ) -> bytes:
     dims = 3
     interleaved = _densify_3d(sparse_arrays, point_names)
     wire_np_dtype = numpy_dtype_for(_WIRE_DTYPE)
     payload_arr = interleaved.astype(wire_np_dtype, copy=False)
     payload_bytes = payload_arr.tobytes(order="C")
+
+    if embed_names:
+        # Prepend a names blob so the frontend can resolve point identities
+        # without a pre-shared schema (used for charuco / aruco corners).
+        names_blob = "\0".join(point_names).encode("ascii", errors="ignore") + b"\0"
+        names_len = len(names_blob)
+        data = (
+            np.uint32(names_len).tobytes()
+            + names_blob
+            + payload_bytes
+        )
+    else:
+        data = payload_bytes
 
     header = np.zeros(1, dtype=KEYPOINTS_BLOCK_HEADER_DTYPE)
     header["message_type"] = int(MessageType.KEYPOINTS_BLOCK_HEADER)
@@ -89,8 +103,8 @@ def _build_block(
     header["camera_id"] = camera_id.encode("ascii", errors="ignore")[:CAMERA_ID_BYTES]
     header["tracker_id"] = tracker_id.encode("ascii", errors="ignore")[:TRACKER_ID_BYTES]
     header["num_points"] = len(point_names)
-    header["data_byte_length"] = len(payload_bytes)
-    return header.tobytes() + payload_bytes
+    header["data_byte_length"] = len(data)
+    return header.tobytes() + data
 
 
 def build_keypoints_payload(
@@ -103,11 +117,13 @@ def build_keypoints_payload(
 ) -> bytearray:
     """Serialize the per-frame 3D keypoints into the binary wire format.
 
-    Step 1 of the JSON→binary refactor: only `KEYPOINTS_RAW_3D` and
-    `KEYPOINTS_FILTERED_3D` blocks. 2D overlays remain on the JSON path until
-    Step 2.
+    Sends RTMPose points in two schema-backed blocks (raw + filtered) plus
+    a third block with embedded point names for charuco/aruco calibration
+    corners that have no tracker schema on the frontend.
     """
     blocks: list[bytes] = []
+
+    # RTMPose raw + filtered (schema-backed — point names from tracker_schemas).
     blocks.append(
         _build_block(
             kind=BlockKind.KEYPOINTS_RAW_3D,
@@ -124,6 +140,24 @@ def build_keypoints_payload(
             sparse_arrays=keypoints_filtered_arrays,
         )
     )
+
+    # Charuco / Aruco 3D corners — no schema, so names travel in the block.
+    calib_arrays = {
+        k: v for k, v in keypoints_raw_arrays.items()
+        if k.startswith("CharucoCorner-") or k.startswith("ArucoMarkerCorner-")
+    }
+    if calib_arrays:
+        calib_names = sorted(calib_arrays.keys())
+        blocks.append(
+            _build_block(
+                kind=BlockKind.KEYPOINTS_RAW_3D,
+                tracker_id="calib3d",
+                point_names=calib_names,
+                sparse_arrays=calib_arrays,
+                embed_names=True,
+            )
+        )
+
     num_blocks = len(blocks)
 
     header = np.zeros(1, dtype=KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE)

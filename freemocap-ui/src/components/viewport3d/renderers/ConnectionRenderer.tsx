@@ -187,7 +187,21 @@ export function ConnectionRenderer() {
     useEffect(() => () => { faceGeo.dispose(); faceMat.dispose(); }, [faceGeo, faceMat]);
 
     // Populate helpers shared by both subscriptions.
-    const populateMap = (m: Map<string, Point3d>, frame: KeypointsFrame) => {
+    const CHARUCO_PREFIX = "CharucoCorner-";
+    const ARUCO_PREFIX = "ArucoMarkerCorner-";
+    const isCalibPoint = (name: string) =>
+        name.startsWith(CHARUCO_PREFIX) || name.startsWith(ARUCO_PREFIX);
+
+    const populateMap = (
+        m: Map<string, Point3d>,
+        frame: KeypointsFrame,
+        clearCalibFirst = false,
+    ) => {
+        if (clearCalibFirst) {
+            for (const key of m.keys()) {
+                if (isCalibPoint(key)) m.delete(key);
+            }
+        }
         const { pointNames, interleaved } = frame;
         for (let i = 0; i < pointNames.length; i++) {
             const off = i * 4;
@@ -208,13 +222,16 @@ export function ConnectionRenderer() {
         }
     };
 
-    // Raw keypoints: cached separately so hand/face endpoints can be looked up
-    // even when the filtered trajectory (rigid_3d_xyz) doesn't carry them.
+    // Raw keypoints arrive in two blocks within the same binary message:
+    // (1) RTMPose 133-point schema block, (2) calib3d block with embedded
+    // charuco/aruco names. Both fire before the next useFrame. For the
+    // calib3d block we clear old calibration entries first (corners come
+    // and go). For the RTMPose block we upsert (same 133 names overwritten).
     useEffect(() => {
         return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
             const raw = rawPointsRef.current;
-            raw.clear();
-            populateMap(raw, frame);
+            const hasCalib = frame.pointNames.some(isCalibPoint);
+            populateMap(raw, frame, hasCalib);
             mergeRawIntoPoints();
             dirtyRef.current = true;
             invalidate();

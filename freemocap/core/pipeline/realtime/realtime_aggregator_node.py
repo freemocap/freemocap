@@ -577,9 +577,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=frame_n_outputs,
-                        # When the binary path is active, skip the per-point
-                        # Pydantic object creation — the raw arrays field is
-                        # what the serializer actually reads.
+                        # Binary keypoints carries all 3D points (RTMPose +
+                        # charuco/aruco). JSON keypoints stay empty — the
+                        # binary serializer reads keypoints_*_arrays directly.
                         keypoints_raw=(
                             {} if BINARY_KEYPOINTS_ENABLED
                             else _arrays_to_point3d(raw_keypoints)

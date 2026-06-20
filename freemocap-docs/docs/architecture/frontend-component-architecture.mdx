@@ -96,13 +96,15 @@ The left sidebar (`SidePanelContent`) is a vertical stack of collapsible section
 
 | Section | Visible on tab |
 |---|---|
-| Camera Config Tree | Streaming |
-| Calibration Module | Active Recording, Streaming |
-| Recording Path | All tabs |
-| Recording Control | All tabs |
-| Process Mocap | Active Recording |
-| Mocap Panel | Active Recording |
+| Camera Config Tree | Streaming only |
+| Calibration Module | All tabs |
+| Recording Path | Streaming only |
+| Recording Control | Streaming only |
+| Process Mocap | Playback, Active Recording |
+| Mocap Panel | All tabs |
 | Recording Browser | Playback, Active Recording |
+
+<Tip shortInfo="The sidebar visibility logic is defined in SidePanelContent.tsx with two restriction sets: STREAMING_ONLY_SECTIONS (cameras, recording_path, recording_control) and PLAYBACK_ONLY_SECTIONS (recordings, process_mocap). Any section not in either set appears on all tabs." />
 
 <Tip shortInfo="The sidebar sections are static (not drag-reorderable). The old MUI-based UI used @dnd-kit for drag-and-drop reordering — this was removed in the new UI for simplicity." />
 
@@ -110,8 +112,8 @@ The left sidebar (`SidePanelContent`) is a vertical stack of collapsible section
 
 The bottom panel (`BottomPanelContent`) shows different content depending on the active tab:
 
-- **Streaming tab**: Framerate viewer (D3 charts) on the left, log terminal on the right
-- **Playback / Active Recording tabs**: Log terminal fills the space
+- **Streaming / Active Recording tabs**: Framerate viewer (D3 charts) on the left, log terminal on the right
+- **Playback tab**: Log terminal fills the space
 
 ## Page Components
 
@@ -186,7 +188,8 @@ At ~700 lines, `ServerContextProvider.tsx` is larger than it should be. Its resp
 src/
 ├── app/               Entry points
 │   ├── App.tsx            Provider + ServerContextProvider wrapper
-│   └── AppContent.tsx     HashRouter + providers + BasePanelLayout + BaseContentRouter
+│   ├── AppContent.tsx     HashRouter + providers + BasePanelLayout + BaseContentRouter
+│   └── App.css            Top-level app styles
 │
 ├── layout/            Panel layout and routing
 │   ├── BasePanelLayout.tsx       Three-panel resizable layout
@@ -202,29 +205,32 @@ src/
 │
 ├── components/        Shared and domain components
 │   ├── camera-views/             Camera grid display
-│   ├── control-panels/           Sidebar panels (camera-config, mocap, recording, realtime, server-connection)
+│   ├── control-panels/           Sidebar panels (camera-config-panel, mocap-control-panel, recording-info-panel, realtime-panel, server-connection)
 │   ├── framerate-viewer/         D3 framerate charts (timeseries, histogram, statistics)
-│   ├── playback/                 PlaybackContext, SyncedVideoPlayer, RecordingBrowser, PlaybackControls
-│   ├── pipeline-progress/        PipelineProgressPanel, PipelineProgressBar, PipelineProgressSnackbar
+│   ├── languages/                LanguageSwitcher + custom flag icons
+│   ├── mocap-setup/              Mocap setup wizard (blender settings, detector settings, 3D reconstruction, processing directory, setup modal)
+│   ├── playback/                 PlaybackContext, SyncedVideoPlayer, RecordingBrowser, PlaybackControls, RecordingBrowserSection, ZoomableVideoTile, usePlaybackController
+│   ├── pipeline-progress/        PipelineProgressPanel, PipelineProgressBar, PipelineProgressSnackbar, PipelineGroupCard, calibration-progress/, realtime/
 │   ├── viewport3d/               Three.js scene, renderers, hooks, workers
 │   ├── log-terminal/             Scrollable server log viewer
 │   ├── ui-components/            Design-system components (Button, Header, Footer, Toggle, SegmentedControl, etc.)
-│   └── common/                   ErrorBoundary, DirectoryStatusPanel, PresetPicker, CollapsibleSidebarSection
+│   └── common/                   ErrorBoundary, DirectoryStatusPanel, PresetPicker, CollapsibleSidebarSection, CalibrationTomlPicker, RecordingStatusPanel
 │
 ├── services/          Backend communication
 │   ├── server/
 │   │   ├── ServerContextProvider.tsx  WebSocket lifecycle, rAF loop, frame processing, overlays
 │   │   ├── server-context.ts         ServerContext interface + useServer hook
-│   │   └── server-helpers/           canvas-manager, frame-processor, image-overlay, log-store, websocket-connection
+│   │   └── server-helpers/           canvas-manager, frame-processor, image-overlay, log-store, websocket-connection, console-log-bridge, framerate-store, offscreen-renderer.worker, tracked-object-definition, websocket-message-types
 │   └── electron-ipc/                  tRPC proxy over Electron IPC
 │
 ├── store/             Redux state management
-│   ├── store.ts                 configureStore (12 slices, 2 middleware)
+│   ├── store.ts                 configureStore (13 slices, 2 middleware)
 │   ├── hooks.ts                 useAppDispatch, useAppSelector (typed)
+│   ├── types.ts                 Shared store types
 │   ├── persistence.ts           localStorage load/save helpers
 │   ├── persistence-listener.ts  Auto-persist middleware (300ms debounce)
 │   ├── camera-config-listener.ts Auto-apply camera config middleware (350ms debounce)
-│   └── slices/                  One directory per slice
+│   └── slices/                  One directory per slice (13 total, includes theme slice)
 │
 ├── styles/            CSS utility classes and design tokens
 │   ├── App.css                  Master import file + utility classes
@@ -234,9 +240,9 @@ src/
 │   └── (domain-specific .css files)
 │
 ├── hooks/             Custom React hooks
-├── i18n/              Internationalization (i18next, 40 locales)
+├── i18n/              Internationalization (i18next, 41 locales)
 ├── types/             Shared TypeScript types
 ├── utils/             Pure utility functions
 ├── constants/         URLs, external links
-└── assets/            SVG icons (~80 icons)
+└── assets/            SVG icons (92 icons)
 ```

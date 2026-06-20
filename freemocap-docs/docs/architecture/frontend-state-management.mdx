@@ -9,7 +9,7 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # Frontend State Management
 
-State management uses **Redux Toolkit** with 12 slice reducers, two custom listener middlewares, and selective localStorage persistence. Rapidly-changing data (camera frames, keypoints) bypasses Redux entirely and lives in refs inside `ServerContextProvider`.
+State management uses **Redux Toolkit** with 12 active slice reducers (plus a 13th `theme` slice that exists on disk but is not registered in the store — it manages its own localStorage directly). Two custom listener middlewares provide selective localStorage persistence. Rapidly-changing data (camera frames, keypoints) bypasses Redux entirely and lives in refs inside `ServerContextProvider`.
 
 ## Redux Store Architecture
 
@@ -62,29 +62,29 @@ Each slice owns one domain of state. Here's what each one holds and why it exist
 **Why it exists**: Video recording is a stateful operation with a lifecycle (idle → countdown → recording → complete). This slice manages that lifecycle and the naming/directory configuration.
 
 ### videos
-**State**: `folder`, `files[]`, `selectedFile`, `playbackState`.
+**State**: `folder`, `files[]`, `selectedFile`, `playbackState`, `isLoading`, `error`.
 
 **Why it exists**: Legacy video file management. In practice, playback now uses the `playbackData` slice and `PlaybackContext` instead. This slice is largely vestigial.
 
 <Tip shortInfo="The videos slice is mostly unused. Playback flows through playbackData slice + PlaybackContext. Be careful not to add new dependencies on the videos slice." />
 
 ### realtime
-**State**: `pipelineConfig` (camera node config, aggregator config), `cameraGroupId`, `pipelineId`, `isConnected`, `isLoading`.
+**State**: `pipelineConfig` (camera node config, aggregator config), `cameraGroupId`, `pipelineId`, `isConnected`, `isLoading`, `error`.
 
 **Why it exists**: The realtime pipeline streams CharUco tracking and skeleton data over WebSocket. This slice tracks whether the realtime pipeline is connected and what its configuration is.
 
 ### calibration
-**State**: `config` (charuco board squares/rows/length, solver method, min shared views), `isRecording`, `recordingProgress`, `directoryInfo`, `loadedCalibration`.
+**State**: `config` (charuco board squares/rows/length, solver method, min shared views), `isRecording`, `recordingProgress`, `directoryInfo`, `loadedCalibration`, `isLoading`, `error`, `dismissedCalibrationPath`.
 
 **Why it exists**: Calibration is a multi-step workflow: configure the CharUco board → start calibration recording → stop recording → run the calibration solver. This slice manages config and tracks progress through that workflow.
 
 ### mocap
-**State**: `config` (MediaPipe detector settings: model complexity, confidence thresholds, segmentation, face refinements; skeleton filter settings: One Euro Filter, FABRIK, bone length estimation, point gating, prediction), `isRecording`, `recordingProgress`, `processingProgress`, `processingPhase`, `directoryInfo`, `calibrationTomlPath`.
+**State**: `config` (MediaPipe detector settings: model complexity, confidence thresholds, segmentation, face refinements; skeleton filter settings: One Euro Filter, FABRIK, bone length estimation, point gating, prediction), `isRecording`, `recordingProgress`, `processingProgress`, `processingPhase`, `directoryInfo`, `calibrationTomlPath`, `isLoading`, `error`.
 
 **Why it exists**: Mocap processing is the core workflow. This slice manages the MediaPipe pose detection config, the skeleton filter config, and tracks progress through recording and post-processing.
 
 ### locale
-**State**: Current language code, previous language code.
+**State**: Current language code, previous language code, `showTranslationIndicator`.
 
 **Why it exists**: Manages i18n language state. The actual translation strings live in `i18next`, not Redux — this slice just tracks which language is active for UI indicators and persistence.
 
@@ -94,12 +94,12 @@ Each slice owns one domain of state. Here's what each one holds and why it exist
 **Why it exists**: Pipeline progress messages arrive over WebSocket and need to be tracked across the UI (progress bar, snackbar notifications, the pipeline progress panel). This slice aggregates progress from both calibration and mocap pipelines.
 
 ### blender
-**State**: `blenderExePath`, `detectedBlenderExePath`, `exportToBlenderEnabled`, `autoOpenBlendFile`, `isExporting`, `isDetecting`, `isOpening`, `lastBlendFilePath`.
+**State**: `blenderExePath`, `detectedBlenderExePath`, `exportToBlenderEnabled`, `autoOpenBlendFile`, `isExporting`, `isDetecting`, `isOpening`, `lastBlendFilePath`, `error`.
 
 **Why it exists**: Blender integration (detect, export .blend, open in Blender) is a cross-cutting feature that multiple components interact with. This slice tracks Blender's availability and export state.
 
 ### recordingStatus
-**State**: `byRecordingId` (Record of per-recording status entries), `recordingsList[]`, `recordingsIsLoading`.
+**State**: `byRecordingId` (Record of per-recording status entries), `recordingsList[]`, `recordingsIsLoading`, `recordingsFetchedAt`.
 
 **Why it exists**: After a recording completes, the backend processes it through stages (synchronized videos, annotated videos, calibration, blend file). This slice tracks which stages are complete for each recording, fetched via REST.
 
@@ -115,7 +115,7 @@ Each slice owns one domain of state. Here's what each one holds and why it exist
 
 ## Slice File Convention
 
-Every slice follows the same file structure. This is a strict convention — new slices must follow it:
+The target file structure for slices is:
 
 ```
 slices/<domain>/
@@ -125,6 +125,8 @@ slices/<domain>/
 ├── <domain>-selectors.ts  Memoized selectors (createSelector)
 └── index.ts               Barrel re-exports
 ```
+
+In practice, slices vary in how closely they follow this convention. Slices like `cameras`, `videos`, and `realtime` follow it fully, while others inline types, selectors, or thunks into `-slice.ts` when the slice is simple enough. The convention is aspirational — use the full structure when a slice has enough complexity to warrant it.
 
 Selectors often cross-reference multiple slices. For example, `selectCanStartCalibrationRecording` composes state from `calibration` and `activeRecording`. The convention is to place a selector in the slice that "owns" the question being asked.
 

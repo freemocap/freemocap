@@ -22,7 +22,7 @@ graph TD
     end
 
     subgraph Python["Python Backend<br/>(freemocap/)"]
-        Flask["Flask REST API<br/>:53117"]
+        FastAPI["FastAPI REST API<br/>:53117"]
         WSServer["WebSocket Server<br/>:53117"]
         Pipelines["Processing Pipelines<br/>(calibration, mocap)"]
     end
@@ -32,9 +32,9 @@ graph TD
         Cam2["USB Camera 2"]
     end
 
-    ReactUI -->|"REST (commands)"| Flask
+    ReactUI -->|"REST (commands)"| FastAPI
     ReactUI -->|"WebSocket (streaming)"| WSServer
-    Flask --> Pipelines
+    FastAPI --> Pipelines
     WSServer --> Pipelines
     Cameras -->|"USB"| Python
 ```
@@ -57,19 +57,19 @@ freemocap/
 │       ├── pages/          Top-level page components
 │       ├── components/     Shared + domain components
 │       ├── services/       Backend communication (WebSocket, REST, Electron IPC)
-│       ├── store/          Redux state management (12 slices)
+│       ├── store/          Redux state management (13 slices)
 │       ├── styles/         CSS utility classes + design tokens
 │       ├── hooks/          Custom React hooks
-│       ├── i18n/           Internationalization (40 locales)
+│       ├── i18n/           Internationalization (41 locales)
 │       ├── types/          Shared TypeScript types
 │       ├── utils/          Pure utility functions
 │       └── constants/      URLs, external links
 │
-├── freemocap/             Python backend (Flask, WebSocket, processing pipelines)
+├── freemocap/             Python backend (FastAPI, WebSocket, processing pipelines)
 │
 ├── freemocap-docs/        This documentation site (Docusaurus v3 + SkellyDocs)
 │
-├── shared/                Code shared across layers
+├── shared/                Shared assets (charuco boards, logos, macOS packaging)
 │
 └── freemocap-ui-old/      Previous MUI-based frontend (superseded)
 ```
@@ -82,7 +82,7 @@ freemocap/
 sequenceDiagram
     participant UI as React Frontend
     participant WS as WebSocket Server
-    participant REST as Flask REST API
+    participant REST as FastAPI REST API
     participant Pipe as Processing Pipelines
 
     UI->>REST: POST /skellycam/camera/detect
@@ -118,17 +118,15 @@ This documentation follows the same rule. Every page starts with a summary you c
 
 ### Fail Loudly
 
-No fallbacks. No silent degradation. No `try: do_thing(); except: do_other_thing()`. If something that should work doesn't work, the system crashes with a clear error message. This surfaces bugs immediately instead of papering over them.
-
-The only valid error handling is at system boundaries: user input validation, external API responses.
+The default is to crash with a clear error message rather than silently degrading. This surfaces bugs immediately instead of papering over them. Valid exception handling is used at system boundaries (user input validation, external API responses, GPU OOM recovery, network reconnection) and for graceful degradation when optional features are unavailable (e.g., falling back to CPU inference when a GPU execution provider is missing).
 
 ### Single Source of Truth
 
-Every decision — backend selection, config flag, feature toggle — has exactly one definition. No duplicated boolean flags. No config keys defined in two places that can drift out of sync. The architecture docs tell you where the canonical location is.
+Every decision — backend selection, config flag, feature toggle — should have exactly one definition. No duplicated boolean flags. No config keys defined in two places that can drift out of sync. The architecture docs tell you where the canonical location is. (In practice, a few constants like the port number and WebSocket path are necessarily duplicated at the frontend/backend boundary — these are documented in both `server-urls.ts` and `server_constants.py`.)
 
-### Zero Backwards Compatibility
+### Zero Backwards Compatibility (Aspirational)
 
-There is exactly one version of this code: the current one. Old code is deleted. Old interfaces are broken. Old callers are updated. No deprecation shims, no feature flags to preserve old behavior, no migration layers.
+New code targets the current architecture without shims or migration layers. However, the project retains some legacy compatibility: the `RecordingStructure` model supports both canonical and legacy recording layouts, the old MUI-based UI still exists in `freemocap-ui-old/` as a reference, and some pipeline configs offer legacy operating modes (e.g., inline vs centralized GPU inference). Legacy support is pragmatic — it keeps existing recordings usable while the system evolves.
 
 ## Quick Reference
 

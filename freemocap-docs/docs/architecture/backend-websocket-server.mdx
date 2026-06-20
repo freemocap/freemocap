@@ -9,7 +9,7 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # WebSocket Server
 
-The WebSocket server (`api/websocket/websocket_server.py`, 377 lines) is the real-time data bridge between the backend pipelines and the frontend. It streams camera frames, keypoints, logs, and progress updates over a single persistent connection.
+The WebSocket server (`api/websocket/websocket_server.py`, ~377 lines) is the real-time data bridge between the backend pipelines and the frontend. It streams camera frames, keypoints, logs, and progress updates over a single persistent connection.
 
 <Tip shortInfo="The WebSocket server, like the frontend's ServerContextProvider, is larger than it should be. Its responsibilities grew together because they share one WebSocket connection and one event loop. A refactor to break it into focused pieces is planned but deferred — for now, it works." />
 
@@ -40,8 +40,8 @@ This is the core task. It packages data from the running pipelines and sends it 
 
 1. **Drain posthoc progress messages always** — never gated by backpressure. Progress updates are small and time-sensitive.
 2. **Backpressure gate** — waits for frontend acknowledgment (`last_received_frontend_confirmation >= last_sent_frame_number`). If the frontend hasn't confirmed it received the last frame batch, the relay pauses.
-   - **WARNING at 300 unacknowledged frames** — logged as a signal that the frontend may be falling behind
-   - **Reset at 300 unacknowledged frames** — to prevent OOM from unbounded queue growth, the relay resets its internal state
+   - **WARNING at multiples of 300 unacknowledged frames** — logged as a signal that the frontend may be falling behind (first warning at 600, then every 300 thereafter)
+   - **Reset at BACKPRESSURE_RESET_THRESHOLD unacknowledged frames** — to prevent OOM from unbounded queue growth, the relay resets its internal state
 3. **Blocks on `wait_for_realtime_result`** — event-driven, up to 0.5s timeout. The realtime pipeline's `result_ready_event` fires when a new frame is processed.
 4. **Sends `FrontendPayload`** — JSON via `msgspec` (image metadata, keypoints, rigid bodies, overlay data), plus binary image bytes, plus optional binary keypoints.
 5. **Tracks framerate** — computes server framerate from `frame_number` + capture timestamp, and display framerate from WebSocket send rate. Sends `FramerateMessage` at ~4Hz.
@@ -96,6 +96,17 @@ Processes messages from the frontend:
 | `frameNumber` | Backpressure acknowledgment |
 | `displayImageSizes` | Per-camera display dimensions for overlay scaling |
 | `ping` | Heartbeat |
+
+## Binary Keypoints Protocol
+
+The WebSocket server supports an optional binary keypoints wire format (`api/websocket/binary_keypoints_protocol.py`, ~124 lines) gated behind an environment variable. When enabled, 3D keypoints are sent as structured binary messages instead of JSON, providing significantly lower serialization overhead for high-frequency skeleton data.
+
+The binary format uses a multi-part message structure:
+- **Payload Header** (24 bytes): message_type, frame_number, num_blocks
+- **Per-block**: Block Header (44 bytes) with block_kind, dtype_code, dims, camera_id, tracker_id, num_points, data_byte_length — followed by interleaved x/y(/z)/visibility per point in row-major order
+- **Payload Footer** (24 bytes): mirrors header
+
+See the [API Boundary](../api-boundary) page for the full binary message format specification.
 
 ## Serialization
 

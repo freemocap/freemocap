@@ -91,14 +91,14 @@ Message types are discriminated by first byte or JSON shape:
 
 | Type | Direction | Format | Purpose |
 |---|---|---|---|
-| Binary frame | Server → Client | `[msgType:1B][frameNum:4B][JPEG data...]` | Camera frames |
-| Binary keypoints | Server → Client | `[msgType:1B][keypoints:Float32Array]` | 3D keypoint positions |
-| JSON: log | Server → Client | `{type: "log", level, message, timestamp}` | Server logs |
-| JSON: framerate | Server → Client | `{type: "framerate", fps, server_fps}` | FPS metrics |
-| JSON: frontend_payload | Server → Client | `{type: "frontend_payload", payload_type, data}` | Keypoints, rigid bodies, overlays, pupil data |
-| JSON: posthoc_progress | Server → Client | `{type: "posthoc_progress", pipeline_id, phase, progress}` | Pipeline stage progress |
-| JSON: tracker_schema | Server → Client | `{type: "tracker_schema", schema}` | Tracker metadata |
-| JSON: command | Client → Server | Various shapes | Commands (connect, disconnect, etc.) |
+| Binary frame | Server → Client | Structured header+camera+footer | Camera frames (see API Boundary for full format) |
+| Binary keypoints | Server → Client | Structured header+blocks+footer | 3D keypoint positions (when binary mode enabled) |
+| JSON: log_record | Server → Client | `{message_type: "log_record", levelname, message, timestamp}` | Server logs |
+| JSON: framerate_update | Server → Client | `{message_type: "framerate_update", backend_framerate, frontend_framerate}` | FPS metrics |
+| JSON: frontend_payload | Server → Client | `{message_type: "frontend_payload", payload_type, data}` | Keypoints, rigid bodies, overlays, pupil data |
+| JSON: posthoc_progress | Server → Client | `{message_type: "posthoc_progress", pipeline_id, phase, progress_fraction}` | Pipeline stage progress |
+| JSON: tracker_schemas | Server → Client | `{message_type: "tracker_schemas", schemas}` | Tracker metadata (plural: multiple schemas in one message) |
+| JSON: command | Client → Server | `{frameNumber: N}`, `{ping}`, etc. | Frame acks, heartbeat |
 
 ## The rAF Processing Loop
 
@@ -174,8 +174,8 @@ The `ServerUrls` singleton (`src/constants/server-urls.ts`) centralizes all REST
 - `DELETE /freemocap/realtime/all/close` — Close realtime pipeline
 
 **Posthoc**
-- `POST /freemocap/posthoc/pipeline/{id}` — Stop a specific pipeline
-- `POST /freemocap/posthoc/pipeline` — Stop all pipelines
+- `DELETE /freemocap/posthoc/pipeline/{id}` — Stop a specific pipeline
+- `DELETE /freemocap/posthoc/pipeline` — Stop all pipelines
 
 **Blender**
 - `GET /freemocap/blender/detect` — Detect Blender installation
@@ -231,11 +231,11 @@ For Electron-specific operations, the frontend uses a **tRPC proxy client** over
 │ Pipeline progress  │ WebSocket    │ JSON posthoc_progress     │
 │                    │              │ → rAF → Redux dispatch    │
 ├─────────────────────────────────────────────────────────────┤
-│ Server logs        │ WebSocket    │ JSON log                 │
+│ Server logs        │ WebSocket    │ JSON log_record          │
 │                    │              │ → rAF → LogStore          │
 │                    │              │ → Redux (log slice)       │
 ├─────────────────────────────────────────────────────────────┤
-│ Framerate stats    │ WebSocket    │ JSON framerate           │
+│ Framerate stats    │ WebSocket    │ JSON framerate_update    │
 │                    │ + local      │ → rAF → FramerateStore   │
 ├─────────────────────────────────────────────────────────────┤
 │ Electron ops       │ Electron IPC │ tRPC proxy               │

@@ -1,0 +1,88 @@
+---
+sidebar_position: 2
+title: Build & Deployment
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Build & Deployment
+
+FreeMoCap ships as an Electron desktop application with a bundled Python backend. The build process freezes the Python server into a standalone executable and packages it with the React frontend.
+
+## Architecture of a Release
+
+```
+freemocap-setup.exe (or .dmg / .AppImage)
+├── freemocap-ui/          Electron + React frontend
+├── freemocap_server.exe   PyInstaller-frozen Python backend
+└── resources/             ONNX models, charuco boards, assets
+```
+
+## Backend: PyInstaller
+
+The Python backend is frozen into a standalone executable using PyInstaller.
+
+**Config:** `freemocap.spec` in the repo root.
+
+```bash
+# Build the backend executable
+pyinstaller freemocap.spec
+```
+
+**What gets bundled:**
+- `freemocap/__main__.py` as the entry point
+- OpenCV, scipy, pandas, mediapipe
+- ONNX Runtime (GPU + CPU)
+- NVIDIA CUDA libraries (cublas, cuda_runtime, cudnn)
+- Skelly ecosystem packages (skellycam, skellytracker, skellyforge)
+- RTMLib, onnx
+
+**What's excluded:** pytest, tkinter, IPython, numba (unused at runtime), sklearn, mediapipe dev tools, legacy skellytracker modules.
+
+**Output:** `freemocap_server.exe` (Windows), equivalent on macOS/Linux.
+
+## Frontend: Electron Builder
+
+The React frontend is packaged with `electron-builder`.
+
+**Config:** `freemocap-ui/electron-builder.json`
+
+```bash
+cd freemocap-ui
+
+# Development (Vite + Electron)
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+**Key dependencies packaged:**
+- React 19 + React DOM
+- Redux Toolkit + React Redux
+- Three.js + @react-three/fiber + @react-three/drei
+- Monaco editor, D3, i18next
+- Zod, smol-toml, hyparquet, superjson
+
+## CI/CD (GitHub Actions)
+
+Build and deployment workflows live in `.github/workflows/`:
+
+| Workflow | Purpose |
+|---|---|
+| `build-installers.yml` | Builds platform-specific installers on push to main |
+| `deploy-docs.yml` | Builds and deploys this documentation site to GitHub Pages |
+| `test.yml` | Runs backend + frontend tests on PR |
+
+## Versioning
+
+- **Backend version**: `v1.4.7` (in `freemocap/__init__.py`), managed by `bumpver`
+- **Frontend version**: `2.0.0-alpha.1` (in `freemocap-ui/package.json`)
+- **Electron updater**: `electron-updater` handles auto-updates for installed releases
+
+<Tip shortInfo="The version numbers are currently out of sync between the Python backend (v1.4.7) and the frontend (v2.0.0-alpha.1). This reflects the v2 rewrite of the frontend while the backend is being incrementally updated." />

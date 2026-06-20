@@ -219,7 +219,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
 
             for (const frameData of frames) {
-                canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
+                canvasManagerRef.current?.sendFrameToWorker(
+                    frameData.cameraId,
+                    frameData.pixelBuffer,
+                    frameData.width,
+                    frameData.height,
+                );
             }
 
             // Measure display fps from decoded frame arrivals — fires every frame
@@ -331,7 +336,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             // decode starts. This unblocks the backend's result_consumed_event
             // ~100-150ms earlier, allowing it to pipeline the next frame.
             if (pendingAckFrameNumberRef.current !== null) {
-                ws.send({type: 'frameAcknowledgment', frameNumber: pendingAckFrameNumberRef.current});
+                ws.send({
+                    type: 'frameAcknowledgment',
+                    frameNumber: pendingAckFrameNumberRef.current,
+                    displayImageSizes: canvasManagerRef.current?.getDisplaySizes(),
+                });
                 pendingAckFrameNumberRef.current = null;
             }
 

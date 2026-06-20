@@ -11,7 +11,7 @@ export interface FrameData {
     width: number;
     height: number;
     colorChannels: number;
-    bitmap: ImageBitmap;
+    pixelBuffer: ArrayBuffer;
 }
 
 export interface ProcessedFrameResult {
@@ -32,7 +32,7 @@ interface DecodeResultMessage {
         height: number;
         colorChannels: number;
     }>;
-    bitmaps: ImageBitmap[];
+    pixelBuffers: ArrayBuffer[];
 }
 
 /** Error response from worker → main thread. */
@@ -83,12 +83,6 @@ export class FrameProcessor {
     private handleWorkerMessage(msg: DecodeWorkerMessage): void {
         const pending = this.pendingRequests.get(msg.requestId);
         if (!pending) {
-            // Clean up any bitmaps in orphaned result messages
-            if (msg.type === 'result') {
-                for (const bitmap of msg.bitmaps) {
-                    bitmap.close();
-                }
-            }
             throw new Error(`Received response for unknown request ${msg.requestId}`);
         }
         this.pendingRequests.delete(msg.requestId);
@@ -98,7 +92,7 @@ export class FrameProcessor {
             return;
         }
 
-        // Reassemble FrameData by zipping metadata + bitmaps
+        // Reassemble FrameData by zipping metadata + pixel buffers
         const frames: FrameData[] = msg.frameData.map((meta, i) => ({
             cameraId: meta.cameraId,
             cameraIndex: meta.cameraIndex,
@@ -106,7 +100,7 @@ export class FrameProcessor {
             width: meta.width,
             height: meta.height,
             colorChannels: meta.colorChannels,
-            bitmap: msg.bitmaps[i],
+            pixelBuffer: msg.pixelBuffers[i],
         }));
 
         const cameraIds = new Set<string>();

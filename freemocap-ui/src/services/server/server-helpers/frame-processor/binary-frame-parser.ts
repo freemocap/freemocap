@@ -12,20 +12,14 @@ import {
 // ---------------------------------------------------------------------------
 // CPU JPEG decode (pure JS) — avoids GPU contention with the Three.js viewport.
 //
-// When enabled, JPEG bytes are decoded via jpeg-js which runs entirely on the
-// CPU. The resulting raw pixel data is wrapped in ImageData, then in an
-// ImageBitmap via createImageBitmap(imageData) — which is near-instant because
-// no format decode is needed. This keeps the browser's hardware JPEG decoder
-// free for other work and eliminates GPU command-queue stalls that cause R3F
-// frame cost spikes.
+// JPEG bytes are decoded via jpeg-js which runs entirely on the CPU. We return
+// the raw RGBA pixel buffer — ImageBitmap creation is deferred to each
+// per-camera worker so GPU uploads happen independently (not batched in a
+// Promise.all that serializes on the GPU command queue).
 //
 // jpeg-js is pure JavaScript (no WASM), so it works in any Worker context
 // without Vite WASM-loading issues.
-//
-// Flip this to false to revert to the original GPU-accelerated path
-// (createImageBitmap from a JPEG Blob) for A/B comparison.
 // ---------------------------------------------------------------------------
-const USE_CPU_JPEG_DECODE = true;
 
 // Lazily-resolved pure-JS decoder — loaded once on first use, cached forever.
 let _cpuDecodePromise: Promise<
@@ -53,18 +47,11 @@ export interface ParsedFrame {
     width: number;
     height: number;
     colorChannels: number;
-    bitmap: ImageBitmap;
+    pixelBuffer: ArrayBuffer;
 }
 
 // Single reusable TextDecoder - created once, used forever
 const sharedTextDecoder = new TextDecoder();
-
-// Optimized ImageBitmap options for camera feeds
-const BITMAP_OPTIONS: ImageBitmapOptions = {
-    premultiplyAlpha: 'none',
-    colorSpaceConversion: 'none',
-    resizeQuality: 'pixelated'
-};
 
 /**
  * Parse an ASCII string field from the buffer (16-byte fixed-length camera_id)
@@ -262,37 +249,24 @@ export async function parseMultiFramePayload(
     // Trim array to actual size.
     frameMetadata.length = validFrameCount;
 
-    // Decode JPEG → ImageBitmap for every camera in parallel.
+    // Decode JPEG → raw RGBA pixel buffer for every camera in parallel.
     //
-    // Two paths, toggled by USE_CPU_JPEG_DECODE:
-    //   GPU – createImageBitmap(Blob)  → hardware JPEG decoder (fast per-image
-    //         but serialises on the GPU and contends with WebGL rendering).
-    //   CPU – jpeg-js pure-JS decode → raw ImageData → createImageBitmap
-    //         (wraps already-decoded pixels; no GPU decode step).  Runs on CPU
-    //         so it parallelises across cores and leaves the GPU free.
-    const bitmapPromises = frameMetadata.map(async (metadata) => {
+    // jpeg-js runs on CPU only — no GPU touch. Raw pixel buffers are returned
+    // so that ImageBitmap creation (GPU upload) happens independently in each
+    // per-camera worker, avoiding the GPU queue serialization that occurs when
+    // 3 createImageBitmap calls race in a single Promise.all.
+    const framePromises = frameMetadata.map(async (metadata) => {
         try {
+            const decodeJpeg = await getCpuDecoder();
             const jpegData = new Uint8Array(data, metadata.jpegStart, metadata.jpegLength);
-            let bitmap: ImageBitmap;
+            const raw = decodeJpeg(jpegData); // synchronous
 
-            if (USE_CPU_JPEG_DECODE) {
-                // CPU-only pure-JS decode → ImageData → ImageBitmap
-                const decodeJpeg = await getCpuDecoder();
-                const raw = decodeJpeg(jpegData); // synchronous; {data:Uint8Array, width, height}
-                // Zero-copy Uint8ClampedArray view over the decoded buffer —
-                // ImageData constructor makes one copy internally (unavoidable).
-                const clamped = new Uint8ClampedArray(
-                    raw.data.buffer,
-                    raw.data.byteOffset,
-                    raw.data.byteLength,
-                );
-                const imageData = new ImageData(clamped, raw.width, raw.height);
-                bitmap = await createImageBitmap(imageData);
-            } else {
-                // GPU-accelerated path (original)
-                const blob = new Blob([jpegData], { type: 'image/jpeg' });
-                bitmap = await createImageBitmap(blob, BITMAP_OPTIONS);
-            }
+            // Slice the exact pixel buffer for zero-copy transfer to main thread.
+            // raw.data is a Uint8Array from jpeg-js with useTArray:true.
+            const pixelBuffer = raw.data.buffer.slice(
+                raw.data.byteOffset,
+                raw.data.byteOffset + raw.data.byteLength,
+            );
 
             return {
                 cameraId: metadata.cameraId,
@@ -301,13 +275,13 @@ export async function parseMultiFramePayload(
                 width: metadata.width,
                 height: metadata.height,
                 colorChannels: metadata.colorChannels,
-                bitmap,
+                pixelBuffer,
             } as ParsedFrame;
         } catch (error) {
-            console.error(`Failed to create bitmap for camera ${metadata.cameraId}:`, error);
+            console.error(`Failed to decode frame for camera ${metadata.cameraId}:`, error);
             throw error;
         }
     });
 
-    return Promise.all(bitmapPromises);
+    return Promise.all(framePromises);
 }

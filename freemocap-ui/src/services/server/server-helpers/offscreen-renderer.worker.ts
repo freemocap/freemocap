@@ -32,7 +32,7 @@ let charucoEnabled = true;
 let skeletonEnabled = true;
 
 interface InitMessage { type: "init"; canvas: OffscreenCanvas; }
-interface FrameMessage { type: "frame"; bitmap: ImageBitmap; }
+interface FrameMessage { type: "frame"; pixelBuffer: ArrayBuffer; width: number; height: number; }
 interface OverlaysMessage {
     type: "overlays";
     charuco: CharucoObservation | null;
@@ -55,7 +55,7 @@ self.addEventListener("message", (event: MessageEvent) => {
             workerScope.postMessage({ type: "initialized" });
             break;
         case "frame":
-            handleFrame(msg.bitmap);
+            handleFrame(msg.pixelBuffer, msg.width, msg.height);
             break;
         case "overlays":
             // null means "no update this message" (not "clear") — staleness evicts.
@@ -75,9 +75,8 @@ self.addEventListener("message", (event: MessageEvent) => {
     }
 });
 
-function handleFrame(rawBitmap: ImageBitmap): void {
-    if (!rawBitmap || rawBitmap.width <= 0 || rawBitmap.height <= 0) {
-        if (rawBitmap) rawBitmap.close();
+function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): void {
+    if (!pixelBuffer || pixelBuffer.byteLength <= 0 || width <= 0 || height <= 0) {
         return;
     }
 
@@ -89,20 +88,30 @@ function handleFrame(rawBitmap: ImageBitmap): void {
     const charucoObs = charucoEnabled && overlayFresh ? latestCharuco : null;
     const mediapipeObs = skeletonEnabled && overlayFresh ? latestMediapipe : null;
 
-    if (charucoObs || mediapipeObs) {
-        // processFrame closes the raw bitmap and returns the composited one.
-        // transferToImageBitmap makes this resolve synchronously, so .then()
-        // callbacks for successive frames run in arrival order.
-        overlayManager
-            .processFrame("", rawBitmap, charucoObs, mediapipeObs)
-            .then((composite) => setPending(composite))
-            .catch((err) => {
-                rawBitmap.close();
-                console.error("Overlay composite error", err);
-            });
-    } else {
-        setPending(rawBitmap);
-    }
+    // Create ImageBitmap from raw pixels — this is the GPU upload step,
+    // happening independently in each per-camera worker instead of batched
+    // in the decode worker's Promise.all. Frame-dropping (setPending) means
+    // stale pixel buffers are discarded before ever touching the GPU.
+    const imageData = new ImageData(
+        new Uint8ClampedArray(pixelBuffer),
+        width,
+        height,
+    );
+    createImageBitmap(imageData).then((rawBitmap) => {
+        if (charucoObs || mediapipeObs) {
+            overlayManager
+                .processFrame("", rawBitmap, charucoObs, mediapipeObs)
+                .then((composite) => setPending(composite))
+                .catch((err) => {
+                    rawBitmap.close();
+                    console.error("Overlay composite error", err);
+                });
+        } else {
+            setPending(rawBitmap);
+        }
+    }).catch((err) => {
+        console.error("createImageBitmap error in camera worker", err);
+    });
 }
 
 function setPending(bitmap: ImageBitmap): void {

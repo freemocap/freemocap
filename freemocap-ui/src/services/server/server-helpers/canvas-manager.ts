@@ -77,35 +77,38 @@ export class CanvasManager {
 
     /**
      * Send a frame to a worker. Creates the worker if it doesn't exist yet.
+     * Transfers the raw pixel buffer (ArrayBuffer) — ImageBitmap creation
+     * happens in the per-camera worker so GPU uploads are independent.
      */
-    public sendFrameToWorker(cameraId: string, bitmap: ImageBitmap): boolean {
+    public sendFrameToWorker(
+        cameraId: string,
+        pixelBuffer: ArrayBuffer,
+        width: number,
+        height: number,
+    ): boolean {
         const workerInfo = this.workers.get(cameraId);
 
         if (!workerInfo?.initialized) {
-            // Check if we have a pending canvas we can use
             const pendingCanvas = this.pendingCanvases.get(cameraId);
             if (pendingCanvas) {
                 console.log(`Worker not ready for ${cameraId}, attempting to create from pending canvas`);
                 if (this.setCanvasForCamera(cameraId, pendingCanvas)) {
-                    // Try sending again after creation
-                    return this.sendFrameToWorker(cameraId, bitmap);
+                    return this.sendFrameToWorker(cameraId, pixelBuffer, width, height);
                 }
             }
 
             console.warn(`No initialized worker for camera ${cameraId}, dropping frame`);
-            bitmap.close();
             return false;
         }
 
         try {
             workerInfo.worker.postMessage(
-                { type: 'frame', bitmap },
-                [bitmap]
+                { type: 'frame', pixelBuffer, width, height },
+                [pixelBuffer],
             );
             return true;
         } catch (error) {
             console.error(`Failed to send frame to worker ${cameraId}:`, error);
-            bitmap.close();
             this.recordWorkerError(cameraId);
             return false;
         }
@@ -134,6 +137,7 @@ export class CanvasManager {
      * Terminate all workers
      */
     public terminateAllWorkers(): void {
+        if (this.workers.size === 0) return;
         console.log(`Terminating all workers (${this.workers.size} active)`);
         for (const [cameraId] of this.workers) {
             this.terminateWorker(cameraId);
@@ -147,6 +151,25 @@ export class CanvasManager {
      */
     public getActiveCameraIds(): string[] {
         return Array.from(this.workers.keys());
+    }
+
+    /**
+     * Per-camera display size in physical pixels (CSS size × devicePixelRatio).
+     * Read at ack-time from the canvas element — no ResizeObserver, no listeners,
+     * no DOM reflow. The backend uses these to downscale JPEGs before encoding,
+     * cutting decode time, GPU upload, and bandwidth proportionally.
+     */
+    public getDisplaySizes(): Record<string, { width: number; height: number }> {
+        const sizes: Record<string, { width: number; height: number }> = {};
+        const dpr = window.devicePixelRatio || 1;
+        for (const [cameraId, { canvas, initialized }] of this.workers) {
+            if (!initialized) continue;
+            sizes[cameraId] = {
+                width: canvas.clientWidth * dpr,
+                height: canvas.clientHeight * dpr,
+            };
+        }
+        return sizes;
     }
 
     /**

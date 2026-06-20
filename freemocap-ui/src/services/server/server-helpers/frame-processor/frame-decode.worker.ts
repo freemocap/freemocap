@@ -42,9 +42,12 @@ async function handleDecode(payload: ArrayBuffer, requestId: number): Promise<vo
             height: f.height,
             colorChannels: f.colorChannels,
         }));
-        const bitmaps = frames.map((f) => f.bitmap);
+        const pixelBuffers = frames.map((f) => f.pixelBuffer);
 
-        workerScope.postMessage({ type: "result", requestId, frameData, bitmaps }, bitmaps);
+        workerScope.postMessage(
+            { type: "result", requestId, frameData, pixelBuffers },
+            pixelBuffers,
+        );
     } catch (error) {
         workerScope.postMessage({
             type: "error",

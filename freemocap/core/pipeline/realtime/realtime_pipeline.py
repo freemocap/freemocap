@@ -307,10 +307,17 @@ class RealtimePipeline:
         """
         return await asyncio.to_thread(self.result_ready_event.wait, timeout)
 
-    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt, ) -> FrontendImagePacket | None:
+    def get_latest_frontend_payload(
+        self,
+        if_newer_than: FrameNumberInt,
+        display_image_sizes: dict[str, dict[str, float]] | None = None,
+    ) -> FrontendImagePacket | None:
         if not self.alive:
             if self.camera_group.alive:
-                result = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                result = self.camera_group.get_latest_frontend_payload(
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
+                )
                 if result is not None:
                     frame_number, mf_timestamp, frames_bytearray = result
                     return FrontendImagePacket(
@@ -344,6 +351,7 @@ class RealtimePipeline:
 
         payload = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
+            display_image_sizes=display_image_sizes,
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload

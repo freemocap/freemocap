@@ -149,6 +149,7 @@ class FreemocapApplication:
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
+            display_image_sizes: dict[str, dict[str, float]] | None = None,
     ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
         # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
         posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
@@ -161,7 +162,8 @@ class FreemocapApplication:
             # Camera-only / posthoc-only path
             results: list[FrontendImagePacket] = []
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
-                    if_newer_than=if_newer_than
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
             ).items():
                 frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
                 results.append(FrontendImagePacket(
@@ -173,7 +175,8 @@ class FreemocapApplication:
 
         # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
         realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
-            if_newer_than=if_newer_than
+            if_newer_than=if_newer_than,
+            display_image_sizes=display_image_sizes,
         )
 
         return realtime_pipeline_packets, posthoc_progress

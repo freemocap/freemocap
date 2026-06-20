@@ -207,7 +207,10 @@ class WebsocketServer:
                 await self._app.wait_for_realtime_result(timeout=0.5)
 
                 try:
-                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=int(self.last_sent_frame_number))
+                    packets, progress_updates = self._app.get_latest_frontend_payloads(
+                        if_newer_than=int(self.last_sent_frame_number),
+                        display_image_sizes=self._display_image_sizes,
+                    )
                 except IndexError:
                     logger.warning("Ring buffer overwrite — resetting to latest frame")
                     self.last_sent_frame_number = -1

@@ -2371,7 +2371,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=development#3f725d025bfdbe1e8ffd672520f1fc67343b1540" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development#a1ba474cfcd8cfd288cc1d358b189df1137399a9" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },

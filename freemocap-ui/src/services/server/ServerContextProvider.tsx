@@ -32,6 +32,20 @@ import {
 } from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
+import type {AppStateMessage} from "@/store/slices/connection/connection-types";
+
+// Type guard for the server's authoritative APP_STATE snapshot
+function isAppState(data: any): data is AppStateMessage {
+    return (
+        data &&
+        typeof data === 'object' &&
+        data.message_type === 'app_state' &&
+        typeof data.server_pid === 'number' &&
+        data.state &&
+        typeof data.state === 'object'
+    );
+}
 
 // Compare two already-sorted string arrays without allocating
 function sortedArraysEqual(a: string[], b: string[]): boolean {
@@ -150,6 +164,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         const handleStateChange = (newState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
             setIsConnected(connected);
+            store.dispatch(wsConnectionChanged(connected));
 
             if (newState === ConnectionState.DISCONNECTED || newState === ConnectionState.FAILED) {
                 canvasManagerRef.current?.terminateAllWorkers();
@@ -173,6 +188,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 setTrackerSchemas({});
                 setActiveTrackerId(null);
                 setConnectedCameraIds([]);
+                // Clear server-derived Redux state so the UI self-heals on
+                // reconnect rather than showing the previous server's stale state.
+                store.dispatch(serverDisconnected());
             }
         };
 
@@ -516,6 +534,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                 }
                             }
                         }
+                    } else if (isAppState(jsonData)) {
+                        store.dispatch(serverStateReceived(jsonData));
                     } else {
                         console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
                     }

@@ -15,7 +15,6 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -114,16 +113,11 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
-    keypoints_raw: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
-    keypoints_filtered: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
-    # Pre-Point3d numpy form of the same data, kept around so the websocket
-    # binary serializer can ship raw bytes without re-unwrapping each
-    # Pydantic model. Each value is a (3,) float array. Sparse — only points
-    # that triangulated successfully are present.
-    keypoints_raw_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    keypoints_filtered_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
+    keypoints: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
+    keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     center_of_mass_result: CenterOfMassResult | None = None
+    xcom: Point3d | None = None
+    skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

@@ -14,29 +14,26 @@ are passed to solve_tree() as a separate dict. This allows bone
 lengths to be updated per-frame (e.g. from a running estimator)
 without rebuilding the tree.
 
-Algorithm (tree extension of Aristidou & Lasenby 2011):
+Algorithm (tree FABRIK for a fully-observed skeleton):
     Forward pass (leaves → roots):
-        1. Snap each leaf to its target position
-        2. Walk inward in reverse topological order
-        3. At each node, enforce bone length toward parent
-        4. At branch points, average positions from all children
+        1. Snap each tracked joint (leaf or linear-chain node) to its target
+        2. Walk inward in reverse topological order, enforcing bone length
+           toward the parent
+        3. At branch points, position as the mean of all children's suggestions
     Backward pass (roots → leaves):
         1. Fix each root at its target position
-        2. Walk outward in topological order
-        3. At each node, enforce bone length from parent
+        2. Walk outward in topological order, enforcing bone length from parent
+    Iterate until joints settle (max inter-iteration movement < tolerance).
 
 Usage:
-    tree = FabrikTree.from_skeleton(skeleton=skel)
-    solved = solve_tree(targets=positions, tree=tree, bone_lengths=lengths)
+    tree = FabrikTree.from_joint_hierarchy(joint_hierarchy=hierarchy)
+    solved = solve_fabrik_tree(targets=positions, tree=tree, bone_lengths=lengths)
 """
 
 from collections import deque
 from dataclasses import dataclass
 
 import numpy as np
-
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
-    SkeletonDefinition
 
 
 # ============================================================
@@ -69,10 +66,11 @@ class FabrikNode:
 @dataclass(frozen=True)
 class FabrikTree:
     """
-    Forest of FABRIK trees built from a SkeletonDefinition.
+    Forest of FABRIK trees built from a canonical joint hierarchy.
 
-    Stores topology only — bone lengths are passed separately to solve_tree().
-    Nodes are stored in topological order (roots first, leaves last).
+    Stores topology only — bone lengths are passed separately to
+    solve_fabrik_tree(). Nodes are stored in topological order
+    (roots first, leaves last).
     """
 
     nodes: dict[str, FabrikNode]
@@ -82,18 +80,22 @@ class FabrikTree:
     bone_keys: frozenset[str]  # all "parent->child" keys in this tree
 
     @classmethod
-    def from_skeleton(
+    def from_joint_hierarchy(
         cls,
         *,
-        skeleton: SkeletonDefinition,
+        joint_hierarchy: dict[str, list[str]],
     ) -> "FabrikTree":
         """
-        Build FABRIK tree topology from skeleton bones.
+        Build FABRIK tree topology directly from a joint hierarchy dict.
+
+        Trees are built from canonical anatomical models without
+        tracker-specific naming.
 
         Args:
-            skeleton: skeleton topology (bones define tree edges).
+            joint_hierarchy: mapping parent → [children]. The roots are
+                             keys that never appear as children.
         """
-        if not skeleton.bones:
+        if not joint_hierarchy:
             return cls(
                 nodes={},
                 topo_order=(),
@@ -107,27 +109,33 @@ class FabrikTree:
         parent_of: dict[str, str] = {}
         bone_joints: set[str] = set()
 
-        for bone in skeleton.bones:
-            children_of.setdefault(bone.parent, []).append(bone.child)
-            parent_of[bone.child] = bone.parent
-            bone_joints.add(bone.parent)
-            bone_joints.add(bone.child)
+        for parent, children in joint_hierarchy.items():
+            bone_joints.add(parent)
+            for child in children:
+                if child in parent_of:
+                    raise ValueError(
+                        f"Joint '{child}' has two parents: "
+                        f"'{parent_of[child]}' and '{parent}'"
+                    )
+                parent_of[child] = parent
+                bone_joints.add(child)
+            children_of[parent] = list(children)
 
-        # Find roots: joints in bones that have no parent in bone graph
+        # Find roots: joints that have no parent
         root_names: set[str] = set()
         for joint in bone_joints:
             if joint not in parent_of:
                 root_names.add(joint)
 
         if not root_names:
-            raise ValueError("No root joints found — bone graph may contain cycles")
+            raise ValueError("No root joints found — hierarchy may contain cycles")
 
         # BFS topological order from roots
         topo_order: list[str] = []
         visited: set[str] = set()
         queue: deque[str] = deque()
 
-        for root in sorted(root_names):  # sorted for determinism
+        for root in sorted(root_names):
             queue.append(root)
             visited.add(root)
 
@@ -211,27 +219,30 @@ def solve_fabrik_tree(
     targets: dict[str, np.ndarray],
     tree: FabrikTree,
     bone_lengths: dict[str, float],
-    tolerance: float = 1e-4,
+    tolerance: float = 0.1,   # mm — convergence threshold (was 1e-4 meters)
     max_iterations: int = 20,
 ) -> dict[str, np.ndarray]:
     """
     Solve FABRIK for a tree structure with Y-splits.
 
-    Root joints are held fixed at their target positions.
-    Leaf joints are pulled toward their target positions.
-    Branch points average the constraints from all children.
+    Every directly-tracked joint (root, leaf, or linear-chain intermediate) is
+    snapped to its target each forward pass; branch points (one parent, many
+    children) are positioned as the mean of their children's suggestions. Bone
+    lengths are then enforced from the roots outward, so the result keeps each
+    joint's observed direction while holding the (adaptive) bone lengths.
 
     Args:
         targets: target positions for all joints in the tree,
-                 mapping name → (3,) array.
+                 mapping name → (3,) array (mm).
         tree: FABRIK tree topology.
-        bone_lengths: mapping "parent->child" → length in meters.
+        bone_lengths: mapping "parent->child" → length in mm.
                       Must cover all bones in the tree.
-        tolerance: convergence threshold on leaf end-effector error.
+        tolerance: settling threshold (mm) — stop once no joint moves more
+                   than this between successive iterations.
         max_iterations: max forward/backward iterations.
 
     Returns:
-        Solved joint positions mapping name → (3,) array.
+        Solved joint positions mapping name → (3,) array (mm).
     """
     if not tree.nodes:
         return {}
@@ -251,16 +262,25 @@ def solve_fabrik_tree(
     }
 
     for _ in range(max_iterations):
+        prev_positions = {name: positions[name].copy() for name in tree.topo_order}
+
         # === FORWARD PASS: leaves → roots ===
         suggested: dict[str, list[np.ndarray]] = {}
 
         for name in reversed(tree.topo_order):
             node = tree.nodes[name]
 
-            if node.is_leaf:
+            if node.is_branch:
+                # Branch point (multiple children): position is the average
+                # of child suggestions. These are computed landmarks whose
+                # tracker "target" is derived from other points.
+                if name in suggested:
+                    positions[name] = np.mean(suggested[name], axis=0)
+            else:
+                # Leaf or linear-chain intermediate node: snap to tracker
+                # target.  Every directly-tracked joint constrains the
+                # skeleton, not just the endpoints of each chain.
                 positions[name] = np.array(targets[name], dtype=np.float64)
-            elif name in suggested:
-                positions[name] = np.mean(suggested[name], axis=0)
 
             if node.parent_name is not None:
                 assert node.bone_key is not None
@@ -289,66 +309,16 @@ def solve_fabrik_tree(
                 )
 
         # === CONVERGENCE CHECK ===
-        converged = True
-        for leaf_name in tree.leaf_names:
-            error = float(np.linalg.norm(positions[leaf_name] - targets[leaf_name]))
-            if error > tolerance:
-                converged = False
-                break
-        if converged:
+        # FABRIK has settled once joints stop moving between iterations.
+        # (Comparing against the raw targets never converges here: enforcing
+        # bone lengths deliberately pulls joints off their mutually
+        # inconsistent observed targets, so that error stays nonzero.)
+        max_shift = 0.0
+        for name in tree.topo_order:
+            shift = float(np.linalg.norm(positions[name] - prev_positions[name]))
+            if shift > max_shift:
+                max_shift = shift
+        if max_shift < tolerance:
             break
 
     return positions
-
-
-# ============================================================
-# Bone Length Estimation (simple median, for offline/batch use)
-# ============================================================
-
-
-def estimate_bone_lengths(
-    *,
-    frames: list[dict[str, np.ndarray]],
-    skeleton: SkeletonDefinition,
-) -> dict[str, float]:
-    """
-    Estimate bone lengths as median distance across calibration frames.
-
-    For online estimation with priors, use BoneLengthEstimator instead.
-
-    Args:
-        frames: list of position dicts (one per frame),
-                each mapping keypoint name → (3,) array.
-        skeleton: skeleton whose bones to measure.
-
-    Returns:
-        Dict mapping "parent->child" → median bone length.
-    """
-    if not frames:
-        raise ValueError("Need at least one frame to estimate bone lengths")
-
-    if not skeleton.bones:
-        return {}
-
-    bone_samples: dict[str, list[float]] = {
-        bone.key: [] for bone in skeleton.bones
-    }
-
-    for positions in frames:
-        for bone in skeleton.bones:
-            parent_pos = positions.get(bone.parent)
-            child_pos = positions.get(bone.child)
-            if parent_pos is None or child_pos is None:
-                continue
-            dist = float(np.linalg.norm(
-                np.asarray(parent_pos) - np.asarray(child_pos)
-            ))
-            bone_samples[bone.key].append(dist)
-
-    bone_lengths: dict[str, float] = {}
-    for bone_key, samples in bone_samples.items():
-        if not samples:
-            raise ValueError(f"No samples found for bone '{bone_key}'")
-        bone_lengths[bone_key] = float(np.median(samples))
-
-    return bone_lengths

@@ -27,6 +27,7 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
 const RAW_KEYPOINT_RADIUS = 0.07;
+const SKELETON_POINT_RADIUS = 0.15;
 
 const BODY_KEYPOINT_RADIUS = 0.12;
 const HAND_KEYPOINT_RADIUS = 0.05;
@@ -49,10 +50,10 @@ function getKeypointRadius(name: string): number {
 // KeypointLayer — one instanced‑mesh pass (raw or filtered).
 // ---------------------------------------------------------------------------
 interface KeypointLayerProps {
-    subscribeKey: "subscribeToKeypointsRaw" | "subscribeToKeypointsFiltered";
+    subscribeKey: "subscribeToKeypoints" | "subscribeToSkeleton";
     color: Color;
     radius: number;
-    statsKey: "keypointsRaw" | "keypointsFiltered";
+    statsKey: "keypoints" | "skeleton";
     colorMode?: "uniform" | "byBodyPart";
 }
 
@@ -192,21 +193,22 @@ export function KeypointsRenderer() {
 
     return (
         <>
-            {visibility.keypointsRaw && (
+            {visibility.keypoints && (
                 <KeypointLayer
-                    subscribeKey="subscribeToKeypointsRaw"
-                    color={COLORS.raw}
-                    radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsRaw"
-                />
-            )}
-            {visibility.keypointsFiltered && (
-                <KeypointLayer
-                    subscribeKey="subscribeToKeypointsFiltered"
+                    subscribeKey="subscribeToKeypoints"
                     color={COLORS.filtered}
                     radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsFiltered"
+                    statsKey="keypoints"
                     colorMode="byBodyPart"
+                />
+            )}
+            {visibility.skeleton && (
+                <KeypointLayer
+                    subscribeKey="subscribeToSkeleton"
+                    color={COLORS.skeleton}
+                    radius={SKELETON_POINT_RADIUS}
+                    statsKey="skeleton"
+                    colorMode="uniform"
                 />
             )}
         </>

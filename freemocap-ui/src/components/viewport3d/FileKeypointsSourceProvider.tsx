@@ -29,12 +29,7 @@ import {calibrationLoadedFromBundle} from "@/store/slices/calibration/calibratio
  *     own rAF loop. React re-renders are not involved in the hot path.
  */
 
-type TrajectoryAlias = "raw" | "filtered";
-
-const TRAJECTORY_PARQUET_VALUE: Record<TrajectoryAlias, string> = {
-    raw: "3d_xyz",
-    filtered: "rigid_3d_xyz",
-};
+const PARQUET_KEYPOINTS_COLUMN = "3d_xyz";
 
 const ParquetColumnNames = {
     frame:      "frame",
@@ -287,8 +282,7 @@ export const FileKeypointsSourceProvider: React.FC<{
     children: React.ReactNode;
 }> = ({recordingId, recordingParentDirectory, currentFrameRef, children}) => {
 
-    const rawRef = useRef<TrajectoryData>(emptyTrajectory());
-    const filteredRef = useRef<TrajectoryData>(emptyTrajectory());
+    const keypointsRef = useRef<TrajectoryData>(emptyTrajectory());
     const faceContourNamesRef = useRef<string[]>([]);
     const dispatch = useAppDispatch();
 
@@ -326,13 +320,9 @@ export const FileKeypointsSourceProvider: React.FC<{
         const tp: string[] = (bundle.trackerSchema as any)?.tracked_points ?? [];
         faceContourNamesRef.current = tp.filter((n: string) => n.startsWith("face_"));
         if (faceContourNamesRef.current.length > 0) {
-            remapTrajectoryFaceNames(rawRef.current, faceContourNamesRef.current);
-            remapTrajectoryFaceNames(filteredRef.current, faceContourNamesRef.current);
-            if (rawRef.current.lastEmittedFrame >= 0) {
-                fireSubscribers(rawRef.current);
-            }
-            if (filteredRef.current.lastEmittedFrame >= 0) {
-                fireSubscribers(filteredRef.current);
+            remapTrajectoryFaceNames(keypointsRef.current, faceContourNamesRef.current);
+            if (keypointsRef.current.lastEmittedFrame >= 0) {
+                fireSubscribers(keypointsRef.current);
             }
         }
 
@@ -343,8 +333,7 @@ export const FileKeypointsSourceProvider: React.FC<{
     // Load + decode the parquet whenever recordingId changes.
     useEffect(() => {
         if (!recordingId) {
-            rawRef.current = emptyTrajectory();
-            filteredRef.current = emptyTrajectory();
+            keypointsRef.current = emptyTrajectory();
             return;
         }
 
@@ -398,22 +387,17 @@ export const FileKeypointsSourceProvider: React.FC<{
                 frameCount += 1;
 
                 // Preserve existing subscribers across recording swaps.
-                const rawSubs = rawRef.current.subscribers;
-                const filteredSubs = filteredRef.current.subscribers;
+                const prevSubs = keypointsRef.current.subscribers;
 
-                const rawTraj = buildTrajectory(cols, TRAJECTORY_PARQUET_VALUE.raw, frameCount);
-                const filteredTraj = buildTrajectory(cols, TRAJECTORY_PARQUET_VALUE.filtered, frameCount);
-                rawTraj.subscribers = rawSubs;
-                filteredTraj.subscribers = filteredSubs;
-                rawRef.current = rawTraj;
-                filteredRef.current = filteredTraj;
+                const traj = buildTrajectory(cols, PARQUET_KEYPOINTS_COLUMN, frameCount);
+                traj.subscribers = prevSubs;
+                keypointsRef.current = traj;
 
                 // If the playback-bundle schema arrived before the parquet finished
                 // loading, remap face names now so the first emitted frame already has
                 // correct contour-index names.
                 if (faceContourNamesRef.current.length > 0) {
-                    remapTrajectoryFaceNames(rawTraj, faceContourNamesRef.current);
-                    remapTrajectoryFaceNames(filteredTraj, faceContourNamesRef.current);
+                    remapTrajectoryFaceNames(traj, faceContourNamesRef.current);
                 }
 
                 const tBuilt = performance.now();
@@ -441,13 +425,11 @@ export const FileKeypointsSourceProvider: React.FC<{
         const tick = () => {
             const frame = Math.floor(currentFrameRef.current);
 
-            for (const traj of [rawRef.current, filteredRef.current]) {
-                if (traj.frameCount === 0) continue;
-                if (frame !== traj.lastEmittedFrame) {
-                    updateScratch(traj, frame);
-                    traj.lastEmittedFrame = frame;
-                    fireSubscribers(traj);
-                }
+            const traj = keypointsRef.current;
+            if (traj.frameCount > 0 && frame !== traj.lastEmittedFrame) {
+                updateScratch(traj, frame);
+                traj.lastEmittedFrame = frame;
+                fireSubscribers(traj);
             }
 
             raf = requestAnimationFrame(tick);
@@ -458,22 +440,19 @@ export const FileKeypointsSourceProvider: React.FC<{
     }, [currentFrameRef]);
 
     const source = useMemo<KeypointsSource>(() => ({
-        subscribeToKeypointsRaw: (cb: KeypointsCallback) => {
-            rawRef.current.subscribers.add(cb);
-            if (rawRef.current.frameCount > 0 && rawRef.current.lastEmittedFrame >= 0) {
-                cb(rawRef.current.scratchFrame);
+        subscribeToKeypoints: (cb: KeypointsCallback) => {
+            keypointsRef.current.subscribers.add(cb);
+            if (keypointsRef.current.frameCount > 0 && keypointsRef.current.lastEmittedFrame >= 0) {
+                cb(keypointsRef.current.scratchFrame);
             }
-            return () => { rawRef.current.subscribers.delete(cb); };
+            return () => { keypointsRef.current.subscribers.delete(cb); };
         },
-        subscribeToKeypointsFiltered: (cb: KeypointsCallback) => {
-            filteredRef.current.subscribers.add(cb);
-            if (filteredRef.current.frameCount > 0 && filteredRef.current.lastEmittedFrame >= 0) {
-                cb(filteredRef.current.scratchFrame);
-            }
-            return () => { filteredRef.current.subscribers.delete(cb); };
+        subscribeToSkeleton: (_cb: KeypointsCallback) => {
+            // Playback has no skeleton data — return no-op unsubscribe.
+            return () => {};
         },
-        getLatestKeypointsRaw: () =>
-            rawRef.current.frameCount > 0 ? rawRef.current.scratchFrame : null,
+        getLatestKeypoints: () =>
+            keypointsRef.current.frameCount > 0 ? keypointsRef.current.scratchFrame : null,
     }), []);
 
     return (

@@ -112,45 +112,36 @@ def build_keypoints_payload(
         frame_number: int,
         tracker_id: str,
         point_names: tuple[str, ...] | list[str],
-        keypoints_raw_arrays: dict[str, np.ndarray],
-        keypoints_filtered_arrays: dict[str, np.ndarray],
+        keypoints_arrays: dict[str, np.ndarray],
 ) -> bytearray:
     """Serialize the per-frame 3D keypoints into the binary wire format.
 
-    Sends RTMPose points in two schema-backed blocks (raw + filtered) plus
-    a third block with embedded point names for charuco/aruco calibration
-    corners that have no tracker schema on the frontend.
+    Sends RTMPose points in a single schema-backed block plus a second
+    block with embedded point names for charuco/aruco calibration corners
+    that have no tracker schema on the frontend.
     """
     blocks: list[bytes] = []
 
-    # RTMPose raw + filtered (schema-backed — point names from tracker_schemas).
+    # RTMPose keypoints (schema-backed — point names from tracker_schemas).
     blocks.append(
         _build_block(
-            kind=BlockKind.KEYPOINTS_RAW_3D,
+            kind=BlockKind.KEYPOINTS_3D,
             tracker_id=tracker_id,
             point_names=point_names,
-            sparse_arrays=keypoints_raw_arrays,
-        )
-    )
-    blocks.append(
-        _build_block(
-            kind=BlockKind.KEYPOINTS_FILTERED_3D,
-            tracker_id=tracker_id,
-            point_names=point_names,
-            sparse_arrays=keypoints_filtered_arrays,
+            sparse_arrays=keypoints_arrays,
         )
     )
 
     # Charuco / Aruco 3D corners — no schema, so names travel in the block.
     calib_arrays = {
-        k: v for k, v in keypoints_raw_arrays.items()
+        k: v for k, v in keypoints_arrays.items()
         if k.startswith("CharucoCorner-") or k.startswith("ArucoMarkerCorner-")
     }
     if calib_arrays:
         calib_names = sorted(calib_arrays.keys())
         blocks.append(
             _build_block(
-                kind=BlockKind.KEYPOINTS_RAW_3D,
+                kind=BlockKind.KEYPOINTS_3D,
                 tracker_id="calib3d",
                 point_names=calib_names,
                 sparse_arrays=calib_arrays,

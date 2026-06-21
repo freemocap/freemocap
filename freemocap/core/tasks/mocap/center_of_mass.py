@@ -36,13 +36,25 @@ from enum import IntEnum
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
+from pathlib import Path
+
+import skellytracker
 from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
-from skellyforge.skellymodels.models.tracking_model_info import RTMPoseModelInfo
+from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo
 from skellyforge.skellymodels.utils.types import (
     SegmentCenterOfMassDefinition,
     SegmentConnection,
     SegmentName,
-    VirtualMarkerDefinition,
+)
+from skellytracker.trackers.base_tracker.tracker_mapping import TrackerMapping
+
+# Tracker→canonical body mapping (shipped with skellytracker). This is the
+# single derivation of the computed centers (head/neck/trunk/hips_center) from
+# RTMPose keypoints — the same mapping the realtime skeleton fitter uses.
+_RTMPOSE_BODY_MAPPING_YAML = (
+    Path(skellytracker.__file__).parent
+    / "trackers" / "rtmpose_tracker" / "names_and_connections"
+    / "rtmpose_body_to_canonical_mapping.yaml"
 )
 
 # ---------------------------------------------------------------------------
@@ -100,14 +112,17 @@ def _build_mass_lookup(
 
 
 class RTMPoseBodyBiomechanics(BaseModel):
-    """Validated RTMPose body biomechanics, loaded once at aggregator init.
+    """Validated body biomechanics for the RTMPose pipeline, loaded once at
+    aggregator init.
 
-    Mirrors the relevant fields of skellyforge's ``AnatomicalStructure``
-    so the hot loop never touches Pydantic validation.
+    Mirrors the relevant fields of skellyforge's canonical ``AnatomicalStructure``
+    so the hot loop never touches Pydantic validation. ``tracker_mapping`` is the
+    one tracker→canonical mapping used to derive the computed centers
+    (head/neck/trunk/hips_center) from RTMPose keypoints each frame.
     """
 
     tracked_point_names: list[str]
-    virtual_markers_definitions: dict[str, VirtualMarkerDefinition] | None = None
+    tracker_mapping: TrackerMapping
     segment_connections: dict[SegmentName, SegmentConnection] | None = None
     center_of_mass_definitions: dict[SegmentName, SegmentCenterOfMassDefinition] | None = None
 
@@ -149,17 +164,21 @@ class CenterOfMassResult:
 
 
 def load_rtmpose_biomechanics() -> RTMPoseBodyBiomechanics:
-    """Load and validate RTMPose body biomechanics from skellyforge YAML."""
-    model_info = RTMPoseModelInfo()
+    """Load body biomechanics from the single canonical skellyforge model.
+
+    Segment connections + Winter COM table come from the canonical body model;
+    the computed centers are derived each frame via the skellytracker
+    RTMPose→canonical mapping (the same one the skeleton fitter uses).
+    """
     body_structure: AnatomicalStructure = AnatomicalStructure.from_model_info(
-        model_info=model_info, aspect_name="body"
+        model_info=CanonicalBodyModelInfo(), aspect_name="body"
     )
 
     com_defs = body_structure.center_of_mass_definitions or {}
 
     return RTMPoseBodyBiomechanics(
         tracked_point_names=body_structure.tracked_point_names,
-        virtual_markers_definitions=body_structure.virtual_markers_definitions,
+        tracker_mapping=TrackerMapping.from_yaml(_RTMPOSE_BODY_MAPPING_YAML),
         segment_connections=body_structure.segment_connections,
         center_of_mass_definitions=com_defs,
         mass_percentages=_build_mass_lookup(com_defs),
@@ -169,22 +188,6 @@ def load_rtmpose_biomechanics() -> RTMPoseBodyBiomechanics:
 # ---------------------------------------------------------------------------
 # Per-frame hot-path functions (no logging, no Pydantic, no allocation)
 # ---------------------------------------------------------------------------
-
-
-def compute_virtual_markers(
-    keypoints: dict[str, np.ndarray],
-    vm_defs: dict[str, VirtualMarkerDefinition],
-) -> dict[str, np.ndarray]:
-    """Compute virtual markers via weighted average of component keypoints."""
-    result: dict[str, np.ndarray] = {**keypoints}
-    for vm_name, vm_info in vm_defs.items():
-        try:
-            components = [keypoints[name] for name in vm_info["marker_names"]]
-        except KeyError:
-            continue
-        weights = np.array(vm_info["marker_weights"])
-        result[vm_name] = np.average(np.column_stack(components), axis=1, weights=weights)
-    return result
 
 
 def build_segment_positions(
@@ -271,6 +274,57 @@ def _calculate_total_body_com_with_redistribution(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Extrapolated Center of Mass (Hof 2008)
+# ---------------------------------------------------------------------------
+# XCoM = CoM + v / ω₀   where ω₀ = √(g / l)
+#   g = 9810 mm/s²  (gravitational acceleration in keypoint-coordinate units)
+#   l = CoM height above ground (z coordinate, mm)
+#   v = CoM velocity (mm/s, from frame-to-frame position difference)
+#
+# The XCoM is a point on the ground plane (z=0) that predicts where the CoM
+# would come to rest if the body were modeled as an inverted pendulum. It is
+# offset from the vertical projection by v_xy / ω₀ in the direction of travel.
+# All units are mm — the coordinate system is set by the ChArUco calibration.
+
+_GRAVITY: float = 9810.0  # mm/s²  (9.81 m/s² in keypoint-coordinate units)
+
+
+def calculate_xcom(
+    *,
+    com: np.ndarray,
+    prev_com: np.ndarray,
+    dt: float,
+) -> np.ndarray:
+    """Compute the extrapolated center of mass (Hof 2008) for one frame.
+
+    Parameters
+    ----------
+    com : np.ndarray of shape (3,)
+        Current whole-body center of mass (x, y, z) in world coordinates.
+        z is the height above the ground plane.
+    prev_com : np.ndarray of shape (3,)
+        Previous frame's CoM position.
+    dt : float
+        Time delta since the previous frame, in seconds.
+
+    Returns
+    -------
+    np.ndarray of shape (3,)
+        XCoM position on the ground plane: (x_xcom, y_xcom, 0).
+    """
+    l = com[2]  # pendulum length = CoM height above ground
+    if l <= 0.0:
+        raise ValueError(f"CoM height must be positive, got {l}")
+    omega_0 = np.sqrt(_GRAVITY / l)
+    v = (com - prev_com) / dt
+    return np.array([
+        com[0] + v[0] / omega_0,
+        com[1] + v[1] / omega_0,
+        0.0,
+    ])
+
+
 def calculate_center_of_mass_per_frame(
     keypoints: dict[str, np.ndarray],
     biomechanics: RTMPoseBodyBiomechanics,
@@ -285,13 +339,10 @@ def calculate_center_of_mass_per_frame(
     if biomechanics.segment_connections is None:
         raise ValueError("No segment_connections in biomechanics.")
 
-    # 1. Compute virtual markers
-    if biomechanics.virtual_markers_definitions:
-        augmented = compute_virtual_markers(
-            keypoints, biomechanics.virtual_markers_definitions
-        )
-    else:
-        augmented = keypoints
+    # 1. Map tracker keypoints → canonical landmarks (adds the computed
+    #    centers head/neck/trunk/hips_center via the single tracker→canonical
+    #    derivation).
+    augmented = biomechanics.tracker_mapping.apply(keypoints)
 
     # 2. Build segment endpoint dict (silently skips missing endpoints)
     segment_positions = build_segment_positions(

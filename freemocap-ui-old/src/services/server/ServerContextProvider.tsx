@@ -473,7 +473,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 frameProcessorRef.current!.processFramePayload(payload)
                     .then(result => {
                         const decodeMs = performance.now() - decodeStartTime;
-                        if (decodeMs > 20) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
+                        if (decodeMs > 40) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
                         dispatchFrames(result);
                     })
                     .catch(err => console.error('Error processing frame:', err))

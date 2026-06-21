@@ -52,13 +52,14 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     useGroundplane: false,
 };
 
-const rawChan = makeChannel<KeypointsFrame | null>(null);
-const filteredChan = makeChannel<KeypointsFrame | null>(null);
+const keypointsChan = makeChannel<KeypointsFrame | null>(null);
+const skeletonChan = makeChannel<KeypointsFrame | null>(null);
 const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} });
 const calibChan = makeChannel<LoadedCalibration | null>(null);
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 const comChan = makeChannel<Point3d | null>(null);
+const xcomChan = makeChannel<Point3d | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -79,27 +80,26 @@ export const workerDataStore: KeypointsSource & {
     getVisibility: () => ViewportVisibility;
     subscribeToCenterOfMass: (cb: Listener<Point3d | null>) => () => void;
     getLatestCenterOfMass: () => Point3d | null;
+    subscribeToXcom: (cb: Listener<Point3d | null>) => () => void;
+    getLatestXcom: () => Point3d | null;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
 } = {
     // KeypointsSource interface — channels hold KeypointsFrame|null but callbacks expect non-null.
-    // Replay the latest value on subscribe so the 3D viewport shows frame 0 immediately on load
-    // instead of staying blank until the user presses play (the first frame dispatch races ahead
-    // of React effects, which haven't mounted the KeypointsRenderer subscriber yet).
-    subscribeToKeypointsRaw: (cb) => {
-        const unsub = rawChan.subscribe((f) => { if (f) cb(f); });
-        const latest = rawChan.getLatest();
+    subscribeToKeypoints: (cb) => {
+        const unsub = keypointsChan.subscribe((f) => { if (f) cb(f); });
+        const latest = keypointsChan.getLatest();
         if (latest) cb(latest);
         return unsub;
     },
-    subscribeToKeypointsFiltered: (cb) => {
-        const unsub = filteredChan.subscribe((f) => { if (f) cb(f); });
-        const latest = filteredChan.getLatest();
+    subscribeToSkeleton: (cb) => {
+        const unsub = skeletonChan.subscribe((f) => { if (f) cb(f); });
+        const latest = skeletonChan.getLatest();
         if (latest) cb(latest);
         return unsub;
     },
-    getLatestKeypointsRaw: rawChan.getLatest,
+    getLatestKeypoints: keypointsChan.getLatest,
 
     // Schema state
     subscribeToSchemaState: schemaChan.subscribe,
@@ -121,17 +121,21 @@ export const workerDataStore: KeypointsSource & {
     subscribeToCenterOfMass: comChan.subscribe,
     getLatestCenterOfMass: comChan.getLatest,
 
+    // Extrapolated center of mass (XCoM)
+    subscribeToXcom: xcomChan.subscribe,
+    getLatestXcom: xcomChan.getLatest,
+
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
 
     dispatch(type: string, data: unknown) {
         switch (type) {
-            case "keypointsRaw":
-                rawChan.dispatch(data as KeypointsFrame);
+            case "keypoints":
+                keypointsChan.dispatch(data as KeypointsFrame);
                 break;
-            case "keypointsFiltered":
-                filteredChan.dispatch(data as KeypointsFrame);
+            case "skeleton":
+                skeletonChan.dispatch(data as KeypointsFrame);
                 break;
             case "schemaState":
                 schemaChan.dispatch(data as SchemaState);
@@ -147,6 +151,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "centerOfMass":
                 comChan.dispatch(data as Point3d | null);
+                break;
+            case "xcom":
+                xcomChan.dispatch(data as Point3d | null);
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);

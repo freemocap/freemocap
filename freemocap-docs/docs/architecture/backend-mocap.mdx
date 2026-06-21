@@ -47,25 +47,29 @@ Posthoc pipelines accept any `BaseDetectorConfig`, so they can work with CharUco
 
 ## Skeleton Filtering Pipeline (Realtime)
 
-The realtime filtering pipeline runs in `RealtimeAggregatorNode` after triangulation. Processing order:
+The realtime filtering + fitting pipeline runs in `RealtimeAggregatorNode` after triangulation. Processing order:
 
 ```
-Raw 3D keypoints (from triangulation)
+Raw 3D keypoints (from triangulation; RTMPose names, mm)
     │
     ▼
-RealtimeKeypointFilter (OneEuro filter on raw positions)
-    │ Smooths jitter while preserving fast motion
+RealtimeKeypointFilter (One Euro smoothing + velocity-decay gap fill)
+    │ Smooths jitter while preserving fast motion; briefly extrapolates
+    │ keypoints that drop out for a few frames
     │
     ▼
 RealtimePointGate (velocity check)
-    │ Rejects points that "teleport" (velocity exceeds max)
-    │ Prevents single-frame glitches from corrupting the skeleton
+    │ Rejects points that "teleport" (velocity exceeds max), so a single
+    │ bad triangulation can't corrupt the skeleton
     │
     ▼
-RealtimeSkeletonFilter (OneEuro + FABRIK bone constraint)
-    │ OneEuro on the gated positions
-    │ FABRIK IK solver enforces bone length consistency
-    │ Output: smooth, bone-length-valid skeleton
+RealtimeSkeletonFitter (canonical FABRIK + online bone lengths)
+    │ Maps tracker keypoints → canonical landmarks, adapts per-bone lengths
+    │ online (seeded from anthropometry), solves a tree FABRIK for body +
+    │ both hands. Output: a smooth, bone-length-consistent skeleton.
+    │
+    ▼
+Center of mass + XCoM (per-frame; Winter 2009 / Hof 2008)
 ```
 
 ### OneEuroFilter
@@ -73,24 +77,22 @@ RealtimeSkeletonFilter (OneEuro + FABRIK bone constraint)
 A low-pass filter with adaptive cutoff frequency. It smooths jitter in slow movements while preserving fast motion. Parameters:
 - `min_cutoff`: minimum cutoff frequency (Hz)
 - `beta`: speed coefficient (higher = more responsive to fast motion)
-- `derivative_cutoff`: cutoff for velocity estimation
+- `d_cutoff`: cutoff for velocity estimation
+
+`RealtimeKeypointFilter` also gap-fills: a keypoint missing for a few frames is extrapolated from its last velocity (decaying to a stop) so the stream doesn't blink during brief dropouts.
 
 ### RealtimePointGate
 
-Detects "teleportation" artifacts — points that jump impossibly far in a single frame. If a point's velocity exceeds `velocity_max`, it's flagged as invalid. This prevents single-frame detection errors from corrupting downstream filtering.
+Detects "teleportation" artifacts — points that jump impossibly far in a single frame. If a point's velocity exceeds the max, it's rejected, preventing single-frame detection errors from corrupting downstream fitting.
 
-### FABRIK Skeleton Constraint
+### RealtimeSkeletonFitter (canonical FABRIK)
 
-FABRIK (Forward And Backward Reaching Inverse Kinematics) enforces anatomically plausible bone lengths:
-- Takes the OneEuro-filtered keypoints as target positions
-- Iteratively adjusts joint positions so bone lengths match the anthropometric model
-- Preserves the overall pose while fixing bone length violations
+The fitter is the single realtime skeleton constraint. Per frame it:
+- Maps RTMPose keypoints onto the **canonical** anatomical model (`canonical_body.yaml` / `canonical_hand.yaml` in skellyforge) via the skellytracker tracker→canonical mapping.
+- Updates an **online per-bone length estimate** (a running mean blended with an anthropometric *seed* by confidence). The seeds are approximate starting points scaled by subject height — every bone adapts toward the subject's observed lengths, so the solver is not rigidly pinned to population ratios.
+- Solves a **tree FABRIK** (Forward And Backward Reaching IK) for the body and each hand: every tracked joint is snapped to its target, branch points are averaged from their children, and bone lengths are enforced from the root outward. It iterates until the joints settle.
 
-**Bone length estimation** (`AnthropometricPrior`): Blends observed inter-keypoint distances with anthropometric priors (population-typical bone length ratios). This gives stable bone lengths even with noisy detections.
-
-### Rigid Body Estimation
-
-Estimates 6-DOF poses for body segments (e.g., torso, upper arm) from pairs of keypoints. Used for biomechanical analysis and exported alongside skeleton data.
+The canonical model is the single source of truth for body topology, bone-length seeds, and — with its segment/COM tables — the center-of-mass calculation.
 
 ## Triangulation
 
@@ -155,7 +157,7 @@ Since the posthoc pipeline was ported from V1 while the realtime pipeline was bu
 
 | Aspect | Realtime | Posthoc |
 |---|---|---|
-| Filtering | OneEuro + velocity gate + FABRIK | V1 filtering pipeline (being updated) |
+| Filtering | One Euro + velocity gate + canonical FABRIK fitter | V1 filtering pipeline (being updated) |
 | Triangulation | DLT with subset-ensemble outlier rejection | DLT with configurable outlier rejection |
 | Detector | RTMPose (ONNX) | RTMPose or MediaPipe (configurable) |
 | Output format | WebSocket streaming | .npy + .parquet files |

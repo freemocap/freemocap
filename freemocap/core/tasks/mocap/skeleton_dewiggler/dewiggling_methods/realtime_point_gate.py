@@ -2,7 +2,7 @@
 RealtimePointGate: velocity-based rejection of garbage 3D points.
 
 Tracks per-landmark accepted positions across frames. If a point jumps
-further than max_velocity * dt between frames, the last accepted position
+further than max_velocity_mm_per_s * dt between frames, the last accepted position
 is held (returned in place of the rejected observation). Only accepted
 points update the stored reference position, so a single garbage spike
 doesn't shift the reference and cause cascading rejections.
@@ -47,10 +47,10 @@ class RealtimePointGate:
     def __init__(
         self,
         *,
-        max_velocity_m_per_s: float,
+        max_velocity_mm_per_s: float,
         max_rejected_streak: int,
     ) -> None:
-        self._max_velocity: float = max_velocity_m_per_s
+        self._max_velocity: float = max_velocity_mm_per_s
         self._max_rejected_streak: int = max_rejected_streak
         self._accepted_positions: dict[str, NDArray[np.float64]] = {}
         self._previous_t: float | None = None

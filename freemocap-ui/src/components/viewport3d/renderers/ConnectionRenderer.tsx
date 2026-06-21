@@ -58,7 +58,7 @@ interface ConnectionLayer {
  */
 export function ConnectionRenderer() {
     const { activeTrackerId, trackerSchemas, calibrationConfig } = useWorkerData();
-    const { subscribeToKeypointsRaw, subscribeToKeypointsFiltered } = useKeypointsSource();
+    const { subscribeToKeypoints, subscribeToSkeleton } = useKeypointsSource();
 
     // Precompute charuco grid segment name-pairs — the grid topology depends
     // only on board dimensions, so this memoizes it and avoids recomputing
@@ -87,7 +87,6 @@ export function ConnectionRenderer() {
     const { invalidate, size } = useThree();
 
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
-    const rawPointsRef = useRef<Map<string, Point3d>>(new Map());
     const arucoMarkersRef = useRef<Map<number, (Point3d | undefined)[]>>(new Map());
     const prevArucoNamesRef = useRef<Set<string>>(new Set());
     const arucoNameCacheRef = useRef<Map<string, {markerId: number; cornerIdx: number}>>(new Map());
@@ -224,58 +223,50 @@ export function ConnectionRenderer() {
         }
     };
 
-    const mergeRawIntoPoints = () => {
-        const merged = pointsRef.current;
-        for (const [name, pt] of rawPointsRef.current) {
-            if (!merged.has(name)) merged.set(name, pt);
-        }
-    };
-
-    // Raw keypoints arrive in two blocks within the same binary message:
-    // (1) RTMPose 133-point schema block, (2) calib3d block with embedded
-    // charuco/aruco names. Both fire before the next useFrame. For the
-    // calib3d block we clear old calibration entries first (corners come
-    // and go). For the RTMPose block we upsert (same 133 names overwritten).
+    // Skeleton: FABRIK-fitted canonical body + hand landmarks. These drive
+    // the stick-figure connections. Each frame replaces the body/hand entries
+    // in pointsRef.
     useEffect(() => {
-        return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
-            const raw = rawPointsRef.current;
-            const hasCalib = frame.pointNames.some(isCalibPoint);
-            populateMap(raw, frame, hasCalib);
-            mergeRawIntoPoints();
+        return subscribeToSkeleton((frame: KeypointsFrame) => {
+            const m = pointsRef.current;
+            // Remove only body/hand entries (keep calibration points).
+            for (const name of m.keys()) {
+                if (!isCalibPoint(name)) m.delete(name);
+            }
+            populateMap(m, frame);
+            dirtyRef.current = true;
+            invalidate();
+        });
+    }, [subscribeToSkeleton, invalidate]);
 
-            // Detect aruco name changes from the incoming frame — O(N_incoming)
-            // instead of scanning all merged points in useFrame.
-            if (hasCalib) {
-                const prevNames = prevArucoNamesRef.current;
-                const incomingAruco: string[] = [];
-                for (const name of frame.pointNames) {
-                    if (name.startsWith(ARUCO_PREFIX)) incomingAruco.push(name);
-                }
-                if (incomingAruco.length !== prevNames.size) {
-                    arucoChangedRef.current = true;
-                } else {
-                    for (const n of incomingAruco) {
-                        if (!prevNames.has(n)) { arucoChangedRef.current = true; break; }
-                    }
+    // Keypoints: calibration markers (charuco corners, aruco marker corners)
+    // are the only points from the keypoints stream that contribute to
+    // connection geometry. Skeleton body/hand positions come from the
+    // skeleton subscription above.
+    useEffect(() => {
+        return subscribeToKeypoints((frame: KeypointsFrame) => {
+            const hasCalib = frame.pointNames.some(isCalibPoint);
+            if (!hasCalib) return;
+            populateMap(pointsRef.current, frame, true);
+
+            // Detect aruco name changes — O(N_incoming)
+            const prevNames = prevArucoNamesRef.current;
+            const incomingAruco: string[] = [];
+            for (const name of frame.pointNames) {
+                if (name.startsWith(ARUCO_PREFIX)) incomingAruco.push(name);
+            }
+            if (incomingAruco.length !== prevNames.size) {
+                arucoChangedRef.current = true;
+            } else {
+                for (const n of incomingAruco) {
+                    if (!prevNames.has(n)) { arucoChangedRef.current = true; break; }
                 }
             }
 
             dirtyRef.current = true;
             invalidate();
         });
-    }, [subscribeToKeypointsRaw, invalidate]);
-
-    // Filtered keypoints: body landmarks from the rigid-body solver (smoothed).
-    useEffect(() => {
-        return subscribeToKeypointsFiltered((frame: KeypointsFrame) => {
-            const m = pointsRef.current;
-            m.clear();
-            populateMap(m, frame);
-            mergeRawIntoPoints();
-            dirtyRef.current = true;
-            invalidate();
-        });
-    }, [subscribeToKeypointsFiltered, invalidate]);
+    }, [subscribeToKeypoints, invalidate]);
 
     /** Write one category of schema segments into a layer's geometry buffer. */
     function writeSegments(

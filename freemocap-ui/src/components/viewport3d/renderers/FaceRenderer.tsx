@@ -24,7 +24,7 @@ const DOT_SIZE = 2; // PointsMaterial sizeAttenuation=false → pixels
  * x/y/z directly into a Float32Array, which is a 10-20x speedup for 468 points.
  */
 export function FaceRenderer() {
-    const { subscribeToKeypointsRaw } = useKeypointsSource();
+    const { subscribeToKeypoints } = useKeypointsSource();
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
 
@@ -74,7 +74,7 @@ export function FaceRenderer() {
     }, [dotGeo, dotMat, lineMat, lineGeo]);
 
     useEffect(() => {
-        return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
+        return subscribeToKeypoints((frame: KeypointsFrame) => {
             const face = pointsRef.current;
             face.clear();
             const { pointNames, interleaved } = frame;
@@ -101,7 +101,7 @@ export function FaceRenderer() {
 
             invalidate();
         });
-    }, [subscribeToKeypointsRaw, invalidate]);
+    }, [subscribeToKeypoints, invalidate]);
 
     useFrame(() => {
         if (!dirtyRef.current) return;

@@ -317,6 +317,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
                 bboxes = session.last_bboxes
                 bbox_from_det = session.last_bboxes_from_detector
+                conf_threshold: float = (
+                    pipeline_config.camera_node_config.skeleton_detector_config.confidence_threshold
+                    if pipeline_config.camera_node_config.skeleton_detector_config is not None
+                    else 0.05
+                )
                 for idx, (camera_id, image, (keypoints, scores)) in enumerate(
                         zip(ordered_camera_ids, images, batch_results),
                 ):
@@ -327,7 +332,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     cam_bbox_src = (
                         bbox_from_det[idx] if bbox_from_det and idx < len(bbox_from_det) else True
                     )
-                    per_camera_skeleton[camera_id] = RTMPoseObservation.from_detection_results(
+                    obs = RTMPoseObservation.from_detection_results(
                         frame_number=requested_frame_number,
                         keypoints=keypoints,
                         scores=scores,
@@ -335,6 +340,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         bbox=cam_bbox,
                         bbox_from_detector=cam_bbox_src,
                     )
+                    # ---- Confidence gating: NaN-out low-confidence 2D keypoints ----
+                    low_conf = obs.points.visibility < conf_threshold
+                    if low_conf.any():
+                        obs.points.xyz[low_conf, :2] = np.nan
+                    per_camera_skeleton[camera_id] = obs
                 # Cameras whose frame we couldn't read get None — aggregator
                 # treats this as "no skeleton this frame for this camera"
                 # (same semantics as today's missing-detection path).

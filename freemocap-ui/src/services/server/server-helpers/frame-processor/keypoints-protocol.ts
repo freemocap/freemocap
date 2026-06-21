@@ -24,8 +24,7 @@ export const KEYPOINTS_MESSAGE_TYPE = {
 } as const;
 
 export const BLOCK_KIND = {
-    KEYPOINTS_RAW_3D: 0,
-    KEYPOINTS_FILTERED_3D: 1,
+    KEYPOINTS_3D: 0,
     SKELETON_OVERLAY_2D: 2,
     CHARUCO_OVERLAY_2D: 3,
 } as const;

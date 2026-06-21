@@ -18,6 +18,8 @@ export interface RealtimeAggregatorNodeConfig {
     triangulation_enabled: boolean;
     filter_enabled: boolean;
     skeleton_enabled: boolean;
+    center_of_mass_enabled: boolean;
+    skeleton_fitting_enabled: boolean;
 }
 
 export interface RealtimePipelineConfig {
@@ -36,6 +38,8 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         triangulation_enabled: true,
         filter_enabled: false,
         skeleton_enabled: true,
+        center_of_mass_enabled: true,
+        skeleton_fitting_enabled: true,
     },
 };
 

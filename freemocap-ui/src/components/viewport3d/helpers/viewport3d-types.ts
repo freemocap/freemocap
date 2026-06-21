@@ -12,20 +12,11 @@ export interface PointStyle {
     scale: number;
 }
 
-/** Rigid body pose for a single bone segment, received from Python backend. */
-export interface RigidBodyPose {
-    bone_key: string;
-    position: [number, number, number];
-    orientation: [number, number, number, number]; // (w, x, y, z)
-    scale: [number, number, number];               // (sx, sy, sz)
-}
-
 /** Viewport layer visibility toggles. */
 export interface ViewportVisibility {
     environment: boolean;
-    keypointsRaw: boolean;
-    keypointsFiltered: boolean;
-    rigidBodies: boolean;
+    keypoints: boolean;
+    skeleton: boolean;
     face: boolean;
     connections: boolean;
     cameras: boolean;
@@ -33,13 +24,14 @@ export interface ViewportVisibility {
     centerOfMassSphere: boolean;
     centerOfMassProjection: boolean;
     centerOfMassConnection: boolean;
+    centerOfMassXcom: boolean;
+    centerOfMassXcomConnection: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
     environment: true,
-    keypointsRaw: true,
-    keypointsFiltered: true,
-    rigidBodies: true,
+    keypoints: true,
+    skeleton: true,
     face: true,
     connections: true,
     cameras: true,
@@ -47,13 +39,14 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     centerOfMassSphere: true,
     centerOfMassProjection: true,
     centerOfMassConnection: true,
+    centerOfMassXcom: true,
+    centerOfMassXcomConnection: true,
 };
 
 /** Live stats from each renderer. */
 export interface ViewportStats {
-    keypointsRaw: number;
-    keypointsFiltered: number;
-    rigidBodies: number;
+    keypoints: number;
+    skeleton: number;
     facePoints: number;
     connections: number;
     cameras: number;

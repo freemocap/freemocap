@@ -361,8 +361,7 @@ class RealtimePipeline:
                     frame_number=aggregation_output.frame_number,
                     tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
                     point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                    keypoints_raw_arrays=aggregation_output.keypoints_raw_arrays,
-                    keypoints_filtered_arrays=aggregation_output.keypoints_filtered_arrays,
+                    keypoints_arrays=aggregation_output.keypoints_arrays,
                 )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,

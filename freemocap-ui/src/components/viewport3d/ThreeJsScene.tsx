@@ -20,18 +20,18 @@ import {workerDataStore} from "./WorkerDataStore";
  */
 function DataInvalidator() {
     const invalidate = useThree(state => state.invalidate);
-    const { subscribeToKeypointsRaw, subscribeToKeypointsFiltered } = useKeypointsSource();
+    const { subscribeToKeypoints, subscribeToSkeleton } = useKeypointsSource();
 
     useEffect(() => {
         const unsubs = [
-            subscribeToKeypointsRaw(() => invalidate()),
-            subscribeToKeypointsFiltered(() => invalidate()),
+            subscribeToKeypoints(() => invalidate()),
+            subscribeToSkeleton(() => invalidate()),
             workerDataStore.subscribeToVisibility(() => invalidate()),
             workerDataStore.subscribeToCalibration(() => invalidate()),
             workerDataStore.subscribeToSchemaState(() => invalidate()),
         ];
         return () => unsubs.forEach(fn => fn());
-    }, [invalidate, subscribeToKeypointsRaw, subscribeToKeypointsFiltered]);
+    }, [invalidate, subscribeToKeypoints, subscribeToSkeleton]);
 
     return null;
 }
@@ -67,7 +67,6 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneEnvironment />
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
-            {/*{visibility.rigidBodies && <RigidBodyRenderer />}*/}
             {visibility.connections && <ConnectionRenderer />}
             {visibility.face && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}

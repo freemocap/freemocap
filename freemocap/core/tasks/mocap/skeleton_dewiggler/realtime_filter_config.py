@@ -76,34 +76,34 @@ class RealtimeFilterConfig(BaseModel):
     # ---- Prior forgetting (anthropometric seed → pure observation) ----
     # Frames until the anthropometric prior is completely forgotten.
     # After this, blended_length() returns the pure observed mean.
-    # Default 300 = ~10 s at 30 fps.
-    prior_forget_samples: int = 300
+    # Default 30 = ~1 s at 30 fps.
+    prior_forget_samples: int = 30
 
     # Same for center→center bones (hips_center→trunk_center,
     # trunk_center→neck_center, neck_center→head_center).  Much shorter
     # because these are derived landmarks with no anatomical truth.
-    # Default 30 = ~1 s.
-    center_prior_forget_samples: int = 30
+    # Default 8 = ~0.25 s.
+    center_prior_forget_samples: int = 8
 
     # ---- Integral bone-length correction (PID-like I term) ----
     # Integral gain (ki) — mm of integral accumulation per mm of axial
-    # error per frame.  0 = no correction.  Default 0.20 (faster learning).
-    integral_gain: float = 0.20
+    # error per frame.  0 = no correction.  Default 1.0.
+    integral_gain: float = 1.0
 
     # Per-frame retention factor for the integral accumulator.
-    # 0.90 = 10% decay per frame → ~0.32 s time constant at 30 fps.
-    integral_leak: float = 0.90
+    # 0.80 = 20% decay per frame → ~0.14 s time constant at 30 fps.
+    integral_leak: float = 0.80
 
     # Hard clamp on the absolute integral correction (mm).
-    max_integral_correction_mm: float = 80.0
+    max_integral_correction_mm: float = 150.0
 
     # ---- Within-frame FABRIK refinement (escapes coupled-bone local minima) ----
     # Extra FABRIK solves per frame with nudged/jittered bone lengths.
-    # 0 = disabled.  Default 3 (was 2 — more passes → faster convergence).
-    fabrik_refinement_passes: int = 3
+    # 0 = disabled.  Default 8.
+    fabrik_refinement_passes: int = 8
 
-    # Within-frame bone-length adjustment gain.  Default 0.7 (was 0.5).
-    fabrik_refinement_gain: float = 0.7
+    # Within-frame bone-length adjustment gain.  Default 1.0 (full correction).
+    fabrik_refinement_gain: float = 1.0
 
     # Base stddev of Gaussian jitter on bone lengths (mm).
     # 0 = deterministic only.  Default 3.0.
@@ -111,12 +111,12 @@ class RealtimeFilterConfig(BaseModel):
 
     # Adaptive jitter scaling: per-bone jitter stddev = base + |axial_residual| / error_scale.
     # Larger error → more exploration noise; small error → settles toward base.
-    # A 21 mm residual gives ~3+3=6 mm jitter at the default 7.0.
-    fabrik_jitter_error_scale: float = 7.0
+    # A 20 mm residual gives ~3+7=10 mm jitter at the default 3.0.
+    fabrik_jitter_error_scale: float = 3.0
 
     # ---- Welford estimator staleness prevention ----
-    # Cap on effective sample count (~10 s at 30 fps).
-    max_welford_samples: int = 300
+    # Cap on effective sample count (~1 s at 30 fps).
+    max_welford_samples: int = 30
 
     # ---- Center-joint jitter dampening ----
     # Post-FABRIK blend factor for derived center joints toward their

@@ -374,21 +374,21 @@ class RealtimeSkeletonFitter:
     height_mm: float = 1750.0
     fabrik_tolerance: float = 0.1  # mm — FABRIK convergence threshold
     fabrik_max_iterations: int = 20
-    prior_forget_samples: int = 300     # frames until prior is completely forgotten (~10s at 30fps)
-    center_prior_forget_samples: int = 30  # faster for center→center bones (~1s)
-    max_welford_samples: int = 300      # cap effective sample count (~10s at 30fps)
+    prior_forget_samples: int = 30      # frames until prior is completely forgotten (~1s at 30fps)
+    center_prior_forget_samples: int = 8   # faster for center→center bones (~0.25s)
+    max_welford_samples: int = 30       # cap effective sample count (~1s at 30fps)
     center_blend_factor: float = 0.4    # how strongly to snap center joints toward tracker targets post-FABRIK
 
     # Integral bone-length correction (PID-like I term)
-    integral_gain: float = 0.20     # mm correction per mm accumulated axial error
-    integral_leak: float = 0.90     # per-frame decay (0.90 @ 30fps → ~0.32s time constant)
-    max_integral_correction_mm: float = 80.0  # hard clamp on correction magnitude
+    integral_gain: float = 1.0      # mm correction per mm accumulated axial error
+    integral_leak: float = 0.80     # per-frame decay (0.80 @ 30fps → ~0.14s time constant)
+    max_integral_correction_mm: float = 150.0  # hard clamp on correction magnitude
 
     # Within-frame FABRIK refinement (escapes local minima from coupled bones)
-    fabrik_refinement_passes: int = 3   # extra FABRIK solves per frame (0 = disabled)
-    fabrik_refinement_gain: float = 0.7 # within-frame bone-length adjustment gain
+    fabrik_refinement_passes: int = 8   # extra FABRIK solves per frame (0 = disabled)
+    fabrik_refinement_gain: float = 1.0  # within-frame bone-length adjustment gain (full correction)
     fabrik_jitter_mm: float = 3.0       # base stddev of Gaussian jitter on bone lengths (mm)
-    fabrik_jitter_error_scale: float = 7.0  # jitter scales as: jitter + |residual|/error_scale
+    fabrik_jitter_error_scale: float = 3.0  # jitter scales as: base + |residual|/error_scale
 
     # ------------------------------------------------------------------
     # Factory
@@ -401,17 +401,17 @@ class RealtimeSkeletonFitter:
         height_mm: float = 1750.0,
         fabrik_tolerance: float = 0.1,
         fabrik_max_iterations: int = 20,
-        prior_forget_samples: int = 300,
-        center_prior_forget_samples: int = 30,
-        max_welford_samples: int = 300,
+        prior_forget_samples: int = 30,
+        center_prior_forget_samples: int = 8,
+        max_welford_samples: int = 30,
         center_blend_factor: float = 0.4,
-        integral_gain: float = 0.20,
-        integral_leak: float = 0.90,
-        max_integral_correction_mm: float = 80.0,
-        fabrik_refinement_passes: int = 3,
-        fabrik_refinement_gain: float = 0.7,
+        integral_gain: float = 1.0,
+        integral_leak: float = 0.80,
+        max_integral_correction_mm: float = 150.0,
+        fabrik_refinement_passes: int = 8,
+        fabrik_refinement_gain: float = 1.0,
         fabrik_jitter_mm: float = 3.0,
-        fabrik_jitter_error_scale: float = 7.0,
+        fabrik_jitter_error_scale: float = 3.0,
     ) -> "RealtimeSkeletonFitter":
         """Load canonical models and tracker mappings.
 
@@ -427,31 +427,32 @@ class RealtimeSkeletonFitter:
         prior_forget_samples : int
             Frames until anthropometric prior is completely forgotten.
             After this the blended length = pure observed mean.
-            Default 300 (~10 s at 30 fps).
+            Default 30 (~1 s at 30 fps).
         center_prior_forget_samples : int
             Same for center→center bones (hips_center→trunk_center, etc.).
             Much shorter because these are derived landmarks with no
-            anatomical truth.  Default 30 (~1 s).
+            anatomical truth.  Default 8 (~0.25 s).
         max_welford_samples : int
             Cap on effective sample count for the Welford estimator
-            (~10 s at 30 fps).  Prevents freeze in long recordings.
+            (~1 s at 30 fps).  Prevents freeze in long recordings.
         center_blend_factor : float
             Post-FABRIK blend factor for derived center joints
             (hips_center, neck_center, head_center).  0 = no blend
             (pure FABRIK), 1 = snap to tracker target.  Default 0.4.
         integral_gain : float
             Integral gain (ki) — mm of integral accumulation per mm of
-            axial error per frame.  0 = no correction.  Default 0.10.
+            axial error per frame.  0 = no correction.  Default 1.0.
+            Steady-state residual fraction = (1-leak)/(1-leak+ki) ≈ 17%.
         integral_leak : float
             Per-frame retention factor for the integral accumulator.
-            0.95 = 5% decay/frame → ~0.67 s time constant at 30 fps.
+            0.80 = 20% decay/frame → ~0.14 s time constant at 30 fps.
         max_integral_correction_mm : float
-            Hard clamp on the absolute integral value (mm).
+            Hard clamp on the absolute integral value (mm).  Default 150.
         fabrik_refinement_passes : int
             Extra FABRIK solves per frame to escape local minima.
-            0 = disabled.  Default 2.
+            0 = disabled.  Default 8.
         fabrik_refinement_gain : float
-            Within-frame bone-length adjustment gain.  Default 0.5.
+            Within-frame bone-length adjustment gain.  Default 1.0 (full correction).
         fabrik_jitter_mm : float
             Base stddev of Gaussian jitter on bone lengths (mm).
             0 = deterministic only.  Default 3.0.
@@ -459,8 +460,8 @@ class RealtimeSkeletonFitter:
             Adaptive jitter scaling factor (mm).  Per-bone jitter
             stddev = base + |axial_residual| / error_scale.
             Larger error → more jitter for exploration; small
-            error → settles toward base jitter.  Default 7.0
-            (a 21mm residual gives ~3+3=6mm jitter).
+            error → settles toward base jitter.  Default 3.0
+            (a 20mm residual gives ~3+7=10mm jitter).
         """
         # ---- Canonical models ----
         body_info = CanonicalBodyModelInfo()

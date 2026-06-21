@@ -521,6 +521,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return keypointsRef.current;
     }, []);
 
+    const getLatestSkeleton = useCallback((): KeypointsFrame | null => {
+        return skeletonRef.current;
+    }, []);
+
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
         canvasManagerRef.current?.setOverlayVisibility(charuco, skeleton);
     }, []);
@@ -560,11 +564,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToCenterOfMass,
         subscribeToXcom,
         getLatestKeypoints,
+        getLatestSkeleton,
         setOverlayVisibility,
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, getLatestKeypoints, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

@@ -453,6 +453,7 @@ export const FileKeypointsSourceProvider: React.FC<{
         },
         getLatestKeypoints: () =>
             keypointsRef.current.frameCount > 0 ? keypointsRef.current.scratchFrame : null,
+        getLatestSkeleton: () => null,  // playback has no realtime skeleton fitter
     }), []);
 
     return (

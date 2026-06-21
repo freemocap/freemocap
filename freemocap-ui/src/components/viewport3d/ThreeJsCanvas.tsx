@@ -153,7 +153,7 @@ export function ThreeJsCanvas() {
   const {
     subscribeToKeypoints,
     subscribeToSkeleton,
-    getLatestKeypoints,
+    getLatestSkeleton,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -243,11 +243,26 @@ export function ThreeJsCanvas() {
   }, [loadedCalibration]);
 
   const handleFit = useCallback(() => {
-    VIEWPORT_WORKER.postMessage({
-      type: "fitCamera",
-      data: getLatestKeypoints(),
-    });
-  }, [getLatestKeypoints]);
+    // Use skeleton-only data so the bounding box excludes charuco board corners.
+    const skel = getLatestSkeleton();
+    if (!skel) return;
+    VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: skel });
+
+    // Refine over 2s — each new skeleton frame recomputes the target so the
+    // camera smoothly converges as the skeleton settles.
+    const start = performance.now();
+    const REFINE_DURATION_MS = 2000;
+    const interval = setInterval(() => {
+      if (performance.now() - start >= REFINE_DURATION_MS) {
+        clearInterval(interval);
+        return;
+      }
+      const latest = getLatestSkeleton();
+      if (latest) {
+        VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: latest });
+      }
+    }, 150);
+  }, [getLatestSkeleton]);
 
   const handleReset = useCallback(() => {
     VIEWPORT_WORKER.postMessage({ type: "resetCamera" });

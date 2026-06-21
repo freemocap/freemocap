@@ -24,6 +24,7 @@ export interface ServerContextValue {
     subscribeToCenterOfMass: (cb: CoMCallback) => () => void;
     subscribeToXcom: (cb: CoMCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
+    getLatestSkeleton: () => KeypointsFrame | null;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
     trackerSchemas: Record<string, TrackedObjectDefinition>;
     activeTrackerId: string | null;

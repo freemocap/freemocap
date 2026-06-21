@@ -100,6 +100,7 @@ export const workerDataStore: KeypointsSource & {
         return unsub;
     },
     getLatestKeypoints: keypointsChan.getLatest,
+    getLatestSkeleton: skeletonChan.getLatest,
 
     // Schema state
     subscribeToSchemaState: schemaChan.subscribe,

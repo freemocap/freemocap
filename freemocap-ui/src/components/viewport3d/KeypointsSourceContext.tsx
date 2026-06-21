@@ -33,6 +33,7 @@ export interface KeypointsSource {
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
     subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
+    getLatestSkeleton: () => KeypointsFrame | null;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -71,12 +72,14 @@ export function useKeypointsSource(): KeypointsSource {
             subscribeToKeypoints: server.subscribeToKeypoints,
             subscribeToSkeleton: server.subscribeToSkeleton,
             getLatestKeypoints: server.getLatestKeypoints,
+            getLatestSkeleton: server.getLatestSkeleton,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         server?.subscribeToKeypoints,
         server?.subscribeToSkeleton,
         server?.getLatestKeypoints,
+        server?.getLatestSkeleton,
     ]);
 
     const source = ctx ?? liveAdapter;

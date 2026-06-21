@@ -93,71 +93,7 @@ dev = [
     "ruff>=0.9.0",
     "poethepoet>=0.32.0",
 ]
-
-
-# =============================================================================
-# Task runner (poethepoet)
-# =============================================================================
-# List all tasks:        uv run poe --help
-#
-# Type-checking imports:
-#   uv run poe tc-check    Preview which imports can move behind TYPE_CHECKING
-#   uv run poe tc-fix      Move them automatically
-#   uv run poe tc          Move them + run tests to verify nothing broke
-#
-# Linting:
-#   uv run poe lint        Run all ruff lint rules (report only)
-#   uv run poe lint-fix    Auto-fix all ruff lint violations
-#
-# Testing:
-#   uv run poe test        Run pytest
-#
-# ---- Handling false positives ----
-#
-# Ruff is smart about isinstance/issubclass — it won't move imports that
-# appear in those calls. But if ruff tries to move an import that IS used
-# at runtime (e.g. passed to a registry, used in a TypeAdapter, or checked
-# in a way ruff can't see), suppress it with a noqa comment on the import:
-#
-#   from freemocap.core.pipeline.pipeline_configs import BaseDetectorConfig  # noqa: TC001
-#
-# The rule codes are:
-#   TC001 — stdlib import (e.g. pathlib.Path used in isinstance)
-#   TC002 — third-party import (e.g. numpy.ndarray used in isinstance)
-#   TC003 — first-party import (e.g. your own types used in isinstance)
-#
-# Common situations where you MUST keep an import at runtime (use noqa):
-#   - isinstance(x, SomeClass) / issubclass(x, SomeClass)
-#     (ruff usually catches these, but check if it doesn't)
-#   - TypeAdapter(SomeModel) or model_validate() with a type argument
-#   - Passing a class to a function that does runtime type inspection
-#   - Using a class as a dict key or in a set for type dispatch
-#   - Base classes (class Foo(SomeBase):) — ruff always catches these
-#
-# =============================================================================
-
-[tool.poe.tasks]
-tc-check = { cmd = "ruff check --select TC freemocap/", help = "Preview type-only imports that can move behind TYPE_CHECKING" }
-tc-fix   = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-only imports behind TYPE_CHECKING" }
-tc       = { sequence = ["tc-fix", "test"], help = "Move type-only imports + run tests to verify" }
-lint     = { cmd = "ruff check freemocap/", help = "Run all ruff lint rules" }
-lint-fix = { cmd = "ruff check --fix freemocap/", help = "Auto-fix all ruff lint violations" }
-
-# --- Testing ---
-test          = { cmd = "pytest freemocap/tests/ -v", help = "Run all backend tests" }
-test-schema   = { cmd = "pytest freemocap/tests/test_schema_contract.py -v", help = "Run schema contract tests (frontend/backend sync)" }
-test-settings = { cmd = "pytest freemocap/tests/test_settings_manager.py -v", help = "Run SettingsManager unit tests" }
-test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
-test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
-test-e2e      = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
-test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
-test-calibration = { cmd = "pytest freemocap/tests/calibration/ -v -s --timeout=600", help = "Run calibration integration tests (requires --test-data-path or FREEMOCAP_TEST_DATA_PATH)" }
-test-all      = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
-
-[tool.poe.tasks.test-ui]
-cmd  = "npm run test"
-cwd  = "freemocap-ui"
-help = "Run frontend tests — run `npm test` in freemocap-ui/ )"
+# Poe the Poet tasks live in poe_tasks.toml (auto-discovered — no [tool.poe] key needed here)
 
 
 # =============================================================================

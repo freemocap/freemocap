@@ -27,7 +27,7 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
 const RAW_KEYPOINT_RADIUS = 0.07;
-const SKELETON_POINT_RADIUS = 0.15;
+const SKELETON_POINT_RADIUS = 0.075;
 
 const BODY_KEYPOINT_RADIUS = 0.12;
 const HAND_KEYPOINT_RADIUS = 0.05;

@@ -64,6 +64,65 @@ _RTMPOSE_HAND_MAPPING_YAML = (
 
 
 @dataclass
+class _BoneLengthCorrector:
+    """Per-bone integral corrector for persistent FABRIK residuals.
+
+    After each FABRIK solve, the axial residual (tracker_child - solved_child)
+    projected onto the bone direction is accumulated into a leaky integral.
+    Unlike a simple low-pass filter, this integrator can grow beyond the
+    instantaneous error magnitude — exactly like the I term in a PID
+    controller.  The leak prevents windup by slowly decaying the accumulator
+    when errors disappear.
+
+    Usage per frame::
+
+        # 1. Apply the current integral as a bone-length bias
+        effective = blended + corrector.get_correction(max_mm)
+
+        # 2. Run FABRIK with the effective length
+
+        # 3. Feed the post-solve axial residual back
+        corrector.update(axial_error_mm, leak=leak, ki=gain)
+        # → integral grows while error persists, saturates at clamp limit
+    """
+
+    integral: float = 0.0  # accumulated correction (mm)
+
+    def update(self, axial_error_mm: float, *, leak: float, ki: float) -> None:
+        """Accumulate a new axial residual observation.
+
+        The update is::
+
+            integral = leak * integral + ki * axial_error
+
+        With ``leak < 1`` this is a leaky integrator — old errors decay
+        exponentially.  With ``leak = 1`` it's a pure integrator (no decay).
+        ``ki`` is the integral gain: how aggressively each frame's error
+        contributes to the accumulator.
+
+        The integral is NOT clamped here — clamping happens at read time
+        via :meth:`get_correction`.
+
+        Args:
+            axial_error_mm:
+                ``dot(tracker_child - solved_child, bone_direction)``.
+                Positive → tracker wants child farther → bone too short.
+                Negative → tracker wants child closer → bone too long.
+            leak:
+                Per-frame retention factor.  0.95 = 5% decay per frame.
+                At 30 fps this is a ~0.67 s time constant.
+            ki:
+                Integral gain — mm of accumulation per mm of axial error.
+                Typical: 0.03–0.20.
+        """
+        self.integral = leak * self.integral + ki * axial_error_mm
+
+    def get_correction(self, max_correction_mm: float) -> float:
+        """Return the integral clamped to ±max_correction_mm."""
+        return float(np.clip(self.integral, -max_correction_mm, max_correction_mm))
+
+
+@dataclass
 class _WelfordTracker:
     """Online mean/variance for a single bone — O(1) memory, no buffers."""
 
@@ -72,13 +131,34 @@ class _WelfordTracker:
     mean: float = 0.0
     M2: float = 0.0  # sum of squared differences from mean
 
-    def observe(self, value: float) -> None:
-        """Update running statistics with a new observation."""
+    def observe(self, value: float, max_effective_samples: int = 300) -> None:
+        """Update running statistics with a new observation.
+
+        Uses cumulative-mean Welford updates for the first
+        *max_effective_samples* frames, then switches to a
+        constant-weight EMA update.  This prevents the estimator from
+        becoming arbitrarily resistant to change during long recordings
+        (where 1/count → 0 and early bad data permanently biases the mean).
+        """
         self.count += 1
-        delta = value - self.mean
-        self.mean += delta / self.count
-        delta2 = value - self.mean
-        self.M2 += delta * delta2
+        if self.count <= max_effective_samples:
+            # Standard Welford cumulative update
+            delta = value - self.mean
+            self.mean += delta / self.count
+            delta2 = value - self.mean
+            self.M2 += delta * delta2
+        else:
+            # Capped-weight EMA: constant learning rate so the estimator
+            # stays responsive regardless of recording length.
+            weight = 1.0 / max_effective_samples
+            old_mean = self.mean
+            self.mean = (1.0 - weight) * self.mean + weight * value
+            # Approximate M2 update for the EMA regime: track a
+            # decaying variance estimate so blended_length() confidence
+            # still works.
+            delta = value - self.mean
+            delta_old = value - old_mean
+            self.M2 = (1.0 - weight) * self.M2 + weight * delta * delta_old
 
     @property
     def variance(self) -> float:
@@ -93,33 +173,25 @@ class _WelfordTracker:
     def blended_length(
         self,
         *,
-        min_samples: int = 20,
-        cv_sensitivity: float = 2.0,
+        prior_forget_samples: int = 300,
     ) -> float:
-        """Confidence-weighted blend of prior and observed mean.
+        """Blend prior and observed mean with linear prior decay.
 
-        Confidence = count_factor × consistency_factor where::
+        The prior weight starts at 1.0 and decays linearly to 0.0 over
+        *prior_forget_samples* frames.  After that the pure observed mean
+        is returned — the anthropometric seed is completely forgotten.
 
-            count_factor      = clamp(n / min_samples, 0, 1)
-            consistency_factor = 1 / (1 + sensitivity × CV)
-            CV                 = std / mean  (coefficient of variation)
-
-        Lower CV → tighter measurements → higher confidence.
+        This is intentionally simpler than the old CV-based formula:
+        the Welford EMA cap already handles measurement noise by keeping
+        the estimator responsive, so we don't need CV to gate confidence.
         """
         if self.count == 0:
             return self.prior
 
-        count_factor = min(1.0, self.count / min_samples)
+        # Linear decay: prior_weight goes 1.0 → 0.0 over prior_forget_samples
+        prior_weight = max(0.0, 1.0 - self.count / prior_forget_samples)
 
-        if self.mean > 1e-9:
-            cv = self.std / self.mean
-        else:
-            cv = float("inf")
-
-        consistency_factor = 1.0 / (1.0 + cv_sensitivity * cv)
-        confidence = count_factor * consistency_factor
-
-        return self.prior * (1.0 - confidence) + self.mean * confidence
+        return self.prior * prior_weight + self.mean * (1.0 - prior_weight)
 
 
 # ---------------------------------------------------------------------------
@@ -143,6 +215,96 @@ class SkeletonFittingResult:
     body_bone_lengths: dict[str, float]
     left_hand_bone_lengths: dict[str, float]
     right_hand_bone_lengths: dict[str, float]
+
+
+# Derived center joints — computed landmarks (means of tracked keypoints)
+# rather than directly tracked.  These get post-FABRIK blending toward
+# their tracker targets to reduce jitter amplification.
+_CENTER_JOINT_NAMES: frozenset[str] = frozenset({
+    "hips_center",
+    "trunk_center",
+    "neck_center",
+    "head_center",
+})
+
+
+# ---------------------------------------------------------------------------
+# Helpers (module-level, no allocations in the hot path beyond the calls)
+# ---------------------------------------------------------------------------
+
+
+def _update_correctors(
+    *,
+    solved: dict[str, np.ndarray],
+    targets: dict[str, np.ndarray],
+    tree: FabrikTree,
+    correctors: dict[str, _BoneLengthCorrector],
+    leak: float,
+    ki: float,
+) -> None:
+    """Feed post-FABRIK axial residuals into the per-bone integral correctors.
+
+    Calls :meth:`_BoneLengthCorrector.update` on every bone whose endpoints
+    are present.  Missing bones are silently skipped (their integrals decay
+    toward zero via the leak).
+    """
+    residuals = _compute_axial_residuals_dict(
+        solved=solved, targets=targets, tree=tree,
+    )
+    for bone_key, axial_error_mm in residuals.items():
+        correctors[bone_key].update(
+            axial_error_mm=axial_error_mm, leak=leak, ki=ki,
+        )
+
+
+def _compute_axial_residuals_dict(
+    *,
+    solved: dict[str, np.ndarray],
+    targets: dict[str, np.ndarray],
+    tree: FabrikTree,
+) -> dict[str, float]:
+    """Return per-bone axial residuals from a FABRIK solution.
+
+    For each bone, projects ``target_child - solved_child`` onto
+    ``normalize(solved_child - solved_parent)``.  Positive = bone was
+    too short, negative = bone was too long.
+
+    Used by both the integral corrector (across frames) and the
+    within-frame refinement passes.
+    """
+    residuals: dict[str, float] = {}
+    for bone_key in tree.bone_keys:
+        parent_name, child_name = bone_key.split("->", 1)
+        solved_parent = solved.get(parent_name)
+        solved_child = solved.get(child_name)
+        target_child = targets.get(child_name)
+        if solved_parent is None or solved_child is None or target_child is None:
+            continue
+        bone_vec = solved_child - solved_parent
+        bone_dist = float(np.linalg.norm(bone_vec))
+        if bone_dist < 1e-9:
+            continue
+        bone_dir = bone_vec / bone_dist
+        residual = target_child - solved_child
+        residuals[bone_key] = float(np.dot(residual, bone_dir))
+    return residuals
+
+
+def _compute_total_residual(
+    solved: dict[str, np.ndarray],
+    targets: dict[str, np.ndarray],
+) -> float:
+    """Sum of Euclidean distances between solved and target positions.
+
+    Only joints present in BOTH dicts contribute.  This is the objective
+    function that the refinement passes minimise.
+    """
+    total = 0.0
+    for name in solved:
+        target = targets.get(name)
+        if target is not None:
+            total += float(np.linalg.norm(solved[name] - target))
+    return total
 
 
 # ---------------------------------------------------------------------------
@@ -199,6 +361,11 @@ class RealtimeSkeletonFitter:
     _hand_trackers_r: dict[str, _WelfordTracker] = field(repr=False)
     _hand_trackers_l: dict[str, _WelfordTracker] = field(repr=False)
 
+    # Per-bone integral correctors (persistent-residual → bone-length bias)
+    _body_correctors: dict[str, _BoneLengthCorrector] = field(repr=False)
+    _hand_correctors_r: dict[str, _BoneLengthCorrector] = field(repr=False)
+    _hand_correctors_l: dict[str, _BoneLengthCorrector] = field(repr=False)
+
     # Hand canonical → tracker name reverse maps (built once, used per-frame)
     _hand_name_to_tracker_r: dict[str, str] = field(default_factory=dict, repr=False)
     _hand_name_to_tracker_l: dict[str, str] = field(default_factory=dict, repr=False)
@@ -207,8 +374,20 @@ class RealtimeSkeletonFitter:
     height_mm: float = 1750.0
     fabrik_tolerance: float = 0.1  # mm — FABRIK convergence threshold
     fabrik_max_iterations: int = 20
-    min_samples: int = 20           # frames for full count confidence (~0.7s at 30fps)
-    cv_sensitivity: float = 2.0     # lower = trust observed measurements sooner
+    prior_forget_samples: int = 300     # frames until prior is completely forgotten (~10s at 30fps)
+    center_prior_forget_samples: int = 30  # faster for center→center bones (~1s)
+    max_welford_samples: int = 300      # cap effective sample count (~10s at 30fps)
+    center_blend_factor: float = 0.4    # how strongly to snap center joints toward tracker targets post-FABRIK
+
+    # Integral bone-length correction (PID-like I term)
+    integral_gain: float = 0.10     # mm correction per mm accumulated axial error
+    integral_leak: float = 0.95     # per-frame decay (0.95 @ 30fps → ~0.67s time constant)
+    max_integral_correction_mm: float = 50.0  # hard clamp on correction magnitude
+
+    # Within-frame FABRIK refinement (escapes local minima from coupled bones)
+    fabrik_refinement_passes: int = 2   # extra FABRIK solves per frame (0 = disabled)
+    fabrik_refinement_gain: float = 0.5 # within-frame bone-length adjustment gain
+    fabrik_jitter_mm: float = 3.0       # stddev of Gaussian jitter on bone lengths (mm)
 
     # ------------------------------------------------------------------
     # Factory
@@ -221,8 +400,16 @@ class RealtimeSkeletonFitter:
         height_mm: float = 1750.0,
         fabrik_tolerance: float = 0.1,
         fabrik_max_iterations: int = 20,
-        min_samples: int = 20,
-        cv_sensitivity: float = 2.0,
+        prior_forget_samples: int = 300,
+        center_prior_forget_samples: int = 30,
+        max_welford_samples: int = 300,
+        center_blend_factor: float = 0.4,
+        integral_gain: float = 0.10,
+        integral_leak: float = 0.95,
+        max_integral_correction_mm: float = 50.0,
+        fabrik_refinement_passes: int = 2,
+        fabrik_refinement_gain: float = 0.5,
+        fabrik_jitter_mm: float = 3.0,
     ) -> "RealtimeSkeletonFitter":
         """Load canonical models and tracker mappings.
 
@@ -235,13 +422,37 @@ class RealtimeSkeletonFitter:
             FABRIK convergence threshold (mm).
         fabrik_max_iterations : int
             Maximum FABRIK forward/backward passes per frame.
-        min_samples : int
-            Number of observations for full count confidence.
-            Default 20 → ~0.7 s at 30 fps.
-        cv_sensitivity : float
-            How strongly the coefficient of variation penalizes
-            confidence.  Lower = trust observed measurements sooner.
-            Default 2.0 → with CV=0.1, max confidence ~83%.
+        prior_forget_samples : int
+            Frames until anthropometric prior is completely forgotten.
+            After this the blended length = pure observed mean.
+            Default 300 (~10 s at 30 fps).
+        center_prior_forget_samples : int
+            Same for center→center bones (hips_center→trunk_center, etc.).
+            Much shorter because these are derived landmarks with no
+            anatomical truth.  Default 30 (~1 s).
+        max_welford_samples : int
+            Cap on effective sample count for the Welford estimator
+            (~10 s at 30 fps).  Prevents freeze in long recordings.
+        center_blend_factor : float
+            Post-FABRIK blend factor for derived center joints
+            (hips_center, neck_center, head_center).  0 = no blend
+            (pure FABRIK), 1 = snap to tracker target.  Default 0.4.
+        integral_gain : float
+            Integral gain (ki) — mm of integral accumulation per mm of
+            axial error per frame.  0 = no correction.  Default 0.10.
+        integral_leak : float
+            Per-frame retention factor for the integral accumulator.
+            0.95 = 5% decay/frame → ~0.67 s time constant at 30 fps.
+        max_integral_correction_mm : float
+            Hard clamp on the absolute integral value (mm).
+        fabrik_refinement_passes : int
+            Extra FABRIK solves per frame to escape local minima.
+            0 = disabled.  Default 2.
+        fabrik_refinement_gain : float
+            Within-frame bone-length adjustment gain.  Default 0.5.
+        fabrik_jitter_mm : float
+            Stddev of Gaussian jitter on bone lengths (mm).
+            0 = deterministic only.  Default 3.0.
         """
         # ---- Canonical models ----
         body_info = CanonicalBodyModelInfo()
@@ -306,13 +517,24 @@ class RealtimeSkeletonFitter:
             _body_trackers=body_trackers,
             _hand_trackers_r=hand_trackers_r,
             _hand_trackers_l=hand_trackers_l,
+            _body_correctors={bk: _BoneLengthCorrector() for bk in body_tree.bone_keys},
+            _hand_correctors_r={bk: _BoneLengthCorrector() for bk in hand_tree.bone_keys},
+            _hand_correctors_l={bk: _BoneLengthCorrector() for bk in hand_tree.bone_keys},
             _hand_name_to_tracker_r=hand_name_to_tracker_r,
             _hand_name_to_tracker_l=hand_name_to_tracker_l,
             height_mm=height_mm,
             fabrik_tolerance=fabrik_tolerance,
             fabrik_max_iterations=fabrik_max_iterations,
-            min_samples=min_samples,
-            cv_sensitivity=cv_sensitivity,
+            prior_forget_samples=prior_forget_samples,
+            center_prior_forget_samples=center_prior_forget_samples,
+            max_welford_samples=max_welford_samples,
+            center_blend_factor=center_blend_factor,
+            integral_gain=integral_gain,
+            integral_leak=integral_leak,
+            max_integral_correction_mm=max_integral_correction_mm,
+            fabrik_refinement_passes=fabrik_refinement_passes,
+            fabrik_refinement_gain=fabrik_refinement_gain,
+            fabrik_jitter_mm=fabrik_jitter_mm,
         )
 
     @staticmethod
@@ -375,32 +597,60 @@ class RealtimeSkeletonFitter:
         canonical_lhand = self._hand_mapping_l.apply(tracker_positions)
 
         # ---- 2. Observe segment lengths ----
-        self._observe_tree(canonical_body, self._body_tree, self._body_trackers)
-        self._observe_tree(canonical_rhand, self._hand_tree, self._hand_trackers_r)
-        self._observe_tree(canonical_lhand, self._hand_tree, self._hand_trackers_l)
+        self._observe_tree(canonical_body, self._body_tree, self._body_trackers,
+                           max_welford_samples=self.max_welford_samples)
+        self._observe_tree(canonical_rhand, self._hand_tree, self._hand_trackers_r,
+                           max_welford_samples=self.max_welford_samples)
+        self._observe_tree(canonical_lhand, self._hand_tree, self._hand_trackers_l,
+                           max_welford_samples=self.max_welford_samples)
 
         # ---- 3. Current blended lengths ----
-        body_lengths = {
-            bk: t.blended_length(
-                min_samples=self.min_samples,
-                cv_sensitivity=self.cv_sensitivity,
-            )
+        # Center→center bones (hips_center→trunk_center, etc.) use a much
+        # shorter prior-forget window: their "lengths" depend entirely on
+        # tracker landmark definitions, not anatomy.  All other bones use
+        # the standard prior_forget_samples.
+        def _forget_for(bone_key: str) -> int:
+            """Return prior_forget_samples appropriate for this bone."""
+            parent, child = bone_key.split("->", 1)
+            if "center" in parent and "center" in child:
+                return self.center_prior_forget_samples
+            return self.prior_forget_samples
+
+        body_lengths_blended = {
+            bk: t.blended_length(prior_forget_samples=_forget_for(bk))
             for bk, t in self._body_trackers.items()
         }
-        rhand_lengths = {
-            bk: t.blended_length(
-                min_samples=self.min_samples,
-                cv_sensitivity=self.cv_sensitivity,
-            )
+        rhand_lengths_blended = {
+            bk: t.blended_length(prior_forget_samples=self.prior_forget_samples)
             for bk, t in self._hand_trackers_r.items()
         }
-        lhand_lengths = {
-            bk: t.blended_length(
-                min_samples=self.min_samples,
-                cv_sensitivity=self.cv_sensitivity,
-            )
+        lhand_lengths_blended = {
+            bk: t.blended_length(prior_forget_samples=self.prior_forget_samples)
             for bk, t in self._hand_trackers_l.items()
         }
+
+        # ---- 3b. Apply integral correction → effective bone lengths ----
+        # The integral corrector accumulates persistent axial residuals from
+        # previous FABRIK solves.  A positive correction lengthens the bone
+        # (tracker consistently wants the child farther out); a negative
+        # correction shortens it.  This is the "I term" — it catches and
+        # fixes bone-length drift that the Welford estimator is too slow to
+        # reverse on its own.
+        body_lengths = {}
+        for bk, blended in body_lengths_blended.items():
+            body_lengths[bk] = blended + self._body_correctors[bk].get_correction(
+                self.max_integral_correction_mm,
+            )
+        rhand_lengths = {}
+        for bk, blended in rhand_lengths_blended.items():
+            rhand_lengths[bk] = blended + self._hand_correctors_r[bk].get_correction(
+                self.max_integral_correction_mm,
+            )
+        lhand_lengths = {}
+        for bk, blended in lhand_lengths_blended.items():
+            lhand_lengths[bk] = blended + self._hand_correctors_l[bk].get_correction(
+                self.max_integral_correction_mm,
+            )
 
         # ---- 4. FABRIK solve ----
         # The FABRIK solver now snaps ALL non-branch nodes to their tracker
@@ -422,6 +672,36 @@ class RealtimeSkeletonFitter:
             targets=canonical_lhand,
             tree=self._hand_tree,
             bone_lengths=lhand_lengths,
+        )
+
+        # ---- 4b. Update integral correctors from FABRIK residuals ----
+        # After the solve, measure how far each solved joint is from its
+        # tracker target along the bone axis.  Feed that axial residual
+        # into the leaky integrator so the next frame's effective bone
+        # length can compensate.
+        _update_correctors(
+            solved=body_fitted,
+            targets=canonical_body,
+            tree=self._body_tree,
+            correctors=self._body_correctors,
+            leak=self.integral_leak,
+            ki=self.integral_gain,
+        )
+        _update_correctors(
+            solved=rhand_fitted,
+            targets=canonical_rhand,
+            tree=self._hand_tree,
+            correctors=self._hand_correctors_r,
+            leak=self.integral_leak,
+            ki=self.integral_gain,
+        )
+        _update_correctors(
+            solved=lhand_fitted,
+            targets=canonical_lhand,
+            tree=self._hand_tree,
+            correctors=self._hand_correctors_l,
+            leak=self.integral_leak,
+            ki=self.integral_gain,
         )
 
         # ---- 5. Convert hand canonical names → tracker names ----
@@ -458,6 +738,7 @@ class RealtimeSkeletonFitter:
         canonical_positions: dict[str, np.ndarray],
         tree: FabrikTree,
         trackers: dict[str, _WelfordTracker],
+        max_welford_samples: int = 300,
     ) -> None:
         """Feed observed bone lengths into the running statistics.
 
@@ -478,7 +759,10 @@ class RealtimeSkeletonFitter:
                 np.asarray(parent_pos) - np.asarray(child_pos)
             ))
             if length > 0.0:
-                trackers[bone_key].observe(length)
+                trackers[bone_key].observe(
+                    length,
+                    max_effective_samples=max_welford_samples,
+                )
 
     def _try_solve(
         self,
@@ -487,7 +771,21 @@ class RealtimeSkeletonFitter:
         tree: FabrikTree,
         bone_lengths: dict[str, float],
     ) -> dict[str, np.ndarray]:
-        """Run FABRIK if all tree joints are present, else return empty."""
+        """Run FABRIK with optional within-frame refinement passes.
+
+        The primary solve uses the given *bone_lengths*.  If refinement is
+        enabled (``fabrik_refinement_passes > 0``), additional solves are
+        attempted with bone lengths nudged in the direction of the per-bone
+        axial residuals — a cheap gradient-following step.  One pass also
+        adds Gaussian jitter to help escape local minima caused by coupled
+        bones (e.g. knee stuck behind the hip because femur + shank + foot
+        bones reached a compromise that satisfies constraints but not
+        tracker targets).
+
+        The solution with the lowest total joint error is returned.
+        Refined bone lengths are ephemeral — they do NOT persist to the
+        next frame or feed the integral corrector.
+        """
         if not tree.nodes:
             return {}
 
@@ -515,17 +813,81 @@ class RealtimeSkeletonFitter:
             return {}
 
         # Ensure bone_lengths covers all bones in the tree
+        working_lengths: dict[str, float] = dict(bone_lengths)
         for bone_key in tree.bone_keys:
-            if bone_key not in bone_lengths:
-                bone_lengths[bone_key] = 50.0  # mm fallback — should never trigger now
+            if bone_key not in working_lengths:
+                working_lengths[bone_key] = 50.0  # mm fallback
 
-        return solve_fabrik_tree(
+        # ---- Primary solve ----
+        best_solution = solve_fabrik_tree(
             targets=fabrik_targets,
             tree=tree,
-            bone_lengths=bone_lengths,
+            bone_lengths=working_lengths,
             tolerance=self.fabrik_tolerance,
             max_iterations=self.fabrik_max_iterations,
         )
+        best_error = _compute_total_residual(best_solution, fabrik_targets)
+        best_lengths = dict(working_lengths)
+
+        # ---- Refinement passes ----
+        rng = np.random.default_rng()
+        for pass_idx in range(self.fabrik_refinement_passes):
+            # Compute axial residuals from the CURRENT best solution.
+            # These tell us which direction each bone length should move.
+            axial_residuals = _compute_axial_residuals_dict(
+                solved=best_solution,
+                targets=fabrik_targets,
+                tree=tree,
+            )
+
+            # Build candidate bone lengths: nudge each bone in the
+            # direction that reduces its residual.
+            candidate_lengths: dict[str, float] = {}
+            for bk, length in best_lengths.items():
+                axial = axial_residuals.get(bk, 0.0)
+                # Deterministic nudge + optional jitter on the last pass
+                jitter = 0.0
+                if pass_idx == self.fabrik_refinement_passes - 1 and self.fabrik_jitter_mm > 0.0:
+                    jitter = rng.normal(0.0, self.fabrik_jitter_mm)
+                candidate_lengths[bk] = length + self.fabrik_refinement_gain * axial + jitter
+                # Don't let bone lengths go negative or absurdly short
+                if candidate_lengths[bk] < 5.0:
+                    candidate_lengths[bk] = 5.0
+
+            # Re-solve with candidate lengths
+            candidate_solution = solve_fabrik_tree(
+                targets=fabrik_targets,
+                tree=tree,
+                bone_lengths=candidate_lengths,
+                tolerance=self.fabrik_tolerance,
+                max_iterations=self.fabrik_max_iterations,
+            )
+            candidate_error = _compute_total_residual(candidate_solution, fabrik_targets)
+
+            # Keep if better
+            if candidate_error < best_error:
+                best_solution = candidate_solution
+                best_error = candidate_error
+                best_lengths = candidate_lengths
+
+        # ---- Post-solve: blend derived-center joints toward tracker targets ----
+        # hips_center, neck_center, and head_center are branch points whose
+        # positions are determined by averaging child suggestions in the
+        # forward pass and bone-length enforcement in the backward pass —
+        # they're NOT snapped to their tracker targets.  This makes them
+        # jumpier than the underlying keypoints.  Blending toward the
+        # tracker target dampens that amplification.
+        if self.center_blend_factor > 0.0:
+            for joint_name in _CENTER_JOINT_NAMES:
+                if joint_name in best_solution and joint_name in fabrik_targets:
+                    target = fabrik_targets[joint_name]
+                    solved = best_solution[joint_name]
+                    best_solution[joint_name] = (
+                        (1.0 - self.center_blend_factor) * solved
+                        + self.center_blend_factor * target
+                    )
+
+        return best_solution
 
     # ------------------------------------------------------------------
     # Introspection

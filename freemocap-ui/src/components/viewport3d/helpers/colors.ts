@@ -5,7 +5,7 @@ export const COLORS = {
     raw:            new Color("#CCC"),
     filtered:       new Color("#44FF88"),
     // Skeleton (FABRIK-fitted canonical) — white stands out from red/blue connections
-    skeleton:       new Color("#FFFFFF"),
+    skeleton:       new Color("#666"),
 
     // Face
     face:           new Color("#FFD700"),

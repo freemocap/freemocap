@@ -93,8 +93,8 @@ class _WelfordTracker:
     def blended_length(
         self,
         *,
-        min_samples: int = 100,
-        cv_sensitivity: float = 10.0,
+        min_samples: int = 20,
+        cv_sensitivity: float = 2.0,
     ) -> float:
         """Confidence-weighted blend of prior and observed mean.
 
@@ -152,18 +152,21 @@ class SkeletonFittingResult:
 # Drillis & Contini 1966.
 # ---------------------------------------------------------------------------
 _TORSO_BONE_RATIOS: dict[str, float] = {
-    # Hip width (bi-iliac breadth / 2)
-    "hips_center->left_hip":            0.096,
-    "hips_center->right_hip":           0.096,
-    # Trunk — split ~50/50
-    "hips_center->trunk_center":        0.144,
-    "trunk_center->neck_center":        0.144,
-    # Shoulder width / clavicle (bi-acromial breadth / 2)
-    # Attached to trunk_center after topology fix (were neck_center children)
-    "trunk_center->left_shoulder":      0.130,
-    "trunk_center->right_shoulder":     0.130,
-    # Head + neck
-    "neck_center->head_center":         0.130,
+    # Hip half-width. hips_center (mean of hips) and hip joints are at the
+    # same height, so this is just the lateral distance ≈ 100 mm.
+    "hips_center->left_hip":            0.057,
+    "hips_center->right_hip":           0.057,
+    # Trunk: hips_center (≈0.53 H) → trunk_center (≈0.675 H)
+    "hips_center->trunk_center":        0.145,
+    # Trunk: trunk_center (≈0.675 H) → neck_center / C7 (≈0.84 H)
+    "trunk_center->neck_center":        0.165,
+    # Neck → shoulder 3D distance. neck_center settles at C7 (~1442 mm);
+    # shoulder target at acromion (~1400 mm, 200 mm lateral).
+    # 3D Euclidean = √(200² + (1442−1400)²) ≈ 204 mm.
+    "neck_center->left_shoulder":       0.117,
+    "neck_center->right_shoulder":      0.117,
+    # Neck: C7 (≈0.84 H) → head_center / mid-ear (≈0.93 H)
+    "neck_center->head_center":         0.090,
     # Face features (approximate)
     "head_center->nose":                0.040,
     "head_center->left_eye":            0.020,
@@ -178,26 +181,41 @@ _TORSO_BONE_RATIOS: dict[str, float] = {
 # ---------------------------------------------------------------------------
 
 
-def _build_hand_mapping(yaml_path: Path, *, side: str) -> TrackerMapping:
-    """Build a hand tracker mapping with correct RTMPose hand keypoint names.
+def _build_hand_mapping(yaml_path: Path, *, side: str) -> tuple[TrackerMapping, dict[str, str]]:
+    """Build a hand tracker→canonical mapping AND a canonical→schema-name reverse map.
 
-    RTMPose hand naming is inconsistent: the wrist is ``right_hand_root``
-    (contains ``_hand_``) but every finger is ``right_thumb1``, etc.
-    (no ``_hand_``). The YAML uses relative names (canonical→relative),
-    so we build entries with the full tracker names directly instead of
-    relying on a prefix that can't cover both cases.
+    Two different naming conventions collide here:
+
+    1. **Native RTMPose names** — what the tracker detector outputs.
+       Wrist = ``right_hand_root``, but fingers = ``right_thumb1``
+       (no ``_hand_``).  Historically inconsistent.
+
+    2. **Schema names** — what the composed tracker schema and the
+       frontend ConnectionRenderer expect.  The schema YAML composes
+       hands with ``prefix: "right_hand_"``, producing names like
+       ``right_hand_root``, ``right_hand_thumb1``, etc.
+
+    The *mapping* must look up native names (what the tracker outputs).
+    The *reverse map* must produce schema names (what the frontend expects).
+
+    Returns (mapping, reverse_map) where mapping produces canonical names
+    and reverse_map goes canonical→schema-name.
     """
     import yaml
     with open(yaml_path, "r") as fh:
         raw = yaml.safe_load(fh)
-    entries: dict[str, str] = {}
+    native_entries: dict[str, str] = {}
+    schema_reverse: dict[str, str] = {}
     for canonical_name, relative_name in raw.items():
         if canonical_name == "wrist":
-            # Special case: wrist uses "_hand_" in RTMPose naming
-            entries[canonical_name] = f"{side}_hand_{relative_name}"
+            # Wrist: native = right_hand_root, schema = right_hand_root (same)
+            native_entries[canonical_name] = f"{side}_hand_{relative_name}"
+            schema_reverse[canonical_name] = f"{side}_hand_{relative_name}"
         else:
-            entries[canonical_name] = f"{side}_{relative_name}"
-    return TrackerMapping(entries=entries, prefix="")
+            # Fingers: native = right_thumb1, schema = right_hand_thumb1
+            native_entries[canonical_name] = f"{side}_{relative_name}"
+            schema_reverse[canonical_name] = f"{side}_hand_{relative_name}"
+    return TrackerMapping(entries=native_entries, prefix=""), schema_reverse
 
 
 @dataclass
@@ -218,7 +236,8 @@ class RealtimeSkeletonFitter:
     _hand_mapping_l: TrackerMapping = field(repr=False)
 
     # FABRIK trees (frozen topology)
-    _body_tree: FabrikTree = field(repr=False)
+    _body_tree: FabrikTree = field(repr=False)       # full body (for observation)
+    _torso_tree: FabrikTree = field(repr=False)      # torso-only (for solving)
     _hand_tree: FabrikTree = field(repr=False)
 
     # Per-bone segment-length trackers
@@ -234,8 +253,8 @@ class RealtimeSkeletonFitter:
     height_mm: float = 1750.0
     fabrik_tolerance: float = 0.1  # mm — FABRIK convergence threshold
     fabrik_max_iterations: int = 20
-    min_samples: int = 100
-    cv_sensitivity: float = 10.0
+    min_samples: int = 20           # frames for full count confidence (~0.7s at 30fps)
+    cv_sensitivity: float = 2.0     # lower = trust observed measurements sooner
 
     # ------------------------------------------------------------------
     # Factory
@@ -248,8 +267,8 @@ class RealtimeSkeletonFitter:
         height_mm: float = 1750.0,
         fabrik_tolerance: float = 0.1,
         fabrik_max_iterations: int = 20,
-        min_samples: int = 100,
-        cv_sensitivity: float = 10.0,
+        min_samples: int = 20,
+        cv_sensitivity: float = 2.0,
     ) -> "RealtimeSkeletonFitter":
         """Load canonical models and tracker mappings.
 
@@ -263,11 +282,12 @@ class RealtimeSkeletonFitter:
         fabrik_max_iterations : int
             Maximum FABRIK forward/backward passes per frame.
         min_samples : int
-            Number of observations for full confidence in the
-            observed mean.
+            Number of observations for full count confidence.
+            Default 20 → ~0.7 s at 30 fps.
         cv_sensitivity : float
             How strongly the coefficient of variation penalizes
-            confidence.  Higher = less trust in noisy measurements.
+            confidence.  Lower = trust observed measurements sooner.
+            Default 2.0 → with CV=0.1, max confidence ~83%.
         """
         # ---- Canonical models ----
         body_info = CanonicalBodyModelInfo()
@@ -280,40 +300,35 @@ class RealtimeSkeletonFitter:
         body_mapping = TrackerMapping.from_yaml(_RTMPOSE_BODY_MAPPING_YAML)
         # RTMPose hand naming is inconsistent: wrist = "right_hand_root"
         # (has `_hand_`) but every finger = "right_thumb1" (no `_hand_`).
-        # The YAML maps canonical→relative (wrist→"root", thumb_cmc→"thumb1").
-        # Build corrected entries with full tracker names so prefix="" works.
-        hand_mapping_r = _build_hand_mapping(
+        # The composed schema uses `right_hand_` prefix on everything.
+        # _build_hand_mapping returns (native_name_mapping, schema_name_reverse_map).
+        hand_mapping_r, hand_name_to_tracker_r = _build_hand_mapping(
             _RTMPOSE_HAND_MAPPING_YAML, side="right",
         )
-        hand_mapping_l = _build_hand_mapping(
+        hand_mapping_l, hand_name_to_tracker_l = _build_hand_mapping(
             _RTMPOSE_HAND_MAPPING_YAML, side="left",
         )
 
-        # ---- FABRIK trees from canonical joint hierarchies ----
-        # The canonical model has neck_center → [left_shoulder, right_shoulder,
-        # head_center], but the tracker computes neck_center FROM shoulders
-        # (mean of left/right shoulder). This circular dependency pulls
-        # shoulders up to neck height. Fix: attach shoulders to trunk_center
-        # (representing clavicles) so they hang directly from the torso.
+        # ---- FABRIK trees ----
+        # Full body tree (for bone length observation of limb bones only).
         if body_anatomy.joint_hierarchy is None:
             raise ValueError("Canonical body model has no joint_hierarchy")
-        body_hierarchy = dict(body_anatomy.joint_hierarchy)
-        # Move shoulders from neck_center → trunk_center
-        if "neck_center" in body_hierarchy:
-            neck_children = list(body_hierarchy["neck_center"])
-            body_hierarchy["neck_center"] = [
-                c for c in neck_children
-                if c not in ("left_shoulder", "right_shoulder")
-            ]
-            if "left_shoulder" in neck_children or "right_shoulder" in neck_children:
-                trunk_children = list(body_hierarchy.get("trunk_center", []))
-                if "left_shoulder" in neck_children:
-                    trunk_children.append("left_shoulder")
-                if "right_shoulder" in neck_children:
-                    trunk_children.append("right_shoulder")
-                body_hierarchy["trunk_center"] = trunk_children
         body_tree = FabrikTree.from_joint_hierarchy(
-            joint_hierarchy=body_hierarchy,
+            joint_hierarchy=body_anatomy.joint_hierarchy,
+        )
+
+        # Torso-only tree for FABRIK solving.  Arms and legs are excluded
+        # because FABRIK linear chains ignore tracker targets on internal
+        # nodes (shoulder, elbow, knee).  Limb positions pass through
+        # directly from the 1:1 tracker→canonical mapping.
+        _torso_hierarchy: dict[str, list[str]] = {
+            "hips_center":   ["left_hip", "right_hip", "trunk_center"],
+            "trunk_center":  ["neck_center"],
+            "neck_center":   ["left_shoulder", "right_shoulder", "head_center"],
+            "head_center":   ["nose", "left_eye", "right_eye", "left_ear", "right_ear"],
+        }
+        _torso_tree = FabrikTree.from_joint_hierarchy(
+            joint_hierarchy=_torso_hierarchy,
         )
 
         if hand_anatomy.joint_hierarchy is None:
@@ -321,19 +336,6 @@ class RealtimeSkeletonFitter:
         hand_tree = FabrikTree.from_joint_hierarchy(
             joint_hierarchy=hand_anatomy.joint_hierarchy,
         )
-
-        # Build reverse name maps for hands: canonical name → tracker name.
-        # Hand FABRIK produces canonical names (wrist, thumb_cmc, …) but the
-        # frontend expects tracker names (right_hand_root, right_thumb1, …).
-        # The mapping entries already have full tracker names (prefix="").
-        hand_name_to_tracker_r: dict[str, str] = {}
-        hand_name_to_tracker_l: dict[str, str] = {}
-        for canonical_name, entry in hand_mapping_r._entries.items():
-            if isinstance(entry, str):
-                hand_name_to_tracker_r[canonical_name] = entry
-        for canonical_name, entry in hand_mapping_l._entries.items():
-            if isinstance(entry, str):
-                hand_name_to_tracker_l[canonical_name] = entry
 
         # ---- Per-bone Welford trackers seeded with Winter priors ----
         body_trackers = cls._build_trackers(
@@ -359,6 +361,7 @@ class RealtimeSkeletonFitter:
             _hand_mapping_r=hand_mapping_r,
             _hand_mapping_l=hand_mapping_l,
             _body_tree=body_tree,
+            _torso_tree=_torso_tree,
             _hand_tree=hand_tree,
             _body_trackers=body_trackers,
             _hand_trackers_r=hand_trackers_r,
@@ -457,9 +460,16 @@ class RealtimeSkeletonFitter:
         }
 
         # ---- 4. FABRIK solve ----
-        body_fitted = self._try_solve(
+        # The full body tree includes arms and legs as linear chains.
+        # In FABRIK, only leaves and roots snap to targets; intermediate
+        # joints (shoulder, elbow, hip, knee, ankle) are positioned solely
+        # by bone-length constraints from the leaf, ignoring their tracker
+        # targets. This causes drift.
+        #
+        # Fix: run FABRIK on a torso-only tree (spine + head + face).
+        # Limb positions come directly from the tracker (1:1 mapping).
+        body_fitted = self._try_solve_torso(
             targets=canonical_body,
-            tree=self._body_tree,
             bone_lengths=body_lengths,
         )
         rhand_fitted = self._try_solve(
@@ -502,15 +512,33 @@ class RealtimeSkeletonFitter:
     # Helpers
     # ------------------------------------------------------------------
 
+    # Joints whose canonical position is derived (computed as a mean of
+    # other points, not directly tracked). Bones where the parent is a
+    # derived joint have observed lengths that don't match the FABRIK
+    # tree geometry. E.g. canonical neck_center is at shoulder height
+    # (mean of shoulders) but the FABRIK tree places it at C7 level.
+    # Skip observation for these — they stay at their anthropometric prior.
+    _DERIVED_JOINTS: frozenset[str] = frozenset({
+        "hips_center", "neck_center", "trunk_center", "head_center",
+    })
+
     @staticmethod
     def _observe_tree(
         canonical_positions: dict[str, np.ndarray],
         tree: FabrikTree,
         trackers: dict[str, _WelfordTracker],
     ) -> None:
-        """Feed observed bone lengths into running statistics."""
+        """Feed observed bone lengths into running statistics.
+
+        Only bones whose parent is a directly-tracked landmark (not a
+        derived midpoint) contribute observations. Bones hanging from
+        derived joints stay at their anthropometric prior.
+        """
+        derived = RealtimeSkeletonFitter._DERIVED_JOINTS
         for bone_key in tree.bone_keys:
             parent_name, child_name = bone_key.split("->", 1)
+            if parent_name in derived:
+                continue  # canonical parent position doesn't match tree geometry
             parent_pos = canonical_positions.get(parent_name)
             child_pos = canonical_positions.get(child_name)
             if parent_pos is None or child_pos is None:
@@ -567,6 +595,44 @@ class RealtimeSkeletonFitter:
             tolerance=self.fabrik_tolerance,
             max_iterations=self.fabrik_max_iterations,
         )
+
+    # Joints that are in the full body tree but NOT in the torso tree —
+    # these are limb joints whose positions pass through directly from
+    # the tracker (1:1 mapping).  FABRIK linear chains ignore tracker
+    # targets on internal nodes (shoulder, knee, etc.), so we bypass
+    # FABRIK for limbs entirely.
+    _LIMB_ONLY_JOINTS: frozenset[str] = frozenset({
+        "left_elbow", "left_wrist",
+        "right_elbow", "right_wrist",
+        "left_knee", "left_ankle",
+        "right_knee", "right_ankle",
+        "left_heel", "left_big_toe", "left_small_toe",
+        "right_heel", "right_big_toe", "right_small_toe",
+    })
+
+    def _try_solve_torso(
+        self,
+        *,
+        targets: dict[str, np.ndarray],
+        bone_lengths: dict[str, float],
+    ) -> dict[str, np.ndarray]:
+        """FABRIK-solve the torso tree, then merge limb positions directly
+        from the tracker targets (bypassing FABRIK for linear limb chains).
+        """
+        # 1. FABRIK solve for torso joints
+        torso_fitted = self._try_solve(
+            targets=targets,
+            tree=self._torso_tree,
+            bone_lengths=bone_lengths,
+        )
+
+        # 2. Merge limb positions directly from tracker targets
+        result = dict(torso_fitted)
+        for name in self._LIMB_ONLY_JOINTS:
+            if name in targets:
+                result[name] = np.asarray(targets[name], dtype=np.float64)
+
+        return result
 
     # ------------------------------------------------------------------
     # Introspection

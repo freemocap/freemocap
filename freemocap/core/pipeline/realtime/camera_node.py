@@ -264,6 +264,26 @@ class CameraNode(SourceNode):
                                 pass  # predicted keypoint not in schema — skip
                         if timer is not None:
                             timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
+
+                    # ---- Confidence gating: NaN-out low-confidence 2D keypoints ----
+                    # Runs after the 1€ filter so the filter doesn't propagate
+                    # held positions for keypoints that are actually garbage.
+                    # Does NOT mutate visibility — only zeroes xy so triangulation
+                    # sees NaN and skips these points.
+                    if (
+                        skeleton_observation is not None
+                        and config.skeleton_detector_config is not None
+                    ):
+                        conf_threshold = config.skeleton_detector_config.confidence_threshold
+                        visibility = skeleton_observation.points.visibility
+                        low_conf = visibility < conf_threshold
+                        if low_conf.any():
+                            skeleton_observation.points.xyz[low_conf, :2] = np.nan
+                            if timer is not None:
+                                timer.record(
+                                    "confidence_gate_dropped",
+                                    int(low_conf.sum()),
+                                )
                 if charuco_detector is not None:
                     t0 = time.perf_counter() if timer is not None else 0.0
                     charuco_observation = charuco_detector.detect(

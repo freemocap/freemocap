@@ -51,13 +51,9 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePi
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.mediapipe_skeleton_config import \
-    SkeletonDefinition
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate, \
     GateResult
-from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig, \
-    RealtimeSkeletonFilter, FilterResult
+from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -110,62 +106,6 @@ def _arrays_to_point3d(arrays: dict[str, np.ndarray]) -> dict[str, Point3d]:
         name: Point3d(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
         for name, arr in arrays.items()
     }
-
-
-def _create_skeleton_filter(
-        *,
-        filter_config: RealtimeFilterConfig,
-) -> RealtimeSkeletonFilter:
-    """Create the skeleton filter with mediapipe body skeleton and anthropometric prior."""
-    skeleton = SkeletonDefinition.mediapipe_body()
-    prior = AnthropometricPrior.mediapipe_body()
-    return RealtimeSkeletonFilter.create(
-        skeleton=skeleton,
-        prior=prior,
-        config=filter_config,
-    )
-
-
-def _filter_skeleton_arrays(
-        *,
-        point_arrays: dict[str, np.ndarray],
-        skeleton_filter: RealtimeSkeletonFilter,
-        t: float,
-) -> dict[str, np.ndarray]:
-    """
-    Run the skeleton filter on triangulated point arrays, returning filtered results.
-
-    Operates entirely on dict[str, ndarray] — no Point3d conversion.
-    """
-    skeleton_keypoint_names = skeleton_filter.skeleton.keypoint_names
-
-    skeleton_positions: dict[str, np.ndarray] = {
-        name: arr for name, arr in point_arrays.items()
-        if name in skeleton_keypoint_names
-    }
-
-    if not skeleton_positions:
-        return point_arrays
-
-    filter_result: FilterResult = skeleton_filter.process_frame(
-        t=t,
-        positions=skeleton_positions,
-    )
-
-    # Build output: filtered skeleton + unmodified non-skeleton points
-    result: dict[str, np.ndarray] = {}
-    for name, arr in point_arrays.items():
-        if name in filter_result.positions:
-            result[name] = filter_result.positions[name]
-        else:
-            result[name] = arr
-
-    # Add predicted keypoints that weren't in this frame
-    for name in filter_result.predicted_names:
-        if name not in result and name in filter_result.positions:
-            result[name] = filter_result.positions[name]
-
-    return result
 
 
 @dataclass
@@ -263,9 +203,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 f"calibration — triangulation disabled"
             )
 
-        # Initialize skeleton filter for 3D smoothing + bone length constraint
         filter_config = aggregator_config.realtime_filter_config
-        skeleton_filter = _create_skeleton_filter(filter_config=filter_config)
 
         # Initialize velocity gate for rejecting teleportation spikes
         point_gate = RealtimePointGate(
@@ -366,7 +304,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                         )
                         # Coordinate frame may have changed — reset filter + gate + XCoM tracking
                         keypoint_filter.reset()
-                        skeleton_filter.reset()
                         point_gate.reset()
                         prev_com = None
                         prev_com_time = None
@@ -585,17 +522,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                             )
                             if timer is not None:
                                 timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
-
-                        # Filter + constrain skeleton keypoints
-                        if filtered_keypoints and aggregator_config.skeleton_enabled:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            filtered_keypoints = _filter_skeleton_arrays(
-                                point_arrays=filtered_keypoints,
-                                skeleton_filter=skeleton_filter,
-                                t=time.perf_counter(),
-                            )
-                            if timer is not None:
-                                timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
 
                     # ---- Skeleton fitting (canonical models + FABRIK) ----
                     if (

@@ -146,76 +146,31 @@ class SkeletonFittingResult:
 
 
 # ---------------------------------------------------------------------------
-# Torso/spine/head bone ratios — the canonical anatomical model only provides
-# limb bone ratios. Without these, 12/26 FABRIK tree bones get zero-length
-# priors and the skeleton collapses to a point. Sources: Winter 2009,
-# Drillis & Contini 1966.
-# ---------------------------------------------------------------------------
-_TORSO_BONE_RATIOS: dict[str, float] = {
-    # Hip half-width. hips_center (mean of hips) and hip joints are at the
-    # same height, so this is just the lateral distance ≈ 100 mm.
-    "hips_center->left_hip":            0.057,
-    "hips_center->right_hip":           0.057,
-    # Trunk: hips_center (≈0.53 H) → trunk_center (≈0.675 H)
-    "hips_center->trunk_center":        0.145,
-    # Trunk: trunk_center (≈0.675 H) → neck_center / C7 (≈0.84 H)
-    "trunk_center->neck_center":        0.165,
-    # Neck → shoulder 3D distance. neck_center settles at C7 (~1442 mm);
-    # shoulder target at acromion (~1400 mm, 200 mm lateral).
-    # 3D Euclidean = √(200² + (1442−1400)²) ≈ 204 mm.
-    "neck_center->left_shoulder":       0.117,
-    "neck_center->right_shoulder":      0.117,
-    # Neck: C7 (≈0.84 H) → head_center / mid-ear (≈0.93 H)
-    "neck_center->head_center":         0.090,
-    # Face features (approximate)
-    "head_center->nose":                0.040,
-    "head_center->left_eye":            0.020,
-    "head_center->right_eye":           0.020,
-    "head_center->left_ear":            0.060,
-    "head_center->right_ear":           0.060,
-}
-
-
-# ---------------------------------------------------------------------------
 # RealtimeSkeletonFitter
 # ---------------------------------------------------------------------------
 
 
 def _build_hand_mapping(yaml_path: Path, *, side: str) -> tuple[TrackerMapping, dict[str, str]]:
-    """Build a hand tracker→canonical mapping AND a canonical→schema-name reverse map.
+    """Build a hand tracker→canonical mapping and a canonical→tracker reverse map.
 
-    Two different naming conventions collide here:
+    RTMPose composes hand landmarks with a uniform ``{side}_hand_`` prefix
+    (``right_hand_root``, ``right_hand_thumb1``, …), so the mapping just strips
+    that prefix to match the unprefixed entries in the mapping YAML
+    (``root``, ``thumb1``, …) via ``TrackerMapping``'s ``prefix`` feature.
 
-    1. **Native RTMPose names** — what the tracker detector outputs.
-       Wrist = ``right_hand_root``, but fingers = ``right_thumb1``
-       (no ``_hand_``).  Historically inconsistent.
-
-    2. **Schema names** — what the composed tracker schema and the
-       frontend ConnectionRenderer expect.  The schema YAML composes
-       hands with ``prefix: "right_hand_"``, producing names like
-       ``right_hand_root``, ``right_hand_thumb1``, etc.
-
-    The *mapping* must look up native names (what the tracker outputs).
-    The *reverse map* must produce schema names (what the frontend expects).
-
-    Returns (mapping, reverse_map) where mapping produces canonical names
-    and reverse_map goes canonical→schema-name.
+    Returns (mapping, reverse_map):
+      - ``mapping.apply(tracker_positions)`` → canonical-named positions.
+      - ``reverse_map`` converts canonical landmark names back to tracker
+        names (``thumb_cmc`` → ``right_hand_thumb1``) so fitted hand points
+        key into the frontend's RTMPose hand schema.
     """
     import yaml
-    with open(yaml_path, "r") as fh:
+    with open(yaml_path, "r", encoding="utf-8") as fh:
         raw = yaml.safe_load(fh)
-    native_entries: dict[str, str] = {}
-    schema_reverse: dict[str, str] = {}
-    for canonical_name, relative_name in raw.items():
-        if canonical_name == "wrist":
-            # Wrist: native = right_hand_root, schema = right_hand_root (same)
-            native_entries[canonical_name] = f"{side}_hand_{relative_name}"
-            schema_reverse[canonical_name] = f"{side}_hand_{relative_name}"
-        else:
-            # Fingers: native = right_thumb1, schema = right_hand_thumb1
-            native_entries[canonical_name] = f"{side}_{relative_name}"
-            schema_reverse[canonical_name] = f"{side}_hand_{relative_name}"
-    return TrackerMapping(entries=native_entries, prefix=""), schema_reverse
+    prefix = f"{side}_hand_"
+    mapping = TrackerMapping(entries=raw, prefix=prefix)
+    reverse_map = {canonical: f"{prefix}{relative}" for canonical, relative in raw.items()}
+    return mapping, reverse_map
 
 
 @dataclass
@@ -367,25 +322,28 @@ class RealtimeSkeletonFitter:
         bone_length_ratios: Optional[dict[str, float]],
         height_mm: float,
     ) -> dict[str, _WelfordTracker]:
-        """Create per-bone Welford trackers seeded with Winter priors (mm).
+        """Create per-bone Welford trackers seeded from canonical ratios (mm).
 
-        Limb bones use ratios from the canonical anatomical model.
-        Torso/spine/head bones use ``_TORSO_BONE_RATIOS`` because the
-        canonical model only provides limb ratios.
+        Every bone in the tree must have a seed ratio in the canonical model's
+        ``bone_length_ratios``. The seed is only an approximate starting point —
+        the estimator adapts each bone toward the subject's observed lengths.
+        A missing or non-positive seed is a model error: fail loudly.
         """
+        if bone_length_ratios is None:
+            raise ValueError(
+                "Canonical model has no bone_length_ratios — cannot seed FABRIK "
+                "bone lengths (is skellyforge's canonical model installed/synced?)."
+            )
         trackers: dict[str, _WelfordTracker] = {}
         for bone_key in tree.bone_keys:
-            prior_ratio = 0.0
-            if bone_length_ratios is not None:
-                prior_ratio = bone_length_ratios.get(bone_key, 0.0)
-            if prior_ratio == 0.0:
-                prior_ratio = _TORSO_BONE_RATIOS.get(bone_key, 0.0)
-            if prior_ratio == 0.0:
-                # Last resort: 1% of height (~17.5 mm) prevents zero-length
-                # bones that would collapse the skeleton.
-                prior_ratio = 0.01
-            prior_length = prior_ratio * height_mm
-            trackers[bone_key] = _WelfordTracker(prior=prior_length)
+            ratio = bone_length_ratios.get(bone_key)
+            if ratio is None or ratio <= 0.0:
+                raise ValueError(
+                    f"No positive bone-length seed for '{bone_key}' in the canonical "
+                    f"model — every tree bone needs one (is skellyforge synced with "
+                    f"all body bone ratios?)."
+                )
+            trackers[bone_key] = _WelfordTracker(prior=ratio * height_mm)
         return trackers
 
     # ------------------------------------------------------------------
@@ -495,33 +453,23 @@ class RealtimeSkeletonFitter:
     # Helpers
     # ------------------------------------------------------------------
 
-    # Joints whose canonical position is derived (computed as a mean of
-    # other points, not directly tracked). Bones where the parent is a
-    # derived joint have observed lengths that don't match the FABRIK
-    # tree geometry. E.g. canonical neck_center is at shoulder height
-    # (mean of shoulders) but the FABRIK tree places it at C7 level.
-    # Skip observation for these — they stay at their anthropometric prior.
-    _DERIVED_JOINTS: frozenset[str] = frozenset({
-        "hips_center", "neck_center", "trunk_center", "head_center",
-    })
-
     @staticmethod
     def _observe_tree(
         canonical_positions: dict[str, np.ndarray],
         tree: FabrikTree,
         trackers: dict[str, _WelfordTracker],
     ) -> None:
-        """Feed observed bone lengths into running statistics.
+        """Feed observed bone lengths into the running statistics.
 
-        Only bones whose parent is a directly-tracked landmark (not a
-        derived midpoint) contribute observations. Bones hanging from
-        derived joints stay at their anthropometric prior.
+        Every bone with both endpoints present this frame contributes an
+        observation — including bones between derived centers (head/neck/
+        trunk/hips_center), which are computed from tracked points and so have
+        well-defined, observable lengths. Each bone's anthropometric seed is
+        only a starting point; observation lets it adapt to the subject (and
+        self-corrects seeds that disagree with the actual center geometry).
         """
-        derived = RealtimeSkeletonFitter._DERIVED_JOINTS
         for bone_key in tree.bone_keys:
             parent_name, child_name = bone_key.split("->", 1)
-            if parent_name in derived:
-                continue  # canonical parent position doesn't match tree geometry
             parent_pos = canonical_positions.get(parent_name)
             child_pos = canonical_positions.get(child_name)
             if parent_pos is None or child_pos is None:

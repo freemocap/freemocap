@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
-from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_skeleton_filter import RealtimeFilterConfig
+from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
@@ -18,7 +18,6 @@ class RealtimeAggregatorNodeConfig(BaseModel):
     )
     triangulation_enabled: bool = True
     filter_enabled: bool = False
-    skeleton_enabled: bool = True
     center_of_mass_enabled: bool = True
     skeleton_fitting_enabled: bool = True
 

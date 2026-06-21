@@ -30,9 +30,9 @@ export interface KeypointsFrame {
 export type KeypointsCallback = (frame: KeypointsFrame) => void;
 
 export interface KeypointsSource {
-    subscribeToKeypointsRaw: (cb: KeypointsCallback) => () => void;
-    subscribeToKeypointsFiltered: (cb: KeypointsCallback) => () => void;
-    getLatestKeypointsRaw: () => KeypointsFrame | null;
+    subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
+    subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
+    getLatestKeypoints: () => KeypointsFrame | null;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -68,15 +68,15 @@ export function useKeypointsSource(): KeypointsSource {
     const liveAdapter = useMemo<KeypointsSource | null>(() => {
         if (!server) return null;
         return {
-            subscribeToKeypointsRaw: server.subscribeToKeypointsRaw,
-            subscribeToKeypointsFiltered: server.subscribeToKeypointsFiltered,
-            getLatestKeypointsRaw: server.getLatestKeypointsRaw,
+            subscribeToKeypoints: server.subscribeToKeypoints,
+            subscribeToSkeleton: server.subscribeToSkeleton,
+            getLatestKeypoints: server.getLatestKeypoints,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
-        server?.subscribeToKeypointsRaw,
-        server?.subscribeToKeypointsFiltered,
-        server?.getLatestKeypointsRaw,
+        server?.subscribeToKeypoints,
+        server?.subscribeToSkeleton,
+        server?.getLatestKeypoints,
     ]);
 
     const source = ctx ?? liveAdapter;

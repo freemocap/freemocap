@@ -271,6 +271,57 @@ def _calculate_total_body_com_with_redistribution(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Extrapolated Center of Mass (Hof 2008)
+# ---------------------------------------------------------------------------
+# XCoM = CoM + v / ω₀   where ω₀ = √(g / l)
+#   g = 9810 mm/s²  (gravitational acceleration in keypoint-coordinate units)
+#   l = CoM height above ground (z coordinate, mm)
+#   v = CoM velocity (mm/s, from frame-to-frame position difference)
+#
+# The XCoM is a point on the ground plane (z=0) that predicts where the CoM
+# would come to rest if the body were modeled as an inverted pendulum. It is
+# offset from the vertical projection by v_xy / ω₀ in the direction of travel.
+# All units are mm — the coordinate system is set by the ChArUco calibration.
+
+_GRAVITY: float = 9810.0  # mm/s²  (9.81 m/s² in keypoint-coordinate units)
+
+
+def calculate_xcom(
+    *,
+    com: np.ndarray,
+    prev_com: np.ndarray,
+    dt: float,
+) -> np.ndarray:
+    """Compute the extrapolated center of mass (Hof 2008) for one frame.
+
+    Parameters
+    ----------
+    com : np.ndarray of shape (3,)
+        Current whole-body center of mass (x, y, z) in world coordinates.
+        z is the height above the ground plane.
+    prev_com : np.ndarray of shape (3,)
+        Previous frame's CoM position.
+    dt : float
+        Time delta since the previous frame, in seconds.
+
+    Returns
+    -------
+    np.ndarray of shape (3,)
+        XCoM position on the ground plane: (x_xcom, y_xcom, 0).
+    """
+    l = com[2]  # pendulum length = CoM height above ground
+    if l <= 0.0:
+        raise ValueError(f"CoM height must be positive, got {l}")
+    omega_0 = np.sqrt(_GRAVITY / l)
+    v = (com - prev_com) / dt
+    return np.array([
+        com[0] + v[0] / omega_0,
+        com[1] + v[1] / omega_0,
+        0.0,
+    ])
+
+
 def calculate_center_of_mass_per_frame(
     keypoints: dict[str, np.ndarray],
     biomechanics: RTMPoseBodyBiomechanics,

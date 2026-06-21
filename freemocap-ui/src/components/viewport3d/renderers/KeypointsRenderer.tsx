@@ -49,10 +49,10 @@ function getKeypointRadius(name: string): number {
 // KeypointLayer — one instanced‑mesh pass (raw or filtered).
 // ---------------------------------------------------------------------------
 interface KeypointLayerProps {
-    subscribeKey: "subscribeToKeypointsRaw" | "subscribeToKeypointsFiltered";
+    subscribeKey: "subscribeToKeypoints" | "subscribeToSkeleton";
     color: Color;
     radius: number;
-    statsKey: "keypointsRaw" | "keypointsFiltered";
+    statsKey: "keypoints" | "skeleton";
     colorMode?: "uniform" | "byBodyPart";
 }
 
@@ -192,20 +192,21 @@ export function KeypointsRenderer() {
 
     return (
         <>
-            {visibility.keypointsRaw && (
+            {visibility.keypoints && (
                 <KeypointLayer
-                    subscribeKey="subscribeToKeypointsRaw"
-                    color={COLORS.raw}
-                    radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsRaw"
-                />
-            )}
-            {visibility.keypointsFiltered && (
-                <KeypointLayer
-                    subscribeKey="subscribeToKeypointsFiltered"
+                    subscribeKey="subscribeToKeypoints"
                     color={COLORS.filtered}
                     radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsFiltered"
+                    statsKey="keypoints"
+                    colorMode="byBodyPart"
+                />
+            )}
+            {visibility.skeleton && (
+                <KeypointLayer
+                    subscribeKey="subscribeToSkeleton"
+                    color={COLORS.skeleton}
+                    radius={BODY_KEYPOINT_RADIUS}
+                    statsKey="skeleton"
                     colorMode="byBodyPart"
                 />
             )}

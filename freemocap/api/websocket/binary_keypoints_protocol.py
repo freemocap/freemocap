@@ -48,8 +48,7 @@ class MessageType(IntEnum):
 
 
 class BlockKind(IntEnum):
-    KEYPOINTS_RAW_3D = 0
-    KEYPOINTS_FILTERED_3D = 1
+    KEYPOINTS_3D = 0
     SKELETON_OVERLAY_2D = 2
     CHARUCO_OVERLAY_2D = 3
 

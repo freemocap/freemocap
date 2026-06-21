@@ -21,8 +21,8 @@ Usage:
     estimator = BoneLengthEstimator.create(
         skeleton=skeleton,
         prior=prior,
-        height_meters=1.75,
-        noise_sigma=0.008,  # per-keypoint position noise (meters)
+        height_mm=1750.0,   # subject height in keypoint-coordinate units (mm)
+        noise_sigma=15.0,   # per-keypoint position noise (mm)
     )
 
     for positions in stream:
@@ -91,11 +91,11 @@ class AnthropometricPrior(BaseModel):
                 raise ValueError(f"Ratio for '{key}' must be positive, got {ratio}")
         return self
 
-    def to_bone_lengths(self, *, height_meters: float) -> dict[str, float]:
-        """Scale ratios by total body height to get bone lengths in meters."""
-        if height_meters <= 0.0:
-            raise ValueError(f"height_meters must be positive, got {height_meters}")
-        return {key: ratio * height_meters for key, ratio in self.ratios.items()}
+    def to_bone_lengths(self, *, height_mm: float) -> dict[str, float]:
+        """Scale ratios by total body height to get bone lengths in mm."""
+        if height_mm <= 0.0:
+            raise ValueError(f"height_mm must be positive, got {height_mm}")
+        return {key: ratio * height_mm for key, ratio in self.ratios.items()}
 
     # --------------------------------------------------------
     # Mediapipe Body
@@ -242,7 +242,7 @@ def _correct_noise_bias(
     First-order correction for the noise-inflated distance bias.
 
     When both endpoints of a bone have i.i.d. Gaussian position noise
-    with std ``noise_sigma`` per axis, the observed Euclidean distance
+    with std ``noise_sigma`` (mm) per axis, the observed Euclidean distance
     follows a Rice distribution whose mean is biased upward.
 
     The first-order correction is:
@@ -322,7 +322,7 @@ class BoneLengthEstimator:
         *,
         skeleton: SkeletonDefinition,
         prior: AnthropometricPrior,
-        height_meters: float,
+        height_mm: float,
         noise_sigma: float,
         config: EstimatorConfig = EstimatorConfig(),
     ) -> "BoneLengthEstimator":
@@ -332,12 +332,12 @@ class BoneLengthEstimator:
         Args:
             skeleton: skeleton topology (bones define what to measure).
             prior: anthropometric ratios for bone lengths.
-            height_meters: subject's standing height in meters.
-            noise_sigma: estimated per-keypoint position noise std (meters).
+            height_mm: subject's standing height in mm (keypoint-coordinate units).
+            noise_sigma: estimated per-keypoint position noise std (mm).
                          Can be calibrated from a static capture.
             config: estimation parameters.
         """
-        prior_lengths = prior.to_bone_lengths(height_meters=height_meters)
+        prior_lengths = prior.to_bone_lengths(height_mm=height_mm)
 
         for bone in skeleton.bones:
             if bone.key not in prior_lengths:

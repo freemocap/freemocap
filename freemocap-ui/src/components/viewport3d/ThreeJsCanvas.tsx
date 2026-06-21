@@ -67,6 +67,16 @@ function CenterOfMassForwarder() {
   return null;
 }
 
+function XcomForwarder() {
+  const server = useServer();
+  useEffect(() => {
+    return server.subscribeToXcom((point) => {
+      VIEWPORT_WORKER.postMessage({ type: "xcom", data: point });
+    });
+  }, [server]);
+  return null;
+}
+
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
   useEffect(() => {
@@ -141,9 +151,9 @@ export function ThreeJsCanvas() {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
   const {
-    subscribeToKeypointsRaw,
-    subscribeToKeypointsFiltered,
-    getLatestKeypointsRaw,
+    subscribeToKeypoints,
+    subscribeToSkeleton,
+    getLatestKeypoints,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -194,18 +204,18 @@ export function ThreeJsCanvas() {
   }, []);
 
   useEffect(() => {
-    return subscribeToKeypointsRaw((frame) => {
+    return subscribeToKeypoints((frame) => {
       if (!_frameHasVisiblePoints(frame)) return;
-      VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: frame });
+      VIEWPORT_WORKER.postMessage({ type: "keypoints", data: frame });
     });
-  }, [subscribeToKeypointsRaw]);
+  }, [subscribeToKeypoints]);
 
   useEffect(() => {
-    return subscribeToKeypointsFiltered((frame) => {
+    return subscribeToSkeleton((frame) => {
       if (!_frameHasVisiblePoints(frame)) return;
-      VIEWPORT_WORKER.postMessage({ type: "keypointsFiltered", data: frame });
+      VIEWPORT_WORKER.postMessage({ type: "skeleton", data: frame });
     });
-  }, [subscribeToKeypointsFiltered]);
+  }, [subscribeToSkeleton]);
 
   useEffect(() => {
     if (isPlayback) return;
@@ -235,9 +245,9 @@ export function ThreeJsCanvas() {
   const handleFit = useCallback(() => {
     VIEWPORT_WORKER.postMessage({
       type: "fitCamera",
-      data: getLatestKeypointsRaw(),
+      data: getLatestKeypoints(),
     });
-  }, [getLatestKeypointsRaw]);
+  }, [getLatestKeypoints]);
 
   const handleReset = useCallback(() => {
     VIEWPORT_WORKER.postMessage({ type: "resetCamera" });
@@ -338,6 +348,7 @@ export function ThreeJsCanvas() {
     <ViewportStateProvider>
       <VisibilityForwarder />
       <CenterOfMassForwarder />
+      <XcomForwarder />
       <WorkerStatsReceiver />
       <div
         ref={containerRef}

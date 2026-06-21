@@ -127,15 +127,14 @@ class RealtimeFilterConfig(BaseModel):
     d_cutoff: float = 1.0
 
     # FABRIK params
-    fabrik_tolerance: float = 1e-4
+    fabrik_tolerance: float = 0.1    # mm — FABRIK convergence threshold
     fabrik_max_iterations: int = 20
 
     # Bone length estimation params
-    # height_meters: assumed subject height, used to scale anthropometric bone length priors.
-    # NOTE: prior returns bone lengths in *meters*, but observed inter-keypoint distances
-    # are in *mm*.  The BoneLengthEstimator blends these directly, so there is a 1000×
-    # unit mismatch that must be resolved before enabling skeleton_enabled + filter_enabled.
-    height_meters: float = 1.75
+    # height_mm: subject standing height in keypoint-coordinate units (mm).
+    # The charuco calibration produces mm-scale coordinates, so all bone-length
+    # priors must use the same units as observed inter-keypoint distances.
+    height_mm: float = 1750.0
     # Expected per-keypoint position noise std-dev (mm).  Calibrate from a static capture.
     # 15 mm is a reasonable triangulation noise floor; lower = trust raw measurements more.
     noise_sigma: float = 15.0
@@ -151,7 +150,7 @@ class RealtimeFilterConfig(BaseModel):
     # 50000 mm/s = 50 m/s.  Human body parts rarely exceed ~15 m/s even
     # during fast movements, but noisy triangulation can produce brief
     # spikes. Keep generous to avoid rejecting real fast motions.
-    max_velocity_m_per_s: float = 50000.0
+    max_velocity_mm_per_s: float = 50000.0  # 50 m/s in mm — well above any human motion
 
     # Velocity gate: after this many consecutive rejections, accept
     # unconditionally to prevent permanent lockout. Lower = recover faster.
@@ -216,7 +215,7 @@ class RealtimeSkeletonFilter:
         estimator = BoneLengthEstimator.create(
             skeleton=skeleton,
             prior=prior,
-            height_meters=config.height_meters,
+            height_mm=config.height_mm,
             noise_sigma=config.noise_sigma,
             config=config.estimator_config,
         )
@@ -239,11 +238,11 @@ class RealtimeSkeletonFilter:
             skeleton=self.skeleton,
             prior=AnthropometricPrior(
                 ratios={
-                    bone_key: length / self.config.height_meters
+                    bone_key: length / self.config.height_mm
                     for bone_key, length in self.bone_estimator.prior_lengths.items()
                 },
             ),
-            height_meters=self.config.height_meters,
+            height_mm=self.config.height_mm,
             noise_sigma=self.config.noise_sigma,
             config=self.config.estimator_config,
         )

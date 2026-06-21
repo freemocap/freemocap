@@ -15,25 +15,21 @@ export function ViewportOverlay({
   const { visibility, setVisibility, statsRef } = useViewportState();
   const [expanded, setExpanded] = useState(false);
 
-  const rawCountRef = useRef<HTMLSpanElement | null>(null);
-  const filteredCountRef = useRef<HTMLSpanElement | null>(null);
-  const rigidBodiesCountRef = useRef<HTMLSpanElement | null>(null);
+  const keypointsCountRef = useRef<HTMLSpanElement | null>(null);
+  const skeletonCountRef = useRef<HTMLSpanElement | null>(null);
   const facePointsCountRef = useRef<HTMLSpanElement | null>(null);
   const connectionsCountRef = useRef<HTMLSpanElement | null>(null);
   const camerasCountRef = useRef<HTMLSpanElement | null>(null);
   const comCountRef = useRef<HTMLSpanElement | null>(null);
   const totalPointsRef = useRef<HTMLSpanElement | null>(null);
-  const totalBodiesRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => {
       const s = statsRef.current;
-      if (rawCountRef.current)
-        rawCountRef.current.textContent = String(s.keypointsRaw);
-      if (filteredCountRef.current)
-        filteredCountRef.current.textContent = String(s.keypointsFiltered);
-      if (rigidBodiesCountRef.current)
-        rigidBodiesCountRef.current.textContent = String(s.rigidBodies);
+      if (keypointsCountRef.current)
+        keypointsCountRef.current.textContent = String(s.keypoints);
+      if (skeletonCountRef.current)
+        skeletonCountRef.current.textContent = String(s.skeleton);
       if (facePointsCountRef.current)
         facePointsCountRef.current.textContent = String(s.facePoints);
       if (connectionsCountRef.current)
@@ -44,10 +40,8 @@ export function ViewportOverlay({
         comCountRef.current.textContent = String(s.centerOfMass);
       if (totalPointsRef.current)
         totalPointsRef.current.textContent = String(
-          s.keypointsRaw + s.keypointsFiltered + s.facePoints,
+          s.keypoints + s.facePoints,
         );
-      if (totalBodiesRef.current)
-        totalBodiesRef.current.textContent = String(s.rigidBodies);
     }, 500);
     return () => clearInterval(id);
   }, [statsRef]);
@@ -60,15 +54,8 @@ export function ViewportOverlay({
   );
 
   const toggleEnvironment = useCallback(() => toggle("environment"), [toggle]);
-  const toggleKeypointsRaw = useCallback(
-    () => toggle("keypointsRaw"),
-    [toggle],
-  );
-  const toggleFiltered = useCallback(
-    () => toggle("keypointsFiltered"),
-    [toggle],
-  );
-  const toggleRigidBodies = useCallback(() => toggle("rigidBodies"), [toggle]);
+  const toggleKeypoints = useCallback(() => toggle("keypoints"), [toggle]);
+  const toggleSkeleton = useCallback(() => toggle("skeleton"), [toggle]);
   const toggleFace = useCallback(() => toggle("face"), [toggle]);
   const toggleConnections = useCallback(() => toggle("connections"), [toggle]);
   const toggleCameras = useCallback(() => toggle("cameras"), [toggle]);
@@ -76,6 +63,8 @@ export function ViewportOverlay({
   const toggleComSphere = useCallback(() => toggle("centerOfMassSphere"), [toggle]);
   const toggleComProjection = useCallback(() => toggle("centerOfMassProjection"), [toggle]);
   const toggleComConnection = useCallback(() => toggle("centerOfMassConnection"), [toggle]);
+  const toggleXcom = useCallback(() => toggle("centerOfMassXcom"), [toggle]);
+  const toggleXcomConnection = useCallback(() => toggle("centerOfMassXcomConnection"), [toggle]);
 
   return (
     <>
@@ -109,22 +98,16 @@ export function ViewportOverlay({
               onChange={toggleEnvironment}
             />
             <VisToggle
-              label="Raw"
-              countRef={rawCountRef}
-              checked={visibility.keypointsRaw}
-              onChange={toggleKeypointsRaw}
+              label="Keypoints"
+              countRef={keypointsCountRef}
+              checked={visibility.keypoints}
+              onChange={toggleKeypoints}
             />
             <VisToggle
-              label="Filtered"
-              countRef={filteredCountRef}
-              checked={visibility.keypointsFiltered}
-              onChange={toggleFiltered}
-            />
-            <VisToggle
-              label="Rigid bodies"
-              countRef={rigidBodiesCountRef}
-              checked={visibility.rigidBodies}
-              onChange={toggleRigidBodies}
+              label="Skeleton"
+              countRef={skeletonCountRef}
+              checked={visibility.skeleton}
+              onChange={toggleSkeleton}
             />
             <VisToggle
               label="Face"
@@ -165,11 +148,19 @@ export function ViewportOverlay({
                 checked={visibility.centerOfMassConnection}
                 onChange={toggleComConnection}
               />
+              <VisToggle
+                label="Extrapolated CoM"
+                checked={visibility.centerOfMassXcom}
+                onChange={toggleXcom}
+              />
+              <VisToggle
+                label="VP-XCoM Connection"
+                checked={visibility.centerOfMassXcomConnection}
+                onChange={toggleXcomConnection}
+              />
             </CollapsibleVisibilityGroup>
             <p className="text sm mt-1 block" style={{ color: "#888" }}>
               Total points: <span ref={totalPointsRef}>0</span>
-              <br />
-              Total bodies: <span ref={totalBodiesRef}>0</span>
             </p>
           </>
         )}

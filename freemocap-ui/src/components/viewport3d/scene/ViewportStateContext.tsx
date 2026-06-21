@@ -13,9 +13,8 @@ const ViewportStateContext = createContext<ViewportStateContextValue | null>(nul
 export function ViewportStateProvider({ children }: { children: React.ReactNode }) {
     const [visibility, setVisibility] = useState<ViewportVisibility>(DEFAULT_VISIBILITY);
     const statsRef = useRef<ViewportStats>({
-        keypointsRaw: 0,
-        keypointsFiltered: 0,
-        rigidBodies: 0,
+        keypoints: 0,
+        skeleton: 0,
         facePoints: 0,
         connections: 0,
         cameras: 0,

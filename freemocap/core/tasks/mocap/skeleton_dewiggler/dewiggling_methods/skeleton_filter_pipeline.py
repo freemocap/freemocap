@@ -54,7 +54,7 @@ class FilterConfig(BaseModel):
     d_cutoff: float = 1.0
 
     # FABRIK params
-    fabrik_tolerance: float = 1e-4
+    fabrik_tolerance: float = 0.1  # mm — convergence threshold
     fabrik_max_iterations: int = 20
 
 

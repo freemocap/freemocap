@@ -25,8 +25,8 @@ def run_pipeline(
     marker_names: list[str],
     skeleton: SkeletonDefinition,
     prior: AnthropometricPrior,
-    height_meters: float,
-    noise_sigma: float = 0.008,
+    height_mm: float,
+    noise_sigma: float = 15.0,
     fps: float = 30.0,
     filter_config: FilterConfig = FilterConfig(),
     estimator_config: EstimatorConfig = EstimatorConfig(),
@@ -36,12 +36,12 @@ def run_pipeline(
     Run One Euro → FABRIK pipeline on a skeleton array.
 
     Args:
-        skeleton_fr_name_xyz: (frame_count, keypoint_count, 3) raw positions.
+        skeleton_fr_name_xyz: (frame_count, keypoint_count, 3) raw positions (mm).
         marker_names: keypoint names, length must match axis 1.
         skeleton: skeleton topology definition.
         prior: anthropometric prior for bone length estimation.
-        height_meters: subject standing height in meters.
-        noise_sigma: per-keypoint position noise std in meters.
+        height_mm: subject standing height in mm.
+        noise_sigma: per-keypoint position noise std in mm.
         fps: frame rate in Hz (used to generate timestamps).
         filter_config: One Euro + FABRIK tuning parameters.
         estimator_config: bone length estimator parameters.
@@ -50,7 +50,7 @@ def run_pipeline(
                                  the filter pipeline.
 
     Returns:
-        (frame_count, keypoint_count, 3) filtered + constrained positions.
+        (frame_count, keypoint_count, 3) filtered + constrained positions (mm).
     """
     frame_count, keypoint_count, n_dims = skeleton_fr_name_xyz.shape
     if n_dims != 3:
@@ -80,7 +80,7 @@ def run_pipeline(
     estimator = BoneLengthEstimator.create(
         skeleton=skeleton,
         prior=prior,
-        height_meters=height_meters,
+        height_mm=height_mm,
         noise_sigma=noise_sigma,
         config=estimator_config,
     )
@@ -184,8 +184,8 @@ if __name__ == "__main__":
         marker_names=marker_names,
         skeleton=skeleton,
         prior=prior,
-        height_meters=1.75,  # slightly wrong guess
-        noise_sigma=0.008,
+        height_mm=1750.0,  # ~5'9" in mm
+        noise_sigma=15.0,
         fps=30.0,
         calibration_frame_count=100,
     )

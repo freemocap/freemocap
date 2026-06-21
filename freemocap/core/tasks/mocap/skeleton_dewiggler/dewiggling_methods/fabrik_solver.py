@@ -172,6 +172,107 @@ class FabrikTree:
             bone_keys=frozenset(bone_keys),
         )
 
+    @classmethod
+    def from_joint_hierarchy(
+        cls,
+        *,
+        joint_hierarchy: dict[str, list[str]],
+    ) -> "FabrikTree":
+        """
+        Build FABRIK tree topology directly from a joint hierarchy dict.
+
+        This bypasses ``SkeletonDefinition``, allowing trees to be built
+        from canonical anatomical models without tracker-specific naming.
+
+        Args:
+            joint_hierarchy: mapping parent → [children]. The roots are
+                             keys that never appear as children.
+        """
+        if not joint_hierarchy:
+            return cls(
+                nodes={},
+                topo_order=(),
+                root_names=frozenset(),
+                leaf_names=frozenset(),
+                bone_keys=frozenset(),
+            )
+
+        # Build adjacency: parent → [children]
+        children_of: dict[str, list[str]] = {}
+        parent_of: dict[str, str] = {}
+        bone_joints: set[str] = set()
+
+        for parent, children in joint_hierarchy.items():
+            bone_joints.add(parent)
+            for child in children:
+                if child in parent_of:
+                    raise ValueError(
+                        f"Joint '{child}' has two parents: "
+                        f"'{parent_of[child]}' and '{parent}'"
+                    )
+                parent_of[child] = parent
+                bone_joints.add(child)
+            children_of[parent] = list(children)
+
+        # Find roots: joints that have no parent
+        root_names: set[str] = set()
+        for joint in bone_joints:
+            if joint not in parent_of:
+                root_names.add(joint)
+
+        if not root_names:
+            raise ValueError("No root joints found — hierarchy may contain cycles")
+
+        # BFS topological order from roots
+        topo_order: list[str] = []
+        visited: set[str] = set()
+        queue: deque[str] = deque()
+
+        for root in sorted(root_names):
+            queue.append(root)
+            visited.add(root)
+
+        while queue:
+            name = queue.popleft()
+            topo_order.append(name)
+            for child in children_of.get(name, []):
+                if child in visited:
+                    raise ValueError(f"Cycle detected at joint '{child}'")
+                visited.add(child)
+                queue.append(child)
+
+        # Build nodes
+        nodes: dict[str, FabrikNode] = {}
+        leaf_names: set[str] = set()
+        bone_keys: set[str] = set()
+
+        for name in topo_order:
+            children = tuple(children_of.get(name, []))
+            parent = parent_of.get(name)
+
+            bone_key: str | None = None
+            if parent is not None:
+                bone_key = f"{parent}->{name}"
+                bone_keys.add(bone_key)
+
+            nodes[name] = FabrikNode(
+                name=name,
+                parent_name=parent,
+                children_names=children,
+                bone_key=bone_key,
+            )
+
+            if not children:
+                leaf_names.add(name)
+
+        return cls(
+            nodes=nodes,
+            topo_order=tuple(topo_order),
+            root_names=frozenset(root_names),
+            leaf_names=frozenset(leaf_names),
+            bone_keys=frozenset(bone_keys),
+        )
+
     def validate_bone_lengths(self, bone_lengths: dict[str, float]) -> None:
         """Validate that bone_lengths covers all bones in this tree with positive values."""
         for bone_key in self.bone_keys:
@@ -211,7 +312,7 @@ def solve_fabrik_tree(
     targets: dict[str, np.ndarray],
     tree: FabrikTree,
     bone_lengths: dict[str, float],
-    tolerance: float = 1e-4,
+    tolerance: float = 0.1,   # mm — convergence threshold (was 1e-4 meters)
     max_iterations: int = 20,
 ) -> dict[str, np.ndarray]:
     """
@@ -223,15 +324,15 @@ def solve_fabrik_tree(
 
     Args:
         targets: target positions for all joints in the tree,
-                 mapping name → (3,) array.
+                 mapping name → (3,) array (mm).
         tree: FABRIK tree topology.
-        bone_lengths: mapping "parent->child" → length in meters.
+        bone_lengths: mapping "parent->child" → length in mm.
                       Must cover all bones in the tree.
-        tolerance: convergence threshold on leaf end-effector error.
+        tolerance: convergence threshold on leaf end-effector error (mm).
         max_iterations: max forward/backward iterations.
 
     Returns:
-        Solved joint positions mapping name → (3,) array.
+        Solved joint positions mapping name → (3,) array (mm).
     """
     if not tree.nodes:
         return {}

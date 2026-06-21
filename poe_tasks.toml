@@ -1,7 +1,22 @@
 # =============================================================================
 # Poe the Poet tasks — auto-discovered by poethepoet
 # =============================================================================
-# List all tasks:        uv run poe --help
+#
+# HOW TO RUN THESE TASKS:
+#
+#     uv run poe <task-name>
+#
+# Examples:
+#     uv run poe test          # run all backend tests
+#     uv run poe update        # pull all repos + refresh dependencies
+#     uv run poe lint          # run ruff linter
+#
+# List all tasks:              uv run poe --help
+#
+# (The bare `poe` command works inside a Poe-activated shell, but `uv run poe`
+# always works regardless of environment.)
+#
+# ---
 #
 # This file is loaded automatically because pyproject.toml has no [tool.poe]
 # key. Poe searches for: 1) pyproject.toml, 2) poe_tasks.toml, 3) poe_tasks.yaml,
@@ -19,35 +34,39 @@
 
 # ── Type-checking ───────────────────────────────────────────────────────
 tc-check = { cmd = "ruff check --select TC freemocap/", help = "Preview type-only imports that can move behind TYPE_CHECKING" }
-tc-fix   = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-only imports behind TYPE_CHECKING" }
-tc       = { sequence = ["tc-fix", "test"], help = "Move type-only imports + run tests to verify" }
+tc-fix = { cmd = "ruff check --select TC --fix freemocap/", help = "Move type-only imports behind TYPE_CHECKING" }
+tc = { sequence = ["tc-fix", "test"], help = "Move type-only imports + run tests to verify" }
 
 # ── Linting ─────────────────────────────────────────────────────────────
-lint     = { cmd = "ruff check freemocap/", help = "Run all ruff lint rules" }
+lint = { cmd = "ruff check freemocap/", help = "Run all ruff lint rules" }
 lint-fix = { cmd = "ruff check --fix freemocap/", help = "Auto-fix all ruff lint violations" }
 
 # ── Testing ─────────────────────────────────────────────────────────────
-test          = { cmd = "pytest freemocap/tests/ -v", help = "Run all backend tests" }
-test-schema   = { cmd = "pytest freemocap/tests/test_schema_contract.py -v", help = "Run schema contract tests (frontend/backend sync)" }
+test = { cmd = "pytest freemocap/tests/ -v", help = "Run all backend tests" }
+test-schema = { cmd = "pytest freemocap/tests/test_schema_contract.py -v", help = "Run schema contract tests (frontend/backend sync)" }
 test-settings = { cmd = "pytest freemocap/tests/test_settings_manager.py -v", help = "Run SettingsManager unit tests" }
-test-http     = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
-test-ws       = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
-test-e2e      = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
-test-sync     = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
+test-http = { cmd = "pytest freemocap/tests/test_http_config_endpoints.py -v", help = "Run HTTP endpoint integration tests" }
+test-ws = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v", help = "Run WebSocket protocol tests" }
+test-e2e = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
+test-sync = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
 test-calibration = { cmd = "pytest freemocap/tests/calibration/ -v -s --timeout=600", help = "Run calibration integration tests (requires --test-data-path or FREEMOCAP_TEST_DATA_PATH)" }
-test-all      = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
+test-all = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
 [tool.poe.tasks.test-ui]
-cmd  = "npm run test"
-cwd  = "freemocap-ui"
+cmd = "npm run test"
+cwd = "freemocap-ui"
 help = "Run frontend tests (npm test in freemocap-ui/)"
 
 # ── Project maintenance ─────────────────────────────────────────────────
 #
-# Cross-platform notes:
-#   - `git -C <path>` works on cmd.exe, PowerShell, bash, zsh — no `cd` needed
-#   - `uv sync --refresh` rebuilds the lockfile from scratch (same as
-#     `rm uv.lock && uv sync` but works on Windows too)
+# Running `uv run poe update` will:
+#   1. Pull latest commits from all sibling repos (skellycam, etc.)
+#   2. Delete uv.lock to force a full re-resolve
+#   3. Reinstall everything from scratch
+#
+# Why nuke the lockfile?  `uv lock` caches resolutions and won't always
+# notice new git commits on dependency branches.  Deleting uv.lock forces
+# `uv sync` to re-resolve every package against the latest commits.
 #
 [tool.poe.tasks.update]
 sequence = [
@@ -56,6 +75,7 @@ sequence = [
     { cmd = "git -C ../skellyforge pull" },
     { cmd = "git -C ../freemocap_blender_addon pull" },
     { cmd = "git pull" },
-    { cmd = "uv sync --refresh --group dev" },
+    { cmd = "uv run python -c \"from pathlib import Path; p = Path('uv.lock'); existed = p.exists(); p.unlink(missing_ok=True); print('uv.lock deleted — will re-resolve from scratch' if existed else 'uv.lock already gone')\"" },
+    { cmd = "uv sync --group dev" },
 ]
-help = "Pull all sibling repos and refresh dependencies"
+help = "Pull all sibling repos, nuke uv.lock, and reinstall from scratch"

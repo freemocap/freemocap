@@ -93,7 +93,9 @@ dev = [
     "ruff>=0.9.0",
     "poethepoet>=0.32.0",
 ]
-# Poe the Poet tasks live in poe_tasks.toml (auto-discovered — no [tool.poe] key needed here)
+# Poe the Poet tasks live in poe_tasks.toml
+# Run with:   uv run poe <task-name>       (e.g. uv run poe update)
+# List all:   uv run poe --help
 
 
 # =============================================================================

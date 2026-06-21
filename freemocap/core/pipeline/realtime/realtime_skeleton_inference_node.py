@@ -56,6 +56,9 @@ from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
     RTMPoseSession,
     RTMPoseSessionConfig,
 )
+from skellytracker.trackers.rtmpose_tracker.rtmpose_annotator import (
+    draw_text_with_background,
+)
 from skellytracker.trackers.rtmpose_tracker.rtmpose_tracking_state import (
     PersonTrackingState,
 )
@@ -320,7 +323,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 conf_threshold: float = (
                     pipeline_config.camera_node_config.skeleton_detector_config.confidence_threshold
                     if pipeline_config.camera_node_config.skeleton_detector_config is not None
-                    else 0.05
+                    else 0.004
                 )
                 for idx, (camera_id, image, (keypoints, scores)) in enumerate(
                         zip(ordered_camera_ids, images, batch_results),
@@ -520,13 +523,24 @@ def _debug_write_bbox_frames(
             continue
         bbox_arr = bb[0] if bb.ndim == 2 else bb
         x1, y1, x2, y2 = int(bbox_arr[0]), int(bbox_arr[1]), int(bbox_arr[2]), int(bbox_arr[3])
-        # This frame used YOLOX iff last_detection_time was just updated.
-        from_detector = getattr(st, "last_detection_time", 0.0) > 0.0
+        # YOLOX ran this frame iff consecutive_skips was just reset to 0
+        # (update_tracking_state does this when from_detector=True, and
+        #  predict_batch_with_tracking skips the increment in that case).
+        consecutive_skips: int = getattr(st, "consecutive_skips", 0)
+        from_detector = consecutive_skips == 0
         color = GREEN if from_detector else ORANGE
-        label = "YOLOX" if from_detector else f"track(skips={getattr(st, 'consecutive_skips', 0)})"
+
+        # Build compact stats line.
+        conf: float = getattr(st, "pose_confidence", 0.0)
+        parts = ["YOLOX" if from_detector else "track", f"conf:{conf:.2f}", f"skips:{consecutive_skips}"]
+        stats_text = "  ".join(parts)
 
         debug_img = img.copy()
         cv2.rectangle(debug_img, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(debug_img, label, (x1, max(y1 - 6, 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+        draw_text_with_background(
+            debug_img, stats_text,
+            anchor_xy=(x1, y1 - 2),
+            anchor_edge="bottom",
+            text_color=color,
+        )
         cv2.imwrite(str(out_dir / f"f{frame_number:06d}_{cid}.jpg"), debug_img)

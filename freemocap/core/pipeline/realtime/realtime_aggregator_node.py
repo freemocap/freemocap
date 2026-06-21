@@ -229,13 +229,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                 height_mm=filter_config.height_mm,
                 fabrik_tolerance=filter_config.fabrik_tolerance,
                 fabrik_max_iterations=filter_config.fabrik_max_iterations,
+                prior_forget_samples=filter_config.prior_forget_samples,
+                center_prior_forget_samples=filter_config.center_prior_forget_samples,
+                max_welford_samples=filter_config.max_welford_samples,
+                center_blend_factor=filter_config.center_blend_factor,
                 integral_gain=filter_config.integral_gain,
                 integral_leak=filter_config.integral_leak,
                 max_integral_correction_mm=filter_config.max_integral_correction_mm,
                 fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
                 fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
                 fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
-                max_welford_samples=filter_config.max_welford_samples,
             )
             logger.debug(
                 f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter created "
@@ -321,13 +324,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 height_mm=filter_config.height_mm,
                                 fabrik_tolerance=filter_config.fabrik_tolerance,
                                 fabrik_max_iterations=filter_config.fabrik_max_iterations,
+                                prior_forget_samples=filter_config.prior_forget_samples,
+                                center_prior_forget_samples=filter_config.center_prior_forget_samples,
+                                max_welford_samples=filter_config.max_welford_samples,
+                                center_blend_factor=filter_config.center_blend_factor,
                                 integral_gain=filter_config.integral_gain,
                                 integral_leak=filter_config.integral_leak,
                                 max_integral_correction_mm=filter_config.max_integral_correction_mm,
                                 fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
                                 fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
                                 fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
-                                max_welford_samples=filter_config.max_welford_samples,
                             )
 
                 # ---- Request new frames if ready ----

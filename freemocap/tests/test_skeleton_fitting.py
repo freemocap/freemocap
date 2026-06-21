@@ -95,11 +95,15 @@ def test_fabrik_converges_with_branches_before_max_iterations():
 def test_welford_blends_from_seed_toward_observation():
     tracker = _WelfordTracker(prior=100.0)
     # No observations → stays at the seed.
-    assert tracker.blended_length(min_samples=20, cv_sensitivity=2.0) == 100.0
-    # Consistent observations at 200 → full confidence → adapts to observation.
+    assert tracker.blended_length(prior_forget_samples=300) == 100.0
+    # Consistent observations at 200 → prior fades, adapts to observation.
     for _ in range(50):
         tracker.observe(200.0)
-    assert tracker.blended_length(min_samples=20, cv_sensitivity=2.0) == pytest.approx(200.0, abs=1e-6)
+    # After 50 frames with prior_forget_samples=300: prior_weight = 1 - 50/300 ≈ 0.83
+    # blended = 100 * 0.83 + 200 * 0.17 ≈ 117.  After many more frames → 200.
+    for _ in range(250):
+        tracker.observe(200.0)
+    assert tracker.blended_length(prior_forget_samples=300) == pytest.approx(200.0, abs=1e-6)
 
 
 def test_build_trackers_seeds_from_ratios_and_fails_loud_on_missing():
@@ -141,9 +145,12 @@ def test_derived_center_bones_are_observed_and_converge_equal():
     assert lower.count == 50 and upper.count == 50
     assert lower.mean == pytest.approx(250.0)
     assert upper.mean == pytest.approx(250.0)
-    # ...and adapt off their unequal seeds to the equal observed length.
-    assert lower.blended_length() == pytest.approx(250.0, abs=1e-6)
-    assert upper.blended_length() == pytest.approx(250.0, abs=1e-6)
+    # With 50 observations and prior_forget_samples=300, prior still has ~83% weight.
+    # But for center→center bones we'd use center_prior_forget_samples=30,
+    # which would fully forget the prior.  Since these ARE center bones,
+    # test with the short forget window.
+    assert lower.blended_length(prior_forget_samples=30) == pytest.approx(250.0, abs=1e-6)
+    assert upper.blended_length(prior_forget_samples=30) == pytest.approx(250.0, abs=1e-6)
 
 
 # ---------------------------------------------------------------------------

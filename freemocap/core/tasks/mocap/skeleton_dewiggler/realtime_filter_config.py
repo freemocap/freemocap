@@ -73,48 +73,51 @@ class RealtimeFilterConfig(BaseModel):
     fabrik_tolerance: float = 0.1    # mm — settling threshold between iterations
     fabrik_max_iterations: int = 20
 
+    # ---- Prior forgetting (anthropometric seed → pure observation) ----
+    # Frames until the anthropometric prior is completely forgotten.
+    # After this, blended_length() returns the pure observed mean.
+    # Default 300 = ~10 s at 30 fps.
+    prior_forget_samples: int = 300
+
+    # Same for center→center bones (hips_center→trunk_center,
+    # trunk_center→neck_center, neck_center→head_center).  Much shorter
+    # because these are derived landmarks with no anatomical truth.
+    # Default 30 = ~1 s.
+    center_prior_forget_samples: int = 30
+
     # ---- Integral bone-length correction (PID-like I term) ----
-    # Integral gain — how aggressively each frame's axial residual (mm)
-    # contributes to the accumulated integral.  The integral directly
-    # biases the bone length.  0 = no correction (pure Welford blending).
-    # Higher = faster drift correction.  Typical: 0.03–0.15.
-    integral_gain: float = 0.05
+    # Integral gain (ki) — mm of integral accumulation per mm of axial
+    # error per frame.  0 = no correction.  Default 0.10.
+    integral_gain: float = 0.10
 
     # Per-frame retention factor for the integral accumulator.
     # 0.95 = 5% decay per frame → ~0.67 s time constant at 30 fps.
-    # Higher (closer to 1) = longer memory, less steady-state error
-    # but slower to release when the error vanishes.
-    # Lower = faster decay, shorter memory.  Range: 0.80–0.99.
     integral_leak: float = 0.95
 
-    # Hard clamp on the absolute integral value applied to any bone
-    # length (mm).  Prevents a single bone from being biased by more
-    # than this amount regardless of accumulated error.  Also serves
-    # as anti-windup for the integrator.
+    # Hard clamp on the absolute integral correction (mm).
     max_integral_correction_mm: float = 50.0
 
     # ---- Within-frame FABRIK refinement (escapes coupled-bone local minima) ----
-    # Number of extra FABRIK solves per frame with nudged bone lengths.
-    # 0 = disabled (fastest).  1-2 recommended.  Each pass is cheap
-    # (~3-5 FABRIK iterations on warm-started positions).
+    # Extra FABRIK solves per frame with nudged/jittered bone lengths.
+    # 0 = disabled.  Default 2.
     fabrik_refinement_passes: int = 2
 
-    # Within-frame bone-length adjustment gain.  Higher than integral_gain
-    # because this is per-frame (no temporal smoothing).  Default 0.3.
-    fabrik_refinement_gain: float = 0.3
+    # Within-frame bone-length adjustment gain.  Default 0.5.
+    fabrik_refinement_gain: float = 0.5
 
-    # Stddev of Gaussian jitter added to bone lengths on the final
-    # refinement pass (mm).  Helps escape local minima that deterministic
-    # gradient-following can't.  0 = deterministic only.  Default 3.0.
+    # Stddev of Gaussian jitter on bone lengths (mm).
+    # 0 = deterministic only.  Default 3.0.
     fabrik_jitter_mm: float = 3.0
 
     # ---- Welford estimator staleness prevention ----
-    # Maximum effective sample count for the online bone-length estimator.
-    # Beyond this, the update switches from cumulative mean (where each
-    # new frame's weight approaches zero) to a constant-weight EMA update,
-    # preventing the estimator from becoming arbitrarily resistant to
-    # change during long recordings.  Default 300 = ~10 s at 30 fps.
+    # Cap on effective sample count (~10 s at 30 fps).
     max_welford_samples: int = 300
+
+    # ---- Center-joint jitter dampening ----
+    # Post-FABRIK blend factor for derived center joints toward their
+    # tracker targets.  0 = pure FABRIK, 1 = snap to target.
+    # Default 0.4 dampens jitter amplification at branch points.
+    center_blend_factor: float = 0.4
 
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco

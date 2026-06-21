@@ -899,8 +899,7 @@ class RealtimeSkeletonFitter:
         return {
             bk: {"count": t.count, "mean": t.mean, "std": t.std,
                  "prior": t.prior, "blended": t.blended_length(
-                     min_samples=self.min_samples,
-                     cv_sensitivity=self.cv_sensitivity,
+                     prior_forget_samples=self.prior_forget_samples,
                  )}
             for bk, t in self._body_trackers.items()
         }

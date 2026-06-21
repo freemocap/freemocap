@@ -27,6 +27,7 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
 const RAW_KEYPOINT_RADIUS = 0.07;
+const SKELETON_POINT_RADIUS = 0.15;
 
 const BODY_KEYPOINT_RADIUS = 0.12;
 const HAND_KEYPOINT_RADIUS = 0.05;
@@ -205,9 +206,9 @@ export function KeypointsRenderer() {
                 <KeypointLayer
                     subscribeKey="subscribeToSkeleton"
                     color={COLORS.skeleton}
-                    radius={BODY_KEYPOINT_RADIUS}
+                    radius={SKELETON_POINT_RADIUS}
                     statsKey="skeleton"
-                    colorMode="byBodyPart"
+                    colorMode="uniform"
                 />
             )}
         </>

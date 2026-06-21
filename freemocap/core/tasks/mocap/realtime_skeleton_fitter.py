@@ -158,9 +158,10 @@ _TORSO_BONE_RATIOS: dict[str, float] = {
     # Trunk — split ~50/50
     "hips_center->trunk_center":        0.144,
     "trunk_center->neck_center":        0.144,
-    # Shoulder width (bi-acromial breadth / 2)
-    "neck_center->left_shoulder":       0.130,
-    "neck_center->right_shoulder":      0.130,
+    # Shoulder width / clavicle (bi-acromial breadth / 2)
+    # Attached to trunk_center after topology fix (were neck_center children)
+    "trunk_center->left_shoulder":      0.130,
+    "trunk_center->right_shoulder":     0.130,
     # Head + neck
     "neck_center->head_center":         0.130,
     # Face features (approximate)
@@ -175,6 +176,28 @@ _TORSO_BONE_RATIOS: dict[str, float] = {
 # ---------------------------------------------------------------------------
 # RealtimeSkeletonFitter
 # ---------------------------------------------------------------------------
+
+
+def _build_hand_mapping(yaml_path: Path, *, side: str) -> TrackerMapping:
+    """Build a hand tracker mapping with correct RTMPose hand keypoint names.
+
+    RTMPose hand naming is inconsistent: the wrist is ``right_hand_root``
+    (contains ``_hand_``) but every finger is ``right_thumb1``, etc.
+    (no ``_hand_``). The YAML uses relative names (canonical→relative),
+    so we build entries with the full tracker names directly instead of
+    relying on a prefix that can't cover both cases.
+    """
+    import yaml
+    with open(yaml_path, "r") as fh:
+        raw = yaml.safe_load(fh)
+    entries: dict[str, str] = {}
+    for canonical_name, relative_name in raw.items():
+        if canonical_name == "wrist":
+            # Special case: wrist uses "_hand_" in RTMPose naming
+            entries[canonical_name] = f"{side}_hand_{relative_name}"
+        else:
+            entries[canonical_name] = f"{side}_{relative_name}"
+    return TrackerMapping(entries=entries, prefix="")
 
 
 @dataclass
@@ -202,6 +225,10 @@ class RealtimeSkeletonFitter:
     _body_trackers: dict[str, _WelfordTracker] = field(repr=False)
     _hand_trackers_r: dict[str, _WelfordTracker] = field(repr=False)
     _hand_trackers_l: dict[str, _WelfordTracker] = field(repr=False)
+
+    # Hand canonical → tracker name reverse maps (built once, used per-frame)
+    _hand_name_to_tracker_r: dict[str, str] = field(default_factory=dict, repr=False)
+    _hand_name_to_tracker_l: dict[str, str] = field(default_factory=dict, repr=False)
 
     # Config (all lengths in mm — keypoint-coordinate units)
     height_mm: float = 1750.0
@@ -251,18 +278,42 @@ class RealtimeSkeletonFitter:
 
         # ---- Tracker mappings (RTMPose — the realtime pipeline tracker) ----
         body_mapping = TrackerMapping.from_yaml(_RTMPOSE_BODY_MAPPING_YAML)
-        hand_mapping_r = TrackerMapping.from_yaml(
-            _RTMPOSE_HAND_MAPPING_YAML, prefix="right_hand_"
+        # RTMPose hand naming is inconsistent: wrist = "right_hand_root"
+        # (has `_hand_`) but every finger = "right_thumb1" (no `_hand_`).
+        # The YAML maps canonical→relative (wrist→"root", thumb_cmc→"thumb1").
+        # Build corrected entries with full tracker names so prefix="" works.
+        hand_mapping_r = _build_hand_mapping(
+            _RTMPOSE_HAND_MAPPING_YAML, side="right",
         )
-        hand_mapping_l = TrackerMapping.from_yaml(
-            _RTMPOSE_HAND_MAPPING_YAML, prefix="left_hand_"
+        hand_mapping_l = _build_hand_mapping(
+            _RTMPOSE_HAND_MAPPING_YAML, side="left",
         )
 
         # ---- FABRIK trees from canonical joint hierarchies ----
+        # The canonical model has neck_center → [left_shoulder, right_shoulder,
+        # head_center], but the tracker computes neck_center FROM shoulders
+        # (mean of left/right shoulder). This circular dependency pulls
+        # shoulders up to neck height. Fix: attach shoulders to trunk_center
+        # (representing clavicles) so they hang directly from the torso.
         if body_anatomy.joint_hierarchy is None:
             raise ValueError("Canonical body model has no joint_hierarchy")
+        body_hierarchy = dict(body_anatomy.joint_hierarchy)
+        # Move shoulders from neck_center → trunk_center
+        if "neck_center" in body_hierarchy:
+            neck_children = list(body_hierarchy["neck_center"])
+            body_hierarchy["neck_center"] = [
+                c for c in neck_children
+                if c not in ("left_shoulder", "right_shoulder")
+            ]
+            if "left_shoulder" in neck_children or "right_shoulder" in neck_children:
+                trunk_children = list(body_hierarchy.get("trunk_center", []))
+                if "left_shoulder" in neck_children:
+                    trunk_children.append("left_shoulder")
+                if "right_shoulder" in neck_children:
+                    trunk_children.append("right_shoulder")
+                body_hierarchy["trunk_center"] = trunk_children
         body_tree = FabrikTree.from_joint_hierarchy(
-            joint_hierarchy=body_anatomy.joint_hierarchy,
+            joint_hierarchy=body_hierarchy,
         )
 
         if hand_anatomy.joint_hierarchy is None:
@@ -270,6 +321,19 @@ class RealtimeSkeletonFitter:
         hand_tree = FabrikTree.from_joint_hierarchy(
             joint_hierarchy=hand_anatomy.joint_hierarchy,
         )
+
+        # Build reverse name maps for hands: canonical name → tracker name.
+        # Hand FABRIK produces canonical names (wrist, thumb_cmc, …) but the
+        # frontend expects tracker names (right_hand_root, right_thumb1, …).
+        # The mapping entries already have full tracker names (prefix="").
+        hand_name_to_tracker_r: dict[str, str] = {}
+        hand_name_to_tracker_l: dict[str, str] = {}
+        for canonical_name, entry in hand_mapping_r._entries.items():
+            if isinstance(entry, str):
+                hand_name_to_tracker_r[canonical_name] = entry
+        for canonical_name, entry in hand_mapping_l._entries.items():
+            if isinstance(entry, str):
+                hand_name_to_tracker_l[canonical_name] = entry
 
         # ---- Per-bone Welford trackers seeded with Winter priors ----
         body_trackers = cls._build_trackers(
@@ -299,6 +363,8 @@ class RealtimeSkeletonFitter:
             _body_trackers=body_trackers,
             _hand_trackers_r=hand_trackers_r,
             _hand_trackers_l=hand_trackers_l,
+            _hand_name_to_tracker_r=hand_name_to_tracker_r,
+            _hand_name_to_tracker_l=hand_name_to_tracker_l,
             height_mm=height_mm,
             fabrik_tolerance=fabrik_tolerance,
             fabrik_max_iterations=fabrik_max_iterations,
@@ -407,10 +473,26 @@ class RealtimeSkeletonFitter:
             bone_lengths=lhand_lengths,
         )
 
+        # ---- 5. Convert hand canonical names → tracker names ----
+        # The FABRIK trees produce canonical names (wrist, thumb_cmc, …).
+        # The frontend ConnectionRenderer expects tracker names with side
+        # prefix (left_hand_root, right_hand_thumb1, …). Reverse-map so
+        # the skeleton dict keys match what the frontend looks up.
+        lhand_tracker: dict[str, np.ndarray] = {}
+        for cname, pos in lhand_fitted.items():
+            tname = self._hand_name_to_tracker_l.get(cname)
+            if tname is not None:
+                lhand_tracker[tname] = pos
+        rhand_tracker: dict[str, np.ndarray] = {}
+        for cname, pos in rhand_fitted.items():
+            tname = self._hand_name_to_tracker_r.get(cname)
+            if tname is not None:
+                rhand_tracker[tname] = pos
+
         return SkeletonFittingResult(
             body_positions=body_fitted,
-            left_hand_positions=lhand_fitted,
-            right_hand_positions=rhand_fitted,
+            left_hand_positions=lhand_tracker,
+            right_hand_positions=rhand_tracker,
             body_bone_lengths=body_lengths,
             left_hand_bone_lengths=lhand_lengths,
             right_hand_bone_lengths=rhand_lengths,

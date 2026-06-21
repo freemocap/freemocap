@@ -236,8 +236,7 @@ class RealtimeSkeletonFitter:
     _hand_mapping_l: TrackerMapping = field(repr=False)
 
     # FABRIK trees (frozen topology)
-    _body_tree: FabrikTree = field(repr=False)       # full body (for observation)
-    _torso_tree: FabrikTree = field(repr=False)      # torso-only (for solving)
+    _body_tree: FabrikTree = field(repr=False)
     _hand_tree: FabrikTree = field(repr=False)
 
     # Per-bone segment-length trackers
@@ -317,19 +316,6 @@ class RealtimeSkeletonFitter:
             joint_hierarchy=body_anatomy.joint_hierarchy,
         )
 
-        # Torso-only tree for FABRIK solving.  Arms and legs are excluded
-        # because FABRIK linear chains ignore tracker targets on internal
-        # nodes (shoulder, elbow, knee).  Limb positions pass through
-        # directly from the 1:1 tracker→canonical mapping.
-        _torso_hierarchy: dict[str, list[str]] = {
-            "hips_center":   ["left_hip", "right_hip", "trunk_center"],
-            "trunk_center":  ["neck_center"],
-            "neck_center":   ["left_shoulder", "right_shoulder", "head_center"],
-            "head_center":   ["nose", "left_eye", "right_eye", "left_ear", "right_ear"],
-        }
-        _torso_tree = FabrikTree.from_joint_hierarchy(
-            joint_hierarchy=_torso_hierarchy,
-        )
 
         if hand_anatomy.joint_hierarchy is None:
             raise ValueError("Canonical hand model has no joint_hierarchy")
@@ -361,7 +347,6 @@ class RealtimeSkeletonFitter:
             _hand_mapping_r=hand_mapping_r,
             _hand_mapping_l=hand_mapping_l,
             _body_tree=body_tree,
-            _torso_tree=_torso_tree,
             _hand_tree=hand_tree,
             _body_trackers=body_trackers,
             _hand_trackers_r=hand_trackers_r,
@@ -460,16 +445,14 @@ class RealtimeSkeletonFitter:
         }
 
         # ---- 4. FABRIK solve ----
-        # The full body tree includes arms and legs as linear chains.
-        # In FABRIK, only leaves and roots snap to targets; intermediate
-        # joints (shoulder, elbow, hip, knee, ankle) are positioned solely
-        # by bone-length constraints from the leaf, ignoring their tracker
-        # targets. This causes drift.
-        #
-        # Fix: run FABRIK on a torso-only tree (spine + head + face).
-        # Limb positions come directly from the tracker (1:1 mapping).
-        body_fitted = self._try_solve_torso(
+        # The FABRIK solver now snaps ALL non-branch nodes to their tracker
+        # targets during the forward pass (not just leaves).  Every tracked
+        # joint constrains the skeleton.  Branch points (hips_center,
+        # neck_center, wrist, etc.) are positioned by averaging child
+        # suggestions — they're computed landmarks, not directly tracked.
+        body_fitted = self._try_solve(
             targets=canonical_body,
+            tree=self._body_tree,
             bone_lengths=body_lengths,
         )
         rhand_fitted = self._try_solve(
@@ -595,44 +578,6 @@ class RealtimeSkeletonFitter:
             tolerance=self.fabrik_tolerance,
             max_iterations=self.fabrik_max_iterations,
         )
-
-    # Joints that are in the full body tree but NOT in the torso tree —
-    # these are limb joints whose positions pass through directly from
-    # the tracker (1:1 mapping).  FABRIK linear chains ignore tracker
-    # targets on internal nodes (shoulder, knee, etc.), so we bypass
-    # FABRIK for limbs entirely.
-    _LIMB_ONLY_JOINTS: frozenset[str] = frozenset({
-        "left_elbow", "left_wrist",
-        "right_elbow", "right_wrist",
-        "left_knee", "left_ankle",
-        "right_knee", "right_ankle",
-        "left_heel", "left_big_toe", "left_small_toe",
-        "right_heel", "right_big_toe", "right_small_toe",
-    })
-
-    def _try_solve_torso(
-        self,
-        *,
-        targets: dict[str, np.ndarray],
-        bone_lengths: dict[str, float],
-    ) -> dict[str, np.ndarray]:
-        """FABRIK-solve the torso tree, then merge limb positions directly
-        from the tracker targets (bypassing FABRIK for linear limb chains).
-        """
-        # 1. FABRIK solve for torso joints
-        torso_fitted = self._try_solve(
-            targets=targets,
-            tree=self._torso_tree,
-            bone_lengths=bone_lengths,
-        )
-
-        # 2. Merge limb positions directly from tracker targets
-        result = dict(torso_fitted)
-        for name in self._LIMB_ONLY_JOINTS:
-            if name in targets:
-                result[name] = np.asarray(targets[name], dtype=np.float64)
-
-        return result
 
     # ------------------------------------------------------------------
     # Introspection

@@ -358,10 +358,17 @@ def solve_fabrik_tree(
         for name in reversed(tree.topo_order):
             node = tree.nodes[name]
 
-            if node.is_leaf:
+            if node.is_branch:
+                # Branch point (multiple children): position is the average
+                # of child suggestions. These are computed landmarks whose
+                # tracker "target" is derived from other points.
+                if name in suggested:
+                    positions[name] = np.mean(suggested[name], axis=0)
+            else:
+                # Leaf or linear-chain intermediate node: snap to tracker
+                # target.  Every directly-tracked joint constrains the
+                # skeleton, not just the endpoints of each chain.
                 positions[name] = np.array(targets[name], dtype=np.float64)
-            elif name in suggested:
-                positions[name] = np.mean(suggested[name], axis=0)
 
             if node.parent_name is not None:
                 assert node.bone_key is not None
@@ -390,9 +397,13 @@ def solve_fabrik_tree(
                 )
 
         # === CONVERGENCE CHECK ===
+        # Check all non-branch nodes (tracked joints), not just leaves.
         converged = True
-        for leaf_name in tree.leaf_names:
-            error = float(np.linalg.norm(positions[leaf_name] - targets[leaf_name]))
+        for name in tree.topo_order:
+            node = tree.nodes[name]
+            if node.is_branch:
+                continue
+            error = float(np.linalg.norm(positions[name] - targets[name]))
             if error > tolerance:
                 converged = False
                 break

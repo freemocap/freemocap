@@ -8,6 +8,10 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.pubsub.pubsub_topics import (
+    SkeletonFitterResetMessage,
+    SkeletonFitterResetTopic,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,4 +114,44 @@ async def pipeline_close_endpoint() -> None:
         raise HTTPException(
             status_code=500,
             detail=f"Error when processing `pipeline/close` request: {type(e).__name__} - {e}",
+        )
+
+
+class SkeletonFitterResetResponse(BaseModel):
+    success: bool
+    message: str | None = None
+
+
+@realtime_router.post(
+    "/reset-skeleton-fitter",
+    summary="Reset the skeleton fitter — drops learned bone lengths and integral corrections",
+)
+async def reset_skeleton_fitter_endpoint() -> SkeletonFitterResetResponse:
+    """Drop all accumulated state in the realtime skeleton fitter.
+
+    Zeroes every Welford tracker (segment-length statistics) and integral
+    corrector (persistent axial-residual correction).  The next frame
+    re-seeds from anthropometric priors exactly as if the pipeline had
+    just started — no process restart needed.
+    """
+    logger.api("Received `realtime/reset-skeleton-fitter` POST request")
+    try:
+        app = get_freemocap_app()
+        reset_count = 0
+        for pipeline in app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                pipeline.pubsub.publish(
+                    SkeletonFitterResetTopic,
+                    SkeletonFitterResetMessage(),
+                )
+                reset_count += 1
+        message = f"Skeleton fitter reset signal sent to {reset_count} pipeline(s)"
+        logger.api(message)
+        return SkeletonFitterResetResponse(success=True, message=message)
+    except Exception as e:
+        logger.error(f"Error resetting skeleton fitter: {type(e).__name__} - {e}")
+        logger.exception(e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error resetting skeleton fitter: {type(e).__name__} - {e}",
         )

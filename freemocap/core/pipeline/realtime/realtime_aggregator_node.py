@@ -124,6 +124,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             pubsub: PubSubTopicManager,
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
+            skeleton_fitter_reset_sub: TopicSubscriptionQueue,
     ) -> "RealtimeAggregatorNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -159,6 +160,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 ) if config.log_pipeline_times else None,
                 result_ready_event=result_ready_event,
                 result_consumed_event=result_consumed_event,
+                skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
             ),
         )
         return cls(
@@ -184,6 +186,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             timing_sub: TopicSubscriptionQueue | None,
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
+            skeleton_fitter_reset_sub: TopicSubscriptionQueue,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
         aggregator_config = pipeline_config.aggregator_config
@@ -239,6 +242,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
                 fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
                 fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
+                fabrik_jitter_error_scale=filter_config.fabrik_jitter_error_scale,
             )
             logger.debug(
                 f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter created "
@@ -302,6 +306,20 @@ class RealtimeAggregatorNode(AggregatorNode):
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
+
+                # ---- Handle skeleton fitter reset signals ----
+                if skeleton_fitter is not None:
+                    while True:
+                        try:
+                            skeleton_fitter_reset_sub.get_nowait()
+                        except queue.Empty:
+                            break
+                        skeleton_fitter.reset()
+                        logger.info(
+                            f"RealtimeAggregationNode [{camera_group_id}] "
+                            f"skeleton fitter reset — dropped all learned bone lengths "
+                            f"and integral corrections"
+                        )
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()

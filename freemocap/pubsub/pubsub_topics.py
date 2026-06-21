@@ -195,3 +195,21 @@ SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
+
+# ---------------------------------------------------------------------------
+# Skeleton fitter control (out-of-band signals)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SkeletonFitterResetMessage(TopicMessageABC):
+    """Trigger the aggregator to drop all learned skeleton state.
+
+    Presence of this message in the subscription queue signals the aggregator
+    to call ``RealtimeSkeletonFitter.reset()`` — zeroing every Welford tracker
+    and integral corrector.  The next frame re-seeds from anthropometric
+    priors as if the pipeline just started.
+    """
+
+
+SkeletonFitterResetTopic = create_topic(SkeletonFitterResetMessage)

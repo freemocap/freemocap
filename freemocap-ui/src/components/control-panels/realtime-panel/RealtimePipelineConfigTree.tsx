@@ -5,6 +5,8 @@ import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-contr
 import {useMocap} from "@/hooks/useMocap";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
 import {MediapipeDetectorConfig, RealtimeFilterConfig} from "@/store/slices/mocap";
+import {useAppDispatch} from "@/store/hooks";
+import {resetSkeletonFitter} from "@/store/slices/realtime";
 
 export type PipelineContext = "realtime" | "posthoc";
 
@@ -37,13 +39,14 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     rigidBodyEnabled,
     onRigidBodyToggle,
 }) => {
+    const dispatch = useAppDispatch();
     const {
         updateDetectorConfigLocalOnly,
         replaceDetectorConfigLocalOnly,
         updateSkeletonFilterConfigLocalOnly,
         replaceSkeletonFilterConfigLocalOnly,
     } = useMocap();
-    const {triggerRealtimeApply} = useRealtimePipelineSync();
+    const {triggerRealtimeApply, isConnected} = useRealtimePipelineSync();
 
     const handleUpdateDetectorConfig = useCallback(
         (updates: Partial<MediapipeDetectorConfig>) => {
@@ -100,6 +103,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         onFilterToggle(newValue);
         onRigidBodyToggle(newValue);
     };
+
+    const handleResetSkeletonFitter = useCallback(() => {
+        dispatch(resetSkeletonFitter());
+    }, [dispatch]);
 
     return (
         <div className="flex flex-col">
@@ -202,12 +209,22 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                     label="Skeleton"
                     checked={rigidBodyEnabled}
                     onToggle={onRigidBodyToggle}
-                    
+
                 >
-                    <div className="p-1 pl-4">
+                    <div className="p-1 pl-4 flex flex-col gap-1">
                         <p className="text sm text-gray">
-                            Rigid body and skeleton reconstruction parameters (placeholder)
+                            Skeleton fitter learns bone lengths and integral corrections online.
+                            Reset drops all learned state — the next frame re-seeds from
+                            anthropometric priors.
                         </p>
+                        <button
+                            className="button sm"
+                            onClick={handleResetSkeletonFitter}
+                            disabled={!isConnected}
+                            title={isConnected ? "Reset learned bone lengths and integral corrections" : "Connect a realtime pipeline first"}
+                        >
+                            Reset Fitter
+                        </button>
                     </div>
                 </RealtimePipelineStageTreeItem>
             </RealtimePipelineStageTreeItem>

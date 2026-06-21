@@ -41,6 +41,7 @@ from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
+    SkeletonFitterResetTopic,
 )
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,10 @@ class RealtimePipeline:
         result_consumed_event = multiprocessing.Event()
         result_consumed_event.set()
 
+        skeleton_fitter_reset_sub = pubsub.get_subscription(
+            SkeletonFitterResetTopic,
+        )
+
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
             camera_ids=pipeline_camera_ids,
@@ -178,6 +183,7 @@ class RealtimePipeline:
             pubsub=pubsub,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
+            skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
         )
 
         aggregation_output_subscription = pubsub.get_subscription(

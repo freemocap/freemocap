@@ -1,6 +1,6 @@
 import {Color} from "three";
 import {buildFaceContourColors, buildFaceContourSegments} from "@/components/viewport3d/helpers/face-contours";
-import {SKELETON_COLORS} from "@/components/viewport3d/helpers/skeleton-colors";
+import {SKELETON_COLORS, SKELETON_KEYPOINT_COLORS} from "@/components/viewport3d/helpers/skeleton-colors";
 import {PointStyle} from "@/components/viewport3d/helpers/viewport3d-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
@@ -42,31 +42,31 @@ export function getPointStyle(
 
     switch (klass) {
         case 'face':
-            color = hinted ?? SKELETON_COLORS.face;
-            scale = 0.02;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.face;
+            scale = 0.015;
             break;
         case 'left_hand':
-            color = hinted ?? SKELETON_COLORS.leftHand;
-            scale = 0.075;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.leftHand;
+            scale = 0.025;
             break;
         case 'right_hand':
-            color = hinted ?? SKELETON_COLORS.rightHand;
-            scale = 0.075;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.rightHand;
+            scale = 0.025;
             break;
         case 'left':
-            color = hinted ?? SKELETON_COLORS.left;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.left;
             scale = sizeForBodyPoint(name);
             break;
         case 'right':
-            color = hinted ?? SKELETON_COLORS.right;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.right;
             scale = sizeForBodyPoint(name);
             break;
         case 'aruco':
-            color = hinted ?? SKELETON_COLORS.aruco;
-            scale = 0.08;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.aruco;
+            scale = 0.06;
             break;
         default:
-            color = hinted ?? SKELETON_COLORS.center;
+            color = hinted ?? SKELETON_KEYPOINT_COLORS.center;
             scale = sizeForBodyPoint(name);
     }
 
@@ -75,10 +75,10 @@ export function getPointStyle(
 
 function sizeForBodyPoint(name: string): number {
     const lc = name.toLowerCase();
-    if (lc.includes('eye') || lc.includes('ear') || lc.includes('mouth') || lc.includes('nose')) return 0.125;
-    if (lc.includes('heel') || lc.includes('foot') || lc.includes('toe') || lc.includes('ankle')) return 0.3;
-    if (lc.includes('pinky') || lc.includes('index') || lc.includes('thumb')) return 0.05;
-    return 0.2;
+    if (lc.includes('eye') || lc.includes('ear') || lc.includes('mouth') || lc.includes('nose')) return 0.08;
+    if (lc.includes('heel') || lc.includes('foot') || lc.includes('toe') || lc.includes('ankle')) return 0.12;
+    if (lc.includes('pinky') || lc.includes('index') || lc.includes('thumb')) return 0.03;
+    return 0.1;
 }
 
 // --- Segment color: picked from the more specific of the two endpoints ------

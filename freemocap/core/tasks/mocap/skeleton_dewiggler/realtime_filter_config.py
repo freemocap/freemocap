@@ -87,27 +87,32 @@ class RealtimeFilterConfig(BaseModel):
 
     # ---- Integral bone-length correction (PID-like I term) ----
     # Integral gain (ki) — mm of integral accumulation per mm of axial
-    # error per frame.  0 = no correction.  Default 0.10.
-    integral_gain: float = 0.10
+    # error per frame.  0 = no correction.  Default 0.20 (faster learning).
+    integral_gain: float = 0.20
 
     # Per-frame retention factor for the integral accumulator.
-    # 0.95 = 5% decay per frame → ~0.67 s time constant at 30 fps.
-    integral_leak: float = 0.95
+    # 0.90 = 10% decay per frame → ~0.32 s time constant at 30 fps.
+    integral_leak: float = 0.90
 
     # Hard clamp on the absolute integral correction (mm).
-    max_integral_correction_mm: float = 50.0
+    max_integral_correction_mm: float = 80.0
 
     # ---- Within-frame FABRIK refinement (escapes coupled-bone local minima) ----
     # Extra FABRIK solves per frame with nudged/jittered bone lengths.
-    # 0 = disabled.  Default 2.
-    fabrik_refinement_passes: int = 2
+    # 0 = disabled.  Default 3 (was 2 — more passes → faster convergence).
+    fabrik_refinement_passes: int = 3
 
-    # Within-frame bone-length adjustment gain.  Default 0.5.
-    fabrik_refinement_gain: float = 0.5
+    # Within-frame bone-length adjustment gain.  Default 0.7 (was 0.5).
+    fabrik_refinement_gain: float = 0.7
 
-    # Stddev of Gaussian jitter on bone lengths (mm).
+    # Base stddev of Gaussian jitter on bone lengths (mm).
     # 0 = deterministic only.  Default 3.0.
     fabrik_jitter_mm: float = 3.0
+
+    # Adaptive jitter scaling: per-bone jitter stddev = base + |axial_residual| / error_scale.
+    # Larger error → more exploration noise; small error → settles toward base.
+    # A 21 mm residual gives ~3+3=6 mm jitter at the default 7.0.
+    fabrik_jitter_error_scale: float = 7.0
 
     # ---- Welford estimator staleness prevention ----
     # Cap on effective sample count (~10 s at 30 fps).

@@ -56,3 +56,17 @@ export const closePipeline = createAsyncThunk<void, void, { state: RootState }>(
         }
     }
 );
+
+export const resetSkeletonFitter = createAsyncThunk<void, void, { state: RootState }>(
+    'realtime/resetSkeletonFitter',
+    async () => {
+        const response = await fetch(serverUrls.endpoints.resetSkeletonFitter, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(`Failed to reset skeleton fitter: ${error.detail || response.statusText}`);
+        }
+    }
+);

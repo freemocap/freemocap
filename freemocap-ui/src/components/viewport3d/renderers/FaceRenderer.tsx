@@ -80,14 +80,16 @@ export function FaceRenderer() {
             const { pointNames, interleaved } = frame;
             let hasContourNames = false;
             for (let i = 0; i < pointNames.length; i++) {
-                if (!pointNames[i].startsWith("face_")) continue;
+                // Match both face_0000 (RTMPose) and face.lips_61 (MediaPipe)
+                // — consistent with classifyPointName() in skeleton-config.ts
+                if (!/^face[._]/.test(pointNames[i])) continue;
                 const off = i * 4;
                 if (!interleaved[off + 3]) continue;
                 const x = interleaved[off];
                 const y = interleaved[off + 1];
                 const z = interleaved[off + 2];
                 face.set(pointNames[i], { x, y, z });
-                // face.{group}_{index} → MediaPipe contour data present
+                // MediaPipe-style face.{group}_{index} → contour line data present
                 if (pointNames[i].startsWith("face.")) hasContourNames = true;
             }
             if (hasContourNames) hasContourDataRef.current = true;

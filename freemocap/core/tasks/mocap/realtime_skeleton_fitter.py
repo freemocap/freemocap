@@ -380,14 +380,15 @@ class RealtimeSkeletonFitter:
     center_blend_factor: float = 0.4    # how strongly to snap center joints toward tracker targets post-FABRIK
 
     # Integral bone-length correction (PID-like I term)
-    integral_gain: float = 0.10     # mm correction per mm accumulated axial error
-    integral_leak: float = 0.95     # per-frame decay (0.95 @ 30fps → ~0.67s time constant)
-    max_integral_correction_mm: float = 50.0  # hard clamp on correction magnitude
+    integral_gain: float = 0.20     # mm correction per mm accumulated axial error
+    integral_leak: float = 0.90     # per-frame decay (0.90 @ 30fps → ~0.32s time constant)
+    max_integral_correction_mm: float = 80.0  # hard clamp on correction magnitude
 
     # Within-frame FABRIK refinement (escapes local minima from coupled bones)
-    fabrik_refinement_passes: int = 2   # extra FABRIK solves per frame (0 = disabled)
-    fabrik_refinement_gain: float = 0.5 # within-frame bone-length adjustment gain
-    fabrik_jitter_mm: float = 3.0       # stddev of Gaussian jitter on bone lengths (mm)
+    fabrik_refinement_passes: int = 3   # extra FABRIK solves per frame (0 = disabled)
+    fabrik_refinement_gain: float = 0.7 # within-frame bone-length adjustment gain
+    fabrik_jitter_mm: float = 3.0       # base stddev of Gaussian jitter on bone lengths (mm)
+    fabrik_jitter_error_scale: float = 7.0  # jitter scales as: jitter + |residual|/error_scale
 
     # ------------------------------------------------------------------
     # Factory
@@ -404,12 +405,13 @@ class RealtimeSkeletonFitter:
         center_prior_forget_samples: int = 30,
         max_welford_samples: int = 300,
         center_blend_factor: float = 0.4,
-        integral_gain: float = 0.10,
-        integral_leak: float = 0.95,
-        max_integral_correction_mm: float = 50.0,
-        fabrik_refinement_passes: int = 2,
-        fabrik_refinement_gain: float = 0.5,
+        integral_gain: float = 0.20,
+        integral_leak: float = 0.90,
+        max_integral_correction_mm: float = 80.0,
+        fabrik_refinement_passes: int = 3,
+        fabrik_refinement_gain: float = 0.7,
         fabrik_jitter_mm: float = 3.0,
+        fabrik_jitter_error_scale: float = 7.0,
     ) -> "RealtimeSkeletonFitter":
         """Load canonical models and tracker mappings.
 
@@ -451,8 +453,14 @@ class RealtimeSkeletonFitter:
         fabrik_refinement_gain : float
             Within-frame bone-length adjustment gain.  Default 0.5.
         fabrik_jitter_mm : float
-            Stddev of Gaussian jitter on bone lengths (mm).
+            Base stddev of Gaussian jitter on bone lengths (mm).
             0 = deterministic only.  Default 3.0.
+        fabrik_jitter_error_scale : float
+            Adaptive jitter scaling factor (mm).  Per-bone jitter
+            stddev = base + |axial_residual| / error_scale.
+            Larger error → more jitter for exploration; small
+            error → settles toward base jitter.  Default 7.0
+            (a 21mm residual gives ~3+3=6mm jitter).
         """
         # ---- Canonical models ----
         body_info = CanonicalBodyModelInfo()
@@ -535,6 +543,7 @@ class RealtimeSkeletonFitter:
             fabrik_refinement_passes=fabrik_refinement_passes,
             fabrik_refinement_gain=fabrik_refinement_gain,
             fabrik_jitter_mm=fabrik_jitter_mm,
+            fabrik_jitter_error_scale=fabrik_jitter_error_scale,
         )
 
     @staticmethod
@@ -830,10 +839,21 @@ class RealtimeSkeletonFitter:
         best_lengths = dict(working_lengths)
 
         # ---- Refinement passes ----
+        # Adaptive jitter: each bone's jitter stddev scales with its axial
+        # residual.  Bones far from their targets get more exploration noise;
+        # bones near convergence get less.  This replaces the old fixed-jitter
+        # approach where jitter only fired on the last pass.
+        #
+        #  jitter_stddev = base + |axial_residual| / error_scale
+        #
+        # Base = fabrik_jitter_mm (default 3 mm) — floor when residual ≈ 0.
+        # Error scale = fabrik_jitter_error_scale (default 7 mm⁻¹) — a 21 mm
+        # residual gives ~3+3=6 mm jitter.
         rng = np.random.default_rng()
         for pass_idx in range(self.fabrik_refinement_passes):
             # Compute axial residuals from the CURRENT best solution.
-            # These tell us which direction each bone length should move.
+            # These tell us which direction each bone length should move
+            # *and* how much jitter to apply.
             axial_residuals = _compute_axial_residuals_dict(
                 solved=best_solution,
                 targets=fabrik_targets,
@@ -841,15 +861,18 @@ class RealtimeSkeletonFitter:
             )
 
             # Build candidate bone lengths: nudge each bone in the
-            # direction that reduces its residual.
+            # direction that reduces its residual + adaptive jitter.
             candidate_lengths: dict[str, float] = {}
             for bk, length in best_lengths.items():
                 axial = axial_residuals.get(bk, 0.0)
-                # Deterministic nudge + optional jitter on the last pass
+                # Deterministic nudge
+                nudge = self.fabrik_refinement_gain * axial
+                # Adaptive jitter — every pass, scaled to per-bone error
                 jitter = 0.0
-                if pass_idx == self.fabrik_refinement_passes - 1 and self.fabrik_jitter_mm > 0.0:
-                    jitter = rng.normal(0.0, self.fabrik_jitter_mm)
-                candidate_lengths[bk] = length + self.fabrik_refinement_gain * axial + jitter
+                if self.fabrik_jitter_mm > 0.0 and self.fabrik_jitter_error_scale > 0.0:
+                    jitter_std = self.fabrik_jitter_mm + abs(axial) / self.fabrik_jitter_error_scale
+                    jitter = rng.normal(0.0, jitter_std)
+                candidate_lengths[bk] = length + nudge + jitter
                 # Don't let bone lengths go negative or absurdly short
                 if candidate_lengths[bk] < 5.0:
                     candidate_lengths[bk] = 5.0
@@ -888,6 +911,38 @@ class RealtimeSkeletonFitter:
                     )
 
         return best_solution
+
+    # ------------------------------------------------------------------
+    # State reset
+    # ------------------------------------------------------------------
+
+    def reset(self) -> None:
+        """Drop all learned state — re-seed from anthropometric priors.
+
+        Zeroes every Welford tracker (count=0, mean=0, M2=0 —
+        :meth:`blended_length` returns the prior) and every integral
+        corrector.  The next frame behaves exactly like the very first
+        frame, but the canonical models, mappings, and trees stay loaded.
+
+        This is the same as calling ``create()`` with the same config,
+        minus the YAML/model loading cost (~0.3 ms vs ~15 ms).
+        """
+        for tracker_dict in (
+            self._body_trackers,
+            self._hand_trackers_r,
+            self._hand_trackers_l,
+        ):
+            for t in tracker_dict.values():
+                t.count = 0
+                t.mean = 0.0
+                t.M2 = 0.0
+        for corrector_dict in (
+            self._body_correctors,
+            self._hand_correctors_r,
+            self._hand_correctors_l,
+        ):
+            for c in corrector_dict.values():
+                c.integral = 0.0
 
     # ------------------------------------------------------------------
     # Introspection

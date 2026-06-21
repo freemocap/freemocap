@@ -79,3 +79,11 @@ sequence = [
     { cmd = "uv sync --group dev" },
 ]
 help = "Pull all sibling repos, nuke uv.lock, and reinstall from scratch"
+
+
+[tool.poe.tasks.go]
+sequence = [
+    { cmd = "poe update" },
+    { cmd = "freemocap" },
+]
+help = "Pull all sibling repos, nuke uv.lock, and reinstall from scratch"

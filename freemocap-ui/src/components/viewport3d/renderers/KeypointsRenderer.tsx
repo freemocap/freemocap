@@ -26,13 +26,13 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // body‑part) layer uses the per‑category values, while the raw layer uses
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
-const RAW_KEYPOINT_RADIUS = 0.07;
-const SKELETON_POINT_RADIUS = 0.075;
+const RAW_KEYPOINT_RADIUS = 0.05;
+const SKELETON_POINT_RADIUS = 0.04;
 
-const BODY_KEYPOINT_RADIUS = 0.12;
-const HAND_KEYPOINT_RADIUS = 0.05;
-const FACE_KEYPOINT_RADIUS = 0.02;
-const UNSPECIFIED_KEYPOINT_RADIUS = 0.1;
+const BODY_KEYPOINT_RADIUS = 0.07;
+const HAND_KEYPOINT_RADIUS = 0.022;
+const FACE_KEYPOINT_RADIUS = 0.015;
+const UNSPECIFIED_KEYPOINT_RADIUS = 0.06;
 
 function getKeypointRadius(name: string): number {
     switch (classifyPointName(name)) {
@@ -208,7 +208,7 @@ export function KeypointsRenderer() {
                     color={COLORS.skeleton}
                     radius={SKELETON_POINT_RADIUS}
                     statsKey="skeleton"
-                    colorMode="uniform"
+                    colorMode="byBodyPart"
                 />
             )}
         </>

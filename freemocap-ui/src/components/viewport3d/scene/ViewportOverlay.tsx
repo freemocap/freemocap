@@ -2,6 +2,8 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { ViewportVisibility } from "../helpers/viewport3d-types";
 import { useViewportState } from "./ViewportStateContext";
 import IconButton from "@/components/ui-components/IconButton";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { resetSkeletonFitter, selectIsPipelineConnected } from "@/store/slices/realtime";
 
 interface ViewportOverlayProps {
   onFitCamera: () => void;
@@ -14,6 +16,12 @@ export function ViewportOverlay({
 }: ViewportOverlayProps) {
   const { visibility, setVisibility, statsRef } = useViewportState();
   const [expanded, setExpanded] = useState(false);
+  const dispatch = useAppDispatch();
+  const isRealtimeConnected = useAppSelector(selectIsPipelineConnected);
+
+  const handleResetSkeleton = useCallback(() => {
+    dispatch(resetSkeletonFitter());
+  }, [dispatch]);
 
   const keypointsCountRef = useRef<HTMLSpanElement | null>(null);
   const skeletonCountRef = useRef<HTMLSpanElement | null>(null);
@@ -166,7 +174,10 @@ export function ViewportOverlay({
         )}
       </div>
 
-      <div className="flex flex-row gap-1 pos-abs bottom-8 right-8">
+      <div
+        className="flex flex-row gap-1 pos-abs bottom-8 right-8"
+        style={{ zIndex: 100 }}
+      >
         <IconButton
           icon="frame-icon"
           onClick={onFitCamera}
@@ -179,6 +190,18 @@ export function ViewportOverlay({
           onClick={onResetCamera}
           tooltip={true}
           tooltipText="Reset view"
+          tooltipPosition="pos-top-right"
+        />
+        <IconButton
+          icon="load-icon"
+          onClick={handleResetSkeleton}
+          disabled={!isRealtimeConnected}
+          tooltip={true}
+          tooltipText={
+            isRealtimeConnected
+              ? "Re-fit skeleton from scratch"
+              : "Connect a realtime pipeline first"
+          }
           tooltipPosition="pos-top-right"
         />
       </div>

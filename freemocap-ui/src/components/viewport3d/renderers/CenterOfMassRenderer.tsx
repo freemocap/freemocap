@@ -1,17 +1,17 @@
 import {useEffect, useMemo, useRef} from "react";
-import {Mesh, SphereGeometry, MeshBasicMaterial, Vector2} from "three";
+import {Mesh, SphereGeometry, MeshBasicMaterial, MeshStandardMaterial, CanvasTexture, Vector2} from "three";
 import {Line2, LineGeometry, LineMaterial} from "three-stdlib";
 import {useFrame, useThree} from "@react-three/fiber";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {workerDataStore} from "@/components/viewport3d/WorkerDataStore";
 import type {Point3d} from "@/components/viewport3d";
 
-// Effective radius = 50 × 0.50 = 25 world units — softball-sized,
-// ~4× larger than body keypoints (50 × 0.12 = 6).
-const COM_SCALE = 0.50;
+// Effective radius = 50 × 0.25 = 12.5 world units — about 2× keypoint size.
+const COM_SCALE = 0.25;
 const COM_PROJECTION_SCALE = COM_SCALE * 0.25; // quarter radius
 const COM_COLOR = "#44ff44"; // bright green
 const COM_COLOR_NUM = 0x44ff44; // LineMaterial needs a number
+const COM_COLOR_DARK = "#116611"; // dark green for checker quadrants
 
 // XCoM (Hof 2008) — extrapolated center of mass on the ground plane.
 // Amber/orange to distinguish from the green CoM family.
@@ -36,10 +36,61 @@ export function CenterOfMassRenderer() {
     const comRef = useRef<Point3d | null>(null);
     const xcomPosRef = useRef<Point3d | null>(null);
 
-    const sphereGeo = useMemo(() => new SphereGeometry(50, 16, 12), []);
+    const sphereGeo = useMemo(() => new SphereGeometry(50, 32, 24), []);
     const projectionGeo = useMemo(() => new SphereGeometry(50, 8, 6), []);
     const xcomGeo = useMemo(() => new SphereGeometry(50, 8, 6), []);
-    const sphereMat = useMemo(() => new MeshBasicMaterial({color: COM_COLOR}), []);
+
+    // Canvas-generated checker texture — classic COM symbol (circle + cross + two colors)
+    const checkerTexture = useMemo(() => {
+        const size = 512;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d")!;
+        const half = size / 2;
+
+        // Clip to circle so the checker only appears inside the circle boundary
+        ctx.beginPath();
+        ctx.arc(half, half, half - 8, 0, Math.PI * 2);
+        ctx.clip();
+
+        // Alternating quadrants (classic checkerboard / COM symbol look)
+        ctx.fillStyle = COM_COLOR;
+        ctx.fillRect(half, 0, half, half);       // top-right
+        ctx.fillRect(0, half, half, half);       // bottom-left
+        ctx.fillStyle = COM_COLOR_DARK;
+        ctx.fillRect(0, 0, half, half);          // top-left
+        ctx.fillRect(half, half, half, half);    // bottom-right
+
+        // Cross lines (the "+" in the COM symbol)
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(half, 0);
+        ctx.lineTo(half, size);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, half);
+        ctx.lineTo(size, half);
+        ctx.stroke();
+
+        // Circle outline
+        ctx.beginPath();
+        ctx.arc(half, half, half - 8, 0, Math.PI * 2);
+        ctx.strokeStyle = "#000000";
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        const tex = new CanvasTexture(canvas);
+        tex.colorSpace = "srgb";
+        return tex;
+    }, []);
+
+    const sphereMat = useMemo(() => new MeshStandardMaterial({
+        map: checkerTexture,
+        roughness: 0.5,
+        metalness: 0.05,
+    }), [checkerTexture]);
     const projectionMat = useMemo(() => new MeshBasicMaterial({color: COM_COLOR, transparent: true, opacity: 0.7}), []);
     const xcomMat = useMemo(() => new MeshBasicMaterial({color: XCOM_COLOR, transparent: true, opacity: 0.85}), []);
 
@@ -72,6 +123,7 @@ export function CenterOfMassRenderer() {
         sphereGeo.dispose();
         projectionGeo.dispose();
         xcomGeo.dispose();
+        checkerTexture.dispose();
         sphereMat.dispose();
         projectionMat.dispose();
         xcomMat.dispose();
@@ -79,7 +131,7 @@ export function CenterOfMassRenderer() {
         lineMat.dispose();
         xcomLineGeo.dispose();
         xcomLineMat.dispose();
-    }, [sphereGeo, projectionGeo, xcomGeo, sphereMat, projectionMat, xcomMat, lineGeo, lineMat, xcomLineGeo, xcomLineMat]);
+    }, [sphereGeo, projectionGeo, xcomGeo, checkerTexture, sphereMat, projectionMat, xcomMat, lineGeo, lineMat, xcomLineGeo, xcomLineMat]);
 
     useEffect(() => {
         const unsubCom = workerDataStore.subscribeToCenterOfMass((point) => {

@@ -232,17 +232,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 height_mm=filter_config.height_mm,
                 fabrik_tolerance=filter_config.fabrik_tolerance,
                 fabrik_max_iterations=filter_config.fabrik_max_iterations,
-                prior_forget_samples=filter_config.prior_forget_samples,
-                center_prior_forget_samples=filter_config.center_prior_forget_samples,
-                max_welford_samples=filter_config.max_welford_samples,
                 center_blend_factor=filter_config.center_blend_factor,
-                integral_gain=filter_config.integral_gain,
-                integral_leak=filter_config.integral_leak,
-                max_integral_correction_mm=filter_config.max_integral_correction_mm,
-                fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
-                fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
-                fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
-                fabrik_jitter_error_scale=filter_config.fabrik_jitter_error_scale,
+                bone_length_clamp_ratio=filter_config.bone_length_clamp_ratio,
+                keypoint_blend_factor=filter_config.keypoint_blend_factor,
             )
             logger.debug(
                 f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter created "
@@ -352,6 +344,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
                                 fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
                                 fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
+                                fabrik_jitter_error_scale=filter_config.fabrik_jitter_error_scale,
+                                converged_max_iterations=filter_config.converged_max_iterations,
+                                converged_refinement_passes=filter_config.converged_refinement_passes,
+                                observation_interval_frames=filter_config.observation_interval_frames,
+                lock_in_frames=filter_config.lock_in_frames,
                             )
 
                 # ---- Request new frames if ready ----
@@ -567,9 +564,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                         and filtered_keypoints
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        fitted_result = skeleton_fitter.fit_frame(filtered_keypoints)
+                        fitted_result = skeleton_fitter.fit_frame(
+                            filtered_keypoints,
+                            log_timing=(timer is not None),
+                        )
                         if timer is not None:
-                            timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
+                            elapsed_ms = (time.perf_counter() - t0) * 1e3
+                            timer.record("skeleton_fitting", elapsed_ms)
+                            # Per-tree breakdown — shows which tree dominates
+                            timer.record("skeleton_fit_body", skeleton_fitter.last_body_time_ms)
+                            timer.record("skeleton_fit_rhand", skeleton_fitter.last_rhand_time_ms)
+                            timer.record("skeleton_fit_lhand", skeleton_fitter.last_lhand_time_ms)
 
                     # ---- Center of mass ----
                     if (

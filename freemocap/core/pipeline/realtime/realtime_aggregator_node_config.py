@@ -20,6 +20,10 @@ class RealtimeAggregatorNodeConfig(BaseModel):
     filter_enabled: bool = False
     center_of_mass_enabled: bool = True
     skeleton_fitting_enabled: bool = True
+    # Live body-proportion diagnostic: periodically measures limb-segment lengths
+    # from the raw triangulated keypoints over a rolling window and logs a WARNING
+    # when the reconstruction drifts from human anthropometric proportions.
+    body_proportion_diagnostics_enabled: bool = True
 
     realtime_filter_config: RealtimeFilterConfig = Field(default_factory=RealtimeFilterConfig)
     triangulation_config: TriangulationConfig = Field(default_factory=TriangulationConfig)

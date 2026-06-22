@@ -233,15 +233,21 @@ class VideoHelper(BaseModel):
 
 
     def _read_sequential(self, frame_number: int) -> np.ndarray:
-        """Read frame using sequential access (grab/retrieve)."""
-        # Skip frames using grab() which is faster than read()
+        """Read a frame by seeking forward from the last read position.
+
+        Skips the frames between the last read and the target with grab() (cheap,
+        no decode), then read()s the target frame itself (grab + decode). The
+        target must be grabbed too — calling retrieve() alone would decode the
+        previously-grabbed frame, and on the very first read (last_read_frame=-1)
+        there is no grabbed frame at all.
+        """
         frames_to_skip = frame_number - self.last_read_frame - 1
         for _ in range(frames_to_skip):
             if not self.video_reader.grab():
                 raise RuntimeError(f"Failed to grab frame while seeking to {frame_number}")
 
-        # Retrieve the target frame
-        ret, frame = self.video_reader.retrieve()
+        # Grab + decode the target frame.
+        ret, frame = self.video_reader.read()
         if not ret or frame is None:
             raise RuntimeError(f"Failed to retrieve frame {frame_number}")
 

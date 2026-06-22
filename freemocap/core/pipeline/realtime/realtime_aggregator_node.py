@@ -33,6 +33,10 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     calculate_xcom,
 )
 from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
+from freemocap.core.kinematics.segment_lengths import (
+    DEFAULT_DIAGNOSTIC_INTERVAL,
+    StreamingSegmentLengthMonitor,
+)
 from freemocap.core.tasks.mocap.realtime_skeleton_fitter import (
     RealtimeSkeletonFitter,
     SkeletonFittingResult,
@@ -263,6 +267,14 @@ class RealtimeAggregatorNode(AggregatorNode):
         prev_com_time: float | None = None
         # Centroidal kinematics (inertia ellipsoid + ground references) per frame.
         streaming_kinematics = StreamingKinematics()
+
+        # Live body-proportion diagnostic: rolling-window limb-segment lengths,
+        # checked periodically against human anthropometric proportions.
+        body_proportion_monitor = (
+            StreamingSegmentLengthMonitor()
+            if aggregator_config.body_proportion_diagnostics_enabled
+            else None
+        )
 
         timing_reporter: PipelineTimingReporter | None = None
         timing_reporter_stop: threading.Event | None = None
@@ -634,6 +646,32 @@ class RealtimeAggregatorNode(AggregatorNode):
                         publication_queue=timing_pub,
                         node_kind="aggregator",
                     )
+
+                # ---- Live body-proportion diagnostic (rolling window) ----
+                # Measures limb-segment lengths from the raw triangulated keypoints
+                # and flags when the realtime reconstruction drifts from human
+                # anthropometric proportions. Per-frame cost is ~8 distances.
+                if body_proportion_monitor is not None:
+                    body_proportion_monitor.update(filtered_keypoints)
+                    if body_proportion_monitor.n_seen % DEFAULT_DIAGNOSTIC_INTERVAL == 0:
+                        proportion_report = body_proportion_monitor.report()
+                        if (
+                            len(proportion_report.assessable())
+                            >= proportion_report.thresholds.min_assessable_segments
+                        ):
+                            drift = proportion_report.human_shape_violations(check_rigidity=False)
+                            if drift:
+                                logger.warning(
+                                    f"RealtimeAggregationNode [{camera_group_id}] "
+                                    f"body-proportion drift: " + "; ".join(drift)
+                                )
+                            else:
+                                logger.debug(
+                                    f"RealtimeAggregationNode [{camera_group_id}] body "
+                                    f"proportions OK — implied height "
+                                    f"{proportion_report.implied_height_median_mm:.0f}mm "
+                                    f"(cv {proportion_report.implied_height_cv:.2f})"
+                                )
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

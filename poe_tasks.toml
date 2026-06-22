@@ -50,6 +50,8 @@ test-ws = { cmd = "pytest freemocap/tests/test_websocket_settings_protocol.py -v
 test-e2e = { cmd = "pytest freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run end-to-end integration tests (HTTP + WebSocket round-trip)" }
 test-sync = { cmd = "pytest freemocap/tests/test_schema_contract.py freemocap/tests/test_settings_manager.py freemocap/tests/test_http_config_endpoints.py freemocap/tests/test_websocket_settings_protocol.py freemocap/tests/test_e2e_http_settings_sync.py freemocap/tests/test_e2e_websocket_settings_sync.py -v", help = "Run all frontend/backend sync tests" }
 test-calibration = { cmd = "pytest freemocap/tests/calibration/ -v -s --timeout=600", help = "Run calibration integration tests (requires --test-data-path or FREEMOCAP_TEST_DATA_PATH)" }
+test-pipelines = { cmd = "pytest freemocap/tests/pipelines/ -v --timeout=600 --timeout-method=thread", help = "Run E2E posthoc+realtime pipeline tests against FREEMOCAP_TEST_DATA_PATH (skips if data absent)" }
+test-pipelines-fast = { cmd = "pytest freemocap/tests/pipelines/ -v -m 'not slow' --timeout=600 --timeout-method=thread", help = "E2E pipeline tests minus the slow full-skeleton realtime case" }
 test-all = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
 [tool.poe.tasks.test-ui]

@@ -1,5 +1,49 @@
 # Testing
 
+## Pipeline E2E tests (posthoc + realtime mocap)
+
+End-to-end tests for the `core/pipeline/{posthoc,realtime}` pipelines live in
+`freemocap/tests/pipelines/`. They run the **real** pipelines against the shared
+test recording (3 synchronized videos, 222 frames: a 7x5 charuco calibration
+sequence followed by mocap movement) at `FREEMOCAP_TEST_DATA_PATH`
+(`~/freemocap_data/recordings/freemocap_test_data`). If the data is absent the
+tests skip.
+
+```bash
+uv run poe test-pipelines           # full suite (incl. slow full-skeleton realtime)
+uv run poe test-pipelines-fast      # everything except the slow RTMPose case
+```
+
+What they cover:
+- **Posthoc calibration** — runs the calibration pipeline with the 7x5 board
+  (`CharucoBoardDefinition.create_test_data_7x5()`) and verifies the written TOMLs
+  and annotated videos. Produces the calibration that the other tests depend on.
+- **Posthoc mocap** — runs the mocap pipeline (Blender export disabled) and checks
+  `output_data/` has non-NaN 3D body data, for both `most_recent` and `specified`
+  calibration sources.
+- **Anthropometry / "human-shaped"** — measures limb-segment lengths (upper arm,
+  forearm, thigh, shank) from the posthoc 3D output and asserts they are in
+  anthropometric proportion (consistent implied standing height across segments),
+  temporally rigid, and left/right symmetric. This is the real correctness bar —
+  "not all NaN" is necessary but not sufficient.
+- **Realtime** — a `MockCameraGroup` (subclass of skellycam's `CameraGroup`)
+  creates the *real* shared memory and feeds it frames from the test videos; a
+  single-threaded lockstep driver writes frame N, waits for the aggregator's
+  output, and advances. Parametrized into a fast `charuco_only` case and a slow
+  (`@pytest.mark.slow`) `full` RTMPose-skeleton case. The full case also asserts
+  the raw realtime reconstruction is human-shaped **and** that its per-limb
+  segment lengths match the trusted posthoc output (within ~25%). Camera capture
+  is the only thing mocked — IPC, triangulation, filtering and fitting are real.
+
+The "human-shaped" scoring lives in `freemocap/core/kinematics/segment_lengths.py`
+(reusable as a runtime diagnostic): it divides each measured segment length by the
+canonical `bone_length_ratios` to get a per-segment *implied height*; a genuinely
+human skeleton implies one consistent height across all segments, so the spread
+(CV) of implied heights is height-independent and is the core signal.
+
+These tests run in-place in the recording folder (regenerating `output_data/`,
+`annotated_videos/`, etc.), matching how the app runs.
+
 ## Quick Start
 
 ```bash

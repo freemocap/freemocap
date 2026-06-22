@@ -55,10 +55,18 @@ class RealtimePipelineManager(PipelineManagerABC):
         pipeline_config: RealtimePipelineConfig,
         realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
+        # The camera IDs this pipeline will actually drive: the explicit realtime
+        # subset if provided, otherwise every camera in the group. Mirrors the
+        # selection logic in RealtimePipeline.create (`pipeline_camera_ids`).
+        target_camera_ids = (
+            set(realtime_camera_ids)
+            if realtime_camera_ids is not None
+            else set(camera_group.camera_ids)
+        )
         with self.lock:
             # Return existing pipeline for this camera set (with updated config)
             for pipeline in self.pipelines.values():
-                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                if set(pipeline.camera_ids) == target_camera_ids:
                     logger.info(
                         f"Found existing RealtimePipeline [{pipeline.id}] "
                         f"for camera group [{pipeline.camera_group_id}]"

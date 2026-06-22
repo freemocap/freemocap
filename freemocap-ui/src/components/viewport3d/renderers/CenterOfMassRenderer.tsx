@@ -7,11 +7,11 @@ import {workerDataStore} from "@/components/viewport3d/WorkerDataStore";
 import type {Point3d} from "@/components/viewport3d";
 
 // Effective radius = 50 × 0.25 = 12.5 world units — about 2× keypoint size.
-const COM_SCALE = 0.25;
+const COM_SCALE = 0.35;
 const COM_PROJECTION_SCALE = COM_SCALE * 0.25; // quarter radius
-const COM_COLOR = "#44ff44"; // bright green
-const COM_COLOR_NUM = 0x44ff44; // LineMaterial needs a number
-const COM_COLOR_DARK = "#116611"; // dark green for checker quadrants
+const COM_COLOR = "#ffffff"; // white
+const COM_COLOR_NUM = 0xffffff; // LineMaterial needs a number
+const COM_COLOR_DARK = "#002200"; // near-black green — checker quadrants
 
 // XCoM (Hof 2008) — extrapolated center of mass on the ground plane.
 // Amber/orange to distinguish from the green CoM family.
@@ -43,9 +43,11 @@ export function CenterOfMassRenderer() {
     // Canvas-generated checker texture — classic COM symbol (circle + cross + two colors)
     const checkerTexture = useMemo(() => {
         const size = 512;
-        const canvas = document.createElement("canvas");
-        canvas.width = size;
-        canvas.height = size;
+        const cols = 4; // longitudinal segments (north-pole cuts)
+        const rows = 2; // latitudinal segments (equator cut)
+        const cellW = size / cols;
+        const cellH = size / rows;
+        const canvas = new OffscreenCanvas(size, size);
         const ctx = canvas.getContext("2d")!;
         const half = size / 2;
 
@@ -54,17 +56,17 @@ export function CenterOfMassRenderer() {
         ctx.arc(half, half, half - 8, 0, Math.PI * 2);
         ctx.clip();
 
-        // Alternating quadrants (classic checkerboard / COM symbol look)
-        ctx.fillStyle = COM_COLOR;
-        ctx.fillRect(half, 0, half, half);       // top-right
-        ctx.fillRect(0, half, half, half);       // bottom-left
-        ctx.fillStyle = COM_COLOR_DARK;
-        ctx.fillRect(0, 0, half, half);          // top-left
-        ctx.fillRect(half, half, half, half);    // bottom-right
+        // 4×2 checkerboard: quarters through north pole, halved at equator
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                ctx.fillStyle = (row + col) % 2 === 0 ? COM_COLOR : COM_COLOR_DARK;
+                ctx.fillRect(col * cellW, row * cellH, cellW, cellH);
+            }
+        }
 
         // Cross lines (the "+" in the COM symbol)
         ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 6;
         ctx.beginPath();
         ctx.moveTo(half, 0);
         ctx.lineTo(half, size);
@@ -78,7 +80,7 @@ export function CenterOfMassRenderer() {
         ctx.beginPath();
         ctx.arc(half, half, half - 8, 0, Math.PI * 2);
         ctx.strokeStyle = "#000000";
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 6;
         ctx.stroke();
 
         const tex = new CanvasTexture(canvas);
@@ -88,9 +90,12 @@ export function CenterOfMassRenderer() {
 
     const sphereMat = useMemo(() => new MeshStandardMaterial({
         map: checkerTexture,
-        roughness: 0.5,
-        metalness: 0.05,
+        emissive: "#44ff44",
+        emissiveIntensity: 0.6,
+        roughness: 0.4,
+        metalness: 0.0,
     }), [checkerTexture]);
+
     const projectionMat = useMemo(() => new MeshBasicMaterial({color: COM_COLOR, transparent: true, opacity: 0.7}), []);
     const xcomMat = useMemo(() => new MeshBasicMaterial({color: XCOM_COLOR, transparent: true, opacity: 0.85}), []);
 

@@ -125,6 +125,12 @@ export function parseKeypointsMessage(buf: ArrayBuffer): ParsedKeypointsMessage 
                 if (names.length === numPoints) {
                     pointNames = names;
                     floatOffset = cursor + namesLen;
+                    // Python pads the names blob for Float32Array alignment
+                    // (see frontend_keypoints_serializer._build_block).
+                    // Round up so the typed-array view lands on the float
+                    // payload, not the padding bytes.
+                    const align = dtypeByteSize(dtypeCode);
+                    floatOffset = (floatOffset + align - 1) & ~(align - 1);
                 }
             }
             cursor = floatOffset - KEYPOINTS_BLOCK_HEADER_SIZE; // reset for float read

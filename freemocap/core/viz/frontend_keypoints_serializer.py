@@ -87,9 +87,14 @@ def _build_block(
         # without a pre-shared schema (used for charuco / aruco corners).
         names_blob = "\0".join(point_names).encode("ascii", errors="ignore") + b"\0"
         names_len = len(names_blob)
+        # 4-byte alignment: Float32Array in JS requires offsets be multiples of 4.
+        # Pad the names blob so the float payload that follows lands on a 4-byte
+        # boundary (zero-copy DataView → Float32Array path).
+        pad = (4 - (names_len % 4)) % 4
         data = (
             np.uint32(names_len).tobytes()
             + names_blob
+            + b"\0" * pad
             + payload_bytes
         )
     else:

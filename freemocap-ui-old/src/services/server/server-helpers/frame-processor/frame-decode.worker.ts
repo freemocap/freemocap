@@ -166,7 +166,7 @@ async function decodePayload(data) {
         })
     );
     const decodeMs = performance.now() - decodeT0;
-    if (decodeMs > 40) console.warn('parallel decode spike: ' + decodeMs.toFixed(1) + 'ms (' + validFrameCount + ' cams)');
+    if (decodeMs > 100) console.warn('parallel decode spike: ' + decodeMs.toFixed(1) + 'ms (' + validFrameCount + ' cams)');
 
     return frames;
 }

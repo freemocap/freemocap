@@ -288,7 +288,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                     <Panel
                                         id={id}
                                         order={index}
-                                        defaultSize={defaultSizes[index]}
+                                        defaultSize={Math.max(defaultSizes[index], minSize)}
                                         minSize={minSize}
                                     >
                                         {growable ? (

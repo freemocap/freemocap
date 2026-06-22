@@ -7,13 +7,23 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 <AiGeneratedBanner />
 
+:::warning AI GENERATED DOCS
+A robot wrote these docs based on the code in the `freemocap/` repo. Expect jank.
+
+We'll get to human curating and cleaning them up "soon"
+
+For now, they are significantly better than nothing, which is the alternative option :)
+:::
+
 # FreeMoCap
 
-FreeMoCap is a **markerless motion capture system** — no reflective markers, no special suits, no expensive hardware. Point USB cameras at a person, record synchronized video, and the software produces 3D skeleton data you can use in Blender, biomechanics analysis, game development, or research.
+FreeMoCap is a free-and-open-source **markerless motion capture system** — no reflective markers, no special suits, no expensive hardware. Point USB cameras at a person, record synchronized video, and the software produces 3D skeleton data you can use in Blender, biomechanics analysis, game development, or research.
 
 ## Architecture at a Glance
 
-FreeMoCap is a **desktop application** with a React/TypeScript frontend (Electron) that talks to a Python backend (FastAPI) over REST and WebSocket. Multiple USB cameras feed synchronized frames into processing pipelines that run state-of-the-art pose detection, multi-view triangulation, and skeleton filtering — all on consumer hardware.
+FreeMoCap is a **stand-alone desktop application** with a React/TypeScript frontend (Electron) that talks to a Python backend (FastAPI) over REST and WebSocket. Multiple USB cameras feed synchronized frames into processing pipelines that run state-of-the-art pose detection, multi-view triangulation, and skeleton filtering — all on consumer hardware.
+
+FreeMoCap does not require an internet connection or a login to work (and never will!). We access the internet to download MediaPipe and RTMPose models that SkellyTracker uses, but once they are downloaded FreeMoCap will happily run offline and air-gapped for as long as you care to run it.
 
 | Capability | Description |
 |---|---|

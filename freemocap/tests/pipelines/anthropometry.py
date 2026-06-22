@@ -44,9 +44,10 @@ def positions_from_aggregation_outputs(
         Ordered list of ``AggregationNodeOutputMessage`` (one per processed frame).
     field
         Which named-point dict to read: ``"keypoints_arrays"`` (raw triangulated,
-        the honest reconstruction — default) or ``"skeleton"`` (FABRIK-fitted,
-        canonical names; note its bone lengths are clamped to the prior so it is
-        not an independent anthropometry test).
+        the honest reconstruction — default) or ``"skeleton"`` (the rigidified
+        canonical skeleton; its bone lengths are the enforced rigid estimates, so
+        use it to check rigidity + posthoc equivalence, not as an independent
+        measure of the raw reconstruction).
 
     Returns ``{landmark_name: (n_frames, 3)}``, NaN where a point was absent.
     """

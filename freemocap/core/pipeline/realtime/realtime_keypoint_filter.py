@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.one_euro_filter import OneEuroFilter1D
+from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
 
 logger = logging.getLogger(__name__)
 

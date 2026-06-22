@@ -1,8 +1,8 @@
 """
 RealtimeAggregationNode: collects per-camera observations for each frame,
 triangulates mediapipe and charuco observations (if calibration is valid),
-filters+constrains the triangulated skeleton via One Euro + FABRIK,
-and publishes aggregated output.
+filters the triangulated skeleton (One Euro smoothing + velocity gate) and
+corrects it to rigid bone lengths, then publishes aggregated output.
 
 Uses CalibrationStateTracker for graceful degradation: if triangulation fails
 repeatedly, the calibration is invalidated and we continue publishing 2D-only
@@ -12,10 +12,11 @@ Calibration hot-reload: the node polls the calibration file on disk once per
 second. If the file has changed (e.g. after posthoc calibration completes),
 the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
-Skeleton filtering (One Euro + FABRIK) runs on the triangulated 3D mediapipe
-points. Bone lengths are estimated online from observed inter-keypoint distances
-blended with an anthropometric prior. The filter resets on calibration reload
-since the coordinate frame may change.
+Rigid-body correction (``RealtimeSkeletonRigidifier``) runs on the triangulated
+3D points: each bone's length is estimated online (a best-K-by-reprojection-error
+median, seeded from anthropometry) and enforced by a single closed-form forward
+pass. The carried bone directions reset on calibration reload since the
+coordinate frame may change; the length estimates are distances, so they are kept.
 """
 import logging
 import multiprocessing.synchronize
@@ -30,6 +31,7 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     load_rtmpose_biomechanics,
     CenterOfMassResult,
     calculate_center_of_mass_per_frame,
+    calculate_center_of_mass_from_canonical,
     calculate_xcom,
 )
 from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
@@ -37,9 +39,9 @@ from freemocap.core.kinematics.segment_lengths import (
     DEFAULT_DIAGNOSTIC_INTERVAL,
     StreamingSegmentLengthMonitor,
 )
-from freemocap.core.tasks.mocap.realtime_skeleton_fitter import (
-    RealtimeSkeletonFitter,
-    SkeletonFittingResult,
+from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import (
+    RealtimeSkeletonRigidifier,
+    RigidifyResult,
 )
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
@@ -55,9 +57,9 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePi
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.realtime_point_gate import RealtimePointGate, \
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import RealtimePointGate, \
     GateResult
-from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_filter_config import RealtimeFilterConfig
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -219,23 +221,21 @@ class RealtimeAggregatorNode(AggregatorNode):
             else None
         )
 
-        # Create skeleton fitter (canonical models + FABRIK trees + online
-        # segment-length estimation).  Loaded once at init; per-frame hot
-        # path is pure numpy + FABRIK.
-        skeleton_fitter: RealtimeSkeletonFitter | None = None
+        # Create the skeleton rigidifier (canonical models + per-bone online
+        # length estimators + forward-pass tree rigidifiers). Loaded once at
+        # init; the per-frame hot path is pure numpy.
+        skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
         if aggregator_config.skeleton_fitting_enabled:
-            skeleton_fitter = RealtimeSkeletonFitter.create(
+            skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
                 height_mm=filter_config.height_mm,
-                fabrik_tolerance=filter_config.fabrik_tolerance,
-                fabrik_max_iterations=filter_config.fabrik_max_iterations,
-                center_blend_factor=filter_config.center_blend_factor,
-                bone_length_clamp_ratio=filter_config.bone_length_clamp_ratio,
-                keypoint_blend_factor=filter_config.keypoint_blend_factor,
+                buffer_capacity=filter_config.segment_length_buffer_capacity,
+                decay_tau_s=filter_config.segment_length_decay_s,
+                plausibility_tol=filter_config.segment_length_plausibility_tol,
             )
             logger.debug(
-                f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter created "
-                f"(body bones: {len(skeleton_fitter._body_tree.bone_keys)}, "
-                f"hand bones: {len(skeleton_fitter._hand_tree.bone_keys)})"
+                f"RealtimeAggregationNode [{camera_group_id}] skeleton rigidifier created "
+                f"(body bones: {len(skeleton_rigidifier.body_bone_lengths)}, "
+                f"hand bones: {len(skeleton_rigidifier.right_hand_bone_lengths)})"
             )
 
         # One Euro filter: smooths raw keypoints and gap-fills brief occlusions
@@ -305,18 +305,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
 
-                # ---- Handle skeleton fitter reset signals ----
-                if skeleton_fitter is not None:
+                # ---- Handle skeleton rigidifier reset signals ----
+                if skeleton_rigidifier is not None:
                     while True:
                         try:
                             skeleton_fitter_reset_sub.get_nowait()
                         except queue.Empty:
                             break
-                        skeleton_fitter.reset()
+                        skeleton_rigidifier.reset()
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"skeleton fitter reset — dropped all learned bone lengths "
-                            f"and integral corrections"
+                            f"skeleton rigidifier reset — cleared carried bone directions"
                         )
 
                 # ---- Periodically check if calibration file changed on disk ----
@@ -334,29 +333,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # Rebuild skeleton fitter from scratch (segment-length
-                        # stats are in the old coordinate frame)
-                        if skeleton_fitter is not None:
-                            skeleton_fitter = RealtimeSkeletonFitter.create(
-                                height_mm=filter_config.height_mm,
-                                fabrik_tolerance=filter_config.fabrik_tolerance,
-                                fabrik_max_iterations=filter_config.fabrik_max_iterations,
-                                prior_forget_samples=filter_config.prior_forget_samples,
-                                center_prior_forget_samples=filter_config.center_prior_forget_samples,
-                                max_welford_samples=filter_config.max_welford_samples,
-                                center_blend_factor=filter_config.center_blend_factor,
-                                integral_gain=filter_config.integral_gain,
-                                integral_leak=filter_config.integral_leak,
-                                max_integral_correction_mm=filter_config.max_integral_correction_mm,
-                                fabrik_refinement_passes=filter_config.fabrik_refinement_passes,
-                                fabrik_refinement_gain=filter_config.fabrik_refinement_gain,
-                                fabrik_jitter_mm=filter_config.fabrik_jitter_mm,
-                                fabrik_jitter_error_scale=filter_config.fabrik_jitter_error_scale,
-                                converged_max_iterations=filter_config.converged_max_iterations,
-                                converged_refinement_passes=filter_config.converged_refinement_passes,
-                                observation_interval_frames=filter_config.observation_interval_frames,
-                lock_in_frames=filter_config.lock_in_frames,
-                            )
+                        # Coordinate frame changed: clear carried bone directions.
+                        # Bone-length estimates are distances (frame-invariant),
+                        # so they're kept — no need to relearn the subject.
+                        if skeleton_rigidifier is not None:
+                            skeleton_rigidifier.reset()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -497,7 +478,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 com_result: CenterOfMassResult | None = None
                 xcom: Point3d | None = None
                 body_kinematics = None
-                fitted_result: SkeletonFittingResult | None = None
+                rigid_result: RigidifyResult | None = None
                 if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
@@ -566,35 +547,39 @@ class RealtimeAggregatorNode(AggregatorNode):
                             if timer is not None:
                                 timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
-                    # ---- Skeleton fitting (canonical models + FABRIK) ----
+                    # ---- Rigid-body skeleton correction ----
                     if (
-                        skeleton_fitter is not None
+                        skeleton_rigidifier is not None
                         and filtered_keypoints
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        fitted_result = skeleton_fitter.fit_frame(
-                            filtered_keypoints,
-                            log_timing=(timer is not None),
-                        )
+                        rigid_result = skeleton_rigidifier.rigidify_frame(filtered_keypoints)
                         if timer is not None:
-                            elapsed_ms = (time.perf_counter() - t0) * 1e3
-                            timer.record("skeleton_fitting", elapsed_ms)
-                            # Per-tree breakdown — shows which tree dominates
-                            timer.record("skeleton_fit_body", skeleton_fitter.last_body_time_ms)
-                            timer.record("skeleton_fit_rhand", skeleton_fitter.last_rhand_time_ms)
-                            timer.record("skeleton_fit_lhand", skeleton_fitter.last_lhand_time_ms)
+                            timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
                     # ---- Center of mass ----
+                    # Prefer the rigidified skeleton (matches posthoc, which
+                    # computes CoM on rigid_xyz); fall back to raw keypoints when
+                    # the rigidifier is disabled.
                     if (
                         biomechanics is not None
-                        and filtered_keypoints
                         and aggregator_config.center_of_mass_enabled
+                        and (
+                            (rigid_result is not None and rigid_result.body_positions)
+                            or filtered_keypoints
+                        )
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        com_result = calculate_center_of_mass_per_frame(
-                            keypoints=filtered_keypoints,
-                            biomechanics=biomechanics,
-                        )
+                        if rigid_result is not None and rigid_result.body_positions:
+                            com_result = calculate_center_of_mass_from_canonical(
+                                rigid_result.body_positions,
+                                biomechanics,
+                            )
+                        else:
+                            com_result = calculate_center_of_mass_per_frame(
+                                keypoints=filtered_keypoints,
+                                biomechanics=biomechanics,
+                            )
                         if timer is not None:
                             timer.record("center_of_mass", (time.perf_counter() - t0) * 1e3)
 
@@ -686,11 +671,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         xcom=xcom,
                         skeleton=(
                             {
-                                **fitted_result.body_positions,
-                                **fitted_result.left_hand_positions,
-                                **fitted_result.right_hand_positions,
+                                **rigid_result.body_positions,
+                                **rigid_result.left_hand_positions,
+                                **rigid_result.right_hand_positions,
                             }
-                            if fitted_result is not None
+                            if rigid_result is not None
                             else None
                         ),
                         body_kinematics=body_kinematics,

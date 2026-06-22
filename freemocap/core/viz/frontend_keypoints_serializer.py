@@ -126,7 +126,7 @@ def build_keypoints_payload(
       * a schema-backed KEYPOINTS_3D block of RTMPose points,
       * an embedded-names KEYPOINTS_3D block for charuco/aruco calibration
         corners (no tracker schema on the frontend), when present,
-      * an embedded-names SKELETON_3D block of the FABRIK-fitted canonical
+      * an embedded-names SKELETON_3D block of the rigidified canonical
         body + hand landmarks, when present.
     """
     blocks: list[bytes] = []
@@ -158,7 +158,7 @@ def build_keypoints_payload(
             )
         )
 
-    # FABRIK-fitted canonical skeleton (body + hands). Mixed canonical/tracker
+    # Rigidified canonical skeleton (body + hands). Mixed canonical/tracker
     # naming, so point names travel embedded in the block (self-describing).
     if skeleton_arrays:
         skeleton_names = list(skeleton_arrays.keys())

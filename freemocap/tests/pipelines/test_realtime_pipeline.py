@@ -76,6 +76,40 @@ def _assert_realtime_human_shaped_and_matches_posthoc(outputs, request) -> None:
         + "\n[posthoc]  " + posthoc_report.summary()
     )
 
+    # --- Rigidified skeleton: must be RIGID over time AND match posthoc ---
+    # Unlike the raw reconstruction above, the fitted `skeleton` field enforces
+    # the online bone-length estimates, so it must pass the rigidity check
+    # (temporal CV) — that's the whole point of the rigidifier.
+    logger.info("Building segment-length report from the rigidified skeleton output...")
+    skeleton_report = build_segment_length_report(
+        positions_from_aggregation_outputs(outputs, field="skeleton")
+    )
+    logger.info("[realtime skeleton] " + skeleton_report.summary())
+
+    skeleton_shape_violations = skeleton_report.human_shape_violations(check_rigidity=True)
+    if skeleton_shape_violations:
+        logger.warning(
+            f"Rigidified-skeleton human-shape violations ({len(skeleton_shape_violations)}):"
+        )
+        for v in skeleton_shape_violations:
+            logger.warning(f"  FAIL: {v}")
+    else:
+        logger.info("Rigidified skeleton is human-shaped AND rigid — PASS")
+    assert not skeleton_shape_violations, (
+        "Rigidified realtime skeleton is not human-shaped / rigid:\n  - "
+        + "\n  - ".join(skeleton_shape_violations) + "\n" + skeleton_report.summary()
+    )
+
+    skeleton_eq_violations = equivalence_violations(
+        skeleton_report, posthoc_report, label_a="realtime-skeleton", label_b="posthoc",
+    )
+    assert not skeleton_eq_violations, (
+        "Rigidified realtime skeleton segment lengths differ from posthoc:\n  - "
+        + "\n  - ".join(skeleton_eq_violations)
+        + "\n[realtime skeleton] " + skeleton_report.summary()
+        + "\n[posthoc]  " + posthoc_report.summary()
+    )
+
 
 def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
     charuco_enabled = mode in ("charuco_only", "full")

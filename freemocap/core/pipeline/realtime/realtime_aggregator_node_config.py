@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 
 from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
-from freemocap.core.tasks.mocap.skeleton_dewiggler.realtime_filter_config import RealtimeFilterConfig
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 

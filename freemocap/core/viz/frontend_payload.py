@@ -22,7 +22,7 @@ class FrontendPayload(msgspec.Struct):
     """JSON payload for frontend visualization.
 
     Carries 2D charuco/skeleton image-overlay data plus low-density metadata
-    (center of mass, XCoM). The 3D keypoints and the FABRIK-fitted canonical
+    (center of mass, XCoM). The 3D keypoints and the rigidified canonical
     skeleton travel in the binary keypoints message, not here.
     """
 

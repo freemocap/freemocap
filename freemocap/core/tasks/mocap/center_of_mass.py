@@ -329,7 +329,26 @@ def calculate_center_of_mass_per_frame(
     keypoints: dict[str, np.ndarray],
     biomechanics: RTMPoseBodyBiomechanics,
 ) -> CenterOfMassResult:
-    """Compute whole-body and per-segment center of mass for one frame.
+    """Compute center of mass from raw RTMPose **tracker** keypoints for one frame.
+
+    Maps tracker keypoints → canonical landmarks (adding the computed centers
+    head/neck/trunk/hips_center), then delegates to
+    ``calculate_center_of_mass_from_canonical``.
+    """
+    augmented = biomechanics.tracker_mapping.apply(keypoints)
+    return calculate_center_of_mass_from_canonical(augmented, biomechanics)
+
+
+def calculate_center_of_mass_from_canonical(
+    canonical_positions: dict[str, np.ndarray],
+    biomechanics: RTMPoseBodyBiomechanics,
+) -> CenterOfMassResult:
+    """Compute center of mass from already-canonical-named positions for one frame.
+
+    Use this with the rigidified skeleton (``RealtimeSkeletonRigidifier`` output),
+    whose positions are already canonical and include the computed centers — no
+    tracker→canonical remap is needed. This matches the posthoc pipeline, which
+    computes CoM on the rigidified trajectory (``rigid_xyz``).
 
     Always returns a result — never NaN. Check ``confidence`` or
     ``directly_observed_mass`` to assess measurement quality.
@@ -339,22 +358,17 @@ def calculate_center_of_mass_per_frame(
     if biomechanics.segment_connections is None:
         raise ValueError("No segment_connections in biomechanics.")
 
-    # 1. Map tracker keypoints → canonical landmarks (adds the computed
-    #    centers head/neck/trunk/hips_center via the single tracker→canonical
-    #    derivation).
-    augmented = biomechanics.tracker_mapping.apply(keypoints)
-
-    # 2. Build segment endpoint dict (silently skips missing endpoints)
+    # 1. Build segment endpoint dict (silently skips missing endpoints)
     segment_positions = build_segment_positions(
-        augmented, biomechanics.segment_connections
+        canonical_positions, biomechanics.segment_connections
     )
 
-    # 3. Per-segment CoM (silently skips missing segments)
+    # 2. Per-segment CoM (silently skips missing segments)
     segment_coms = _calculate_all_segments_com_per_frame(
         segment_positions, biomechanics.center_of_mass_definitions
     )
 
-    # 4. Weighted total body CoM with mass redistribution
+    # 3. Weighted total body CoM with mass redistribution
     total_body_com, directly_observed = _calculate_total_body_com_with_redistribution(
         segment_coms, biomechanics,
     )

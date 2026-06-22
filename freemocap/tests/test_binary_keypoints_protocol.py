@@ -129,7 +129,7 @@ def test_first_byte_is_payload_header_message_type():
 
 
 def test_skeleton_block_round_trip():
-    # The FABRIK skeleton rides the binary path as a SKELETON_3D block with
+    # The rigidified skeleton rides the binary path as a SKELETON_3D block with
     # embedded names (mixed canonical body + tracker hand naming).
     skeleton = {
         "left_shoulder": np.array([1.0, 2.0, 3.0], dtype=np.float64),

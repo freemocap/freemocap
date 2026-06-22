@@ -204,12 +204,12 @@ PipelineTimingTopic = create_topic(PipelineTimingMessage)
 
 @dataclass
 class SkeletonFitterResetMessage(TopicMessageABC):
-    """Trigger the aggregator to drop all learned skeleton state.
+    """Trigger the aggregator to reset the skeleton rigidifier.
 
     Presence of this message in the subscription queue signals the aggregator
-    to call ``RealtimeSkeletonFitter.reset()`` — zeroing every Welford tracker
-    and integral corrector.  The next frame re-seeds from anthropometric
-    priors as if the pipeline just started.
+    to call ``RealtimeSkeletonRigidifier.reset()`` — clearing the carried bone
+    directions. Bone-length estimates are kept (they describe the subject, not
+    the coordinate frame).
     """
 
 

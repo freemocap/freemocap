@@ -4,7 +4,7 @@ Tunable configuration for the realtime filtering + skeleton-fitting stage.
 Consumed by the realtime aggregator node, which wires these values into:
     - ``RealtimeKeypointFilter``  (One Euro smoothing of raw 3D keypoints)
     - ``RealtimePointGate``       (velocity teleportation rejection)
-    - ``RealtimeSkeletonFitter``  (FABRIK skeleton fitting)
+    - ``RealtimeSkeletonRigidifier``  (rigid-body skeleton correction)
     - triangulation               (reprojection-error gating)
 """
 
@@ -69,35 +69,25 @@ class RealtimeFilterConfig(BaseModel):
     # Higher = faster adaptation -> more responsive to sudden speed changes.
     d_cutoff: float = 1.0
 
-    # ---- FABRIK skeleton fitting ----
-    # Convergence threshold (mm).  20 mm = 2 cm — invisible in mocap viz.
-    # FABRIK stops iterating when no joint moves more than this.
-    fabrik_tolerance: float = 20.0
+    # ---- Rigid-body skeleton correction ----
+    # Per bone, the online estimator keeps the best-K length measurements
+    # (ranked by reprojection error, with an age decay) and enforces their
+    # median via a single closed-form forward pass — the streaming analogue of
+    # the posthoc rigid-bones step. No iteration, no convergence loop.
 
-    # Maximum FABRIK forward/backward passes per solve.  Warm-started solves
-    # typically converge in 2-4 iterations; this is just a ceiling.
-    fabrik_max_iterations: int = 10
+    # Best-K buffer size per bone. Larger = steadier estimate, slower to adapt.
+    # ~64 samples at 30 fps is ~2 s of the best observations retained.
+    segment_length_buffer_capacity: int = 64
 
-    # Post-solve blend: weight of raw keypoints vs FABRIK bone-length
-    # enforcement.  0.0 = pure FABRIK, 1.0 = pure keypoints (FABRIK off).
-    # 0.6 = 60% keypoint — a light de-wiggle that stays faithful to the
-    # tracker.  Applied to ALL joints after every solve.
-    keypoint_blend_factor: float = 0.6
+    # Age-decay time constant (seconds) for the buffer's eviction score:
+    #   effective_error = error * exp(age / decay_s)
+    # Stale samples lose their slot to fresh decent ones, so the estimate keeps
+    # adapting (never permanently frozen on old data).
+    segment_length_decay_s: float = 30.0
 
-    # ---- Center-joint jitter dampening ----
-    # Post-FABRIK blend factor for derived center joints (hips_center,
-    # trunk_center, neck_center, head_center) toward their tracker targets.
-    # These are branch points positioned by averaging child suggestions —
-    # they get no direct snap in the forward pass, so they're jumpier.
-    # 0 = pure FABRIK, 1 = snap to target.  Default 0.4 dampens jitter.
-    center_blend_factor: float = 0.4
-
-    # ---- Bone-length constraint ----
-    # Bone lengths are measured from the current frame's keypoints, then
-    # clamped to the anatomical prior ± this ratio.  0.2 = ±20%.
-    # A 400 mm femur can range 320-480 mm — covers 5th-95th percentile.
-    # 0 = no clamp (use raw measured lengths).
-    bone_length_clamp_ratio: float = 0.2
+    # Reject a measured length deviating more than this fraction from the
+    # running median (guards against low-error-but-wrong samples). None = off.
+    segment_length_plausibility_tol: float | None = 0.5
 
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco

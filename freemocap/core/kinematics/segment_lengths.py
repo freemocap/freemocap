@@ -109,9 +109,12 @@ class SegmentStats:
     name: str
     pair: str
     ratio: float
+    mean_mm: float
     median_mm: float
     std_mm: float
     mad_mm: float  # median absolute deviation (robust spread)
+    min_mm: float
+    max_mm: float
     n_valid: int
     n_frames: int
 
@@ -120,8 +123,18 @@ class SegmentStats:
         # Robust CV: MAD scaled to a std-equivalent (×1.4826), over the median.
         # Robust to transient bad frames (occlusion / foreshortening, e.g. during
         # the calibration portion of the clip) that would inflate a plain std.
+        # This is the spread used by the human-shape rigidity check.
         robust_std = 1.4826 * self.mad_mm
         return robust_std / self.median_mm if self.median_mm > 0 else float("inf")
+
+    @property
+    def cv(self) -> float:
+        """Classic coefficient of variation (std / mean)."""
+        return self.std_mm / self.mean_mm if self.mean_mm > 0 else float("inf")
+
+    @property
+    def range_mm(self) -> float:
+        return self.max_mm - self.min_mm
 
     @property
     def implied_height_mm(self) -> float:
@@ -305,16 +318,21 @@ def report_from_segment_lengths(
         finite = series[np.isfinite(series) & (series > 0.0)]
         n_frames = int(series.shape[0])
         if finite.size == 0:
-            stats[name] = SegmentStats(name, seg.pair, ratio, 0.0, 0.0, 0.0, 0, n_frames)
+            stats[name] = SegmentStats(
+                name, seg.pair, ratio, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, n_frames
+            )
             continue
         median = float(np.median(finite))
         stats[name] = SegmentStats(
             name=name,
             pair=seg.pair,
             ratio=ratio,
+            mean_mm=float(np.mean(finite)),
             median_mm=median,
             std_mm=float(np.std(finite)),
             mad_mm=float(np.median(np.abs(finite - median))),
+            min_mm=float(np.min(finite)),
+            max_mm=float(np.max(finite)),
             n_valid=int(finite.size),
             n_frames=n_frames,
         )
@@ -488,6 +506,66 @@ def load_body_positions_from_csv(csv_path) -> dict[str, np.ndarray]:
     return positions
 
 
+def format_report_block(report: SegmentLengthReport, *, source: str | None = None) -> str:
+    """Render a nicely formatted, ASCII-only statistics block for the CLI.
+
+    A per-segment table (mean / median / std / CV / min / max / implied height)
+    followed by a general-statistics section.
+    """
+    width = 77
+    lines: list[str] = []
+    lines.append("=" * width)
+    lines.append("  BODY SEGMENT-LENGTH REPORT  (lengths in mm)")
+    if source:
+        lines.append(f"  source: {source}")
+    lines.append("=" * width)
+    lines.append(
+        f"  {'segment':<15}{'n':>5}{'mean':>8}{'median':>8}{'std':>7}"
+        f"{'cv%':>6}{'min':>8}{'max':>8}{'impl_H':>10}"
+    )
+    lines.append("  " + "-" * (width - 2))
+    for name in sorted(report.stats):
+        s = report.stats[name]
+        if s.n_valid == 0:
+            lines.append(f"  {name:<15}{0:>5}      (no valid frames)")
+            continue
+        lines.append(
+            f"  {name:<15}{s.n_valid:>5}{s.mean_mm:>8.1f}{s.median_mm:>8.1f}"
+            f"{s.std_mm:>7.1f}{s.cv * 100:>6.1f}{s.min_mm:>8.1f}{s.max_mm:>8.1f}"
+            f"{s.implied_height_mm:>10.0f}"
+        )
+    lines.append("  " + "-" * (width - 2))
+
+    assessable = report.assessable()
+    n_frames = max((s.n_frames for s in report.stats.values()), default=0)
+    coverage = (
+        float(np.mean([s.valid_fraction for s in report.stats.values()])) * 100.0
+        if report.stats else 0.0
+    )
+    lines.append("  GENERAL STATISTICS")
+    lines.append(f"    frames analyzed        : {n_frames}")
+    lines.append(f"    segments measured      : {len(assessable)} / {len(report.stats)}")
+    lines.append(f"    mean valid coverage    : {coverage:.1f}%")
+    implied = [s.implied_height_mm for s in assessable.values() if np.isfinite(s.implied_height_mm)]
+    if implied:
+        lines.append(
+            f"    implied height (mm)    : mean {np.mean(implied):.0f}  "
+            f"median {np.median(implied):.0f}  std {np.std(implied):.0f}  "
+            f"cv {report.implied_height_cv * 100:.1f}%"
+        )
+    if assessable:
+        mean_within = float(np.mean([s.cv for s in assessable.values()])) * 100.0
+        lines.append(f"    mean within-segment cv : {mean_within:.1f}%")
+    symmetry = report.symmetry_diffs()
+    if symmetry:
+        lines.append(
+            "    left/right symmetry    : "
+            + "  ".join(f"{p} {d * 100:.1f}%" for p, d in sorted(symmetry.items()))
+        )
+    lines.append("=" * width)
+    return "\n".join(lines)
+
+
 def _main(argv=None) -> int:
     """CLI: report body-segment proportions / human-shape for a processed recording.
 
@@ -511,9 +589,8 @@ def _main(argv=None) -> int:
         print(f"ERROR: {exc}")
         return 2
 
-    print(f"Reading body 3D data: {csv_path}")
     report = build_segment_length_report(load_body_positions_from_csv(csv_path))
-    print(report.summary())
+    print(format_report_block(report, source=str(csv_path)))
 
     violations = report.human_shape_violations(check_rigidity=True)
     if violations:

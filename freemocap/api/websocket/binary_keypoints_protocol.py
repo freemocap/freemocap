@@ -49,6 +49,7 @@ class MessageType(IntEnum):
 
 class BlockKind(IntEnum):
     KEYPOINTS_3D = 0
+    SKELETON_3D = 1
     SKELETON_OVERLAY_2D = 2
     CHARUCO_OVERLAY_2D = 3
 
@@ -107,12 +108,6 @@ PAYLOAD_HEADER_SIZE = KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE.itemsize
 PAYLOAD_FOOTER_SIZE = KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE.itemsize
 BLOCK_HEADER_SIZE = KEYPOINTS_BLOCK_HEADER_DTYPE.itemsize
 
-# Master switch for the binary keypoints wire format. When True (default),
-# keypoints travel as zero-copy float32 arrays — no Pydantic Point3d objects,
-# no JSON serialization. The aggregator and pipeline both read this flag.
-BINARY_KEYPOINTS_ENABLED: bool = True
-
-
 __all__ = (
     "MessageType",
     "BlockKind",
@@ -124,6 +119,5 @@ __all__ = (
     "PAYLOAD_HEADER_SIZE",
     "PAYLOAD_FOOTER_SIZE",
     "BLOCK_HEADER_SIZE",
-    "BINARY_KEYPOINTS_ENABLED",
     "numpy_dtype_for",
 )

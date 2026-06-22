@@ -10,7 +10,7 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
+import { DEFAULT_VISIBILITY, type Point3d, type BodyKinematics, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
@@ -60,6 +60,7 @@ const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFI
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 const comChan = makeChannel<Point3d | null>(null);
 const xcomChan = makeChannel<Point3d | null>(null);
+const bodyKinematicsChan = makeChannel<BodyKinematics | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -82,6 +83,8 @@ export const workerDataStore: KeypointsSource & {
     getLatestCenterOfMass: () => Point3d | null;
     subscribeToXcom: (cb: Listener<Point3d | null>) => () => void;
     getLatestXcom: () => Point3d | null;
+    subscribeToBodyKinematics: (cb: Listener<BodyKinematics | null>) => () => void;
+    getLatestBodyKinematics: () => BodyKinematics | null;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
@@ -126,6 +129,10 @@ export const workerDataStore: KeypointsSource & {
     subscribeToXcom: xcomChan.subscribe,
     getLatestXcom: xcomChan.getLatest,
 
+    // Centroidal kinematics bundle (reaction-mass ellipsoid + ground references)
+    subscribeToBodyKinematics: bodyKinematicsChan.subscribe,
+    getLatestBodyKinematics: bodyKinematicsChan.getLatest,
+
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
@@ -155,6 +162,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "xcom":
                 xcomChan.dispatch(data as Point3d | null);
+                break;
+            case "bodyKinematics":
+                bodyKinematicsChan.dispatch(data as BodyKinematics | null);
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);

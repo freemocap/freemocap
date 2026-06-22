@@ -25,6 +25,7 @@ export const KEYPOINTS_MESSAGE_TYPE = {
 
 export const BLOCK_KIND = {
     KEYPOINTS_3D: 0,
+    SKELETON_3D: 1,
     SKELETON_OVERLAY_2D: 2,
     CHARUCO_OVERLAY_2D: 3,
 } as const;

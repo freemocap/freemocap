@@ -23,11 +23,10 @@ import {
     isKeypointsMessage,
     parseKeypointsMessage,
 } from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
-import {Point3d} from "@/components/viewport3d";
+import {Point3d, BodyKinematics} from "@/components/viewport3d";
 import {
     KeypointsCallback,
     KeypointsFrame,
-    pointDictToFrame,
 } from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
@@ -86,6 +85,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const skeletonSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
     const centerOfMassSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
     const xcomSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
+    const bodyKinematicsSubscribersRef = useRef<Set<(bk: BodyKinematics | null) => void>>(new Set());
 
     // Holds the latest binary payload received from the WebSocket.
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
@@ -246,18 +246,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 );
             }
 
-            if (payload.keypoints && Object.keys(payload.keypoints as object).length > 0) {
-                const frame = pointDictToFrame(payload.keypoints as Record<string, {x:number;y:number;z:number}>);
-                keypointsRef.current = frame;
-                for (const cb of keypointsSubscribersRef.current) cb(frame);
-            }
-
-            if (payload.skeleton && Object.keys(payload.skeleton as object).length > 0) {
-                const frame = pointDictToFrame(payload.skeleton as Record<string, {x:number;y:number;z:number}>);
-                skeletonRef.current = frame;
-                for (const cb of skeletonSubscribersRef.current) cb(frame);
-            }
-
             if (payload.center_of_mass) {
                 const comPoint: Point3d = {
                     x: (payload.center_of_mass as Point3d).x,
@@ -275,6 +263,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 };
                 for (const cb of xcomSubscribersRef.current) cb(xcomPoint);
             }
+
+            const bodyKinematics = payload.body_kinematics ?? null;
+            for (const cb of bodyKinematicsSubscribersRef.current) cb(bodyKinematics);
         };
 
         const dispatchBinaryKeypoints = (buf: ArrayBuffer): void => {
@@ -297,6 +288,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 if (block.kind === BLOCK_KIND.KEYPOINTS_3D) {
                     keypointsRef.current = frame;
                     for (const cb of keypointsSubscribersRef.current) cb(frame);
+                } else if (block.kind === BLOCK_KIND.SKELETON_3D) {
+                    skeletonRef.current = frame;
+                    for (const cb of skeletonSubscribersRef.current) cb(frame);
                 }
             }
         };
@@ -517,6 +511,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
+    const subscribeToBodyKinematics = useCallback((cb: (bk: BodyKinematics | null) => void): () => void => {
+        bodyKinematicsSubscribersRef.current.add(cb);
+        return () => {
+            bodyKinematicsSubscribersRef.current.delete(cb);
+        };
+    }, []);
+
     const getLatestKeypoints = useCallback((): KeypointsFrame | null => {
         return keypointsRef.current;
     }, []);
@@ -563,13 +564,14 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToSkeleton,
         subscribeToCenterOfMass,
         subscribeToXcom,
+        subscribeToBodyKinematics,
         getLatestKeypoints,
         getLatestSkeleton,
         setOverlayVisibility,
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

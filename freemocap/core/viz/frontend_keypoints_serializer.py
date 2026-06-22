@@ -118,12 +118,16 @@ def build_keypoints_payload(
         tracker_id: str,
         point_names: tuple[str, ...] | list[str],
         keypoints_arrays: dict[str, np.ndarray],
+        skeleton_arrays: dict[str, np.ndarray] | None = None,
 ) -> bytearray:
-    """Serialize the per-frame 3D keypoints into the binary wire format.
+    """Serialize the per-frame 3D keypoints + skeleton into the binary wire format.
 
-    Sends RTMPose points in a single schema-backed block plus a second
-    block with embedded point names for charuco/aruco calibration corners
-    that have no tracker schema on the frontend.
+    Emits, in order:
+      * a schema-backed KEYPOINTS_3D block of RTMPose points,
+      * an embedded-names KEYPOINTS_3D block for charuco/aruco calibration
+        corners (no tracker schema on the frontend), when present,
+      * an embedded-names SKELETON_3D block of the FABRIK-fitted canonical
+        body + hand landmarks, when present.
     """
     blocks: list[bytes] = []
 
@@ -150,6 +154,20 @@ def build_keypoints_payload(
                 tracker_id="calib3d",
                 point_names=calib_names,
                 sparse_arrays=calib_arrays,
+                embed_names=True,
+            )
+        )
+
+    # FABRIK-fitted canonical skeleton (body + hands). Mixed canonical/tracker
+    # naming, so point names travel embedded in the block (self-describing).
+    if skeleton_arrays:
+        skeleton_names = list(skeleton_arrays.keys())
+        blocks.append(
+            _build_block(
+                kind=BlockKind.SKELETON_3D,
+                tracker_id="skeleton3d",
+                point_names=skeleton_names,
+                sparse_arrays=skeleton_arrays,
                 embed_names=True,
             )
         )

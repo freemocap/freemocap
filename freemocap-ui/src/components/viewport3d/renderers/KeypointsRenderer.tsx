@@ -46,6 +46,21 @@ function getKeypointRadius(name: string): number {
     }
 }
 
+/**
+ * Content-equality for point-name lists. The worker boundary structured-clones
+ * each frame, so `frame.pointNames` is a fresh array reference every frame even
+ * when the names are unchanged — a reference check would rebuild the index maps
+ * every frame. Comparing by content fires the rebuild only on a real schema /
+ * landmark-set change.
+ */
+function samePointNames(a: readonly string[], b: readonly string[] | null): boolean {
+    if (b === null || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // KeypointLayer — one instanced‑mesh pass (raw or filtered).
 // ---------------------------------------------------------------------------
@@ -101,7 +116,8 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
             invalidate();
 
             // Only rebuild index maps when the point-name list changes (e.g. on schema switch).
-            if (frame.pointNames !== lastPointNamesRef.current) {
+            // Content comparison, not reference: the worker boundary clones each frame.
+            if (!samePointNames(frame.pointNames, lastPointNamesRef.current)) {
                 lastPointNamesRef.current = frame.pointNames;
                 frameIdxByName.current.clear();
                 for (let i = 0; i < frame.pointNames.length; i++) {

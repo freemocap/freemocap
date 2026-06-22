@@ -13,6 +13,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
+from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
 from freemocap.core.types.type_overloads import (
@@ -113,11 +114,11 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
-    keypoints: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
     keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     center_of_mass_result: CenterOfMassResult | None = None
     xcom: Point3d | None = None
     skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
+    body_kinematics: BodyKinematicsState | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

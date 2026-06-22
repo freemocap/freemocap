@@ -165,35 +165,4 @@ export function parseKeypointsMessage(buf: ArrayBuffer): ParsedKeypointsMessage 
     return { frameNumber, blocks };
 }
 
-export interface Point3dLike { x: number; y: number; z: number; }
-
-/**
- * Materialize a `Record<string, Point3d>` keyed by point name from a 3D block.
- * Skips rows where visibility is 0 or any coordinate is NaN — matches the
- * sparse-dict semantics of the legacy JSON path. Allocates one object per
- * visible point; intended as a drop-in replacement for the JSON dispatch
- * path during step 1 of the refactor.
- */
-export function blockToPointDict(
-    block: KeypointBlock,
-    pointNames: ReadonlyArray<string>,
-): Record<string, Point3dLike> {
-    if (block.dims !== 3) return {};
-    const out: Record<string, Point3dLike> = {};
-    const arr = block.interleaved;
-    const stride = block.dims + 1;
-    const limit = Math.min(block.numPoints, pointNames.length);
-    for (let i = 0; i < limit; i++) {
-        const off = i * stride;
-        const visibility = arr[off + 3];
-        if (!visibility) continue;
-        const x = arr[off + 0];
-        const y = arr[off + 1];
-        const z = arr[off + 2];
-        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
-        out[pointNames[i]] = { x, y, z };
-    }
-    return out;
-}
-
 export { BLOCK_KIND };

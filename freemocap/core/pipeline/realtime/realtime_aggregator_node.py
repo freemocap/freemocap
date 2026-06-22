@@ -32,6 +32,7 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     calculate_center_of_mass_per_frame,
     calculate_xcom,
 )
+from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
 from freemocap.core.tasks.mocap.realtime_skeleton_fitter import (
     RealtimeSkeletonFitter,
     SkeletonFittingResult,
@@ -44,7 +45,6 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellyforge.data_models.trajectory_3d import Point3d
 
-from freemocap.api.websocket.binary_keypoints_protocol import BINARY_KEYPOINTS_ENABLED
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -98,14 +98,6 @@ def _merge_triangulated_arrays(
         if np.any(np.isnan(coords)):
             continue
         into[point_name] = coords
-
-
-def _arrays_to_point3d(arrays: dict[str, np.ndarray]) -> dict[str, Point3d]:
-    """Convert dict of {name: ndarray(3,)} to dict of {name: Point3d}. Done once at the end."""
-    return {
-        name: Point3d(x=float(arr[0]), y=float(arr[1]), z=float(arr[2]))
-        for name, arr in arrays.items()
-    }
 
 
 @dataclass
@@ -277,6 +269,8 @@ class RealtimeAggregatorNode(AggregatorNode):
         # XCoM velocity tracking: previous CoM position + timestamp for dt.
         prev_com: np.ndarray | None = None
         prev_com_time: float | None = None
+        # Centroidal kinematics (inertia ellipsoid + ground references) per frame.
+        streaming_kinematics = StreamingKinematics()
 
         timing_reporter: PipelineTimingReporter | None = None
         timing_reporter_stop: threading.Event | None = None
@@ -335,6 +329,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         point_gate.reset()
                         prev_com = None
                         prev_com_time = None
+                        streaming_kinematics.reset()
                         # Rebuild skeleton fitter from scratch (segment-length
                         # stats are in the old coordinate frame)
                         if skeleton_fitter is not None:
@@ -492,6 +487,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 skeleton_keypoints: dict[str, np.ndarray] = {}
                 com_result: CenterOfMassResult | None = None
                 xcom: Point3d | None = None
+                body_kinematics = None
                 fitted_result: SkeletonFittingResult | None = None
                 if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
@@ -612,6 +608,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = com_result.total_body_com.copy()
                         prev_com_time = now_com
 
+                        # ---- Centroidal kinematics (inertia ellipsoid + ground refs) ----
+                        if not np.any(np.isnan(com_result.total_body_com)):
+                            body_kinematics = streaming_kinematics.update(
+                                t=now_com,
+                                whole_body_com=com_result.total_body_com,
+                                segment_coms=com_result.segment_coms,
+                                segment_masses=biomechanics.mass_percentages,
+                            )
+
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
                     timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
@@ -633,10 +638,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                         pipeline_config=pipeline_config,
                         camera_group_id=camera_group_id,
                         camera_node_outputs=frame_n_outputs,
-                        keypoints=(
-                            {} if BINARY_KEYPOINTS_ENABLED
-                            else _arrays_to_point3d(filtered_keypoints)
-                        ),
                         keypoints_arrays=filtered_keypoints,
                         center_of_mass_result=com_result,
                         xcom=xcom,
@@ -649,6 +650,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             if fitted_result is not None
                             else None
                         ),
+                        body_kinematics=body_kinematics,
                     ),
                 )
                 # Mark the slot as full and not-yet-consumed; the consumer

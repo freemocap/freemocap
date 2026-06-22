@@ -403,7 +403,7 @@ export const FileKeypointsSourceProvider: React.FC<{
                 const tBuilt = performance.now();
                 console.info(
                     `[FileKeypointsSource] parquet ready: ${frameCol.length} rows, ${frameCount} frames, ` +
-                    `raw K=${rawTraj.keypointCount}, filtered K=${filteredTraj.keypointCount} ` +
+                    `K=${traj.keypointCount} ` +
                     `(fetch ${(tFetched - t0) | 0}ms, decode ${(tDecoded - tFetched) | 0}ms, pivot ${(tBuilt - tDecoded) | 0}ms)`
                 );
 

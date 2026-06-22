@@ -32,7 +32,6 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
-from freemocap.api.websocket.binary_keypoints_protocol import BINARY_KEYPOINTS_ENABLED
 from freemocap.core.viz.frontend_keypoints_serializer import build_keypoints_payload
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -361,14 +360,13 @@ class RealtimePipeline:
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            keypoints_binary_payload: bytearray | None = None
-            if BINARY_KEYPOINTS_ENABLED:
-                keypoints_binary_payload = build_keypoints_payload(
-                    frame_number=aggregation_output.frame_number,
-                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                    keypoints_arrays=aggregation_output.keypoints_arrays,
-                )
+            keypoints_binary_payload = build_keypoints_payload(
+                frame_number=aggregation_output.frame_number,
+                tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+                point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
+                keypoints_arrays=aggregation_output.keypoints_arrays,
+                skeleton_arrays=aggregation_output.skeleton,
+            )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,

@@ -128,6 +128,52 @@ def test_first_byte_is_payload_header_message_type():
     assert int(MessageType.KEYPOINTS_PAYLOAD_HEADER) >= 3  # avoids skellycam image protocol values 0/1/2
 
 
+def test_skeleton_block_round_trip():
+    # The FABRIK skeleton rides the binary path as a SKELETON_3D block with
+    # embedded names (mixed canonical body + tracker hand naming).
+    skeleton = {
+        "left_shoulder": np.array([1.0, 2.0, 3.0], dtype=np.float64),
+        "right_hand_thumb1": np.array([4.0, 5.0, 6.0], dtype=np.float64),
+    }
+    blob = build_keypoints_payload(
+        frame_number=7,
+        tracker_id="rtmpose_wholebody",
+        point_names=POINT_NAMES,
+        keypoints_arrays={},          # no keypoints/calib → schema block + skeleton block
+        skeleton_arrays=skeleton,
+    )
+    buf = bytes(blob)
+
+    header = np.frombuffer(buf[:PAYLOAD_HEADER_SIZE], dtype=KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE)[0]
+    assert int(header["num_blocks"]) == 2  # keypoints (schema) + skeleton
+
+    # Block 1: the (all-NaN) keypoints schema block — skip past it.
+    cursor = PAYLOAD_HEADER_SIZE
+    b1 = np.frombuffer(buf[cursor:cursor + BLOCK_HEADER_SIZE], dtype=KEYPOINTS_BLOCK_HEADER_DTYPE)[0]
+    assert int(b1["block_kind"]) == int(BlockKind.KEYPOINTS_3D)
+    cursor += BLOCK_HEADER_SIZE + int(b1["data_byte_length"])
+
+    # Block 2: the skeleton block with embedded names.
+    b2 = np.frombuffer(buf[cursor:cursor + BLOCK_HEADER_SIZE], dtype=KEYPOINTS_BLOCK_HEADER_DTYPE)[0]
+    assert int(b2["block_kind"]) == int(BlockKind.SKELETON_3D)
+    assert b2["tracker_id"].decode("ascii").rstrip("\x00") == "skeleton3d"
+    assert int(b2["num_points"]) == 2
+    cursor += BLOCK_HEADER_SIZE
+
+    data = buf[cursor:cursor + int(b2["data_byte_length"])]
+    # embed_names layout: [u4 names_len][names_blob \0-delimited][float32 data]
+    names_len = int(np.frombuffer(data[:4], dtype="<u4")[0])
+    names = [n for n in data[4:4 + names_len].decode("ascii").split("\x00") if n]
+    assert names == ["left_shoulder", "right_hand_thumb1"]
+
+    floats = np.frombuffer(
+        data[4 + names_len:], dtype=numpy_dtype_for(Dtype.FLOAT32),
+    ).reshape(2, 4)
+    np.testing.assert_array_equal(floats[0, :3], np.array([1, 2, 3], dtype=np.float32))
+    np.testing.assert_array_equal(floats[1, :3], np.array([4, 5, 6], dtype=np.float32))
+    assert floats[0, 3] == 1.0 and floats[1, 3] == 1.0
+
+
 def test_tracker_id_truncates_safely_on_overlong_input():
     # Defensive: if a tracker ever has a name >16 chars, we should still emit
     # a valid blob (truncated id), not crash.

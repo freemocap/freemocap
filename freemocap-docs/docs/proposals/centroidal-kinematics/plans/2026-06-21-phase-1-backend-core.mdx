@@ -1,0 +1,650 @@
+---
+sidebar_position: 1
+title: "Phase 1 — Backend Core (Execution Plan)"
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Phase 1 — Backend Core Implementation Plan
+
+> **For workers:** Implement task-by-task with `superpowers:executing-plans` (inline; subagent
+> dispatch is unavailable in this environment). Steps use checkbox (`- [ ]`) syntax for tracking.
+>
+> **Git note:** This repo's workflow keeps git manual. Tasks end with a **test checkpoint**,
+> not a commit. Commit at your own cadence.
+
+**Goal:** Compute, per realtime frame, the composite centroidal inertia (point-mass), its
+display ellipsoid, and the ground-reference points (CoP, XCoM, CMP), bundle them into a
+`BodyKinematicsState`, and put that on the existing aggregator → frontend payload channel.
+
+**Architecture:** A new `freemocap/core/kinematics/` module of pure, unit-tested functions
+(`inertial/composite_inertia.py`, `inertial/ground_reference.py`), a `BodyKinematicsState`
+msgspec struct, and an `online/streaming_kinematics.py` per-frame wrapper that holds a short
+CoM history for velocity/acceleration. The realtime aggregator calls the wrapper after its CoM
+step and attaches the result to `AggregationNodeOutputMessage` and `FrontendPayload`.
+
+**Tech stack:** Python, numpy, msgspec, pytest. No new third-party dependencies. No orientation
+math (deferred to Phase 3), so the bs ontology port is **not** needed here.
+
+<Tip shortInfo="Scope: backend only. Frontend Three.js rendering of the ellipsoid + ground overlay is a separate plan. This plan ends with the data correctly serialized into FrontendPayload." />
+
+---
+
+## File structure
+
+| File | Responsibility |
+|---|---|
+| `freemocap/core/kinematics/__init__.py` | package marker |
+| `freemocap/core/kinematics/inertial/__init__.py` | package marker |
+| `freemocap/core/kinematics/inertial/composite_inertia.py` | `I_G` (point-mass), eigendecomposition, display semi-axes |
+| `freemocap/core/kinematics/inertial/ground_reference.py` | CoP, XCoM, CMP |
+| `freemocap/core/kinematics/body_kinematics_state.py` | `BodyKinematicsState` msgspec struct |
+| `freemocap/core/kinematics/online/__init__.py` | package marker |
+| `freemocap/core/kinematics/online/streaming_kinematics.py` | per-frame wrapper + CoM history |
+| `freemocap/tests/kinematics/test_composite_inertia.py` | unit tests |
+| `freemocap/tests/kinematics/test_ground_reference.py` | unit tests |
+| `freemocap/tests/kinematics/test_streaming_kinematics.py` | unit tests |
+| `freemocap/core/pipeline/realtime/realtime_aggregator_node.py` | wire in the wrapper (modify) |
+| `freemocap/pubsub/pubsub_topics.py` | add `body_kinematics` to `AggregationNodeOutputMessage` (modify) |
+| `freemocap/core/viz/frontend_payload.py` | add `body_kinematics` to `FrontendPayload` (modify) |
+
+---
+
+## Task 1: Composite centroidal inertia (point-mass) — ✅ done
+
+**Files:**
+- Create: `freemocap/core/kinematics/__init__.py` (empty)
+- Create: `freemocap/core/kinematics/inertial/__init__.py` (empty)
+- Create: `freemocap/core/kinematics/inertial/composite_inertia.py`
+- Test: `freemocap/tests/kinematics/test_composite_inertia.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+# freemocap/tests/kinematics/test_composite_inertia.py
+import numpy as np
+from freemocap.core.kinematics.inertial.composite_inertia import (
+    composite_centroidal_inertia,
+)
+
+
+def test_point_mass_pair_on_x_axis():
+    # Two unit masses at x = +/-1 about the origin.
+    # A point mass m at r contributes m((r.r)I - r r^T).
+    # On the x-axis that is diag(0, 1, 1); two of them -> diag(0, 2, 2).
+    inertia = composite_centroidal_inertia(
+        segment_masses={"a": 1.0, "b": 1.0},
+        segment_coms={"a": np.array([1.0, 0.0, 0.0]), "b": np.array([-1.0, 0.0, 0.0])},
+        whole_body_com=np.zeros(3),
+    )
+    assert np.allclose(np.diag(inertia), [0.0, 2.0, 2.0])
+    assert np.allclose(inertia, inertia.T)  # symmetric
+    assert np.allclose(inertia - np.diag(np.diag(inertia)), 0.0)  # no products
+```
+
+- [ ] **Step 2: Run it, confirm it fails**
+
+Run: `pytest freemocap/tests/kinematics/test_composite_inertia.py -v`
+Expected: FAIL (ModuleNotFoundError / ImportError — module not created yet).
+
+- [ ] **Step 3: Implement**
+
+```python
+# freemocap/core/kinematics/inertial/composite_inertia.py
+"""Composite centroidal inertia (CCRBI) and its display ellipsoid.
+
+Point-mass form for Phase 1: each segment contributes only the parallel-axis
+("orbital") term m((d.d)I - d d^T). Segment self-inertia J_i is added in Phase 2.
+"""
+from __future__ import annotations
+
+import numpy as np
+
+
+def composite_centroidal_inertia(
+    *,
+    segment_masses: dict[str, float],
+    segment_coms: dict[str, np.ndarray],
+    whole_body_com: np.ndarray,
+    segment_inertias: dict[str, np.ndarray] | None = None,
+) -> np.ndarray:
+    """Composite centroidal inertia tensor I_G (3x3, symmetric).
+
+    Sums the parallel-axis contribution of every segment whose CoM is present.
+    ``segment_inertias`` (per-segment J_i about its own CoM, world frame) is
+    optional and unused in Phase 1.
+    """
+    inertia = np.zeros((3, 3), dtype=np.float64)
+    for name, com in segment_coms.items():
+        mass = segment_masses.get(name, 0.0)
+        if mass <= 0.0:
+            continue
+        d = np.asarray(com, dtype=np.float64) - whole_body_com
+        inertia += mass * (float(d @ d) * np.eye(3) - np.outer(d, d))
+        if segment_inertias is not None and name in segment_inertias:
+            inertia += segment_inertias[name]
+    return inertia
+```
+
+- [ ] **Step 4: Run it, confirm it passes**
+
+Run: `pytest freemocap/tests/kinematics/test_composite_inertia.py -v`
+Expected: PASS.
+
+- [ ] **Step 5: Checkpoint** — `pytest freemocap/tests/kinematics/ -v` is green.
+
+---
+
+## Task 2: Eigendecomposition + display ellipsoid — ✅ done
+
+**Files:**
+- Modify: `freemocap/core/kinematics/inertial/composite_inertia.py`
+- Test: `freemocap/tests/kinematics/test_composite_inertia.py`
+
+- [ ] **Step 1: Add failing tests**
+
+```python
+# append to freemocap/tests/kinematics/test_composite_inertia.py
+from freemocap.core.kinematics.inertial.composite_inertia import (
+    principal_axes_and_moments,
+    equimomental_semi_axes,
+)
+
+
+def test_principal_axes_and_moments_diagonal():
+    inertia = np.diag([2.0, 5.0, 9.0])
+    moments, axes = principal_axes_and_moments(inertia)
+    assert np.allclose(moments, [2.0, 5.0, 9.0])      # ascending
+    assert np.allclose(np.abs(axes), np.eye(3))        # axis-aligned (up to sign)
+
+
+def test_equimomental_semi_axes_uniform_sphere():
+    # A solid sphere of mass M, radius R has I = (2/5) M R^2 on every axis.
+    # The equimomental ellipsoid of that inertia is the sphere: a = b = c = R.
+    m, r = 3.0, 10.0
+    iso = (2.0 / 5.0) * m * r**2
+    semi = equimomental_semi_axes(moments=np.array([iso, iso, iso]), total_mass=m)
+    assert np.allclose(semi, [r, r, r])
+```
+
+- [ ] **Step 2: Run, confirm fail**
+
+Run: `pytest freemocap/tests/kinematics/test_composite_inertia.py -v`
+Expected: FAIL (functions not defined).
+
+- [ ] **Step 3: Implement**
+
+```python
+# append to freemocap/core/kinematics/inertial/composite_inertia.py
+
+
+def principal_axes_and_moments(inertia: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Eigendecomposition of a symmetric inertia tensor.
+
+    Returns ``(moments, axes)``: ``moments`` ascending (3,); ``axes`` columns are
+    the corresponding principal-axis unit vectors (3, 3).
+    """
+    moments, axes = np.linalg.eigh(inertia)
+    return moments, axes
+
+
+def equimomental_semi_axes(*, moments: np.ndarray, total_mass: float) -> np.ndarray:
+    """Semi-axes of the uniform solid ellipsoid with the given principal moments.
+
+    For a uniform solid ellipsoid (semi-axes a,b,c) of mass M:
+        I_x = M (b^2 + c^2) / 5   (and cyclic),
+    which inverts to  a^2 = (5 / (2 M)) (I_y + I_z - I_x).
+    The bracket is non-negative for any physical inertia (triangle inequality of
+    principal moments); tiny negative values from numeric noise are clamped to 0.
+    """
+    if total_mass <= 0.0:
+        raise ValueError(f"total_mass must be positive, got {total_mass}")
+    ix, iy, iz = float(moments[0]), float(moments[1]), float(moments[2])
+    raw = np.array([iy + iz - ix, ix + iz - iy, ix + iy - iz], dtype=np.float64)
+    if np.any(raw < -1e-6 * max(ix, iy, iz, 1.0)):
+        raise ValueError(f"principal moments violate the triangle inequality: {moments}")
+    return np.sqrt(np.clip(raw, 0.0, None) * (5.0 / (2.0 * total_mass)))
+```
+
+- [ ] **Step 4: Run, confirm pass**
+
+Run: `pytest freemocap/tests/kinematics/test_composite_inertia.py -v`
+Expected: PASS.
+
+- [ ] **Step 5: Checkpoint** — `pytest freemocap/tests/kinematics/ -v` green.
+
+---
+
+## Task 3: Ground-reference points (CoP, XCoM, CMP) — ✅ done
+
+**Files:**
+- Create: `freemocap/core/kinematics/inertial/ground_reference.py`
+- Test: `freemocap/tests/kinematics/test_ground_reference.py`
+
+- [ ] **Step 1: Write failing tests**
+
+```python
+# freemocap/tests/kinematics/test_ground_reference.py
+import numpy as np
+import pytest
+from freemocap.core.kinematics.inertial.ground_reference import (
+    GRAVITY_MM_S2,
+    center_of_pressure_ground_projection,
+    extrapolated_center_of_mass,
+    centroidal_moment_pivot,
+)
+
+
+def test_cop_is_com_dropped_to_ground():
+    cop = center_of_pressure_ground_projection(np.array([120.0, -45.0, 1000.0]))
+    assert np.allclose(cop, [120.0, -45.0, 0.0])
+
+
+def test_xcom_offset_scales_with_velocity():
+    # omega0 = sqrt(g/l); with l = 1000 mm, omega0 = sqrt(9.81) ~= 3.1321.
+    # v_x chosen so v_x/omega0 == 100 mm.
+    l = 1000.0
+    omega0 = np.sqrt(GRAVITY_MM_S2 / l)
+    com = np.array([0.0, 0.0, l])
+    vel = np.array([100.0 * omega0, 0.0, 0.0])
+    xcom = extrapolated_center_of_mass(com=com, com_velocity=vel)
+    assert np.allclose(xcom, [100.0, 0.0, 0.0])
+
+
+def test_cmp_equals_cop_when_static():
+    # Zero CoM acceleration -> ground reaction force is vertical -> CMP == CoP.
+    com = np.array([30.0, 10.0, 900.0])
+    cmp = centroidal_moment_pivot(com=com, com_acceleration=np.zeros(3))
+    assert np.allclose(cmp, [30.0, 10.0, 0.0])
+
+
+def test_xcom_requires_positive_height():
+    with pytest.raises(ValueError):
+        extrapolated_center_of_mass(
+            com=np.array([0.0, 0.0, -5.0]), com_velocity=np.zeros(3)
+        )
+```
+
+- [ ] **Step 2: Run, confirm fail**
+
+Run: `pytest freemocap/tests/kinematics/test_ground_reference.py -v`
+Expected: FAIL (module missing).
+
+- [ ] **Step 3: Implement**
+
+```python
+# freemocap/core/kinematics/inertial/ground_reference.py
+"""Ground-reference points: CoP (estimated), XCoM (= capture point), CMP.
+
+All inputs/outputs are in millimeters; z is the vertical (up) axis and the ground
+plane is z = 0, matching the realtime pipeline's calibrated coordinate frame.
+"""
+from __future__ import annotations
+
+import numpy as np
+
+GRAVITY_MM_S2: float = 9810.0  # 9.81 m/s^2 in mm units
+
+
+def center_of_pressure_ground_projection(whole_body_com: np.ndarray) -> np.ndarray:
+    """Estimated CoP: the vertical ground projection of the CoM.
+
+    A markerless system has no force plate, so this is an estimate (good for quiet
+    stance, increasingly approximate during dynamic motion). Callers should flag it
+    as estimated.
+    """
+    return np.array([whole_body_com[0], whole_body_com[1], 0.0])
+
+
+def extrapolated_center_of_mass(
+    *, com: np.ndarray, com_velocity: np.ndarray, gravity: float = GRAVITY_MM_S2
+) -> np.ndarray:
+    """XCoM (Hof 2008) = instantaneous capture point: CoM_ground + v / omega0."""
+    height = float(com[2])
+    if height <= 0.0:
+        raise ValueError(f"CoM height must be positive, got {height}")
+    omega0 = np.sqrt(gravity / height)
+    return np.array([
+        com[0] + com_velocity[0] / omega0,
+        com[1] + com_velocity[1] / omega0,
+        0.0,
+    ])
+
+
+def centroidal_moment_pivot(
+    *, com: np.ndarray, com_acceleration: np.ndarray, gravity: float = GRAVITY_MM_S2
+) -> np.ndarray:
+    """CMP from CoM kinematics.
+
+    With only gravity and the ground acting, the ground reaction force is
+    F = M (a - g_vec) with g_vec = (0, 0, -g), so F is proportional to
+    (a_x, a_y, a_z + g) and the total mass cancels. The CMP is where the line
+    through the CoM along F meets the ground.
+    """
+    f_vertical = float(com_acceleration[2]) + gravity
+    if f_vertical <= 0.0:
+        raise ValueError(
+            f"vertical reaction force non-positive (a_z={com_acceleration[2]}); "
+            f"CMP undefined on the ground plane"
+        )
+    z = float(com[2])
+    return np.array([
+        com[0] - (com_acceleration[0] / f_vertical) * z,
+        com[1] - (com_acceleration[1] / f_vertical) * z,
+        0.0,
+    ])
+```
+
+- [ ] **Step 4: Run, confirm pass**
+
+Run: `pytest freemocap/tests/kinematics/test_ground_reference.py -v`
+Expected: PASS.
+
+- [ ] **Step 5: Checkpoint** — `pytest freemocap/tests/kinematics/ -v` green.
+
+---
+
+## Task 4: `BodyKinematicsState` bundle — ✅ done
+
+**Files:**
+- Create: `freemocap/core/kinematics/body_kinematics_state.py`
+
+No new unit test (a plain data container); it is exercised by Task 5's tests.
+
+- [ ] **Step 1: Implement**
+
+```python
+# freemocap/core/kinematics/body_kinematics_state.py
+"""Per-frame centroidal-kinematics bundle streamed to the frontend.
+
+Phase 1 carries the point-mass inertia ellipsoid (as a basis + semi-axes; a
+quaternion form arrives with the ontology port in Phase 3) and the ground
+references. H_G / omega are added in Phase 2.
+"""
+from __future__ import annotations
+
+import msgspec
+from skellyforge.data_models.trajectory_3d import Point3d
+
+
+class BodyKinematicsState(msgspec.Struct):
+    center_of_mass: Point3d
+    com_velocity: Point3d | None = None
+
+    # ground references
+    center_of_pressure: Point3d | None = None  # estimated (no force plate)
+    xcom: Point3d | None = None                # = instantaneous capture point
+    cmp: Point3d | None = None
+
+    # reaction-mass ellipsoid (point-mass, Phase 1)
+    ellipsoid_semi_axes: Point3d | None = None
+    ellipsoid_axis_x: Point3d | None = None
+    ellipsoid_axis_y: Point3d | None = None
+    ellipsoid_axis_z: Point3d | None = None
+
+    cop_is_estimated: bool = True
+```
+
+- [ ] **Step 2: Checkpoint** — `python -c "from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState"` runs clean.
+
+---
+
+## Task 5: `StreamingKinematics` per-frame wrapper — ✅ done
+
+**Files:**
+- Create: `freemocap/core/kinematics/online/__init__.py` (empty)
+- Create: `freemocap/core/kinematics/online/streaming_kinematics.py`
+- Test: `freemocap/tests/kinematics/test_streaming_kinematics.py`
+
+- [ ] **Step 1: Write failing tests**
+
+```python
+# freemocap/tests/kinematics/test_streaming_kinematics.py
+import numpy as np
+from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
+
+
+def _masses():
+    return {"a": 1.0, "b": 1.0}
+
+
+def _coms_at(x_offset):
+    # two masses straddling the x-offset, CoM height 1000 mm
+    return {
+        "a": np.array([x_offset + 1.0, 0.0, 1000.0]),
+        "b": np.array([x_offset - 1.0, 0.0, 1000.0]),
+    }, np.array([x_offset, 0.0, 1000.0])
+
+
+def test_first_frame_has_ellipsoid_but_no_derivatives():
+    sk = StreamingKinematics()
+    coms, com = _coms_at(0.0)
+    state = sk.update(t=0.0, whole_body_com=com, segment_coms=coms, segment_masses=_masses())
+    assert state.center_of_mass.x == 0.0
+    assert state.ellipsoid_semi_axes is not None      # ellipsoid needs no history
+    assert state.com_velocity is None                  # no velocity yet
+    assert state.xcom is None                          # needs velocity
+    assert state.cmp is None                           # needs acceleration
+
+
+def test_velocity_and_xcom_after_two_frames():
+    sk = StreamingKinematics()
+    c0, com0 = _coms_at(0.0)
+    sk.update(t=0.0, whole_body_com=com0, segment_coms=c0, segment_masses=_masses())
+    c1, com1 = _coms_at(10.0)  # moved +10 mm in x over 1 s
+    state = sk.update(t=1.0, whole_body_com=com1, segment_coms=c1, segment_masses=_masses())
+    assert state.com_velocity is not None
+    assert np.isclose(state.com_velocity.x, 10.0)      # 10 mm / 1 s
+    assert state.xcom is not None
+    assert state.cmp is None                            # still need a 3rd frame
+```
+
+- [ ] **Step 2: Run, confirm fail**
+
+Run: `pytest freemocap/tests/kinematics/test_streaming_kinematics.py -v`
+Expected: FAIL (module missing).
+
+- [ ] **Step 3: Implement**
+
+```python
+# freemocap/core/kinematics/online/streaming_kinematics.py
+"""Per-frame driver: turns a CoM result + segment data into a BodyKinematicsState.
+
+Holds a short CoM history so velocity (>=2 samples) and acceleration (>=3 samples)
+can be finite-differenced online, mirroring the aggregator's existing prev_com
+pattern. Ellipsoid + CoP need no history and are always emitted.
+"""
+from __future__ import annotations
+
+from collections import deque
+
+import numpy as np
+from skellyforge.data_models.trajectory_3d import Point3d
+
+from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
+from freemocap.core.kinematics.inertial.composite_inertia import (
+    composite_centroidal_inertia,
+    principal_axes_and_moments,
+    equimomental_semi_axes,
+)
+from freemocap.core.kinematics.inertial.ground_reference import (
+    center_of_pressure_ground_projection,
+    extrapolated_center_of_mass,
+    centroidal_moment_pivot,
+)
+
+
+def _p3(vec: np.ndarray) -> Point3d:
+    return Point3d(x=float(vec[0]), y=float(vec[1]), z=float(vec[2]))
+
+
+class StreamingKinematics:
+    def __init__(self) -> None:
+        self._history: deque[tuple[float, np.ndarray]] = deque(maxlen=3)
+
+    def reset(self) -> None:
+        self._history.clear()
+
+    def update(
+        self,
+        *,
+        t: float,
+        whole_body_com: np.ndarray,
+        segment_coms: dict[str, np.ndarray],
+        segment_masses: dict[str, float],
+    ) -> BodyKinematicsState:
+        com = np.asarray(whole_body_com, dtype=np.float64)
+        self._history.append((t, com.copy()))
+
+        # --- ellipsoid (no history needed) ---
+        inertia = composite_centroidal_inertia(
+            segment_masses=segment_masses,
+            segment_coms=segment_coms,
+            whole_body_com=com,
+        )
+        total_mass = sum(segment_masses.get(n, 0.0) for n in segment_coms)
+        moments, axes = principal_axes_and_moments(inertia)
+        semi = equimomental_semi_axes(moments=moments, total_mass=total_mass)
+
+        # --- derivatives from history ---
+        velocity = self._velocity()
+        acceleration = self._acceleration()
+
+        xcom = None
+        cmp = None
+        velocity_p3 = None
+        if velocity is not None:
+            velocity_p3 = _p3(velocity)
+            if com[2] > 0.0:
+                xcom = _p3(extrapolated_center_of_mass(com=com, com_velocity=velocity))
+        if acceleration is not None and (acceleration[2] + 9810.0) > 0.0:
+            cmp = _p3(centroidal_moment_pivot(com=com, com_acceleration=acceleration))
+
+        return BodyKinematicsState(
+            center_of_mass=_p3(com),
+            com_velocity=velocity_p3,
+            center_of_pressure=_p3(center_of_pressure_ground_projection(com)),
+            xcom=xcom,
+            cmp=cmp,
+            ellipsoid_semi_axes=_p3(semi),
+            ellipsoid_axis_x=_p3(axes[:, 0]),
+            ellipsoid_axis_y=_p3(axes[:, 1]),
+            ellipsoid_axis_z=_p3(axes[:, 2]),
+            cop_is_estimated=True,
+        )
+
+    def _velocity(self) -> np.ndarray | None:
+        if len(self._history) < 2:
+            return None
+        (t0, p0), (t1, p1) = self._history[-2], self._history[-1]
+        dt = t1 - t0
+        if dt <= 0.0:
+            return None
+        return (p1 - p0) / dt
+
+    def _acceleration(self) -> np.ndarray | None:
+        if len(self._history) < 3:
+            return None
+        (t0, p0), (t1, p1), (t2, p2) = self._history[-3], self._history[-2], self._history[-1]
+        dt1, dt2 = t1 - t0, t2 - t1
+        if dt1 <= 0.0 or dt2 <= 0.0:
+            return None
+        v01 = (p1 - p0) / dt1
+        v12 = (p2 - p1) / dt2
+        return (v12 - v01) / (0.5 * (dt1 + dt2))
+```
+
+- [ ] **Step 4: Run, confirm pass**
+
+Run: `pytest freemocap/tests/kinematics/test_streaming_kinematics.py -v`
+Expected: PASS.
+
+- [ ] **Step 5: Checkpoint** — `pytest freemocap/tests/kinematics/ -v` all green.
+
+---
+
+## Task 6: Wire into the realtime pipeline — ✅ done (live-session smoke pending hardware)
+
+**Files:**
+- Modify: `freemocap/pubsub/pubsub_topics.py` (add field to `AggregationNodeOutputMessage`)
+- Modify: `freemocap/core/viz/frontend_payload.py` (add field + map it)
+- Modify: `freemocap/core/pipeline/realtime/realtime_aggregator_node.py` (instantiate + call)
+
+This task is integration; verification is a smoke run, not a unit test.
+
+- [ ] **Step 1: Add the field to the aggregator output message**
+
+In `freemocap/pubsub/pubsub_topics.py`, import `BodyKinematicsState` and add an optional
+field to `AggregationNodeOutputMessage`:
+
+```python
+from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
+# ... in AggregationNodeOutputMessage:
+    body_kinematics: BodyKinematicsState | None = None
+```
+
+- [ ] **Step 2: Add the field to `FrontendPayload`**
+
+In `freemocap/core/viz/frontend_payload.py`, add `body_kinematics` to the `FrontendPayload`
+struct and pass it through in `from_aggregation_output`:
+
+```python
+    body_kinematics: "BodyKinematicsState | None" = None
+# ... in from_aggregation_output(...):
+        body_kinematics=aggregation_output.body_kinematics,
+```
+
+Add the import: `from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState`.
+
+- [ ] **Step 3: Instantiate the wrapper in the aggregator**
+
+In `realtime_aggregator_node.py`, alongside the existing `prev_com` setup, create
+`streaming_kinematics = StreamingKinematics()` (import it at top). On calibration hot-reload
+(where `prev_com` is reset), also call `streaming_kinematics.reset()`.
+
+- [ ] **Step 4: Call it in the CoM block**
+
+Immediately after `com_result` is computed (the existing center-of-mass block), build the
+state and carry it into the published message. Reuse `now_com` (the timestamp already taken
+there) and the loaded `biomechanics.mass_percentages`:
+
+```python
+body_kinematics = None
+if com_result is not None and not np.any(np.isnan(com_result.total_body_com)):
+    body_kinematics = streaming_kinematics.update(
+        t=now_com,
+        whole_body_com=com_result.total_body_com,
+        segment_coms=com_result.segment_coms,
+        segment_masses=biomechanics.mass_percentages,
+    )
+```
+
+Then add `body_kinematics=body_kinematics,` to the `AggregationNodeOutputMessage(...)`
+constructor call.
+
+- [ ] **Step 5: Verify the existing suite still passes**
+
+Run: `pytest freemocap/tests/ -q`
+Expected: PASS (no regressions). Then `pytest freemocap/tests/kinematics/ -v` green.
+
+- [ ] **Step 6: Smoke-check serialization**
+
+Run a short realtime session (or the e2e pipeline test path) and confirm `FrontendPayload`
+encodes without error and `body_kinematics` is populated once ≥3 frames have streamed
+(ellipsoid from frame 1; XCoM from frame 2; CMP from frame 3).
+
+---
+
+## Self-review notes
+
+- **Spec coverage:** Implements Phase 1 backend items from the
+  [Implementation Plan](../04-implementation-plan.mdx) except the bs ontology port (moved to
+  Phase 3 — not needed for the point-mass ellipsoid) and frontend rendering (separate plan).
+- **No placeholders:** every code step is complete and runnable.
+- **Type consistency:** `BodyKinematicsState` field names are used identically in Task 4
+  (definition), Task 5 (construction), and Task 6 (passthrough). `Point3d` is the shared
+  vector type throughout, matching `frontend_payload.py`.
+- **Deviation flagged:** ellipsoid orientation ships as three basis vectors (not a quaternion)
+  in Phase 1 to avoid the ontology port; revisit when Phase 3 lands.

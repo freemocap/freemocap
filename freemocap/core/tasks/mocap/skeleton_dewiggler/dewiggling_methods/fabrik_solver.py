@@ -221,6 +221,7 @@ def solve_fabrik_tree(
     bone_lengths: dict[str, float],
     tolerance: float = 0.1,   # mm — convergence threshold (was 1e-4 meters)
     max_iterations: int = 20,
+    initial_positions: dict[str, np.ndarray] | None = None,
 ) -> dict[str, np.ndarray]:
     """
     Solve FABRIK for a tree structure with Y-splits.
@@ -240,6 +241,11 @@ def solve_fabrik_tree(
         tolerance: settling threshold (mm) — stop once no joint moves more
                    than this between successive iterations.
         max_iterations: max forward/backward iterations.
+        initial_positions: optional starting positions for each joint.
+                           If provided, used instead of ``targets`` as the
+                           initial guess.  Warm-starting from the previous
+                           frame's solution dramatically reduces iterations
+                           needed for convergence.
 
     Returns:
         Solved joint positions mapping name → (3,) array (mm).
@@ -256,10 +262,21 @@ def solve_fabrik_tree(
         if bone_key not in bone_lengths:
             raise ValueError(f"Missing bone length for '{bone_key}'")
 
-    positions: dict[str, np.ndarray] = {
-        name: np.array(targets[name], dtype=np.float64)
-        for name in tree.topo_order
-    }
+    if initial_positions is not None:
+        # Warm-start: use previous solution translated to current root.
+        # Global translation is removed so FABRIK only needs to resolve
+        # the differential pose change, which is small frame-to-frame.
+        positions: dict[str, np.ndarray] = {}
+        for name in tree.topo_order:
+            if name in initial_positions:
+                positions[name] = np.array(initial_positions[name], dtype=np.float64)
+            else:
+                positions[name] = np.array(targets[name], dtype=np.float64)
+    else:
+        positions: dict[str, np.ndarray] = {
+            name: np.array(targets[name], dtype=np.float64)
+            for name in tree.topo_order
+        }
 
     for _ in range(max_iterations):
         prev_positions = {name: positions[name].copy() for name in tree.topo_order}

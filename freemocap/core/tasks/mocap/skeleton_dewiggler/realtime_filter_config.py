@@ -4,7 +4,7 @@ Tunable configuration for the realtime filtering + skeleton-fitting stage.
 Consumed by the realtime aggregator node, which wires these values into:
     - ``RealtimeKeypointFilter``  (One Euro smoothing of raw 3D keypoints)
     - ``RealtimePointGate``       (velocity teleportation rejection)
-    - ``RealtimeSkeletonFitter``  (canonical FABRIK + online bone lengths)
+    - ``RealtimeSkeletonFitter``  (FABRIK skeleton fitting)
     - triangulation               (reprojection-error gating)
 """
 
@@ -69,65 +69,40 @@ class RealtimeFilterConfig(BaseModel):
     # Higher = faster adaptation -> more responsive to sudden speed changes.
     d_cutoff: float = 1.0
 
-    # ---- FABRIK params ----
-    fabrik_tolerance: float = 0.1    # mm — settling threshold between iterations
-    fabrik_max_iterations: int = 20
+    # ---- FABRIK skeleton fitting ----
+    # Convergence threshold (mm).  20 mm = 2 cm — invisible in mocap viz.
+    # FABRIK stops iterating when no joint moves more than this.
+    fabrik_tolerance: float = 20.0
 
-    # ---- Prior forgetting (anthropometric seed → pure observation) ----
-    # Frames until the anthropometric prior is completely forgotten.
-    # After this, blended_length() returns the pure observed mean.
-    # Default 30 = ~1 s at 30 fps.
-    prior_forget_samples: int = 30
+    # Maximum FABRIK forward/backward passes per solve.  Warm-started solves
+    # typically converge in 2-4 iterations; this is just a ceiling.
+    fabrik_max_iterations: int = 10
 
-    # Same for center→center bones (hips_center→trunk_center,
-    # trunk_center→neck_center, neck_center→head_center).  Much shorter
-    # because these are derived landmarks with no anatomical truth.
-    # Default 8 = ~0.25 s.
-    center_prior_forget_samples: int = 8
-
-    # ---- Integral bone-length correction (PID-like I term) ----
-    # Integral gain (ki) — mm of integral accumulation per mm of axial
-    # error per frame.  0 = no correction.  Default 1.0.
-    integral_gain: float = 1.0
-
-    # Per-frame retention factor for the integral accumulator.
-    # 0.80 = 20% decay per frame → ~0.14 s time constant at 30 fps.
-    integral_leak: float = 0.80
-
-    # Hard clamp on the absolute integral correction (mm).
-    max_integral_correction_mm: float = 150.0
-
-    # ---- Within-frame FABRIK refinement (escapes coupled-bone local minima) ----
-    # Extra FABRIK solves per frame with nudged/jittered bone lengths.
-    # 0 = disabled.  Default 8.
-    fabrik_refinement_passes: int = 8
-
-    # Within-frame bone-length adjustment gain.  Default 1.0 (full correction).
-    fabrik_refinement_gain: float = 1.0
-
-    # Base stddev of Gaussian jitter on bone lengths (mm).
-    # 0 = deterministic only.  Default 3.0.
-    fabrik_jitter_mm: float = 3.0
-
-    # Adaptive jitter scaling: per-bone jitter stddev = base + |axial_residual| / error_scale.
-    # Larger error → more exploration noise; small error → settles toward base.
-    # A 20 mm residual gives ~3+7=10 mm jitter at the default 3.0.
-    fabrik_jitter_error_scale: float = 3.0
-
-    # ---- Welford estimator staleness prevention ----
-    # Cap on effective sample count (~1 s at 30 fps).
-    max_welford_samples: int = 30
+    # Post-solve blend: weight of raw keypoints vs FABRIK bone-length
+    # enforcement.  0.0 = pure FABRIK, 1.0 = pure keypoints (FABRIK off).
+    # 0.6 = 60% keypoint — a light de-wiggle that stays faithful to the
+    # tracker.  Applied to ALL joints after every solve.
+    keypoint_blend_factor: float = 0.6
 
     # ---- Center-joint jitter dampening ----
-    # Post-FABRIK blend factor for derived center joints toward their
-    # tracker targets.  0 = pure FABRIK, 1 = snap to target.
-    # Default 0.4 dampens jitter amplification at branch points.
+    # Post-FABRIK blend factor for derived center joints (hips_center,
+    # trunk_center, neck_center, head_center) toward their tracker targets.
+    # These are branch points positioned by averaging child suggestions —
+    # they get no direct snap in the forward pass, so they're jumpier.
+    # 0 = pure FABRIK, 1 = snap to target.  Default 0.4 dampens jitter.
     center_blend_factor: float = 0.4
+
+    # ---- Bone-length constraint ----
+    # Bone lengths are measured from the current frame's keypoints, then
+    # clamped to the anatomical prior ± this ratio.  0.2 = ±20%.
+    # A 400 mm femur can range 320-480 mm — covers 5th-95th percentile.
+    # 0 = no clamp (use raw measured lengths).
+    bone_length_clamp_ratio: float = 0.2
 
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco
-    # calibration produces mm-scale coordinates, so the bone-length seeds (which
-    # scale by height) use the same units as observed inter-keypoint distances.
+    # calibration produces mm-scale coordinates, so the bone-length seeds
+    # (which scale by height) use the same units.
     height_mm: float = 1750.0
 
     # ---- Triangulation reprojection gate ----

@@ -467,7 +467,7 @@ def find_body_csv(path) -> Path:
 
     Prefers ``mediapipe_body_3d_xyz.csv``; falls back to any ``*body_3d_xyz.csv``.
     """
-    path = Path(path)
+    path = Path(path).expanduser()
     if path.is_file() and path.suffix.lower() == ".csv":
         return path
     for directory in (path, path / "output_data"):
@@ -483,26 +483,53 @@ def find_body_csv(path) -> Path:
 
 
 def load_body_positions_from_csv(csv_path) -> dict[str, np.ndarray]:
-    """Load a long-format ``frame,keypoint,x,y,z`` body CSV → ``{name: (frames, 3)}``."""
+    """Load a body 3D CSV → ``{landmark_name: (n_frames, 3)}``.
+
+    Handles two formats:
+    - Wide: one row per frame, columns ``{name}_x``, ``{name}_y``, ``{name}_z``
+      (legacy freemocap output).
+    - Long: columns ``frame, keypoint, x, y, z`` (new pipeline output).
+    """
     import pandas as pd  # local import: keep pandas out of the realtime hot-loop import path
 
     df = pd.read_csv(csv_path)
-    expected = {"frame", "keypoint", "x", "y", "z"}
-    if not expected.issubset(df.columns):
+    cols = set(df.columns)
+
+    if {"frame", "keypoint", "x", "y", "z"}.issubset(cols):
+        # Long format
+        frames = np.sort(df["frame"].unique())
+        n_frames = len(frames)
+        frame_to_idx = {int(f): i for i, f in enumerate(frames)}
+        positions: dict[str, np.ndarray] = {}
+        for keypoint, group in df.groupby("keypoint"):
+            arr = np.full((n_frames, 3), np.nan)
+            idx = group["frame"].map(frame_to_idx).to_numpy()
+            arr[idx, 0] = group["x"].to_numpy()
+            arr[idx, 1] = group["y"].to_numpy()
+            arr[idx, 2] = group["z"].to_numpy()
+            positions[str(keypoint)] = arr
+        return positions
+
+    # Wide format: columns like ``left_shoulder_x``, ``left_shoulder_y``, ``left_shoulder_z``
+    x_cols = [c for c in df.columns if c.endswith("_x")]
+    if not x_cols:
         raise ValueError(
-            f"{csv_path} missing columns {expected - set(df.columns)} (has {list(df.columns)})"
+            f"{csv_path} is neither long-format (frame/keypoint/x/y/z) "
+            f"nor wide-format (*_x/*_y/*_z). Columns: {list(df.columns)[:10]}..."
         )
-    frames = np.sort(df["frame"].unique())
-    n_frames = len(frames)
-    frame_to_idx = {int(f): i for i, f in enumerate(frames)}
-    positions: dict[str, np.ndarray] = {}
-    for keypoint, group in df.groupby("keypoint"):
-        arr = np.full((n_frames, 3), np.nan)
-        idx = group["frame"].map(frame_to_idx).to_numpy()
-        arr[idx, 0] = group["x"].to_numpy()
-        arr[idx, 1] = group["y"].to_numpy()
-        arr[idx, 2] = group["z"].to_numpy()
-        positions[str(keypoint)] = arr
+    positions = {}
+    for x_col in x_cols:
+        name = x_col[:-2]  # strip "_x"
+        y_col = f"{name}_y"
+        z_col = f"{name}_z"
+        if y_col not in cols or z_col not in cols:
+            continue
+        arr = np.column_stack([
+            df[x_col].to_numpy(dtype=float),
+            df[y_col].to_numpy(dtype=float),
+            df[z_col].to_numpy(dtype=float),
+        ])
+        positions[name] = arr
     return positions
 
 
@@ -569,17 +596,24 @@ def format_report_block(report: SegmentLengthReport, *, source: str | None = Non
 def _main(argv=None) -> int:
     """CLI: report body-segment proportions / human-shape for a processed recording.
 
-    Usage:  python -m freemocap.core.kinematics.segment_lengths <recording_or_output_dir_or_csv>
+    Usage:  python -m freemocap.core.kinematics.segment_lengths [recording_or_output_dir_or_csv]
+    Defaults to FREEMOCAP_TEST_DATA_PATH when no path is given.
     Exit code 0 = human-shaped, 1 = not, 2 = no data found.
     """
     import argparse
+    from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
     parser = argparse.ArgumentParser(
         description="Body-proportion / 'human-shaped' diagnostic for a processed recording."
     )
     parser.add_argument(
         "recording",
-        help="A recording folder, an output_data folder, or a *_body_3d_xyz.csv file.",
+        nargs="?",
+        default=FREEMOCAP_TEST_DATA_PATH,
+        help=(
+            "A recording folder, an output_data folder, or a *_body_3d_xyz.csv file. "
+            f"Defaults to {FREEMOCAP_TEST_DATA_PATH}"
+        ),
     )
     args = parser.parse_args(argv)
 

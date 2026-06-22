@@ -103,6 +103,10 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_cli_date_format = "%H:%M:%S"
 markers = [
     "e2e: end-to-end tests that run real pipelines against on-disk test data (freemocap_test_data)",
     "slow: slow tests (e.g. realtime full-skeleton RTMPose inference over all frames)",

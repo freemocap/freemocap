@@ -1,20 +1,12 @@
-"""Single-threaded lockstep driver for the realtime pipeline.
-
-Writes one frame at a time into the mock camera group's shared memory and waits
-for the aggregator to publish its result before writing the next frame:
-
-    write N -> wait for aggregation output >= N -> flip backpressure events -> write N+1
-
-Because the ring buffer holds far more than 222 frames and we never let the write
-head run ahead of consumption, every frame is processed deterministically with no
-threading races. (Dumping all frames at once would instead exercise realtime
-drop-frame semantics, where the aggregator only processes the latest frame.)
-"""
+"""Single-threaded lockstep driver for the realtime pipeline."""
+import logging
 import queue
 import time
 from dataclasses import dataclass
 
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -34,11 +26,16 @@ def drive_realtime_lockstep(
     num_frames: int,
     per_frame_timeout: float = 30.0,
 ) -> RealtimeDriveResult:
+    logger.info(
+        f"Starting lockstep drive: {num_frames} frames  "
+        f"per_frame_timeout={per_frame_timeout}s"
+    )
     outputs: list[AggregationNodeOutputMessage] = []
     sub = pipeline.aggregation_output_subscription
 
-    # Initial backpressure state from RealtimePipeline.create: consumed set,
-    # ready clear — so the aggregator may produce its first frame immediately.
+    t_start = time.perf_counter()
+    last_progress_log = t_start
+
     for frame_index in range(num_frames):
         mock_group.write_frame(frame_index)
 
@@ -64,9 +61,29 @@ def drive_realtime_lockstep(
             )
         outputs.append(got)
 
-        # Release the aggregator to process the next frame, mirroring the
-        # websocket consumer (RealtimePipeline.get_latest_frontend_payload).
         pipeline.result_ready_event.clear()
         pipeline.result_consumed_event.set()
 
+        now = time.perf_counter()
+        if now - last_progress_log >= 10.0 or frame_index == num_frames - 1:
+            elapsed = now - t_start
+            fps = (frame_index + 1) / elapsed if elapsed > 0 else 0.0
+            has_kp = len(got.keypoints_arrays) > 0
+            has_skel = bool(got.skeleton)
+            logger.info(
+                f"  frame {frame_index + 1}/{num_frames}  "
+                f"elapsed={elapsed:.1f}s  fps={fps:.1f}  "
+                f"keypoints={'yes' if has_kp else 'no'}  "
+                f"skeleton={'yes' if has_skel else 'no'}"
+            )
+            last_progress_log = now
+
+    total_elapsed = time.perf_counter() - t_start
+    avg_fps = num_frames / total_elapsed if total_elapsed > 0 else 0.0
+    frames_with_kp = sum(1 for o in outputs if len(o.keypoints_arrays) > 0)
+    logger.info(
+        f"Lockstep drive done: {len(outputs)}/{num_frames} frames processed  "
+        f"total={total_elapsed:.1f}s  avg_fps={avg_fps:.1f}  "
+        f"frames_with_keypoints={frames_with_kp}"
+    )
     return RealtimeDriveResult(outputs=outputs, frames_written=num_frames)

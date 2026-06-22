@@ -33,6 +33,44 @@ from freemocap.tests.pipelines.anthropometry import load_posthoc_body_positions
 from freemocap.tests.pipelines.helpers import wait_for_pipeline
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--realtime-max-frames",
+        action="store",
+        default=250,
+        type=int,
+        help=(
+            "Cap the number of frames fed to the realtime pipeline in E2E tests "
+            "(0 = all frames). Lets the longer sample-data run terminate early so "
+            "you don't wait through the whole recording every time."
+        ),
+    )
+
+
+@pytest.fixture(scope="session")
+def realtime_max_frames(request) -> int:
+    """Frame cap for realtime E2E runs (0 = no cap). From --realtime-max-frames."""
+    return int(request.config.getoption("--realtime-max-frames"))
+
+
+@pytest.fixture(scope="session")
+def sample_recording_path() -> Path:
+    """The full (non-downsampled, ~1100-frame) sample recording — same cameras as
+    the test data, useful for exercising the realtime pipeline over a longer run."""
+    path = Path(FREEMOCAP_TEST_DATA_PATH).parent / "freemocap_sample_data"
+    if not path.exists():
+        pytest.skip(f"Sample data not found at {path}")
+    sync_videos = path / "synchronized_videos"
+    if not sync_videos.exists() or not list(sync_videos.glob("*.mp4")):
+        pytest.skip(f"No synchronized_videos found in {path}")
+    return path
+
+
+@pytest.fixture(scope="session")
+def sample_synchronized_videos_dir(sample_recording_path: Path) -> Path:
+    return sample_recording_path / "synchronized_videos"
+
+
 @pytest.fixture(scope="session")
 def test_recording_path() -> Path:
     path = Path(FREEMOCAP_TEST_DATA_PATH)

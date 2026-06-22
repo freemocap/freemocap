@@ -137,3 +137,67 @@ def test_realtime_pipeline_processes_test_data(
         manager.shutdown()
         time.sleep(0.25)  # let worker threads observe shutdown before we unlink shm
         mock.close()
+
+
+@pytest.mark.e2e
+@pytest.mark.slow
+def test_realtime_pipeline_on_sample_data(
+    sample_synchronized_videos_dir, charuco_board_7x5, calibration_toml_path,
+    realtime_max_frames,
+):
+    """Exercise the realtime pipeline over the longer (non-downsampled) sample
+    recording. Capped to --realtime-max-frames (default 250, 0 = all) so it
+    terminates early by default. Reuses the test-data calibration — the sample
+    recording is the same physical cameras/setup, so the calibration applies.
+    """
+    kill_flag = multiprocessing.Value("b", False)
+    registry = WorkerRegistry(global_kill_flag=kill_flag, worker_mode=WorkerMode.THREAD)
+
+    config = _build_pipeline_config("full", charuco_board_7x5)
+    mock = MockCameraGroup.create(
+        synchronized_videos_dir=sample_synchronized_videos_dir,
+        global_kill_flag=kill_flag,
+    )
+    n_frames = (
+        mock.frame_count
+        if realtime_max_frames <= 0
+        else min(mock.frame_count, realtime_max_frames)
+    )
+    print(f"\n[sample-data] driving {n_frames}/{mock.frame_count} frames")
+
+    manager = RealtimePipelineManager(worker_registry=registry)
+    try:
+        pipeline = manager.create_pipeline(camera_group=mock, pipeline_config=config)
+        result = drive_realtime_lockstep(
+            pipeline=pipeline,
+            mock_group=mock,
+            num_frames=n_frames,
+            per_frame_timeout=120.0,
+        )
+        assert result.frames_processed >= int(0.9 * n_frames), (
+            f"Only processed {result.frames_processed}/{n_frames} frames"
+        )
+        # The sample recording is a real person; validate human-shape WHEN the
+        # processed window has enough body data (a small cap from the start may be
+        # calibration-heavy). Throughput is always asserted above; equivalence vs
+        # posthoc is covered by the test-data run.
+        realtime_report = build_segment_length_report(
+            positions_from_aggregation_outputs(result.outputs)
+        )
+        print("\n[sample-data realtime] " + realtime_report.summary())
+        if len(realtime_report.assessable()) >= realtime_report.thresholds.min_assessable_segments:
+            violations = realtime_report.human_shape_violations(check_rigidity=False)
+            assert not violations, (
+                "Sample-data realtime reconstruction is not human-shaped:\n  - "
+                + "\n  - ".join(violations) + "\n" + realtime_report.summary()
+            )
+        else:
+            print(
+                f"[sample-data] only {len(realtime_report.assessable())} assessable "
+                f"segment(s) in {n_frames} frames — skipping human-shape assertion "
+                f"(window may be calibration-heavy; use --realtime-max-frames=0 for the full clip)"
+            )
+    finally:
+        manager.shutdown()
+        time.sleep(0.25)
+        mock.close()

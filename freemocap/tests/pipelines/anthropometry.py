@@ -12,7 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
+
+from freemocap.core.kinematics.segment_lengths import load_body_positions_from_csv
 
 # Posthoc body 3D CSV is long-format: frame, keypoint, x, y, z
 _POSTHOC_BODY_CSV = "mediapipe_body_3d_xyz.csv"
@@ -21,34 +22,13 @@ _POSTHOC_BODY_CSV = "mediapipe_body_3d_xyz.csv"
 def load_posthoc_body_positions(output_dir: Path) -> dict[str, np.ndarray]:
     """Load the posthoc body 3D trajectories as ``{landmark_name: (n_frames, 3)}``.
 
-    Reads the long-format ``mediapipe_body_3d_xyz.csv`` written by the posthoc
-    mocap pipeline. Keypoint names are used verbatim (already canonical for the
-    limb joints we measure).
+    Thin wrapper over the core ``load_body_positions_from_csv`` for the posthoc
+    pipeline's ``mediapipe_body_3d_xyz.csv``.
     """
     csv_path = Path(output_dir) / _POSTHOC_BODY_CSV
     if not csv_path.exists():
         raise FileNotFoundError(f"Posthoc body CSV not found: {csv_path}")
-    df = pd.read_csv(csv_path)
-    expected = {"frame", "keypoint", "x", "y", "z"}
-    if not expected.issubset(df.columns):
-        raise ValueError(
-            f"{csv_path} missing columns {expected - set(df.columns)} "
-            f"(has {list(df.columns)})"
-        )
-
-    frames = np.sort(df["frame"].unique())
-    n_frames = len(frames)
-    frame_to_idx = {int(f): i for i, f in enumerate(frames)}
-
-    positions: dict[str, np.ndarray] = {}
-    for keypoint, group in df.groupby("keypoint"):
-        arr = np.full((n_frames, 3), np.nan)
-        idx = group["frame"].map(frame_to_idx).to_numpy()
-        arr[idx, 0] = group["x"].to_numpy()
-        arr[idx, 1] = group["y"].to_numpy()
-        arr[idx, 2] = group["z"].to_numpy()
-        positions[str(keypoint)] = arr
-    return positions
+    return load_body_positions_from_csv(csv_path)
 
 
 def positions_from_aggregation_outputs(

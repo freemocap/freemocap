@@ -25,6 +25,7 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 
 import numpy as np
 
@@ -267,13 +268,13 @@ class SegmentLengthReport:
                 f"H={s.implied_height_mm:7.1f} | valid={s.valid_fraction:.0%}"
             )
         lines.append(
-            f"  → implied height: median={self.implied_height_median_mm:.0f}mm "
+            f"  -> implied height: median={self.implied_height_median_mm:.0f}mm "
             f"cv={self.implied_height_cv:.3f}"
         )
         sym = self.symmetry_diffs()
         if sym:
             lines.append(
-                "  → symmetry: " + ", ".join(f"{p}={d:.1%}" for p, d in sorted(sym.items()))
+                "  -> symmetry: " + ", ".join(f"{p}={d:.1%}" for p, d in sorted(sym.items()))
             )
         return "\n".join(lines)
 
@@ -436,3 +437,96 @@ def equivalence_violations(
                 f"({diff:.1%} > {thresholds.max_equivalence_diff:.0%})"
             )
     return violations
+
+
+# ---------------------------------------------------------------------------
+# Loading saved recordings + CLI
+# ---------------------------------------------------------------------------
+
+
+def find_body_csv(path) -> Path:
+    """Resolve a body-3D CSV from a recording folder, output_data folder, or CSV path.
+
+    Prefers ``mediapipe_body_3d_xyz.csv``; falls back to any ``*body_3d_xyz.csv``.
+    """
+    path = Path(path)
+    if path.is_file() and path.suffix.lower() == ".csv":
+        return path
+    for directory in (path, path / "output_data"):
+        if not directory.is_dir():
+            continue
+        preferred = directory / "mediapipe_body_3d_xyz.csv"
+        if preferred.exists():
+            return preferred
+        matches = sorted(directory.glob("*body_3d_xyz.csv"))
+        if matches:
+            return matches[0]
+    raise FileNotFoundError(f"No *body_3d_xyz.csv found under {path}")
+
+
+def load_body_positions_from_csv(csv_path) -> dict[str, np.ndarray]:
+    """Load a long-format ``frame,keypoint,x,y,z`` body CSV → ``{name: (frames, 3)}``."""
+    import pandas as pd  # local import: keep pandas out of the realtime hot-loop import path
+
+    df = pd.read_csv(csv_path)
+    expected = {"frame", "keypoint", "x", "y", "z"}
+    if not expected.issubset(df.columns):
+        raise ValueError(
+            f"{csv_path} missing columns {expected - set(df.columns)} (has {list(df.columns)})"
+        )
+    frames = np.sort(df["frame"].unique())
+    n_frames = len(frames)
+    frame_to_idx = {int(f): i for i, f in enumerate(frames)}
+    positions: dict[str, np.ndarray] = {}
+    for keypoint, group in df.groupby("keypoint"):
+        arr = np.full((n_frames, 3), np.nan)
+        idx = group["frame"].map(frame_to_idx).to_numpy()
+        arr[idx, 0] = group["x"].to_numpy()
+        arr[idx, 1] = group["y"].to_numpy()
+        arr[idx, 2] = group["z"].to_numpy()
+        positions[str(keypoint)] = arr
+    return positions
+
+
+def _main(argv=None) -> int:
+    """CLI: report body-segment proportions / human-shape for a processed recording.
+
+    Usage:  python -m freemocap.core.kinematics.segment_lengths <recording_or_output_dir_or_csv>
+    Exit code 0 = human-shaped, 1 = not, 2 = no data found.
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Body-proportion / 'human-shaped' diagnostic for a processed recording."
+    )
+    parser.add_argument(
+        "recording",
+        help="A recording folder, an output_data folder, or a *_body_3d_xyz.csv file.",
+    )
+    args = parser.parse_args(argv)
+
+    try:
+        csv_path = find_body_csv(args.recording)
+    except FileNotFoundError as exc:
+        print(f"ERROR: {exc}")
+        return 2
+
+    print(f"Reading body 3D data: {csv_path}")
+    report = build_segment_length_report(load_body_positions_from_csv(csv_path))
+    print(report.summary())
+
+    violations = report.human_shape_violations(check_rigidity=True)
+    if violations:
+        print("\nVERDICT: NOT human-shaped (FAIL):")
+        for v in violations:
+            print(f"  - {v}")
+        return 1
+    print(
+        f"\nVERDICT: human-shaped (PASS) -- implied standing height "
+        f"{report.implied_height_median_mm:.0f}mm"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())

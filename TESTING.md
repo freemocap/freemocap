@@ -14,6 +14,17 @@ uv run poe test-pipelines           # full suite (incl. slow full-skeleton realt
 uv run poe test-pipelines-fast      # everything except the slow RTMPose case
 ```
 
+There is also a longer realtime exercise against `freemocap_sample_data/` (the same
+recording, not downsampled — ~1100 frames). It's capped by `--realtime-max-frames`
+(default 250, `0` = the whole clip) so it terminates early by default:
+
+```bash
+# default 250-frame cap:
+uv run pytest freemocap/tests/pipelines/test_realtime_pipeline.py -k sample_data
+# run the entire clip:
+uv run pytest freemocap/tests/pipelines/test_realtime_pipeline.py -k sample_data --realtime-max-frames=0
+```
+
 What they cover:
 - **Posthoc calibration** — runs the calibration pipeline with the 7x5 board
   (`CharucoBoardDefinition.create_test_data_7x5()`) and verifies the written TOMLs

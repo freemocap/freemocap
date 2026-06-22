@@ -184,6 +184,40 @@ def _seeds_from_ratios(
     return seeds
 
 
+def _hand_errors(
+    errors: dict[str, float] | None,
+    name_to_tracker: dict[str, str],
+) -> dict[str, float] | None:
+    """Remap reprojection errors from tracker keypoint names to canonical hand names.
+
+    Parameters
+    ----------
+    errors : dict[str, float] | None
+        Per-tracker-keypoint reprojection errors (px), keyed by RTMPose
+        tracker names (e.g. ``"right_hand_thumb1"``). ``None`` means no
+        errors are available — all samples are treated as equally confident.
+    name_to_tracker : dict[str, str]
+        Reverse map from canonical hand landmark name to side-prefixed
+        tracker name, as built by ``_build_hand_mapping``. For example
+        ``{"wrist": "right_hand_root", "thumb_cmc": "right_hand_thumb1"}``.
+
+    Returns
+    -------
+    dict[str, float] | None
+        Errors remapped to canonical hand landmark names, or ``None`` if
+        ``errors`` was ``None``. Canonical names whose tracker name is not
+        present in ``errors`` are silently omitted (the bone estimator
+        treats missing entries as error 0.0).
+    """
+    if errors is None:
+        return None
+    return {
+        canonical: errors[tracker]
+        for canonical, tracker in name_to_tracker.items()
+        if tracker in errors
+    }
+
+
 # ===========================================================================
 # RealtimeSkeletonRigidifier
 # ===========================================================================
@@ -318,15 +352,16 @@ class RealtimeSkeletonRigidifier:
         tracker_positions: dict[str, np.ndarray],
         *,
         t: float | None = None,
-        body_errors: dict[str, float] | None = None,
-        right_hand_errors: dict[str, float] | None = None,
-        left_hand_errors: dict[str, float] | None = None,
+        errors: dict[str, float] | None = None,
     ) -> RigidifyResult:
         """Rigidify one frame of RTMPose keypoints.
 
-        ``*_errors`` (optional) are per-canonical-landmark reprojection errors
-        used to gate/rank length measurements; when absent, measurements are
-        treated as confident and the upstream NaN-rejection gate is relied upon.
+        ``errors`` (optional) maps **tracker** keypoint name -> reprojection
+        error (px); the bone-length estimator uses it to rank/gate samples so
+        high-error frames don't corrupt the lengths. Body limb landmarks share
+        names with the canonical model (1:1 COCO), so they are used directly;
+        hand errors are remapped from the side-prefixed tracker names. When
+        absent, samples are treated as equally confident.
         """
         if t is None:
             t = time.perf_counter()
@@ -335,9 +370,13 @@ class RealtimeSkeletonRigidifier:
         canonical_rhand = self._hand_mapping_r.apply(tracker_positions)
         canonical_lhand = self._hand_mapping_l.apply(tracker_positions)
 
-        self._body_lengths.update(canonical_body, t=t, errors=body_errors)
-        self._rhand_lengths.update(canonical_rhand, t=t, errors=right_hand_errors)
-        self._lhand_lengths.update(canonical_lhand, t=t, errors=left_hand_errors)
+        self._body_lengths.update(canonical_body, t=t, errors=errors)
+        self._rhand_lengths.update(
+            canonical_rhand, t=t, errors=_hand_errors(errors, self._hand_name_to_tracker_r),
+        )
+        self._lhand_lengths.update(
+            canonical_lhand, t=t, errors=_hand_errors(errors, self._hand_name_to_tracker_l),
+        )
 
         body_out = self._body_tree.rigidify(canonical_body, self._body_lengths.lengths)
         rhand_out = self._hand_tree_r.rigidify(canonical_rhand, self._rhand_lengths.lengths)

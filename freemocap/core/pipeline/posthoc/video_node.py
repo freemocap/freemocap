@@ -11,6 +11,7 @@ are drawn on the source video frames.
 """
 import logging
 import multiprocessing
+import pickle
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
@@ -18,9 +19,10 @@ from pathlib import Path
 import cv2
 from tqdm import tqdm
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
+from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig, BaseObservation
 from skellytracker.trackers.base_tracker.detector_helpers import create_detector_from_config, \
     create_annotator_from_config
+from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -155,6 +157,21 @@ class VideoNode(SourceNode):
             recording_path=str(recording_path),
         ))
         detector = create_detector_from_config(detector_config)
+
+        # Try to load cached Charuco observations from a prior realtime
+        # recording. On cache hit, detection is skipped per-frame but video
+        # I/O and frame sequencing are completely unchanged.
+        cache = _try_load_cache(
+            recording_path=recording_path,
+            camera_id=camera_id,
+            detector_config=detector_config,
+        )
+        if cache is not None:
+            logger.info(
+                f"VideoNode [{camera_id}]: using cached observations "
+                f"({len(cache)} frames) — detection will be skipped"
+            )
+
         video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
         if not video_reader.isOpened():
             raise RuntimeError(f"Failed to open video file: {video_path}")
@@ -233,9 +250,11 @@ class VideoNode(SourceNode):
             ) as pbar:
                 success, image = video_reader.read()
                 while success and not shutdown_self_flag.value and ipc.should_continue:
-                    observation = detector.detect(
+                    observation = _get_observation(
                         frame_number=frame_number,
                         image=image,
+                        detector=detector,
+                        cache=cache,
                     )
                     video_output_pub.put(
                         VideoNodeOutputMessage(
@@ -337,3 +356,99 @@ class VideoNode(SourceNode):
             except Empty:
                 break
         return messages
+
+
+CACHE_FILENAME = "charuco_observations_realtime.pkl"
+
+
+def _try_load_cache(
+    *,
+    recording_path: Path,
+    camera_id: CameraIdString,
+    detector_config: BaseDetectorConfig,
+) -> dict[int, BaseObservation] | None:
+    """Load the realtime Charuco observation cache if it exists and matches.
+
+    Returns a dict mapping ``frame_number`` → ``CharucoObservation``, or
+    ``None`` if the cache is missing, corrupt, or has a mismatched board config.
+    """
+    cache_path = recording_path / "output_data" / CACHE_FILENAME
+    if not cache_path.exists():
+        logger.debug(f"No Charuco observation cache at {cache_path}")
+        return None
+
+    try:
+        with open(cache_path, "rb") as f:
+            cache_data = pickle.load(f)
+    except Exception:
+        logger.warning(
+            f"Failed to load Charuco observation cache from {cache_path} — "
+            f"falling back to normal detection",
+            exc_info=True,
+        )
+        return None
+
+    cached_board = cache_data.get("board_definition")
+    if cached_board is None:
+        logger.warning("Cache missing board_definition — rejecting")
+        return None
+
+    # Compare key board parameters against the detector config.
+    # CharucoDetectorConfig delegates board properties, so we can compare
+    # directly. For non-charuco configs the cache simply won't match.
+    try:
+        if (
+            cached_board.squares_x != detector_config.squares_x
+            or cached_board.squares_y != detector_config.squares_y
+            or abs(cached_board.square_length_mm - detector_config.square_length_mm) > 0.01
+            or cached_board.aruco_dictionary_enum != detector_config.aruco_dictionary_enum
+        ):
+            logger.info(
+                f"Cache board config mismatch — "
+                f"cache=({cached_board.squares_x}x{cached_board.squares_y}, "
+                f"{cached_board.square_length_mm}mm), "
+                f"request=({detector_config.squares_x}x{detector_config.squares_y}, "
+                f"{detector_config.square_length_mm}mm) — "
+                f"falling back to normal detection"
+            )
+            return None
+    except AttributeError:
+        # detector_config is not a CharucoDetectorConfig (e.g. MediaPipe)
+        logger.debug("Detector config is not charuco — cache does not apply")
+        return None
+
+    observations = cache_data.get("observations", {})
+    if camera_id not in observations:
+        logger.info(
+            f"Camera {camera_id} not found in cache — "
+            f"falling back to normal detection"
+        )
+        return None
+
+    obs_list = observations[camera_id]
+    logger.info(
+        f"Loaded {len(obs_list)} cached Charuco observations "
+        f"for camera {camera_id} from {cache_path}"
+    )
+    return {frame_number: obs for frame_number, obs in enumerate(obs_list)}
+
+
+def _get_observation(
+    *,
+    frame_number: int,
+    image,
+    detector,
+    cache: dict[int, BaseObservation] | None,
+) -> BaseObservation:
+    """Get observation for a frame — from cache if available, else detect.
+
+    The video I/O loop is completely unchanged. The cache only determines
+    whether ``detector.detect()`` is called on the image.
+    """
+    if cache is not None and frame_number in cache:
+        return cache[frame_number]
+
+    return detector.detect(
+        frame_number=frame_number,
+        image=image,
+    )

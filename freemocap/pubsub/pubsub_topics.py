@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
@@ -186,6 +187,18 @@ class PipelineTimingMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
+# Calibration recording state (bridge between HTTP endpoint and pipeline nodes)
+# ---------------------------------------------------------------------------
+# Published by the calibration HTTP endpoint when a calibration recording
+# starts or stops. The CharucoRecorderNode subscribes to toggle buffering.
+
+@dataclass
+class CalibrationRecordingStateMessage(TopicMessageABC):
+    recording_info: RecordingInfo | None = None
+    is_active: bool = False
+
+
+# ---------------------------------------------------------------------------
 # Topic instantiation
 # ---------------------------------------------------------------------------
 
@@ -196,6 +209,7 @@ SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
 VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
+CalibrationRecordingStateTopic = create_topic(CalibrationRecordingStateMessage)
 
 # ---------------------------------------------------------------------------
 # Skeleton fitter control (out-of-band signals)

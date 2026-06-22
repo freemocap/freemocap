@@ -28,6 +28,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.charuco_recorder_node import CharucoRecorderNode
 from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
@@ -63,6 +64,7 @@ class RealtimePipeline:
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: RealtimeAggregatorNode
     skeleton_inference_node: RealtimeSkeletonInferenceNode | None
+    charuco_recorder_node: CharucoRecorderNode | None
     aggregation_output_subscription: TopicSubscriptionQueue
     result_ready_event: multiprocessing.synchronize.Event
     result_consumed_event: multiprocessing.synchronize.Event
@@ -81,6 +83,8 @@ class RealtimePipeline:
         )
         if self.skeleton_inference_node is not None:
             nodes_alive = nodes_alive and self.skeleton_inference_node.is_alive
+        if self.charuco_recorder_node is not None:
+            nodes_alive = nodes_alive and self.charuco_recorder_node.is_alive
         return nodes_alive
 
     @property
@@ -157,6 +161,19 @@ class RealtimePipeline:
                 pubsub=pubsub,
             )
 
+        # Create CharucoRecorderNode if charuco tracking is enabled.
+        # This node buffers observations during calibration recording windows
+        # so posthoc calibration can skip redundant detection.
+        charuco_recorder_node: CharucoRecorderNode | None = None
+        if pipeline_config.camera_node_config.charuco_tracking_enabled:
+            charuco_recorder_node = CharucoRecorderNode.create(
+                camera_ids=pipeline_camera_ids,
+                ipc=ipc,
+                pubsub=pubsub,
+                board_config=pipeline_config.camera_node_config.charuco_detector_config.board,
+                worker_registry=worker_registry,
+            )
+
         # Backpressure events between the aggregator and the websocket consumer.
         # The aggregator processes one frame, publishes the result, clears
         # `result_consumed_event`, and sets `result_ready_event`. The consumer
@@ -196,6 +213,7 @@ class RealtimePipeline:
             camera_nodes=camera_nodes,
             aggregation_node=aggregation_node,
             skeleton_inference_node=skeleton_inference_node,
+            charuco_recorder_node=charuco_recorder_node,
             aggregation_output_subscription=aggregation_output_subscription,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
@@ -234,6 +252,10 @@ class RealtimePipeline:
         for camera_id, node in self.camera_nodes.items():
             node.start()
 
+        if self.charuco_recorder_node is not None:
+            self.charuco_recorder_node.start()
+            logger.info(f"CharucoRecorderNode started for pipeline [{self.id}]")
+
         logger.info(f"RealtimePipeline [{self.id}] — all workers started")
 
     def shutdown(self) -> None:
@@ -247,15 +269,25 @@ class RealtimePipeline:
         self.aggregation_node.worker._intentionally_terminated = True
         if self.skeleton_inference_node is not None:
             self.skeleton_inference_node.worker._intentionally_terminated = True
+        if self.charuco_recorder_node is not None:
+            self.charuco_recorder_node.worker._intentionally_terminated = True
 
-        self.pubsub.close()
+        # Shut down worker threads BEFORE closing pubsub queues.
+        # On Windows, closing a multiprocessing.Queue while a thread is
+        # reading from it (even get_nowait) can hang on the underlying
+        # pipe handle. Shutting nodes down first gives them a chance to
+        # exit their loops (ipc.should_continue is already False).
         for node in self.camera_nodes.values():
             if node.is_alive:
                 node.shutdown()
         if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
             self.skeleton_inference_node.shutdown()
+        if self.charuco_recorder_node is not None and self.charuco_recorder_node.is_alive:
+            self.charuco_recorder_node.shutdown()
         if self.aggregation_node.is_alive:
             self.aggregation_node.shutdown()
+
+        self.pubsub.close()
         logger.debug(f"RealtimePipeline [{self.id}] shut down")
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:

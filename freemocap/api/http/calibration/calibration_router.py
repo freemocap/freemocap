@@ -10,6 +10,10 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.pubsub.pubsub_topics import (
+    CalibrationRecordingStateMessage,
+    CalibrationRecordingStateTopic,
+)
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
 logger = logging.getLogger(__name__)
@@ -135,6 +139,24 @@ async def start_calibration_recording(
         _reject_if_recording_directory_not_empty(recording_info)
         await get_freemocap_app().start_recording_all(recording_info=recording_info)
         logger.info(f"Starting calibration recording: {recording_info}")
+
+        # Notify realtime pipelines that a calibration recording has started
+        # so the CharucoRecorderNode can begin buffering observations.
+        app = get_freemocap_app()
+        for pipeline in app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                pipeline.pubsub.publish(
+                    CalibrationRecordingStateTopic,
+                    CalibrationRecordingStateMessage(
+                        recording_info=recording_info,
+                        is_active=True,
+                    ),
+                )
+                logger.debug(
+                    f"Published CalibrationRecordingState(is_active=True) "
+                    f"to pipeline [{pipeline.id}]"
+                )
+
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except HTTPException:
         raise
@@ -154,6 +176,23 @@ async def stop_calibration_recording(
         if recording_info is None:
             logger.warning("No active recording to stop")
             return {"success": True}
+
+        # Notify realtime pipelines that calibration recording has stopped
+        # so the CharucoRecorderNode flushes its buffer to the cache file.
+        for pipeline in app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                pipeline.pubsub.publish(
+                    CalibrationRecordingStateTopic,
+                    CalibrationRecordingStateMessage(
+                        recording_info=recording_info,
+                        is_active=False,
+                    ),
+                )
+                logger.debug(
+                    f"Published CalibrationRecordingState(is_active=False) "
+                    f"to pipeline [{pipeline.id}]"
+                )
+
         logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
         pipeline = await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,

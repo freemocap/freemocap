@@ -45,6 +45,7 @@
     "react-router-dom": "^6.26.2",
     "smol-toml": "^1.6.1",
     "superjson": "^2.2.2",
+    "three": "0.183.2",
     "tree-kill": "^1.2.2",
     "zod": "^4.1.5"
   },
@@ -54,6 +55,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "0.183.1",
     "@vitejs/plugin-react": "^4.3.3",
     "cross-env": "^7.0.3",
     "electron": "^35.0.3",

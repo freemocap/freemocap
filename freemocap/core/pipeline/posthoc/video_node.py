@@ -9,6 +9,7 @@ in the annotated_videos/ folder, new annotations are drawn on top of those frame
 (allowing layering of e.g. charuco + mediapipe annotations). Otherwise, annotations
 are drawn on the source video frames.
 """
+import csv
 import logging
 import multiprocessing
 import pickle
@@ -23,10 +24,13 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorCo
 from skellytracker.trackers.base_tracker.detector_helpers import create_detector_from_config, \
     create_annotator_from_config
 from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
+from skellytracker.trackers.charuco_tracker.charuco_board_definition import CharucoBoardDefinition
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.core.pipeline.posthoc.pipeline_phases import VideoNodePhase, PosthocPipelineType
 from freemocap.core.pipeline.posthoc.progress_messages import VideoNodeProgressMessage, PipelineProgressMessage
@@ -158,18 +162,22 @@ class VideoNode(SourceNode):
         ))
         detector = create_detector_from_config(detector_config)
 
-        # Try to load cached Charuco observations from a prior realtime
-        # recording. On cache hit, detection is skipped per-frame but video
-        # I/O and frame sequencing are completely unchanged.
-        cache = _try_load_cache(
+        # Try to reuse Charuco observations captured by the realtime pipeline
+        # during the calibration recording. The cache is keyed by connection frame
+        # number; the recording's timestamps CSV maps each recorded (positional)
+        # video frame to its connection frame number. We resolve both into a
+        # {recording_frame_number: observation} map so detection is skipped only for
+        # frames we actually have — every miss falls back to detection, so the
+        # result is identical to a full detect, just faster.
+        cache = _build_recording_frame_cache(
             recording_path=recording_path,
             camera_id=camera_id,
             detector_config=detector_config,
         )
         if cache is not None:
             logger.info(
-                f"VideoNode [{camera_id}]: using cached observations "
-                f"({len(cache)} frames) — detection will be skipped"
+                f"VideoNode [{camera_id}]: reusing {len(cache)} realtime Charuco "
+                f"observations — only uncached frames will be detected"
             )
 
         video_reader = cv2.VideoCapture(str(video_path), cv2.CAP_FFMPEG)
@@ -361,23 +369,97 @@ class VideoNode(SourceNode):
 CACHE_FILENAME = "charuco_observations_realtime.pkl"
 
 
-def _try_load_cache(
+def _build_recording_frame_cache(
     *,
     recording_path: Path,
     camera_id: CameraIdString,
     detector_config: BaseDetectorConfig,
 ) -> dict[int, BaseObservation] | None:
-    """Load the realtime Charuco observation cache if it exists and matches.
+    """Resolve the realtime cache into a {recording_frame_number: observation} map.
 
-    Returns a dict mapping ``frame_number`` → ``CharucoObservation``, or
-    ``None`` if the cache is missing, corrupt, or has a mismatched board config.
+    The realtime cache is keyed by connection frame number; the recording's
+    per-camera timestamps CSV maps each recorded (positional) video frame to its
+    connection frame number. BOTH are required to align: a cache with no CSV cannot
+    be trusted to any video frame, so we detect everything in that case.
+
+    Returns ``None`` (→ full detection) when the cache is absent/inapplicable or
+    cannot be aligned. Otherwise returns only the frames we have observations for;
+    the caller detects every frame not present in the returned map.
     """
+    cache_by_connection_frame = _load_cache_by_connection_frame(
+        recording_path=recording_path,
+        camera_id=camera_id,
+        detector_config=detector_config,
+    )
+    if cache_by_connection_frame is None:
+        return None
+
+    recording_to_connection = _load_recording_to_connection_frame_map(
+        recording_path=recording_path,
+        camera_id=camera_id,
+    )
+    if recording_to_connection is None:
+        logger.warning(
+            f"VideoNode [{camera_id}]: have a realtime Charuco cache but no "
+            f"timestamps CSV to align it — detecting all frames to stay correct"
+        )
+        return None
+
+    cache_by_recording_frame: dict[int, BaseObservation] = {}
+    for recording_frame_number, connection_frame_number in recording_to_connection.items():
+        observation = cache_by_connection_frame.get(connection_frame_number)
+        if observation is not None:
+            cache_by_recording_frame[recording_frame_number] = observation
+
+    if not cache_by_recording_frame:
+        logger.info(
+            f"VideoNode [{camera_id}]: realtime cache had no observations "
+            f"overlapping this recording's frames — detecting all frames"
+        )
+        return None
+
+    logger.debug(
+        f"VideoNode [{camera_id}]: aligned {len(cache_by_recording_frame)} of "
+        f"{len(recording_to_connection)} recorded frames to realtime observations"
+    )
+    return cache_by_recording_frame
+
+
+def _load_cache_by_connection_frame(
+    *,
+    recording_path: Path,
+    camera_id: CameraIdString,
+    detector_config: BaseDetectorConfig,
+) -> dict[int, BaseObservation] | None:
+    """Load this camera's realtime observations keyed by connection frame number.
+
+    Returns ``None`` when the cache is missing or genuinely does not apply (a
+    non-Charuco detector, or a board that does not match). A cache that exists but
+    is structurally wrong is logged LOUDLY and rejected — never silently swallowed.
+    """
+    # The cache only applies to Charuco calibration detection. We compare against
+    # the board directly (both CharucoBoardDefinition) rather than the detector
+    # config's delegating properties, which are NOT 1:1 — e.g. the config exposes
+    # ``square_length``, not ``square_length_mm``. Accessing the latter is what
+    # previously raised AttributeError and got silently swallowed, disabling the
+    # whole feature without a trace.
+    if not isinstance(detector_config, CharucoDetectorConfig):
+        logger.debug(
+            f"VideoNode [{camera_id}]: detector is "
+            f"{type(detector_config).__name__}, not Charuco — realtime cache N/A"
+        )
+        return None
+
     cache_path = recording_path / "output_data" / CACHE_FILENAME
     if not cache_path.exists():
         logger.debug(f"No Charuco observation cache at {cache_path}")
         return None
 
     try:
+        # Trusted source: this pickle was written by our own CharucoRecorderNode
+        # into this recording's output_data folder during the same session. It
+        # holds typed objects (CharucoObservation with numpy arrays, the pydantic
+        # board) that aren't cleanly JSON-serializable, so pickle is appropriate.
         with open(cache_path, "rb") as f:
             cache_data = pickle.load(f)
     except Exception:
@@ -389,48 +471,102 @@ def _try_load_cache(
         return None
 
     cached_board = cache_data.get("board_definition")
-    if cached_board is None:
-        logger.warning("Cache missing board_definition — rejecting")
-        return None
-
-    # Compare key board parameters against the detector config.
-    # CharucoDetectorConfig delegates board properties, so we can compare
-    # directly. For non-charuco configs the cache simply won't match.
-    try:
-        if (
-            cached_board.squares_x != detector_config.squares_x
-            or cached_board.squares_y != detector_config.squares_y
-            or abs(cached_board.square_length_mm - detector_config.square_length_mm) > 0.01
-            or cached_board.aruco_dictionary_enum != detector_config.aruco_dictionary_enum
-        ):
-            logger.info(
-                f"Cache board config mismatch — "
-                f"cache=({cached_board.squares_x}x{cached_board.squares_y}, "
-                f"{cached_board.square_length_mm}mm), "
-                f"request=({detector_config.squares_x}x{detector_config.squares_y}, "
-                f"{detector_config.square_length_mm}mm) — "
-                f"falling back to normal detection"
-            )
-            return None
-    except AttributeError:
-        # detector_config is not a CharucoDetectorConfig (e.g. MediaPipe)
-        logger.debug("Detector config is not charuco — cache does not apply")
-        return None
-
-    observations = cache_data.get("observations", {})
-    if camera_id not in observations:
-        logger.info(
-            f"Camera {camera_id} not found in cache — "
-            f"falling back to normal detection"
+    if not isinstance(cached_board, CharucoBoardDefinition):
+        logger.warning(
+            f"VideoNode [{camera_id}]: cache board_definition is "
+            f"{type(cached_board).__name__}, expected CharucoBoardDefinition — "
+            f"rejecting cache (cache-format bug, not an expected miss)"
         )
         return None
 
-    obs_list = observations[camera_id]
+    request_board = detector_config.board
+    if (
+        cached_board.squares_x != request_board.squares_x
+        or cached_board.squares_y != request_board.squares_y
+        or abs(cached_board.square_length_mm - request_board.square_length_mm) > 0.01
+        or cached_board.aruco_dictionary_enum != request_board.aruco_dictionary_enum
+    ):
+        logger.info(
+            f"VideoNode [{camera_id}]: cache board mismatch — "
+            f"cache=({cached_board.squares_x}x{cached_board.squares_y}, "
+            f"{cached_board.square_length_mm}mm, dict={cached_board.aruco_dictionary_enum}) "
+            f"vs request=({request_board.squares_x}x{request_board.squares_y}, "
+            f"{request_board.square_length_mm}mm, dict={request_board.aruco_dictionary_enum}) "
+            f"— falling back to normal detection"
+        )
+        return None
+
+    observations = cache_data.get("observations")
+    if not isinstance(observations, dict):
+        logger.warning(
+            f"VideoNode [{camera_id}]: cache 'observations' is "
+            f"{type(observations).__name__}, expected dict — rejecting cache"
+        )
+        return None
+
+    if camera_id not in observations:
+        logger.info(
+            f"VideoNode [{camera_id}]: camera not present in cache "
+            f"(have {list(observations.keys())}) — falling back to normal detection"
+        )
+        return None
+
+    obs_by_connection_frame = observations[camera_id]
+    if not isinstance(obs_by_connection_frame, dict):
+        logger.warning(
+            f"VideoNode [{camera_id}]: cached observations are "
+            f"{type(obs_by_connection_frame).__name__}, expected a dict keyed by "
+            f"connection frame number (stale cache format?) — rejecting cache"
+        )
+        return None
+
     logger.info(
-        f"Loaded {len(obs_list)} cached Charuco observations "
+        f"Loaded {len(obs_by_connection_frame)} cached Charuco observations "
         f"for camera {camera_id} from {cache_path}"
     )
-    return {frame_number: obs for frame_number, obs in enumerate(obs_list)}
+    return obs_by_connection_frame
+
+
+def _load_recording_to_connection_frame_map(
+    *,
+    recording_path: Path,
+    camera_id: CameraIdString,
+) -> dict[int, int] | None:
+    """Map recording_frame_number (positional video index) → connection_frame_number.
+
+    Reads skellycam's per-camera timestamps CSV — the authoritative record of which
+    connection frame each recorded video frame came from, written during recording
+    finalization. Returns ``None`` (→ full detection) if the CSV is missing or
+    unreadable.
+    """
+    recording_info = RecordingInfo(
+        recording_name=recording_path.name,
+        recording_directory=str(recording_path.parent),
+    )
+    csv_path = Path(recording_info.camera_timestamps_file_path_from_camera_id(camera_id))
+    if not csv_path.exists():
+        logger.warning(
+            f"VideoNode [{camera_id}]: timestamps CSV not found at {csv_path} — "
+            f"cannot align realtime cache, falling back to full detection"
+        )
+        return None
+
+    try:
+        recording_to_connection: dict[int, int] = {}
+        with open(csv_path, newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                recording_to_connection[int(row["recording_frame_number"])] = int(
+                    row["connection_frame_number"]
+                )
+        return recording_to_connection
+    except Exception:
+        logger.warning(
+            f"VideoNode [{camera_id}]: failed to parse timestamps CSV {csv_path} — "
+            f"falling back to full detection",
+            exc_info=True,
+        )
+        return None
 
 
 def _get_observation(
@@ -442,11 +578,16 @@ def _get_observation(
 ) -> BaseObservation:
     """Get observation for a frame — from cache if available, else detect.
 
-    The video I/O loop is completely unchanged. The cache only determines
-    whether ``detector.detect()`` is called on the image.
+    ``cache`` is keyed by recording_frame_number (the positional video index), so a
+    hit is the realtime observation for exactly this frame. We re-stamp its
+    ``frame_number`` to the recording index so cached and detected observations share
+    identical frame numbering downstream (anipose rows, cross-camera correspondence).
+    The video I/O loop is otherwise unchanged.
     """
     if cache is not None and frame_number in cache:
-        return cache[frame_number]
+        observation = cache[frame_number]
+        observation.frame_number = frame_number
+        return observation
 
     return detector.detect(
         frame_number=frame_number,

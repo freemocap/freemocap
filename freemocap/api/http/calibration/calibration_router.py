@@ -156,6 +156,17 @@ async def start_calibration_recording(
                     f"Published CalibrationRecordingState(is_active=True) "
                     f"to pipeline [{pipeline.id}]"
                 )
+                # Pause skeleton inference so the realtime pipeline keeps up and
+                # caches as many Charuco observations as possible. Best-effort —
+                # a failure here must NOT abort the calibration recording, since
+                # posthoc calibration re-detects any frame the cache lacks.
+                try:
+                    pipeline.enter_calibration_charuco_only_mode()
+                except Exception:
+                    logger.exception(
+                        f"Failed to enter Charuco-only mode for pipeline "
+                        f"[{pipeline.id}] — continuing with skeleton inference on"
+                    )
 
         return StartCalibrationRecordingResponse(success=True, message="Recording started")
     except HTTPException:
@@ -192,6 +203,14 @@ async def stop_calibration_recording(
                     f"Published CalibrationRecordingState(is_active=False) "
                     f"to pipeline [{pipeline.id}]"
                 )
+                # Restore skeleton inference paused at recording start. Best-effort.
+                try:
+                    pipeline.exit_calibration_charuco_only_mode()
+                except Exception:
+                    logger.exception(
+                        f"Failed to restore skeleton inference for pipeline "
+                        f"[{pipeline.id}]"
+                    )
 
         logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
         pipeline = await app.create_posthoc_calibration_pipeline(

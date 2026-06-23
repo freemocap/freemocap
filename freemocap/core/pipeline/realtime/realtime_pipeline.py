@@ -72,6 +72,9 @@ class RealtimePipeline:
     pubsub: PubSubTopicManager
     worker_registry: WorkerRegistry
     started: bool = False
+    # Config stashed while a calibration recording temporarily forces Charuco-only
+    # mode (skeleton inference paused). None whenever not in that mode.
+    _pre_calibration_config: RealtimePipelineConfig | None = None
 
     @property
     def alive(self) -> bool:
@@ -329,6 +332,51 @@ class RealtimePipeline:
                 pubsub=self.pubsub,
             )
             self.skeleton_inference_node.start()
+
+    def enter_calibration_charuco_only_mode(self) -> None:
+        """Pause skeleton inference for the duration of a calibration recording.
+
+        Skeleton inference is the realtime throughput bottleneck; with it off the
+        pipeline keeps up with (ideally) every recorded frame, so the
+        CharucoRecorderNode can cache far more observations for posthoc calibration
+        to reuse. Restored by ``exit_calibration_charuco_only_mode``. No-op if
+        skeleton tracking is already off. Best-effort: posthoc re-detects any frame
+        the cache lacks, so coverage only affects speed, never correctness.
+        """
+        if self._pre_calibration_config is not None:
+            return  # already in Charuco-only mode
+        if not self.config.camera_node_config.skeleton_tracking_enabled:
+            return  # nothing to pause
+
+        self._pre_calibration_config = self.config
+        # model_copy(update=...) builds new instances rather than mutating, so this
+        # is safe regardless of whether the config models are frozen, and leaves the
+        # stashed pre-calibration config untouched for restore.
+        charuco_only_camera_config = self.config.camera_node_config.model_copy(
+            update={"skeleton_tracking_enabled": False},
+        )
+        charuco_only_config = self.config.model_copy(
+            update={"camera_node_config": charuco_only_camera_config},
+        )
+        logger.info(
+            f"RealtimePipeline [{self.id}]: entering Charuco-only mode for "
+            f"calibration recording (skeleton inference paused)"
+        )
+        self.update_config(charuco_only_config)
+
+    def exit_calibration_charuco_only_mode(self) -> None:
+        """Restore the config saved by ``enter_calibration_charuco_only_mode``,
+        re-enabling skeleton inference. No-op if not currently in Charuco-only mode.
+        """
+        if self._pre_calibration_config is None:
+            return
+        logger.info(
+            f"RealtimePipeline [{self.id}]: exiting Charuco-only mode — "
+            f"restoring skeleton inference"
+        )
+        restored_config = self._pre_calibration_config
+        self._pre_calibration_config = None
+        self.update_config(restored_config)
 
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return await self.camera_group.update_camera_settings(

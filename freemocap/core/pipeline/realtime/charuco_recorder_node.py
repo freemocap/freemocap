@@ -91,8 +91,14 @@ class CharucoRecorderNode(SourceNode):
 
         logger.info("CharucoRecorderNode started — waiting for calibration recording signal")
 
-        buffer: dict[CameraIdString, list[CharucoObservation | None]] = {
-            cid: [] for cid in camera_ids
+        # Observations keyed by their TRUE connection frame number
+        # (CameraNodeOutputMessage.frame_number == frame_metadata.frame_number),
+        # NOT by arrival order. This is the same identifier skellycam records as
+        # `connection_frame_number` in the per-camera timestamps CSV, so posthoc
+        # calibration can map each recorded video frame back to its observation
+        # even though the realtime pipeline drops frames it can't keep up with.
+        buffer: dict[CameraIdString, dict[int, CharucoObservation]] = {
+            cid: {} for cid in camera_ids
         }
         recording_info = None
         is_recording = False
@@ -110,7 +116,7 @@ class CharucoRecorderNode(SourceNode):
                             if msg.is_active and not is_recording:
                                 is_recording = True
                                 recording_info = msg.recording_info
-                                buffer = {cid: [] for cid in camera_ids}
+                                buffer = {cid: {} for cid in camera_ids}
                                 logger.info(
                                     f"Calibration recording started: "
                                     f"{recording_info.recording_name if recording_info else 'unknown'}"
@@ -140,8 +146,11 @@ class CharucoRecorderNode(SourceNode):
                             is_recording
                             and isinstance(msg, CameraNodeOutputMessage)
                             and msg.camera_id in buffer
+                            and msg.charuco_observation is not None
                         ):
-                            buffer[msg.camera_id].append(msg.charuco_observation)
+                            # Key by connection frame number, not arrival order,
+                            # so dropped frames leave gaps instead of shifting indices.
+                            buffer[msg.camera_id][msg.frame_number] = msg.charuco_observation
                     except Empty:
                         break
                     except (OSError, EOFError):
@@ -167,11 +176,17 @@ class CharucoRecorderNode(SourceNode):
 
 def _flush_buffer(
     *,
-    buffer: dict[CameraIdString, list],
+    buffer: dict[CameraIdString, dict[int, CharucoObservation]],
     recording_info,
     board_config: CharucoBoardDefinition,
 ) -> None:
-    """Write the buffer to a pickle file."""
+    """Write the buffer to a pickle file.
+
+    ``observations`` maps camera_id -> {connection_frame_number: CharucoObservation}.
+    The connection frame number is the stable identifier shared with the recording's
+    per-camera timestamps CSV, so posthoc calibration can align each recorded video
+    frame to its realtime observation regardless of how many frames realtime dropped.
+    """
     if recording_info is None:
         logger.warning("No recording_info — cannot flush buffer")
         return
@@ -181,14 +196,19 @@ def _flush_buffer(
     output_dir.mkdir(parents=True, exist_ok=True)
     cache_path = output_dir / CACHE_FILENAME
 
-    # Determine frame range
-    all_lengths = [len(obs_list) for obs_list in buffer.values()]
-    if not all_lengths or max(all_lengths) == 0:
+    # Frame range is expressed in connection frame numbers (min/max seen), for
+    # diagnostics only — posthoc lookups are per-frame, never by range.
+    all_conn_numbers = [
+        frame_number
+        for obs_by_frame in buffer.values()
+        for frame_number in obs_by_frame
+    ]
+    if not all_conn_numbers:
         logger.info("Buffer is empty — writing empty cache")
         first_frame = last_frame = 0
     else:
-        first_frame = 0
-        last_frame = max(all_lengths) - 1
+        first_frame = min(all_conn_numbers)
+        last_frame = max(all_conn_numbers)
 
     cache_data = {
         "board_definition": board_config,

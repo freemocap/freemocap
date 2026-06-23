@@ -166,16 +166,31 @@ class TestCalibrationCacheE2E:
             observations = cache_data["observations"]
             assert len(observations) >= 1, "Expected at least 1 camera in cache"
 
-            # Verify at least some frames have detected corners
+            # The cache must be keyed by CONNECTION frame number (a dict per camera),
+            # not a positional list — that keying is what lets posthoc calibration
+            # align each recorded video frame to its realtime observation even when
+            # the realtime pipeline dropped frames. (Deterministic alignment/consumption
+            # behaviour is covered fast in test_calibration_cache_alignment.py.)
             total_detected = 0
             total_frames = 0
-            for cam_id, obs_list in observations.items():
-                total_frames = max(total_frames, len(obs_list))
-                for obs in obs_list:
-                    if obs is not None and not obs.charuco_empty:
-                        total_detected += 1
-                logger.info(f"Camera {cam_id}: {len(obs_list)} frames, "
-                            f"{sum(1 for o in obs_list if o is not None and not o.charuco_empty)} with detections")
+            for cam_id, obs_by_connection_frame in observations.items():
+                assert isinstance(obs_by_connection_frame, dict), (
+                    f"Cache for {cam_id} must be keyed by connection frame number "
+                    f"(dict), got {type(obs_by_connection_frame).__name__}"
+                )
+                assert all(isinstance(k, int) for k in obs_by_connection_frame), (
+                    "cache keys must be integer connection frame numbers"
+                )
+                total_frames = max(total_frames, len(obs_by_connection_frame))
+                detected = sum(
+                    1 for obs in obs_by_connection_frame.values()
+                    if obs is not None and not obs.charuco_empty
+                )
+                total_detected += detected
+                logger.info(
+                    f"Camera {cam_id}: {len(obs_by_connection_frame)} cached frames, "
+                    f"{detected} with detections"
+                )
 
             assert total_detected > 0, (
                 "Expected at least some frames with detected Charuco corners"

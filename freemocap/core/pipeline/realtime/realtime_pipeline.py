@@ -41,6 +41,7 @@ from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
+    PipelineTimingTopic,
 )
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ class RealtimePipeline:
     ipc: PipelineIPC
     pubsub: PubSubTopicManager
     worker_registry: WorkerRegistry
+    pipeline_timing_subscription: TopicSubscriptionQueue
     started: bool = False
 
     @property
@@ -144,15 +146,17 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
-                skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
             for camera_id in pipeline_camera_ids
         }
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if (pipeline_config.use_centralized_gpu_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
+        if (
+                pipeline_config.use_centralized_gpu_inference
+                and pipeline_config.camera_node_config.skeleton_tracking_enabled
+                and pipeline_config.realtime_detector_kind == "rtmpose"
+        ):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,
@@ -189,6 +193,9 @@ class RealtimePipeline:
         aggregation_output_subscription = pubsub.get_subscription(
             AggregationNodeOutputTopic,
         )
+        pipeline_timing_subscription = pubsub.get_subscription(
+            PipelineTimingTopic,
+        )
 
         return cls(
             id=str(uuid.uuid4())[:6],
@@ -203,6 +210,7 @@ class RealtimePipeline:
             ipc=ipc,
             pubsub=pubsub,
             worker_registry=worker_registry,
+            pipeline_timing_subscription=pipeline_timing_subscription,
         )
 
     def start(self) -> None:
@@ -263,10 +271,19 @@ class RealtimePipeline:
         """Push a config update to all pipeline workers via pubsub.
 
         Also manages SkeletonInferenceNode lifecycle when skeleton_tracking_enabled
-        transitions between True and False.
+        or the RTMPose-vs-browser detector selection changes.
         """
-        old_skeleton = self.config.camera_node_config.skeleton_tracking_enabled
-        new_skeleton = new_config.camera_node_config.skeleton_tracking_enabled
+        old_cfg = self.config
+
+        def needs_centralized_rtmpose(cfg: RealtimePipelineConfig) -> bool:
+            return (
+                cfg.use_centralized_gpu_inference
+                and cfg.camera_node_config.skeleton_tracking_enabled
+                and cfg.realtime_detector_kind == "rtmpose"
+            )
+
+        old_rtmpose_gpu = needs_centralized_rtmpose(old_cfg)
+        new_rtmpose_gpu = needs_centralized_rtmpose(new_config)
 
         self.config = new_config
         logger.trace(f"Pushing new config to realtime pipeline: {self.id} \n {new_config.model_dump_json(indent=4)}")
@@ -275,22 +292,23 @@ class RealtimePipeline:
             message=PipelineConfigUpdateMessage(pipeline_config=new_config),
         )
 
-        if old_skeleton and not new_skeleton:
-            # Skeleton tracking disabled: shut down the centralized inference node.
+        if old_rtmpose_gpu and not new_rtmpose_gpu:
             if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
-                logger.info(f"RealtimePipeline [{self.id}]: skeleton tracking disabled — shutting down SkeletonInferenceNode")
+                logger.info(
+                    f"RealtimePipeline [{self.id}]: centralized RTMPose inference no longer needed "
+                    f"— shutting down SkeletonInferenceNode"
+                )
                 self.skeleton_inference_node.shutdown()
             self.skeleton_inference_node = None
 
-        elif not old_skeleton and new_skeleton and new_config.use_centralized_gpu_inference:
-            # Skeleton tracking re-enabled: create and start a fresh inference node.
+        elif not old_rtmpose_gpu and new_rtmpose_gpu:
             logger.info(
                 f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
                 f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
             )
             self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=self.camera_group.id,
-                camera_ids=self.camera_group.camera_ids,
+                camera_ids=self.camera_ids,
                 worker_registry=self.worker_registry,
                 camera_group_shm_dto=self.camera_group.shm.to_dto(),
                 config=new_config,
@@ -355,10 +373,16 @@ class RealtimePipeline:
             frames_bytearray, mf_timestamp = payload
             keypoints_binary_payload: bytearray | None = None
             if _BINARY_KEYPOINTS_ENABLED:
+                if aggregation_output.pipeline_config.realtime_detector_kind == "mediapipe_js":
+                    _tid = RTMPOSE_WHOLEBODY_DEFINITION.name
+                    _pnames = RTMPOSE_WHOLEBODY_DEFINITION.tracked_points
+                else:
+                    _tid = RTMPOSE_WHOLEBODY_DEFINITION.name
+                    _pnames = RTMPOSE_WHOLEBODY_DEFINITION.tracked_points
                 keypoints_binary_payload = build_keypoints_payload(
                     frame_number=aggregation_output.frame_number,
-                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
+                    tracker_id=_tid,
+                    point_names=_pnames,
                     keypoints_raw_arrays=aggregation_output.keypoints_raw_arrays,
                     keypoints_filtered_arrays=aggregation_output.keypoints_filtered_arrays,
                 )

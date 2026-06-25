@@ -21,11 +21,17 @@ export interface RealtimeAggregatorNodeConfig {
 }
 
 export interface RealtimePipelineConfig {
+    /** When true, backend publishes detailed per-stage timings (websocket `pipeline_timing`). */
+    log_pipeline_times?: boolean;
+    /** When true, one shared GPU worker runs skeleton inference for all cameras. */
+    use_centralized_gpu_inference?: boolean;
     camera_node_config: CameraNodeConfig;
     aggregator_config: RealtimeAggregatorNodeConfig;
 }
 
 export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
+    log_pipeline_times: true,
+    use_centralized_gpu_inference: true,
     camera_node_config: {
         charuco_tracking_enabled: true,
         skeleton_tracking_enabled: true,

@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
@@ -28,6 +28,16 @@ from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 
 logger = logging.getLogger(__name__)
+
+
+def _camera_ids_for_pipeline(
+        camera_group: CameraGroup,
+        realtime_camera_ids: list[CameraIdString] | None,
+) -> list[CameraIdString]:
+    """Camera IDs attached to realtime nodes (subset or full group)."""
+    if realtime_camera_ids is not None:
+        return [cid for cid in camera_group.configs.keys() if cid in realtime_camera_ids]
+    return list(camera_group.configs.keys())
 
 
 @dataclass
@@ -56,9 +66,13 @@ class RealtimePipelineManager(PipelineManagerABC):
         realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
         with self.lock:
-            # Return existing pipeline for this camera set (with updated config)
+            desired_cameras = set(_camera_ids_for_pipeline(camera_group, realtime_camera_ids))
+            # Reuse an existing pipeline for the same camera group and same node camera set.
             for pipeline in self.pipelines.values():
-                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                if (
+                    pipeline.camera_group_id == camera_group.id
+                    and set(pipeline.camera_ids) == desired_cameras
+                ):
                     logger.info(
                         f"Found existing RealtimePipeline [{pipeline.id}] "
                         f"for camera group [{pipeline.camera_group_id}]"
@@ -100,6 +114,16 @@ class RealtimePipelineManager(PipelineManagerABC):
         with self.lock:
             for pipeline in self.pipelines.values():
                 if set(pipeline.camera_ids) == set(camera_ids):
+                    return pipeline
+        return None
+
+    def get_pipeline_by_camera_group_id(
+        self,
+        camera_group_id: CameraGroupIdString,
+    ) -> RealtimePipeline | None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                if pipeline.camera_group_id == camera_group_id:
                     return pipeline
         return None
 

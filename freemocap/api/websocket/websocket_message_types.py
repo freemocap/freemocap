@@ -11,3 +11,4 @@ class WebsocketMessageType(str, enum.Enum):
     POSTHOC_PROGRESS = "posthoc_progress"
     LOG_RECORD = "log_record"
     TRACKER_SCHEMAS = "tracker_schemas"
+    PIPELINE_TIMING = "pipeline_timing"

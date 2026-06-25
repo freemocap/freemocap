@@ -6,6 +6,7 @@ import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
 import { useTranslation } from "react-i18next"
 import { useServer } from "@/services/server/ServerContextProvider"
+import {openPipelineMetricsWindow} from "@/services/electron-ipc/open-pipeline-metrics-window";
 
 export const frontendColor: string = "var(--chart-frontend)"
 export const backendColor: string = "var(--chart-backend)"
@@ -43,18 +44,38 @@ const FramerateCollapsedView = () => {
 }
 
 export const FramerateViewerPanel = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
+    if (isCollapsed) return <FramerateCollapsedView />
+    return <FramerateViewerPanelExpanded />
+}
+
+const FramerateViewerPanelExpanded = () => {
     const { t } = useTranslation()
+    const [mainTab, setMainTab] = useState<'framerate' | 'pipeline'>('framerate')
     const [showStats, setShowStats] = useState(true)
     const [showTimeseries, setShowTimeseries] = useState(true)
     const [showHistogram, setShowHistogram] = useState(true)
 
-    if (isCollapsed) return <FramerateCollapsedView />
+    const handlePipelineTab = (): void => {
+        void openPipelineMetricsWindow();
+    };
 
     return (
         <div className="framerate-viewer br-1">
-            {/* Header */}
             <div className="framerate-viewer-header">
-                <p className="text bg text-gray">{t('cameraPerformanceMetrics')}</p>
+                <div className="flex gap-1">
+                    <button
+                        className={clsx("button sm br-1", mainTab === 'framerate' && "isOn")}
+                        onClick={() => setMainTab('framerate')}
+                    >
+                        <p className="text sm">{t('cameraPerformanceMetrics')}</p>
+                    </button>
+                    <button
+                        className="button sm br-1"
+                        onClick={handlePipelineTab}
+                    >
+                        <p className="text sm">Pipeline stages</p>
+                    </button>
+                </div>
                 <div className="flex gap-1">
                     <button
                         className={clsx("button sm br-1", showStats && "isOn")}
@@ -80,14 +101,12 @@ export const FramerateViewerPanel = ({ isCollapsed = false }: { isCollapsed?: bo
                 </div>
             </div>
 
-            {/* Stats table */}
             {showStats && (
                 <div className="framerate-stats-wrapper br-1 border-1 border-black p-1">
                     <FramerateStatisticsView compact={true} />
                 </div>
             )}
 
-            {/* Chart area */}
             <div className={clsx("framerate-charts-area", showTimeseries && showHistogram ? "row" : "column")}>
                 {showTimeseries && (
                     <div className="framerate-chart-panel border-1 border-black br-1">

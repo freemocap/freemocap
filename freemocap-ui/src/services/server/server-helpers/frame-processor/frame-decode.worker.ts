@@ -177,8 +177,10 @@ self.onmessage = async (e) => {
     const { type, payload, requestId } = e.data;
 
     if (type === 'decode') {
+        const decodeWorkerStart = performance.now();
         try {
             const frames = await decodePayload(payload);
+            const decodeWorkerMs = performance.now() - decodeWorkerStart;
 
             // Build transferable list of all ImageBitmaps
             const transferList = frames.map((f) => f.bitmap);
@@ -196,7 +198,7 @@ self.onmessage = async (e) => {
             const bitmaps = frames.map((f) => f.bitmap);
 
             self.postMessage(
-                { type: 'result', requestId, frameData, bitmaps },
+                { type: 'result', requestId, frameData, bitmaps, decodeWorkerMs },
                 transferList
             );
         } catch (error) {

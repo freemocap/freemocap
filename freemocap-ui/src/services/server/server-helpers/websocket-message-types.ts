@@ -35,6 +35,30 @@ export interface FramerateUpdateMessage {
     frontend_framerate: DetailedFramerate;
 }
 
+import type {PipelineTimingEventPayload} from '@/services/server/server-helpers/pipeline-timing-types';
+
+export interface PipelineTimingWsMessage {
+    message_type: 'pipeline_timing';
+    camera_group_id: string;
+    log_pipeline_times_enabled?: boolean;
+    configured_camera_fps_hz?: number | null;
+    per_node?: Record<string, Record<string, number[]>>;
+    per_camera?: Record<string, Record<string, number[]>>;
+    events?: PipelineTimingEventPayload[];
+    clock_domain?: string;
+    relay_perf_counter_ns?: number;
+    dropped_timing_events?: number;
+}
+
+export function isPipelineTiming(data: unknown): data is PipelineTimingWsMessage {
+    if (!data || typeof data !== 'object') return false;
+    const o = data as Record<string, unknown>;
+    return (
+        o.message_type === 'pipeline_timing'
+        && typeof o.camera_group_id === 'string'
+    );
+}
+
 // Type guard to check if a message is a framerate update
 export function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     return (

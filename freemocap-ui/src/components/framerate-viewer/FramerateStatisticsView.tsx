@@ -5,7 +5,8 @@ import {backendColor, frontendColor} from "@/components/framerate-viewer/FrameRa
 import {useTranslation} from "react-i18next";
 import {useServer} from "@/services/server/ServerContextProvider";
 
-const STATS_POLL_INTERVAL_MS = 1000;
+const STATS_POLL_INTERVAL_MS = 500;
+const DIM_THRESHOLD_MS = 5000;
 
 type FramerateStatisticsViewProps = {
     compact?: boolean;
@@ -19,12 +20,15 @@ type ProgressiveTooltipProps = {
     shortInfo: string;
     longInfo: string;
     children: React.ReactElement;
+    /** When true, show longInfo immediately (no click-to-expand). */
+    alwaysShowLong?: boolean;
 };
 
 export const ProgressiveTooltip = ({
     shortInfo,
     longInfo,
     children,
+    alwaysShowLong = false,
 }: ProgressiveTooltipProps) => {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -130,6 +134,11 @@ export default function FramerateStatisticsView({
         spanRefs.current[key] = el;
     };
 
+    const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+    const setRowRef = (key: RowKey) => (el: HTMLTableRowElement | null) => {
+        rowRefs.current[key] = el;
+    };
+
     useEffect(() => {
         const tick = () => {
             const snapshot = getFramerateStore().getSnapshot();
@@ -148,6 +157,16 @@ export default function FramerateStatisticsView({
                 }
                 const samplesEl = spanRefs.current[`${rowKey}-samples`];
                 if (samplesEl) samplesEl.textContent = `${vals.samples} ${t("samples")}`;
+
+                const lastTs = rowKey === "backend"
+                    ? snapshot.lastBackendSampleTimestamp
+                    : snapshot.lastFrontendSampleTimestamp;
+                const rowEl = rowRefs.current[rowKey];
+                if (rowEl) {
+                    const stale = lastTs === 0 || Date.now() - lastTs > DIM_THRESHOLD_MS;
+                    rowEl.style.opacity = stale ? "0.35" : "1";
+                    rowEl.style.transition = "opacity 0.6s ease";
+                }
             }
         };
         tick();
@@ -184,7 +203,7 @@ export default function FramerateStatisticsView({
     );
 
     const renderRow = (rowKey: RowKey, sourceColor: string, sourceLabel: string, shortTooltip: string, longTooltip: string) => (
-        <tr key={rowKey}>
+        <tr key={rowKey} ref={setRowRef(rowKey)}>
             <td
                 title={shortTooltip}
                 style={{fontWeight: '800', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '2px 4px 2px 8px', color: sourceColor, cursor: 'help'}}

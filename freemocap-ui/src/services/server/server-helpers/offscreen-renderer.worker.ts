@@ -1,9 +1,11 @@
 export const workerCode = `
 let offscreenCanvas;
 let ctx;
+/** @type {{ bitmap: ImageBitmap, frameNumber: number, rafCycleStartMs: number, frameReceivedAt: number } | null} */
 let pendingFrame = null;
 let isRendering = false;
 let lastRenderTime = 0;
+let cameraId = '';
 let stats = {
     framesRendered: 0,
     framesDropped: 0,
@@ -39,8 +41,8 @@ self.onmessage = (e) => {
 
 function initCanvas(data) {
     offscreenCanvas = data.canvas;
+    cameraId = typeof data.cameraId === 'string' ? data.cameraId : '';
     
-    // Use ImageBitmapRenderingContext - fastest for bitmap streaming
     ctx = offscreenCanvas.getContext('bitmaprenderer');
 
     self.postMessage({ type: 'initialized' });
@@ -48,35 +50,35 @@ function initCanvas(data) {
 
 function handleFrame(data) {
     const bitmap = data.bitmap;
+    const frameNumber = typeof data.frameNumber === 'number' ? data.frameNumber : -1;
+    const rafCycleStartMs = typeof data.rafCycleStartMs === 'number' ? data.rafCycleStartMs : 0;
+    const mainSentAtMs = typeof data.mainSentAtMs === 'number' ? data.mainSentAtMs : 0;
+    const frameReceivedAt = performance.now();
+    const receiveLagMs = mainSentAtMs > 0 ? Math.max(0, frameReceivedAt - mainSentAtMs) : 0;
     
-    // Validate bitmap dimensions
     if (!bitmap || bitmap.width <= 0 || bitmap.height <= 0) {
         console.error('Invalid bitmap dimensions:', bitmap?.width, bitmap?.height);
         if (bitmap) bitmap.close();
         return;
     }
     
-    // Resize canvas to match bitmap dimensions if they differ
-    // This handles rotation changes and different camera resolutions
     if (offscreenCanvas.width !== bitmap.width || offscreenCanvas.height !== bitmap.height) {
         offscreenCanvas.width = bitmap.width;
         offscreenCanvas.height = bitmap.height;
-        // Resizing automatically clears the canvas, preventing old frame artifacts
     }
     
-    // Frame dropping strategy: keep only latest frame
     if (pendingFrame) {
-        pendingFrame.close(); // Clean up skipped frame
+        pendingFrame.bitmap.close();
         stats.framesDropped++;
     }
-    pendingFrame = bitmap;
+    pendingFrame = { bitmap, frameNumber, rafCycleStartMs, frameReceivedAt, receiveLagMs };
 
-    // Wake up the render loop if it is idle.
     scheduleRenderLoop();
 }
 
 function renderLoop() {
     renderLoopScheduled = false;
+    const rafCallbackAt = performance.now();
     const startTime = performance.now();
     
     if (pendingFrame && !isRendering) {
@@ -84,26 +86,35 @@ function renderLoop() {
         
         const frame = pendingFrame;
         pendingFrame = null;
+        const fn = frame.frameNumber;
+        const rafAt = frame.rafCycleStartMs;
+        const workerRafWaitMs = Math.max(0, rafCallbackAt - frame.frameReceivedAt);
+        const receiveLagMs = typeof frame.receiveLagMs === 'number' ? frame.receiveLagMs : 0;
         
-        // transferFromImageBitmap detaches the bitmap (ownership transferred to canvas).
-        // Explicit close() afterwards as a safety net for browser edge cases.
-        ctx.transferFromImageBitmap(frame);
-        frame.close();
+        ctx.transferFromImageBitmap(frame.bitmap);
+        frame.bitmap.close();
         
-        // Update stats
         stats.framesRendered++;
         const renderTime = performance.now() - startTime;
         stats.totalRenderTime += renderTime;
         
-        // Warn if frame took too long
         if (renderTime > 16.67) {
-            console.warn(\`Slow frame: \${renderTime.toFixed(2)}ms\`);
+            console.warn('Slow frame: ' + renderTime.toFixed(2) + 'ms');
         }
         
         isRendering = false;
         lastRenderTime = performance.now();
 
-        // If another frame arrived while we were rendering, keep going.
+        self.postMessage({
+            type: 'renderAck',
+            cameraId,
+            frameNumber: fn,
+            renderMs: renderTime,
+            rafCycleStartMs: rafAt,
+            workerRafWaitMs,
+            receiveLagMs,
+        });
+
         if (pendingFrame) {
             scheduleRenderLoop();
         }

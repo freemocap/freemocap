@@ -20,6 +20,8 @@ export interface ProcessedFrameResult {
     frames: FrameData[];
     cameraIds: Set<string>;
     frameNumbers: Set<number>;
+    /** Wall time spent inside the decode worker (parse multiplex + sequential JPEG→ImageBitmap). */
+    decodeWorkerMs: number;
 }
 
 /** Message sent from main thread → decode worker. */
@@ -33,6 +35,7 @@ interface DecodeRequest {
 interface DecodeResultMessage {
     type: 'result';
     requestId: number;
+    decodeWorkerMs?: number;
     frameData: Array<{
         cameraId: string;
         cameraIndex: number;
@@ -131,7 +134,12 @@ export class FrameProcessor {
             this.lastFrameTime.set(frame.cameraId, now);
         }
 
-        pending.resolve({ frames, cameraIds, frameNumbers });
+        pending.resolve({
+            frames,
+            cameraIds,
+            frameNumbers,
+            decodeWorkerMs: typeof msg.decodeWorkerMs === 'number' ? msg.decodeWorkerMs : 0,
+        });
     }
 
     public processFramePayload(data: ArrayBuffer): Promise<ProcessedFrameResult | null> {

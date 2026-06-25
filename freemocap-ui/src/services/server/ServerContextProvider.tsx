@@ -8,6 +8,7 @@ import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/f
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
+import {PipelineTimingStore} from "@/services/server/server-helpers/pipeline-timing-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
 import {installConsoleLogBridge} from "@/services/server/server-helpers/console-log-bridge";
 import {OverlayManager} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
@@ -18,6 +19,7 @@ import {
     isFramerateUpdate,
     isFrontendPayload,
     isLogRecord,
+    isPipelineTiming,
     isPosthocProgress,
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
@@ -64,6 +66,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
+    const pipelineTimingStoreRef = useRef<PipelineTimingStore>(new PipelineTimingStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
     const overlayManagerRef = useRef<OverlayManager | null>(null);
 
@@ -114,6 +117,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // finishes — so the backend can pipeline the next frame without waiting
     // for our JPEG decode + overlay compositing to complete.
     const pendingAckFrameNumberRef = useRef<number | null>(null);
+    const lastFrameAckSentMsRef = useRef<number>(0);
+    const pendingJpegAckToReceiveMsRef = useRef<number | null>(null);
+    const lastJpegWsBinaryArrivalMsRef = useRef<number>(0);
+    const pendingWsBinaryTimingRef = useRef<{
+        intervalMs: number | null;
+        dispatchLagMs: number;
+    } | null>(null);
 
     // Cached sorted camera IDs from the last frame — compared by value to avoid
     // per-frame Array.from().sort() allocations when the camera list hasn't changed.
@@ -140,6 +150,25 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
+        canvasManagerRef.current.setRenderAckHandler((payload) => {
+            const store = pipelineTimingStoreRef.current;
+            const frameNumber = payload.frameNumber >= 0 ? payload.frameNumber : null;
+            const uiCtx = frameNumber != null ? {frameNumber} : undefined;
+            const rafStart = payload.rafCycleStartMs;
+            if (rafStart != null && rafStart > 0) {
+                store.recordRafToRendered(payload.cameraId, payload.completedAt - rafStart, uiCtx);
+            }
+            store.recordCanvasBitmapTransfer(payload.cameraId, payload.renderMs, uiCtx);
+            if (typeof payload.canvasWorkerRafWaitMs === 'number') {
+                store.recordCanvasWorkerRafWait(payload.cameraId, payload.canvasWorkerRafWaitMs, uiCtx);
+            }
+            if (typeof payload.canvasWorkerReceiveLagMs === 'number') {
+                store.recordCanvasWorkerReceiveLag(payload.cameraId, payload.canvasWorkerReceiveLagMs, uiCtx);
+            }
+            if (typeof payload.renderAckDeliveryMs === 'number' && Number.isFinite(payload.renderAckDeliveryMs)) {
+                store.recordRenderAckDelivery(payload.cameraId, payload.renderAckDeliveryMs, uiCtx);
+            }
+        });
         overlayManagerRef.current = new OverlayManager();
 
         // Persist logs on tab close / navigation so the last batch isn't lost.
@@ -158,6 +187,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 wsConnectionRef.current.disconnect();
             }
             if (canvasManagerRef.current) {
+                canvasManagerRef.current.setRenderAckHandler(null);
                 canvasManagerRef.current.terminateAllWorkers();
             }
             if (frameProcessorRef.current) {
@@ -186,8 +216,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingJsonPayloadRef.current = null;
                 pendingKeypointsRef.current = null;
                 pendingAckFrameNumberRef.current = null;
+                lastFrameAckSentMsRef.current = 0;
+                pendingJpegAckToReceiveMsRef.current = null;
+                lastJpegWsBinaryArrivalMsRef.current = 0;
+                pendingWsBinaryTimingRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
+                pipelineTimingStoreRef.current.clear();
                 trackedPointsRef.current = null;
                 rigidBodiesRef.current = new Map();
                 keypointsFilteredRef.current = null;
@@ -210,12 +245,34 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         // Synchronous — overlay compositing is fire-and-forget so it never blocks
         // the rAF loop. The ack is sent at the top of processFrameLoop, well before
         // decode finishes, so the backend pipelines the next frame sooner.
+        type DispatchFramesTiming = {
+            jpegAckToReceiveMs: number | null;
+            rafCycleStartMs: number;
+            /** Multiplex JPEG binary: spacing since previous WS payload + MessageEvent dispatch lag. */
+            wsBinaryTiming?: {
+                intervalMs: number | null;
+                dispatchLagMs: number;
+            };
+            /** Present for multiplex JPEG frames: splits rAF→rendered into decode, dispatch, canvas worker, and paint. */
+            decodeBreakdown?: {
+                rafBodyBeforeDecodeMs: number;
+                decodeWorkerMs: number;
+                jpegDecodeMainWaitMs: number;
+                jpegDecodeBridgeMs: number;
+                dispatchFramesEnterMs: number;
+            };
+        };
+
         const dispatchFrames = (
-            result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
+            result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>,
+            timing?: DispatchFramesTiming,
         ): void => {
             if (!result) return;
 
             const {frames, cameraIds} = result;
+            const jpegAckMs = timing?.jpegAckToReceiveMs ?? null;
+            const rafCycleStartMs = timing?.rafCycleStartMs ?? 0;
+            const wsBinaryTiming = timing?.wsBinaryTiming;
 
             // Only allocate a new sorted array if the camera set actually changed.
             const lastIds = lastCameraIdsRef.current;
@@ -252,7 +309,54 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             // blocks the rAF loop. The canvas worker renders the composited bitmap
             // when it arrives (overwriting any earlier raw frame for that camera).
             const overlayManager = overlayManagerRef.current!;
+            const timingStore = pipelineTimingStoreRef.current;
+            const jpegAckMsValue = jpegAckMs != null && jpegAckMs > 0 && Number.isFinite(jpegAckMs) ? jpegAckMs : null;
+            const frameMetaBase = {
+                rafCycleStartMs: rafCycleStartMs > 0 ? rafCycleStartMs : undefined,
+            };
+            const decodeBreakdown = timing?.decodeBreakdown;
+            const uiCtxForCamera = (cameraId: string, frameNumber: number) => ({
+                frameNumber: frameNumber >= 0 ? frameNumber : undefined,
+                parentTaskIds: frameNumber >= 0
+                    ? [`${frameNumber}:${cameraId}:camera:ws_payload_prepare_ms`]
+                    : undefined,
+            });
+            if (decodeBreakdown) {
+                for (const frameData of frames) {
+                    const ctx = uiCtxForCamera(frameData.cameraId, frameData.frameNumber);
+                    timingStore.recordRafBodyBeforeDecode(frameData.cameraId, decodeBreakdown.rafBodyBeforeDecodeMs, ctx);
+                    timingStore.recordJpegDecodeWorker(frameData.cameraId, decodeBreakdown.decodeWorkerMs, ctx);
+                    timingStore.recordJpegDecodeMainWait(frameData.cameraId, decodeBreakdown.jpegDecodeMainWaitMs, ctx);
+                    timingStore.recordJpegDecodeBridge(frameData.cameraId, decodeBreakdown.jpegDecodeBridgeMs, ctx);
+                }
+            }
+            const recordMainDispatch = (cameraId: string, frameNumber: number): void => {
+                if (!decodeBreakdown) return;
+                const sendAt = performance.now();
+                timingStore.recordMainDispatchToCanvas(
+                    cameraId,
+                    sendAt - decodeBreakdown.dispatchFramesEnterMs,
+                    uiCtxForCamera(cameraId, frameNumber),
+                );
+            };
             for (const frameData of frames) {
+                const ctx = uiCtxForCamera(frameData.cameraId, frameData.frameNumber);
+                if (jpegAckMsValue !== null) {
+                    timingStore.recordJpegAckToReceive(frameData.cameraId, jpegAckMsValue, ctx);
+                }
+                if (wsBinaryTiming) {
+                    const { intervalMs, dispatchLagMs } = wsBinaryTiming;
+                    if (
+                        intervalMs != null
+                        && intervalMs > 0
+                        && Number.isFinite(intervalMs)
+                    ) {
+                        timingStore.recordJpegWsBinaryInterval(frameData.cameraId, intervalMs, ctx);
+                    }
+                    if (Number.isFinite(dispatchLagMs) && dispatchLagMs >= 0) {
+                        timingStore.recordJpegWsBinaryDispatchLag(frameData.cameraId, dispatchLagMs, ctx);
+                    }
+                }
                 const overlayAge = performance.now() - (lastOverlayTimeRef.current.get(frameData.cameraId) ?? 0);
                 const overlayFresh = overlayAge <= OVERLAY_STALE_MS;
                 if (!overlayFresh) {
@@ -274,10 +378,20 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         charucoObs,
                         mediapipeObs,
                     ).then(compositeBitmap => {
-                        canvasManagerRef.current?.sendFrameToWorker(frameData.cameraId, compositeBitmap);
+                        recordMainDispatch(frameData.cameraId, frameData.frameNumber);
+                        canvasManagerRef.current?.sendFrameToWorker(
+                            frameData.cameraId,
+                            compositeBitmap,
+                            {frameNumber: frameData.frameNumber, ...frameMetaBase},
+                        );
                     }).catch(err => console.error('Overlay error for camera', frameData.cameraId, err));
                 } else {
-                    canvasManagerRef.current!.sendFrameToWorker(frameData.cameraId, frameData.bitmap);
+                    recordMainDispatch(frameData.cameraId, frameData.frameNumber);
+                    canvasManagerRef.current!.sendFrameToWorker(
+                        frameData.cameraId,
+                        frameData.bitmap,
+                        {frameNumber: frameData.frameNumber, ...frameMetaBase},
+                    );
                 }
             }
 
@@ -429,6 +543,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (pendingAckFrameNumberRef.current !== null) {
                 ws.send({type: 'frameAcknowledgment', frameNumber: pendingAckFrameNumberRef.current});
                 pendingAckFrameNumberRef.current = null;
+                lastFrameAckSentMsRef.current = performance.now();
                 tick.sentAck = true;
             }
 
@@ -460,6 +575,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
             if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
                 const payload = pendingPayloadRef.current;
+                const jpegAckToReceiveMs = pendingJpegAckToReceiveMsRef.current;
+                const wsBinaryTimingSnapshot = pendingWsBinaryTimingRef.current;
+                pendingWsBinaryTimingRef.current = null;
+                const rafCycleStartMsForDecode = bodyStart;
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
                 decodeStartTime = performance.now();
@@ -468,7 +587,24 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     .then(result => {
                         const decodeMs = performance.now() - decodeStartTime;
                         if (decodeMs > 20) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
-                        dispatchFrames(result);
+                        if (!result) return;
+                        const dispatchEnter = performance.now();
+                        const decodeWorkerMs = result.decodeWorkerMs;
+                        const jpegDecodeMainWaitMs = dispatchEnter - decodeStartTime;
+                        const jpegDecodeBridgeMs = Math.max(0, jpegDecodeMainWaitMs - decodeWorkerMs);
+                        const rafBodyBeforeDecodeMs = Math.max(0, decodeStartTime - rafCycleStartMsForDecode);
+                        dispatchFrames(result, {
+                            jpegAckToReceiveMs,
+                            rafCycleStartMs: rafCycleStartMsForDecode,
+                            wsBinaryTiming: wsBinaryTimingSnapshot ?? undefined,
+                            decodeBreakdown: {
+                                rafBodyBeforeDecodeMs,
+                                decodeWorkerMs,
+                                jpegDecodeMainWaitMs,
+                                jpegDecodeBridgeMs,
+                                dispatchFramesEnterMs: dispatchEnter,
+                            },
+                        });
                     })
                     .catch(err => console.error('Error processing frame:', err))
                     .finally(() => { processingFrameRef.current = false; });
@@ -498,6 +634,25 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         const view = new DataView(event.data);
                         pendingAckFrameNumberRef.current = Number(view.getBigInt64(8, true));
                     }
+                    const receiveAt = performance.now();
+                    const evTs = event.timeStamp;
+                    const dispatchLagMs =
+                        typeof evTs === 'number' && evTs > 0 && Number.isFinite(evTs)
+                            ? Math.max(0, receiveAt - evTs)
+                            : 0;
+                    let wsBinaryIntervalMs: number | null = null;
+                    if (lastJpegWsBinaryArrivalMsRef.current > 0) {
+                        wsBinaryIntervalMs = receiveAt - lastJpegWsBinaryArrivalMsRef.current;
+                    }
+                    lastJpegWsBinaryArrivalMsRef.current = receiveAt;
+                    pendingWsBinaryTimingRef.current = {
+                        intervalMs: wsBinaryIntervalMs,
+                        dispatchLagMs,
+                    };
+                    pendingJpegAckToReceiveMsRef.current =
+                        lastFrameAckSentMsRef.current > 0
+                            ? receiveAt - lastFrameAckSentMsRef.current
+                            : null;
                     pendingPayloadRef.current = event.data;
                 }
             }
@@ -531,6 +686,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFramerateUpdate(jsonData)) {
                         serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
+                        const meanDur = jsonData.backend_framerate.frame_duration_mean;
+                        if (meanDur != null && meanDur > 0) {
+                            pipelineTimingStoreRef.current.setBackendFrameDurationMs(meanDur);
+                        }
+                    }
+                    else if (isPipelineTiming(jsonData)) {
+                        pipelineTimingStoreRef.current.ingestBackendMessage(jsonData);
                     }
                     // Buffer frontend_payload for dispatch in the rAF loop.
                     // Older unprocessed payloads are overwritten (keep latest only).
@@ -652,6 +814,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return framerateStoreRef.current;
     }, []);
 
+    const getPipelineTimingStore = useCallback((): PipelineTimingStore => {
+        return pipelineTimingStoreRef.current;
+    }, []);
+
     const getLogStore = useCallback((): LogStore => {
         return logStoreRef.current;
     }, []);
@@ -720,6 +886,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getFps,
         getServerFps,
         getFramerateStore,
+        getPipelineTimingStore,
         getLogStore,
         connectedCameraIds,
         updateServerConnection,
@@ -731,7 +898,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getPipelineTimingStore, getLogStore, updateServerConnection, subscribeToKeypointsRaw, subscribeToKeypointsFiltered, subscribeToRigidBodies, getLatestKeypointsRaw, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

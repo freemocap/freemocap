@@ -153,13 +153,21 @@ class AggregationNodeOutputMessage(TopicMessageABC):
         # from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
         from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
         from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
+        from skellytracker.trackers.mediapipe_tracker.composite.mediapipe_composite_observation import (
+            MediapipeCompositeObservation,
+        )
 
         overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            # if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
-            if cam_output.skeleton_observation is not None and isinstance(cam_output.skeleton_observation, RTMPoseObservation):
-                # overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_observation(
+            if cam_output.skeleton_observation is None:
+                continue
+            if isinstance(cam_output.skeleton_observation, RTMPoseObservation):
                 overlay_data[camera_id] = SkeletonOverlayData.from_rtmpose_observation(
+                    camera_id=camera_id,
+                    observation=cam_output.skeleton_observation,
+                )
+            elif isinstance(cam_output.skeleton_observation, MediapipeCompositeObservation):
+                overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_composite_observation(
                     camera_id=camera_id,
                     observation=cam_output.skeleton_observation,
                 )
@@ -179,6 +187,24 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # maintains rolling buffers across all nodes, and prints one consolidated
 # report. Camera-node samples for the same stage collapse across camera_id
 # into ensemble statistics so adding cameras doesn't multiply log volume.
+#
+# Task events carry monotonic start/end timestamps, frame/camera context, and
+# parent links for the metrics timeline UI.
+
+@dataclass
+class PipelineTimingEvent:
+    task_id: str = ""
+    parent_task_ids: list[str] = field(default_factory=list)
+    stage: str = ""
+    node_kind: str = ""
+    camera_id: CameraIdString | None = None
+    frame_number: FrameNumberInt | None = None
+    start_time_ns: int = 0
+    end_time_ns: int = 0
+    duration_ms: float = 0.0
+    batch_index: int | None = None
+    batch_size: int | None = None
+
 
 @dataclass
 class PipelineTimingMessage(TopicMessageABC):
@@ -186,6 +212,10 @@ class PipelineTimingMessage(TopicMessageABC):
     node_label: str = ""             # human-readable label for log section headers
     camera_id: CameraIdString | None = None  # set only for camera nodes
     samples: dict[str, list[float]] = field(default_factory=dict)  # stage -> elapsed_ms batch
+    events: list[PipelineTimingEvent] = field(default_factory=list)
+    clock_domain: str = "perf_counter"
+    relay_perf_counter_ns: int = 0
+    dropped_timing_events: int = 0
 
 
 # ---------------------------------------------------------------------------

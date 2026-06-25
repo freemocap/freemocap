@@ -201,6 +201,7 @@ class TestWebsocketPipelineTimingPayload:
         assert payload is not None
         assert payload["clock_domain"] == "perf_counter"
         assert isinstance(payload["relay_perf_counter_ns"], int)
+        assert payload["realtime_pipeline_active"] is True
         assert payload["dropped_timing_events"] == 2
         assert payload["configured_camera_fps_hz"] == 20.0
         assert len(payload["events"]) == 1
@@ -223,6 +224,22 @@ class TestWebsocketPipelineTimingPayload:
         encoded = _ws_json_encoder.encode(payload).decode("utf-8")
         assert '"camera_group_id":"group_a"' in encoded
         assert '"camera_id":"cam_0"' in encoded
+
+    def test_metrics_only_sends_status_when_pipeline_active_without_samples(self) -> None:
+        server = self._make_server(metrics_only=True)
+        server._app.get_pipeline_timing_subscription.return_value = Queue()
+        payload = server._build_pipeline_timing_payload("group_a")
+        assert payload is not None
+        assert payload["realtime_pipeline_active"] is True
+        assert payload["events"] == []
+
+    def test_metrics_only_sends_inactive_status_without_pipeline(self) -> None:
+        server = self._make_server(metrics_only=True)
+        server._app.get_realtime_pipeline_for_camera_group.return_value = None
+        server._app.get_pipeline_timing_subscription.return_value = Queue()
+        payload = server._build_pipeline_timing_payload("group_a")
+        assert payload is not None
+        assert payload["realtime_pipeline_active"] is False
 
     def test_metrics_only_includes_preview_timing_samples(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(

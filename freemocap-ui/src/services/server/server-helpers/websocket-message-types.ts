@@ -41,6 +41,7 @@ export interface PipelineTimingWsMessage {
     message_type: 'pipeline_timing';
     camera_group_id: string;
     log_pipeline_times_enabled?: boolean;
+    realtime_pipeline_active?: boolean;
     configured_camera_fps_hz?: number | null;
     per_node?: Record<string, Record<string, number[]>>;
     per_camera?: Record<string, Record<string, number[]>>;

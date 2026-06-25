@@ -29,6 +29,8 @@ export type PipelineTimelineSnapshot = {
     lockedFrameDurationMs: number | null;
     droppedTimingEvents: number;
     logPipelineTimesEnabled: boolean;
+    /** null until the first backend status heartbeat is received. */
+    realtimePipelineActive: boolean | null;
 };
 
 /** Align backend perf_counter_ns samples to renderer performance.now() at ingest. */
@@ -56,6 +58,7 @@ export class PipelineTimingStore {
     private readonly lastSampleTimestamps = new Map<string, number>();
     private readonly taskEvents = new Map<string, StoredPipelineTaskEvent>();
     private logPipelineTimesEnabled = false;
+    private realtimePipelineActive: boolean | null = null;
     private droppedTimingEvents = 0;
     private backendFrameDurationMs: number | null = null;
     private configuredFrameDurationMs: number | null = null;
@@ -241,6 +244,9 @@ export class PipelineTimingStore {
 
     ingestBackendMessage(msg: PipelineTimingWsMessage): void {
         this.logPipelineTimesEnabled = msg.log_pipeline_times_enabled ?? false;
+        if (typeof msg.realtime_pipeline_active === 'boolean') {
+            this.realtimePipelineActive = msg.realtime_pipeline_active;
+        }
         this.pruneHiddenBackendRows();
         this.prunePubsubRowsWhenDisabled();
         const ingestWallMs = Date.now();
@@ -425,6 +431,7 @@ export class PipelineTimingStore {
             lockedFrameDurationMs: this.lockedFrameDurationMs,
             droppedTimingEvents: this.droppedTimingEvents,
             logPipelineTimesEnabled: this.logPipelineTimesEnabled,
+            realtimePipelineActive: this.realtimePipelineActive,
         };
         this._timelineVersion = this._writeVersion;
         return this._cachedTimeline;
@@ -437,6 +444,7 @@ export class PipelineTimingStore {
         this.lastSampleTimestamps.clear();
         this.taskEvents.clear();
         this.logPipelineTimesEnabled = false;
+        this.realtimePipelineActive = null;
         this.droppedTimingEvents = 0;
         this.backendFrameDurationMs = null;
         this.configuredFrameDurationMs = null;

@@ -23,8 +23,7 @@ import {CATEGORY_COLORS} from '@/components/pipeline-metrics/pipelineTaskTopolog
 import type {PipelineTaskCategory} from '@/services/server/server-helpers/pipeline-timing-types';
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
-import {useAppDispatch, useAppSelector} from '@/store/hooks';
-import {applyRealtimePipeline, selectIsPipelineConnected, selectPipelineConfig} from '@/store/slices/realtime';
+import {broadcastSetLogPipelineTimes, requestRealtimePipelineState, subscribeRealtimePipelineBroadcast, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
 
 const POLL_MS = 200;
 const CATEGORY_LABELS: Record<PipelineTaskCategory, string> = {
@@ -39,16 +38,22 @@ const CATEGORY_LABELS: Record<PipelineTaskCategory, string> = {
 export default function PipelineMetricsWindowPage(): React.ReactElement {
     const theme = useTheme();
     const {isConnected, getPipelineTimingStore} = useMetricsServer();
-    const dispatch = useAppDispatch();
-    const pipelineConfig = useAppSelector(selectPipelineConfig);
-    const pipelineConnected = useAppSelector(selectIsPipelineConnected);
-    const logTimes = pipelineConfig.log_pipeline_times !== false;
 
     const [paused, setPaused] = useState(false);
     const [tick, setTick] = useState(0);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [categoryFilters, setCategoryFilters] = useState<TimelineCategoryFilters>(DEFAULT_CATEGORY_FILTERS);
     const [frozenSnapshot, setFrozenSnapshot] = useState<PipelineTimelineSnapshot | null>(null);
+    const [broadcastPipelineState, setBroadcastPipelineState] = useState<RealtimePipelineBroadcastState | null>(null);
+
+    useEffect(() => {
+        requestRealtimePipelineState();
+        return subscribeRealtimePipelineBroadcast((message) => {
+            if (message.type === 'state') {
+                setBroadcastPipelineState(message.state);
+            }
+        });
+    }, []);
 
     useEffect(() => {
         if (paused) return;
@@ -79,11 +84,15 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         paused,
     }), [timelineData, categoryFilters, paused]);
 
+    const pipelineStatusKnown = timelineData.realtimePipelineActive != null || broadcastPipelineState != null;
+    const pipelineConnected = timelineData.realtimePipelineActive === true
+        || (timelineData.realtimePipelineActive == null && broadcastPipelineState?.isConnected === true);
+    const logTimes = timelineData.realtimePipelineActive != null
+        ? timelineData.logPipelineTimesEnabled
+        : broadcastPipelineState?.logPipelineTimes !== false;
+
     const handleToggleTiming = (_: unknown, checked: boolean): void => {
-        dispatch(applyRealtimePipeline({
-            ...pipelineConfig,
-            log_pipeline_times: checked,
-        }));
+        broadcastSetLogPipelineTimes(checked);
     };
 
     const toggleCategory = (cat: PipelineTaskCategory): void => {
@@ -128,9 +137,14 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
                 )}
             </Toolbar>
 
-            {!pipelineConnected && (
+            {pipelineStatusKnown && !pipelineConnected && (
                 <Alert severity="info" sx={{mx: 1}}>
                     Connect the realtime pipeline to collect pipeline stage timings.
+                </Alert>
+            )}
+            {!pipelineStatusKnown && isConnected && (
+                <Alert severity="info" sx={{mx: 1}}>
+                    Waiting for pipeline status from the server…
                 </Alert>
             )}
             {pipelineConnected && !logTimes && (

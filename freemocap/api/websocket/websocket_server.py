@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
 BACKPRESSURE_RESET_THRESHOLD: int = 300
-PIPELINE_TIMING_FRAME_WINDOW: int = 3
+PIPELINE_TIMING_FRAME_WINDOW: int = 5
 PIPELINE_TIMING_FRAME_BUFFER: int = 2
 METRICS_CLIENT_ROLE = "metrics"
 
@@ -221,11 +221,27 @@ class WebsocketServer:
         )
         dropped_timing_events += dropped_by_window
 
+        pipeline_active = pipeline is not None
         if not per_node and not per_camera and not capped_events:
-            return None
+            if not self._metrics_only:
+                return None
+            return {
+                "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
+                "camera_group_id": str(camera_group_id),
+                "realtime_pipeline_active": pipeline_active,
+                "log_pipeline_times_enabled": want_pubsub_timing,
+                "configured_camera_fps_hz": _configured_camera_fps_hz(pipeline),
+                "per_node": {},
+                "per_camera": {},
+                "events": [],
+                "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
+                "relay_perf_counter_ns": time.perf_counter_ns(),
+                "dropped_timing_events": 0,
+            }
         return {
             "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
             "camera_group_id": str(camera_group_id),
+            "realtime_pipeline_active": pipeline_active,
             "log_pipeline_times_enabled": want_pubsub_timing,
             "configured_camera_fps_hz": _configured_camera_fps_hz(pipeline),
             "per_node": per_node,

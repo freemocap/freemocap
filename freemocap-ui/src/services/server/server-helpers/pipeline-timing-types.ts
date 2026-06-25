@@ -1,5 +1,5 @@
 /** Rolling UI policy: show this many frame numbers in the network timeline. */
-export const PIPELINE_TIMELINE_FRAME_WINDOW = 3;
+export const PIPELINE_TIMELINE_FRAME_WINDOW = 5;
 
 export const FALLBACK_FRAME_DURATION_MS = 1000 / 30;
 

@@ -95,28 +95,47 @@ const TimelineRow = memo(function TimelineRow({
                 alignItems: 'center',
                 height: ROW_HEIGHT,
                 cursor: 'pointer',
+                minWidth: 0,
                 opacity: row.stale ? 0.4 : 1,
                 bgcolor: selected ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
                 '&:hover': {bgcolor: alpha(theme.palette.action.hover, 0.04)},
             }}
         >
-            <ProgressiveTooltip shortInfo={rowTip.short} longInfo={rowTip.long} alwaysShowLong>
-                <Typography
-                    noWrap
-                    variant="caption"
-                    sx={{
-                        width: LABEL_WIDTH,
-                        flexShrink: 0,
-                        px: 1,
-                        fontSize: '0.7rem',
-                        color: 'text.secondary',
-                        cursor: 'help',
-                    }}
-                >
-                    {row.label}
-                </Typography>
-            </ProgressiveTooltip>
-            <Box sx={{flex: 1, position: 'relative', height: '100%', pr: 1}}>
+            <Box
+                sx={{
+                    width: LABEL_WIDTH,
+                    minWidth: LABEL_WIDTH,
+                    maxWidth: LABEL_WIDTH,
+                    flexShrink: 0,
+                    overflow: 'hidden',
+                    px: 1,
+                    '& > span': {
+                        display: 'block',
+                        width: '100%',
+                        minWidth: 0,
+                        overflow: 'hidden',
+                    },
+                }}
+            >
+                <ProgressiveTooltip shortInfo={rowTip.short} longInfo={rowTip.long} alwaysShowLong>
+                    <Typography
+                        noWrap
+                        variant="caption"
+                        sx={{
+                            display: 'block',
+                            width: '100%',
+                            fontSize: '0.7rem',
+                            color: 'text.secondary',
+                            cursor: 'help',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                    >
+                        {row.label}
+                    </Typography>
+                </ProgressiveTooltip>
+            </Box>
+            <Box sx={{flex: 1, position: 'relative', height: '100%', pr: 1, minWidth: 0, overflow: 'hidden'}}>
                 <Tooltip
                     title={
                         <Box>

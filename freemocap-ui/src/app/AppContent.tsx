@@ -14,6 +14,7 @@ import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import PipelineMetricsWindowPage from "@/components/pipeline-metrics/PipelineMetricsWindowPage";
+import {useRealtimePipelineBroadcastPublisher} from "@/hooks/useRealtimePipelineBroadcastPublisher";
 
 type AppContentProps = {
     metricsOnly?: boolean;
@@ -54,6 +55,8 @@ export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
         if (metricsOnly) return;
         dispatch(fetchAllRecordings());
     }, [dispatch, metricsOnly]);
+
+    useRealtimePipelineBroadcastPublisher(!metricsOnly);
 
     if (metricsOnly) {
         return <MetricsAppContent direction={direction} />;

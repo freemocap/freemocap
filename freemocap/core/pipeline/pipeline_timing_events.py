@@ -228,7 +228,7 @@ def make_stage_interval_event(
 def cap_events_by_frame_window(
         events: list[PipelineTimingEvent],
         *,
-        frame_window: int = 3,
+        frame_window: int = 5,
         frame_buffer: int = 2,
 ) -> tuple[list[PipelineTimingEvent], int]:
     """Keep events intersecting the latest ``frame_window`` frames plus buffer."""

@@ -21,7 +21,9 @@ from freemocap.api.websocket.tracker_schema_message import TrackerSchemasMessage
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 
-from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
+from freemocap.pubsub.pubsub_topics import PipelineTimingEvent, PipelineTimingMessage
+from freemocap.core.pipeline.pipeline_timing_events import cap_events_by_frame_window
+from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_PERF_COUNTER
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
@@ -43,6 +45,24 @@ logger = logging.getLogger(__name__)
 BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
 BACKPRESSURE_RESET_THRESHOLD: int = 300
+PIPELINE_TIMING_FRAME_WINDOW: int = 3
+PIPELINE_TIMING_FRAME_BUFFER: int = 2
+METRICS_CLIENT_ROLE = "metrics"
+
+
+def _parse_client_role(websocket: WebSocket) -> str:
+    role = websocket.query_params.get("client_role", "full")
+    return role.strip().lower() or "full"
+
+
+def _merge_pipeline_timing_event(
+        events: list[PipelineTimingEvent],
+        msg: PipelineTimingMessage,
+) -> int:
+    dropped = int(msg.dropped_timing_events)
+    if msg.events:
+        events.extend(msg.events)
+    return dropped
 
 
 def _merge_pipeline_timing_sample(
@@ -71,6 +91,8 @@ def _msgspec_enc_hook(obj: object) -> object:
         return obj.model_dump()
     if hasattr(obj, "__dataclass_fields__"):
         return dataclasses.asdict(obj)
+    if isinstance(obj, np.generic):
+        return obj.item()
     if isinstance(obj, np.integer):
         return int(obj)
     if isinstance(obj, np.floating):
@@ -89,9 +111,30 @@ class FramerateMessage(msgspec.Struct):
     message_type: WebsocketMessageType = WebsocketMessageType.FRAMERATE_UPDATE
 
 
+def _configured_camera_fps_hz(pipeline: object | None) -> float | None:
+    """Return a startup FPS scale only when all selected cameras specify one."""
+    if pipeline is None:
+        return None
+    camera_ids = getattr(pipeline, "camera_ids", [])
+    camera_configs = getattr(pipeline, "camera_configs", {})
+    fps_values: list[float] = []
+    for camera_id in camera_ids:
+        config = camera_configs.get(camera_id)
+        fps = getattr(config, "framerate", None)
+        if fps is None or fps <= 0:
+            return None
+        fps_values.append(float(fps))
+    if not fps_values:
+        return None
+    # A group timeline should span the slowest selected camera cadence.
+    return min(fps_values)
+
+
 class WebsocketServer:
     def __init__(self, fastapi_app: FastAPI, websocket: WebSocket):
         self.websocket = websocket
+        self._client_role = _parse_client_role(websocket)
+        self._metrics_only = self._client_role == METRICS_CLIENT_ROLE
         if not hasattr(fastapi_app, "state") or not hasattr(fastapi_app.state, "global_kill_flag"):
             raise RuntimeError(
                 "FastAPI app does not have a global_kill_flag in its state"
@@ -134,8 +177,12 @@ class WebsocketServer:
             camera_group_id: CameraGroupIdString,
     ) -> dict[str, object] | None:
         """Drain preview JPEG/resize telemetry and optional pubsub pipeline stages."""
-        preview_by_cam = get_and_clear_frontend_preview_timing_samples(str(camera_group_id))
-        multiframe_preview = get_and_clear_frontend_preview_multiframe_samples(str(camera_group_id))
+        if self._metrics_only:
+            preview_by_cam = get_and_clear_frontend_preview_timing_samples(str(camera_group_id))
+            multiframe_preview = get_and_clear_frontend_preview_multiframe_samples(str(camera_group_id))
+        else:
+            preview_by_cam = {}
+            multiframe_preview = {}
         pipeline = self._app.get_realtime_pipeline_for_camera_group(camera_group_id)
         want_pubsub_timing = (
             pipeline is not None and pipeline.config.log_pipeline_times
@@ -143,6 +190,8 @@ class WebsocketServer:
 
         per_node: dict[str, dict[str, list[float]]] = {}
         per_camera: dict[str, dict[str, list[float]]] = {}
+        events: list[PipelineTimingEvent] = []
+        dropped_timing_events = 0
 
         if want_pubsub_timing:
             sub = self._app.get_pipeline_timing_subscription(camera_group_id)
@@ -153,24 +202,38 @@ class WebsocketServer:
                     except Empty:
                         break
                     _merge_pipeline_timing_sample(per_node, per_camera, msg)
+                    dropped_timing_events += _merge_pipeline_timing_event(events, msg)
 
-        for cam_id, stages in preview_by_cam.items():
-            for stage, samples in stages.items():
-                per_camera.setdefault(cam_id, {}).setdefault(stage, []).extend(samples)
+        if self._metrics_only:
+            for cam_id, stages in preview_by_cam.items():
+                for stage, samples in stages.items():
+                    per_camera.setdefault(cam_id, {}).setdefault(stage, []).extend(samples)
 
-        if multiframe_preview:
-            mf_bucket = per_node.setdefault("multiframe", {})
-            for stage, samples in multiframe_preview.items():
-                mf_bucket.setdefault(stage, []).extend(samples)
+            if multiframe_preview:
+                mf_bucket = per_node.setdefault("multiframe", {})
+                for stage, samples in multiframe_preview.items():
+                    mf_bucket.setdefault(stage, []).extend(samples)
 
-        if not per_node and not per_camera:
+        capped_events, dropped_by_window = cap_events_by_frame_window(
+            events,
+            frame_window=PIPELINE_TIMING_FRAME_WINDOW,
+            frame_buffer=PIPELINE_TIMING_FRAME_BUFFER,
+        )
+        dropped_timing_events += dropped_by_window
+
+        if not per_node and not per_camera and not capped_events:
             return None
         return {
             "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
             "camera_group_id": str(camera_group_id),
             "log_pipeline_times_enabled": want_pubsub_timing,
+            "configured_camera_fps_hz": _configured_camera_fps_hz(pipeline),
             "per_node": per_node,
             "per_camera": per_camera,
+            "events": [dataclasses.asdict(event) for event in capped_events],
+            "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
+            "relay_perf_counter_ns": time.perf_counter_ns(),
+            "dropped_timing_events": dropped_timing_events,
         }
 
     async def __aenter__(self):
@@ -216,7 +279,14 @@ class WebsocketServer:
             logger.exception("Failed to send tracker_schemas handshake message")
 
     async def run(self):
-        logger.info("Starting websocket runner...")
+        logger.info(
+            "Starting websocket runner (client_role=%s)...",
+            self._client_role,
+        )
+        if self._metrics_only:
+            await self._run_metrics_only()
+            return
+
         await self._send_tracker_schemas()
         self.ws_tasks = [
             asyncio.create_task(
@@ -240,6 +310,48 @@ class WebsocketServer:
             for task in self.ws_tasks:
                 if not task.done():
                     task.cancel()
+            raise
+
+    async def _run_metrics_only(self) -> None:
+        """Metrics window client: pipeline timing only, no image/log/posthoc relay."""
+        self.ws_tasks = [
+            asyncio.create_task(
+                self._metrics_relay(),
+                name="WebsocketMetricsRelay",
+            ),
+            asyncio.create_task(
+                self._client_message_handler(),
+                name="WebsocketClientMessageHandler",
+            ),
+        ]
+        try:
+            await asyncio.gather(*self.ws_tasks)
+        except Exception as e:
+            logger.exception(f"Error in metrics websocket runner: {e.__class__}: {e}")
+            for task in self.ws_tasks:
+                if not task.done():
+                    task.cancel()
+            raise
+
+    async def _metrics_relay(self) -> None:
+        logger.info("Starting metrics-only websocket relay...")
+        try:
+            while self.should_continue:
+                now = time.perf_counter()
+                if now - self._last_pipeline_timing_send_time >= 0.25:
+                    for camera_group_id in self._camera_group_ids_for_timing():
+                        timing_payload = self._build_pipeline_timing_payload(camera_group_id)
+                        if timing_payload is not None:
+                            await self._send_msgspec_json(timing_payload)
+                    self._last_pipeline_timing_send_time = now
+                await await_10ms()
+        except WebSocketDisconnect:
+            logger.api("Metrics client disconnected, ending metrics relay task...")
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.exception(f"Error in metrics relay: {e.__class__}: {e}")
+            self._websocket_should_continue = False
             raise
 
     def last_frame_acknowledged(self) -> bool:
@@ -426,7 +538,12 @@ class WebsocketServer:
                                 # Route settings messages to the settings protocol
                                 data_message_type = data.get("message_type", "")
 
-                                if "frameNumber" in data:
+                                if data_message_type == "client_handshake":
+                                    role = str(data.get("client_role", "")).strip().lower()
+                                    if role:
+                                        self._client_role = role
+                                        self._metrics_only = self._client_role == METRICS_CLIENT_ROLE
+                                elif "frameNumber" in data:
                                     # Existing frame acknowledgment handling
                                     self.last_received_frontend_confirmation = data["frameNumber"]
                                     self._display_image_sizes = data.get("displayImageSizes", None)

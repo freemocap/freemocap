@@ -23,6 +23,7 @@ from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.rtmpose_model_size import rtmpose_mode_for_size
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_timing_events import make_stage_interval_event, perf_counter_ns
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -232,21 +233,43 @@ class CameraNode(SourceNode):
                 skeleton_observation = None
                 charuco_observation = None
                 if skeleton_detector is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
+                    t0_ns = perf_counter_ns() if timer is not None else 0
                     skeleton_observation = skeleton_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
                     if timer is not None:
-                        timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
+                        t1_ns = perf_counter_ns()
+                        timer.record("skeleton_detection", (t1_ns - t0_ns) / 1e6)
+                        timer.record_stage_interval(
+                            event=make_stage_interval_event(
+                                frame_number=actual_frame_number,
+                                stage="skeleton_detection",
+                                node_kind="camera",
+                                camera_id=actual_camera_id,
+                                start_time_ns=t0_ns,
+                                end_time_ns=t1_ns,
+                            ),
+                        )
                 if charuco_detector is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
+                    t0_ns = perf_counter_ns() if timer is not None else 0
                     charuco_observation = charuco_detector.detect(
                         frame_number=actual_frame_number,
                         image=image,
                     )
                     if timer is not None:
-                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+                        t1_ns = perf_counter_ns()
+                        timer.record("charuco_detection", (t1_ns - t0_ns) / 1e6)
+                        timer.record_stage_interval(
+                            event=make_stage_interval_event(
+                                frame_number=actual_frame_number,
+                                stage="charuco_detection",
+                                node_kind="camera",
+                                camera_id=actual_camera_id,
+                                start_time_ns=t0_ns,
+                                end_time_ns=t1_ns,
+                            ),
+                        )
 
                 camera_output_pub.put(
                     CameraNodeOutputMessage(

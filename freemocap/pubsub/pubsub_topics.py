@@ -187,6 +187,24 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # maintains rolling buffers across all nodes, and prints one consolidated
 # report. Camera-node samples for the same stage collapse across camera_id
 # into ensemble statistics so adding cameras doesn't multiply log volume.
+#
+# Task events carry monotonic start/end timestamps, frame/camera context, and
+# parent links for the metrics timeline UI.
+
+@dataclass
+class PipelineTimingEvent:
+    task_id: str = ""
+    parent_task_ids: list[str] = field(default_factory=list)
+    stage: str = ""
+    node_kind: str = ""
+    camera_id: CameraIdString | None = None
+    frame_number: FrameNumberInt | None = None
+    start_time_ns: int = 0
+    end_time_ns: int = 0
+    duration_ms: float = 0.0
+    batch_index: int | None = None
+    batch_size: int | None = None
+
 
 @dataclass
 class PipelineTimingMessage(TopicMessageABC):
@@ -194,6 +212,10 @@ class PipelineTimingMessage(TopicMessageABC):
     node_label: str = ""             # human-readable label for log section headers
     camera_id: CameraIdString | None = None  # set only for camera nodes
     samples: dict[str, list[float]] = field(default_factory=dict)  # stage -> elapsed_ms batch
+    events: list[PipelineTimingEvent] = field(default_factory=list)
+    clock_domain: str = "perf_counter"
+    relay_perf_counter_ns: int = 0
+    dropped_timing_events: int = 0
 
 
 # ---------------------------------------------------------------------------

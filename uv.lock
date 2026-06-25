@@ -550,7 +550,7 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["recommended"], git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics" },
+    { name = "skellytracker", extras = ["recommended"], editable = "../skellytracker-pipeline-metrics" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 
@@ -1497,6 +1497,34 @@ wheels = [
 ]
 
 [[package]]
+name = "polars"
+version = "1.42.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "polars-runtime-32" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cb/91/a1d7809a6d399f0aa78d4d3a4f4daf411cb97ccfe7f236c08a01be5fc8a5/polars-1.42.0.tar.gz", hash = "sha256:283ddc923e47857924fbef36580d2e98d984a47c962bae4cbce9c0ebcc98989c", size = 740984, upload-time = "2026-06-24T05:20:13.727Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/4d/094819d251f2248999cb722125fd4e44ee79b753fe535338cbf442fbf45d/polars-1.42.0-py3-none-any.whl", hash = "sha256:ab10cac3f2d28a6e22e22bcac69c0e51fb33cd25aee1f45105782d4fe55a3e6a", size = 836855, upload-time = "2026-06-24T05:18:18.204Z" },
+]
+
+[[package]]
+name = "polars-runtime-32"
+version = "1.42.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/67/20759e9abbc61910cf948f5c28986ab25ef9e8009099b469d64d6a34a478/polars_runtime_32-1.42.0.tar.gz", hash = "sha256:c927e1930881fe0bf9629d12e5d44ebd4ecef2bfa02374dfc79feaa24054394f", size = 3042711, upload-time = "2026-06-24T05:20:15.715Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/62/8b83fca67d478e4a2b88cbba2fbff4d533052938ff96d598b7915fd9d235/polars_runtime_32-1.42.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:d235a5e8349797c16b70ad573fb9ddbd7f162796884bcbd25260908f8408affc", size = 53112358, upload-time = "2026-06-24T05:18:22.275Z" },
+    { url = "https://files.pythonhosted.org/packages/cf/72/06d3d78b7e8e8d3c72ea9eee310950334d50986462b3c1d40f82972495a5/polars_runtime_32-1.42.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:e7923db3bcb57e0edecde3be28629e0411414a15ef1a4c10c783ac5eadab2e1e", size = 47443757, upload-time = "2026-06-24T05:18:26.326Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/77/20241aaf919a0f63b946fb702bc14447db290ef918e2c2943ed90d50fcc1/polars_runtime_32-1.42.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:42e27e2eb5909abcedb4ab4cc04ee67c5ec2b73a5640ebd8739b1b719383fa68", size = 51360855, upload-time = "2026-06-24T05:18:30.709Z" },
+    { url = "https://files.pythonhosted.org/packages/46/5c/ca14606a42628b04d82ac6ae5742ed24048bd43fbf48ae87fc4f4b9e759d/polars_runtime_32-1.42.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1a3c43d4a76360bf912f8772b5ac1c23d5a8efef71408c63bba1bb0b4897a8ea", size = 57299346, upload-time = "2026-06-24T05:18:35.374Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/af/3ad0de43bbb97e91d605d7d76acb30be36269b8a8402890ab4f9892b6e26/polars_runtime_32-1.42.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:542a77b2b969e5157939bfb76cd0f372c4f42db6ccd58636fcefe0011162a418", size = 51512143, upload-time = "2026-06-24T05:18:39.771Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/a5/d1133ba9d005532a6fb94544f5da09e497a8fe42c04e37c3da6faa80bd67/polars_runtime_32-1.42.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:a13949abfce319de7fc4c1abee43bc9d4a4ed4d96bcc1a6037d022e4e9561d9f", size = 55214521, upload-time = "2026-06-24T05:18:43.916Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/54/0b8355ab29669560608b2864a5e54674dd78bbd48c04976607516e081107/polars_runtime_32-1.42.0-cp310-abi3-win_amd64.whl", hash = "sha256:91a07bd852c1d1ea19b3e27c974bc7b1b29ac948fdb2e785da3a6ec0f0683cad", size = 52718509, upload-time = "2026-06-24T05:18:48.202Z" },
+    { url = "https://files.pythonhosted.org/packages/bf/b9/7c46fdbd1dbbaaf77f9512d7665609d7e4c4d8c8849edb9a16c471041075/polars_runtime_32-1.42.0-cp310-abi3-win_arm64.whl", hash = "sha256:b7c5d7721b7bb2563d72785050ac099da1e2000d412f9c72a0cfb7b07779e75d", size = 46728464, upload-time = "2026-06-24T05:18:52.505Z" },
+]
+
+[[package]]
 name = "protobuf"
 version = "7.34.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2304,13 +2332,13 @@ dependencies = [
 
 [[package]]
 name = "skellytracker"
-version = "2024.9.1019"
-source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics#736b9b4858f089c1ddff30cac210531a9c1a356c" }
+source = { editable = "../skellytracker-pipeline-metrics" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },
     { name = "numpydantic" },
     { name = "opencv-contrib-python" },
+    { name = "polars" },
     { name = "pydantic" },
     { name = "pyyaml" },
     { name = "requests" },
@@ -2320,13 +2348,67 @@ dependencies = [
 [package.optional-dependencies]
 recommended = [
     { name = "mediapipe" },
-    { name = "nvidia-cublas-cu12" },
-    { name = "nvidia-cuda-runtime-cu12" },
-    { name = "nvidia-cudnn-cu12" },
-    { name = "nvidia-cufft-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin'" },
     { name = "onnx" },
-    { name = "onnxruntime-gpu" },
-    { name = "tensorrt" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin'" },
+    { name = "tensorrt", marker = "sys_platform != 'darwin'" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "beartype", specifier = ">=0.19" },
+    { name = "mediapipe", marker = "extra == 'legacy-mediapipe'", specifier = "==0.10.14" },
+    { name = "mediapipe", marker = "extra == 'mediapipe'", specifier = "==0.10.33" },
+    { name = "mediapipe", marker = "extra == 'recommended'", specifier = "==0.10.33" },
+    { name = "numpy" },
+    { name = "numpydantic", specifier = ">=1.6.7" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and extra == 'recommended'" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-gpu'" },
+    { name = "nvidia-cublas-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin' and extra == 'recommended'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-gpu'" },
+    { name = "nvidia-cuda-runtime-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin' and extra == 'recommended'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-gpu'" },
+    { name = "nvidia-cudnn-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin' and extra == 'recommended'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-gpu'" },
+    { name = "nvidia-cufft-cu12", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'" },
+    { name = "onnx", marker = "extra == 'recommended'" },
+    { name = "onnx", marker = "extra == 'rtmpose-cpu'" },
+    { name = "onnx", marker = "extra == 'rtmpose-directml'" },
+    { name = "onnx", marker = "extra == 'rtmpose-gpu'" },
+    { name = "onnx", marker = "extra == 'rtmpose-trt'" },
+    { name = "onnxruntime", marker = "extra == 'rtmpose-cpu'" },
+    { name = "onnxruntime-directml", marker = "sys_platform == 'win32' and extra == 'rtmpose-directml'" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin' and extra == 'recommended'", specifier = "<1.27" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin' and extra == 'rtmpose-gpu'", specifier = "<1.27" },
+    { name = "onnxruntime-gpu", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'", specifier = "<1.27" },
+    { name = "opencv-contrib-python" },
+    { name = "polars" },
+    { name = "pydantic", specifier = "==2.*" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "requests", specifier = ">=2.32.3" },
+    { name = "rtmlib", marker = "extra == 'rtmpose-cpu'", specifier = "==0.0.14" },
+    { name = "tensorrt", marker = "sys_platform != 'darwin' and extra == 'recommended'" },
+    { name = "tensorrt", marker = "sys_platform != 'darwin' and extra == 'rtmpose-trt'" },
+    { name = "tqdm", specifier = "==4.*" },
+    { name = "ultralytics", marker = "extra == 'yolo'", specifier = "~=8.0.202" },
+]
+provides-extras = ["legacy-mediapipe", "mediapipe", "recommended", "rtmpose-cpu", "rtmpose-directml", "rtmpose-gpu", "rtmpose-trt", "yolo"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "black" },
+    { name = "bumpver" },
+    { name = "isort" },
+    { name = "pip-tools" },
+    { name = "poethepoet", specifier = ">=0.32.0" },
+    { name = "pytest" },
+    { name = "ruff" },
 ]
 
 [[package]]

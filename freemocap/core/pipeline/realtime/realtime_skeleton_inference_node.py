@@ -52,6 +52,7 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
 from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
+from skellytracker.trackers.base_tracker.task_events import TrackerTaskEventCollector
 from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
     RTMPoseSession,
     RTMPoseSessionConfig,
@@ -62,6 +63,13 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.rtmpose_model_size import rtmpose_mode_for_size
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_timing_events import (
+    call_with_supported_kwargs,
+    collect_tracker_batch_events,
+    make_stage_interval_event,
+    perf_counter_ns,
+)
+from freemocap.core.pipeline.pipeline_timing_task_ids import batch_task_id
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -216,7 +224,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 requested_frame_number = latest_frame_msg.frame_number
 
                 # ---- Read N images from per-camera ring buffers ----
-                t_read = time.perf_counter() if timer is not None else 0.0
+                t_read_start_ns = perf_counter_ns() if timer is not None else 0
                 images, ordered_camera_ids = _read_frames(
                     camera_ids=camera_ids,
                     camera_shms=camera_shms,
@@ -224,7 +232,18 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     requested_frame_number=requested_frame_number,
                 )
                 if timer is not None:
-                    timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
+                    t_read_end_ns = perf_counter_ns()
+                    timer.record("frame_read", (t_read_end_ns - t_read_start_ns) / 1e6)
+                    timer.record_stage_interval(
+                        event=make_stage_interval_event(
+                            frame_number=requested_frame_number,
+                            stage="frame_read",
+                            node_kind="skeleton_inference",
+                            start_time_ns=t_read_start_ns,
+                            end_time_ns=t_read_end_ns,
+                            batch_size=len(camera_ids),
+                        ),
+                    )
 
                 if not images:
                     # Ring buffer race or frame already overwritten — still publish so the
@@ -238,9 +257,24 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     continue
 
                 # ---- Batched skeleton inference ----
-                t_inf = time.perf_counter() if timer is not None else 0.0
+                t_inf_start_ns = perf_counter_ns() if timer is not None else 0
+                frame_read_task_id = batch_task_id(
+                    frame_number=requested_frame_number,
+                    node_kind="skeleton_inference",
+                    stage="frame_read",
+                )
+                tracker_collector: TrackerTaskEventCollector | None = (
+                    TrackerTaskEventCollector() if timer is not None else None
+                )
                 try:
-                    batch_results = session.predict_batch(images)
+                    batch_results = call_with_supported_kwargs(
+                        session.predict_batch,
+                        images,
+                        frame_number=requested_frame_number,
+                        camera_ids=ordered_camera_ids,
+                        parent_task_ids=[frame_read_task_id],
+                        event_collector=tracker_collector,
+                    )
                 except Exception as mem_err:
                     # Catch Python MemoryError (raised by rtmpose_session when it
                     # detects a BFC Arena OOM) and any ONNX RuntimeException that
@@ -279,7 +313,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     )
                     continue  # skip this frame, resume on next
                 if timer is not None:
-                    inf_ms = (time.perf_counter() - t_inf) * 1e3
+                    inf_ms = (perf_counter_ns() - t_inf_start_ns) / 1e6
                     timer.record("predict_batch", inf_ms)
                     timer.record("human_detection_preprocess", session.last_human_detection_preprocess_ms)
                     timer.record("human_detection", session.last_human_detection_ms)
@@ -287,6 +321,30 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     timer.record("pose_estimation_preprocess", session.last_pose_estimation_preprocess_ms)
                     timer.record("pose_estimation", session.last_pose_estimation_ms)
                     timer.record("pose_estimation_postprocess", session.last_pose_estimation_postprocess_ms)
+                    if tracker_collector is not None:
+                        timer.dropped_events += tracker_collector.dropped_events
+                    timer.extend_task_events(
+                        collect_tracker_batch_events(
+                            session,
+                            node_kind="skeleton_inference",
+                            frame_number=requested_frame_number,
+                            camera_ids=ordered_camera_ids,
+                            batch_parent_task_id=frame_read_task_id,
+                            batch_start_time_ns=t_inf_start_ns,
+                            tracker_events=tracker_collector.events if tracker_collector else None,
+                        ),
+                    )
+                    timer.record_stage_interval(
+                        event=make_stage_interval_event(
+                            frame_number=requested_frame_number,
+                            stage="predict_batch",
+                            node_kind="skeleton_inference",
+                            start_time_ns=t_inf_start_ns,
+                            end_time_ns=perf_counter_ns(),
+                            parent_task_ids=[frame_read_task_id],
+                            batch_size=len(ordered_camera_ids),
+                        ),
+                    )
 
                 # ---- Build per-camera observations ----
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}

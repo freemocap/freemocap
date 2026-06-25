@@ -39,6 +39,7 @@ from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_timing_events import make_stage_interval_event, perf_counter_ns
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.bone_length_estimator import AnthropometricPrior
@@ -79,6 +80,28 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
+
+
+def _record_aggregator_stage(
+        timer: PipelineStageTimer | None,
+        *,
+        stage: str,
+        frame_number: int,
+        start_time_ns: int,
+) -> None:
+    if timer is None:
+        return
+    end_time_ns = perf_counter_ns()
+    timer.record(stage, (end_time_ns - start_time_ns) / 1e6)
+    timer.record_stage_interval(
+        event=make_stage_interval_event(
+            frame_number=frame_number,
+            stage=stage,
+            node_kind="aggregator",
+            start_time_ns=start_time_ns,
+            end_time_ns=end_time_ns,
+        ),
+    )
 
 # Skip Point3d Pydantic object creation when the binary keypoints path is
 # active — the aggregator runs in a subprocess so it reads the env var here
@@ -312,7 +335,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         last_received_frame: int = -1
         last_calibration_poll: float = time.perf_counter()
         timer: PipelineStageTimer | None = None
-        t_frame_requested: float = 0.0
+        t_frame_requested_ns: int = 0
         # Skip the first frame_collection_wait / loop_time samples — those
         # measure aggregator-startup → first-frame-arrival, which is dominated
         # by camera warmup (~5-7s) and is not a steady-state metric.
@@ -342,7 +365,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 if pipeline_config.log_pipeline_times:
                     if timer is None:
                         timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}")
-                        t_frame_requested = time.perf_counter()
+                        t_frame_requested_ns = perf_counter_ns()
                         recorded_first_frame = False
                         previous_loop_tik = time.perf_counter()
                     if timing_reporter is None:
@@ -398,7 +421,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ),
                     )
                     latest_requested_frame = current_multiframe_number
-                    t_frame_requested = time.perf_counter() if timer is not None else 0.0
+                    t_frame_requested_ns = perf_counter_ns() if timer is not None else 0
 
                 # ---- Collect skeleton inference results (GPU mode) ----
                 # Drained on every iteration so they're available whenever the
@@ -507,9 +530,21 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 last_received_frame = latest_requested_frame
-                t_frame_start = time.perf_counter() if timer is not None else 0.0
+                t_frame_start_ns = perf_counter_ns() if timer is not None else 0
                 if timer is not None and recorded_first_frame:
-                    timer.record("frame_collection_wait", (t_frame_start - t_frame_requested) * 1e3)
+                    timer.record(
+                        "frame_collection_wait",
+                        (t_frame_start_ns - t_frame_requested_ns) / 1e6,
+                    )
+                    timer.record_stage_interval(
+                        event=make_stage_interval_event(
+                            frame_number=last_received_frame,
+                            stage="frame_collection_wait",
+                            node_kind="aggregator",
+                            start_time_ns=t_frame_requested_ns,
+                            end_time_ns=t_frame_start_ns,
+                        ),
+                    )
                     earliest_cap_ns = _earliest_mid_grab_ns_for_frame(
                         camera_group_shm=camera_group_shm,
                         frame_number=last_received_frame,
@@ -532,7 +567,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ProcessFrameNumberMessage(frame_number=latest_shm_frame)
                     )
                     latest_requested_frame = latest_shm_frame
-                    t_frame_requested = time.perf_counter() if timer is not None else 0.0
+                    t_frame_requested_ns = perf_counter_ns() if timer is not None else 0
                 elif latest_shm_frame < latest_requested_frame:
                     raise RuntimeError(
                         f"SHM frame counter went backwards: latest_shm_frame={latest_shm_frame} "
@@ -556,7 +591,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                            and output.skeleton_observation is not None
                     }
                     if skeleton_observations_by_camera:
-                        t0 = time.perf_counter() if timer is not None else 0.0
+                        t0_ns = perf_counter_ns() if timer is not None else 0
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
@@ -566,8 +601,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into=raw_keypoints,
                         )
-                        if timer is not None:
-                            timer.record("skeleton_triangulation", (time.perf_counter() - t0) * 1e3)
+                        _record_aggregator_stage(
+                            timer,
+                            stage="skeleton_triangulation",
+                            frame_number=last_received_frame,
+                            start_time_ns=t0_ns,
+                        )
 
                     # Triangulate charuco observations
                     charuco_observations_by_camera = {
@@ -577,7 +616,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                            and output.charuco_observation is not None
                     }
                     if charuco_observations_by_camera:
-                        t0 = time.perf_counter() if timer is not None else 0.0
+                        t0_ns = perf_counter_ns() if timer is not None else 0
                         _merge_triangulated_arrays(
                             triangulated=calibration.try_angulate(
                                 frame_number=last_received_frame,
@@ -587,23 +626,31 @@ class RealtimeAggregatorNode(AggregatorNode):
                             ),
                             into=raw_keypoints,
                         )
-                        if timer is not None:
-                            timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
+                        _record_aggregator_stage(
+                            timer,
+                            stage="charuco_triangulation",
+                            frame_number=last_received_frame,
+                            start_time_ns=t0_ns,
+                        )
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:
-                        t0 = time.perf_counter() if timer is not None else 0.0
+                        t0_ns = perf_counter_ns() if timer is not None else 0
                         filtered_keypoints = keypoint_filter.filter(
                             t=time.perf_counter(),
                             raw_keypoints=raw_keypoints,
                         )
-                        if timer is not None:
-                            timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
+                        _record_aggregator_stage(
+                            timer,
+                            stage="keypoint_filter",
+                            frame_number=last_received_frame,
+                            start_time_ns=t0_ns,
+                        )
 
                     # Velocity gate: reject teleportation spikes
                     if aggregator_config.filter_enabled:
                         if raw_keypoints:
-                            t0 = time.perf_counter() if timer is not None else 0.0
+                            t0_ns = perf_counter_ns() if timer is not None else 0
                             gate_result: GateResult = point_gate.gate(
                                 t=time.perf_counter(),
                                 points=raw_keypoints,
@@ -612,19 +659,27 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 triangulated=gate_result.positions,
                                 into=filtered_keypoints,
                             )
-                            if timer is not None:
-                                timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
+                            _record_aggregator_stage(
+                                timer,
+                                stage="velocity_gate",
+                                frame_number=last_received_frame,
+                                start_time_ns=t0_ns,
+                            )
 
                         # Filter + constrain skeleton keypoints
                         if filtered_keypoints and aggregator_config.skeleton_enabled:
-                            t0 = time.perf_counter() if timer is not None else 0.0
+                            t0_ns = perf_counter_ns() if timer is not None else 0
                             filtered_keypoints = _filter_skeleton_arrays(
                                 point_arrays=filtered_keypoints,
                                 skeleton_filter=skeleton_filter,
                                 t=time.perf_counter(),
                             )
-                            if timer is not None:
-                                timer.record("skeleton_filter", (time.perf_counter() - t0) * 1e3)
+                            _record_aggregator_stage(
+                                timer,
+                                stage="skeleton_filter",
+                                frame_number=last_received_frame,
+                                start_time_ns=t0_ns,
+                            )
 
                     # # Estimate rigid body segment poses
                     # if filtered_keypoints and config.skeleton_enabled and skeleton_filter.current_bone_lengths:
@@ -636,7 +691,17 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
-                    timer.record("full_frame_processing", (time.perf_counter() - t_frame_start) * 1e3)
+                    t_frame_end_ns = perf_counter_ns()
+                    timer.record("full_frame_processing", (t_frame_end_ns - t_frame_start_ns) / 1e6)
+                    timer.record_stage_interval(
+                        event=make_stage_interval_event(
+                            frame_number=last_received_frame,
+                            stage="full_frame_processing",
+                            node_kind="aggregator",
+                            start_time_ns=t_frame_start_ns,
+                            end_time_ns=t_frame_end_ns,
+                        ),
+                    )
                     now = time.perf_counter()
                     if recorded_first_frame:
                         timer.record("loop_time", (now - previous_loop_tik) * 1e3)

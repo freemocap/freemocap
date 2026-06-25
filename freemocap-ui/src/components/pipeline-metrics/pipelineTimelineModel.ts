@@ -8,7 +8,9 @@ import {
     classifyTaskCategory,
     compareTimelineRows,
     inferParentTaskIds,
+    normalizeSkeletonInferenceTiming,
     orderTasksParentsBeforeChildren,
+    skeletonPreprocessChildIndent,
     taskLabel,
 } from '@/components/pipeline-metrics/pipelineTaskTopology';
 
@@ -25,6 +27,10 @@ export interface TimelineRowView {
     sourceKey: string;
     stale: boolean;
     hasFrameContext: boolean;
+    indentLevel: number;
+    /** Parent preprocess span for nested skeleton child rows (absolute ms). */
+    parentSpanStartMs: number | null;
+    parentSpanEndMs: number | null;
 }
 
 export interface TimelineEdgeView {
@@ -268,22 +274,61 @@ export function buildTimelineViewModel(params: {
     );
 
     const orphanUiRows: TimelineRowView[] = orderTasksParentsBeforeChildren(
-        params.events.filter(shouldShowWithoutFrameContext),
+        normalizeSkeletonInferenceTiming(
+            params.events.filter(shouldShowWithoutFrameContext),
+        ),
     )
         .map(e => eventToRow(e, windowStartMs, windowEndMs, nowMs))
         .filter(row => params.categoryFilters[row.category]);
 
-    const sorted = orderTasksParentsBeforeChildren(windowEvents);
+    const sorted = orderTasksParentsBeforeChildren(
+        normalizeSkeletonInferenceTiming(windowEvents),
+    );
     const rows: TimelineRowView[] = [];
     const rowIndexById = new Map<string, number>();
+    const predictBatchSpanByFrame = new Map<number, {startMs: number; endMs: number}>();
+    const preprocessSpanByFrame = new Map<number, {startMs: number; endMs: number}>();
 
     for (const event of sorted) {
         const category = classifyTaskCategory(event);
         if (!params.categoryFilters[category]) continue;
         const row = eventToRow(event, windowStartMs, windowEndMs, nowMs);
         if (!row.visible) continue;
+        if (event.nodeKind === 'skeleton_inference' && event.frameNumber != null) {
+            if (event.stage === 'predict_batch') {
+                predictBatchSpanByFrame.set(event.frameNumber, {
+                    startMs: event.startMs,
+                    endMs: event.endMs,
+                });
+            }
+            if (event.stage === 'human_detection_preprocess') {
+                preprocessSpanByFrame.set(event.frameNumber, {
+                    startMs: event.startMs,
+                    endMs: event.endMs,
+                });
+            }
+        }
         rowIndexById.set(event.taskId, rows.length);
         rows.push(row);
+    }
+
+    for (const row of rows) {
+        if (row.indentLevel === 0 || row.frameNumber == null) {
+            continue;
+        }
+        if (row.indentLevel >= 2) {
+            const span = preprocessSpanByFrame.get(row.frameNumber);
+            if (span) {
+                row.parentSpanStartMs = span.startMs;
+                row.parentSpanEndMs = span.endMs;
+            }
+            continue;
+        }
+        const span = predictBatchSpanByFrame.get(row.frameNumber);
+        if (span) {
+            row.parentSpanStartMs = span.startMs;
+            row.parentSpanEndMs = span.endMs;
+        }
     }
 
     const edges: TimelineEdgeView[] = [];
@@ -327,6 +372,7 @@ function eventToRow(
 ): TimelineRowView & {visible: boolean} {
     const clip = clipBarToWindow(event.startMs, event.endMs, windowStartMs, windowEndMs);
     const stale = nowMs - event.lastSeenMs > STALE_THRESHOLD_MS;
+    const indentLevel = skeletonPreprocessChildIndent(event);
     return {
         taskId: event.taskId,
         label: taskLabel(event),
@@ -341,6 +387,9 @@ function eventToRow(
         stale,
         hasFrameContext: event.frameNumber != null,
         visible: clip.visible,
+        indentLevel,
+        parentSpanStartMs: null,
+        parentSpanEndMs: null,
     };
 }
 
@@ -360,4 +409,128 @@ export function barWidthPercent(
 export function formatRulerTick(ms: number): string {
     if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
     return `${Math.round(ms)}ms`;
+}
+
+export const TIMELINE_MIN_VISIBLE_MS = 2;
+export const TIMELINE_MAX_ZOOM_LEVEL = 500;
+export const TIMELINE_ZOOM_WHEEL_FACTOR = 1.12;
+
+export type TimelineZoomState = {
+    zoomLevel: number;
+    panMs: number;
+};
+
+export type VisibleTimelineWindow = TimelineZoomState & {
+    visibleStartMs: number;
+    visibleDurationMs: number;
+    visibleEndMs: number;
+};
+
+export function resolveVisibleTimelineWindow(
+    baseStartMs: number,
+    baseDurationMs: number,
+    zoomLevel: number,
+    panMs: number,
+): VisibleTimelineWindow {
+    const safeBaseDuration = Math.max(baseDurationMs, TIMELINE_MIN_VISIBLE_MS);
+    const maxZoom = Math.max(1, Math.min(
+        TIMELINE_MAX_ZOOM_LEVEL,
+        safeBaseDuration / TIMELINE_MIN_VISIBLE_MS,
+    ));
+    const clampedZoom = Math.max(1, Math.min(maxZoom, zoomLevel));
+    const visibleDurationMs = Math.max(
+        TIMELINE_MIN_VISIBLE_MS,
+        safeBaseDuration / clampedZoom,
+    );
+    const maxPanMs = Math.max(0, safeBaseDuration - visibleDurationMs);
+    const clampedPanMs = Math.max(0, Math.min(maxPanMs, panMs));
+    const visibleStartMs = baseStartMs + clampedPanMs;
+    return {
+        zoomLevel: clampedZoom,
+        panMs: clampedPanMs,
+        visibleStartMs,
+        visibleDurationMs,
+        visibleEndMs: visibleStartMs + visibleDurationMs,
+    };
+}
+
+export function zoomTimelineAtPointer(
+    baseStartMs: number,
+    baseDurationMs: number,
+    zoomLevel: number,
+    panMs: number,
+    pointerRatio: number,
+    zoomIn: boolean,
+): TimelineZoomState {
+    const current = resolveVisibleTimelineWindow(baseStartMs, baseDurationMs, zoomLevel, panMs);
+    const factor = zoomIn ? TIMELINE_ZOOM_WHEEL_FACTOR : 1 / TIMELINE_ZOOM_WHEEL_FACTOR;
+    const nextDuration = Math.max(
+        TIMELINE_MIN_VISIBLE_MS,
+        current.visibleDurationMs / factor,
+    );
+    const clampedPointer = Math.max(0, Math.min(1, pointerRatio));
+    const timeAtPointer = current.visibleStartMs + clampedPointer * current.visibleDurationMs;
+    const nextStart = timeAtPointer - clampedPointer * nextDuration;
+    const nextPanMs = nextStart - baseStartMs;
+    const nextZoom = baseDurationMs / nextDuration;
+    return resolveVisibleTimelineWindow(baseStartMs, baseDurationMs, nextZoom, nextPanMs);
+}
+
+export function panTimelineByPixels(
+    baseStartMs: number,
+    baseDurationMs: number,
+    zoomLevel: number,
+    panMs: number,
+    deltaPixels: number,
+    chartWidthPx: number,
+): TimelineZoomState {
+    const current = resolveVisibleTimelineWindow(baseStartMs, baseDurationMs, zoomLevel, panMs);
+    if (current.zoomLevel <= 1 || chartWidthPx <= 0) {
+        return {zoomLevel: current.zoomLevel, panMs: current.panMs};
+    }
+    const msPerPixel = current.visibleDurationMs / chartWidthPx;
+    return resolveVisibleTimelineWindow(
+        baseStartMs,
+        baseDurationMs,
+        current.zoomLevel,
+        current.panMs - deltaPixels * msPerPixel,
+    );
+}
+
+export function buildRulerTicks(visibleDurationMs: number): number[] {
+    const step = visibleDurationMs <= 20
+        ? 2
+        : visibleDurationMs <= 100
+            ? 10
+            : visibleDurationMs <= 500
+                ? 50
+                : 100;
+    const ticks: number[] = [];
+    for (let t = 0; t <= visibleDurationMs; t += step) {
+        ticks.push(t);
+    }
+    if (ticks.length === 0 || ticks[ticks.length - 1] !== visibleDurationMs) {
+        ticks.push(visibleDurationMs);
+    }
+    return ticks;
+}
+
+export function barWidthPercentInViewport(
+    row: Pick<TimelineRowView, 'barStartMs' | 'barEndMs'>,
+    visibleStartMs: number,
+    visibleDurationMs: number,
+): {leftPct: number; widthPct: number; visible: boolean} {
+    const visibleEndMs = visibleStartMs + visibleDurationMs;
+    const clippedStartMs = Math.max(row.barStartMs, visibleStartMs);
+    const clippedEndMs = Math.min(row.barEndMs, visibleEndMs);
+    if (clippedEndMs <= clippedStartMs || visibleDurationMs <= 0) {
+        return {leftPct: 0, widthPct: 0, visible: false};
+    }
+    const leftPct = ((clippedStartMs - visibleStartMs) / visibleDurationMs) * 100;
+    const widthPct = ((clippedEndMs - clippedStartMs) / visibleDurationMs) * 100;
+    return {
+        leftPct: Math.max(0, Math.min(100, leftPct)),
+        widthPct: Math.max(0.15, Math.min(100, widthPct)),
+        visible: true,
+    };
 }

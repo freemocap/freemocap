@@ -13,6 +13,8 @@ from freemocap.core.pipeline.pipeline_timing_task_ids import (
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent
 
 RTMPOSE_BATCH_STAGES: tuple[str, ...] = (
+    "human_detection_letterbox",
+    "human_detection_batch_pack",
     "human_detection_preprocess",
     "human_detection",
     "human_detection_postprocess",
@@ -145,18 +147,44 @@ def synthesize_rtmpose_batch_events(
         batch_start_time_ns: int | None = None,
 ) -> list[PipelineTimingEvent]:
     """Build ordered batch task events from legacy ``last_*_ms`` attrs."""
-    parent_ids = [batch_parent_task_id] if batch_parent_task_id else []
     cursor = batch_start_time_ns if batch_start_time_ns is not None else perf_counter_ns()
     batch_size = len(camera_ids) if camera_ids else None
     events: list[PipelineTimingEvent] = []
+
+    predict_batch_task_id = batch_task_id(
+        frame_number=frame_number,
+        node_kind=node_kind,
+        stage="predict_batch",
+    )
+    preprocess_child_stages = frozenset({
+        "human_detection_letterbox",
+        "human_detection_batch_pack",
+    })
+    preprocess_task_id = batch_task_id(
+        frame_number=frame_number,
+        node_kind=node_kind,
+        stage="human_detection_preprocess",
+    )
+    preprocess_start_ns: int | None = None
+    preprocess_end_ns: int | None = None
 
     for stage, attr in _SKELLYTRACKER_STAGE_ATTRS:
         duration_ms = float(getattr(session, attr, 0.0))
         if duration_ms <= 0.0:
             continue
+        if stage == "human_detection_preprocess":
+            continue
+
         duration_ns = int(duration_ms * 1_000_000)
         start_ns = cursor
         end_ns = start_ns + duration_ns
+        stage_parent_ids = [predict_batch_task_id]
+        if stage in preprocess_child_stages:
+            stage_parent_ids = [preprocess_task_id]
+            if preprocess_start_ns is None:
+                preprocess_start_ns = start_ns
+            preprocess_end_ns = end_ns
+
         events.append(
             PipelineTimingEvent(
                 task_id=batch_task_id(
@@ -164,7 +192,7 @@ def synthesize_rtmpose_batch_events(
                     node_kind=node_kind,
                     stage=stage,
                 ),
-                parent_task_ids=list(parent_ids),
+                parent_task_ids=stage_parent_ids,
                 stage=stage,
                 node_kind=node_kind,
                 frame_number=frame_number,
@@ -175,6 +203,25 @@ def synthesize_rtmpose_batch_events(
             ),
         )
         cursor = end_ns
+
+    if preprocess_start_ns is not None and preprocess_end_ns is not None:
+        preprocess_duration_ms = (preprocess_end_ns - preprocess_start_ns) / 1_000_000
+        events.append(
+            PipelineTimingEvent(
+                task_id=preprocess_task_id,
+                parent_task_ids=[predict_batch_task_id],
+                stage="human_detection_preprocess",
+                node_kind=node_kind,
+                frame_number=frame_number,
+                start_time_ns=preprocess_start_ns,
+                end_time_ns=preprocess_end_ns,
+                duration_ms=preprocess_duration_ms,
+                batch_size=batch_size,
+            ),
+        )
+
+    stage_order = {stage: index for index, stage in enumerate(RTMPOSE_BATCH_STAGES)}
+    events.sort(key=lambda event: (stage_order.get(event.stage, len(stage_order)), event.start_time_ns))
     return events
 
 

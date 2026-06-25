@@ -1,22 +1,43 @@
-import React, {memo, useMemo, useRef} from 'react';
+import React, {memo, useMemo, useState} from 'react';
 import {Box, Tooltip, Typography} from '@mui/material';
 import {alpha, useTheme} from '@mui/material/styles';
 import {useTranslation} from 'react-i18next';
-import {ProgressiveTooltip} from '@/components/framerate-viewer/FramerateStatisticsView';
 import {
-    barWidthPercent,
+    barWidthPercentInViewport,
+    buildRulerTicks,
     formatBarDuration,
     formatRulerTick,
     shouldShowBarDurationLabel,
     type PipelineTimelineViewModel,
     type TimelineRowView,
+    type VisibleTimelineWindow,
 } from '@/components/pipeline-metrics/pipelineTimelineModel';
 import {getPipelineStageRowTooltip} from '@/components/pipeline-metrics/pipelineStageTooltips';
 import {CATEGORY_COLORS} from '@/components/pipeline-metrics/pipelineTaskTopology';
+import IconButton from '@/components/ui-components/IconButton';
+import {useTimelineChartZoom} from '@/hooks/useTimelineChartZoom';
 
 const ROW_HEIGHT = 22;
 const LABEL_WIDTH = 280;
 const RULER_HEIGHT = 28;
+const CHART_PADDING_RIGHT = 8;
+
+function TimelineRowTooltipTitle({
+    description,
+    durationLabel,
+}: {
+    description: string;
+    durationLabel: string;
+}): React.ReactElement {
+    return (
+        <Box>
+            <Typography variant="body2">{description}</Typography>
+            <Typography variant="caption" color="text.secondary" sx={{display: 'block', mt: 0.5}}>
+                {durationLabel}
+            </Typography>
+        </Box>
+    );
+}
 
 type Props = {
     model: PipelineTimelineViewModel;
@@ -70,22 +91,37 @@ function TimelineLinks({
 
 const TimelineRow = memo(function TimelineRow({
     row,
-    model,
+    visibleWindow,
     selected,
     onSelect,
 }: {
     row: TimelineRowView;
-    model: PipelineTimelineViewModel;
+    visibleWindow: VisibleTimelineWindow;
     selected: boolean;
     onSelect: () => void;
 }) {
     const theme = useTheme();
     const {t} = useTranslation();
-    const {leftPct, widthPct} = barWidthPercent(row, model.windowStartMs, model.windowDurationMs);
+    const {leftPct, widthPct, visible} = barWidthPercentInViewport(
+        row,
+        visibleWindow.visibleStartMs,
+        visibleWindow.visibleDurationMs,
+    );
+    const parentSpan =
+        row.parentSpanStartMs != null && row.parentSpanEndMs != null
+            ? barWidthPercentInViewport(
+                {barStartMs: row.parentSpanStartMs, barEndMs: row.parentSpanEndMs},
+                visibleWindow.visibleStartMs,
+                visibleWindow.visibleDurationMs,
+            )
+            : null;
     const color = CATEGORY_COLORS[row.category];
     const durationLabel = formatBarDuration(row.durationMs);
-    const showDurationOnBar = shouldShowBarDurationLabel(widthPct, durationLabel);
+    const showDurationOnBar = visible && shouldShowBarDurationLabel(widthPct, durationLabel);
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
+    const tooltipTitle = (
+        <TimelineRowTooltipTitle description={rowTip.long} durationLabel={durationLabel} />
+    );
 
     return (
         <Box
@@ -117,72 +153,89 @@ const TimelineRow = memo(function TimelineRow({
                     },
                 }}
             >
-                <ProgressiveTooltip shortInfo={rowTip.short} longInfo={rowTip.long} alwaysShowLong>
-                    <Typography
-                        noWrap
-                        variant="caption"
+                <Tooltip title={tooltipTitle} placement="top" enterDelay={200}>
+                    <Box
+                        component="span"
                         sx={{
                             display: 'block',
                             width: '100%',
-                            fontSize: '0.7rem',
-                            color: 'text.secondary',
-                            cursor: 'help',
+                            minWidth: 0,
                             overflow: 'hidden',
-                            textOverflow: 'ellipsis',
                         }}
                     >
-                        {row.label}
-                    </Typography>
-                </ProgressiveTooltip>
+                        <Typography
+                            noWrap
+                            variant="caption"
+                            sx={{
+                                display: 'block',
+                                width: '100%',
+                                fontSize: '0.7rem',
+                                color: 'text.secondary',
+                                cursor: 'help',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                            }}
+                        >
+                            {row.label}
+                        </Typography>
+                    </Box>
+                </Tooltip>
             </Box>
             <Box sx={{flex: 1, position: 'relative', height: '100%', pr: 1, minWidth: 0, overflow: 'hidden'}}>
-                <Tooltip
-                    title={
-                        <Box>
-                            <Typography variant="body2">{rowTip.long}</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{display: 'block', mt: 0.5}}>
-                                {durationLabel}
-                            </Typography>
-                        </Box>
-                    }
-                    placement="top"
-                    enterDelay={200}
-                >
+                {parentSpan?.visible && (
                     <Box
                         sx={{
                             position: 'absolute',
-                            top: 4,
-                            bottom: 4,
-                            left: `${leftPct}%`,
-                            width: `${widthPct}%`,
-                            minWidth: 2,
-                            borderRadius: 0.5,
-                            bgcolor: color,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            overflow: 'hidden',
+                            top: 2,
+                            bottom: 2,
+                            left: `${parentSpan.leftPct}%`,
+                            width: `${parentSpan.widthPct}%`,
+                            borderLeft: 1,
+                            borderRight: 1,
+                            borderColor: alpha(color, 0.35),
+                            bgcolor: alpha(color, 0.08),
+                            pointerEvents: 'none',
                         }}
-                    >
-                        {showDurationOnBar && (
-                            <Typography
-                                noWrap
-                                variant="caption"
-                                sx={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 600,
-                                    lineHeight: 1,
-                                    color: theme.palette.common.white,
-                                    textShadow: '0 0 2px rgba(0,0,0,0.75)',
-                                    pointerEvents: 'none',
-                                    px: 0.25,
-                                }}
-                            >
-                                {durationLabel}
-                            </Typography>
-                        )}
-                    </Box>
-                </Tooltip>
+                    />
+                )}
+                {visible && (
+                    <Tooltip title={tooltipTitle} placement="top" enterDelay={200}>
+                        <Box
+                            sx={{
+                                position: 'absolute',
+                                top: 4,
+                                bottom: 4,
+                                left: `${leftPct}%`,
+                                width: `${widthPct}%`,
+                                minWidth: 2,
+                                borderRadius: 0.5,
+                                bgcolor: color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                overflow: 'hidden',
+                            }}
+                        >
+                            {showDurationOnBar && (
+                                <Typography
+                                    noWrap
+                                    variant="caption"
+                                    sx={{
+                                        fontSize: '0.6rem',
+                                        fontWeight: 600,
+                                        lineHeight: 1,
+                                        color: theme.palette.common.white,
+                                        textShadow: '0 0 2px rgba(0,0,0,0.75)',
+                                        pointerEvents: 'none',
+                                        px: 0.25,
+                                    }}
+                                >
+                                    {durationLabel}
+                                </Typography>
+                            )}
+                        </Box>
+                    </Tooltip>
+                )}
             </Box>
         </Box>
     );
@@ -206,19 +259,32 @@ function SelectedRowDetails({row}: {row: TimelineRowView}): React.ReactElement {
 
 export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: Props): React.ReactElement {
     const theme = useTheme();
-    const scrollRef = useRef<HTMLDivElement>(null);
-    const scrollTop = scrollRef.current?.scrollTop ?? 0;
+    const {t} = useTranslation();
+    const [scrollTop, setScrollTop] = useState(0);
+    const {
+        containerRef,
+        visibleWindow,
+        isZoomed,
+        resetZoom,
+        zoomIn,
+        zoomOut,
+        chartCursor,
+        chartHandlers,
+    } = useTimelineChartZoom({
+        baseStartMs: model.windowStartMs,
+        baseDurationMs: model.windowDurationMs,
+        labelWidthPx: LABEL_WIDTH,
+        chartPaddingRightPx: CHART_PADDING_RIGHT,
+    });
 
-    const rulerTicks = useMemo(() => {
-        const ticks: number[] = [];
-        const step = model.windowDurationMs <= 100 ? 10 : model.windowDurationMs <= 500 ? 50 : 100;
-        for (let t = 0; t <= model.windowDurationMs; t += step) {
-            ticks.push(t);
-        }
-        return ticks;
-    }, [model.windowDurationMs]);
+    const rulerTicks = useMemo(
+        () => buildRulerTicks(visibleWindow.visibleDurationMs),
+        [visibleWindow.visibleDurationMs],
+    );
 
-    const selectedRow = model.rows.find(r => r.taskId === selectedTaskId) ?? null;
+    const selectedRow = model.rows.find(r => r.taskId === selectedTaskId)
+        ?? model.orphanUiRows.find(r => r.taskId === selectedTaskId)
+        ?? null;
 
     return (
         <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
@@ -231,7 +297,23 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                     flexShrink: 0,
                 }}
             >
-                <Box sx={{width: LABEL_WIDTH, flexShrink: 0}} />
+                <Box
+                    sx={{
+                        width: LABEL_WIDTH,
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-end',
+                        gap: 0.25,
+                        pr: 0.5,
+                    }}
+                >
+                    <IconButton icon="minus-icon" title={t('zoomOut')} onClick={zoomOut} />
+                    <IconButton icon="plus-icon" title={t('zoomIn')} onClick={zoomIn} />
+                    {isZoomed && (
+                        <IconButton icon="back-icon" title={t('resetZoom')} onClick={resetZoom} />
+                    )}
+                </Box>
                 <Box sx={{flex: 1, position: 'relative', pr: 1}}>
                     {rulerTicks.map(tick => (
                         <Typography
@@ -239,20 +321,30 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                             variant="caption"
                             sx={{
                                 position: 'absolute',
-                                left: `${(tick / model.windowDurationMs) * 100}%`,
+                                left: `${(tick / visibleWindow.visibleDurationMs) * 100}%`,
                                 transform: 'translateX(-50%)',
                                 fontSize: '0.65rem',
                                 color: 'text.disabled',
                                 top: 4,
                             }}
                         >
-                            {formatRulerTick(tick)}
+                            {formatRulerTick(tick + (visibleWindow.visibleStartMs - model.windowStartMs))}
                         </Typography>
                     ))}
                 </Box>
             </Box>
 
-            <Box ref={scrollRef} sx={{flex: 1, overflow: 'auto', position: 'relative'}}>
+            <Box
+                ref={containerRef}
+                onScroll={event => setScrollTop(event.currentTarget.scrollTop)}
+                sx={{
+                    flex: 1,
+                    overflow: 'auto',
+                    position: 'relative',
+                    cursor: chartCursor,
+                }}
+                {...chartHandlers}
+            >
                 <TimelineLinks model={model} scrollTop={scrollTop} />
                 {model.rows.length === 0 ? (
                     <Typography variant="body2" color="text.secondary" sx={{p: 2}}>
@@ -264,7 +356,7 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                         <TimelineRow
                             key={row.taskId}
                             row={row}
-                            model={model}
+                            visibleWindow={visibleWindow}
                             selected={row.taskId === selectedTaskId}
                             onSelect={() => onSelectTask(row.taskId === selectedTaskId ? null : row.taskId)}
                         />
@@ -279,7 +371,7 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                             <TimelineRow
                                 key={row.taskId}
                                 row={row}
-                                model={model}
+                                visibleWindow={visibleWindow}
                                 selected={row.taskId === selectedTaskId}
                                 onSelect={() => onSelectTask(row.taskId === selectedTaskId ? null : row.taskId)}
                             />

@@ -75,6 +75,8 @@ class TestTrackerEventConversion:
 
     def test_synthesize_rtmpose_batch_events_from_legacy_attrs(self) -> None:
         session = SimpleNamespace(
+            last_human_detection_letterbox_ms=0.4,
+            last_human_detection_batch_pack_ms=0.6,
             last_human_detection_preprocess_ms=1.0,
             last_human_detection_ms=2.0,
             last_human_detection_postprocess_ms=0.5,
@@ -90,8 +92,26 @@ class TestTrackerEventConversion:
             batch_parent_task_id="5:batch:skeleton_inference:frame_read",
             batch_start_time_ns=1_000_000,
         )
-        assert len(events) == 6
-        assert events[0].parent_task_ids == ["5:batch:skeleton_inference:frame_read"]
+        assert len(events) == 8
+        assert [event.stage for event in events[:3]] == [
+            "human_detection_letterbox",
+            "human_detection_batch_pack",
+            "human_detection_preprocess",
+        ]
+        preprocess = next(event for event in events if event.stage == "human_detection_preprocess")
+        letterbox = next(event for event in events if event.stage == "human_detection_letterbox")
+        batch_pack = next(event for event in events if event.stage == "human_detection_batch_pack")
+        predict_batch_id = batch_task_id(
+            frame_number=5,
+            node_kind="skeleton_inference",
+            stage="predict_batch",
+        )
+        assert letterbox.parent_task_ids == [preprocess.task_id]
+        assert batch_pack.parent_task_ids == [preprocess.task_id]
+        assert preprocess.parent_task_ids == [predict_batch_id]
+        assert events[0].parent_task_ids == [predict_batch_id]
+        assert preprocess.start_time_ns == letterbox.start_time_ns
+        assert preprocess.end_time_ns == batch_pack.end_time_ns
         assert events[0].start_time_ns == 1_000_000
         assert events[-1].end_time_ns > events[0].start_time_ns
         assert events[0].batch_size == 2

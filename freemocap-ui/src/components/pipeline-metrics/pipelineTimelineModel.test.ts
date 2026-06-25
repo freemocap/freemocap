@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
     barWidthPercent,
+    barWidthPercentInViewport,
     buildTimelineViewModel,
     clipBarToWindow,
     DEFAULT_CATEGORY_FILTERS,
@@ -9,11 +10,14 @@ import {
     resolveFrameDurationMs,
     resolveTimelineWindowBounds,
     resolveTimelineFrameDurationMs,
+    resolveVisibleTimelineWindow,
     shouldShowWithoutFrameContext,
     shouldShowBarDurationLabel,
+    zoomTimelineAtPointer,
 } from '@/components/pipeline-metrics/pipelineTimelineModel';
 import {PIPELINE_TIMELINE_FRAME_WINDOW, FALLBACK_FRAME_DURATION_MS} from '@/services/server/server-helpers/pipeline-timing-types';
 import type {StoredPipelineTaskEvent} from '@/services/server/server-helpers/pipeline-timing-types';
+import {buildDeterministicTaskId} from '@/components/pipeline-metrics/pipelineTaskTopology';
 
 function makeEvent(overrides: Partial<StoredPipelineTaskEvent> & Pick<StoredPipelineTaskEvent, 'taskId'>): StoredPipelineTaskEvent {
     return {
@@ -279,5 +283,183 @@ describe('shouldShowBarDurationLabel', () => {
     it('shows label when bar is wide enough for the text', () => {
         expect(shouldShowBarDurationLabel(10, '12.3 ms')).toBe(true);
         expect(shouldShowBarDurationLabel(2, '12.3 ms')).toBe(false);
+    });
+});
+
+describe('timeline chart zoom', () => {
+    it('resolves visible window from zoom and pan', () => {
+        const visible = resolveVisibleTimelineWindow(100, 200, 2, 50);
+        expect(visible.visibleStartMs).toBe(150);
+        expect(visible.visibleDurationMs).toBe(100);
+        expect(visible.zoomLevel).toBe(2);
+    });
+
+    it('zooms in toward the pointer', () => {
+        const next = zoomTimelineAtPointer(0, 100, 1, 0, 0.5, true);
+        const visible = resolveVisibleTimelineWindow(0, 100, next.zoomLevel, next.panMs);
+        expect(visible.visibleDurationMs).toBeLessThan(100);
+        expect(visible.visibleStartMs).toBeGreaterThan(0);
+        expect(visible.visibleEndMs).toBeLessThan(100);
+    });
+
+    it('clips bars to the visible viewport', () => {
+        const pct = barWidthPercentInViewport(
+            {barStartMs: 40, barEndMs: 80},
+            50,
+            100,
+        );
+        expect(pct.visible).toBe(true);
+        expect(pct.leftPct).toBeCloseTo(0);
+        expect(pct.widthPct).toBeCloseTo(30);
+    });
+});
+
+describe('skeleton preprocess alignment', () => {
+    it('attaches parent span metadata to preprocess child rows', () => {
+        const frame = 5;
+        const preprocessId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'human_detection_preprocess',
+            scope: 'batch',
+        });
+        const model = buildTimelineViewModel({
+            events: [
+                makeEvent({
+                    taskId: buildDeterministicTaskId({
+                        frameNumber: frame,
+                        nodeKind: 'skeleton_inference',
+                        stage: 'predict_batch',
+                        scope: 'batch',
+                    }),
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'predict_batch',
+                    sourceKey: 'skeleton_inference:predict_batch',
+                    startMs: 95,
+                    endMs: 115,
+                    durationMs: 20,
+                }),
+                makeEvent({
+                    taskId: preprocessId,
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'human_detection_preprocess',
+                    sourceKey: 'skeleton_inference:human_detection_preprocess',
+                    startMs: 100,
+                    endMs: 110,
+                    durationMs: 10,
+                }),
+                makeEvent({
+                    taskId: `${frame}:cam_a:skeleton_inference:human_detection_letterbox`,
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'human_detection_letterbox',
+                    sourceKey: 'skeleton_inference:cam_a:human_detection_letterbox',
+                    startMs: 100,
+                    endMs: 105,
+                    durationMs: 5,
+                }),
+                makeEvent({
+                    taskId: buildDeterministicTaskId({
+                        frameNumber: frame,
+                        nodeKind: 'skeleton_inference',
+                        stage: 'human_detection_batch_pack',
+                        scope: 'batch',
+                    }),
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'human_detection_batch_pack',
+                    sourceKey: 'skeleton_inference:human_detection_batch_pack',
+                    startMs: 105,
+                    endMs: 110,
+                    durationMs: 5,
+                }),
+            ],
+            backendFrameDurationMs: 33,
+            droppedTimingEvents: 0,
+            logPipelineTimesEnabled: true,
+            categoryFilters: DEFAULT_CATEGORY_FILTERS,
+            paused: false,
+            nowMs: 5000,
+        });
+
+        const letterbox = model.rows.find(row => row.sourceKey.includes('letterbox'));
+        const batchPack = model.rows.find(row => row.sourceKey.includes('batch_pack'));
+        const preprocess = model.rows.find(row => row.sourceKey.includes('human_detection_preprocess'));
+        expect(letterbox?.indentLevel).toBe(2);
+        expect(preprocess?.indentLevel).toBe(1);
+        expect(letterbox?.parentSpanStartMs).toBe(100);
+        expect(letterbox?.parentSpanEndMs).toBe(110);
+        expect(batchPack?.parentSpanStartMs).toBe(100);
+        expect(batchPack?.parentSpanEndMs).toBe(110);
+        expect(preprocess?.parentSpanStartMs).toBe(95);
+        expect(preprocess?.parentSpanEndMs).toBe(115);
+    });
+
+    it('places predict_batch above inner stages in row order', () => {
+        const frame = 5;
+        const model = buildTimelineViewModel({
+            events: [
+                makeEvent({
+                    taskId: buildDeterministicTaskId({
+                        frameNumber: frame,
+                        nodeKind: 'skeleton_inference',
+                        stage: 'frame_read',
+                        scope: 'batch',
+                    }),
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'frame_read',
+                    sourceKey: 'skeleton_inference:frame_read',
+                    startMs: 90,
+                    endMs: 95,
+                    durationMs: 5,
+                }),
+                makeEvent({
+                    taskId: buildDeterministicTaskId({
+                        frameNumber: frame,
+                        nodeKind: 'skeleton_inference',
+                        stage: 'predict_batch',
+                        scope: 'batch',
+                    }),
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'predict_batch',
+                    sourceKey: 'skeleton_inference:predict_batch',
+                    startMs: 95,
+                    endMs: 130,
+                    durationMs: 35,
+                }),
+                makeEvent({
+                    taskId: buildDeterministicTaskId({
+                        frameNumber: frame,
+                        nodeKind: 'skeleton_inference',
+                        stage: 'human_detection',
+                        scope: 'batch',
+                    }),
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'human_detection',
+                    sourceKey: 'skeleton_inference:human_detection',
+                    startMs: 110,
+                    endMs: 125,
+                    durationMs: 15,
+                }),
+            ],
+            backendFrameDurationMs: 33,
+            droppedTimingEvents: 0,
+            logPipelineTimesEnabled: true,
+            categoryFilters: DEFAULT_CATEGORY_FILTERS,
+            paused: false,
+            nowMs: 5000,
+        });
+
+        expect(model.rows.map(row => row.sourceKey)).toEqual([
+            'skeleton_inference:frame_read',
+            'skeleton_inference:predict_batch',
+            'skeleton_inference:human_detection',
+        ]);
+        expect(model.rows[2]?.indentLevel).toBe(1);
     });
 });

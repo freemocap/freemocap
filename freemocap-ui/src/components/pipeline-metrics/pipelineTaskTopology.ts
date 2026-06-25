@@ -69,6 +69,8 @@ const PRETTY_STAGE_LABELS: Record<string, string> = {
     'multiframe:inter_camera_grab_spread_ms': 'Inter-camera grab spread',
     'multiframe:ws_payload_prepare_ms': 'WS payload prepare',
     'skeleton_inference:frame_read': 'Skeleton GPU: frame read',
+    'skeleton_inference:human_detection_letterbox': 'Skeleton GPU: human detection letterbox',
+    'skeleton_inference:human_detection_batch_pack': 'Skeleton GPU: human detection batch pack',
     'skeleton_inference:human_detection_preprocess': 'Skeleton GPU: human detection preprocess',
     'skeleton_inference:human_detection': 'Skeleton GPU: human detection',
     'skeleton_inference:human_detection_postprocess': 'Skeleton GPU: human detection postprocess',
@@ -119,6 +121,13 @@ function humanizeSourceKey(sourceKey: string): string {
         return PRETTY_STAGE_LABELS[`aggregator:${stage}`] ?? stage;
     }
     if (sourceKey.startsWith('skeleton_inference:')) {
+        const parts = sourceKey.split(':');
+        if (parts.length >= 3) {
+            const cam = parts[1];
+            const stage = parts.slice(2).join(':');
+            const label = PRETTY_STAGE_LABELS[`skeleton_inference:${stage}`] ?? stage;
+            return `${cam} · ${label}`;
+        }
         const stage = sourceKey.slice('skeleton_inference:'.length);
         return PRETTY_STAGE_LABELS[`skeleton_inference:${stage}`] ?? stage;
     }
@@ -141,22 +150,16 @@ function humanizeSourceKey(sourceKey: string): string {
     return sourceKey.replace(/:/g, ' · ');
 }
 
-export function taskLabel(event: StoredPipelineTaskEvent): string {
+export function taskLabel(event: StoredPipelineTaskEvent, options?: {nested?: boolean}): string {
     const base = humanizeSourceKey(event.sourceKey);
-    if (event.frameNumber != null) {
-        return `F${event.frameNumber} · ${base}`;
+    let text = event.frameNumber != null ? `F${event.frameNumber} · ${base}` : base;
+    if (options?.nested) {
+        text = text
+            .replace(/^F\d+ · /, '')
+            .replace(/Skeleton GPU: /g, '');
     }
-    return base;
+    return text;
 }
-
-const CATEGORY_PRIORITY: Record<PipelineTaskCategory, number> = {
-    capture: 0,
-    ui_backend: 1,
-    tracking: 2,
-    aggregation: 3,
-    ui_frontend: 4,
-    other: 5,
-};
 
 const UI_TIMING_STAGE_ORDER: string[] = [
     'raf_body_before_decode_ms',
@@ -173,6 +176,199 @@ const UI_TIMING_STAGE_ORDER: string[] = [
     'jpeg_ws_binary_interval_ms',
     'jpeg_ws_dispatch_lag_ms',
 ];
+
+/** Pipeline order for skeleton-inference batch stages (matches backend RTMPose flow). */
+const SKELETON_INFERENCE_STAGE_ORDER: string[] = [
+    'frame_read',
+    'predict_batch',
+    'human_detection_preprocess',
+    'human_detection_letterbox',
+    'human_detection_batch_pack',
+    'human_detection',
+    'human_detection_postprocess',
+    'pose_estimation_preprocess',
+    'pose_estimation',
+    'pose_estimation_postprocess',
+];
+
+const HUMAN_DETECTION_PREPROCESS_CHILD_STAGES = new Set([
+    'human_detection_letterbox',
+    'human_detection_batch_pack',
+]);
+
+/** Stages that run inside ``predict_batch`` (excluding the batch wrapper itself). */
+const PREDICT_BATCH_CHILD_STAGES = new Set([
+    'human_detection_preprocess',
+    'human_detection_letterbox',
+    'human_detection_batch_pack',
+    'human_detection',
+    'human_detection_postprocess',
+    'pose_estimation_preprocess',
+    'pose_estimation',
+    'pose_estimation_postprocess',
+]);
+
+const CATEGORY_PRIORITY: Record<PipelineTaskCategory, number> = {
+    capture: 0,
+    ui_backend: 1,
+    tracking: 2,
+    aggregation: 3,
+    ui_frontend: 4,
+    other: 5,
+};
+
+function skeletonStageOrdinal(sourceKey: string, stage: string): number {
+    if (!sourceKey.startsWith('skeleton_inference:') && stage !== 'frame_read') {
+        return 10_000;
+    }
+    const i = SKELETON_INFERENCE_STAGE_ORDER.indexOf(stage);
+    return i === -1 ? 5000 : i;
+}
+
+export function skeletonPreprocessChildIndent(
+    event: Pick<StoredPipelineTaskEvent, 'nodeKind' | 'stage'>,
+): number {
+    return skeletonTimelineIndent(event);
+}
+
+export function skeletonTimelineIndent(
+    event: Pick<StoredPipelineTaskEvent, 'nodeKind' | 'stage'>,
+): number {
+    if (event.nodeKind !== 'skeleton_inference') {
+        return 0;
+    }
+    if (HUMAN_DETECTION_PREPROCESS_CHILD_STAGES.has(event.stage)) {
+        return 2;
+    }
+    if (PREDICT_BATCH_CHILD_STAGES.has(event.stage)) {
+        return 1;
+    }
+    return 0;
+}
+
+function alignPreprocessChildrenForFrame(
+    events: StoredPipelineTaskEvent[],
+    byTaskId: Map<string, StoredPipelineTaskEvent>,
+    frameNumber: number,
+): void {
+    const preprocessId = batchSkeletonTaskId(frameNumber, 'human_detection_preprocess');
+    const children = events.filter(
+        event =>
+            event.frameNumber === frameNumber
+            && event.nodeKind === 'skeleton_inference'
+            && HUMAN_DETECTION_PREPROCESS_CHILD_STAGES.has(event.stage),
+    );
+    if (children.length === 0) {
+        return;
+    }
+
+    const minStart = Math.min(...children.map(child => child.startMs));
+    const maxEnd = Math.max(...children.map(child => child.endMs));
+    const preprocess = byTaskId.get(preprocessId);
+    if (preprocess) {
+        byTaskId.set(preprocessId, {
+            ...preprocess,
+            startMs: minStart,
+            endMs: maxEnd,
+            durationMs: maxEnd - minStart,
+        });
+    }
+
+    for (const child of children) {
+        const existing = byTaskId.get(child.taskId);
+        if (!existing) {
+            continue;
+        }
+        byTaskId.set(child.taskId, {
+            ...existing,
+            parentTaskIds: [preprocessId],
+        });
+    }
+}
+
+function alignPredictBatchChildrenForFrame(
+    events: StoredPipelineTaskEvent[],
+    byTaskId: Map<string, StoredPipelineTaskEvent>,
+    frameNumber: number,
+): void {
+    const predictBatchId = batchSkeletonTaskId(frameNumber, 'predict_batch');
+    const innerStages = events.filter(
+        event =>
+            event.frameNumber === frameNumber
+            && event.nodeKind === 'skeleton_inference'
+            && PREDICT_BATCH_CHILD_STAGES.has(event.stage),
+    );
+    if (innerStages.length === 0) {
+        return;
+    }
+
+    const minStart = Math.min(...innerStages.map(stage => stage.startMs));
+    const maxEnd = Math.max(...innerStages.map(stage => stage.endMs));
+    const predictBatch = byTaskId.get(predictBatchId);
+    if (predictBatch) {
+        const startMs = Math.min(predictBatch.startMs, minStart);
+        const endMs = Math.max(predictBatch.endMs, maxEnd);
+        byTaskId.set(predictBatchId, {
+            ...predictBatch,
+            startMs,
+            endMs,
+            durationMs: endMs - startMs,
+        });
+    }
+
+    for (const stage of innerStages) {
+        const existing = byTaskId.get(stage.taskId);
+        if (!existing) {
+            continue;
+        }
+        if (HUMAN_DETECTION_PREPROCESS_CHILD_STAGES.has(stage.stage)) {
+            continue;
+        }
+        byTaskId.set(stage.taskId, {
+            ...existing,
+            parentTaskIds: [predictBatchId],
+        });
+    }
+}
+
+/** Align skeleton GPU parent spans and parent-child links for the metrics timeline. */
+export function normalizeSkeletonInferenceTiming(
+    events: StoredPipelineTaskEvent[],
+): StoredPipelineTaskEvent[] {
+    if (events.length === 0) {
+        return events;
+    }
+
+    const byTaskId = new Map(events.map(event => [event.taskId, {...event}]));
+    const frameNumbers = new Set(
+        events
+            .filter(event => event.frameNumber != null && event.nodeKind === 'skeleton_inference')
+            .map(event => event.frameNumber as number),
+    );
+
+    for (const frameNumber of frameNumbers) {
+        alignPreprocessChildrenForFrame(events, byTaskId, frameNumber);
+        alignPredictBatchChildrenForFrame(events, byTaskId, frameNumber);
+    }
+
+    return events.map(event => byTaskId.get(event.taskId) ?? event);
+}
+
+/** @deprecated Use {@link normalizeSkeletonInferenceTiming}. */
+export function normalizeSkeletonPreprocessTiming(
+    events: StoredPipelineTaskEvent[],
+): StoredPipelineTaskEvent[] {
+    return normalizeSkeletonInferenceTiming(events);
+}
+
+function batchSkeletonTaskId(frameNumber: number, stage: string): string {
+    return buildDeterministicTaskId({
+        frameNumber,
+        nodeKind: 'skeleton_inference',
+        stage,
+        scope: 'batch',
+    });
+}
 
 function uiStageOrdinal(sourceKey: string): number {
     if (!sourceKey.startsWith('ui:')) return 10_000;
@@ -246,6 +442,9 @@ export function compareTimelineRows(a: StoredPipelineTaskEvent, b: StoredPipelin
     const catCmp = CATEGORY_PRIORITY[classifyTaskCategory(a)] - CATEGORY_PRIORITY[classifyTaskCategory(b)];
     if (catCmp !== 0) return catCmp;
 
+    const skelCmp = skeletonStageOrdinal(a.sourceKey, a.stage) - skeletonStageOrdinal(b.sourceKey, b.stage);
+    if (skelCmp !== 0) return skelCmp;
+
     const uiCmp = uiStageOrdinal(a.sourceKey) - uiStageOrdinal(b.sourceKey);
     if (uiCmp !== 0) return uiCmp;
 
@@ -263,16 +462,40 @@ export const CATEGORY_COLORS: Record<PipelineTaskCategory, string> = {
 };
 
 export function inferParentTaskIds(event: StoredPipelineTaskEvent): string[] {
+    if (event.frameNumber == null) {
+        return event.parentTaskIds.length > 0 ? event.parentTaskIds : [];
+    }
+    const frame = event.frameNumber;
+    const predictBatchId = batchSkeletonTaskId(frame, 'predict_batch');
+    const preprocessId = batchSkeletonTaskId(frame, 'human_detection_preprocess');
+    const frameReadId = batchSkeletonTaskId(frame, 'frame_read');
+
+    if (
+        event.nodeKind === 'skeleton_inference'
+        && HUMAN_DETECTION_PREPROCESS_CHILD_STAGES.has(event.stage)
+    ) {
+        return [preprocessId];
+    }
+
+    if (event.nodeKind === 'skeleton_inference') {
+        if (event.stage === 'predict_batch') {
+            return [frameReadId];
+        }
+        if (event.stage === 'human_detection_preprocess') {
+            return [predictBatchId];
+        }
+        if (PREDICT_BATCH_CHILD_STAGES.has(event.stage)) {
+            return [predictBatchId];
+        }
+        if (event.stage === 'frame_read') {
+            return [];
+        }
+    }
+
     if (event.parentTaskIds.length > 0) {
         return event.parentTaskIds;
     }
-    if (event.frameNumber == null) {
-        return [];
-    }
-    const frame = event.frameNumber;
-    if (event.nodeKind === 'skeleton_inference' && event.stage === 'predict_batch') {
-        return [];
-    }
+
     if (event.nodeKind === 'camera' && event.cameraId) {
         return [buildDeterministicTaskId({
             frameNumber: frame,

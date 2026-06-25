@@ -263,6 +263,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     node_kind="skeleton_inference",
                     stage="frame_read",
                 )
+                predict_batch_task_id = batch_task_id(
+                    frame_number=requested_frame_number,
+                    node_kind="skeleton_inference",
+                    stage="predict_batch",
+                )
                 tracker_collector: TrackerTaskEventCollector | None = (
                     TrackerTaskEventCollector() if timer is not None else None
                 )
@@ -272,7 +277,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         images,
                         frame_number=requested_frame_number,
                         camera_ids=ordered_camera_ids,
-                        parent_task_ids=[frame_read_task_id],
+                        parent_task_ids=[predict_batch_task_id],
                         event_collector=tracker_collector,
                     )
                 except Exception as mem_err:
@@ -315,6 +320,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 if timer is not None:
                     inf_ms = (perf_counter_ns() - t_inf_start_ns) / 1e6
                     timer.record("predict_batch", inf_ms)
+                    timer.record("human_detection_letterbox", session.last_human_detection_letterbox_ms)
+                    timer.record("human_detection_batch_pack", session.last_human_detection_batch_pack_ms)
                     timer.record("human_detection_preprocess", session.last_human_detection_preprocess_ms)
                     timer.record("human_detection", session.last_human_detection_ms)
                     timer.record("human_detection_postprocess", session.last_human_detection_postprocess_ms)

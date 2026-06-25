@@ -3,6 +3,8 @@ import {
     buildDeterministicTaskId,
     classifyTaskCategory,
     inferParentTaskIds,
+    normalizeSkeletonInferenceTiming,
+    normalizeSkeletonPreprocessTiming,
     orderTasksParentsBeforeChildren,
 } from '@/components/pipeline-metrics/pipelineTaskTopology';
 import {PipelineTimingStore, normalizeBackendPerfNsToRendererMs} from '@/services/server/server-helpers/pipeline-timing-store';
@@ -88,6 +90,60 @@ describe('inferParentTaskIds', () => {
             sourceKey: 'aggregator:capture_to_aggregator_ms',
         })).toBe('capture');
     });
+
+    it('nests human-detection preprocess child stages under preprocess', () => {
+        const preprocessId = buildDeterministicTaskId({
+            frameNumber: 8,
+            nodeKind: 'skeleton_inference',
+            stage: 'human_detection_preprocess',
+            scope: 'batch',
+        });
+        const letterbox = {
+            taskId: '8:cam_a:skeleton_inference:human_detection_letterbox',
+            parentTaskIds: ['8:batch:skeleton_inference:frame_read'],
+            stage: 'human_detection_letterbox',
+            nodeKind: 'skeleton_inference' as const,
+            cameraId: 'cam_a',
+            frameNumber: 8,
+            startMs: 10,
+            endMs: 12,
+            durationMs: 2,
+            clockDomain: 'backend_perf' as const,
+            sourceKey: 'skeleton_inference:cam_a:human_detection_letterbox',
+            lastSeenMs: 0,
+        };
+        expect(inferParentTaskIds(letterbox)).toEqual([preprocessId]);
+    });
+
+    it('nests predict_batch inner stages under predict_batch', () => {
+        const frame = 9;
+        const predictBatchId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'predict_batch',
+            scope: 'batch',
+        });
+        const detection = {
+            taskId: buildDeterministicTaskId({
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection',
+                scope: 'batch',
+            }),
+            parentTaskIds: [`${frame}:batch:skeleton_inference:frame_read`],
+            stage: 'human_detection',
+            nodeKind: 'skeleton_inference' as const,
+            cameraId: null,
+            frameNumber: frame,
+            startMs: 20,
+            endMs: 30,
+            durationMs: 10,
+            clockDomain: 'backend_perf' as const,
+            sourceKey: 'skeleton_inference:human_detection',
+            lastSeenMs: 0,
+        };
+        expect(inferParentTaskIds(detection)).toEqual([predictBatchId]);
+    });
 });
 
 describe('orderTasksParentsBeforeChildren', () => {
@@ -124,6 +180,201 @@ describe('orderTasksParentsBeforeChildren', () => {
         const child = {...baseEvent, taskId: 'c', parentTaskIds: ['p'], startMs: 10, endMs: 15};
         const ordered = orderTasksParentsBeforeChildren([child, parent, grandparent]);
         expect(ordered.map(event => event.taskId)).toEqual(['gp', 'p', 'c']);
+    });
+
+    it('places predict_batch above inner GPU stages', () => {
+        const frame = 15;
+        const frameReadId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'frame_read',
+            scope: 'batch',
+        });
+        const predictBatchId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'predict_batch',
+            scope: 'batch',
+        });
+        const preprocessId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'human_detection_preprocess',
+            scope: 'batch',
+        });
+        const frameRead = {
+            ...baseEvent,
+            taskId: frameReadId,
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'frame_read',
+            sourceKey: 'skeleton_inference:frame_read',
+            startMs: 0,
+            endMs: 5,
+        };
+        const predictBatch = {
+            ...baseEvent,
+            taskId: predictBatchId,
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'predict_batch',
+            sourceKey: 'skeleton_inference:predict_batch',
+            startMs: 5,
+            endMs: 40,
+        };
+        const preprocess = {
+            ...baseEvent,
+            taskId: preprocessId,
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection_preprocess',
+            sourceKey: 'skeleton_inference:human_detection_preprocess',
+            startMs: 6,
+            endMs: 12,
+        };
+        const detection = {
+            ...baseEvent,
+            taskId: buildDeterministicTaskId({
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection',
+                scope: 'batch',
+            }),
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection',
+            sourceKey: 'skeleton_inference:human_detection',
+            startMs: 12,
+            endMs: 25,
+        };
+        const ordered = orderTasksParentsBeforeChildren([
+            detection,
+            preprocess,
+            predictBatch,
+            frameRead,
+        ]);
+        expect(ordered.map(event => event.stage)).toEqual([
+            'frame_read',
+            'predict_batch',
+            'human_detection_preprocess',
+            'human_detection',
+        ]);
+    });
+
+    it('places preprocess child stages directly under preprocess', () => {
+        const frame = 12;
+        const preprocess = {
+            ...baseEvent,
+            taskId: buildDeterministicTaskId({
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection_preprocess',
+                scope: 'batch',
+            }),
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection_preprocess',
+            sourceKey: 'skeleton_inference:human_detection_preprocess',
+            startMs: 10,
+            endMs: 20,
+        };
+        const letterbox = {
+            ...baseEvent,
+            taskId: `${frame}:cam_a:skeleton_inference:human_detection_letterbox`,
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection_letterbox',
+            sourceKey: 'skeleton_inference:cam_a:human_detection_letterbox',
+            startMs: 11,
+            endMs: 15,
+        };
+        const batchPack = {
+            ...baseEvent,
+            taskId: buildDeterministicTaskId({
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection_batch_pack',
+                scope: 'batch',
+            }),
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection_batch_pack',
+            sourceKey: 'skeleton_inference:human_detection_batch_pack',
+            startMs: 15,
+            endMs: 18,
+        };
+        const detection = {
+            ...baseEvent,
+            taskId: buildDeterministicTaskId({
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection',
+                scope: 'batch',
+            }),
+            nodeKind: 'skeleton_inference' as const,
+            stage: 'human_detection',
+            sourceKey: 'skeleton_inference:human_detection',
+            startMs: 20,
+            endMs: 30,
+        };
+        const ordered = orderTasksParentsBeforeChildren([detection, batchPack, letterbox, preprocess]);
+        expect(ordered.map(event => event.stage)).toEqual([
+            'human_detection_preprocess',
+            'human_detection_letterbox',
+            'human_detection_batch_pack',
+            'human_detection',
+        ]);
+    });
+
+    it('aligns preprocess parent span to child start/end times', () => {
+        const frame = 20;
+        const preprocessId = buildDeterministicTaskId({
+            frameNumber: frame,
+            nodeKind: 'skeleton_inference',
+            stage: 'human_detection_preprocess',
+            scope: 'batch',
+        });
+        const events = normalizeSkeletonInferenceTiming([
+            {
+                ...baseEvent,
+                taskId: preprocessId,
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection_preprocess',
+                sourceKey: 'skeleton_inference:human_detection_preprocess',
+                startMs: 99,
+                endMs: 105,
+                durationMs: 6,
+            },
+            {
+                ...baseEvent,
+                taskId: `${frame}:cam_a:skeleton_inference:human_detection_letterbox`,
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection_letterbox',
+                sourceKey: 'skeleton_inference:cam_a:human_detection_letterbox',
+                startMs: 100,
+                endMs: 103,
+                durationMs: 3,
+            },
+            {
+                ...baseEvent,
+                taskId: buildDeterministicTaskId({
+                    frameNumber: frame,
+                    nodeKind: 'skeleton_inference',
+                    stage: 'human_detection_batch_pack',
+                    scope: 'batch',
+                }),
+                frameNumber: frame,
+                nodeKind: 'skeleton_inference',
+                stage: 'human_detection_batch_pack',
+                sourceKey: 'skeleton_inference:human_detection_batch_pack',
+                startMs: 103,
+                endMs: 108,
+                durationMs: 5,
+            },
+        ]);
+
+        const preprocess = events.find(event => event.taskId === preprocessId);
+        const letterbox = events.find(event => event.stage === 'human_detection_letterbox');
+        const batchPack = events.find(event => event.stage === 'human_detection_batch_pack');
+        expect(preprocess?.startMs).toBe(100);
+        expect(preprocess?.endMs).toBe(108);
+        expect(letterbox?.parentTaskIds).toEqual([preprocessId]);
+        expect(batchPack?.parentTaskIds).toEqual([preprocessId]);
     });
 });
 

@@ -52,6 +52,8 @@ SECTION_LAYOUTS: dict[str, _SectionLayout] = {
     "skeleton_inference": _SectionLayout(
         substages=(
             "frame_read",
+            "human_detection_letterbox",
+            "human_detection_batch_pack",
             "human_detection_preprocess",
             "human_detection",
             "human_detection_postprocess",

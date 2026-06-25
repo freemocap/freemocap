@@ -31,9 +31,14 @@ class ServerUrls {
 
     /**
      * Get WebSocket base URL
+     * @param clientRole When `metrics`, requests a metrics-only relay from the backend.
      */
-    getWebSocketUrl(): string {
-        return `ws://${this.host}:${this.port}${WS_PATH}`;
+    getWebSocketUrl(clientRole?: 'metrics' | 'full'): string {
+        const base = `ws://${this.host}:${this.port}${WS_PATH}`;
+        if (clientRole === 'metrics') {
+            return `${base}?client_role=metrics`;
+        }
+        return base;
     }
 
     get endpoints() {

@@ -151,19 +151,21 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         canvasManagerRef.current = new CanvasManager();
         canvasManagerRef.current.setRenderAckHandler((payload) => {
             const store = pipelineTimingStoreRef.current;
+            const frameNumber = payload.frameNumber >= 0 ? payload.frameNumber : null;
+            const uiCtx = frameNumber != null ? {frameNumber} : undefined;
             const rafStart = payload.rafCycleStartMs;
             if (rafStart != null && rafStart > 0) {
-                store.recordRafToRendered(payload.cameraId, payload.completedAt - rafStart);
+                store.recordRafToRendered(payload.cameraId, payload.completedAt - rafStart, uiCtx);
             }
-            store.recordCanvasBitmapTransfer(payload.cameraId, payload.renderMs);
+            store.recordCanvasBitmapTransfer(payload.cameraId, payload.renderMs, uiCtx);
             if (typeof payload.canvasWorkerRafWaitMs === 'number') {
-                store.recordCanvasWorkerRafWait(payload.cameraId, payload.canvasWorkerRafWaitMs);
+                store.recordCanvasWorkerRafWait(payload.cameraId, payload.canvasWorkerRafWaitMs, uiCtx);
             }
             if (typeof payload.canvasWorkerReceiveLagMs === 'number') {
-                store.recordCanvasWorkerReceiveLag(payload.cameraId, payload.canvasWorkerReceiveLagMs);
+                store.recordCanvasWorkerReceiveLag(payload.cameraId, payload.canvasWorkerReceiveLagMs, uiCtx);
             }
             if (typeof payload.renderAckDeliveryMs === 'number' && Number.isFinite(payload.renderAckDeliveryMs)) {
-                store.recordRenderAckDelivery(payload.cameraId, payload.renderAckDeliveryMs);
+                store.recordRenderAckDelivery(payload.cameraId, payload.renderAckDeliveryMs, uiCtx);
             }
         });
         overlayManagerRef.current = new OverlayManager();
@@ -311,22 +313,34 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 rafCycleStartMs: rafCycleStartMs > 0 ? rafCycleStartMs : undefined,
             };
             const decodeBreakdown = timing?.decodeBreakdown;
+            const uiCtxForCamera = (cameraId: string, frameNumber: number) => ({
+                frameNumber: frameNumber >= 0 ? frameNumber : undefined,
+                parentTaskIds: frameNumber >= 0
+                    ? [`${frameNumber}:${cameraId}:camera:ws_payload_prepare_ms`]
+                    : undefined,
+            });
             if (decodeBreakdown) {
-                for (const cameraId of cameraIds) {
-                    timingStore.recordRafBodyBeforeDecode(cameraId, decodeBreakdown.rafBodyBeforeDecodeMs);
-                    timingStore.recordJpegDecodeWorker(cameraId, decodeBreakdown.decodeWorkerMs);
-                    timingStore.recordJpegDecodeMainWait(cameraId, decodeBreakdown.jpegDecodeMainWaitMs);
-                    timingStore.recordJpegDecodeBridge(cameraId, decodeBreakdown.jpegDecodeBridgeMs);
+                for (const frameData of frames) {
+                    const ctx = uiCtxForCamera(frameData.cameraId, frameData.frameNumber);
+                    timingStore.recordRafBodyBeforeDecode(frameData.cameraId, decodeBreakdown.rafBodyBeforeDecodeMs, ctx);
+                    timingStore.recordJpegDecodeWorker(frameData.cameraId, decodeBreakdown.decodeWorkerMs, ctx);
+                    timingStore.recordJpegDecodeMainWait(frameData.cameraId, decodeBreakdown.jpegDecodeMainWaitMs, ctx);
+                    timingStore.recordJpegDecodeBridge(frameData.cameraId, decodeBreakdown.jpegDecodeBridgeMs, ctx);
                 }
             }
-            const recordMainDispatch = (cameraId: string): void => {
+            const recordMainDispatch = (cameraId: string, frameNumber: number): void => {
                 if (!decodeBreakdown) return;
                 const sendAt = performance.now();
-                timingStore.recordMainDispatchToCanvas(cameraId, sendAt - decodeBreakdown.dispatchFramesEnterMs);
+                timingStore.recordMainDispatchToCanvas(
+                    cameraId,
+                    sendAt - decodeBreakdown.dispatchFramesEnterMs,
+                    uiCtxForCamera(cameraId, frameNumber),
+                );
             };
             for (const frameData of frames) {
+                const ctx = uiCtxForCamera(frameData.cameraId, frameData.frameNumber);
                 if (jpegAckMsValue !== null) {
-                    timingStore.recordJpegAckToReceive(frameData.cameraId, jpegAckMsValue);
+                    timingStore.recordJpegAckToReceive(frameData.cameraId, jpegAckMsValue, ctx);
                 }
                 if (wsBinaryTiming) {
                     const { intervalMs, dispatchLagMs } = wsBinaryTiming;
@@ -335,10 +349,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         && intervalMs > 0
                         && Number.isFinite(intervalMs)
                     ) {
-                        timingStore.recordJpegWsBinaryInterval(frameData.cameraId, intervalMs);
+                        timingStore.recordJpegWsBinaryInterval(frameData.cameraId, intervalMs, ctx);
                     }
                     if (Number.isFinite(dispatchLagMs) && dispatchLagMs >= 0) {
-                        timingStore.recordJpegWsBinaryDispatchLag(frameData.cameraId, dispatchLagMs);
+                        timingStore.recordJpegWsBinaryDispatchLag(frameData.cameraId, dispatchLagMs, ctx);
                     }
                 }
                 const overlayAge = performance.now() - (lastOverlayTimeRef.current.get(frameData.cameraId) ?? 0);
@@ -362,7 +376,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         charucoObs,
                         mediapipeObs,
                     ).then(compositeBitmap => {
-                        recordMainDispatch(frameData.cameraId);
+                        recordMainDispatch(frameData.cameraId, frameData.frameNumber);
                         canvasManagerRef.current?.sendFrameToWorker(
                             frameData.cameraId,
                             compositeBitmap,
@@ -370,7 +384,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         );
                     }).catch(err => console.error('Overlay error for camera', frameData.cameraId, err));
                 } else {
-                    recordMainDispatch(frameData.cameraId);
+                    recordMainDispatch(frameData.cameraId, frameData.frameNumber);
                     canvasManagerRef.current!.sendFrameToWorker(
                         frameData.cameraId,
                         frameData.bitmap,
@@ -670,6 +684,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     else if (isFramerateUpdate(jsonData)) {
                         serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
+                        const meanDur = jsonData.backend_framerate.frame_duration_mean;
+                        if (meanDur != null && meanDur > 0) {
+                            pipelineTimingStoreRef.current.setBackendFrameDurationMs(meanDur);
+                        }
                     }
                     else if (isPipelineTiming(jsonData)) {
                         pipelineTimingStoreRef.current.ingestBackendMessage(jsonData);

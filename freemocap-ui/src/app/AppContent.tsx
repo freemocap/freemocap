@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ThemeProvider } from '@mui/material/styles';
-import { HashRouter } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { CssBaseline } from "@mui/material";
 import { BasePanelLayout } from "@/layout/BasePanelLayout";
 import { createExtendedTheme } from "@/layout/paperbase-theme";
@@ -13,28 +13,46 @@ import { PlaybackProvider } from "@/components/playback/PlaybackContext";
 import { useTranslation } from "react-i18next";
 import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
+import PipelineMetricsWindowPage from "@/components/pipeline-metrics/PipelineMetricsWindowPage";
 
-export const AppContent = function () {
+type AppContentProps = {
+    metricsOnly?: boolean;
+};
+
+export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
     const themeMode = useAppSelector(state => state.theme.mode);
     const direction = getLocaleDirection(i18n.language);
 
-    // Sync document-level direction and lang attributes with current locale
     React.useEffect(() => {
         document.documentElement.dir = direction;
         document.documentElement.lang = i18n.language;
     }, [direction, i18n.language]);
 
-    // Prefetch recordings list on startup so data is ready when user opens the tab
     React.useEffect(() => {
+        if (metricsOnly) return;
         dispatch(fetchAllRecordings());
-    }, [dispatch]);
+    }, [dispatch, metricsOnly]);
 
     const theme = React.useMemo(() => {
         const base = createExtendedTheme(themeMode);
         return { ...base, direction };
     }, [themeMode, direction]);
+
+    if (metricsOnly) {
+        return (
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <HashRouter>
+                    <Routes>
+                        <Route path="/pipeline-metrics" element={<PipelineMetricsWindowPage />} />
+                        <Route path="*" element={<PipelineMetricsWindowPage />} />
+                    </Routes>
+                </HashRouter>
+            </ThemeProvider>
+        );
+    }
 
     return (
         <ThemeProvider theme={theme}>
@@ -52,4 +70,4 @@ export const AppContent = function () {
             </HashRouter>
         </ThemeProvider>
     );
-}
+};

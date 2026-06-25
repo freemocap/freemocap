@@ -4,6 +4,15 @@
     TimestampedRingBuffer,
     WindowedStats,
 } from "@/services/server/server-helpers/sample-window-stats";
+import {
+    PIPELINE_TIMELINE_FRAME_WINDOW,
+    type PipelineTimingEventPayload,
+    type StoredPipelineTaskEvent,
+    type UiTimingRecordContext,
+} from "@/services/server/server-helpers/pipeline-timing-types";
+import {estimateFrameDurationFromFrameAnchors} from "@/components/pipeline-metrics/pipelineTimelineModel";
+import {buildDeterministicTaskId} from "@/components/pipeline-metrics/pipelineTaskTopology";
+import type {PipelineTimingWsMessage} from "@/services/server/server-helpers/websocket-message-types";
 
 export type PipelineTimingSnapshot = {
     aggregates: Map<string, DetailedFramerate | null>;
@@ -12,23 +21,60 @@ export type PipelineTimingSnapshot = {
     logPipelineTimesEnabled: boolean;
 };
 
+export type PipelineTimelineSnapshot = {
+    events: StoredPipelineTaskEvent[];
+    backendFrameDurationMs: number | null;
+    configuredFrameDurationMs: number | null;
+    /** Frame duration locked at pipeline startup; timeline scale stays fixed until clear(). */
+    lockedFrameDurationMs: number | null;
+    droppedTimingEvents: number;
+    logPipelineTimesEnabled: boolean;
+};
+
+/** Align backend perf_counter_ns samples to renderer performance.now() at ingest. */
+export function normalizeBackendPerfNsToRendererMs(
+    eventNs: number,
+    ingestPerfMs: number,
+    relayPerfCounterNs: number | null,
+): number {
+    if (relayPerfCounterNs == null) {
+        return ingestPerfMs;
+    }
+    const relayPerfMs = relayPerfCounterNs / 1e6;
+    const eventPerfMs = eventNs / 1e6;
+    return ingestPerfMs - (relayPerfMs - eventPerfMs);
+}
+
 /**
  * Ingests backend pipeline_timing batches and UI-measured samples.
- * Mutable ref store — poll via getSnapshot().
+ * Mutable ref store — poll via getSnapshot() or getTimelineSnapshot().
  */
 export class PipelineTimingStore {
     private readonly buffers = new Map<string, TimestampedRingBuffer>();
     private readonly statsComputers = new Map<string, WindowedStats>();
     private readonly recentValues = new Map<string, number | null>();
     private readonly lastSampleTimestamps = new Map<string, number>();
+    private readonly taskEvents = new Map<string, StoredPipelineTaskEvent>();
     private logPipelineTimesEnabled = false;
+    private droppedTimingEvents = 0;
+    private backendFrameDurationMs: number | null = null;
+    private configuredFrameDurationMs: number | null = null;
+    private lockedFrameDurationMs: number | null = null;
 
     private _writeVersion = 0;
     private _snapshotVersion = -1;
     private _cachedSnapshot: PipelineTimingSnapshot | null = null;
+    private _timelineVersion = -1;
+    private _cachedTimeline: PipelineTimelineSnapshot | null = null;
 
     private touch(rowKey: string): void {
         this.lastSampleTimestamps.set(rowKey, Date.now());
+    }
+
+    private bump(): void {
+        this._writeVersion++;
+        this._cachedSnapshot = null;
+        this._cachedTimeline = null;
     }
 
     private ensureBuffer(rowKey: string): TimestampedRingBuffer {
@@ -41,7 +87,6 @@ export class PipelineTimingStore {
         return buf;
     }
 
-    /** Drop rows hidden from the Pipeline Stages panel (stale keys after policy changes). */
     private pruneHiddenBackendRows(): void {
         for (const key of [...this.buffers.keys()]) {
             if (
@@ -57,7 +102,6 @@ export class PipelineTimingStore {
         }
     }
 
-    /** Remove pubsub-only rows when pipeline timing is disabled on the server. */
     private prunePubsubRowsWhenDisabled(): void {
         if (this.logPipelineTimesEnabled) {
             return;
@@ -72,16 +116,148 @@ export class PipelineTimingStore {
         }
     }
 
-    /** Backend ~4Hz batch */
-    ingestBackendMessage(msg: {
-        log_pipeline_times_enabled?: boolean;
-        per_node?: Record<string, Record<string, number[]>>;
-        per_camera?: Record<string, Record<string, number[]>>;
-    }): void {
+    private pruneTaskEventsOutsideFrameWindow(): void {
+        const framed = [...this.taskEvents.values()].filter(e => e.frameNumber != null);
+        if (framed.length === 0) return;
+        const latestFrame = Math.max(...framed.map(e => e.frameNumber as number));
+        const minFrame = Math.max(0, latestFrame - PIPELINE_TIMELINE_FRAME_WINDOW);
+        for (const [id, event] of this.taskEvents) {
+            if (event.frameNumber != null && event.frameNumber < minFrame) {
+                this.taskEvents.delete(id);
+            }
+        }
+    }
+
+    private backendNsToRendererMs(eventNs: number, ingestPerfMs: number, relayPerfCounterNs: number | null): number {
+        return normalizeBackendPerfNsToRendererMs(eventNs, ingestPerfMs, relayPerfCounterNs);
+    }
+
+    private upsertTaskEvent(event: StoredPipelineTaskEvent): void {
+        const existing = this.taskEvents.get(event.taskId);
+        if (existing) {
+            this.taskEvents.set(event.taskId, {
+                ...existing,
+                ...event,
+                parentTaskIds: event.parentTaskIds.length > 0 ? event.parentTaskIds : existing.parentTaskIds,
+                lastSeenMs: event.lastSeenMs,
+            });
+        } else {
+            this.taskEvents.set(event.taskId, event);
+        }
+        this.pruneTaskEventsOutsideFrameWindow();
+    }
+
+    private ingestExplicitEvent(
+        payload: PipelineTimingEventPayload,
+        ingestPerfMs: number,
+        relayPerfCounterNs: number | null,
+    ): void {
+        const startNs = payload.start_time_ns ?? null;
+        const endNs = payload.end_time_ns ?? null;
+        let startMs: number;
+        let endMs: number;
+        if (startNs != null && endNs != null) {
+            startMs = this.backendNsToRendererMs(startNs, ingestPerfMs, relayPerfCounterNs);
+            endMs = this.backendNsToRendererMs(endNs, ingestPerfMs, relayPerfCounterNs);
+        } else {
+            endMs = ingestPerfMs;
+            startMs = endMs - payload.duration_ms;
+        }
+        const sourceKey = payload.camera_id
+            ? `${payload.node_kind === 'camera' ? 'camera' : payload.node_kind}:${payload.camera_id}:${payload.stage}`
+            : `${payload.node_kind}:${payload.stage}`;
+
+        this.upsertTaskEvent({
+            taskId: payload.task_id,
+            parentTaskIds: payload.parent_task_ids ?? [],
+            stage: payload.stage,
+            nodeKind: payload.node_kind,
+            cameraId: payload.camera_id ?? null,
+            frameNumber: payload.frame_number ?? null,
+            startMs,
+            endMs,
+            durationMs: payload.duration_ms,
+            clockDomain: 'backend_perf',
+            sourceKey,
+            lastSeenMs: performance.now(),
+        });
+    }
+
+    private ingestLegacySample(
+        rowKey: string,
+        durationMs: number,
+        ingestPerfMs: number,
+        nodeKind: string,
+        stage: string,
+        cameraId: string | null,
+    ): void {
+        const endMs = ingestPerfMs;
+        const startMs = endMs - durationMs;
+        const taskId = `legacy:${rowKey}:${Math.round(endMs)}`;
+        this.upsertTaskEvent({
+            taskId,
+            parentTaskIds: [],
+            stage,
+            nodeKind,
+            cameraId,
+            frameNumber: null,
+            startMs,
+            endMs,
+            durationMs,
+            clockDomain: 'ingest_wall',
+            sourceKey: rowKey,
+            lastSeenMs: performance.now(),
+        });
+    }
+
+    private lockTimelineScaleIfNeeded(events: StoredPipelineTaskEvent[]): void {
+        if (this.lockedFrameDurationMs != null) {
+            return;
+        }
+        if (this.configuredFrameDurationMs != null && this.configuredFrameDurationMs > 0) {
+            this.lockedFrameDurationMs = this.configuredFrameDurationMs;
+            return;
+        }
+        const measuredFrameDurationMs = estimateFrameDurationFromFrameAnchors(events);
+        if (measuredFrameDurationMs != null && measuredFrameDurationMs > 0) {
+            this.lockedFrameDurationMs = measuredFrameDurationMs;
+        }
+    }
+
+    setBackendFrameDurationMs(durationMs: number | null): void {
+        if (durationMs != null && durationMs > 0) {
+            this.backendFrameDurationMs = durationMs;
+            this.bump();
+        }
+    }
+
+    setConfiguredCameraFpsHz(fpsHz: number | null | undefined): void {
+        if (fpsHz != null && fpsHz > 0) {
+            this.configuredFrameDurationMs = 1000 / fpsHz;
+            this.lockTimelineScaleIfNeeded([...this.taskEvents.values()]);
+            this.bump();
+        }
+    }
+
+    ingestBackendMessage(msg: PipelineTimingWsMessage): void {
         this.logPipelineTimesEnabled = msg.log_pipeline_times_enabled ?? false;
         this.pruneHiddenBackendRows();
         this.prunePubsubRowsWhenDisabled();
-        const ts = Date.now();
+        const ingestWallMs = Date.now();
+        const ingestPerfMs = performance.now();
+        const relayPerfCounterNs = msg.relay_perf_counter_ns ?? null;
+
+        this.setConfiguredCameraFpsHz(msg.configured_camera_fps_hz);
+
+        if (typeof msg.dropped_timing_events === 'number' && msg.dropped_timing_events > 0) {
+            this.droppedTimingEvents += msg.dropped_timing_events;
+        }
+
+        if (msg.events) {
+            for (const event of msg.events) {
+                this.ingestExplicitEvent(event, ingestPerfMs, relayPerfCounterNs);
+            }
+        }
 
         if (msg.per_node) {
             for (const [nodeKind, stages] of Object.entries(msg.per_node)) {
@@ -92,8 +268,9 @@ export class PipelineTimingStore {
                     const rowKey = `${nodeKind}:${stage}`;
                     const buf = this.ensureBuffer(rowKey);
                     for (const v of samples) {
-                        buf.push(ts, v);
+                        buf.push(ingestWallMs, v);
                         this.recentValues.set(rowKey, v);
+                        this.ingestLegacySample(rowKey, v, ingestPerfMs, nodeKind, stage, null);
                     }
                     this.touch(rowKey);
                 }
@@ -106,162 +283,110 @@ export class PipelineTimingStore {
                     const rowKey = `camera:${camId}:${stage}`;
                     const buf = this.ensureBuffer(rowKey);
                     for (const v of samples) {
-                        buf.push(ts, v);
+                        buf.push(ingestWallMs, v);
                         this.recentValues.set(rowKey, v);
+                        this.ingestLegacySample(rowKey, v, ingestPerfMs, 'camera', stage, camId);
                     }
                     this.touch(rowKey);
                 }
             }
         }
 
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+        this.bump();
     }
 
-    /** Main-thread work in the same rAF tick before multiplex JPEG decode is queued (ack, JSON, keypoints, etc.). */
-    recordRafBodyBeforeDecode(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:raf_body_before_decode_ms`;
+    private recordUiDuration(
+        cameraId: string,
+        stage: string,
+        latencyMs: number,
+        ctx?: UiTimingRecordContext,
+    ): void {
+        const rowKey = `ui:${cameraId}:${stage}`;
         const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
+        const nowWall = Date.now();
+        buf.push(nowWall, latencyMs);
         this.recentValues.set(rowKey, latencyMs);
         this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+
+        const nowPerf = performance.now();
+        const frameNumber = ctx?.frameNumber ?? null;
+        const taskId = frameNumber != null
+            ? buildDeterministicTaskId({
+                frameNumber,
+                cameraId,
+                nodeKind: 'ui',
+                stage,
+                scope: 'ui',
+            })
+            : `ui-orphan:${cameraId}:${stage}:${Math.round(nowPerf)}`;
+
+        this.upsertTaskEvent({
+            taskId,
+            parentTaskIds: ctx?.parentTaskIds ?? [],
+            stage,
+            nodeKind: 'ui',
+            cameraId,
+            frameNumber,
+            startMs: nowPerf - latencyMs,
+            endMs: nowPerf,
+            durationMs: latencyMs,
+            clockDomain: 'renderer_perf',
+            sourceKey: rowKey,
+            lastSeenMs: nowPerf,
+        });
+        this.bump();
     }
 
-    /** Wall time inside the JPEG decode worker (parse + createImageBitmap), excluding postMessage bridging. */
-    recordJpegDecodeWorker(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_decode_worker_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordRafBodyBeforeDecode(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'raf_body_before_decode_ms', latencyMs, ctx);
     }
 
-    /** Main-thread wait from posting decode to dispatchFrames: worker time + structured clone + microtask scheduling. */
-    recordJpegDecodeMainWait(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_decode_main_wait_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegDecodeWorker(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_decode_worker_ms', latencyMs, ctx);
     }
 
-    /** Approx. postMessage / main-thread slice: main wait minus worker-busy time (see tooltips). */
-    recordJpegDecodeBridge(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_decode_bridge_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegDecodeMainWait(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_decode_main_wait_ms', latencyMs, ctx);
     }
 
-    /** Main thread from entering dispatchFrames until this frame is posted to the canvas worker (includes overlay if async path completes later). */
-    recordMainDispatchToCanvas(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:main_dispatch_to_canvas_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegDecodeBridge(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_decode_bridge_ms', latencyMs, ctx);
     }
 
-    /** Canvas worker: performance.now() delta from main postMessage to worker onmessage (cross-thread delivery). */
-    recordCanvasWorkerReceiveLag(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:canvas_worker_receive_lag_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordMainDispatchToCanvas(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'main_dispatch_to_canvas_ms', latencyMs, ctx);
     }
 
-    /** Canvas worker: from frame received until the rAF callback begins painting this frame. */
-    recordCanvasWorkerRafWait(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:canvas_worker_raf_wait_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordCanvasWorkerReceiveLag(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'canvas_worker_receive_lag_ms', latencyMs, ctx);
     }
 
-    /** Worker ImageBitmapRenderingContext: transferFromImageBitmap wall time. */
-    recordCanvasBitmapTransfer(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:canvas_bitmap_transfer_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordCanvasWorkerRafWait(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'canvas_worker_raf_wait_ms', latencyMs, ctx);
     }
 
-    /** Main thread: time from worker posting renderAck until the window receives the message. */
-    recordRenderAckDelivery(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:render_ack_delivery_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordCanvasBitmapTransfer(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'canvas_bitmap_transfer_ms', latencyMs, ctx);
     }
 
-    /** Time from sending frameAcknowledgment until this JPEG multiplex payload was fully received (network + server). */
-    recordJpegAckToReceive(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_ack_to_receive_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordRenderAckDelivery(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'render_ack_delivery_ms', latencyMs, ctx);
     }
 
-    /**
-     * Milliseconds since the previous multiplex JPEG binary arrived on this WebSocket.
-     * When the server sends one preview payload at a time, this tracks pacing of full-frame delivery.
-     */
-    recordJpegWsBinaryInterval(cameraId: string, intervalMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_ws_binary_interval_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), intervalMs);
-        this.recentValues.set(rowKey, intervalMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegAckToReceive(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_ack_to_receive_ms', latencyMs, ctx);
     }
 
-    /** Main-thread delay between the browser's MessageEvent timestamp and this handler running. */
-    recordJpegWsBinaryDispatchLag(cameraId: string, lagMs: number): void {
-        const rowKey = `ui:${cameraId}:jpeg_ws_dispatch_lag_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), lagMs);
-        this.recentValues.set(rowKey, lagMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegWsBinaryInterval(cameraId: string, intervalMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_ws_binary_interval_ms', intervalMs, ctx);
     }
 
-    /** Main-thread window time from the rAF tick that started decode to render ack after bitmaprenderer paint. */
-    recordRafToRendered(cameraId: string, latencyMs: number): void {
-        const rowKey = `ui:${cameraId}:raf_to_rendered_ms`;
-        const buf = this.ensureBuffer(rowKey);
-        buf.push(Date.now(), latencyMs);
-        this.recentValues.set(rowKey, latencyMs);
-        this.touch(rowKey);
-        this._writeVersion++;
-        this._cachedSnapshot = null;
+    recordJpegWsBinaryDispatchLag(cameraId: string, lagMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'jpeg_ws_dispatch_lag_ms', lagMs, ctx);
+    }
+
+    recordRafToRendered(cameraId: string, latencyMs: number, ctx?: UiTimingRecordContext): void {
+        this.recordUiDuration(cameraId, 'raf_to_rendered_ms', latencyMs, ctx);
     }
 
     getSnapshot(): PipelineTimingSnapshot {
@@ -287,14 +412,39 @@ export class PipelineTimingStore {
         return this._cachedSnapshot;
     }
 
+    getTimelineSnapshot(): PipelineTimelineSnapshot {
+        if (this._cachedTimeline && this._timelineVersion === this._writeVersion) {
+            return this._cachedTimeline;
+        }
+        const events = [...this.taskEvents.values()];
+        this.lockTimelineScaleIfNeeded(events);
+        this._cachedTimeline = {
+            events,
+            backendFrameDurationMs: this.backendFrameDurationMs,
+            configuredFrameDurationMs: this.configuredFrameDurationMs,
+            lockedFrameDurationMs: this.lockedFrameDurationMs,
+            droppedTimingEvents: this.droppedTimingEvents,
+            logPipelineTimesEnabled: this.logPipelineTimesEnabled,
+        };
+        this._timelineVersion = this._writeVersion;
+        return this._cachedTimeline;
+    }
+
     clear(): void {
         this.buffers.clear();
         this.statsComputers.clear();
         this.recentValues.clear();
         this.lastSampleTimestamps.clear();
+        this.taskEvents.clear();
         this.logPipelineTimesEnabled = false;
+        this.droppedTimingEvents = 0;
+        this.backendFrameDurationMs = null;
+        this.configuredFrameDurationMs = null;
+        this.lockedFrameDurationMs = null;
         this._writeVersion++;
         this._cachedSnapshot = null;
+        this._cachedTimeline = null;
         this._snapshotVersion = -1;
+        this._timelineVersion = -1;
     }
 }

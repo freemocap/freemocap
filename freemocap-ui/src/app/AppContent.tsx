@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from "@mui/material";
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { BasePanelLayout } from "@/layout/BasePanelLayout";
-import { createExtendedTheme } from "@/layout/paperbase-theme";
 import { useAppDispatch, useAppSelector } from "@/store";
 import { BaseContentRouter } from "@/layout/content/BaseContentRouter";
 import { UpdateBanner } from "@/components/ui-components/UpdateBanner";
@@ -20,10 +19,29 @@ type AppContentProps = {
     metricsOnly?: boolean;
 };
 
+function MetricsAppContent({ direction }: { direction: 'ltr' | 'rtl' }) {
+    const themeMode = useAppSelector(state => state.theme.mode);
+    const theme = React.useMemo(
+        () => createTheme({ palette: { mode: themeMode }, direction }),
+        [themeMode, direction],
+    );
+
+    return (
+        <ThemeProvider theme={theme}>
+            <CssBaseline />
+            <HashRouter>
+                <Routes>
+                    <Route path="/pipeline-metrics" element={<PipelineMetricsWindowPage />} />
+                    <Route path="*" element={<PipelineMetricsWindowPage />} />
+                </Routes>
+            </HashRouter>
+        </ThemeProvider>
+    );
+}
+
 export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
-    const themeMode = useAppSelector(state => state.theme.mode);
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
 
@@ -37,23 +55,8 @@ export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
         dispatch(fetchAllRecordings());
     }, [dispatch, metricsOnly]);
 
-    const theme = React.useMemo(() => {
-        const base = createExtendedTheme(themeMode);
-        return { ...base, direction };
-    }, [themeMode, direction]);
-
     if (metricsOnly) {
-        return (
-            <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <HashRouter>
-                    <Routes>
-                        <Route path="/pipeline-metrics" element={<PipelineMetricsWindowPage />} />
-                        <Route path="*" element={<PipelineMetricsWindowPage />} />
-                    </Routes>
-                </HashRouter>
-            </ThemeProvider>
-        );
+        return <MetricsAppContent direction={direction} />;
     }
 
     return (

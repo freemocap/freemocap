@@ -6,7 +6,6 @@ import FramerateHistogramView from "./FramerateHistogramView"
 import FramerateStatisticsView from "./FramerateStatisticsView"
 import { useTranslation } from "react-i18next"
 import { useServer } from "@/services/server/ServerContextProvider"
-import {openPipelineMetricsWindow} from "@/services/electron-ipc/open-pipeline-metrics-window";
 
 export const frontendColor: string = "var(--chart-frontend)"
 export const backendColor: string = "var(--chart-backend)"
@@ -44,38 +43,17 @@ const FramerateCollapsedView = () => {
 }
 
 export const FramerateViewerPanel = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
-    if (isCollapsed) return <FramerateCollapsedView />
-    return <FramerateViewerPanelExpanded />
-}
-
-const FramerateViewerPanelExpanded = () => {
     const { t } = useTranslation()
-    const [mainTab, setMainTab] = useState<'framerate' | 'pipeline'>('framerate')
     const [showStats, setShowStats] = useState(true)
     const [showTimeseries, setShowTimeseries] = useState(true)
     const [showHistogram, setShowHistogram] = useState(true)
 
-    const handlePipelineTab = (): void => {
-        void openPipelineMetricsWindow();
-    };
+    if (isCollapsed) return <FramerateCollapsedView />
 
     return (
         <div className="framerate-viewer br-1">
             <div className="framerate-viewer-header">
-                <div className="flex gap-1">
-                    <button
-                        className={clsx("button sm br-1", mainTab === 'framerate' && "isOn")}
-                        onClick={() => setMainTab('framerate')}
-                    >
-                        <p className="text sm">{t('cameraPerformanceMetrics')}</p>
-                    </button>
-                    <button
-                        className="button sm br-1"
-                        onClick={handlePipelineTab}
-                    >
-                        <p className="text sm">Pipeline stages</p>
-                    </button>
-                </div>
+                <p className="text bg text-gray">{t('cameraPerformanceMetrics')}</p>
                 <div className="flex gap-1">
                     <button
                         className={clsx("button sm br-1", showStats && "isOn")}

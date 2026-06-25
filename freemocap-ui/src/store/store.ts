@@ -13,6 +13,7 @@ import {blenderSlice} from "@/store/slices/blender/blender-slice";
 import {recordingStatusSlice} from "@/store/slices/recording-status/recording-status-slice";
 import {activeRecordingSlice} from "@/store/slices/active-recording/active-recording-slice";
 import playbackDataReducer from "@/store/slices/playback-data/playback-data-slice";
+import {themeSlice} from "@/store/slices/theme/theme-slice";
 
 export const store = configureStore({
     middleware: (getDefaultMiddleware) =>
@@ -32,5 +33,6 @@ export const store = configureStore({
         recordingStatus: recordingStatusSlice.reducer,
         activeRecording: activeRecordingSlice.reducer,
         playbackData: playbackDataReducer,
+        theme: themeSlice.reducer,
     },
 });

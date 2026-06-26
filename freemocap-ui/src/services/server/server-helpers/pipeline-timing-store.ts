@@ -5,6 +5,7 @@
     WindowedStats,
 } from "@/services/server/server-helpers/sample-window-stats";
 import {
+    MAX_CONTEXTLESS_EVENTS_PER_SOURCE,
     PIPELINE_TIMELINE_FRAME_WINDOW,
     type PipelineTimingEventPayload,
     type StoredPipelineTaskEvent,
@@ -131,6 +132,28 @@ export class PipelineTimingStore {
         }
     }
 
+    /** Frameless / synthetic-timing rows accumulate unique task ids — cap per sourceKey. */
+    private pruneContextlessTaskEvents(): void {
+        const bySource = new Map<string, StoredPipelineTaskEvent[]>();
+        for (const event of this.taskEvents.values()) {
+            if (event.frameNumber != null) {
+                continue;
+            }
+            const group = bySource.get(event.sourceKey) ?? [];
+            group.push(event);
+            bySource.set(event.sourceKey, group);
+        }
+        for (const group of bySource.values()) {
+            if (group.length <= MAX_CONTEXTLESS_EVENTS_PER_SOURCE) {
+                continue;
+            }
+            group.sort((a, b) => a.lastSeenMs - b.lastSeenMs);
+            for (const event of group.slice(0, group.length - MAX_CONTEXTLESS_EVENTS_PER_SOURCE)) {
+                this.taskEvents.delete(event.taskId);
+            }
+        }
+    }
+
     private backendNsToRendererMs(eventNs: number, ingestPerfMs: number, relayPerfCounterNs: number | null): number {
         return normalizeBackendPerfNsToRendererMs(eventNs, ingestPerfMs, relayPerfCounterNs);
     }
@@ -148,6 +171,7 @@ export class PipelineTimingStore {
             this.taskEvents.set(event.taskId, event);
         }
         this.pruneTaskEventsOutsideFrameWindow();
+        this.pruneContextlessTaskEvents();
     }
 
     private ingestExplicitEvent(

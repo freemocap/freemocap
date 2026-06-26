@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import {
     buildDeterministicTaskId,
     classifyTaskCategory,
@@ -375,6 +375,71 @@ describe('orderTasksParentsBeforeChildren', () => {
         expect(preprocess?.endMs).toBe(108);
         expect(letterbox?.parentTaskIds).toEqual([preprocessId]);
         expect(batchPack?.parentTaskIds).toEqual([preprocessId]);
+    });
+});
+
+describe('PipelineTimingStore contextless event pruning', () => {
+    it('keeps only the last 10 frameless events per sourceKey', () => {
+        const store = new PipelineTimingStore();
+        const rowKey = 'camera:cam0:jpeg_resize';
+        for (let i = 0; i < 15; i++) {
+            store.ingestBackendMessage({
+                message_type: 'pipeline_timing',
+                camera_group_id: 'default',
+                events: [{
+                    task_id: `orphan-${i}`,
+                    stage: 'jpeg_resize',
+                    node_kind: 'camera',
+                    camera_id: 'cam0',
+                    duration_ms: i + 1,
+                }],
+            });
+        }
+        const frameless = store.getTimelineSnapshot().events
+            .filter(e => e.frameNumber == null && e.sourceKey === rowKey);
+        expect(frameless.length).toBe(10);
+        expect(frameless.map(e => e.taskId).sort())
+            .toEqual(['orphan-10', 'orphan-11', 'orphan-12', 'orphan-13', 'orphan-14', 'orphan-5', 'orphan-6', 'orphan-7', 'orphan-8', 'orphan-9']);
+    });
+
+    it('prunes frameless UI orphan events independently per stage', () => {
+        let now = 1000;
+        vi.spyOn(performance, 'now').mockImplementation(() => now++);
+        const store = new PipelineTimingStore();
+        for (let i = 0; i < 12; i++) {
+            store.recordJpegDecodeWorker('cam0', i + 1);
+            store.recordJpegDecodeMainWait('cam0', i + 100);
+        }
+        const decode = store.getTimelineSnapshot().events
+            .filter(e => e.frameNumber == null && e.stage === 'jpeg_decode_worker_ms');
+        const wait = store.getTimelineSnapshot().events
+            .filter(e => e.frameNumber == null && e.stage === 'jpeg_decode_main_wait_ms');
+        expect(decode.length).toBe(10);
+        expect(wait.length).toBe(10);
+        vi.restoreAllMocks();
+    });
+
+    it('does not prune framed events via contextless cap', () => {
+        const store = new PipelineTimingStore();
+        for (let frame = 1; frame <= 20; frame++) {
+            store.ingestBackendMessage({
+                message_type: 'pipeline_timing',
+                camera_group_id: 'default',
+                relay_perf_counter_ns: frame * 1_000_000_000,
+                events: [{
+                    task_id: `f${frame}`,
+                    stage: 'test',
+                    node_kind: 'camera',
+                    camera_id: 'cam0',
+                    frame_number: frame,
+                    start_time_ns: frame * 1_000_000_000,
+                    end_time_ns: frame * 1_000_000_000 + 1_000_000,
+                    duration_ms: 1,
+                }],
+            });
+        }
+        const framed = store.getTimelineSnapshot().events.filter(e => e.frameNumber != null);
+        expect(framed.length).toBe(6);
     });
 });
 

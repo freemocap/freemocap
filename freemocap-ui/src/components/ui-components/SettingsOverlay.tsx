@@ -23,7 +23,7 @@ interface SettingsOverlayProps {
 type ActiveState = {
   trackingSettings: boolean;
   filterSettings: boolean;
-  pipelineActions: boolean;
+  pipelineSettings: boolean;
 };
 
 export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
@@ -43,7 +43,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const [active, setActive] = useState<ActiveState>({
     trackingSettings: false,
     filterSettings: false,
-    pipelineActions: false,
+    pipelineSettings: false,
   });
 
   const toggleActive = (key: keyof ActiveState) => {
@@ -95,21 +95,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
     });
 
   const liveClickable = canConnect || canDisconnect;
-  const handleLiveStreamClick = () => {
-    toggleConnection();
-  };
 
-  const handleLiveButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const inMenuCorner = x >= rect.width - 12 && y >= rect.height - 12;
-    if (inMenuCorner) {
-      toggleActive("pipelineActions");
-      return;
-    }
+  const handleLiveButtonClick = () => {
     if (!liveClickable || isPipelineLoading) return;
-    handleLiveStreamClick();
+    toggleConnection();
   };
 
   const getAutoColumns = (total: number): number => {
@@ -229,26 +218,36 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
           {/* GROUP 3 */}
           <div className="p-1 br-2 bg-gray live-action-buttons-group-3 flex flex-row items-center gap-1">
+            <IconButton
+              icon={isConnected ? "live-active-icon" : "live-icon"}
+              onClick={handleLiveButtonClick}
+              tooltip
+              tooltipText={
+                isConnected
+                  ? "Disconnect pipeline"
+                  : canConnect
+                    ? "Connect pipeline"
+                    : "Select cameras first"
+              }
+              tooltipPosition="pos-bottom"
+              disabled={isPipelineLoading}
+              style={!liveClickable && !isPipelineLoading ? { opacity: 0.5 } : undefined}
+              className={`icon-size-25 ${isConnected ? "active" : ""}`}
+            />
+
             <div className="modal-container pos-rel">
               <IconButton
-                icon={isConnected ? "live-active-icon" : "live-icon"}
-                onClick={handleLiveButtonClick}
+                icon="settings-icon"
+                onClick={() => toggleActive("pipelineSettings")}
                 tooltip
-                tooltipText={
-                  isConnected
-                    ? "Disconnect pipeline (corner: pipeline actions)"
-                    : canConnect
-                      ? "Connect pipeline (corner: pipeline actions)"
-                      : "Select cameras first (corner: pipeline actions)"
-                }
-                tooltipPosition="pos-bottom-right"
-                disabled={isPipelineLoading}
-                style={!liveClickable && !isPipelineLoading ? { opacity: 0.5 } : undefined}
-                className={`is-menu icon-size-25 ${isConnected ? "active" : ""} ${active.pipelineActions ? "active" : ""}`}
+                tooltipText="Pipeline Settings"
+                tooltipPosition="pos-bottom"
+                disabled={false}
+                className={`is-menu icon-size-25 ${active.pipelineSettings ? "active" : ""}`}
               />
               <RTPPipelineActionsFlyout
-                open={active.pipelineActions}
-                onClose={() => toggleActive("pipelineActions")}
+                open={active.pipelineSettings}
+                onClose={() => toggleActive("pipelineSettings")}
               />
             </div>
           </div>

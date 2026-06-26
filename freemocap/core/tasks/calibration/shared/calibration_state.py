@@ -53,6 +53,9 @@ class CalibrationStateTracker:
         self._consecutive_failure_count: int = 0
         self._calibration_path: Path | None = None
         self._calibration_file_mtime: float | None = None
+        # Explicit calibration TOML to load from. None => use the canonical
+        # most-recent calibration (and hot-reload that file).
+        self._configured_path: Path | None = None
         # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
         # Lazily populated on first frame with a given camera subset; reused thereafter.
         self._subset_triangulator_cache: dict[frozenset, Triangulator] = {}
@@ -64,11 +67,34 @@ class CalibrationStateTracker:
         # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
-    def create_and_try_load(cls) -> "CalibrationStateTracker":
-        """Create a tracker and optimistically try to load the latest calibration."""
+    def create_and_try_load(cls, calibration_toml_path: Path | None = None) -> "CalibrationStateTracker":
+        """Create a tracker and optimistically try to load a calibration.
+
+        Args:
+            calibration_toml_path: Explicit calibration TOML to load from.
+                If None, the canonical most-recent calibration is used.
+        """
         tracker = cls()
+        tracker._configured_path = calibration_toml_path
         tracker._try_load_latest()
         return tracker
+
+    def set_source_path(self, calibration_toml_path: Path | None) -> bool:
+        """Re-point the tracker at a different calibration source (live update).
+
+        If the configured path changed, reloads immediately from the new
+        source. None => fall back to the canonical most-recent calibration.
+
+        Returns:
+            True if a new calibration was loaded as a result.
+        """
+        if calibration_toml_path == self._configured_path:
+            return False
+        logger.info(
+            f"Calibration source path changed: {self._configured_path} -> {calibration_toml_path}"
+        )
+        self._configured_path = calibration_toml_path
+        return self._try_load_from_path(self._resolve_source_path())
 
     @property
     def is_valid(self) -> bool:
@@ -89,7 +115,7 @@ class CalibrationStateTracker:
             True if a new calibration was loaded.
         """
         try:
-            path = get_last_successful_calibration_toml_path()
+            path = self._resolve_source_path()
             if not path.exists():
                 return False
             mtime = os.path.getmtime(path)
@@ -104,14 +130,19 @@ class CalibrationStateTracker:
             logger.debug(f"Error checking calibration file: {e}")
             return False
 
+    def _resolve_source_path(self) -> Path:
+        """The calibration file to load/poll: the explicitly configured TOML
+        if set, else the canonical most-recent calibration."""
+        return self._configured_path or get_last_successful_calibration_toml_path()
+
     def _try_load_latest(self) -> bool:
-        """Try to load the most recent calibration file from the default path.
+        """Try to load the calibration file from the configured/most-recent path.
 
         Returns:
             True if calibration was loaded successfully.
         """
         try:
-            path = get_last_successful_calibration_toml_path()
+            path = self._resolve_source_path()
             if path.exists():
                 logger.info(f"Found calibration file at {path}")
                 return self._try_load_from_path(path)

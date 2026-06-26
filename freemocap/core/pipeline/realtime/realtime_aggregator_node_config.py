@@ -1,20 +1,14 @@
 from pydantic import BaseModel, Field
 
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
 class RealtimeAggregatorNodeConfig(BaseModel):
-    calibration_toml_source:CalibrationSource = Field(
-        default=CalibrationSource.MOST_RECENT,
-        alias="calibrationTomlSource",
-        description="How to select the calibration TOML for this node: 'most_recent' uses the latest successful calibration, 'specified' uses calibrationTomlPath.",
-    )
     calibration_toml_path: str | None = Field(
         default=None,
         alias="calibrationTomlPath",
-        description="Path to calibration TOML. Only used when calibrationTomlSource is 'specified'.",
+        description="Path to calibration TOML. If None, the most-recent successful calibration is used (and hot-reloaded).",
     )
     triangulation_enabled: bool = True
     filter_enabled: bool = False

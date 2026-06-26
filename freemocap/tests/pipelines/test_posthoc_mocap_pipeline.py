@@ -4,7 +4,6 @@ import logging
 import numpy as np
 import pytest
 
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 
 from freemocap.tests.pipelines.helpers import find_body_3d_npy, wait_for_pipeline
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 def _run_mocap(posthoc_manager, recording_info, mocap_config) -> None:
     logger.info(
         f"Launching mocap pipeline: recording={recording_info.recording_name!r}  "
-        f"calibration_source={mocap_config.calibration_source}"
+        f"calibration_toml_path={mocap_config.calibration_toml_path}"
     )
     pipeline = posthoc_manager.create_mocap_pipeline(
         recording_info=recording_info,
@@ -65,7 +64,6 @@ def test_posthoc_mocap_specified_calibration_path(
         posthoc_manager,
         recording_info,
         PosthocMocapPipelineConfig(
-            calibration_source=CalibrationSource.SPECIFIED,
             calibration_toml_path=str(calibration_toml_path),
             export_to_blender=False,
             auto_open_blend_file=False,

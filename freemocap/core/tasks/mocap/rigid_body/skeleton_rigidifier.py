@@ -400,14 +400,19 @@ class RealtimeSkeletonRigidifier:
         )
 
     def reset(self) -> None:
-        """Clear carried directions on all trees (e.g. on calibration reload).
+        """Restore the fitter to its just-created state.
 
-        Bone-length estimates are intentionally retained — they describe the
-        (unchanged) subject, not the coordinate frame.
+        Forgets the learned bone lengths (every online estimate falls back to its
+        anthropometric seed) and clears the carried gap-fill directions on all
+        trees. The next frame re-fits from scratch, exactly as if the pipeline had
+        just started.
         """
         self._body_tree.reset()
         self._hand_tree_r.reset()
         self._hand_tree_l.reset()
+        self._body_lengths.reset()
+        self._rhand_lengths.reset()
+        self._lhand_lengths.reset()
 
     @property
     def body_bone_lengths(self) -> dict[str, float]:

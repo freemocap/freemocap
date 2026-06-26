@@ -73,3 +73,17 @@ def test_body_only_input_returns_empty_hands():
     out = rig.rigidify_frame(_upright_rtmpose_pose())  # no hand keypoints
     assert out.left_hand_positions == {}
     assert out.right_hand_positions == {}
+
+
+def test_reset_forgets_learned_lengths():
+    # Reset must drop learned bone lengths back to the anthropometric seeds, so
+    # the next frame re-fits from scratch as if the pipeline had just started.
+    rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
+    seed = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    rig.rigidify_frame(_upright_rtmpose_pose())
+    learned = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    assert abs(learned - seed) > 1.0  # a real measurement replaced the seed
+
+    rig.reset()
+
+    assert rig.body_bone_lengths["left_shoulder->left_elbow"] == pytest.approx(seed)

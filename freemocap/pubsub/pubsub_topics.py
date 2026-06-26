@@ -197,6 +197,17 @@ class CalibrationRecordingStateMessage(TopicMessageABC):
     recording_info: RecordingInfo | None = None
     is_active: bool = False
 
+@dataclass
+class SkeletonFitterResetMessage(TopicMessageABC):
+    """Trigger the aggregator to fully reset the skeleton fitter.
+
+    Presence of this message in the subscription queue signals the aggregator to
+    call ``RealtimeSkeletonRigidifier.reset()`` — forgetting the learned bone
+    lengths (re-seeding from anthropometry) and clearing the carried bone
+    directions, so the fit starts over as if the pipeline had just launched.
+    """
+
+
 
 # ---------------------------------------------------------------------------
 # Topic instantiation
@@ -206,25 +217,10 @@ ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
-VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
+VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts , #TODO - shouldnt thouh, agg node should run concurrently w/ video nodes
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
 CalibrationRecordingStateTopic = create_topic(CalibrationRecordingStateMessage)
-
-# ---------------------------------------------------------------------------
-# Skeleton fitter control (out-of-band signals)
-# ---------------------------------------------------------------------------
-
-
-@dataclass
-class SkeletonFitterResetMessage(TopicMessageABC):
-    """Trigger the aggregator to reset the skeleton rigidifier.
-
-    Presence of this message in the subscription queue signals the aggregator
-    to call ``RealtimeSkeletonRigidifier.reset()`` — clearing the carried bone
-    directions. Bone-length estimates are kept (they describe the subject, not
-    the coordinate frame).
-    """
-
-
 SkeletonFitterResetTopic = create_topic(SkeletonFitterResetMessage)
+
+

@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
@@ -64,8 +63,11 @@ class ProcessMocapRecordingRequest(BaseModel):
 
     @classmethod
     def create_test_data_request(cls) -> "ProcessMocapRecordingRequest":
-        config = PosthocMocapPipelineConfig()
-        config.calibration_source = CalibrationSource.MOST_RECENT
+        config = PosthocMocapPipelineConfig(
+            calibration_toml_path=str(
+                Path(FREEMOCAP_TEST_DATA_PATH) / "freemocap_test_data_camera_calibration.toml"
+            ),
+        )
         return cls(
             mocap_recording_directory=FREEMOCAP_TEST_DATA_PATH,
             mocap_config=config,

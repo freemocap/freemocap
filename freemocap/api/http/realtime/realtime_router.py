@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel, Field
 from skellycam.core.camera_group.camera_group import CameraConfigs
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
@@ -117,22 +117,18 @@ async def pipeline_close_endpoint() -> None:
         )
 
 
-class SkeletonFitterResetResponse(BaseModel):
-    success: bool
-    message: str | None = None
-
-
 @realtime_router.post(
     "/reset-skeleton-fitter",
-    summary="Reset the skeleton fitter — drops learned bone lengths and integral corrections",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Reset the skeleton fitter — forget learned bone lengths and start over",
 )
-async def reset_skeleton_fitter_endpoint() -> SkeletonFitterResetResponse:
-    """Drop all accumulated state in the realtime skeleton fitter.
+async def reset_skeleton_fitter_endpoint() -> None:
+    """Fully reset the realtime skeleton fitter.
 
-    Zeroes every Welford tracker (segment-length statistics) and integral
-    corrector (persistent axial-residual correction).  The next frame
-    re-seeds from anthropometric priors exactly as if the pipeline had
-    just started — no process restart needed.
+    Signals every live pipeline to forget its learned per-bone lengths (the online
+    best-K-by-reprojection-error median estimates) and carried bone directions, so
+    the next frame re-seeds from anthropometric priors exactly as if the pipeline
+    had just started — no process restart needed. Fire-and-forget: 204 No Content.
     """
     logger.api("Received `realtime/reset-skeleton-fitter` POST request")
     try:
@@ -145,9 +141,7 @@ async def reset_skeleton_fitter_endpoint() -> SkeletonFitterResetResponse:
                     SkeletonFitterResetMessage(),
                 )
                 reset_count += 1
-        message = f"Skeleton fitter reset signal sent to {reset_count} pipeline(s)"
-        logger.api(message)
-        return SkeletonFitterResetResponse(success=True, message=message)
+        logger.api(f"Skeleton fitter reset signal sent to {reset_count} pipeline(s)")
     except Exception as e:
         logger.error(f"Error resetting skeleton fitter: {type(e).__name__} - {e}")
         logger.exception(e)

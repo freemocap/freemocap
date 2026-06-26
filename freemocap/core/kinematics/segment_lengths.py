@@ -48,7 +48,7 @@ class SegmentDef:
         """Key into the canonical model's bone_length_ratios ("parent->child")."""
         return f"{self.proximal}->{self.distal}"
 
-
+# TODO - Why tf is this not aligned iwth our skellyforge cannonical skeleton defs??
 LIMB_SEGMENTS: tuple[SegmentDef, ...] = (
     SegmentDef("left_upper_arm", "left_shoulder", "left_elbow", "upper_arm"),
     SegmentDef("right_upper_arm", "right_shoulder", "right_elbow", "upper_arm"),

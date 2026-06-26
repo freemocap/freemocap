@@ -56,3 +56,17 @@ def test_update_without_errors_still_measures():
     positions = {"a": np.array([0.0, 0.0, 0.0]), "b": np.array([0.0, 150.0, 0.0])}
     online.update(positions, t=0.0)  # no errors -> treated as confident
     assert online.lengths["a->b"] == 150.0
+
+
+def test_reset_restores_seeds():
+    online = _make()
+    online.update(
+        {"a": np.array([0.0, 0.0, 0.0]), "b": np.array([0.0, 150.0, 0.0])},
+        errors={"a": 1.0, "b": 1.0},
+        t=0.0,
+    )
+    assert online.lengths["a->b"] == 150.0  # learned a real length, not the seed
+
+    online.reset()
+
+    assert online.lengths == {"a->b": 100.0, "b->c": 80.0}  # every buffer back to its seed

@@ -103,6 +103,10 @@ class BoneLengthBuffer:
     def __len__(self) -> int:
         return len(self._samples)
 
+    def reset(self) -> None:
+        """Forget all measurements — the estimate falls back to the seed."""
+        self._samples.clear()
+
 
 @dataclass
 class OnlineBoneLengths:
@@ -175,3 +179,8 @@ class OnlineBoneLengths:
     def lengths(self) -> dict[str, float]:
         """Current best length estimate (mm) per bone."""
         return {bone_key: buf.estimate for bone_key, buf in self._buffers.items()}
+
+    def reset(self) -> None:
+        """Forget every bone's measurements — all estimates fall back to their seeds."""
+        for buf in self._buffers.values():
+            buf.reset()

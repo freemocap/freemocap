@@ -22,7 +22,6 @@ from freemocap.core.kinematics.segment_lengths import (
 )
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import (
-    CalibrationSource,
     PosthocCalibrationPipelineConfig,
 )
 from freemocap.core.tasks.calibration.shared.calibration_paths import (
@@ -221,11 +220,10 @@ def posthoc_mocap_output_dir(
     )
     t0 = time.perf_counter()
     config = PosthocMocapPipelineConfig(
-        calibration_source=CalibrationSource.MOST_RECENT,
         export_to_blender=False,
         auto_open_blend_file=False,
     )
-    logger.info(f"MocapConfig: calibration_source=MOST_RECENT  export_to_blender=False")
+    logger.info("MocapConfig: calibration_toml_path=None (most-recent fallback)  export_to_blender=False")
     pipeline = posthoc_manager.create_mocap_pipeline(
         recording_info=recording_info,
         mocap_config=config,

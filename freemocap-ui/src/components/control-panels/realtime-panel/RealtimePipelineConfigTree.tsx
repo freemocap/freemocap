@@ -213,15 +213,15 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 >
                     <div className="p-1 pl-4 flex flex-col gap-1">
                         <p className="text sm text-gray">
-                            Skeleton fitter learns bone lengths and integral corrections online.
-                            Reset drops all learned state — the next frame re-seeds from
-                            anthropometric priors.
+                            Skeleton fitter learns bone lengths online. Reset forgets
+                            everything and re-seeds from anthropometric priors — the next
+                            frame re-fits from scratch.
                         </p>
                         <button
                             className="button sm"
                             onClick={handleResetSkeletonFitter}
                             disabled={!isConnected}
-                            title={isConnected ? "Reset learned bone lengths and integral corrections" : "Connect a realtime pipeline first"}
+                            title={isConnected ? "Forget learned bone lengths and re-fit from scratch" : "Connect a realtime pipeline first"}
                         >
                             Reset Fitter
                         </button>

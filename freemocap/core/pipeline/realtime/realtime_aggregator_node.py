@@ -15,8 +15,9 @@ the new calibration is loaded and the skeleton filter + velocity gate are reset.
 Rigid-body correction (``RealtimeSkeletonRigidifier``) runs on the triangulated
 3D points: each bone's length is estimated online (a best-K-by-reprojection-error
 median, seeded from anthropometry) and enforced by a single closed-form forward
-pass. The carried bone directions reset on calibration reload since the
-coordinate frame may change; the length estimates are distances, so they are kept.
+pass. The fitter is fully reset on calibration reload (and on demand via the
+reset signal): both the carried directions and the learned lengths are dropped,
+so it re-fits from anthropometric seeds.
 """
 import logging
 import multiprocessing.synchronize
@@ -25,6 +26,7 @@ import threading
 import time
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
+from pathlib import Path
 
 import numpy as np
 from freemocap.core.tasks.mocap.center_of_mass import (
@@ -192,7 +194,10 @@ class RealtimeAggregatorNode(AggregatorNode):
             shm_dto=camera_group_shm_dto,
             read_only=True,
         )
-        calibration = CalibrationStateTracker.create_and_try_load()
+        _configured_calib_path = aggregator_config.calibration_toml_path
+        calibration = CalibrationStateTracker.create_and_try_load(
+            calibration_toml_path=Path(_configured_calib_path) if _configured_calib_path else None,
+        )
         if calibration.is_valid:
             logger.info(
                 f"RealtimeAggregationNode [{camera_group_id}] loaded calibration "
@@ -304,19 +309,32 @@ class RealtimeAggregatorNode(AggregatorNode):
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] received config update"
                     )
-
-                # ---- Handle skeleton rigidifier reset signals ----
-                if skeleton_rigidifier is not None:
-                    while True:
-                        try:
-                            skeleton_fitter_reset_sub.get_nowait()
-                        except queue.Empty:
-                            break
-                        skeleton_rigidifier.reset()
+                    # Honor a live change to the calibration source path.
+                    _updated_calib_path = aggregator_config.calibration_toml_path
+                    if calibration.set_source_path(
+                        Path(_updated_calib_path) if _updated_calib_path else None
+                    ):
                         logger.info(
-                            f"RealtimeAggregationNode [{camera_group_id}] "
-                            f"skeleton rigidifier reset — cleared carried bone directions"
+                            f"RealtimeAggregationNode [{camera_group_id}] reloaded "
+                            f"calibration from {calibration.calibration_path}"
                         )
+
+                # ---- Handle skeleton fitter reset signals ----
+                # Drain unconditionally so the queue can't grow while skeleton
+                # fitting is disabled; reset once if anything was requested.
+                reset_requested = False
+                while True:
+                    try:
+                        skeleton_fitter_reset_sub.get_nowait()
+                    except queue.Empty:
+                        break
+                    reset_requested = True
+                if reset_requested and skeleton_rigidifier is not None:
+                    skeleton_rigidifier.reset()
+                    logger.info(
+                        f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter "
+                        f"reset — forgot learned bone lengths + directions (fresh start)"
+                    )
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()
@@ -333,9 +351,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # Coordinate frame changed: clear carried bone directions.
-                        # Bone-length estimates are distances (frame-invariant),
-                        # so they're kept — no need to relearn the subject.
+                        # New calibration → full reset of the fitter: the lengths
+                        # were learned under the old calibration, so re-fit from
+                        # scratch (anthropometric seeds) under the new one.
                         if skeleton_rigidifier is not None:
                             skeleton_rigidifier.reset()
 

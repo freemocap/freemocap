@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING
 # up front makes it win the DLL load-order race. Do not remove or reorder.
 import pyarrow  # noqa: F401
 
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
 
@@ -84,10 +83,8 @@ def run_posthoc_mocap_aggregator_task(
                 )
             observation_recorders[cam_id].add_observation(observation=obs)
 
-    # ---- Get calibration path ----
-    if task_config.calibration_source == CalibrationSource.SPECIFIED:
-        if not task_config.calibration_toml_path:
-            raise RuntimeError("calibration_source is 'specified' but calibration_toml_path is not set.")
+    # ---- Get calibration path: explicit path wins; else fall back to most-recent ----
+    if task_config.calibration_toml_path:
         calibration_toml_path = Path(task_config.calibration_toml_path)
         if not calibration_toml_path.exists():
             raise RuntimeError(
@@ -101,7 +98,7 @@ def run_posthoc_mocap_aggregator_task(
                 "No calibration file found — cannot run mocap without calibration. "
                 "Run a calibration pipeline first."
             )
-        logger.info(f"Using most recent calibration TOML: {calibration_toml_path}")
+        logger.info(f"No calibration path specified; using most-recent calibration: {calibration_toml_path}")
 
     # ---- Copy calibration file into recording folder ----
     recording_folder = Path(recording_info.full_recording_path)

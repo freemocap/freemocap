@@ -203,7 +203,7 @@ async def stop_calibration_recording(
                     f"Published CalibrationRecordingState(is_active=False) "
                     f"to pipeline [{pipeline.id}]"
                 )
-                # Restore skeleton inference paused at recording start. Best-effort.
+                # Restore skeleton inference paused at recording start.
                 try:
                     pipeline.exit_calibration_charuco_only_mode()
                 except Exception:

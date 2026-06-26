@@ -7,8 +7,11 @@ import { useTranslation } from "react-i18next";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 
 const LOG_POLL_INTERVAL_MS = 500;
-const LINE_HEIGHT = 20;
-const ROW_PADDING = 8;
+// NOTE: these must stay in sync with .log-entry's line-height and top+bottom
+// padding in log-terminal.css, or the virtualized rows will overlap / gap.
+// TODO - Thats dumb af though, we should fix it
+const LINE_HEIGHT = 16;
+const ROW_PADDING = 4;
 const OVERSCAN = 10;
 
 const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "API", "WARNING", "ERROR", "CRITICAL"];
@@ -379,7 +382,7 @@ const LogTerminalFull = ({
     return (
         <div className="log-terminal">
             {/* Toolbar */}
-            <div className="log-toolbar flex items-center gap-1 p-1 flex-wrap">
+            <div className="log-toolbar flex items-center gap-1 flex-wrap">
                 <div className="ml-1 log-toolbar-inner flex items-center gap-1 flex-wrap">
                     <p className="text bg text-gray">{t('serverLogs')}</p>
                     {snapshot.hasErrors && (

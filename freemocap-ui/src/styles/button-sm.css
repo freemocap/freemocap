@@ -42,12 +42,17 @@
 }
 
 /* Primary fullwidth button */
-button.quaternary {
+button.quaternary,
+.quaternary {
   background-color: transparent;
+  transition: background-color 0.3s ease;
 }
 
-.app-root.quaternary:hover {
+.app-root.quaternary:hover,
+button.quaternary:hover,
+.quaternary:hover {
   background-color: var(--color-bg-elevated);
+  transition: background-color 0.15s ease;
 }
 
 .button.quaternary.activated {
@@ -116,7 +121,12 @@ button.quaternary {
 }
 
 .button.sm.externallink:after {
-  content: var(--externallink-icon);
+  content: "";
+  background-image: var(--externallink-icon);
+  transform-origin: center center;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
 }
 
 .button.sm.dropdown:after {
@@ -137,7 +147,7 @@ button.quaternary {
 
 .button.sm,
 button.rotate-button {
-  padding: 4px 4px;
+  padding: 4px 6px;
   min-height: 25px;
   width: auto;
   /* to fit its content */

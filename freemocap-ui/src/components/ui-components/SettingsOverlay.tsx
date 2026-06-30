@@ -127,7 +127,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   return (
     <>
       <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
-        <div className="live-action-buttons-container flex flex-row gap-32">
+        <div className="live-action-buttons-container flex flex-row gap-4">
 
           {/* GROUP 1 */}
           <div className="p-1 br-2 bg-gray live-action-buttons-group-1 flex flex-row items-center gap-1">
@@ -160,7 +160,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 tooltipText="Skeleton Setup"
                 tooltipPosition="pos-bottom"
                 disabled={false}
-                className={`icon-size-25 ${active.trackingSettings ? "active" : ""}`}
+                className={`is-menu icon-size-25 ${active.trackingSettings ? "active" : ""}`}
               />
               {/* RTP MediaPipe Settings Modal */}
               <RTPMediaPipeDetectorSettings
@@ -201,7 +201,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 tooltipText="Filter Settings"
                 tooltipPosition="pos-bottom"
                 disabled={false}
-                className={`icon-size-25 ${active.filterSettings ? "active" : ""}`}
+                className={`is-menu icon-size-25 ${active.filterSettings ? "active" : ""}`}
               />
               {/* RTP 3D Reconstructions Settings Modal */}
               <RTPthreeDReconstructionSettings

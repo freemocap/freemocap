@@ -12,7 +12,7 @@ import { EXTERNAL_URLS } from '@/constants/external-urls';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import ButtonCard from '@/components/ui-components/ButtonCard';
 import IconButton from '@/components/ui-components/IconButton';
-import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import Checkbox from '@/components/ui-components/Checkbox';
 
 interface WelcomeModalProps {
     open: boolean;
@@ -147,10 +147,10 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                             {/* Telemetry toggle */}
                             {telemetryLoaded && (
                                 <div className="mt-2">
-                                    <ToggleComponent
-                                        text={t('sendAnonymousPings')}
-                                        isToggled={telemetryEnabled}
-                                        onToggle={handleTelemetryToggle}
+                                    <Checkbox
+                                        label={t('sendAnonymousPings')}
+                                        checked={telemetryEnabled}
+                                        onChange={(e) => handleTelemetryToggle(e.target.checked)}
                                     />
                                 </div>
                             )}

@@ -44,7 +44,8 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
   --blender-icon: url("../assets/icons/blender_icon.svg");
   --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
-
+  --stop-alert-icon: url("../assets/icons/stop_alert_icon.svg");
+  --stop-icon: url("../assets/icons/stop_icon.svg");
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
   --github-icon: url("../assets/icons/github_icon.svg");
@@ -110,8 +111,11 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --grid2_icon: url("../assets/icons/grid2_icon.svg");
 
   --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
+  --sort-icon: url("../assets/icons/sort_icon.svg");
 
   --importvideo-icon: url("../assets/icons/importvideo_icon.svg");
+  --filter-icon: url("../assets/icons/filter_icon.svg");
+  --filter-active-icon: url("../assets/icons/filter_active_icon.svg");
 
   --live-active-icon: url("../assets/icons/live_active_icon.svg");
   --twodtracking-active-icon: url("../assets/icons/2dtracking_active_icon.svg");
@@ -133,6 +137,19 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 .close-icon {
   background-image: var(--close-icon);
 }
+.stop-alert-icon {
+  background-image: var(--stop-alert-icon);
+}
+.stop-icon {
+  background-image: var(--stop-icon);
+}
+.sort-icon {
+  background-image: var(--sort-icon);
+}
+.sortup-icon {
+  background-image: var(--sort-icon);
+  transform: rotate(180deg);
+}
 .frame-icon {
   background-image: var(--frame-icon);
 }
@@ -145,6 +162,12 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 }
 .snaptogrid-icon {
   background-image: var(--snaptogrid-icon);
+}
+.filter-icon {
+  background-image: var(--filter-icon);
+}
+.filter-active-icon {
+  background-image: var(--filter-active-icon);
 }
 
 .mic-active-icon {
@@ -548,4 +571,21 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   background-color: var(--color-surface-active);
   /* filter animation out */
   transition: filter var(--speed-1) ease-in-out;
+}
+
+.is-menu {
+    position: relative;
+}
+
+.is-menu::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 5px 5px;
+    border-color: transparent transparent var(--color-text-muted) transparent;
+    pointer-events: none;
 }

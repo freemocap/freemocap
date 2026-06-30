@@ -1,0 +1,201 @@
+/* =========================
+   RESIZE HANDLES
+   ========================= */
+
+.resize-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.resize-handle-n {
+  top: -3px;
+  left: 14px;
+  right: 14px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-handle-s {
+  bottom: -3px;
+  left: 14px;
+  right: 14px;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.resize-handle-e {
+  right: -3px;
+  top: 14px;
+  bottom: 14px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-handle-w {
+  left: -3px;
+  top: 14px;
+  bottom: 14px;
+  width: 6px;
+  cursor: ew-resize;
+}
+
+.resize-handle-nw {
+  top: -3px;
+  left: -3px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+.resize-handle-ne {
+  top: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-sw {
+  bottom: -3px;
+  left: -3px;
+  width: 14px;
+  height: 14px;
+  cursor: nesw-resize;
+}
+
+.resize-handle-se {
+  bottom: -3px;
+  right: -3px;
+  width: 14px;
+  height: 14px;
+  cursor: nwse-resize;
+}
+
+/* =========================
+   SNACKBAR CONTAINER
+   ========================= */
+
+.snackbar-container {
+  position: fixed;
+  width: 280px;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1400;
+}
+
+.snackbar-container-dragged {
+  position: fixed;
+  z-index: 1400;
+}
+
+.snackbar-container-dragged>.pipeline-progress-toast-flyout>div:active:not(.inner-content) {
+  cursor: grabbing;
+}
+
+/* =========================
+   PIPELINE TOAST
+   ========================= */
+
+.pipeline-toast-flyout {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.pipeline-toast-flyout--running {
+  border-color: #FF00FF;
+}
+
+/* =========================
+   PROGRESS TRACK SMALL
+   ========================= */
+
+.progress-track-sm {
+  height: 3px;
+  border-radius: 2px;
+}
+
+.progress-fill-sm {
+  border-radius: 2px;
+}
+
+/* =========================
+   PIPELINE GROUP CARD
+   ========================= */
+
+.pipeline-group-card {
+  
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.pipeline-group-card__border-failed {
+  border: 1px solid var(--color-error);
+}
+
+.pipeline-group-card__border-complete {
+  border: 1px solid var(--color-success);
+}
+
+.pipeline-group-card__border-running {
+  border: 1px solid var(--color-border-secondary);
+}
+
+.pipeline-group-card__inactive {
+  opacity: 0.6;
+}
+
+.pipeline-group-card__label-row {
+  margin-bottom: 2px;
+}
+
+.pipeline-group-card__type-badge {
+  padding: 1px 6px;
+  margin-right: 6px;
+}
+
+.pipeline-group-card__type-badge-text {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pipeline-group-card__bold {
+  font-weight: bold;
+}
+
+.pipeline-group-card__border-left {
+  border-left: 2px solid var(--color-border-secondary);
+}
+
+.pipeline-group-card__border-left-no-aggregator {
+  margin-bottom: 0;
+}
+
+.pipeline-group-card__border-left-aggregator {
+  margin-bottom: 6px;
+}
+
+.pipeline-group-card__error-text {
+  margin-top: 2px;
+  cursor: default;
+}
+
+.pipeline-group-card__max-width {
+  max-width: 160px;
+}
+
+/* Sub progress bar track */
+.sub-progress-track {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.sub-progress-fill {
+  border-radius: 2px;
+}
+
+.sub-progress-indeterminate {
+  width: 40%;
+  border-radius: 2px;
+  animation: indeterminateProgress 1.5s infinite ease-in-out;
+}

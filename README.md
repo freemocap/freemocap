@@ -9,8 +9,8 @@
    - `git clone https://github.com/freemocap/freemocap`
 2. Change directory to the repo: 
    - `cd freemocap`
-3. **Change to the `jon/development` branch:**
-   - `git switch jon/development`
+3. **Change to the `development` branch:**
+   - `git switch development`
 4. Create virtual environment: 
    - `uv venv` 
 5. Activate virtual environment

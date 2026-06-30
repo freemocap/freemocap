@@ -460,17 +460,9 @@
   border-radius: 4px; */
 }
 
-.recording-row {
-  border-bottom: 1px solid var(--color-bg-tertiary);
-  cursor: pointer;
-}
-
-.recording-row:last-child {
-  border-bottom: none;
-}
 
 .recording-row-disabled {
-  opacity: 0.4;
+  opacity: 0.9;
   pointer-events: none;
 }
 

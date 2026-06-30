@@ -83,10 +83,8 @@ export const MainNavTabs = () => {
                     const isActive = idx === activeIdx;
                     return (
                         <div
-                            role="button"
-                            tabIndex={0}
                             key={tab.path}
-                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center${isActive ? ' bg-dark' : ''}`}
+                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center cursor-pointer${isActive ? ' bg-dark' : ''}`}
                             onClick={() => handleClick(tab.path)}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(tab.path); } }}
                         >

@@ -190,6 +190,8 @@
   "cameraPerformanceMetrics": "Camera Performance Metrics",
   "serverLogs": "Server Logs",
   "sortBy": "Sort {{direction}}",
+  "ascending": "ascending",
+  "descending": "descending",
   "waitingForCameraStreams": "Waiting for camera streams...",
   "loggingPaused": "Logging paused",
   "noLogsToDisplay": "No logs to display",

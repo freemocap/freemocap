@@ -18,15 +18,11 @@ import {
   micDeviceIndexChanged,
   pendingOperationSet,
   recordingTagChanged,
-  recordingTypePresetChanged,
   useDelayStartToggled,
   useIncrementToggled,
   useTimestampToggled,
 } from "@/store/slices/recording/recording-slice";
-import type { RecordingTypePreset } from "@/store/slices/recording/recording-types";
-import { calibrateRecording } from "@/store/slices/calibration/calibration-thunks";
 import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
-import { PresetPicker } from "@/components/common/PresetPicker";
 import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
@@ -40,17 +36,6 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
 import IconButton from "@/components/ui-components/IconButton";
 import { useRef } from "react";
-
-export type { RecordingTypePreset };
-
-export const RECORDING_TYPE_OPTIONS: {
-  value: RecordingTypePreset;
-  label: string;
-}[] = [
-  { value: "none", label: "None" },
-  { value: "calibration", label: "Calibration" },
-  { value: "mocap", label: "Mocap" },
-];
 
 export const RecordingInfoPanel: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -67,7 +52,6 @@ export const RecordingInfoPanel: React.FC = () => {
     customSubfolderName,
     recordingTag,
     micDeviceIndex,
-    recordingTypePreset,
     autoProcess,
   } = config;
 
@@ -150,7 +134,6 @@ export const RecordingInfoPanel: React.FC = () => {
   const handleStartRecording = async (): Promise<void> => {
     const ts = getTimestampString();
     const nameParts = useTimestamp ? [ts] : [baseName];
-    if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
     if (recordingTag) nameParts.push(recordingTag);
     const recordingName = nameParts.join("_");
     const subfolderName = createSubfolder
@@ -185,9 +168,7 @@ export const RecordingInfoPanel: React.FC = () => {
       dispatch(pendingOperationSet({ type: "stop", timestamp: Date.now() }));
       try {
         const result = await dispatch(stopRecording()).unwrap();
-        if (result && autoProcess && recordingTypePreset === "calibration") {
-          dispatch(calibrateRecording());
-        } else if (result && autoProcess && recordingTypePreset === "mocap") {
+        if (result && autoProcess) {
           dispatch(processMocapRecording());
         }
       } catch (error) {
@@ -207,8 +188,6 @@ export const RecordingInfoPanel: React.FC = () => {
 
   // Build display path for the read-only preview
   const previewNameParts = useTimestamp ? [previewTimestamp] : [baseName];
-  if (recordingTypePreset !== "none")
-    previewNameParts.push(recordingTypePreset);
   if (recordingTag) previewNameParts.push(recordingTag);
   if (useIncrement) previewNameParts.push(String(currentIncrement));
   const previewName = previewNameParts.join("_");
@@ -231,7 +210,6 @@ export const RecordingInfoPanel: React.FC = () => {
     recordingTag,
     useTimestamp,
     baseName,
-    recordingTypePreset,
     useIncrement,
     currentIncrement,
     createSubfolder,
@@ -337,31 +315,19 @@ export const RecordingInfoPanel: React.FC = () => {
             onDelayToggle={(v) => dispatch(useDelayStartToggled(v))}
             onDelayChange={(v) => dispatch(delaySecondsChanged(v))}
           />
-          {/* Preset + auto-process */}
+          {/* Auto-process */}
           <div className="flex flex-start flex-col items-center gap-1">
-            <PresetPicker
-              value={recordingTypePreset}
-              options={RECORDING_TYPE_OPTIONS}
-              onChange={(v) => dispatch(recordingTypePresetChanged(v))}
-              disabled={recordingInfo.isRecording}
-            />
             <ToggleComponent
               text="Auto Process Mocap"
               isToggled={autoProcess}
               onToggle={(v) => dispatch(autoProcessToggled(v))}
-              disabled={
-                recordingTypePreset === "none" || recordingInfo.isRecording
-              }
+              disabled={recordingInfo.isRecording}
             />
           </div>
           <div
             className={
               "streaming-mode mocap-settings-button " +
-              (autoProcess &&
-              recordingTypePreset !== "none" &&
-              !recordingInfo.isRecording
-                ? ""
-                : "disabled ") +
+              (autoProcess && !recordingInfo.isRecording ? "" : "disabled ") +
               "button sm flex-wrap flex pos-rel p-1 br-1 flex-row items-center justify-content-space-between"
             }
             onClick={handleToggleSettings}

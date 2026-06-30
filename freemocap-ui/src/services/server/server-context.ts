@@ -9,6 +9,7 @@ export type CoMCallback = (point: Point3d | null) => void;
 
 export interface ServerContextValue {
     isConnected: boolean;
+    isFailed: boolean;
     connect: () => void;
     disconnect: () => void;
     sendWebsocketMessage: (data: string | object) => void;

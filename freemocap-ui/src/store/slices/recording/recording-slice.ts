@@ -1,6 +1,6 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/types';
-import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo, RecordingTypePreset} from './recording-types';
+import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
 import {loadFromStorage} from '@/store/persistence';
 import {getTimestampString} from './getTimestampString';
@@ -55,7 +55,6 @@ const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
     createSubfolder: false,
     customSubfolderName: '',
     micDeviceIndex: -1,
-    recordingTypePreset: 'none',
     autoProcess: true,
 };
 
@@ -162,9 +161,6 @@ export const recordingSlice = createSlice({
         micDeviceIndexChanged: (state, action: PayloadAction<number>) => {
             state.config.micDeviceIndex = action.payload;
         },
-        recordingTypePresetChanged: (state, action: PayloadAction<RecordingTypePreset>) => {
-            state.config.recordingTypePreset = action.payload;
-        },
         autoProcessToggled: (state, action: PayloadAction<boolean>) => {
             state.config.autoProcess = action.payload;
         },
@@ -213,7 +209,6 @@ export const {
     pathRecomputed,
     recordingCompletionDismissed,
     micDeviceIndexChanged,
-    recordingTypePresetChanged,
     autoProcessToggled,
     pendingOperationSet,
     countdownSet,

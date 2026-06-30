@@ -14,7 +14,6 @@ interface RecordingPathTreeItemProps {
     recordingTag: string;
     useTimestamp: boolean;
     baseName: string;
-    recordingTypePreset: string;
     useIncrement: boolean;
     currentIncrement: number;
     createSubfolder: boolean;
@@ -36,7 +35,6 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     recordingTag,
     useTimestamp,
     baseName,
-    recordingTypePreset,
     useIncrement,
     currentIncrement,
     createSubfolder,
@@ -74,7 +72,6 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     const nameParts: string[] = [];
     if (useTimestamp) nameParts.push(previewTimestamp);
     else nameParts.push(baseName);
-    if (recordingTypePreset !== "none") nameParts.push(recordingTypePreset);
     if (recordingTag) nameParts.push(recordingTag);
     const recordingName = nameParts.join("_");
 

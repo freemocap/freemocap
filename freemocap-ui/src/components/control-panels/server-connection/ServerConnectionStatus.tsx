@@ -44,7 +44,6 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     };
 
     const overallStatus = getOverallStatus();
-    const pidSuffix = isConnected && serverPid != null ? ` · PID ${serverPid}` : '';
     const cameraCountSuffix = isConnected && connectedCameraIds.length > 0
         ? ` (${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''})`
         : '';
@@ -75,8 +74,8 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
 
     return (
         <DropdownButton
-            buttonProps={{
-                text: overallStatus.text + pidSuffix + cameraCountSuffix,
+                        buttonProps={{
+                            text: overallStatus.text + cameraCountSuffix,
                 iconClass: overallStatus.iconClass,
                 rightSideIcon: 'dropdown',
                 textColor: 'text-gray',
@@ -155,6 +154,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                         <p className="text sm text-gray">
                                             {serverRunning ? t('running') : t('stopped')}
                                             {processInfo?.pid ? ` (PID: ${processInfo.pid})` : ''}
+                                            {isConnected && serverPid != null ? ` · Server PID ${serverPid}` : ''}
                                         </p>
                                     </div>
 

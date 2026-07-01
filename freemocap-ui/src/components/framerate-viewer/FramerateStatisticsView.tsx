@@ -168,7 +168,7 @@ export default function FramerateStatisticsView({
     const cellStyle = (metric: string): React.CSSProperties => ({
         backgroundColor: colorMap[metric] ? colorMap[metric] + '22' : undefined,
         borderBottom: 'none',
-        padding: '2px 4px',
+        padding: '1px 4px',
         textAlign: 'center',
     });
 
@@ -187,7 +187,7 @@ export default function FramerateStatisticsView({
         <tr key={rowKey}>
             <td
                 title={shortTooltip}
-                style={{fontWeight: '800', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '2px 4px 2px 8px', color: sourceColor, cursor: 'help'}}
+                style={{fontWeight: '800', borderLeft: `4px solid ${sourceColor}`, backgroundColor: `${sourceColor}22`, padding: '1px 4px 1px 8px', color: sourceColor, cursor: 'help'}}
             >
                 {sourceLabel}
                 <div style={{color: 'var(--color-text-secondary)'}}>
@@ -215,7 +215,7 @@ export default function FramerateStatisticsView({
                     </tr>
                     <tr>
                         <td colSpan={7} className="p-0">
-                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
+                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '2px 0'}} />
                         </td>
                     </tr>
                 </thead>
@@ -223,7 +223,7 @@ export default function FramerateStatisticsView({
                     {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
                     <tr>
                         <td colSpan={7} className="p-0">
-                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
+                            <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '2px 0'}} />
                         </td>
                     </tr>
                     {renderRow("frontend", frontendColor, t("display"), t("rendersReceivedFrames"), t("displayTooltipLong"))}

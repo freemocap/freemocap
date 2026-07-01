@@ -12,7 +12,6 @@ import asyncio
 import logging
 import multiprocessing
 import multiprocessing.synchronize
-import os
 import uuid
 from dataclasses import dataclass
 from queue import Empty
@@ -29,6 +28,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.charuco_recorder_node import CharucoRecorderNode
 from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
@@ -41,15 +41,10 @@ from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
+    SkeletonFitterResetTopic,
 )
 
 logger = logging.getLogger(__name__)
-
-
-# Step 1 of the JSON→binary keypoints refactor is gated behind this env var so
-# the JSON path stays the default until both ends are validated end-to-end.
-# Set FREEMOCAP_BINARY_KEYPOINTS=1 to enable.
-_BINARY_KEYPOINTS_ENABLED: bool = os.environ.get("FREEMOCAP_BINARY_KEYPOINTS", "0") == "1"
 
 
 class RealtimePipelineState(BaseModel):
@@ -69,6 +64,7 @@ class RealtimePipeline:
     camera_nodes: dict[CameraIdString, CameraNode]
     aggregation_node: RealtimeAggregatorNode
     skeleton_inference_node: RealtimeSkeletonInferenceNode | None
+    charuco_recorder_node: CharucoRecorderNode | None
     aggregation_output_subscription: TopicSubscriptionQueue
     result_ready_event: multiprocessing.synchronize.Event
     result_consumed_event: multiprocessing.synchronize.Event
@@ -76,6 +72,9 @@ class RealtimePipeline:
     pubsub: PubSubTopicManager
     worker_registry: WorkerRegistry
     started: bool = False
+    # Config stashed while a calibration recording temporarily forces Charuco-only
+    # mode (skeleton inference paused). None whenever not in that mode.
+    _pre_calibration_config: RealtimePipelineConfig | None = None
 
     @property
     def alive(self) -> bool:
@@ -87,6 +86,8 @@ class RealtimePipeline:
         )
         if self.skeleton_inference_node is not None:
             nodes_alive = nodes_alive and self.skeleton_inference_node.is_alive
+        if self.charuco_recorder_node is not None:
+            nodes_alive = nodes_alive and self.charuco_recorder_node.is_alive
         return nodes_alive
 
     @property
@@ -163,6 +164,19 @@ class RealtimePipeline:
                 pubsub=pubsub,
             )
 
+        # Create CharucoRecorderNode if charuco tracking is enabled.
+        # This node buffers observations during calibration recording windows
+        # so posthoc calibration can skip redundant detection.
+        charuco_recorder_node: CharucoRecorderNode | None = None
+        if pipeline_config.camera_node_config.charuco_tracking_enabled:
+            charuco_recorder_node = CharucoRecorderNode.create(
+                camera_ids=pipeline_camera_ids,
+                ipc=ipc,
+                pubsub=pubsub,
+                board_config=pipeline_config.camera_node_config.charuco_detector_config.board,
+                worker_registry=worker_registry,
+            )
+
         # Backpressure events between the aggregator and the websocket consumer.
         # The aggregator processes one frame, publishes the result, clears
         # `result_consumed_event`, and sets `result_ready_event`. The consumer
@@ -174,6 +188,10 @@ class RealtimePipeline:
         result_consumed_event = multiprocessing.Event()
         result_consumed_event.set()
 
+        skeleton_fitter_reset_sub = pubsub.get_subscription(
+            SkeletonFitterResetTopic,
+        )
+
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
             camera_ids=pipeline_camera_ids,
@@ -184,6 +202,7 @@ class RealtimePipeline:
             pubsub=pubsub,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
+            skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
         )
 
         aggregation_output_subscription = pubsub.get_subscription(
@@ -197,6 +216,7 @@ class RealtimePipeline:
             camera_nodes=camera_nodes,
             aggregation_node=aggregation_node,
             skeleton_inference_node=skeleton_inference_node,
+            charuco_recorder_node=charuco_recorder_node,
             aggregation_output_subscription=aggregation_output_subscription,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
@@ -235,6 +255,10 @@ class RealtimePipeline:
         for camera_id, node in self.camera_nodes.items():
             node.start()
 
+        if self.charuco_recorder_node is not None:
+            self.charuco_recorder_node.start()
+            logger.info(f"CharucoRecorderNode started for pipeline [{self.id}]")
+
         logger.info(f"RealtimePipeline [{self.id}] — all workers started")
 
     def shutdown(self) -> None:
@@ -248,15 +272,25 @@ class RealtimePipeline:
         self.aggregation_node.worker._intentionally_terminated = True
         if self.skeleton_inference_node is not None:
             self.skeleton_inference_node.worker._intentionally_terminated = True
+        if self.charuco_recorder_node is not None:
+            self.charuco_recorder_node.worker._intentionally_terminated = True
 
-        self.pubsub.close()
+        # Shut down worker threads BEFORE closing pubsub queues.
+        # On Windows, closing a multiprocessing.Queue while a thread is
+        # reading from it (even get_nowait) can hang on the underlying
+        # pipe handle. Shutting nodes down first gives them a chance to
+        # exit their loops (ipc.should_continue is already False).
         for node in self.camera_nodes.values():
             if node.is_alive:
                 node.shutdown()
         if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
             self.skeleton_inference_node.shutdown()
+        if self.charuco_recorder_node is not None and self.charuco_recorder_node.is_alive:
+            self.charuco_recorder_node.shutdown()
         if self.aggregation_node.is_alive:
             self.aggregation_node.shutdown()
+
+        self.pubsub.close()
         logger.debug(f"RealtimePipeline [{self.id}] shut down")
 
     def update_config(self, new_config: RealtimePipelineConfig) -> None:
@@ -299,6 +333,51 @@ class RealtimePipeline:
             )
             self.skeleton_inference_node.start()
 
+    def enter_calibration_charuco_only_mode(self) -> None:
+        """Pause skeleton inference for the duration of a calibration recording.
+
+        Skeleton inference is the realtime throughput bottleneck; with it off the
+        pipeline keeps up with (ideally) every recorded frame, so the
+        CharucoRecorderNode can cache far more observations for posthoc calibration
+        to reuse. Restored by ``exit_calibration_charuco_only_mode``. No-op if
+        skeleton tracking is already off. Best-effort: posthoc re-detects any frame
+        the cache lacks, so coverage only affects speed, never correctness.
+        """
+        if self._pre_calibration_config is not None:
+            return  # already in Charuco-only mode
+        if not self.config.camera_node_config.skeleton_tracking_enabled:
+            return  # nothing to pause
+
+        self._pre_calibration_config = self.config
+        # model_copy(update=...) builds new instances rather than mutating, so this
+        # is safe regardless of whether the config models are frozen, and leaves the
+        # stashed pre-calibration config untouched for restore.
+        charuco_only_camera_config = self.config.camera_node_config.model_copy(
+            update={"skeleton_tracking_enabled": False},
+        )
+        charuco_only_config = self.config.model_copy(
+            update={"camera_node_config": charuco_only_camera_config},
+        )
+        logger.info(
+            f"RealtimePipeline [{self.id}]: entering Charuco-only mode for "
+            f"calibration recording (skeleton inference paused)"
+        )
+        self.update_config(charuco_only_config)
+
+    def exit_calibration_charuco_only_mode(self) -> None:
+        """Restore the config saved by ``enter_calibration_charuco_only_mode``,
+        re-enabling skeleton inference. No-op if not currently in Charuco-only mode.
+        """
+        if self._pre_calibration_config is None:
+            return
+        logger.info(
+            f"RealtimePipeline [{self.id}]: exiting Charuco-only mode — "
+            f"restoring skeleton inference"
+        )
+        restored_config = self._pre_calibration_config
+        self._pre_calibration_config = None
+        self.update_config(restored_config)
+
     async def update_camera_configs(self, camera_configs: CameraConfigs) -> CameraConfigs:
         return await self.camera_group.update_camera_settings(
             requested_configs=camera_configs,
@@ -313,10 +392,17 @@ class RealtimePipeline:
         """
         return await asyncio.to_thread(self.result_ready_event.wait, timeout)
 
-    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt, ) -> FrontendImagePacket | None:
+    def get_latest_frontend_payload(
+        self,
+        if_newer_than: FrameNumberInt,
+        display_image_sizes: dict[str, dict[str, float]] | None = None,
+    ) -> FrontendImagePacket | None:
         if not self.alive:
             if self.camera_group.alive:
-                result = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                result = self.camera_group.get_latest_frontend_payload(
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
+                )
                 if result is not None:
                     frame_number, mf_timestamp, frames_bytearray = result
                     return FrontendImagePacket(
@@ -350,18 +436,17 @@ class RealtimePipeline:
 
         payload = self.camera_group.get_frontend_payload_by_frame_number(
             frame_number=aggregation_output.frame_number,
+            display_image_sizes=display_image_sizes,
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            keypoints_binary_payload: bytearray | None = None
-            if _BINARY_KEYPOINTS_ENABLED:
-                keypoints_binary_payload = build_keypoints_payload(
-                    frame_number=aggregation_output.frame_number,
-                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                    keypoints_raw_arrays=aggregation_output.keypoints_raw_arrays,
-                    keypoints_filtered_arrays=aggregation_output.keypoints_filtered_arrays,
-                )
+            keypoints_binary_payload = build_keypoints_payload(
+                frame_number=aggregation_output.frame_number,
+                tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+                point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
+                keypoints_arrays=aggregation_output.keypoints_arrays,
+                skeleton_arrays=aggregation_output.skeleton,
+            )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,

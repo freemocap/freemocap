@@ -1,0 +1,10 @@
+{
+  "label": "Execution Plans",
+  "position": 7,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "title": "Execution Plans",
+    "description": "Granular, task-by-task implementation plans for the centroidal-kinematics work. These are working developer checklists (TDD steps, exact file paths, acceptance checks) — distinct from the higher-level design docs."
+  }
+}

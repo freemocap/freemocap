@@ -134,10 +134,7 @@ export const selectActiveRecordingFullPath = createSelector(
     (structure): string | null => structure?.fullPath ?? null,
 );
 
-export const selectEffectiveRecordingPath = createSelector(
-    [selectActiveRecordingFullPath],
-    (activePath): string | null => activePath ?? null,
-);
+export const selectEffectiveRecordingPath = selectActiveRecordingFullPath;
 
 export const selectActiveRecordingCalibrationTomlPath = createSelector(
     [selectActiveRecordingStructure],

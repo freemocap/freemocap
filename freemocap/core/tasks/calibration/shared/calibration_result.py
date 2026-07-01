@@ -160,6 +160,9 @@ class CalibrationResult(BaseModel, TomlMixin):
             tvec = np.array(d["translation"], dtype=np.float64).ravel()
             extrinsics = CameraExtrinsics.from_rodrigues(rvec=rvec, tvec=tvec)
 
+            world_position = np.array(d.get("world_position", [0.0, 0.0, 0.0]), dtype=np.float64)
+            world_orientation = np.array(d.get("world_orientation", np.eye(3).tolist()), dtype=np.float64)
+
             camera_id = d.get("id", None)
             if camera_id is None:
                 camera_id = d.get("name", None)
@@ -167,10 +170,12 @@ class CalibrationResult(BaseModel, TomlMixin):
             cameras.append(
                 CameraModel(
                     id=CameraIdString(camera_id),
-                    index=CameraIndexInt(d["index"]),
+                    index=CameraIndexInt(d.get("index", len(cameras))), #If indicies not specified, default to list order
                     image_size=size,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics,
+                    world_position=world_position,
+                    world_orientation=world_orientation,
                 )
             )
 

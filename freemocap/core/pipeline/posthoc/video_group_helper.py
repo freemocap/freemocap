@@ -218,11 +218,8 @@ class VideoHelper(BaseModel):
         if cached_frame is not None:
             return cached_frame
 
-        # Determine read strategy and read frame
-        if self._should_use_sequential_read(frame_number):
-            frame = self._read_sequential(frame_number)
-        else:
-            frame = self._read_random_access(frame_number)
+        frame = self._read_sequential(frame_number)
+
 
         if frame is None:
             raise RuntimeError(f"Failed to read frame {frame_number}")
@@ -233,40 +230,30 @@ class VideoHelper(BaseModel):
 
         return frame
 
-    def _should_use_sequential_read(self, frame_number: int) -> bool:
-        """Check if sequential reading would be more efficient."""
-        if self.last_read_frame < 0:
-            return False
-        return True # Always use sequential read when not wrapping around to avoid frame slippage
-        # # If we're reading nearby frames forward, use sequential
-        # distance = frame_number - self.last_read_frame
-        # return 0 < distance <= self.sequential_threshold
+
 
     def _read_sequential(self, frame_number: int) -> np.ndarray:
-        """Read frame using sequential access (grab/retrieve)."""
-        # Skip frames using grab() which is faster than read()
+        """Read a frame by seeking forward from the last read position.
+
+        Skips the frames between the last read and the target with grab() (cheap,
+        no decode), then read()s the target frame itself (grab + decode). The
+        target must be grabbed too — calling retrieve() alone would decode the
+        previously-grabbed frame, and on the very first read (last_read_frame=-1)
+        there is no grabbed frame at all.
+        """
         frames_to_skip = frame_number - self.last_read_frame - 1
         for _ in range(frames_to_skip):
             if not self.video_reader.grab():
                 raise RuntimeError(f"Failed to grab frame while seeking to {frame_number}")
 
-        # Retrieve the target frame
-        ret, frame = self.video_reader.retrieve()
+        # Grab + decode the target frame.
+        ret, frame = self.video_reader.read()
         if not ret or frame is None:
             raise RuntimeError(f"Failed to retrieve frame {frame_number}")
 
         return frame
 
-    def _read_random_access(self, frame_number: int) -> np.ndarray:
-        """Read frame using random access (set position then read)."""
-        # Set position and read
-        self.video_reader.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-        ret, frame = self.video_reader.read()
 
-        if not ret or frame is None:
-            raise RuntimeError(f"Failed to read frame {frame_number}")
-
-        return frame
 
     def read_frame_batch(self, frame_numbers: list[int]) -> list[np.ndarray]:
         """
@@ -339,6 +326,27 @@ class VideoHelper(BaseModel):
         self.video_reader.release()
         self.cache.clear()
 
+    def __str__(self) -> str:
+        metadata = self.metadata
+        lines = [
+            f"VideoHelper:",
+            f"  video_path           = {self.video_path}",
+            f"  metadata:",
+            f"    file_path          = {metadata.file_path}",
+            f"    width              = {metadata.width}",
+            f"    height             = {metadata.height}",
+            f"    frames_per_second  = {metadata.fps}",
+            f"    frame_count        = {metadata.frame_count}",
+            f"    fourcc             = {metadata.fourcc}",
+            f"    duration_seconds   = {metadata.duration_seconds}",
+            f"    start_frame        = {metadata.start_frame}",
+            f"    end_frame          = {metadata.end_frame}",
+            f"  last_read_frame      = {self.last_read_frame}",
+            f"  sequential_threshold = {self.sequential_threshold}",
+        ]
+        return "\n".join(lines)
+
+
     def __enter__(self) -> "VideoHelper":
         """Context manager entry."""
         return self
@@ -369,12 +377,19 @@ class VideoGroupHelper(BaseModel):
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.videos.keys())
 
+    @property
+    def frame_count(self) -> int:
+        frame_counts = {video.metadata.frame_count for video in self.videos.values()}
+        if len(frame_counts) != 1:
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
+        return list(frame_counts)[0]
+
     @model_validator(mode="after")
     def validate_videos(self):
         if len(self.videos) == 0:
             raise ValueError("VideoGroup must contain at least one video.")
         if len(set(video.metadata.frame_count for video in self.videos.values())) != 1:
-            raise ValueError("All videos in VideoGroup must have the same frame count.")
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
         return self
 
     @classmethod
@@ -392,9 +407,15 @@ class VideoGroupHelper(BaseModel):
         indices = [pv.camera_index for pv in parsed_list]
         reindex_applied = -1 in indices or len(set(indices)) < len(indices)
         if reindex_applied:
+            filename_index_list = ", ".join(
+                f"{path.name} (idx={pv.camera_index}, id={pv.camera_id})"
+                for pv, path in zip(parsed_list, paths)
+            )
             logger.warning(
                 f"Camera indices are ambiguous or colliding ({indices}); "
                 f"re-assigning by alphabetical filename order. "
+                f"This usually means the folder contains videos from more than one recording "
+                f"(stale/leftover files). Files: {filename_index_list}. "
                 f"Verify the camera_id → video mapping is correct."
             )
             for i, pv in enumerate(parsed_list):
@@ -479,6 +500,40 @@ class VideoGroupHelper(BaseModel):
     def close(self):
         for video in self.videos.values():
             video.close()
+
+    def __str__(self) -> str:
+        lines = [
+            f"VideoGroupHelper:",
+            f"  number_of_videos     = {len(self.videos)}",
+            f"  frame_count          = {self.frame_count}",
+            f"  keyed_from_manifest  = {self.keyed_from_manifest}",
+            f"  filename_reindex_applied = {self.filename_reindex_applied}",
+            f"  camera_ids:",
+        ]
+        for camera_id in self.camera_ids:
+            lines.append(f"    {camera_id}")
+        return "\n".join(lines)
+
+
+def _frame_count_mismatch_detail(videos: dict[CameraIdString, "VideoHelper"]) -> str:
+    """Build a diagnostic message listing each video's frame count.
+
+    A frame-count mismatch almost always means the videos folder contains clips from more
+    than one recording session (e.g. stale/leftover files from a previous capture), so the
+    glob picked up an incoherent set. The terse "all videos must have the same frame count"
+    message hid that; this spells out exactly which files disagree.
+    """
+    lines = [
+        f"    {camera_id}: {video.metadata.frame_count} frames  ({video.video_path})"
+        for camera_id, video in videos.items()
+    ]
+    return (
+        "All videos in a VideoGroup must have the same frame count, but they differ:\n"
+        + "\n".join(lines)
+        + "\nThis usually means the synchronized_videos/ folder contains videos from more "
+        "than one recording (stale or leftover files). Check for and remove videos that do "
+        "not belong to this recording."
+    )
 
 
 def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:

@@ -5,6 +5,7 @@ import {cameraSlice} from "@/store/slices/cameras";
 import {recordingSlice} from "@/store/slices/recording";
 import {videosSlice} from "@/store/slices/videos";
 import {realtimeSlice} from "@/store/slices/realtime";
+import {connectionSlice} from "@/store/slices/connection";
 import {calibrationSlice} from "@/store/slices/calibration/calibration-slice";
 import {mocapSlice} from "@/store/slices/mocap/mocap-slice";
 import {localeSlice} from "@/store/slices/locale";
@@ -24,6 +25,7 @@ export const store = configureStore({
         recording: recordingSlice.reducer,
         videos: videosSlice.reducer,
         realtime: realtimeSlice.reducer,
+        connection: connectionSlice.reducer,
         calibration: calibrationSlice.reducer,
         mocap: mocapSlice.reducer,
         locale: localeSlice.reducer,

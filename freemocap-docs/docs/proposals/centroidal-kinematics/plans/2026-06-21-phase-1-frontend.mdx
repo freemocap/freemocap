@@ -1,0 +1,59 @@
+---
+sidebar_position: 2
+title: "Phase 1 — Frontend Rendering (Execution Plan)"
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Phase 1 — Frontend Rendering Plan
+
+> **Verification:** frontend rendering is not unit-testable in the way the backend math is.
+> The check is `tsc --noEmit` (typecheck) plus a live visual confirmation in the viewport.
+> Git stays manual.
+
+<Tip shortInfo="STATUS: implemented 2026-06-21 — all touch points below done, tsc --noEmit passes clean. Remaining: live visual confirmation in a running session." />
+
+**Goal:** Render the `body_kinematics` payload (already streaming from the backend) in the
+3D viewport — the **reaction-mass ellipsoid** at the CoM, plus the **CMP** marker and a
+CoP→CMP line — by mirroring the existing CoM / XCoM render path exactly.
+
+**Architecture:** The live path is `ServerContextProvider` (parse WS payload) →
+`ThreeJsCanvas` forwarder (`postMessage` to the viewport worker) → worker's generic router
+(`workerDataStore.dispatch(type, data)`) → `WorkerDataStore` channel → renderer subscription.
+We add a `body_kinematics` lane at every layer and one new renderer.
+
+<Tip shortInfo="The CoM, XCoM, and CoM-ground-projection are already drawn by CenterOfMassRenderer. The new renderer only adds what's new: the inertia ellipsoid and the CMP (with its CoP→CMP gap line). No duplication." />
+
+## Touch points (mirror the CoM/XCoM lane)
+
+| File | Change |
+|---|---|
+| `helpers/viewport3d-types.ts` | Add `BodyKinematics` interface; add `bodyKinematics` / `reactionMassEllipsoid` / `centroidalMomentPivot` to `ViewportVisibility` + `DEFAULT_VISIBILITY` (default **on**) |
+| `services/.../websocket-message-types.ts` | Add `body_kinematics: BodyKinematics \| null` to `FrontendPayloadMessage` |
+| `viewport3d/WorkerDataStore.ts` | Add `bodyKinematicsChan` + `subscribeToBodyKinematics` / `getLatestBodyKinematics` + `"bodyKinematics"` dispatch case |
+| `services/server/server-context.ts` | Add `subscribeToBodyKinematics` to `ServerContextValue` |
+| `services/server/ServerContextProvider.tsx` | Add subscribers ref, parse `payload.body_kinematics`, `subscribeToBodyKinematics`, context value + deps |
+| `viewport3d/ThreeJsCanvas.tsx` | Add `BodyKinematicsForwarder` (mirror `CenterOfMassForwarder`) + mount it |
+| `viewport3d/renderers/BodyKinematicsRenderer.tsx` | **New** — ellipsoid + CMP + CoP→CMP line |
+| `viewport3d/ThreeJsScene.tsx` | Mount `{visibility.bodyKinematics && <BodyKinematicsRenderer/>}` |
+
+## Renderer notes
+
+- **Ellipsoid:** a unit `SphereGeometry` scaled to `ellipsoid_semi_axes` (mm) and oriented by
+  `Matrix4.makeBasis(axis_x, axis_y, axis_z)` → `quaternion.setFromRotationMatrix`. Translucent
+  violet, distinct from green CoM / amber XCoM. A `ELLIPSOID_SCALE` constant allows display
+  tuning (default 1.0 = physical equimomental size).
+- **CMP:** small magenta ground marker at `(cmp.x, cmp.y, 0)`, plus a dashed CoP→CMP line —
+  the visible "angular-momentum is being generated" readout. (CMP needs CoM acceleration, so
+  it appears from the 3rd frame.)
+- Sub-elements gated by `visibility.reactionMassEllipsoid` / `centroidalMomentPivot`, matching
+  the CoM renderer's per-element gating.
+
+## Deferred (not in this pass)
+
+- ViewportOverlay toggle UI for the new flags (they default on, so the viewport shows them; a
+  toggle row is a small follow-up).
+- The `H_G` momentum arrow — arrives with Phase 2's orbital angular momentum.
+- A quaternion form for ellipsoid orientation (we ship 3 basis vectors for now).

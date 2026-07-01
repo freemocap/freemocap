@@ -7,8 +7,11 @@ import { useTranslation } from "react-i18next";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 
 const LOG_POLL_INTERVAL_MS = 500;
-const LINE_HEIGHT = 20;
-const ROW_PADDING = 8;
+// NOTE: these must stay in sync with .log-entry's line-height and top+bottom
+// padding in log-terminal.css, or the virtualized rows will overlap / gap.
+// TODO - Thats dumb af though, we should fix it
+const LINE_HEIGHT = 16;
+const ROW_PADDING = 4;
 const OVERSCAN = 10;
 
 const LOG_LEVELS = ["TRACE", "DEBUG", "INFO", "SUCCESS", "API", "WARNING", "ERROR", "CRITICAL"];
@@ -44,18 +47,17 @@ const Linkify = ({ text }: { text: string }) => {
 // ---------------------------------------------------------------------------
 
 const countLines = (text: string): number => {
-    if (!text) return 1;
+    const t = text.trimEnd();
+    if (!t) return 1;
     let count = 1;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i] === "\n") count++;
+    for (let i = 0; i < t.length; i++) {
+        if (t[i] === "\n") count++;
     }
     return count;
 };
 
 const getRowHeight = (log: LogRecord): number => {
-    const lines = countLines(log.message);
-    if (lines === 1) return LINE_HEIGHT + ROW_PADDING;
-    return LINE_HEIGHT + lines * LINE_HEIGHT + ROW_PADDING;
+    return countLines(log.message) * LINE_HEIGHT + ROW_PADDING;
 };
 
 const buildPrefixHeights = (logs: LogRecord[]): number[] => {
@@ -85,7 +87,8 @@ const findStartIndex = (prefixHeights: number[], y: number): number => {
 const LogEntryRow = React.memo(({ log, style }: { log: LogRecord; style: React.CSSProperties }) => {
     const [expanded, setExpanded] = useState(false);
     const level = log.levelname.toLowerCase();
-    const multiLine = log.message.includes("\n");
+    const message = log.message.trimEnd();
+    const multiLine = message.includes("\n");
 
     return (
         <div
@@ -97,13 +100,13 @@ const LogEntryRow = React.memo(({ log, style }: { log: LogRecord; style: React.C
                 <span className="log-timestamp">{log.asctime}</span>
                 <span className={clsx("log-level-badge", level)}>{log.levelname}</span>
                 <span className="log-message-text">
-                    <Linkify text={multiLine ? log.message.split("\n")[0] : log.message} />
+                    <Linkify text={multiLine ? message.split("\n")[0] : message} />
                 </span>
             </div>
 
             {multiLine && (
                 <div className="log-multiline-body">
-                    <Linkify text={log.message.split("\n").slice(1).join("\n")} />
+                    <Linkify text={message.split("\n").slice(1).join("\n")} />
                 </div>
             )}
 
@@ -177,10 +180,19 @@ function applyFilters(entries: LogRecord[], selectedLevels: string[], searchText
 const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: ReturnType<typeof useServer>["getLogStore"]; selectedLevels: string[] }) => {
     const { t } = useTranslation();
     const [lastEntry, setLastEntry] = useState<LogRecord | null>(null);
+    const [logActive, setLogActive] = useState(false);
+    const [currentVersion, setCurrentVersion] = useState(-1);
+    const activityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastVersionRef = useRef(-1);
 
+    // Polling: only tracks version bumps — does not own the activity timer
     useEffect(() => {
         const poll = () => {
             const snap = getLogStore().getSnapshot();
+            if (snap.version !== lastVersionRef.current) {
+                lastVersionRef.current = snap.version;
+                setCurrentVersion(snap.version);
+            }
             const entries = snap.entries;
             const visible = selectedLevels.length > 0
                 ? entries.filter(e => selectedLevels.includes(e.levelname.toLowerCase()))
@@ -191,6 +203,17 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
         const id = setInterval(poll, LOG_POLL_INTERVAL_MS);
         return () => clearInterval(id);
     }, [getLogStore, selectedLevels]);
+
+    // Activity timer: owned by this effect, only re-fires when version actually changes
+    useEffect(() => {
+        if (currentVersion === -1) return;
+        setLogActive(true);
+        if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+        activityTimerRef.current = setTimeout(() => setLogActive(false), 1500);
+        return () => {
+            if (activityTimerRef.current) clearTimeout(activityTimerRef.current);
+        };
+    }, [currentVersion]);
 
     if (!lastEntry) return (
         <div className="log-collapsed-summary flex items-center h-full gap-1">
@@ -204,7 +227,7 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
     return (
         <div className="log-collapsed-summary flex items-center h-full gap-1 overflow-hidden">
             <p className="text bg text-gray">{t("serverLogs")}</p>
-            <p className="text sm text-gray">|</p>
+            <span className={clsx("log-activity-dot", logActive && "active")} />
             <span className={clsx("log-level-badge", level)}>{lastEntry.levelname}</span>
             <span className="log-timestamp">{lastEntry.asctime}</span>
             <span className="log-message-text text-nowrap overflow-hidden" style={{ textOverflow: "ellipsis" }}>
@@ -348,7 +371,7 @@ const LogTerminalFull = ({
 
     const handleClear = () => {
         getLogStore().clear();
-        setSelectedLevels([]);
+        setSelectedLevels(LOG_LEVELS.map(l => l.toLowerCase()));
         setSearchText("");
         setShowSearch(false);
         setIsPaused(false);
@@ -359,7 +382,7 @@ const LogTerminalFull = ({
     return (
         <div className="log-terminal">
             {/* Toolbar */}
-            <div className="log-toolbar flex items-center gap-1 p-1 flex-wrap">
+            <div className="log-toolbar flex items-center gap-1 flex-wrap">
                 <div className="ml-1 log-toolbar-inner flex items-center gap-1 flex-wrap">
                     <p className="text bg text-gray">{t('serverLogs')}</p>
                     {snapshot.hasErrors && (
@@ -488,7 +511,7 @@ const LogTerminalFull = ({
 
 export const LogTerminal = ({ isCollapsed = false }: { isCollapsed?: boolean }) => {
     const { getLogStore } = useServer();
-    const [selectedLevels, setSelectedLevels] = useState<string[]>([]);
+    const [selectedLevels, setSelectedLevels] = useState<string[]>(LOG_LEVELS.map(l => l.toLowerCase()));
     const [searchText, setSearchText] = useState("");
     const [showSearch, setShowSearch] = useState(false);
     const [isPaused, setIsPaused] = useState(false);

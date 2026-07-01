@@ -74,12 +74,31 @@ def _build_block(
         point_names: tuple[str, ...] | list[str],
         sparse_arrays: dict[str, np.ndarray],
         camera_id: str = "",
+        embed_names: bool = False,
 ) -> bytes:
     dims = 3
     interleaved = _densify_3d(sparse_arrays, point_names)
     wire_np_dtype = numpy_dtype_for(_WIRE_DTYPE)
     payload_arr = interleaved.astype(wire_np_dtype, copy=False)
     payload_bytes = payload_arr.tobytes(order="C")
+
+    if embed_names:
+        # Prepend a names blob so the frontend can resolve point identities
+        # without a pre-shared schema (used for charuco / aruco corners).
+        names_blob = "\0".join(point_names).encode("ascii", errors="ignore") + b"\0"
+        names_len = len(names_blob)
+        # 4-byte alignment: Float32Array in JS requires offsets be multiples of 4.
+        # Pad the names blob so the float payload that follows lands on a 4-byte
+        # boundary (zero-copy DataView → Float32Array path).
+        pad = (4 - (names_len % 4)) % 4
+        data = (
+            np.uint32(names_len).tobytes()
+            + names_blob
+            + b"\0" * pad
+            + payload_bytes
+        )
+    else:
+        data = payload_bytes
 
     header = np.zeros(1, dtype=KEYPOINTS_BLOCK_HEADER_DTYPE)
     header["message_type"] = int(MessageType.KEYPOINTS_BLOCK_HEADER)
@@ -89,8 +108,8 @@ def _build_block(
     header["camera_id"] = camera_id.encode("ascii", errors="ignore")[:CAMERA_ID_BYTES]
     header["tracker_id"] = tracker_id.encode("ascii", errors="ignore")[:TRACKER_ID_BYTES]
     header["num_points"] = len(point_names)
-    header["data_byte_length"] = len(payload_bytes)
-    return header.tobytes() + payload_bytes
+    header["data_byte_length"] = len(data)
+    return header.tobytes() + data
 
 
 def build_keypoints_payload(
@@ -98,32 +117,61 @@ def build_keypoints_payload(
         frame_number: int,
         tracker_id: str,
         point_names: tuple[str, ...] | list[str],
-        keypoints_raw_arrays: dict[str, np.ndarray],
-        keypoints_filtered_arrays: dict[str, np.ndarray],
+        keypoints_arrays: dict[str, np.ndarray],
+        skeleton_arrays: dict[str, np.ndarray] | None = None,
 ) -> bytearray:
-    """Serialize the per-frame 3D keypoints into the binary wire format.
+    """Serialize the per-frame 3D keypoints + skeleton into the binary wire format.
 
-    Step 1 of the JSON→binary refactor: only `KEYPOINTS_RAW_3D` and
-    `KEYPOINTS_FILTERED_3D` blocks. 2D overlays remain on the JSON path until
-    Step 2.
+    Emits, in order:
+      * a schema-backed KEYPOINTS_3D block of RTMPose points,
+      * an embedded-names KEYPOINTS_3D block for charuco/aruco calibration
+        corners (no tracker schema on the frontend), when present,
+      * an embedded-names SKELETON_3D block of the rigidified canonical
+        body + hand landmarks, when present.
     """
     blocks: list[bytes] = []
+
+    # RTMPose keypoints (schema-backed — point names from tracker_schemas).
     blocks.append(
         _build_block(
-            kind=BlockKind.KEYPOINTS_RAW_3D,
+            kind=BlockKind.KEYPOINTS_3D,
             tracker_id=tracker_id,
             point_names=point_names,
-            sparse_arrays=keypoints_raw_arrays,
+            sparse_arrays=keypoints_arrays,
         )
     )
-    blocks.append(
-        _build_block(
-            kind=BlockKind.KEYPOINTS_FILTERED_3D,
-            tracker_id=tracker_id,
-            point_names=point_names,
-            sparse_arrays=keypoints_filtered_arrays,
+
+    # Charuco / Aruco 3D corners — no schema, so names travel in the block.
+    calib_arrays = {
+        k: v for k, v in keypoints_arrays.items()
+        if k.startswith("CharucoCorner-") or k.startswith("ArucoMarkerCorner-")
+    }
+    if calib_arrays:
+        calib_names = sorted(calib_arrays.keys())
+        blocks.append(
+            _build_block(
+                kind=BlockKind.KEYPOINTS_3D,
+                tracker_id="calib3d",
+                point_names=calib_names,
+                sparse_arrays=calib_arrays,
+                embed_names=True,
+            )
         )
-    )
+
+    # Rigidified canonical skeleton (body + hands). Mixed canonical/tracker
+    # naming, so point names travel embedded in the block (self-describing).
+    if skeleton_arrays:
+        skeleton_names = list(skeleton_arrays.keys())
+        blocks.append(
+            _build_block(
+                kind=BlockKind.SKELETON_3D,
+                tracker_id="skeleton3d",
+                point_names=skeleton_names,
+                sparse_arrays=skeleton_arrays,
+                embed_names=True,
+            )
+        )
+
     num_blocks = len(blocks)
 
     header = np.zeros(1, dtype=KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE)

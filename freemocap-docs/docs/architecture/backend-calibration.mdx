@@ -1,0 +1,116 @@
+---
+sidebar_position: 10
+title: Calibration
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Calibration
+
+Calibration estimates each camera's position, orientation, and lens parameters by observing a known physical target — a ChArUco board — from multiple viewpoints. The output is a `CalibrationResult`: a set of camera models that enable 3D triangulation.
+
+## When Calibration Runs
+
+**Realtime**: The `RealtimeAggregatorNode` holds a `CalibrationStateTracker` that loads calibration on startup and hot-reloads it when the file changes. This means you can calibrate once, then all subsequent realtime sessions use that calibration without restarting.
+
+**Posthoc**: Calibration runs as a fire-and-forget posthoc pipeline. VideoNodes detect ChArUco corners in each frame; the AggregatorNode collects them and runs the solver.
+
+## Solver Methods
+
+### Anipose (Primary)
+
+The Anipose solver is the workhorse of FreeMoCap calibration. It's based on the [aniposelib](https://github.com/lambdaloop/aniposelib) library but has been **rewritten into our codebase**.
+
+**Why we rewrote it**: The original aniposelib is designed for interactive Jupyter notebook use. FreeMoCap needed it integrated into a multi-process pipeline architecture — loading from TOML files, hot-reloading, working with our camera model types, and handling the specific failure modes of markerless motion capture (partial detections, varying camera counts, reprojection error gating).
+
+**Willing to contribute back**: If the aniposelib maintainers are interested in integrating our modifications upstream, we're happy to collaborate on that. The core algorithm is the same — bundle adjustment via SciPy's `least_squares` — but the integration layer is substantially different.
+
+**Files in `core/tasks/calibration/anipose_calibration/`:**
+- `run_anipose_calibration.py` — Orchestrates the full calibration pipeline (top-level)
+- `helpers/freemocap_anipose.py` — FreeMoCap interface to aniposelib
+- `helpers/bundle_adjust.py` — Bundle adjustment logic
+- `helpers/camera_model_solver_ops.py` — Camera model construction from solver output
+
+### PyCeres (In Development)
+
+A Google Ceres-based bundle adjustment via the PyCeres wrapper. Currently in development and not yet the default solver. When ready, it will provide an alternative optimization backend with potentially better convergence for large camera arrays.
+
+**Files in `core/tasks/calibration/pyceres_calibration/`:**
+- `pyceres_calibration_pipeline.py`
+- `helpers/cost_functions.py`, `helpers/solver.py`, `helpers/initialization.py`, `helpers/models.py`, `helpers/postprocessing.py`
+
+## CalibrationResult Model
+
+The output of calibration is a `CalibrationResult` (Pydantic model, ~219 lines):
+
+```python
+class CalibrationResult(BaseModel):
+    cameras: list[CameraModel]          # One per calibrated camera
+    board: CharucoBoardDefinition       # Board geometry
+    reprojection_error_px: float        # Aggregate reprojection error (pixels)
+    initial_cost: float                 # Initial solver cost
+    final_cost: float                   # Final solver cost
+    n_iterations: int                   # Number of solver iterations
+    time_seconds: float                 # Solver runtime
+    n_observations_used: int            # Observations accepted
+    n_observations_rejected: int        # Observations rejected
+    groundplane_aligned: bool           # Whether groundplane alignment was applied
+```
+
+Each `CameraModel` contains:
+- **Intrinsics**: focal length (fx, fy), principal point (cx, cy), distortion coefficients (k1, k2, p1, p2)
+- **Extrinsics**: rodrigues rotation vector, translation vector, rotation matrix
+- **World pose**: position (x, y, z) and orientation in world coordinates
+
+Serializes to / deserializes from anipose-compatible TOML format. Provides `get_triangulator()` and `get_triangulator_for_cameras(camera_ids)` for building `Triangulator` instances from the calibration result.
+
+## CalibrationStateTracker (Realtime)
+
+Used by `RealtimeAggregatorNode` for live calibration during realtime sessions (`calibration_state.py`, ~378 lines):
+
+- **Optimistic load on creation**: loads the most recent calibration TOML immediately
+- **Hot-reload**: checks for file changes when `check_for_update()` is called by the aggregator's main loop (at approximately 1 second intervals)
+- **`try_angulate()`**: triangulation with reprojection error gating
+  - Fast path for RTMPose observations (vectorized stacking)
+  - Fallback for CharUco observations
+  - Per-camera name matching: exact match → camera-id prefix heuristic
+- **Camera subset cache**: avoids rebuilding `Triangulator` for each unique camera combination
+- **Graded degradation**: 10 consecutive triangulation failures → invalidates calibration (camera positions may have changed)
+
+## Posthoc Calibration Task
+
+Orchestrated by `posthoc_calibration_task.py` (~340 lines):
+
+1. Receives collected observations from all VideoNodes
+2. Validates all are `CharucoObservation`, converts to shared `CharucoCornersObservation` format
+3. Routes to anipose or pyceres solver based on `task_config.solver_method`
+4. Saves observations to JSON for later analysis / debugging
+5. Computes and logs calibration health metrics (reprojection error per camera, solver convergence)
+
+## Groundplane Alignment
+
+After calibration, the world coordinate system is aligned to the ChArUco board's plane:
+
+- The board defines the ground plane (Z = 0)
+- The up-vector is disambiguated to point camera-ward (cameras are above the board looking down)
+- `groundplane_math.py` handles the rotation/translation math
+- `groundplane_alignment.py` orchestrates the full alignment
+
+## Camera Model Details
+
+### Intrinsics Model
+Uses the standard pinhole camera model with radial and tangential distortion (OpenCV convention):
+- fx, fy: focal length in pixels (x and y may differ for non-square pixels)
+- cx, cy: principal point (usually near image center)
+- k1, k2: radial distortion coefficients
+- p1, p2: tangential distortion coefficients
+
+### Extrinsics Model
+- Rotation: stored as rodrigues vector (3 elements), convertible to 3×3 rotation matrix
+- Translation: camera position in world coordinates
+- World pose: camera position + orientation, used for 3D viewport rendering of camera frustums
+
+### Serialization
+All models serialize to TOML in anipose-compatible format, so calibration files can be exchanged with tools that expect the anipose TOML format.

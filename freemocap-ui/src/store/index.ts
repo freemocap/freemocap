@@ -8,6 +8,7 @@ export * from './slices/cameras';
 export * from './slices/recording';
 export * from './slices/videos';
 export * from './slices/realtime';
+export * from './slices/connection';
 export * from './slices/mocap';
 export * from './slices/pipelines';
 export * from './slices/blender';

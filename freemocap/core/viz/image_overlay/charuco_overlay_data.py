@@ -42,7 +42,7 @@ class CharucoOverlayData(msgspec.Struct):
             *,
             camera_id: CameraIdString,
             observation: CharucoObservation,
-            scale: float = .5, ):
+            scale: float = 1.0, ):
         """
         Convert CharucoObservation to Pydantic message model for websocket transmission.
 
@@ -88,8 +88,8 @@ class CharucoOverlayData(msgspec.Struct):
             n_aruco_detected=0 if observation.aruco_empty else len(observation.detected_aruco_marker_ids),
             n_aruco_total=len(observation.all_aruco_ids),
             has_pose=observation.charuco_board_translation_vector is not None,
-            image_width=observation.image_size[0],
-            image_height=observation.image_size[1],
+            image_width=observation.image_size[1],
+            image_height=observation.image_size[0],
         )
 
         # Build complete message

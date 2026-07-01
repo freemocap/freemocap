@@ -47,6 +47,12 @@ class TimestampedRingBuffer {
     private _cachedVersion: number = 0;
     private _version: number = 0;
 
+    /** Persistent output buffer for toArray(). Its sample objects are reused and
+     *  mutated in place, so steady-state toArray() allocates nothing — a push every
+     *  frame would otherwise invalidate the version cache and allocate `count`
+     *  fresh objects on every getSnapshot() (the top allocation source in profiles). */
+    private _outArray: TimestampedSample[] = [];
+
     constructor(capacity: number) {
         this.timestamps = new Float64Array(capacity);
         this.values = new Float64Array(capacity);
@@ -69,15 +75,23 @@ class TimestampedRingBuffer {
             return this._cachedArray;
         }
 
-        const result = new Array<TimestampedSample>(this.count);
+        // Reuse the persistent output buffer: grow the object pool only when the
+        // sample count rises, then mutate existing objects in place. Polling chart
+        // consumers read (and copy) the values each tick, so in-place reuse is safe.
+        const result = this._outArray;
+        while (result.length < this.count) result.push({timestamp: 0, value: 0});
+        if (result.length > this.count) result.length = this.count;
+
         if (this.count < this.timestamps.length) {
             for (let i = 0; i < this.count; i++) {
-                result[i] = {timestamp: this.timestamps[i], value: this.values[i]};
+                result[i].timestamp = this.timestamps[i];
+                result[i].value = this.values[i];
             }
         } else {
             for (let i = 0; i < this.count; i++) {
                 const idx = (this.writeIndex + i) % this.timestamps.length;
-                result[i] = {timestamp: this.timestamps[idx], value: this.values[idx]};
+                result[i].timestamp = this.timestamps[idx];
+                result[i].value = this.values[idx];
             }
         }
 

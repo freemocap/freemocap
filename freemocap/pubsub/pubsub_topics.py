@@ -9,12 +9,14 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
+from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
 
+from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
+from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -113,15 +115,11 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
-    keypoints_raw: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
-    keypoints_filtered: dict[TrackedPointNameString, Point3d] = field(default_factory=dict)
-    # Pre-Point3d numpy form of the same data, kept around so the websocket
-    # binary serializer can ship raw bytes without re-unwrapping each
-    # Pydantic model. Each value is a (3,) float array. Sparse — only points
-    # that triangulated successfully are present.
-    keypoints_raw_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    keypoints_filtered_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    rigid_body_poses: dict[str, RigidBodyPose] = field(default_factory=dict)
+    keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
+    center_of_mass_result: CenterOfMassResult | None = None
+    xcom: Point3d | None = None
+    skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
+    body_kinematics: BodyKinematicsState | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -189,6 +187,29 @@ class PipelineTimingMessage(TopicMessageABC):
 
 
 # ---------------------------------------------------------------------------
+# Calibration recording state (bridge between HTTP endpoint and pipeline nodes)
+# ---------------------------------------------------------------------------
+# Published by the calibration HTTP endpoint when a calibration recording
+# starts or stops. The CharucoRecorderNode subscribes to toggle buffering.
+
+@dataclass
+class CalibrationRecordingStateMessage(TopicMessageABC):
+    recording_info: RecordingInfo | None = None
+    is_active: bool = False
+
+@dataclass
+class SkeletonFitterResetMessage(TopicMessageABC):
+    """Trigger the aggregator to fully reset the skeleton fitter.
+
+    Presence of this message in the subscription queue signals the aggregator to
+    call ``RealtimeSkeletonRigidifier.reset()`` — forgetting the learned bone
+    lengths (re-seeding from anthropometry) and clearing the carried bone
+    directions, so the fit starts over as if the pipeline had just launched.
+    """
+
+
+
+# ---------------------------------------------------------------------------
 # Topic instantiation
 # ---------------------------------------------------------------------------
 
@@ -196,6 +217,10 @@ ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
-VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts
+VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts , #TODO - shouldnt thouh, agg node should run concurrently w/ video nodes
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
+CalibrationRecordingStateTopic = create_topic(CalibrationRecordingStateMessage)
+SkeletonFitterResetTopic = create_topic(SkeletonFitterResetMessage)
+
+

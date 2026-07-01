@@ -73,6 +73,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --mic-active-icon: url("../assets/icons/mic_active_icon.svg");
   --processmocap-icon: url("../assets/icons/processmocap_icon.svg");
   --video-icon: url("../assets/icons/video_icon.svg");
+  --recommendexposure-icon: url("../assets/icons/recommendexposure_icon.svg");
   --record-icon: url("../assets/icons/record_icon.svg");
   --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
   --back-icon: url("../assets/icons/back_icon.svg");
@@ -419,6 +420,10 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 
 .donate-icon {
   background-image: var(--donate-icon);
+}
+
+.recommendexposure-icon {
+  background-image: var(--recommendexposure-icon);
 }
 
 .record-icon {

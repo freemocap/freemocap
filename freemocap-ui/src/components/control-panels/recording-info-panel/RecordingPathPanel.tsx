@@ -10,7 +10,7 @@ import {
   useTimestampToggled,
 } from "@/store/slices/recording/recording-slice";
 import { useAppDispatch, useAppSelector } from "@/store";
-import { getTimestampString } from "@/components/control-panels/recording-info-panel/getTimestampString";
+import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import { RecordingPathModal } from "./RecordingPathModal";
 import TextSelector from "@/components/ui-components/TextSelector";
 import IconButton from "@/components/ui-components/IconButton";

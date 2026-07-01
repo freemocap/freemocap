@@ -1,0 +1,10 @@
+{
+  "label": "Proposals (Planned Work)",
+  "position": 99,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "title": "Proposals & Planned Work",
+    "description": "Forward-looking design documents and implementation plans for features that are proposed but not yet built. These describe intended future work, distinct from the architecture docs that describe the system as it exists today."
+  }
+}

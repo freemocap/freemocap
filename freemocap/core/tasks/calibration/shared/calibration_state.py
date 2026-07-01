@@ -20,6 +20,7 @@ from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservatio
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
+from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
@@ -52,6 +53,9 @@ class CalibrationStateTracker:
         self._consecutive_failure_count: int = 0
         self._calibration_path: Path | None = None
         self._calibration_file_mtime: float | None = None
+        # Explicit calibration TOML to load from. None => use the canonical
+        # most-recent calibration (and hot-reload that file).
+        self._configured_path: Path | None = None
         # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
         # Lazily populated on first frame with a given camera subset; reused thereafter.
         self._subset_triangulator_cache: dict[frozenset, Triangulator] = {}
@@ -63,11 +67,34 @@ class CalibrationStateTracker:
         # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
-    def create_and_try_load(cls) -> "CalibrationStateTracker":
-        """Create a tracker and optimistically try to load the latest calibration."""
+    def create_and_try_load(cls, calibration_toml_path: Path | None = None) -> "CalibrationStateTracker":
+        """Create a tracker and optimistically try to load a calibration.
+
+        Args:
+            calibration_toml_path: Explicit calibration TOML to load from.
+                If None, the canonical most-recent calibration is used.
+        """
         tracker = cls()
+        tracker._configured_path = calibration_toml_path
         tracker._try_load_latest()
         return tracker
+
+    def set_source_path(self, calibration_toml_path: Path | None) -> bool:
+        """Re-point the tracker at a different calibration source (live update).
+
+        If the configured path changed, reloads immediately from the new
+        source. None => fall back to the canonical most-recent calibration.
+
+        Returns:
+            True if a new calibration was loaded as a result.
+        """
+        if calibration_toml_path == self._configured_path:
+            return False
+        logger.info(
+            f"Calibration source path changed: {self._configured_path} -> {calibration_toml_path}"
+        )
+        self._configured_path = calibration_toml_path
+        return self._try_load_from_path(self._resolve_source_path())
 
     @property
     def is_valid(self) -> bool:
@@ -88,7 +115,7 @@ class CalibrationStateTracker:
             True if a new calibration was loaded.
         """
         try:
-            path = get_last_successful_calibration_toml_path()
+            path = self._resolve_source_path()
             if not path.exists():
                 return False
             mtime = os.path.getmtime(path)
@@ -103,14 +130,19 @@ class CalibrationStateTracker:
             logger.debug(f"Error checking calibration file: {e}")
             return False
 
+    def _resolve_source_path(self) -> Path:
+        """The calibration file to load/poll: the explicitly configured TOML
+        if set, else the canonical most-recent calibration."""
+        return self._configured_path or get_last_successful_calibration_toml_path()
+
     def _try_load_latest(self) -> bool:
-        """Try to load the most recent calibration file from the default path.
+        """Try to load the calibration file from the configured/most-recent path.
 
         Returns:
             True if calibration was loaded successfully.
         """
         try:
-            path = get_last_successful_calibration_toml_path()
+            path = self._resolve_source_path()
             if path.exists():
                 logger.info(f"Found calibration file at {path}")
                 return self._try_load_from_path(path)
@@ -172,6 +204,11 @@ class CalibrationStateTracker:
         or None if no valid calibration is loaded or triangulation failed.
         """
         if not self.is_valid:
+            # Single-camera: projection doesn't need calibration
+            if len(frame_observations_by_camera) == 1:
+                obs = next(iter(frame_observations_by_camera.values()))
+                self._consecutive_failure_count = 0
+                return project_2d_observation_to_3d(observation=obs)
             return None
 
         if triangulation_config is None:
@@ -197,8 +234,13 @@ class CalibrationStateTracker:
                     )
                 matched_obs_by_cam[self._cam_id_name_cache[cam_id]] = obs
 
-            if len(matched_obs_by_cam) < 2:
+            if len(matched_obs_by_cam) == 0:
                 return {}
+            if len(matched_obs_by_cam) == 1:
+                obs = next(iter(matched_obs_by_cam.values()))
+                result = project_2d_observation_to_3d(observation=obs)
+                self._consecutive_failure_count = 0
+                return result
 
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.

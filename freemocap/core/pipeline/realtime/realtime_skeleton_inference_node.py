@@ -56,6 +56,12 @@ from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
     RTMPoseSession,
     RTMPoseSessionConfig,
 )
+from skellytracker.trackers.rtmpose_tracker.rtmpose_annotator import (
+    draw_text_with_background,
+)
+from skellytracker.trackers.rtmpose_tracker.rtmpose_tracking_state import (
+    PersonTrackingState,
+)
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -162,6 +168,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         frame_recarrays: dict[CameraIdString, np.recarray | None] = {
             cam_id: None for cam_id in camera_ids
         }
+        # Per-camera tracking state for YOLOX-skip logic. When tracking is
+        # enabled, these are threaded through predict_batch_with_tracking()
+        # and updated each frame with the latest bbox + pose confidence.
+        tracking_states: dict[CameraIdString, PersonTrackingState] = {
+            cam_id: PersonTrackingState() for cam_id in camera_ids
+        }
 
         try:
             logger.debug(
@@ -234,7 +246,32 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter() if timer is not None else 0.0
                 try:
-                    batch_results = session.predict_batch(images)
+                    if session._tracking_enabled:
+                        # Build tracking state list parallel to ordered_camera_ids.
+                        states_list = [
+                            tracking_states[cid] for cid in ordered_camera_ids
+                        ]
+                        batch_results, updated_states = (
+                            session.predict_batch_with_tracking(
+                                images, states_list,
+                            )
+                        )
+                        # Write back updated states.
+                        for cid, new_state in zip(
+                            ordered_camera_ids, updated_states,
+                        ):
+                            tracking_states[cid] = new_state
+
+                        # ---- Debug: draw bboxes on inference images ----
+                        if pipeline_config.skeleton_inference_node_config.debug_draw_bboxes:
+                            _debug_write_bbox_frames(
+                                camera_ids=ordered_camera_ids,
+                                images=images,
+                                tracking_states=updated_states,
+                                frame_number=requested_frame_number,
+                            )
+                    else:
+                        batch_results = session.predict_batch(images)
                 except Exception as mem_err:
                     # Catch Python MemoryError (raised by rtmpose_session when it
                     # detects a BFC Arena OOM) and any ONNX RuntimeException that
@@ -281,15 +318,36 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
                 # ---- Build per-camera observations ----
                 per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
-                for camera_id, image, (keypoints, scores) in zip(
-                        ordered_camera_ids, images, batch_results,
+                bboxes = session.last_bboxes
+                bbox_from_det = session.last_bboxes_from_detector
+                conf_threshold: float = (
+                    pipeline_config.camera_node_config.skeleton_detector_config.confidence_threshold
+                    if pipeline_config.camera_node_config.skeleton_detector_config is not None
+                    else 0.004
+                )
+                for idx, (camera_id, image, (keypoints, scores)) in enumerate(
+                        zip(ordered_camera_ids, images, batch_results),
                 ):
-                    per_camera_skeleton[camera_id] = RTMPoseObservation.from_detection_results(
+                    raw_bb = bboxes[idx] if bboxes and idx < len(bboxes) else None
+                    cam_bbox = (
+                        np.asarray(raw_bb, dtype=np.float64) if raw_bb is not None and len(raw_bb) > 0 else None
+                    )
+                    cam_bbox_src = (
+                        bbox_from_det[idx] if bbox_from_det and idx < len(bbox_from_det) else True
+                    )
+                    obs = RTMPoseObservation.from_detection_results(
                         frame_number=requested_frame_number,
                         keypoints=keypoints,
                         scores=scores,
                         image_size=(int(image.shape[0]), int(image.shape[1])),
+                        bbox=cam_bbox,
+                        bbox_from_detector=cam_bbox_src,
                     )
+                    # ---- Confidence gating: NaN-out low-confidence 2D keypoints ----
+                    low_conf = obs.points.visibility < conf_threshold
+                    if low_conf.any():
+                        obs.points.xyz[low_conf, :2] = np.nan
+                    per_camera_skeleton[camera_id] = obs
                 # Cameras whose frame we couldn't read get None — aggregator
                 # treats this as "no skeleton this frame for this camera"
                 # (same semantics as today's missing-detection path).
@@ -356,6 +414,14 @@ def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | 
         engine_cache_dir=inf_config.engine_cache_dir,
         max_batch_size=inf_config.max_batch_size,
         on_provider_missing="fallback" if inf_config.fallback_on_missing_provider else "raise",
+        # Forward the per-frame detector knobs that the centralized path would
+        # otherwise drop. `max_persons` bounds the pose batch (single-person =
+        # 1 crop/camera) so the ONNX arena can't grow without limit; `device_id`
+        # lets an explicit GPU choice override auto-selection.
+        max_persons=skel_config.max_persons,
+        device_id=skel_config.device_id,
+        yolox_image_scale=inf_config.yolox_image_scale,
+        enable_tracking_skip=inf_config.enable_tracking_skip,
     )
 
     try:
@@ -427,3 +493,54 @@ def _read_frames(
         ordered_camera_ids.append(camera_id)
 
     return images, ordered_camera_ids
+
+
+def _debug_write_bbox_frames(
+    *,
+    camera_ids: list[str],
+    images: list[NDArray[np.uint8]],
+    tracking_states: list[object],  # PersonTrackingState
+    frame_number: int,
+) -> None:
+    """Write debug images with bbox overlays (every 10th frame).
+
+    Green = YOLOX, orange = tracking-predicted.
+    """
+    if frame_number % 10 != 0:
+        return
+    import os
+    from pathlib import Path
+
+    out_dir = Path(os.environ.get("FREEMOCAP_DATA", Path.home() / "freemocap_data")) / "debug_bboxes"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    GREEN = (0, 255, 0)
+    ORANGE = (0, 165, 255)
+
+    for cid, img, st in zip(camera_ids, images, tracking_states):
+        bb = getattr(st, "bbox", None)
+        if bb is None:
+            continue
+        bbox_arr = bb[0] if bb.ndim == 2 else bb
+        x1, y1, x2, y2 = int(bbox_arr[0]), int(bbox_arr[1]), int(bbox_arr[2]), int(bbox_arr[3])
+        # YOLOX ran this frame iff consecutive_skips was just reset to 0
+        # (update_tracking_state does this when from_detector=True, and
+        #  predict_batch_with_tracking skips the increment in that case).
+        consecutive_skips: int = getattr(st, "consecutive_skips", 0)
+        from_detector = consecutive_skips == 0
+        color = GREEN if from_detector else ORANGE
+
+        # Build compact stats line.
+        conf: float = getattr(st, "pose_confidence", 0.0)
+        parts = ["YOLOX" if from_detector else "track", f"conf:{conf:.2f}", f"skips:{consecutive_skips}"]
+        stats_text = "  ".join(parts)
+
+        debug_img = img.copy()
+        cv2.rectangle(debug_img, (x1, y1), (x2, y2), color, 2)
+        draw_text_with_background(
+            debug_img, stats_text,
+            anchor_xy=(x1, y1 - 2),
+            anchor_edge="bottom",
+            text_color=color,
+        )
+        cv2.imwrite(str(out_dir / f"f{frame_number:06d}_{cid}.jpg"), debug_img)

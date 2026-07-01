@@ -28,7 +28,19 @@ export interface MediapipeObservation {
     image_width: number;
     image_height: number;
     points: MediapipePoint[];
+    // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
+    bbox_x1?: number;
+    bbox_y1?: number;
+    bbox_x2?: number;
+    bbox_y2?: number;
+    bbox_from_detector?: boolean;
 }
+
+// Debug HUD (frame number + tracker/point counts) drawn on top of every camera
+// feed. It's redrawn every frame per camera — two stroked+filled text draws plus
+// a font set each — which showed up as ~12% of main-thread time during streaming.
+// Off by default; flip to true when debugging the overlay pipeline.
+const SHOW_SKELETON_DEBUG_HUD = false;
 
 // Classification used for colour routing. Kept deliberately loose — any name
 // containing "left" / "right" is treated as a side, otherwise center.
@@ -143,7 +155,11 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         sourceBitmap: ImageBitmap,
         observation: MediapipeObservation | null,
     ): Promise<ImageBitmap> {
-        this.prepareCanvas(sourceBitmap);
+        this.prepareCanvas(
+            sourceBitmap,
+            observation?.image_width,
+            observation?.image_height,
+        );
 
         if (observation) {
             this.drawSkeletonOverlay(observation);
@@ -155,11 +171,13 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
     private drawSkeletonOverlay(observation: MediapipeObservation): void {
         this.ctx.save();
 
+        const { scaleX, scaleY } = this;
+
         const pointMap = new Map<string, Point2D>();
         for (const p of observation.points) {
             pointMap.set(p.name, {
-                x: p.x,
-                y: p.y,
+                x: p.x * scaleX,
+                y: p.y * scaleY,
                 id: p.name,
                 visibility: p.visibility,
             });
@@ -171,9 +189,50 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         }
 
         this.drawAllPoints(pointMap);
-        this.drawInfo(observation);
+
+        // Debug: draw person bounding box.
+        this.drawBbox(observation);
+
+        if (SHOW_SKELETON_DEBUG_HUD) {
+            this.drawInfo(observation);
+        }
 
         this.ctx.restore();
+    }
+
+    private drawBbox(obs: MediapipeObservation): void {
+        const { bbox_x1, bbox_y1, bbox_x2, bbox_y2, bbox_from_detector } = obs;
+        if (bbox_x1 === undefined || bbox_y1 === undefined
+            || bbox_x2 === undefined || bbox_y2 === undefined) return;
+        if (!isFinite(bbox_x1) || !isFinite(bbox_y1)
+            || !isFinite(bbox_x2) || !isFinite(bbox_y2)) return;
+
+        const { scaleX, scaleY } = this;
+        const x1 = bbox_x1 * scaleX;
+        const y1 = bbox_y1 * scaleY;
+        const x2 = bbox_x2 * scaleX;
+        const y2 = bbox_y2 * scaleY;
+
+        const color = bbox_from_detector ? '#00FF00' : '#FF8C00'; // green=YOLOX, orange=track
+        const label = bbox_from_detector ? 'YOLOX' : 'track';
+        const w = x2 - x1;
+        const h = y2 - y1;
+        if (w <= 0 || h <= 0) return;
+
+        this.ctx.strokeStyle = color;
+        this.ctx.lineWidth = 1.5;
+        this.ctx.strokeRect(x1, y1, w, h);
+
+        // Label at top-left of bbox.
+        this.drawText(
+            label,
+            x1,
+            Math.max(y1 - 4, 12),
+            10,
+            color,
+            this.TEXT_STROKE,
+            2,
+        );
     }
 
     private styleFor(name: string): DrawStyle {

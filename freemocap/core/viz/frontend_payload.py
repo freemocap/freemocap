@@ -1,15 +1,15 @@
 import logging
 
 import msgspec
+import numpy as np
 from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 
-from freemocap.core.tasks.mocap.skeleton_dewiggler.dewiggling_methods.rigid_body_estimator import RigidBodyPose
+from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
 from freemocap.core.types.type_overloads import TrackedPointNameString, PipelineIdString, FrameNumberInt
 from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-# from freemocap.core.viz.image_overlay.mediapipe_overlay_data import MediapipeOverlayData
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,11 @@ from dataclasses import dataclass
 
 
 class FrontendPayload(msgspec.Struct):
-    """Complete payload for frontend visualization.
+    """JSON payload for frontend visualization.
 
-    Carries both charuco and mediapipe overlay data separately so both
-    can be active simultaneously per camera.
+    Carries 2D charuco/skeleton image-overlay data plus low-density metadata
+    (center of mass, XCoM). The 3D keypoints and the rigidified canonical
+    skeleton travel in the binary keypoints message, not here.
     """
 
     frame_number: FrameNumberInt
@@ -31,9 +32,9 @@ class FrontendPayload(msgspec.Struct):
     pipeline_id: PipelineIdString | None = None
     charuco_overlays: dict[CameraIdString, CharucoOverlayData] | None = None
     skeleton_overlays: dict[CameraIdString, SkeletonOverlayData] | None = None
-    keypoints_raw: dict[TrackedPointNameString, Point3d] | None = None
-    keypoints_filtered: dict[TrackedPointNameString, Point3d] | None = None
-    rigid_body_poses: dict[str, RigidBodyPose] | None = None
+    center_of_mass: Point3d | None = None
+    xcom: Point3d | None = None
+    body_kinematics: BodyKinematicsState | None = None
 
     @classmethod
     def from_aggregation_output(
@@ -41,15 +42,25 @@ class FrontendPayload(msgspec.Struct):
             aggregation_output: AggregationNodeOutputMessage,
     ) -> "FrontendPayload":
         """Create frontend payload from aggregation node output."""
+        com = aggregation_output.center_of_mass_result
+        com_point = None
+        if com is not None and not np.any(np.isnan(com.total_body_com)):
+            com_arr = com.total_body_com
+            com_point = Point3d(
+                x=float(com_arr[0]),
+                y=float(com_arr[1]),
+                z=float(com_arr[2]),
+            )
+
         return cls(
             frame_number=aggregation_output.frame_number,
             camera_group_id=aggregation_output.camera_group_id,
             pipeline_id=aggregation_output.pipeline_id,
             charuco_overlays=aggregation_output.charuco_overlay_data,
             skeleton_overlays=aggregation_output.skeleton_overlay_data,
-            keypoints_raw=aggregation_output.keypoints_raw,
-            keypoints_filtered=aggregation_output.keypoints_filtered,
-            rigid_body_poses=aggregation_output.rigid_body_poses,
+            center_of_mass=com_point,
+            xcom=aggregation_output.xcom,
+            body_kinematics=aggregation_output.body_kinematics,
         )
 
 @dataclass(slots=True, frozen=True)

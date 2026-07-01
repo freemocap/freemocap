@@ -55,10 +55,18 @@ class RealtimePipelineManager(PipelineManagerABC):
         pipeline_config: RealtimePipelineConfig,
         realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
+        # The camera IDs this pipeline will actually drive: the explicit realtime
+        # subset if provided, otherwise every camera in the group. Mirrors the
+        # selection logic in RealtimePipeline.create (`pipeline_camera_ids`).
+        target_camera_ids = (
+            set(realtime_camera_ids)
+            if realtime_camera_ids is not None
+            else set(camera_group.camera_ids)
+        )
         with self.lock:
             # Return existing pipeline for this camera set (with updated config)
             for pipeline in self.pipelines.values():
-                if set(pipeline.camera_ids) == set(pipeline_config.camera_ids):
+                if set(pipeline.camera_ids) == target_camera_ids:
                     logger.info(
                         f"Found existing RealtimePipeline [{pipeline.id}] "
                         f"for camera group [{pipeline.camera_group_id}]"
@@ -129,11 +137,15 @@ class RealtimePipelineManager(PipelineManagerABC):
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
+            display_image_sizes: dict[str, dict[str, float]] | None = None,
     ) -> list[FrontendImagePacket]:
         latest: list[FrontendImagePacket] = []
         with self.lock:
             for pipeline_id, pipeline in self.pipelines.items():
-                packet = pipeline.get_latest_frontend_payload(if_newer_than=if_newer_than)
+                packet = pipeline.get_latest_frontend_payload(
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
+                )
                 if packet is not None:
                     latest.append(packet)
         return latest

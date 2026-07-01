@@ -8,6 +8,7 @@ import {
     extractConfigSettings,
 } from './cameras-types';
 import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras, recommendExposureSent,} from './cameras-thunks';
+import {serverStateReceived, serverDisconnected} from '../connection/connection-slice';
 import {
     buildPersistedEntry,
     clearPersistedCameraSettings,
@@ -208,6 +209,36 @@ export const cameraSlice = createSlice({
             // ========== Pause / Unpause Cameras ==========
             .addCase(pauseUnpauseCameras.fulfilled, (state) => {
                 state.isPaused = !state.isPaused;
+            })
+
+            // ========== Server state snapshot (authoritative) ==========
+            // Reconcile observed connection + pause state from the pushed snapshot.
+            .addCase(serverStateReceived, (state, action) => {
+                const groups = Object.values(action.payload.state.camera_groups);
+                const connectedIds = new Set<string>();
+                let anyPaused = false;
+                for (const group of groups) {
+                    if (group.paused) anyPaused = true;
+                    if (group.alive) {
+                        for (const cameraId of Object.keys(group.configs)) {
+                            connectedIds.add(cameraId);
+                        }
+                    }
+                }
+                state.cameras.forEach(camera => {
+                    camera.connectionStatus = connectedIds.has(camera.id) ? 'connected' : 'available';
+                });
+                state.isPaused = anyPaused;
+            })
+
+            // On websocket disconnect, reset to "not connected" so nothing goes stale.
+            .addCase(serverDisconnected, (state) => {
+                state.cameras.forEach(camera => {
+                    camera.connectionStatus = 'available';
+                    camera.metrics = undefined;
+                    camera.hasConfigMismatch = false;
+                });
+                state.isPaused = false;
             });
     },
 });

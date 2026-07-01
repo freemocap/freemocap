@@ -20,18 +20,72 @@ import { type ViewportStats } from "./helpers/viewport3d-types";
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
-console.log("[ThreeJsCanvas] creating viewport3d worker");
+/** Returns true if at least one point in the frame is visible (vis > 0 and coords finite). */
+function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
+  const arr = frame.interleaved;
+  for (let i = 0; i < arr.length; i += 4) {
+    if (arr[i + 3] > 0 && isFinite(arr[i]) && isFinite(arr[i + 1]) && isFinite(arr[i + 2])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+console.debug("[ThreeJsCanvas] creating viewport3d worker");
 export const VIEWPORT_WORKER = new Worker(
   new URL("./viewport3d.worker.tsx", import.meta.url),
   { type: "module" },
 );
-console.log("[ThreeJsCanvas] viewport3d worker created", VIEWPORT_WORKER);
+console.debug("[ThreeJsCanvas] viewport3d worker created", VIEWPORT_WORKER);
 VIEWPORT_WORKER.addEventListener("error", (e) =>
   console.error("[ThreeJsCanvas] worker error", e),
 );
 VIEWPORT_WORKER.addEventListener("messageerror", (e) =>
   console.error("[ThreeJsCanvas] worker messageerror", e),
 );
+
+// Vite HMR re-evaluates this module on every edit. Without disposing, each hot
+// update spawns a NEW worker (its own WebGL context + Three scene) while the old
+// one keeps running forever — a worker/context leak across a dev session that
+// inflates heap and the Documents/worker counts in the profiler.
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => VIEWPORT_WORKER.terminate());
+}
+
+// Shared across mounts: a deferred teardown handle. React.StrictMode unmounts and
+// immediately remounts in dev; we schedule the worker teardown on unmount and let
+// the remount cancel it, so it only actually fires on genuine navigation away.
+let pendingViewportTeardown: ReturnType<typeof setTimeout> | null = null;
+
+function CenterOfMassForwarder() {
+  const server = useServer();
+  useEffect(() => {
+    return server.subscribeToCenterOfMass((point) => {
+      VIEWPORT_WORKER.postMessage({ type: "centerOfMass", data: point });
+    });
+  }, [server]);
+  return null;
+}
+
+function XcomForwarder() {
+  const server = useServer();
+  useEffect(() => {
+    return server.subscribeToXcom((point) => {
+      VIEWPORT_WORKER.postMessage({ type: "xcom", data: point });
+    });
+  }, [server]);
+  return null;
+}
+
+function BodyKinematicsForwarder() {
+  const server = useServer();
+  useEffect(() => {
+    return server.subscribeToBodyKinematics((bk) => {
+      VIEWPORT_WORKER.postMessage({ type: "bodyKinematics", data: bk });
+    });
+  }, [server]);
+  return null;
+}
 
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
@@ -107,9 +161,9 @@ export function ThreeJsCanvas() {
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
   const {
-    subscribeToKeypointsRaw,
-    subscribeToKeypointsFiltered,
-    getLatestKeypointsRaw,
+    subscribeToKeypoints,
+    subscribeToSkeleton,
+    getLatestSkeleton,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -139,17 +193,39 @@ export function ThreeJsCanvas() {
     );
   }, []);
 
+  // Tear down the worker's Three root on unmount so its WebGL context + scene are
+  // released while the viewport isn't shown. Kept in its own effect (not coupled
+  // to the transfer-once init effect, which early-returns on a StrictMode remount
+  // and would otherwise never register a cleanup). The teardown is deferred and
+  // canceled by an immediate remount, so StrictMode's dev double-invoke doesn't
+  // kill the live scene — only real navigation away triggers it. The worker also
+  // disposes any prior root on the next `init`, so re-entry rebuilds cleanly.
   useEffect(() => {
-    return subscribeToKeypointsRaw((frame) => {
-      VIEWPORT_WORKER.postMessage({ type: "keypointsRaw", data: frame });
-    });
-  }, [subscribeToKeypointsRaw]);
+    if (pendingViewportTeardown !== null) {
+      clearTimeout(pendingViewportTeardown);
+      pendingViewportTeardown = null;
+    }
+    return () => {
+      pendingViewportTeardown = setTimeout(() => {
+        VIEWPORT_WORKER.postMessage({ type: "teardown" });
+        pendingViewportTeardown = null;
+      }, 0);
+    };
+  }, []);
 
   useEffect(() => {
-    return subscribeToKeypointsFiltered((frame) => {
-      VIEWPORT_WORKER.postMessage({ type: "keypointsFiltered", data: frame });
+    return subscribeToKeypoints((frame) => {
+      if (!_frameHasVisiblePoints(frame)) return;
+      VIEWPORT_WORKER.postMessage({ type: "keypoints", data: frame });
     });
-  }, [subscribeToKeypointsFiltered]);
+  }, [subscribeToKeypoints]);
+
+  useEffect(() => {
+    return subscribeToSkeleton((frame) => {
+      if (!_frameHasVisiblePoints(frame)) return;
+      VIEWPORT_WORKER.postMessage({ type: "skeleton", data: frame });
+    });
+  }, [subscribeToSkeleton]);
 
   useEffect(() => {
     if (isPlayback) return;
@@ -177,11 +253,26 @@ export function ThreeJsCanvas() {
   }, [loadedCalibration]);
 
   const handleFit = useCallback(() => {
-    VIEWPORT_WORKER.postMessage({
-      type: "fitCamera",
-      data: getLatestKeypointsRaw(),
-    });
-  }, [getLatestKeypointsRaw]);
+    // Use skeleton-only data so the bounding box excludes charuco board corners.
+    const skel = getLatestSkeleton();
+    if (!skel) return;
+    VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: skel });
+
+    // Refine over 2s — each new skeleton frame recomputes the target so the
+    // camera smoothly converges as the skeleton settles.
+    const start = performance.now();
+    const REFINE_DURATION_MS = 2000;
+    const interval = setInterval(() => {
+      if (performance.now() - start >= REFINE_DURATION_MS) {
+        clearInterval(interval);
+        return;
+      }
+      const latest = getLatestSkeleton();
+      if (latest) {
+        VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: latest });
+      }
+    }, 150);
+  }, [getLatestSkeleton]);
 
   const handleReset = useCallback(() => {
     VIEWPORT_WORKER.postMessage({ type: "resetCamera" });
@@ -281,6 +372,9 @@ export function ThreeJsCanvas() {
   return (
     <ViewportStateProvider>
       <VisibilityForwarder />
+      <CenterOfMassForwarder />
+      <XcomForwarder />
+      <BodyKinematicsForwarder />
       <WorkerStatsReceiver />
       <div
         ref={containerRef}

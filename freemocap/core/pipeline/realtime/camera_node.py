@@ -22,6 +22,7 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -136,6 +137,15 @@ class CameraNode(SourceNode):
                 config=config.skeleton_detector_config,
             )
 
+        keypoint_filter: RealtimeKeypointFilter | None = None
+        if config.enable_keypoint_filter:
+            keypoint_filter = RealtimeKeypointFilter(
+                dims=2,
+                min_cutoff=config.keypoint_filter_min_cutoff,
+                beta=config.keypoint_filter_beta,
+                d_cutoff=config.keypoint_filter_d_cutoff,
+            )
+
         frame_recarray: np.recarray | None = None
         timer = None
         if log_pipeline_times:
@@ -170,6 +180,17 @@ class CameraNode(SourceNode):
                         )
                     elif not new_config.skeleton_tracking_enabled or skeleton_inference_centralized:
                         skeleton_detector = None
+
+                    # Recreate keypoint filter if config changed.
+                    if new_config.enable_keypoint_filter:
+                        keypoint_filter = RealtimeKeypointFilter(
+                            dims=2,
+                            min_cutoff=new_config.keypoint_filter_min_cutoff,
+                            beta=new_config.keypoint_filter_beta,
+                            d_cutoff=new_config.keypoint_filter_d_cutoff,
+                        )
+                    else:
+                        keypoint_filter = None
 
                     config = new_config
 
@@ -223,6 +244,46 @@ class CameraNode(SourceNode):
                     )
                     if timer is not None:
                         timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
+
+                    # Apply 1€ filter to 2D keypoints before publishing.
+                    if keypoint_filter is not None and skeleton_observation is not None:
+                        t0 = time.perf_counter() if timer is not None else 0.0
+                        raw_2d = skeleton_observation.points.to_named_dict(dimensions=2)
+                        filtered_2d = keypoint_filter.filter(
+                            t=time.perf_counter(),
+                            raw_keypoints=raw_2d,
+                        )
+                        # Write filtered xy back into the PointCloud in place.
+                        xyz = skeleton_observation.points.xyz
+                        for name, coords in filtered_2d.items():
+                            try:
+                                idx = skeleton_observation.points.names.index(name)
+                                xyz[idx, 0] = coords[0]
+                                xyz[idx, 1] = coords[1]
+                            except ValueError:
+                                pass  # predicted keypoint not in schema — skip
+                        if timer is not None:
+                            timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
+
+                    # ---- Confidence gating: NaN-out low-confidence 2D keypoints ----
+                    # Runs after the 1€ filter so the filter doesn't propagate
+                    # held positions for keypoints that are actually garbage.
+                    # Does NOT mutate visibility — only zeroes xy so triangulation
+                    # sees NaN and skips these points.
+                    if (
+                        skeleton_observation is not None
+                        and config.skeleton_detector_config is not None
+                    ):
+                        conf_threshold = config.skeleton_detector_config.confidence_threshold
+                        visibility = skeleton_observation.points.visibility
+                        low_conf = visibility < conf_threshold
+                        if low_conf.any():
+                            skeleton_observation.points.xyz[low_conf, :2] = np.nan
+                            if timer is not None:
+                                timer.record(
+                                    "confidence_gate_dropped",
+                                    int(low_conf.sum()),
+                                )
                 if charuco_detector is not None:
                     t0 = time.perf_counter() if timer is not None else 0.0
                     charuco_observation = charuco_detector.detect(

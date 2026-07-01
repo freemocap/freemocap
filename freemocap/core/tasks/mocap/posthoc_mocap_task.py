@@ -14,7 +14,15 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from freemocap.core.tasks.calibration.calibration_task_config import CalibrationSource
+# Load pyarrow FIRST, before the native libs pulled in by the imports below.
+# pandas>=3.0 uses the pyarrow-backed string dtype by default, so writing the
+# output CSV/parquet calls into pyarrow's native code. On Windows, if another
+# native lib in this module's import graph loads before pyarrow, pyarrow's Arrow
+# DLLs fail to initialize and the worker dies with a STATUS_ACCESS_VIOLATION
+# (0xC0000005) — a hard segfault, not a catchable exception. Importing pyarrow
+# up front makes it win the DLL load-order race. Do not remove or reorder.
+import pyarrow  # noqa: F401
+
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
 
@@ -22,8 +30,6 @@ if TYPE_CHECKING:
     pass
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
-# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_observation import LegacyMediapipeObservation
-# from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
 
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
@@ -77,10 +83,8 @@ def run_posthoc_mocap_aggregator_task(
                 )
             observation_recorders[cam_id].add_observation(observation=obs)
 
-    # ---- Get calibration path ----
-    if task_config.calibration_source == CalibrationSource.SPECIFIED:
-        if not task_config.calibration_toml_path:
-            raise RuntimeError("calibration_source is 'specified' but calibration_toml_path is not set.")
+    # ---- Get calibration path: explicit path wins; else fall back to most-recent ----
+    if task_config.calibration_toml_path:
         calibration_toml_path = Path(task_config.calibration_toml_path)
         if not calibration_toml_path.exists():
             raise RuntimeError(
@@ -94,7 +98,7 @@ def run_posthoc_mocap_aggregator_task(
                 "No calibration file found — cannot run mocap without calibration. "
                 "Run a calibration pipeline first."
             )
-        logger.info(f"Using most recent calibration TOML: {calibration_toml_path}")
+        logger.info(f"No calibration path specified; using most-recent calibration: {calibration_toml_path}")
 
     # ---- Copy calibration file into recording folder ----
     recording_folder = Path(recording_info.full_recording_path)

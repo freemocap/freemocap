@@ -9,6 +9,8 @@ import NameDropdownSelector from '@/components/ui-components/NameDropdownSelecto
 import IconButton from '@/components/ui-components/IconButton';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import { STATES } from '@/components/ui-components/states';
+import { useAppSelector } from '@/store';
+import { selectServerPid } from '@/store/slices/connection/connection-selectors';
 
 export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
     const { t } = useTranslation();
@@ -27,20 +29,22 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
         applyHostPort, handleHostPortKeyDown,
     } = panel;
 
+    const serverPid = useAppSelector(selectServerPid);
+
     const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
 
-    const serverState = serverRunning ? STATES.CONNECTED : serverLoading ? STATES.CONNECTING : STATES.DISCONNECTED;
     const wsState = isConnected ? STATES.CONNECTED : autoConnectWs ? STATES.CONNECTING : STATES.DISCONNECTED;
 
+    // Connectedness is the websocket, full stop — the server is reachable iff the
+    // websocket is open. The launched-process state never feeds this.
     const getOverallStatus = () => {
-        const states = isElectron ? [serverState, wsState] : [wsState];
-        if (states.every((s) => s === STATES.CONNECTED)) return { text: t('connected'), iconClass: 'connected-icon' };
-        if (states.some((s) => s === STATES.CONNECTING)) return { text: t('connecting'), iconClass: 'loader-icon' };
-        if (states.some((s) => s === STATES.CONNECTED)) return { text: 'Connected', iconClass: 'connected-icon' };
+        if (wsState === STATES.CONNECTED) return { text: t('connected'), iconClass: 'connected-icon' };
+        if (wsState === STATES.CONNECTING) return { text: t('connecting'), iconClass: 'loader-icon' };
         return { text: 'Not Connected', iconClass: 'warning-icon' };
     };
 
     const overallStatus = getOverallStatus();
+    const pidSuffix = isConnected && serverPid != null ? ` · PID ${serverPid}` : '';
     const cameraCountSuffix = isConnected && connectedCameraIds.length > 0
         ? ` (${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''})`
         : '';
@@ -72,7 +76,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     return (
         <DropdownButton
             buttonProps={{
-                text: overallStatus.text + cameraCountSuffix,
+                text: overallStatus.text + pidSuffix + cameraCountSuffix,
                 iconClass: overallStatus.iconClass,
                 rightSideIcon: 'dropdown',
                 textColor: 'text-gray',
@@ -82,19 +86,21 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
             dropdownItems={
                 <div className="connection-container flex flex-col p-1 gap-2 br-1 bg-darkgray border-mid-black">
                     <div className="group-0 connection-group flex flex-col gap-1 bg-middark br-1 p-1">
-                        {/* Python server row (Electron only) */}
+                        {/* Launch server executable (Electron only) — process control, NOT
+                            connection status. The server is "connected" iff the websocket is open. */}
                         {isElectron && (
                             <div className="row-1 gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
                                 <div className="text-container overflow-hidden flex items-center gap-1">
-                                    <span className={`icon icon-size-20 ${rowIconClass(serverState)}`} />
-                                    <p className="text text-nowrap text-left bg">Python server</p>
+                                    <span className={`${serverStatusColor} br-5`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                                    <p className="text text-nowrap text-left bg">
+                                        {serverRunning ? t('running') : serverLoading ? t('connecting') : t('stopped')}
+                                    </p>
                                 </div>
-                                <ToggleButtonComponent
-                                    state={serverState}
-                                    {...toggleConfig}
-                                    textColor="text-white"
-                                    onConnect={startServer}
-                                    onDisconnect={stopServer}
+                                <ButtonSm
+                                    text={serverRunning ? 'Stop server' : 'Launch server'}
+                                    onClick={() => (serverRunning ? stopServer() : startServer())}
+                                    disabled={serverLoading}
+                                    className={serverRunning ? 'secondary flex-shrink-0' : 'primary flex-shrink-0'}
                                 />
                             </div>
                         )}

@@ -1,0 +1,110 @@
+---
+sidebar_position: 1
+title: Testing
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Testing
+
+FreeMoCap uses a multi-layered testing strategy spanning the Python backend, React frontend, and end-to-end integration.
+
+## Test Layers
+
+| Layer | Tool | Scope | When to run |
+|---|---|---|---|
+| **Backend unit** | `pytest` | Individual functions, models, utilities | Every commit |
+| **Backend integration** | `pytest` + `httpx` | REST endpoints, WebSocket, pipeline startup | Before PR |
+| **Frontend unit** | Vitest (via Vite) | Components, hooks, Redux slices | Every commit |
+| **E2E** | Playwright | Full app (Electron + backend) | Before release |
+| **Multi-Python** | `nox` | Tests against Python 3.11, 3.12, 3.13 | Before release |
+
+## Running Tests
+
+### Backend (Python)
+
+```bash
+# Run all backend tests
+uv run poe test
+
+# Run specific test categories
+uv run poe test-schema      # Pydantic schema validation
+uv run poe test-settings    # Configuration tests
+uv run poe test-http        # REST endpoint tests
+uv run poe test-ws          # WebSocket tests
+uv run poe test-sync        # Synchronization tests
+uv run poe test-calibration # Calibration pipeline tests
+uv run poe test-e2e         # End-to-end pipeline tests
+
+# Run with nox (tests across Python versions)
+nox -s test_all
+```
+
+### Frontend (TypeScript)
+
+```bash
+cd freemocap-ui
+
+# Run frontend tests
+npm test
+
+# Run E2E tests (requires Playwright)
+npm run e2e
+
+# E2E setup (first time)
+npm run pree2e
+```
+
+### Linting & Type Checking
+
+```bash
+# Backend linting (ruff)
+uv run poe lint
+
+# Backend type checking (pyright)
+uv run poe tc-check
+
+# Auto-fix type-only imports
+uv run poe tc-fix
+```
+
+## Test File Conventions
+
+### Backend
+Tests live in `freemocap/tests/` mirroring the source structure:
+```
+freemocap/tests/
+├── test_binary_keypoints_protocol.py
+├── test_e2e_pipeline.py
+├── calibration/
+│   └── test_*.py
+└── triangulation/
+    └── test_*.py
+```
+
+### Frontend
+Tests co-locate with source files:
+```
+freemocap-ui/src/
+├── components/
+│   └── playback/
+│       └── SyncedVideoPlayer.test.tsx
+└── store/
+    └── slices/
+        └── cameras/
+            └── cameras-slice.test.ts
+```
+
+## E2E Testing
+
+E2E tests use Playwright to drive the full Electron application against a running Python backend. They cover:
+
+- Camera detection and connection
+- Recording start/stop lifecycle
+- Calibration workflow
+- Mocap processing pipeline
+- Blender export
+
+<Tip shortInfo="See TESTING.md in the repo root for the comprehensive testing guide with details on test coverage expectations, mocking patterns, and CI integration." />

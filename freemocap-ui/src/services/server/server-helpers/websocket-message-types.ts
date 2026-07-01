@@ -13,7 +13,7 @@ import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-ov
 import {OverlayRendererFactory} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
-import {Point3d, RigidBodyPose} from "@/components/viewport3d";
+import {Point3d, BodyKinematics} from "@/components/viewport3d";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 // Type guard to check if a message is a log record
@@ -54,9 +54,9 @@ export interface FrontendPayloadMessage {
     frame_number: number;
     charuco_overlays: Record<string, CharucoObservation>
     skeleton_overlays: Record<string, MediapipeObservation>
-    keypoints_raw: Record<string, Point3d>
-    keypoints_filtered: Record<string, Point3d>
-    rigid_body_poses: Record<string, RigidBodyPose>;
+    center_of_mass: Point3d | null;
+    xcom: Point3d | null;
+    body_kinematics: BodyKinematics | null;
 }
 
 export function isFrontendPayload(data: any): data is FrontendPayloadMessage {

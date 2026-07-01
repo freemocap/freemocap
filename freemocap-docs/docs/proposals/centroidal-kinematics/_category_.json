@@ -1,0 +1,10 @@
+{
+  "label": "Centroidal Kinematics & RMP",
+  "position": 1,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "title": "Planned: Centroidal Kinematics & the Reaction Mass Pendulum",
+    "description": "Forward-looking design and implementation plans for adding a centroidal-kinematics layer to freemocap: composite centroidal inertia, centroidal angular momentum, the Reaction Mass Pendulum (RMP), and a unified balance-state representation that ties together center of mass, extrapolated center of mass, the instantaneous capture point, and ground-reference points (CoP / CMP). These pages describe work that is PLANNED, not yet implemented."
+  }
+}

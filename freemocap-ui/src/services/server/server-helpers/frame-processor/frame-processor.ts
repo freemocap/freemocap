@@ -1,10 +1,8 @@
 // frame-processor.ts
 //
-// Delegates binary payload parsing and JPEG→ImageBitmap decoding to a
-// dedicated Web Worker so that all Blob allocations and createImageBitmap
-// async work happen off the main thread.
-
-import {frameDecodeWorkerCode} from "@/services/server/server-helpers/frame-processor/frame-decode.worker";
+// Manages the decode module worker. The worker parses the binary payload and
+// decodes JPEG→ImageBitmap off the main thread, returning RAW bitmaps. Overlay
+// compositing happens downstream in the per-camera canvas workers.
 
 export interface FrameData {
     cameraId: string;
@@ -13,7 +11,7 @@ export interface FrameData {
     width: number;
     height: number;
     colorChannels: number;
-    bitmap: ImageBitmap;
+    pixelBuffer: ArrayBuffer;
 }
 
 export interface ProcessedFrameResult {
@@ -22,14 +20,7 @@ export interface ProcessedFrameResult {
     frameNumbers: Set<number>;
 }
 
-/** Message sent from main thread → decode worker. */
-interface DecodeRequest {
-    type: 'decode';
-    payload: ArrayBuffer;
-    requestId: number;
-}
-
-/** Successful response from decode worker → main thread. */
+/** Successful response from worker → main thread. */
 interface DecodeResultMessage {
     type: 'result';
     requestId: number;
@@ -41,10 +32,10 @@ interface DecodeResultMessage {
         height: number;
         colorChannels: number;
     }>;
-    bitmaps: ImageBitmap[];
+    pixelBuffers: ArrayBuffer[];
 }
 
-/** Error response from decode worker → main thread. */
+/** Error response from worker → main thread. */
 interface DecodeErrorMessage {
     type: 'error';
     requestId: number;
@@ -65,35 +56,33 @@ export class FrameProcessor {
     }> = new Map();
 
     constructor() {
-        const blob = new Blob([frameDecodeWorkerCode], { type: 'application/javascript' });
-        const url = URL.createObjectURL(blob);
-        this.worker = new Worker(url);
-        URL.revokeObjectURL(url);
+        this.worker = this.createWorker();
+    }
 
-        this.worker.onmessage = (e: MessageEvent<DecodeWorkerMessage>) => {
+    private createWorker(): Worker {
+        const worker = new Worker(
+            new URL("./frame-decode.worker.ts", import.meta.url),
+            { type: "module" },
+        );
+
+        worker.onmessage = (e: MessageEvent<DecodeWorkerMessage>) => {
             this.handleWorkerMessage(e.data);
         };
-
-        this.worker.onerror = (e: ErrorEvent) => {
+        worker.onerror = (e: ErrorEvent) => {
             const error = new Error(`Frame decode worker error: ${e.message}`);
-            // Reject all pending requests so callers don't hang
             for (const [, pending] of this.pendingRequests) {
                 pending.reject(error);
             }
             this.pendingRequests.clear();
             throw error;
         };
+
+        return worker;
     }
 
     private handleWorkerMessage(msg: DecodeWorkerMessage): void {
         const pending = this.pendingRequests.get(msg.requestId);
         if (!pending) {
-            // Clean up any bitmaps in orphaned result messages
-            if (msg.type === 'result') {
-                for (const bitmap of msg.bitmaps) {
-                    bitmap.close();
-                }
-            }
             throw new Error(`Received response for unknown request ${msg.requestId}`);
         }
         this.pendingRequests.delete(msg.requestId);
@@ -103,7 +92,7 @@ export class FrameProcessor {
             return;
         }
 
-        // Reassemble FrameData by zipping metadata + bitmaps
+        // Reassemble FrameData by zipping metadata + pixel buffers
         const frames: FrameData[] = msg.frameData.map((meta, i) => ({
             cameraId: meta.cameraId,
             cameraIndex: meta.cameraIndex,
@@ -111,7 +100,7 @@ export class FrameProcessor {
             width: meta.width,
             height: meta.height,
             colorChannels: meta.colorChannels,
-            bitmap: msg.bitmaps[i],
+            pixelBuffer: msg.pixelBuffers[i],
         }));
 
         const cameraIds = new Set<string>();
@@ -139,10 +128,9 @@ export class FrameProcessor {
             const requestId = this.nextRequestId++;
             this.pendingRequests.set(requestId, { resolve, reject });
 
-            const msg: DecodeRequest = { type: 'decode', payload: data, requestId };
             // Transfer the ArrayBuffer to the worker (zero-copy).
             // After this, `data` is detached on the main thread.
-            this.worker.postMessage(msg, [data]);
+            this.worker.postMessage({ type: 'decode', payload: data, requestId }, [data]);
         });
     }
 
@@ -160,25 +148,8 @@ export class FrameProcessor {
         }
         this.pendingRequests.clear();
 
-        // Terminate and recreate the worker
+        // Terminate and recreate the worker (re-applies visibility/schema).
         this.worker.terminate();
-
-        const blob = new Blob([frameDecodeWorkerCode], { type: 'application/javascript' });
-        const url = URL.createObjectURL(blob);
-        this.worker = new Worker(url);
-        URL.revokeObjectURL(url);
-
-        this.worker.onmessage = (e: MessageEvent<DecodeWorkerMessage>) => {
-            this.handleWorkerMessage(e.data);
-        };
-
-        this.worker.onerror = (e: ErrorEvent) => {
-            const error = new Error(`Frame decode worker error: ${e.message}`);
-            for (const [, pending] of this.pendingRequests) {
-                pending.reject(error);
-            }
-            this.pendingRequests.clear();
-            throw error;
-        };
+        this.worker = this.createWorker();
     }
 }

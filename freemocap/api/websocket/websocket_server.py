@@ -5,6 +5,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import os
 import time
 from queue import Empty
 from typing import TYPE_CHECKING
@@ -153,6 +154,10 @@ class WebsocketServer:
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
             ),
+            asyncio.create_task(
+                self._app_state_sender(),
+                name="WebsocketAppStateSender",
+            ),
         ]
 
         try:
@@ -162,6 +167,36 @@ class WebsocketServer:
             for task in self.ws_tasks:
                 if not task.done():
                     task.cancel()
+            raise
+
+    async def _app_state_sender(self):
+        """Push the authoritative application-state snapshot to the client.
+
+        Sent immediately on connect (the "hello") and again whenever the state
+        changes. Connectedness and server identity (PID) ride on this message —
+        the client treats it as the single source of truth for observed state.
+        """
+        logger.info("Starting app-state sender task...")
+        previous_state: dict | None = None
+        try:
+            while self.should_continue:
+                state_dict = self._app.to_state_dict()
+                if previous_state is None or state_dict != previous_state:
+                    await self._send_msgspec_json({
+                        "message_type": WebsocketMessageType.APP_STATE,
+                        "server_pid": os.getpid(),
+                        "state": state_dict,
+                    })
+                await asyncio.sleep(1.0)
+                previous_state = state_dict
+        except asyncio.CancelledError:
+            pass
+        except WebSocketDisconnect:
+            logger.info("Client disconnected, ending app-state sender task...")
+        except Exception as e:
+            logger.exception(f"Error in app-state sender: {e.__class__}: {e}")
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     def last_frame_acknowledged(self) -> bool:
@@ -182,7 +217,7 @@ class WebsocketServer:
                 for update_message in posthoc_progress:
                     await self._send_msgspec_json(update_message)
 
-                if not self.last_frame_acknowledged():
+                if not self.last_frame_acknowledged():# or True: #JSM - bypassing frame ack check for now
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure >= BACKPRESSURE_RESET_THRESHOLD:
                         # Frontend is too far behind. Reset rather than stalling the aggregator
@@ -207,7 +242,10 @@ class WebsocketServer:
                 await self._app.wait_for_realtime_result(timeout=0.5)
 
                 try:
-                    packets, progress_updates = self._app.get_latest_frontend_payloads(if_newer_than=int(self.last_sent_frame_number))
+                    packets, progress_updates = self._app.get_latest_frontend_payloads(
+                        if_newer_than=int(self.last_sent_frame_number),
+                        display_image_sizes=self._display_image_sizes,
+                    )
                 except IndexError:
                     logger.warning("Ring buffer overwrite — resetting to latest frame")
                     self.last_sent_frame_number = -1
@@ -276,6 +314,7 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error in frontend image relay: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     async def _logs_relay(self, ws_log_level: int = int(MIN_LOG_LEVEL_FOR_WEBSOCKET)):
@@ -314,6 +353,8 @@ class WebsocketServer:
                 f"— ws state: {self.websocket.client_state}"
             )
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+
             raise
 
     async def _client_message_handler(self):
@@ -342,7 +383,14 @@ class WebsocketServer:
                                 if "frameNumber" in data:
                                     # Existing frame acknowledgment handling
                                     self.last_received_frontend_confirmation = data["frameNumber"]
-                                    self._display_image_sizes = data.get("displayImageSizes", None)
+                                    raw_sizes = data.get("displayImageSizes", None)
+                                    if raw_sizes is not None:
+                                        self._display_image_sizes = {
+                                            cam_id: {k: float(v) for k, v in dims.items()}
+                                            for cam_id, dims in raw_sizes.items()
+                                        }
+                                    else:
+                                        self._display_image_sizes = None
                                 else:
                                     logger.debug(f"Received unhandled JSON message: {list(data.keys())}")
 
@@ -366,6 +414,8 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error handling client message: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+
             raise
         finally:
             logger.info("Ending client message handler...")

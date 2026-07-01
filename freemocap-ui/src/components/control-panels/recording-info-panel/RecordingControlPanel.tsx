@@ -13,7 +13,7 @@ import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
 import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
 import { useServer } from "@/services/server/ServerContextProvider";
-import { getTimestampString } from "@/components/control-panels/recording-info-panel/getTimestampString";
+import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
 import { useTranslation } from "react-i18next";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";

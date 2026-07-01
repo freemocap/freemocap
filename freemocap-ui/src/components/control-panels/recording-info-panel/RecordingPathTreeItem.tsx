@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {RecordingControlsSection} from "@/components/control-panels/recording-info-panel/RecordingControlsTreeSection";
-import {getTimestampString} from "@/components/control-panels/recording-info-panel/getTimestampString";
+import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import TextSelector from '@/components/ui-components/TextSelector';
 import {useAppDispatch} from '@/store';

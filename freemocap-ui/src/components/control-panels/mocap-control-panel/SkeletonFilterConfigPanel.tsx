@@ -91,37 +91,37 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
             {/* === One Euro Filter === */}
             <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>One Euro Filter</p>
 
-            <div title="Minimum cutoff frequency (Hz). Lower = heavier smoothing (less jitter, more lag). Higher = more responsive.">
+            <div title="Minimum cutoff frequency (Hz) — controls how quickly the filter settles when motion stops. At 30 fps: 0.5 Hz ≈ 0.8 s settling, 1.0 Hz ≈ 0.4 s, 2.0 Hz ≈ 0.2 s. Raise if skeleton feels dragged; lower if it jitters at rest.">
                 <p className="text sm text-gray">
-                    Min Cutoff: {skeletonFilterConfig.min_cutoff.toFixed(4)}
+                    Min Cutoff: {skeletonFilterConfig.min_cutoff.toFixed(2)} Hz
                 </p>
                 <input
                     type="range"
                     value={skeletonFilterConfig.min_cutoff}
                     onChange={(e) => updateSkeletonFilterConfig({min_cutoff: parseFloat(e.target.value)})}
-                    min={0.0001} max={0.1} step={0.0005} disabled={isLoading}
+                    min={0.1} max={10} step={0.1} disabled={isLoading}
                     className="w-full"
                     style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
-            <div title="Speed coefficient. Higher = less lag during fast motion but more jitter. Zero = constant smoothing regardless of speed.">
+            <div title="Speed coefficient (1/mm). Raises the cutoff during motion so fast movements pass through with less lag. Positions are in millimetres, so good values are 0.003–0.02. At 0.007: walking speed (500 mm/s) adds 3.5 Hz; a fast swing (2000 mm/s) adds 14 Hz. Zero = same smoothing at all speeds.">
                 <p className="text sm text-gray">
-                    Beta: {skeletonFilterConfig.beta.toFixed(2)}
+                    Beta: {skeletonFilterConfig.beta.toFixed(3)} /mm
                 </p>
                 <input
                     type="range"
                     value={skeletonFilterConfig.beta}
                     onChange={(e) => updateSkeletonFilterConfig({beta: parseFloat(e.target.value)})}
-                    min={0} max={5} step={0.05} disabled={isLoading}
+                    min={0} max={0.05} step={0.001} disabled={isLoading}
                     className="w-full"
                     style={{accentColor: 'var(--color-info)'}}
                 />
             </div>
 
-            <div title="Cutoff frequency for the speed estimator. Controls how quickly the filter reacts to speed changes. Usually fine at 1.0.">
+            <div title="Cutoff frequency (Hz) for the internal velocity estimator. Controls how quickly the filter adapts to speed changes. 1.0 Hz is a safe default — lower to 0.3–0.5 if noisy triangulation causes the skeleton to over-react to speed spikes.">
                 <p className="text sm text-gray">
-                    D Cutoff: {skeletonFilterConfig.d_cutoff.toFixed(2)}
+                    D Cutoff: {skeletonFilterConfig.d_cutoff.toFixed(2)} Hz
                 </p>
                 <input
                     type="range"

@@ -1,5 +1,3 @@
-export type CalibrationSource = 'most_recent' | 'specified';
-
 export interface CharucoBoardConfigForPipeline {
     squares_x: number;
     squares_y: number;
@@ -13,11 +11,12 @@ export interface CameraNodeConfig {
 }
 
 export interface RealtimeAggregatorNodeConfig {
-    calibration_toml_source: CalibrationSource;
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
     filter_enabled: boolean;
     skeleton_enabled: boolean;
+    center_of_mass_enabled: boolean;
+    skeleton_fitting_enabled: boolean;
 }
 
 export interface RealtimePipelineConfig {
@@ -31,11 +30,12 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
         skeleton_tracking_enabled: true,
     },
     aggregator_config: {
-        calibration_toml_source: 'most_recent',
         calibration_toml_path: null,
         triangulation_enabled: true,
         filter_enabled: false,
         skeleton_enabled: true,
+        center_of_mass_enabled: true,
+        skeleton_fitting_enabled: true,
     },
 };
 

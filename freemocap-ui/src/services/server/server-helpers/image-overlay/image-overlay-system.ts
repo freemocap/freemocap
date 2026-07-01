@@ -52,12 +52,18 @@ export abstract class BaseOverlayRenderer {
     protected offscreenCanvas: OffscreenCanvas;
     protected ctx: OffscreenCanvasRenderingContext2D;
     protected modelInfo: ModelInfo | null = null;
-    
+
+    /** Scale from overlay coordinate space to bitmap pixel space.
+     *  Computed each frame from actual bitmap dimensions vs the overlay's
+     *  declared image_width/image_height (original capture resolution). */
+    protected scaleX: number = 1;
+    protected scaleY: number = 1;
+
     // Common style constants
     protected readonly INFO_BG = 'rgba(0, 0, 0, 0.7)';
     protected readonly TEXT_COLOR = '#ccc';
     protected readonly TEXT_STROKE = '#111';
-    
+
     constructor() {
         this.offscreenCanvas = new OffscreenCanvas(1, 1);
         const ctx = this.offscreenCanvas.getContext('2d', {
@@ -88,9 +94,15 @@ export abstract class BaseOverlayRenderer {
     ): Promise<ImageBitmap>;
 
     /**
-     * Resize canvas if needed and draw source image
+     * Resize canvas if needed, draw source image, and compute the dynamic
+     * scale from the overlay coordinate space (original capture resolution)
+     * to the actual bitmap pixel space. Call once per frame before drawing.
      */
-    protected prepareCanvas(sourceBitmap: ImageBitmap): void {
+    protected prepareCanvas(
+        sourceBitmap: ImageBitmap,
+        overlayImageWidth?: number,
+        overlayImageHeight?: number,
+    ): void {
         const { width, height } = sourceBitmap;
 
         if (this.offscreenCanvas.width !== width || this.offscreenCanvas.height !== height) {
@@ -100,6 +112,14 @@ export abstract class BaseOverlayRenderer {
 
         this.ctx.clearRect(0, 0, width, height);
         this.ctx.drawImage(sourceBitmap, 0, 0);
+
+        if (overlayImageWidth && overlayImageHeight && overlayImageWidth > 0 && overlayImageHeight > 0) {
+            this.scaleX = width / overlayImageWidth;
+            this.scaleY = height / overlayImageHeight;
+        } else {
+            this.scaleX = 1;
+            this.scaleY = 1;
+        }
     }
 
     /**
@@ -288,10 +308,15 @@ export abstract class BaseOverlayRenderer {
     }
 
     /**
-     * Create final bitmap from canvas
+     * Create final bitmap from canvas.
+     *
+     * Uses transferToImageBitmap() rather than createImageBitmap(canvas): it's a
+     * synchronous, zero-copy move of the canvas backing store (vs an async pixel
+     * copy), producing an identical bitmap. The canvas is reset to transparent
+     * afterward, which is fine — prepareCanvas() repaints it in full next frame.
      */
     protected async createBitmap(sourceBitmap: ImageBitmap): Promise<ImageBitmap> {
-        const compositeBitmap = await createImageBitmap(this.offscreenCanvas);
+        const compositeBitmap = this.offscreenCanvas.transferToImageBitmap();
         sourceBitmap.close();
         return compositeBitmap;
     }

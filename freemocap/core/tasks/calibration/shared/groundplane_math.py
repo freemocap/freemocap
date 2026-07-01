@@ -1,8 +1,8 @@
 """Shared ground-plane alignment math for camera calibration.
 
-Contains format-agnostic functions for computing the charuco board's
-coordinate frame from triangulated 3D corners and finding a frame
-where the board is stationary.
+Format-agnostic functions for estimating the charuco board's ground-plane pose
+from triangulated 3D corners: finding a stable window where the board is still,
+taking per-corner medians across it, and fitting the known board model with Kabsch.
 
 Used by both the anipose and pyceres calibration paths.
 """
@@ -12,137 +12,263 @@ from numpy.typing import NDArray
 
 
 class CharucoVisibilityError(RuntimeError):
-    """Raised when no frame satisfies the 'all-corners-visible & stationary' criteria."""
+    """Raised when too few charuco corners are observed in the stable window to estimate the board."""
 
 
-class CharucoVelocityError(RuntimeError):
-    """Raised when the velocity of the ChArUco corners is too high to be considered stationary."""
+class CharucoStabilityError(RuntimeError):
+    """Raised when no contiguous run of frames is stable enough to define the ground plane."""
 
 
-def get_charuco_key_corner_indices(
-    squares_x: int,
-    squares_y: int,
-) -> tuple[int, int]:
-    """Get the corner indices that define the board's X and Y axes.
-
-    For a board with ``squares_x`` columns and ``squares_y`` rows, the internal
-    corners form a grid of ``(squares_x-1) x (squares_y-1)``.  Corner 0 is the
-    origin, the returned ``idx_x`` is at the far end of the X axis, and ``idx_y``
-    is at the far end of the Y axis.
-
-    Args:
-        squares_x: Number of squares in the X (width) direction.
-        squares_y: Number of squares in the Y (height) direction.
-
-    Returns:
-        Tuple of (idx_x, idx_y) corner indices.
-    """
-    num_cols = squares_x - 1
-    num_rows = squares_y - 1
-    idx_y = num_cols * (num_rows - 1)
-    idx_x = num_cols - 1
-    return idx_x, idx_y
+class CharucoGeometryError(RuntimeError):
+    """Raised when the stable charuco corners are too few or collinear to define a board frame."""
 
 
-def compute_board_basis_vectors(
-    charuco_frame: NDArray[np.float64],
-    squares_x: int,
-    squares_y: int,
-) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
-    """Compute orthonormal basis vectors of the charuco board's coordinate frame.
-
-    X axis: from corner 0 toward ``idx_x`` (board "right").
-    Z axis: board normal, out of the *printed* face (physical "up" when the
-        board lies printed-side-up on the floor).
-
-    OpenCV's CharucoBoard object points use image-plane conventions: +X is
-    board-right and +Y is board-*down* (matching how marker IDs are laid out
-    in the generated image). With that handedness, ``cross(x_hat, y_raw)``
-    points into the *back* of the printed face. We swap the operand order so
-    +Z comes out of the front, and re-derive y_hat from the flipped z to
-    keep the basis right-handed.
-
-    Args:
-        charuco_frame: (n_corners, 3) array of 3D corner positions for one frame.
-        squares_x: Number of squares in the X direction.
-        squares_y: Number of squares in the Y direction.
-
-    Returns:
-        Tuple of (x_hat, y_hat, z_hat) unit vectors.
-    """
-    origin = charuco_frame[0]
-    idx_x, idx_y = get_charuco_key_corner_indices(squares_x=squares_x, squares_y=squares_y)
-
-    x_vec = charuco_frame[idx_x] - origin
-    y_vec = charuco_frame[idx_y] - origin
-
-    x_hat = x_vec / np.linalg.norm(x_vec)
-    y_hat_raw = y_vec / np.linalg.norm(y_vec)
-    z_hat = np.cross(y_hat_raw, x_hat)
-    z_hat = z_hat / np.linalg.norm(z_hat)
-    y_hat = np.cross(z_hat, x_hat)
-    y_hat = y_hat / np.linalg.norm(y_hat)
-
-    return x_hat, y_hat, z_hat
-
-
-def find_still_charuco_frame(
+def find_stable_window(
     charuco_3d: NDArray[np.float64],
-    squares_x: int,
-    squares_y: int,
-    search_start: int = 0,
-    search_range: int = 120,
-    max_allowed_velocity:float=1.0
+    *,
+    velocity_threshold: float = 2.0,
+    min_visible_corners_per_frame: int = 3,
+    min_run_frames: int = 10,
+) -> tuple[int, int]:
+    """Find the longest contiguous run of frames over which the board is still.
 
-) -> int:
-    """Find the frame where the charuco board is most stationary.
-
-    Examines the origin, X-axis-end, and Y-axis-end corners. Picks the frame
-    (within the search range) where the maximum corner velocity is minimized.
+    Motion for a transition t -> t+1 is the MEDIAN per-corner displacement over the
+    corners visible in BOTH frames — robust to a changing/blinky visibility set,
+    unlike a centroid velocity.
 
     Args:
-        charuco_3d: (n_frames, n_corners, 3) triangulated 3D corner positions.
-        squares_x: Board squares in X.
-        squares_y: Board squares in Y.
-        search_start: Frame index to start searching from.
-        search_range: Number of frames to search.
+        charuco_3d: (n_frames, n_corners, 3) triangulated corners, NaN where unseen.
+        velocity_threshold: mm/frame below which a transition counts as still.
+        min_visible_corners_per_frame: a transition is only scored if at least this
+            many corners are visible in both of its frames.
+        min_run_frames: the chosen run must be at least this many frames long.
 
     Returns:
-        Frame index (into ``charuco_3d``) of the stillest frame.
+        (start, end) half-open frame indices of the chosen stable run.
 
     Raises:
-        CharucoVisibilityError: No frame has all three key corners visible.
-        CharucoVelocityError: All visible frames have velocity above threshold.
+        CharucoStabilityError: if no run meets the threshold and minimum length.
     """
-    n_frames = charuco_3d.shape[0]
-    idx_x, idx_y = get_charuco_key_corner_indices(squares_x=squares_x, squares_y=squares_y)
-    key_indices = [0, idx_y, idx_x]
+    n_frames = int(charuco_3d.shape[0])
+    if n_frames < 2:
+        raise CharucoStabilityError(
+            f"Need at least 2 frames to assess stability, got {n_frames}."
+        )
 
-    # Compute search slice
-    start = max(0, search_start)
-    end = min(n_frames, start + search_range)
-    if end <= start:
-        raise CharucoVisibilityError("Search range is empty — not enough frames.")
+    finite = np.isfinite(charuco_3d).all(axis=2)  # (n_frames, n_corners)
 
-    key_corners = charuco_3d[start:end, key_indices, :]  # (range, 3_corners, 3_xyz)
-    velocity = np.linalg.norm(np.diff(key_corners, axis=0), axis=2)  # (range-1, 3_corners)
+    motion = np.full(n_frames - 1, np.inf, dtype=np.float64)
+    for t in range(n_frames - 1):
+        common = finite[t] & finite[t + 1]
+        if int(common.sum()) >= min_visible_corners_per_frame:
+            displacement = np.linalg.norm(
+                charuco_3d[t + 1, common] - charuco_3d[t, common], axis=1
+            )
+            motion[t] = float(np.median(displacement))
 
-    visible = ~np.isnan(velocity).any(axis=1)
-    if not visible.any():
+    stable = motion < velocity_threshold
+
+    runs: list[tuple[int, int, float]] = []  # (frame_start, frame_end_exclusive, mean_motion)
+    t = 0
+    while t < stable.shape[0]:
+        if not stable[t]:
+            t += 1
+            continue
+        run_start = t
+        while t < stable.shape[0] and stable[t]:
+            t += 1
+        runs.append((run_start, t + 1, float(np.mean(motion[run_start:t]))))
+
+    if not runs:
+        raise CharucoStabilityError(
+            f"No contiguous run of frames stayed below {velocity_threshold} mm/frame — "
+            f"check that the board is held still."
+        )
+
+    # Longest run wins; ties broken by lowest mean motion.
+    frame_start, frame_end, _ = min(runs, key=lambda run: (-(run[1] - run[0]), run[2]))
+
+    if frame_end - frame_start < min_run_frames:
+        raise CharucoStabilityError(
+            f"Longest stable run is {frame_end - frame_start} frames, "
+            f"need >= {min_run_frames}."
+        )
+
+    return frame_start, frame_end
+
+
+def aggregate_median_corners(
+    charuco_3d: NDArray[np.float64],
+    window: tuple[int, int],
+    *,
+    min_observations_per_corner: int = 3,
+) -> tuple[NDArray[np.int_], NDArray[np.float64]]:
+    """Per-corner median 3D position over a frame window, ignoring NaN (blinky) gaps.
+
+    Args:
+        charuco_3d: (n_frames, n_corners, 3) triangulated corners, NaN where unseen.
+        window: (start, end) half-open frame range to aggregate over.
+        min_observations_per_corner: a corner joins the result only if it has at
+            least this many finite samples in the window (discards 1-2 frame blips).
+
+    Returns:
+        (valid_ids (K,), median_points (K, 3)) for the well-observed corners.
+
+    Raises:
+        CharucoVisibilityError: if no corner reaches the observation threshold.
+    """
+    start, end = window
+    window_data = charuco_3d[start:end]  # (W, n_corners, 3)
+    finite = np.isfinite(window_data).all(axis=2)  # (W, n_corners)
+    observation_count = finite.sum(axis=0)  # (n_corners,)
+
+    valid_ids = np.where(observation_count >= min_observations_per_corner)[0]
+    if valid_ids.size == 0:
         raise CharucoVisibilityError(
-            "No frame found where all three key ChArUco corners are visible and have valid velocity."
+            f"No charuco corner was observed >= {min_observations_per_corner} times "
+            f"in the stable window [{start}, {end})."
         )
 
-    max_velocity_per_frame = np.nanmax(velocity[visible], axis=1)
+    median_points = np.nanmedian(window_data[:, valid_ids, :], axis=0)  # (K, 3)
+    return valid_ids, median_points
 
-    if np.nanmin(max_velocity_per_frame) > max_allowed_velocity:
-        raise CharucoVelocityError(
-            f"All frames have ChArUco corner velocity > {max_allowed_velocity:.2f} — "
-            f"check that the board is stationary."
+
+def fit_board_pose_kabsch(
+    board_points: NDArray[np.float64],
+    measured_points: NDArray[np.float64],
+    *,
+    collinearity_eps: float = 1e-6,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Best-fit rigid transform mapping board-frame corners to measured world corners.
+
+    Solves the orthogonal Procrustes / Kabsch problem with known correspondences
+    (corner i of ``board_points`` matches corner i of ``measured_points``).
+
+    Args:
+        board_points: (K, 3) known board-frame corner coordinates (z = 0).
+        measured_points: (K, 3) corresponding measured world coordinates.
+        collinearity_eps: relative floor on the 2nd singular value of the board
+            points; below it the corners are treated as collinear.
+
+    Returns:
+        (rotation, translation) such that ``world = rotation @ board + translation``.
+        The board axes in world are the columns of ``rotation``; the board origin in
+        world is ``translation``.
+
+    Raises:
+        CharucoGeometryError: fewer than 3 corners, or the corners are collinear.
+    """
+    board_points = np.asarray(board_points, dtype=np.float64)
+    measured_points = np.asarray(measured_points, dtype=np.float64)
+    if (
+        board_points.shape != measured_points.shape
+        or board_points.ndim != 2
+        or board_points.shape[1] != 3
+    ):
+        raise ValueError(
+            f"board_points and measured_points must be equal-shaped (K, 3); "
+            f"got {board_points.shape} and {measured_points.shape}."
         )
 
-    best_visible_idx = int(np.nanargmin(max_velocity_per_frame))
-    # +1 because np.diff shifts indices by 1
-    best_frame_idx = np.where(visible)[0][best_visible_idx] + 1 + start
+    n_points = board_points.shape[0]
+    if n_points < 3:
+        raise CharucoGeometryError(
+            f"Need >= 3 corners to define a board frame, got {n_points}."
+        )
 
-    return int(best_frame_idx)
+    board_centroid = board_points.mean(axis=0)
+    measured_centroid = measured_points.mean(axis=0)
+    board_centered = board_points - board_centroid
+    measured_centered = measured_points - measured_centroid
+
+    # Collinearity test on the noise-free board coordinates: a line has 2nd sv ~ 0.
+    board_singular_values = np.linalg.svd(board_centered, compute_uv=False)
+    if board_singular_values[1] <= collinearity_eps * board_singular_values[0]:
+        raise CharucoGeometryError(
+            "The observed charuco corners are collinear; cannot define a 2D board frame."
+        )
+
+    cross_covariance = board_centered.T @ measured_centered
+    u, _, vt = np.linalg.svd(cross_covariance)
+    reflection = np.sign(np.linalg.det(vt.T @ u.T))
+    rotation = vt.T @ np.diag([1.0, 1.0, reflection]) @ u.T
+    translation = measured_centroid - rotation @ board_centroid
+    return rotation, translation
+
+
+def orient_up_toward_cameras(
+    rotation_matrix: NDArray[np.float64],
+    origin: NDArray[np.float64],
+    camera_centers: NDArray[np.float64],
+) -> NDArray[np.float64]:
+    """Ensure the board's +Z axis points toward the cameras (physical "up").
+
+    Kabsch fixes the board normal only up to sign — coplanar points cannot tell which
+    face is up. Cameras in a mocap rig sit above the floor, so +Z should have a
+    positive component toward the camera centroid. If it does not, flip Z and
+    re-derive Y to keep the basis right-handed (X is preserved).
+
+    Args:
+        rotation_matrix: (3, 3) board-to-world rotation, columns [x | y | z].
+        origin: (3,) board origin in world.
+        camera_centers: (n_cameras, 3) camera centers in world.
+
+    Returns:
+        (3, 3) rotation matrix with corrected, right-handed [x | y | z] columns.
+    """
+    rotation_matrix = np.asarray(rotation_matrix, dtype=np.float64)
+    origin = np.asarray(origin, dtype=np.float64)
+    camera_centroid = np.asarray(camera_centers, dtype=np.float64).mean(axis=0)
+
+    x_hat = rotation_matrix[:, 0]
+    z_hat = rotation_matrix[:, 2]
+
+    if np.dot(z_hat, camera_centroid - origin) < 0:
+        z_hat = -z_hat
+        y_hat = np.cross(z_hat, x_hat)
+        return np.column_stack([x_hat, y_hat, z_hat])
+
+    return rotation_matrix.copy()
+
+
+def estimate_board_groundplane(
+    charuco_3d: NDArray[np.float64],
+    *,
+    board_points: NDArray[np.float64],
+    camera_centers: NDArray[np.float64],
+    velocity_threshold: float = 2.0,
+    min_visible_corners_per_frame: int = 3,
+    min_run_frames: int = 10,
+    min_observations_per_corner: int = 3,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Estimate the board ground-plane pose robustly from triangulated corners.
+
+    Pipeline: stable window -> per-corner median -> Kabsch fit to the known board
+    model -> orient +Z toward the cameras.
+
+    Args:
+        charuco_3d: (n_frames, n_corners, 3) triangulated corners, NaN where unseen.
+        board_points: (n_corners, 3) known board-frame corner coordinates.
+        camera_centers: (n_cameras, 3) camera centers in world coordinates.
+
+    Returns:
+        (rotation_matrix, origin): board-to-world rotation (columns = x/y/z axes)
+        and the board origin in world.
+
+    Raises:
+        CharucoStabilityError, CharucoVisibilityError, CharucoGeometryError.
+    """
+    board_points = np.asarray(board_points, dtype=np.float64)
+
+    window = find_stable_window(
+        charuco_3d,
+        velocity_threshold=velocity_threshold,
+        min_visible_corners_per_frame=min_visible_corners_per_frame,
+        min_run_frames=min_run_frames,
+    )
+    valid_ids, median_points = aggregate_median_corners(
+        charuco_3d, window, min_observations_per_corner=min_observations_per_corner
+    )
+    rotation, origin = fit_board_pose_kabsch(board_points[valid_ids], median_points)
+    rotation = orient_up_toward_cameras(rotation, origin, camera_centers)
+    return rotation, origin

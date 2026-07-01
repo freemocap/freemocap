@@ -1,4 +1,6 @@
-import {workerCode} from "@/services/server/server-helpers/offscreen-renderer.worker";
+import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
+import type { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 export interface CanvasWorker {
     worker: Worker;
@@ -11,6 +13,11 @@ export class CanvasManager {
     private workerErrors: Map<string, number> = new Map();
     private pendingCanvases: Map<string, HTMLCanvasElement> = new Map();
     private readonly maxWorkerErrors: number = 3;
+
+    // Overlay visibility + schema apply to ALL camera workers. Stored so a worker
+    // created mid-stream (camera added) gets current state right after init.
+    private visibility: { charuco: boolean; skeleton: boolean } = { charuco: true, skeleton: true };
+    private schema: { schemas: Record<string, TrackedObjectDefinition>; activeId: string | null } | null = null;
 
     /**
      * Set or update the canvas for a camera.
@@ -41,6 +48,13 @@ export class CanvasManager {
                 [offscreen]
             );
 
+            // Give the freshly-created worker the current overlay state so a camera
+            // added mid-stream composites correctly without waiting for the next toggle.
+            worker.postMessage({ type: 'visibility', charuco: this.visibility.charuco, skeleton: this.visibility.skeleton });
+            if (this.schema) {
+                worker.postMessage({ type: 'schema', schemas: this.schema.schemas, activeId: this.schema.activeId });
+            }
+
             this.workers.set(cameraId, {
                 worker,
                 canvas,
@@ -63,35 +77,38 @@ export class CanvasManager {
 
     /**
      * Send a frame to a worker. Creates the worker if it doesn't exist yet.
+     * Transfers the raw pixel buffer (ArrayBuffer) — ImageBitmap creation
+     * happens in the per-camera worker so GPU uploads are independent.
      */
-    public sendFrameToWorker(cameraId: string, bitmap: ImageBitmap): boolean {
+    public sendFrameToWorker(
+        cameraId: string,
+        pixelBuffer: ArrayBuffer,
+        width: number,
+        height: number,
+    ): boolean {
         const workerInfo = this.workers.get(cameraId);
 
         if (!workerInfo?.initialized) {
-            // Check if we have a pending canvas we can use
             const pendingCanvas = this.pendingCanvases.get(cameraId);
             if (pendingCanvas) {
                 console.log(`Worker not ready for ${cameraId}, attempting to create from pending canvas`);
                 if (this.setCanvasForCamera(cameraId, pendingCanvas)) {
-                    // Try sending again after creation
-                    return this.sendFrameToWorker(cameraId, bitmap);
+                    return this.sendFrameToWorker(cameraId, pixelBuffer, width, height);
                 }
             }
 
             console.warn(`No initialized worker for camera ${cameraId}, dropping frame`);
-            bitmap.close();
             return false;
         }
 
         try {
             workerInfo.worker.postMessage(
-                { type: 'frame', bitmap },
-                [bitmap]
+                { type: 'frame', pixelBuffer, width, height },
+                [pixelBuffer],
             );
             return true;
         } catch (error) {
             console.error(`Failed to send frame to worker ${cameraId}:`, error);
-            bitmap.close();
             this.recordWorkerError(cameraId);
             return false;
         }
@@ -120,6 +137,7 @@ export class CanvasManager {
      * Terminate all workers
      */
     public terminateAllWorkers(): void {
+        if (this.workers.size === 0) return;
         console.log(`Terminating all workers (${this.workers.size} active)`);
         for (const [cameraId] of this.workers) {
             this.terminateWorker(cameraId);
@@ -136,6 +154,25 @@ export class CanvasManager {
     }
 
     /**
+     * Per-camera display size in physical pixels (CSS size × devicePixelRatio).
+     * Read at ack-time from the canvas element — no ResizeObserver, no listeners,
+     * no DOM reflow. The backend uses these to downscale JPEGs before encoding,
+     * cutting decode time, GPU upload, and bandwidth proportionally.
+     */
+    public getDisplaySizes(): Record<string, { width: number; height: number }> {
+        const sizes: Record<string, { width: number; height: number }> = {};
+        const dpr = window.devicePixelRatio || 1;
+        for (const [cameraId, { canvas, initialized }] of this.workers) {
+            if (!initialized) continue;
+            sizes[cameraId] = {
+                width: canvas.clientWidth * dpr,
+                height: canvas.clientHeight * dpr,
+            };
+        }
+        return sizes;
+    }
+
+    /**
      * Check if a worker exists and is initialized for a camera
      */
     public hasWorker(cameraId: string): boolean {
@@ -144,25 +181,61 @@ export class CanvasManager {
     }
 
     private createWorker(cameraId: string): Worker {
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        const workerUrl = URL.createObjectURL(blob);
+        const worker = new Worker(
+            new URL("./offscreen-renderer.worker.ts", import.meta.url),
+            { type: "module" },
+        );
 
-        try {
-            const worker = new Worker(workerUrl);
+        // Set up error handling
+        worker.onerror = (error) => {
+            console.error(`Worker error for camera ${cameraId}:`, error);
+            this.recordWorkerError(cameraId);
+        };
 
-            // Set up error handling
-            worker.onerror = (error) => {
-                console.error(`Worker error for camera ${cameraId}:`, error);
-                this.recordWorkerError(cameraId);
-            };
+        worker.onmessageerror = (error) => {
+            console.error(`Worker message error for camera ${cameraId}:`, error);
+        };
 
-            worker.onmessageerror = (error) => {
-                console.error(`Worker message error for camera ${cameraId}:`, error);
-            };
+        return worker;
+    }
 
-            return worker;
-        } finally {
-            URL.revokeObjectURL(workerUrl);
+    /**
+     * Route the latest overlay observations to each camera's worker. Inputs are
+     * per-camera dicts (cameraId → observation); each worker gets only its own.
+     */
+    public updateOverlays(
+        charuco: Record<string, CharucoObservation> | null | undefined,
+        skeleton: Record<string, MediapipeObservation> | null | undefined,
+    ): void {
+        const cameraIds = new Set<string>();
+        if (charuco) for (const id of Object.keys(charuco)) cameraIds.add(id);
+        if (skeleton) for (const id of Object.keys(skeleton)) cameraIds.add(id);
+
+        for (const cameraId of cameraIds) {
+            const info = this.workers.get(cameraId);
+            if (info?.initialized) {
+                info.worker.postMessage({
+                    type: "overlays",
+                    charuco: charuco?.[cameraId] ?? null,
+                    skeleton: skeleton?.[cameraId] ?? null,
+                });
+            }
+        }
+    }
+
+    /** Toggle which overlay types every camera worker composites. */
+    public setOverlayVisibility(charuco: boolean, skeleton: boolean): void {
+        this.visibility = { charuco, skeleton };
+        for (const { worker, initialized } of this.workers.values()) {
+            if (initialized) worker.postMessage({ type: "visibility", charuco, skeleton });
+        }
+    }
+
+    /** Push the active tracker schema (skeleton connections) to every camera worker. */
+    public setSchema(schemas: Record<string, TrackedObjectDefinition>, activeId: string | null): void {
+        this.schema = { schemas, activeId };
+        for (const { worker, initialized } of this.workers.values()) {
+            if (initialized) worker.postMessage({ type: "schema", schemas, activeId });
         }
     }
 

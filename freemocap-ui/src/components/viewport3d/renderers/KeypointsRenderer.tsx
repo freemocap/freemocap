@@ -26,12 +26,13 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // body‑part) layer uses the per‑category values, while the raw layer uses
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
-const RAW_KEYPOINT_RADIUS = 0.07;
+const RAW_KEYPOINT_RADIUS = 0.05;
+const SKELETON_POINT_RADIUS = 0.04;
 
-const BODY_KEYPOINT_RADIUS = 0.12;
-const HAND_KEYPOINT_RADIUS = 0.05;
-const FACE_KEYPOINT_RADIUS = 0.02;
-const UNSPECIFIED_KEYPOINT_RADIUS = 0.1;
+const BODY_KEYPOINT_RADIUS = 0.07;
+const HAND_KEYPOINT_RADIUS = 0.022;
+const FACE_KEYPOINT_RADIUS = 0.015;
+const UNSPECIFIED_KEYPOINT_RADIUS = 0.06;
 
 function getKeypointRadius(name: string): number {
     switch (classifyPointName(name)) {
@@ -45,14 +46,29 @@ function getKeypointRadius(name: string): number {
     }
 }
 
+/**
+ * Content-equality for point-name lists. The worker boundary structured-clones
+ * each frame, so `frame.pointNames` is a fresh array reference every frame even
+ * when the names are unchanged — a reference check would rebuild the index maps
+ * every frame. Comparing by content fires the rebuild only on a real schema /
+ * landmark-set change.
+ */
+function samePointNames(a: readonly string[], b: readonly string[] | null): boolean {
+    if (b === null || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // KeypointLayer — one instanced‑mesh pass (raw or filtered).
 // ---------------------------------------------------------------------------
 interface KeypointLayerProps {
-    subscribeKey: "subscribeToKeypointsRaw" | "subscribeToKeypointsFiltered";
+    subscribeKey: "subscribeToKeypoints" | "subscribeToSkeleton";
     color: Color;
     radius: number;
-    statsKey: "keypointsRaw" | "keypointsFiltered";
+    statsKey: "keypoints" | "skeleton";
     colorMode?: "uniform" | "byBodyPart";
 }
 
@@ -69,9 +85,10 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const lastPointNamesRef = useRef<readonly string[] | null>(null);
     const nextIdx = useRef(0);
 
-    // Low-poly sphere (6×4 = 24 tris vs 8×6 = 48). MeshBasicMaterial skips all
-    // lighting calculations — significant savings at 1024 instanced meshes.
-    const geo = useMemo(() => new SphereGeometry(50, 6, 4), []);
+    // Ultra-low-poly sphere (4×3 = 12 tris). At the tiny rendered size
+    // (radius 0.02–0.12 world units) this is visually identical to 6×4.
+    // MeshBasicMaterial skips all lighting calculations.
+    const geo = useMemo(() => new SphereGeometry(50, 4, 3), []);
     const mat = useMemo(() => new MeshBasicMaterial({ color: "#ffffff" }), []);
 
     useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
@@ -99,7 +116,8 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
             invalidate();
 
             // Only rebuild index maps when the point-name list changes (e.g. on schema switch).
-            if (frame.pointNames !== lastPointNamesRef.current) {
+            // Content comparison, not reference: the worker boundary clones each frame.
+            if (!samePointNames(frame.pointNames, lastPointNamesRef.current)) {
                 lastPointNamesRef.current = frame.pointNames;
                 frameIdxByName.current.clear();
                 for (let i = 0; i < frame.pointNames.length; i++) {
@@ -191,20 +209,21 @@ export function KeypointsRenderer() {
 
     return (
         <>
-            {visibility.keypointsRaw && (
+            {visibility.keypoints && (
                 <KeypointLayer
-                    subscribeKey="subscribeToKeypointsRaw"
-                    color={COLORS.raw}
-                    radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsRaw"
-                />
-            )}
-            {visibility.keypointsFiltered && (
-                <KeypointLayer
-                    subscribeKey="subscribeToKeypointsFiltered"
+                    subscribeKey="subscribeToKeypoints"
                     color={COLORS.filtered}
                     radius={RAW_KEYPOINT_RADIUS}
-                    statsKey="keypointsFiltered"
+                    statsKey="keypoints"
+                    colorMode="byBodyPart"
+                />
+            )}
+            {visibility.skeleton && (
+                <KeypointLayer
+                    subscribeKey="subscribeToSkeleton"
+                    color={COLORS.skeleton}
+                    radius={SKELETON_POINT_RADIUS}
+                    statsKey="skeleton"
                     colorMode="byBodyPart"
                 />
             )}

@@ -14,13 +14,6 @@ class CalibrationSolverMethod(str, Enum):
     PYCERES = "pyceres"
 
 
-class CalibrationSource(str, Enum):
-    """How to select the calibration TOML for a mocap pipeline run."""
-    MOST_RECENT = "most_recent"
-    SPECIFIED = "specified"
-    # FROM_ACTIVE_RECORDING = "from_active_recording"  # NotImplemented
-
-
 class PosthocCalibrationPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

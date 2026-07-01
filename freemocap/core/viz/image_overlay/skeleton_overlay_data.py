@@ -41,6 +41,13 @@ class SkeletonOverlayData(msgspec.Struct):
     image_height: int
     message_type: str = "skeleton_overlay"
     points: list[SkeletonPointModel] = []
+    # Debug: person bounding box in image pixel coords (xyxy). NaN when absent.
+    bbox_x1: float = float("nan")
+    bbox_y1: float = float("nan")
+    bbox_x2: float = float("nan")
+    bbox_y2: float = float("nan")
+    # True = bbox from YOLOX detector, False = from tracking prediction.
+    bbox_from_detector: bool = True
 
     @classmethod
     def from_rtmpose_observation(
@@ -48,7 +55,7 @@ class SkeletonOverlayData(msgspec.Struct):
             *,
             camera_id: CameraIdString,
             observation: RTMPoseObservation,
-            scale: float = 0.5,
+            scale: float = 1.0,
     ) -> "SkeletonOverlayData":
         """Flatten an RTMPose COCO-WholeBody observation into the schema-driven
         payload.
@@ -77,6 +84,15 @@ class SkeletonOverlayData(msgspec.Struct):
                 )
             )
 
+        # Bbox: (4,) or (1,4) xyxy, or None. Flatten and apply the same scale
+        # as the skeleton points so the bbox aligns with the displayed overlay.
+        bb = observation.bbox
+        if bb is not None:
+            flat = np.asarray(bb, dtype=np.float64).reshape(-1)
+            if len(flat) < 4:
+                bb = None
+            else:
+                bb = flat[:4] * scale  # (4,) float64, scaled to display coords
         return cls(
             camera_id=camera_id,
             frame_number=observation.frame_number,
@@ -85,4 +101,9 @@ class SkeletonOverlayData(msgspec.Struct):
             image_height=observation.image_size[0],
             message_type="skeleton_overlay",
             points=points,
+            bbox_x1=float(bb[0]) if bb is not None else float("nan"),
+            bbox_y1=float(bb[1]) if bb is not None else float("nan"),
+            bbox_x2=float(bb[2]) if bb is not None else float("nan"),
+            bbox_y2=float(bb[3]) if bb is not None else float("nan"),
+            bbox_from_detector=observation.bbox_from_detector,
         )

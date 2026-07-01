@@ -30,9 +30,10 @@ export interface KeypointsFrame {
 export type KeypointsCallback = (frame: KeypointsFrame) => void;
 
 export interface KeypointsSource {
-    subscribeToKeypointsRaw: (cb: KeypointsCallback) => () => void;
-    subscribeToKeypointsFiltered: (cb: KeypointsCallback) => () => void;
-    getLatestKeypointsRaw: () => KeypointsFrame | null;
+    subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
+    subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
+    getLatestKeypoints: () => KeypointsFrame | null;
+    getLatestSkeleton: () => KeypointsFrame | null;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -68,60 +69,20 @@ export function useKeypointsSource(): KeypointsSource {
     const liveAdapter = useMemo<KeypointsSource | null>(() => {
         if (!server) return null;
         return {
-            subscribeToKeypointsRaw: server.subscribeToKeypointsRaw,
-            subscribeToKeypointsFiltered: server.subscribeToKeypointsFiltered,
-            getLatestKeypointsRaw: server.getLatestKeypointsRaw,
+            subscribeToKeypoints: server.subscribeToKeypoints,
+            subscribeToSkeleton: server.subscribeToSkeleton,
+            getLatestKeypoints: server.getLatestKeypoints,
+            getLatestSkeleton: server.getLatestSkeleton,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
-        server?.subscribeToKeypointsRaw,
-        server?.subscribeToKeypointsFiltered,
-        server?.getLatestKeypointsRaw,
+        server?.subscribeToKeypoints,
+        server?.subscribeToSkeleton,
+        server?.getLatestKeypoints,
+        server?.getLatestSkeleton,
     ]);
 
     const source = ctx ?? liveAdapter;
     if (!source) throw new Error("No KeypointsSource: mount KeypointsSourceProvider or ServerContextProvider");
     return source;
-}
-
-// ---------------------------------------------------------------------------
-// Utilities shared by multiple producers / consumers
-// ---------------------------------------------------------------------------
-
-/** Build a KeypointsFrame from a sparse `Record<string, {x,y,z}>` dict.
- * Used by the JSON fallback path and by renderers that still receive dict data.
- * Allocates one Float32Array; visibility is 1 for every point in the dict.
- */
-export function pointDictToFrame(dict: Record<string, {x:number; y:number; z:number}>): KeypointsFrame {
-    const pointNames = Object.keys(dict);
-    const interleaved = new Float32Array(pointNames.length * 4);
-    for (let i = 0; i < pointNames.length; i++) {
-        const p = dict[pointNames[i]];
-        const off = i * 4;
-        interleaved[off]     = p.x;
-        interleaved[off + 1] = p.y;
-        interleaved[off + 2] = p.z;
-        interleaved[off + 3] = 1.0;
-    }
-    return { pointNames, interleaved };
-}
-
-/** Build a `Map<string, {x,y,z}>` from a frame. Used by renderers that need
- * name-keyed lookup (ConnectionRenderer, FaceRenderer). Allocates one object
- * per visible point; only called when those renderers receive a new frame.
- */
-export function frameToPointMap(frame: KeypointsFrame): Map<string, {x:number; y:number; z:number}> {
-    const m = new Map<string, {x:number; y:number; z:number}>();
-    const { pointNames, interleaved } = frame;
-    for (let i = 0; i < pointNames.length; i++) {
-        const off = i * 4;
-        if (!interleaved[off + 3]) continue;  // vis === 0 → skip
-        const x = interleaved[off];
-        const y = interleaved[off + 1];
-        const z = interleaved[off + 2];
-        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
-            m.set(pointNames[i], { x, y, z });
-        }
-    }
-    return m;
 }

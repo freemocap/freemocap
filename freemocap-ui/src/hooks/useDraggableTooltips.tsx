@@ -62,6 +62,14 @@
  */
 import { useEffect } from "react";
 
+/** Per-element drag state. Kept in a Map keyed by the element so listeners and
+ *  accumulated offsets can be cleaned up when the element leaves the DOM. */
+interface DraggableState {
+  pointerDownHandler: (ev: PointerEvent) => void;
+  currentTranslateX: number;
+  currentTranslateY: number;
+}
+
 export default function useDraggableTooltips(): void {
   useEffect(() => {
     const DRAG_THRESHOLD = 4; // px before drag starts
@@ -70,36 +78,95 @@ export default function useDraggableTooltips(): void {
       document.documentElement.style.userSelect = on ? "" : "none";
     };
 
+    // One state entry per registered `.draggable`. Replaces the old per-element
+    // `__draggable_installed` marker + per-element window listeners (which were
+    // never removed and leaked listeners + detached DOM nodes).
+    const states = new Map<HTMLElement, DraggableState>();
+
+    // Shared drag session — only one element can be dragged at a time, so the
+    // window listeners below are installed ONCE and dispatch to `activeEl`.
+    let activeEl: HTMLElement | null = null;
+    let isPointerDown = false;
+    let dragging = false;
+    let startPointerX = 0;
+    let startPointerY = 0;
+    let accumulatedTranslateX = 0;
+    let accumulatedTranslateY = 0;
+    const originalChildPositions = new Map<HTMLElement, string>();
+    const originalChildZIndexes = new Map<HTMLElement, string>();
+
+    const onGlobalPointerMove = (ev: PointerEvent): void => {
+      const el = activeEl;
+      if (!isPointerDown || !el) return;
+      const state = states.get(el);
+      if (!state) return;
+
+      const dx = ev.pageX - startPointerX;
+      const dy = ev.pageY - startPointerY;
+
+      if (!dragging && Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD) {
+        dragging = true;
+        toggleUserSelect(false);
+        el.style.zIndex = "9999";
+        // Promote to its own layer only for the duration of the drag.
+        el.style.willChange = "transform";
+
+        // Ensure parent has position context for nested elements
+        if (window.getComputedStyle(el).position === "static") {
+          el.style.position = "relative";
+        }
+      }
+
+      if (dragging) {
+        ev.preventDefault();
+
+        // Apply new drag relative to the accumulated offset
+        state.currentTranslateX = accumulatedTranslateX + dx;
+        state.currentTranslateY = accumulatedTranslateY + dy;
+        el.style.transform = `translate(${state.currentTranslateX}px, ${state.currentTranslateY}px)`;
+      }
+    };
+
+    const onGlobalPointerUp = (): void => {
+      const el = activeEl;
+      if (dragging && el) {
+        toggleUserSelect(true);
+
+        // Restore original positioning of nested elements
+        originalChildPositions.forEach((originalPos, child) => {
+          child.style.position = originalPos;
+        });
+        originalChildZIndexes.forEach((originalZIndex, child) => {
+          child.style.zIndex = originalZIndex;
+        });
+
+        originalChildPositions.clear();
+        originalChildZIndexes.clear();
+
+        // Release the compositor layer now that the drag is done.
+        el.style.willChange = "";
+      }
+      if (el) el.style.cursor = "grab";
+      isPointerDown = false;
+      dragging = false;
+      activeEl = null;
+    };
+
     const makeDraggable = (el: HTMLElement): void => {
-      if ((el as any).__draggable_installed) return;
-      (el as any).__draggable_installed = true;
+      if (states.has(el)) return;
 
       el.style.touchAction = "none";
       el.style.cursor = "grab";
-      
+
       const computedPos = window.getComputedStyle(el).position;
       if (computedPos === "static") {
         el.style.position = "absolute";
       }
-      
-      // Ensure the element creates a stacking context for nested positioned elements
-      el.style.willChange = "transform";
-      
-      // Establish transform origin and ensure proper context for nested fixed/absolute elements
+
+      // Establish transform origin for nested fixed/absolute elements.
       if (!el.style.transformOrigin) {
         el.style.transformOrigin = "0 0";
       }
-
-      let isPointerDown = false;
-      let dragging = false;
-      let startPointerX = 0;
-      let startPointerY = 0;
-      let currentTranslateX = 0;
-      let currentTranslateY = 0;
-      let accumulatedTranslateX = 0;
-      let accumulatedTranslateY = 0;
-      let originalChildPositions: Map<HTMLElement, string> = new Map();
-      let originalChildZIndexes: Map<HTMLElement, string> = new Map();
 
       const onPointerDown = (ev: PointerEvent): void => {
         if (ev.pointerType === "mouse" && ev.button !== 0) return;
@@ -107,91 +174,65 @@ export default function useDraggableTooltips(): void {
         const target = ev.target as HTMLElement;
         if (target.closest("button, input, textarea, select, a")) return;
 
+        const state = states.get(el);
+        if (!state) return;
+
+        activeEl = el;
         isPointerDown = true;
+        dragging = false;
         startPointerX = ev.pageX;
         startPointerY = ev.pageY;
 
         // Store the accumulated offset from previous drags
-        accumulatedTranslateX = currentTranslateX;
-        accumulatedTranslateY = currentTranslateY;
+        accumulatedTranslateX = state.currentTranslateX;
+        accumulatedTranslateY = state.currentTranslateY;
 
         // Visually indicate active grab
         el.style.cursor = "grabbing";
-        
+
         // Fix nested positioned elements before dragging starts
         const fixedElements = el.querySelectorAll<HTMLElement>("[style*='position: fixed'], [style*='position:fixed']");
         const absoluteElements = el.querySelectorAll<HTMLElement>("[style*='position: absolute'], [style*='position:absolute']");
-        
+
         fixedElements.forEach((child) => {
           originalChildPositions.set(child, child.style.position);
           originalChildZIndexes.set(child, child.style.zIndex);
           child.style.position = "absolute";
           child.style.zIndex = "auto";
         });
-        
+
         absoluteElements.forEach((child) => {
           originalChildZIndexes.set(child, child.style.zIndex);
           child.style.zIndex = "auto";
         });
       };
 
-      const onPointerMove = (ev: PointerEvent): void => {
-        if (!isPointerDown) return;
+      el.addEventListener("pointerdown", onPointerDown);
+      states.set(el, { pointerDownHandler: onPointerDown, currentTranslateX: 0, currentTranslateY: 0 });
+    };
 
-        const dx = ev.pageX - startPointerX;
-        const dy = ev.pageY - startPointerY;
-
-        if (!dragging && Math.abs(dx) + Math.abs(dy) > DRAG_THRESHOLD) {
-          dragging = true;
-          toggleUserSelect(false);
-          el.style.zIndex = "";
-          
-          // Ensure parent has position context for nested elements
-          if (window.getComputedStyle(el).position === "static") {
-            el.style.position = "relative";
-          }
-        }
-
-        if (dragging) {
-          ev.preventDefault();
-
-          // Apply new drag relative to the accumulated offset
-          currentTranslateX = accumulatedTranslateX + dx;
-          currentTranslateY = accumulatedTranslateY + dy;
-          el.style.transform = `translate(${currentTranslateX}px, ${currentTranslateY}px)`;
-        }
-      };
-
-      const onPointerUp = (): void => {
-        if (dragging) {
-          toggleUserSelect(true);
-          
-          // Restore original positioning of nested elements
-          originalChildPositions.forEach((originalPos, child) => {
-            child.style.position = originalPos;
-          });
-          originalChildZIndexes.forEach((originalZIndex, child) => {
-            child.style.zIndex = originalZIndex;
-          });
-          
-          // Clear the maps for the next drag
-          originalChildPositions.clear();
-          originalChildZIndexes.clear();
-        }
+    const removeDraggable = (el: HTMLElement): void => {
+      const state = states.get(el);
+      if (!state) return;
+      el.removeEventListener("pointerdown", state.pointerDownHandler);
+      states.delete(el);
+      // If the dragged element was just removed, end the session.
+      if (activeEl === el) {
+        activeEl = null;
         isPointerDown = false;
         dragging = false;
-        el.style.cursor = "grab";
-      };
-
-      el.addEventListener("pointerdown", onPointerDown);
-      window.addEventListener("pointermove", onPointerMove, { passive: false });
-      window.addEventListener("pointerup", onPointerUp);
+      }
     };
+
+    // Single delegated window listener pair for the whole session.
+    window.addEventListener("pointermove", onGlobalPointerMove, { passive: false });
+    window.addEventListener("pointerup", onGlobalPointerUp);
 
     // Initialize all existing draggable elements
     document.querySelectorAll<HTMLElement>(".draggable").forEach(makeDraggable);
 
-    // Observe dynamically added draggable elements
+    // Observe dynamically added/removed draggable elements so per-element
+    // listeners are torn down when a tooltip leaves the DOM.
     const observer = new MutationObserver((mutations) => {
       for (const m of mutations) {
         for (const node of m.addedNodes) {
@@ -199,15 +240,24 @@ export default function useDraggableTooltips(): void {
           if (node.classList.contains("draggable")) makeDraggable(node);
           node.querySelectorAll<HTMLElement>(".draggable").forEach(makeDraggable);
         }
+        for (const node of m.removedNodes) {
+          if (!(node instanceof HTMLElement)) continue;
+          if (node.classList.contains("draggable")) removeDraggable(node);
+          node.querySelectorAll<HTMLElement>(".draggable").forEach(removeDraggable);
+        }
       }
     });
 
     observer.observe(document.documentElement, { childList: true, subtree: true });
 
-    console.log("✅ Draggable tooltips enabled (no-jump version).");
-
     return () => {
       observer.disconnect();
+      window.removeEventListener("pointermove", onGlobalPointerMove);
+      window.removeEventListener("pointerup", onGlobalPointerUp);
+      for (const [el, state] of states) {
+        el.removeEventListener("pointerdown", state.pointerDownHandler);
+      }
+      states.clear();
       toggleUserSelect(true);
     };
   }, []);

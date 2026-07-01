@@ -129,7 +129,7 @@ async function initRoot(
     await newRoot.configure({
         size: { width, height, top: 0, left: 0 },
         dpr: pixelRatio,
-        camera: { position: [1500, 1500, 1500], fov: 75, near: 0.1, far: 100000 },
+        camera: { position: [800, 800, 800], fov: 75, near: 0.1, far: 100000 },
         gl: { antialias: false, logarithmicDepthBuffer: false },
         frameloop: "demand",
         // No event manager — pointer events are dispatched directly to the

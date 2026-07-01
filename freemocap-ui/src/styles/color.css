@@ -4,12 +4,15 @@
      ======================================== */
 
   /* Gray Shades */
-  --gray-900: #060606;
-  --gray-800: #1b1b1b;
-  --gray-700: #272727;
-  --gray-600: #323232;
-  --gray-500: #4f4f4f;
-  --gray-400: #9b9b9b;
+  /* Dark + mid rungs lifted for a less-harsh background and higher text contrast.
+     The light rungs (300/200/100) are already bright, so they're left as-is.
+     Relative steps are preserved so surface elevation/depth still reads. */
+  --gray-900: #141414;
+  --gray-800: #212121;
+  --gray-700: #2e2e2e;
+  --gray-600: #3a3a3a;
+  --gray-500: #606060;
+  --gray-400: #aaaaaa;
   --gray-300: #b4b4b4;
   --gray-200: #cdcdcd;
   --gray-100: #e4e4e4;

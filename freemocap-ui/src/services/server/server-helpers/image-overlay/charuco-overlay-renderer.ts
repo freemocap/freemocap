@@ -44,7 +44,11 @@ export class CharucoOverlayRenderer extends BaseOverlayRenderer {
         sourceBitmap: ImageBitmap,
         observation: CharucoObservation | null,
     ): Promise<ImageBitmap> {
-        this.prepareCanvas(sourceBitmap);
+        this.prepareCanvas(
+            sourceBitmap,
+            observation?.metadata.image_width,
+            observation?.metadata.image_height,
+        );
 
         if (observation) {
             this.drawCharucoOverlay(observation);
@@ -76,10 +80,12 @@ export class CharucoOverlayRenderer extends BaseOverlayRenderer {
     private drawCharucoCorners(corners: CharucoPoint[]): void {
         if (corners.length === 0) return;
 
-        // Convert CharucoPoint[] to Point2D[]
+        const { scaleX, scaleY } = this;
+
+        // Convert CharucoPoint[] to Point2D[], scaled to bitmap pixel space
         const points: Point2D[] = corners.map(corner => ({
-            x: corner.x,
-            y: corner.y,
+            x: corner.x * scaleX,
+            y: corner.y * scaleY,
             id: corner.id,
         }));
 
@@ -89,12 +95,14 @@ export class CharucoOverlayRenderer extends BaseOverlayRenderer {
     private drawCharucoSegments(corners: CharucoPoint[]): void {
         if (!this.modelInfo || corners.length === 0) return;
 
-        // Create a map of corner ID to Point2D
+        const { scaleX, scaleY } = this;
+
+        // Create a map of corner ID to Point2D, scaled to bitmap pixel space
         const pointMap = new Map<string | number, Point2D>();
         for (const corner of corners) {
             pointMap.set(corner.id.toString(), {
-                x: corner.x,
-                y: corner.y,
+                x: corner.x * scaleX,
+                y: corner.y * scaleY,
                 id: corner.id,
             });
         }
@@ -113,9 +121,14 @@ export class CharucoOverlayRenderer extends BaseOverlayRenderer {
     private drawArucoMarkers(markers: ArucoMarker[]): void {
         if (markers.length === 0) return;
 
+        const { scaleX, scaleY } = this;
+
         for (const marker of markers) {
+            const scaledCorners = marker.corners.map(
+                ([x, y]) => [x * scaleX, y * scaleY] as [number, number]
+            );
             this.drawPolygon(
-                marker.corners,
+                scaledCorners,
                 this.arucoStyle,
                 true,
                 marker.id.toString()

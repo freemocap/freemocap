@@ -127,11 +127,19 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                 {/* Exposure mode */}
                 <Row label="Exposure">
                     <NameDropdownSelector
-                        options={['Manual', 'Auto']}
-                        initialValue={config.exposure_mode === 'MANUAL' ? 'Manual' : 'Auto'}
-                        onChange={v =>
-                            handleConfigChange({exposure_mode: (v === 'Manual' ? 'MANUAL' : 'AUTO') as ExposureMode})
+                        options={['Manual', 'Auto', 'Recommend']}
+                        initialValue={
+                            config.exposure_mode === 'MANUAL' ? 'Manual' :
+                            config.exposure_mode === 'AUTO' ? 'Auto' : 'Recommend'
                         }
+                        onChange={v => {
+                            const modeMap: Record<string, ExposureMode> = {
+                                Manual: 'MANUAL',
+                                Auto: 'AUTO',
+                                Recommend: 'RECOMMEND',
+                            };
+                            handleConfigChange({exposure_mode: modeMap[v]});
+                        }}
                     />
                 </Row>
 

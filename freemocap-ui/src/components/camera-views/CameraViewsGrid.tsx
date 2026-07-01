@@ -7,6 +7,7 @@ import {useServer} from "@/services/server/ServerContextProvider";
 import {useTranslation} from "react-i18next";
 import {useAppSelector} from "@/store/hooks";
 import {selectAutoApply, selectCameras, selectIsLoading} from "@/store/slices/cameras/cameras-selectors";
+import {selectIsAnyRecording} from "@/store/slices/recording/recording-slice";
 import {useGridLayout} from "@/hooks/useGridLayout";
 import CameraEmptyState from "@/components/ui-components/camerasEmptyState";
 
@@ -18,7 +19,7 @@ interface CameraViewsGridProps {
 export const CameraViewsGrid: React.FC<CameraViewsGridProps> = ({ manualColumns, resetKey }) => {
     const { connectedCameraIds } = useServer();
     const { t } = useTranslation();
-    const isRecording = useAppSelector(state => state.recording.isRecording);
+    const isRecording = useAppSelector(selectIsAnyRecording);
     const isLoading = useAppSelector(selectIsLoading);
     const isAutoApply = useAppSelector(selectAutoApply);
     const cameras = useAppSelector(selectCameras);

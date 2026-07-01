@@ -58,16 +58,48 @@ interface ConnectionLayer {
  */
 export function ConnectionRenderer() {
     const { activeTrackerId, trackerSchemas, calibrationConfig } = useWorkerData();
-    const { subscribeToKeypointsRaw, subscribeToKeypointsFiltered } = useKeypointsSource();
+    const { subscribeToKeypoints, subscribeToSkeleton } = useKeypointsSource();
+
+    // Precompute charuco grid segment name-pairs — the grid topology depends
+    // only on board dimensions, so this memoizes it and avoids recomputing
+    // string templates + nested loops on every animation frame.
+    const charucoSegments = useMemo(() => {
+        const segs: { cornerA: string; cornerB: string }[] = [];
+        const sx = calibrationConfig.charucoBoard.squares_x;
+        const sy = calibrationConfig.charucoBoard.squares_y;
+        if (sx < 2 || sy < 2) return segs;
+        const cols = sx - 1;
+        const rows = sy - 1;
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const id = r * cols + c;
+                if (c < cols - 1) {
+                    segs.push({ cornerA: `CharucoCorner-${id}`, cornerB: `CharucoCorner-${id + 1}` });
+                }
+                if (r < rows - 1) {
+                    segs.push({ cornerA: `CharucoCorner-${id}`, cornerB: `CharucoCorner-${id + cols}` });
+                }
+            }
+        }
+        return segs;
+    }, [calibrationConfig.charucoBoard.squares_x, calibrationConfig.charucoBoard.squares_y]);
     const { statsRef } = useViewportState();
     const { invalidate, size } = useThree();
 
     const pointsRef = useRef<Map<string, Point3d>>(new Map());
-    const rawPointsRef = useRef<Map<string, Point3d>>(new Map());
     const arucoMarkersRef = useRef<Map<number, (Point3d | undefined)[]>>(new Map());
     const prevArucoNamesRef = useRef<Set<string>>(new Set());
     const arucoNameCacheRef = useRef<Map<string, {markerId: number; cornerIdx: number}>>(new Map());
     const dirtyRef = useRef(false);
+    const arucoChangedRef = useRef(true); // true on first frame to force build
+
+    // Previous frame segment counts — used to short-circuit tail zeroing.
+    // Tail slots are pre-filled with 1e5/0 at buffer creation and only need
+    // zeroing when segments are REMOVED (rare). In steady state, zeroing
+    // is skipped, saving ~18,000 Float32Array writes/frame.
+    const prevBodySegIdxRef = useRef(0);
+    const prevHandSegIdxRef = useRef(0);
+    const prevFaceSegIdxRef = useRef(0);
 
     // Build the segment list whenever the active schema changes.
     const activeSchema = useMemo(() => {
@@ -163,7 +195,21 @@ export function ConnectionRenderer() {
     useEffect(() => () => { faceGeo.dispose(); faceMat.dispose(); }, [faceGeo, faceMat]);
 
     // Populate helpers shared by both subscriptions.
-    const populateMap = (m: Map<string, Point3d>, frame: KeypointsFrame) => {
+    const CHARUCO_PREFIX = "CharucoCorner-";
+    const ARUCO_PREFIX = "ArucoMarkerCorner-";
+    const isCalibPoint = (name: string) =>
+        name.startsWith(CHARUCO_PREFIX) || name.startsWith(ARUCO_PREFIX);
+
+    const populateMap = (
+        m: Map<string, Point3d>,
+        frame: KeypointsFrame,
+        clearCalibFirst = false,
+    ) => {
+        if (clearCalibFirst) {
+            for (const key of m.keys()) {
+                if (isCalibPoint(key)) m.delete(key);
+            }
+        }
         const { pointNames, interleaved } = frame;
         for (let i = 0; i < pointNames.length; i++) {
             const off = i * 4;
@@ -177,37 +223,50 @@ export function ConnectionRenderer() {
         }
     };
 
-    const mergeRawIntoPoints = () => {
-        const merged = pointsRef.current;
-        for (const [name, pt] of rawPointsRef.current) {
-            if (!merged.has(name)) merged.set(name, pt);
-        }
-    };
-
-    // Raw keypoints: cached separately so hand/face endpoints can be looked up
-    // even when the filtered trajectory (rigid_3d_xyz) doesn't carry them.
+    // Skeleton: FABRIK-fitted canonical body + hand landmarks. These drive
+    // the stick-figure connections. Each frame replaces the body/hand entries
+    // in pointsRef.
     useEffect(() => {
-        return subscribeToKeypointsRaw((frame: KeypointsFrame) => {
-            const raw = rawPointsRef.current;
-            raw.clear();
-            populateMap(raw, frame);
-            mergeRawIntoPoints();
-            dirtyRef.current = true;
-            invalidate();
-        });
-    }, [subscribeToKeypointsRaw, invalidate]);
-
-    // Filtered keypoints: body landmarks from the rigid-body solver (smoothed).
-    useEffect(() => {
-        return subscribeToKeypointsFiltered((frame: KeypointsFrame) => {
+        return subscribeToSkeleton((frame: KeypointsFrame) => {
             const m = pointsRef.current;
-            m.clear();
+            // Remove only body/hand entries (keep calibration points).
+            for (const name of m.keys()) {
+                if (!isCalibPoint(name)) m.delete(name);
+            }
             populateMap(m, frame);
-            mergeRawIntoPoints();
             dirtyRef.current = true;
             invalidate();
         });
-    }, [subscribeToKeypointsFiltered, invalidate]);
+    }, [subscribeToSkeleton, invalidate]);
+
+    // Keypoints: calibration markers (charuco corners, aruco marker corners)
+    // are the only points from the keypoints stream that contribute to
+    // connection geometry. Skeleton body/hand positions come from the
+    // skeleton subscription above.
+    useEffect(() => {
+        return subscribeToKeypoints((frame: KeypointsFrame) => {
+            const hasCalib = frame.pointNames.some(isCalibPoint);
+            if (!hasCalib) return;
+            populateMap(pointsRef.current, frame, true);
+
+            // Detect aruco name changes — O(N_incoming)
+            const prevNames = prevArucoNamesRef.current;
+            const incomingAruco: string[] = [];
+            for (const name of frame.pointNames) {
+                if (name.startsWith(ARUCO_PREFIX)) incomingAruco.push(name);
+            }
+            if (incomingAruco.length !== prevNames.size) {
+                arucoChangedRef.current = true;
+            } else {
+                for (const n of incomingAruco) {
+                    if (!prevNames.has(n)) { arucoChangedRef.current = true; break; }
+                }
+            }
+
+            dirtyRef.current = true;
+            invalidate();
+        });
+    }, [subscribeToKeypoints, invalidate]);
 
     /** Write one category of schema segments into a layer's geometry buffer. */
     function writeSegments(
@@ -253,9 +312,8 @@ export function ConnectionRenderer() {
 
         visibleCount += writeSegments(bodyPos, bodyCol, binned.body);
 
-        // Charuco grid connections — appended after body schema segments.
-        const cols = calibrationConfig.charucoBoard.squares_x - 1;
-        const rows = calibrationConfig.charucoBoard.squares_y - 1;
+        // Charuco grid connections — iterate precomputed segment name-pairs
+        // (memoized above, only rebuilt when board dimensions change).
         const pts = pointsRef.current;
         let segIdx = binned.body.length;
         const cr = SKELETON_COLORS.charuco.r;
@@ -263,43 +321,24 @@ export function ConnectionRenderer() {
         const cb = SKELETON_COLORS.charuco.b;
         const maxBodySlots = binned.body.length + MAX_SEGMENT_EXTRAS;
 
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const id = r * cols + c;
-                const pt = pts.get(`CharucoCorner-${id}`);
-
-                if (c < cols - 1 && segIdx < maxBodySlots) {
-                    const right = pts.get(`CharucoCorner-${id + 1}`);
-                    const base = segIdx * 6;
-                    if (pt && right) {
-                        bodyPos[base]     = pt.x;    bodyPos[base + 1] = pt.y;    bodyPos[base + 2] = pt.z;
-                        bodyPos[base + 3] = right.x; bodyPos[base + 4] = right.y; bodyPos[base + 5] = right.z;
-                        bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
-                        bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
-                        visibleCount++;
-                    } else {
-                        for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-                        for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
-                    }
-                    segIdx++;
-                }
-
-                if (r < rows - 1 && segIdx < maxBodySlots) {
-                    const below = pts.get(`CharucoCorner-${id + cols}`);
-                    const base = segIdx * 6;
-                    if (pt && below) {
-                        bodyPos[base]     = pt.x;    bodyPos[base + 1] = pt.y;    bodyPos[base + 2] = pt.z;
-                        bodyPos[base + 3] = below.x; bodyPos[base + 4] = below.y; bodyPos[base + 5] = below.z;
-                        bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
-                        bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
-                        visibleCount++;
-                    } else {
-                        for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-                        for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
-                    }
-                    segIdx++;
-                }
+        for (let i = 0; i < charucoSegments.length && segIdx < maxBodySlots; i++) {
+            const { cornerA, cornerB } = charucoSegments[i];
+            const a = pts.get(cornerA);
+            const b = pts.get(cornerB);
+            const base = segIdx * 6;
+            const aOk = a && Number.isFinite(a.x) && Number.isFinite(a.y) && Number.isFinite(a.z);
+            const bOk = b && Number.isFinite(b.x) && Number.isFinite(b.y) && Number.isFinite(b.z);
+            if (aOk && bOk) {
+                bodyPos[base]     = a.x; bodyPos[base + 1] = a.y; bodyPos[base + 2] = a.z;
+                bodyPos[base + 3] = b.x; bodyPos[base + 4] = b.y; bodyPos[base + 5] = b.z;
+                bodyCol[base] = cr; bodyCol[base + 1] = cg; bodyCol[base + 2] = cb;
+                bodyCol[base + 3] = cr; bodyCol[base + 4] = cg; bodyCol[base + 5] = cb;
+                visibleCount++;
+            } else {
+                for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
+                for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
             }
+            segIdx++;
         }
 
         // Aruco marker outline squares — 4 orange edges per detected marker.
@@ -309,41 +348,34 @@ export function ConnectionRenderer() {
 
         const ARUCO_PREFIX = "ArucoMarkerCorner-";
         const arucoMarkers = arucoMarkersRef.current;
-        const prevNames = prevArucoNamesRef.current;
+        const nameCache = arucoNameCacheRef.current;
 
-        let arucoChanged = false;
-        let newArucoCount = 0;
-        for (const name of pts.keys()) {
-            if (!name.startsWith(ARUCO_PREFIX)) continue;
-            newArucoCount++;
-            if (!prevNames.has(name)) { arucoChanged = true; }
-        }
-        if (newArucoCount !== prevNames.size) arucoChanged = true;
-
-        if (arucoChanged) {
+        // Only rebuild the marker map when aruco names changed (detected in the
+        // raw subscription callback). In steady state, just update corner
+        // positions by iterating the name cache directly — O(A) where A=4-16.
+        if (arucoChangedRef.current) {
+            arucoChangedRef.current = false;
             arucoMarkers.clear();
-            prevNames.clear();
-            arucoNameCacheRef.current.clear();
+            prevArucoNamesRef.current.clear();
+            nameCache.clear();
             for (const [name, pt] of pts.entries()) {
                 if (!name.startsWith(ARUCO_PREFIX)) continue;
-                prevNames.add(name);
+                prevArucoNamesRef.current.add(name);
                 const rest = name.slice(ARUCO_PREFIX.length);
                 const sep = rest.indexOf("-");
                 if (sep === -1) continue;
                 const markerId = parseInt(rest.slice(0, sep));
                 const cornerIdx = parseInt(rest.slice(sep + 1));
-                arucoNameCacheRef.current.set(name, {markerId, cornerIdx});
+                nameCache.set(name, {markerId, cornerIdx});
                 if (!arucoMarkers.has(markerId)) {
                     arucoMarkers.set(markerId, [undefined, undefined, undefined, undefined]);
                 }
                 arucoMarkers.get(markerId)![cornerIdx] = pt;
             }
         } else {
-            const nameCache = arucoNameCacheRef.current;
-            for (const [name, pt] of pts.entries()) {
-                if (!name.startsWith(ARUCO_PREFIX)) continue;
-                const cached = nameCache.get(name);
-                if (!cached) continue;
+            for (const [name, cached] of nameCache) {
+                const pt = pts.get(name);
+                if (!pt) continue;
                 const corners = arucoMarkers.get(cached.markerId);
                 if (corners) corners[cached.cornerIdx] = pt;
             }
@@ -371,12 +403,17 @@ export function ConnectionRenderer() {
             }
         }
 
-        // Zero out unused tail slots in body buffer.
-        for (let i = segIdx; i < maxBodySlots; i++) {
-            const base = i * 6;
-            for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
-            for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
+        // Zero out tail slots only when segments were removed (rare).
+        // The buffer is pre-filled with 1e5/0 — slots never written to
+        // are already zero. Only newly-unused slots need clearing.
+        if (segIdx < prevBodySegIdxRef.current) {
+            for (let i = segIdx; i < prevBodySegIdxRef.current; i++) {
+                const base = i * 6;
+                for (let j = 0; j < 6; j++) bodyPos[base + j] = 1e5;
+                for (let j = 0; j < 6; j++) bodyCol[base + j] = 0;
+            }
         }
+        prevBodySegIdxRef.current = segIdx;
 
         bodyPosAttr.needsUpdate = true;
         bodyColAttr.needsUpdate = true;
@@ -388,11 +425,15 @@ export function ConnectionRenderer() {
             const hPos = hPosAttr.data.array as Float32Array;
             const hCol = hColAttr.data.array as Float32Array;
             visibleCount += writeSegments(hPos, hCol, binned.hand);
-            for (let i = binned.hand.length, n = hPos.length / 6; i < n; i++) {
-                const base = i * 6;
-                for (let j = 0; j < 6; j++) hPos[base + j] = 1e5;
-                for (let j = 0; j < 6; j++) hCol[base + j] = 0;
+            const handSegIdx = binned.hand.length;
+            if (handSegIdx < prevHandSegIdxRef.current) {
+                for (let i = handSegIdx; i < prevHandSegIdxRef.current; i++) {
+                    const base = i * 6;
+                    for (let j = 0; j < 6; j++) hPos[base + j] = 1e5;
+                    for (let j = 0; j < 6; j++) hCol[base + j] = 0;
+                }
             }
+            prevHandSegIdxRef.current = handSegIdx;
             hPosAttr.needsUpdate = true;
             hColAttr.needsUpdate = true;
         }
@@ -404,11 +445,15 @@ export function ConnectionRenderer() {
             const fPos = fPosAttr.data.array as Float32Array;
             const fCol = fColAttr.data.array as Float32Array;
             visibleCount += writeSegments(fPos, fCol, binned.face);
-            for (let i = binned.face.length, n = fPos.length / 6; i < n; i++) {
-                const base = i * 6;
-                for (let j = 0; j < 6; j++) fPos[base + j] = 1e5;
-                for (let j = 0; j < 6; j++) fCol[base + j] = 0;
+            const faceSegIdx = binned.face.length;
+            if (faceSegIdx < prevFaceSegIdxRef.current) {
+                for (let i = faceSegIdx; i < prevFaceSegIdxRef.current; i++) {
+                    const base = i * 6;
+                    for (let j = 0; j < 6; j++) fPos[base + j] = 1e5;
+                    for (let j = 0; j < 6; j++) fCol[base + j] = 0;
+                }
             }
+            prevFaceSegIdxRef.current = faceSegIdx;
             fPosAttr.needsUpdate = true;
             fColAttr.needsUpdate = true;
         }

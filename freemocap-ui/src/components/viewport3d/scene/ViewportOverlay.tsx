@@ -77,7 +77,7 @@ export function ViewportOverlay({
   return (
     <>
       <div
-        className="viewport-options pos-abs top-8 left-8 p-2 br-1"
+        className="viewport-options pos-abs top-0 left-0 p-2 br-1"
         style={{
           minWidth: 180,
           userSelect: "none",

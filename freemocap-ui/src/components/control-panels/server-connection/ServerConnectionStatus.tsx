@@ -100,7 +100,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     text={serverRunning ? 'Stop server' : 'Launch server'}
                                     onClick={() => (serverRunning ? stopServer() : startServer())}
                                     disabled={serverLoading}
-                                    className={serverRunning ? 'secondary flex-shrink-0' : 'primary flex-shrink-0'}
+                                    className={serverRunning ? 'quaternary flex-shrink-0' : 'quaternary flex-shrink-0'}
                                 />
                             </div>
                         )}

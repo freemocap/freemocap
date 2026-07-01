@@ -20,7 +20,7 @@ const SECTION_ORDER = [
     'recording_path',
     'recording_control',
     'process_mocap',
-    'mocap',
+    // 'mocap',
 ] as const;
 
 type SectionId = (typeof SECTION_ORDER)[number];
@@ -245,7 +245,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                     )}
                     <div
                         data-onboarding="connection:server-connection"
-                        className="flex-1 overflow-hidden min-w-0"
+                        className="server-connection-container flex-1 overflow-hidden min-w-0"
                     >
                         <ServerConnectionStatus />
                     </div>
@@ -290,13 +290,14 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                         order={index}
                                         defaultSize={Math.max(defaultSizes[index], minSize)}
                                         minSize={minSize}
+                                        
                                     >
                                         {growable ? (
                                             <div className="h-full min-h-0 flex flex-col">
                                                 <Component />
                                             </div>
                                         ) : (
-                                            <div className="h-full min-h-0 overflow-y">
+                                            <div className="mocap-inner-section h-full min-h-0 overflow-y">
                                                 <div ref={registerContent(id)} className="flex flex-col">
                                                     <Component />
                                                 </div>

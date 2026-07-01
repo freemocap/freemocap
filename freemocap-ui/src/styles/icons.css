@@ -130,12 +130,16 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --skeleton-icon: url("../assets/icons/skeleton_icon.svg");
   --charuco-icon: url("../assets/icons/charuco_icon.svg");
   --charuco-active-icon: url("../assets/icons/charuco_active_icon.svg");
+  --autoexposure-icon: url("../assets/icons/autoexposure_icon.svg");
 }
 
 
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.autoexposure-icon {
+  background-image: var(--autoexposure-icon);
 }
 .stop-alert-icon {
   background-image: var(--stop-alert-icon);

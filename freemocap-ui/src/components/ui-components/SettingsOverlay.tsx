@@ -245,8 +245,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
       {/* SETTINGS PANEL */}
       {isOpen && (
-        <div
-          className="bg-middark br-2 elevated-sharp flex flex-col gap-1 p-2 min-h-0"
+      <div
+          className="bg-dark border-1 border-black elevated-sharp br-2 elevated-sharp flex flex-col gap-1 p-1 min-h-0"
           style={{
             position: "absolute",
             top: "100%",
@@ -256,7 +256,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             minWidth: 260,
           }}
         >
-          
+        <div className="flex flex-col right-0 p-1 gap-1 bg-middark br-1 z-1">
               <Row label="Layout">
 
                 <SegmentedControl
@@ -264,8 +264,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                   className="segmented-control-sm bg-darkgray"
                   value={settings.layoutDirection}
                   options={[
-                    { label: "Side by side", value: "horizontal" },
-                    { label: "Stacked", value: "vertical" },
+                    { label: "Horizontal", value: "horizontal" },
+                    { label: "Vertical", value: "vertical" },
                   ]}
                   onChange={(value) => handleLayoutDirectionChange(value as LayoutDirection)}
                 />
@@ -273,7 +273,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             <div className="flex pt-2 flex-row items-center w-full justify-content-space-between p-1">
               {/* <span className="icon grid4-icon icon-size-20" /> */}
               <p className="text bg">{t("gridColumns")}</p>
-              <p className="text bg text-gray">
+              <p className="text sm text-gray">
               {isAuto
                 ? `Auto: ${autoColumns} Columns`
                 : "Enter any positive number"}
@@ -324,6 +324,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
             </>
           )}
+          </div>
         </div>
       )}
         </div>

@@ -55,7 +55,7 @@ packages = ["freemocap"]
       "sys_platform == 'win32' and platform_machine == 'AMD64'",
   ]
   override-dependencies = [
-      "numpy>=2.3.4",  # fix cv2 vs rtmlib conflict on numpy version
+      "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
   ]
 
   [[tool.uv.index]]

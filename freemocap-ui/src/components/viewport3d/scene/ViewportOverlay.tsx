@@ -175,9 +175,25 @@ export function ViewportOverlay({
       </div>
 
       <div
-        className="flex flex-row gap-1 pos-abs bottom-8 right-8"
+        className="viewport-bottom-action-group flex flex-row gap-1 pos-abs bottom-8 right-8"
         style={{ zIndex: 100 }}
       >
+        <IconButton
+          icon="fit-icon"
+          onClick={handleResetSkeleton}
+          disabled={!isRealtimeConnected}
+          tooltip={true}
+          className={
+            isRealtimeConnected ? "" : "hidden"
+
+          }
+          tooltipText={
+            isRealtimeConnected
+              ? "Re-fit skeleton from scratch"
+              : "Connect a realtime pipeline first"
+          }
+          tooltipPosition="pos-top-right"
+        />
         <IconButton
           icon="frame-icon"
           onClick={onFitCamera}
@@ -190,18 +206,6 @@ export function ViewportOverlay({
           onClick={onResetCamera}
           tooltip={true}
           tooltipText="Reset view"
-          tooltipPosition="pos-top-right"
-        />
-        <IconButton
-          icon="load-icon"
-          onClick={handleResetSkeleton}
-          disabled={!isRealtimeConnected}
-          tooltip={true}
-          tooltipText={
-            isRealtimeConnected
-              ? "Re-fit skeleton from scratch"
-              : "Connect a realtime pipeline first"
-          }
           tooltipPosition="pos-top-right"
         />
       </div>

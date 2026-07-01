@@ -46,6 +46,7 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
   --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
   --stop-alert-icon: url("../assets/icons/stop_alert_icon.svg");
   --stop-icon: url("../assets/icons/stop_icon.svg");
+  --fit-icon: url("../assets/icons/fit_icon.svg");
   --import-icon: url("../assets/icons/import-icon.svg");
   --importVideos-icon: url("../assets/icons/importVideos_icon.svg");
   --github-icon: url("../assets/icons/github_icon.svg");
@@ -137,6 +138,9 @@ Study the codebase HTML structure carefully. You will notice that whenever icons
 /* icon type */
 .close-icon {
   background-image: var(--close-icon);
+}
+.fit-icon {
+  background-image: var(--fit-icon);
 }
 .autoexposure-icon {
   background-image: var(--autoexposure-icon);

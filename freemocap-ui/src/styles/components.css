@@ -258,7 +258,7 @@
 
 /* Sidebar section dividers — always-visible grab handles between the
    vertically-resizable left-panel sections (Cameras / Calibration / Set folder / …). */
-.sidebar-section-divider {
+/* .sidebar-section-divider {
   position: relative;
   display: flex;
   align-items: center;
@@ -288,7 +288,7 @@
 .sidebar-section-divider[data-resize-handle-state="drag"]::before {
   background: white;
   width: 48px;
-}
+} */
 
 
 

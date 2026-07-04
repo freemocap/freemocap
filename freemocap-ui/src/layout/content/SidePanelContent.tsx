@@ -43,7 +43,7 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
 // measured from its own content so it can never be squashed (see useContentMinSizes).
 const GROWABLE_SECTIONS = new Set<SectionId>(['cameras', 'recordings']);
 
-// Pixel height of each resize divider (must match `.sidebar-section-divider` in components.css).
+// Pixel height of each resize divider (must match `.resizable-component` in components.css).
 const HANDLE_PX = 10;
 // Floor for growable sections — they scroll internally, so they may shrink freely.
 const GROWABLE_MIN_PCT = 8;
@@ -269,7 +269,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                         ref={panelGroupRef}
                         key={visibleSections.join('|')}
                         direction="vertical"
-                        className="h-full"
+                        className="h-full gap-1"
                     >
                         {visibleSections.map((id, index) => {
                             const Component = SECTION_COMPONENTS[id];
@@ -279,7 +279,16 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                 <React.Fragment key={id}>
                                     {index > 0 && index < visibleSections.length - 1 && (
                                         <PanelResizeHandle
-                                            className="sidebar-section-divider"
+                                            className="resizable-component"
+                                            onDragging={(isDragging) => {
+                                                if (isDragging) userResizedRef.current = true;
+                                            }}
+                                        />
+                                    )}
+                                    {/* Insert new resize handle between recording_path and recording_control */}
+                                    {index === 3 && (
+                                        <PanelResizeHandle
+                                            className="resizable-component"
                                             onDragging={(isDragging) => {
                                                 if (isDragging) userResizedRef.current = true;
                                             }}

@@ -156,7 +156,11 @@ button.rotate-button {
   position: relative;
   transition: background-color var(--speed-1) ease-in-out, transform var(--speed-1) ease-in-out;
 }
-
+.button.sm.selected,
+.selected-camera-settings {
+  background-color: var(--color-bg-primary);
+  
+}
 .fit-content {
   max-width: max-content;
   /* min-width: max-content; */

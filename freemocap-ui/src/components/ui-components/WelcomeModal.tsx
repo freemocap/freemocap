@@ -110,7 +110,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                         <IconButton
                             icon="icon close-icon icon-size-20"
                             onClick={onClose}
-                            className="pos-abs top-0 right-0 tertiary"
+                            className="pos-abs top-2 right-2 tertiary"
                         />
                     </div>
 

@@ -148,6 +148,7 @@ export const RecordingControlPanel: React.FC = () => {
             countdown={countdown}
             recordingStartTime={recordingStartTime}
             disabled={noCamerasConnected && !recordingInfo.isRecording}
+           
             tooltipText={
               noCamerasConnected && !recordingInfo.isRecording
                 ? t("connectCamerasToRecord")

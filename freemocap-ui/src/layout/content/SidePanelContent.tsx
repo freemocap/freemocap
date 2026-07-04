@@ -306,8 +306,8 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                                 <Component />
                                             </div>
                                         ) : (
-                                            <div className="mocap-inner-section h-full min-h-0 overflow-y">
-                                                <div ref={registerContent(id)} className="flex flex-col">
+                                            <div className="mocap-inner-section h-full min-h-0 overflow-y bg-middark br-2">
+                                                <div ref={registerContent(id)} className="flex flex-col ">
                                                     <Component />
                                                 </div>
                                             </div>

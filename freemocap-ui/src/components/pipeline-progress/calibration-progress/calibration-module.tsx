@@ -290,12 +290,12 @@ const CalibrationModule = ({
   // Recording in progress
   if (isRecording) {
     return (
-      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1">
+      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1 min-w-0 w-full">
         {errorBanner}
-        <div className="flex flex-row items-center">
-          <div className="flex flex-col flex-1 justify-content-space-between items-center">
+        <div className="flex flex-row items-center min-w-0 w-full">
+          <div className="flex flex-col flex-1 justify-content-space-between items-center min-w-0 w-full">
             <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
-              <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
+              <div className="flex flex-row  gap-1 items-center min-w-0 w-full text-nowrap">
                 <span className="icon icon-size-20 calibrating-icon"></span>
                 <SubactionHeader
                   className="text-white calibration-header-shimmer text-nowrap"

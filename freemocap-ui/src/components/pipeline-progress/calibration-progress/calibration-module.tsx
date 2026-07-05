@@ -19,6 +19,8 @@ import {
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
+import "@/styles/calibration.css";
+
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
 type AppMode = "streaming" | "playback";
@@ -300,6 +302,7 @@ const CalibrationModule = ({
             </span>
           ))}
         </div>
+  
         <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
           <ButtonSm
             iconClass=""
@@ -416,7 +419,7 @@ const CalibrationModule = ({
 
   // Not calibrated, not recording
   return (
-    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
+    <div className="calibration-module-idle  flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
@@ -464,6 +467,7 @@ const CalibrationModule = ({
             Charuco board
           </p>
         </div>
+        
         <div className="group-2 flex flex-row pos-rel items-center gap-1">
           <div className="group-2.1 charuco-settings-action-container flex flex-row items-center gap-1">
             {charucoTags.map((tag) => (
@@ -483,6 +487,9 @@ const CalibrationModule = ({
       {showCalibrationSettings && (
         <CalibrationSettings onClose={handleCloseSettings} />
       )}
+      
+     
+        
       <div className="p-1 group-3 calibration-action-container flex flex-row items-center">
         {/* 
           The calibration dropdown is always visible.
@@ -499,6 +506,7 @@ const CalibrationModule = ({
           dropdownClassName=""
         />
       </div>
+      
       <ToggleComponent
         text="Align to initial Charuco ground plane"
         iconClass="snaptogrid-icon"

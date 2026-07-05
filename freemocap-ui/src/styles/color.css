@@ -259,6 +259,9 @@
 .border-red {
   border-color: var(--color-danger);
 }
+.border-transparent {
+  border-color: transparent;
+}
 
 .border-warning {
   border-color: var(--color-warning);

@@ -299,7 +299,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                         order={index}
                                         defaultSize={Math.max(defaultSizes[index], minSize)}
                                         minSize={minSize}
-                                        className='overflow-y'
+                                        
                                         style={{ overflow: 'unset' }}
                                         
                                     >

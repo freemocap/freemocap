@@ -19,6 +19,7 @@ import {
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
+import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import "@/styles/calibration.css";
 
 
@@ -72,6 +73,8 @@ const CalibrationModule = ({
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
   const [isStopping, setIsStopping] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
   const hasAutoOpened = useRef(false);
 
@@ -115,6 +118,7 @@ const CalibrationModule = ({
     if (!isRecording) {
       setMessageIndex(0);
       setIsStopping(false); // Reset stopping state when recording stops
+      setRecordingStartTime(null);
       return;
     }
     const interval = setInterval(() => {
@@ -122,6 +126,39 @@ const CalibrationModule = ({
     }, 3000);
     return () => clearInterval(interval);
   }, [isRecording, calibrationMessages.length]);
+
+  // Track recording start time for timestamp
+  useEffect(() => {
+    if (isRecording && !recordingStartTime) {
+      setRecordingStartTime(Date.now());
+      setElapsedSeconds(0);
+    }
+    if (!isRecording) {
+      setRecordingStartTime(null);
+      setElapsedSeconds(0);
+    }
+  }, [isRecording]);
+
+  // Update elapsed time every second during recording
+  useEffect(() => {
+    if (!isRecording) return;
+    
+    const interval = setInterval(() => {
+      if (recordingStartTime) {
+        const currentElapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        setElapsedSeconds(currentElapsed);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isRecording, recordingStartTime]);
+
+  // Format elapsed time as MM:SS
+  const formatElapsedTime = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  };
 
 
   const isCalibrated = isCalibratedProp ?? !!loadedCalibration;
@@ -266,7 +303,7 @@ const CalibrationModule = ({
                 />
               </div>
 
-              <div className="flex flex-row flex-1 items-center">
+              <div className="flex flex-row items-center gap-2">
                 {/* TODO: recordingProgress doesn't update during recording, fix and re-enable
                 <span className="text md text-gray p-1">
                   {recordingProgress.toFixed(0)}%
@@ -308,7 +345,13 @@ const CalibrationModule = ({
         <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
           <ButtonSm
             iconClass=""
-            text={isStopping ? "Stopping..." : "Stop Recording & Calibrate"}
+            text={
+              isStopping 
+                ? "Stopping..." 
+                : recordingStartTime 
+                  ? `Stop Recording & Calibrate ${formatElapsedTime(elapsedSeconds)}` 
+                  : "Stop Recording & Calibrate"
+            }
             className="accent button min-w-full full-width-text-center"
             onClick={() => {
               setIsStopping(true);

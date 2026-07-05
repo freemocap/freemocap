@@ -299,6 +299,8 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                         order={index}
                                         defaultSize={Math.max(defaultSizes[index], minSize)}
                                         minSize={minSize}
+                                        className='overflow-y'
+                                        style={{ overflow: 'unset' }}
                                         
                                     >
                                         {growable ? (
@@ -306,7 +308,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                                 <Component />
                                             </div>
                                         ) : (
-                                            <div className="mocap-inner-section h-full min-h-0 overflow-y bg-middark br-2">
+                                            <div className="mocap-inner-section h-full min-h-0 bg-middark br-2">
                                                 <div ref={registerContent(id)} className="flex flex-col ">
                                                     <Component />
                                                 </div>

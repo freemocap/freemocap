@@ -114,6 +114,7 @@ const CalibrationModule = ({
   useEffect(() => {
     if (!isRecording) {
       setMessageIndex(0);
+      setIsStopping(false); // Reset stopping state when recording stops
       return;
     }
     const interval = setInterval(() => {

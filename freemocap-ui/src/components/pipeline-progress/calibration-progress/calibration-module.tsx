@@ -71,6 +71,7 @@ const CalibrationModule = ({
   const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
+  const [isStopping, setIsStopping] = useState(false);
 
   const hasAutoOpened = useRef(false);
 
@@ -260,7 +261,7 @@ const CalibrationModule = ({
                 <span className="icon icon-size-20 calibrating-icon"></span>
                 <SubactionHeader
                   className="text-white calibration-header-shimmer text-nowrap"
-                  text={calibrationMessages[messageIndex]}
+                  text={isStopping ? "Stopping..." : calibrationMessages[messageIndex]}
                 />
               </div>
 
@@ -306,9 +307,12 @@ const CalibrationModule = ({
         <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
           <ButtonSm
             iconClass=""
-            text="Stop Recording & Calibrate"
+            text={isStopping ? "Stopping..." : "Stop Recording & Calibrate"}
             className="accent button min-w-full full-width-text-center"
-            onClick={dispatchStopCalibrationRecording}
+            onClick={() => {
+              setIsStopping(true);
+              dispatchStopCalibrationRecording();
+            }}
             tooltip={true}
             tooltipText="Stop Recording & Calibrate"
             tooltipPosition="pos-top"

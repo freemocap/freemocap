@@ -85,7 +85,7 @@ export function ViewportOverlay({
       >
         <div className="flex flex-row items-center justify-content-space-between">
           <p className="text sm m-0" style={{ fontWeight: "bold" }}>
-            Viewport
+            Viewport settings
           </p>
           <IconButton
             icon={expanded ? "arrowup-icon" : "arrowdown-icon"}

@@ -54,13 +54,7 @@
   cursor: pointer;
 
   background:
-    linear-gradient(
-      to right,
-      #3b82f6 0%,
-      #3b82f6 var(--progress-percent),
-      #3a3a3a var(--progress-percent),
-      #3a3a3a 100%
-    );
+linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 var(--progress-percent), #212121 100%)
 }
 
 /* =========================================

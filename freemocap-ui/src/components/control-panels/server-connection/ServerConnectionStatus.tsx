@@ -44,7 +44,6 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     };
 
     const overallStatus = getOverallStatus();
-    const pidSuffix = isConnected && serverPid != null ? ` · PID ${serverPid}` : '';
     const cameraCountSuffix = isConnected && connectedCameraIds.length > 0
         ? ` (${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''})`
         : '';
@@ -70,13 +69,13 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
         ...candidates.filter((c) => !c.isValid).map((c) => c.path),
     ];
 
-    const serverStatusColor = serverRunning ? 'bg-pink' : 'bg-red';
-    const wsStatusColor = isConnected ? 'bg-pink' : 'bg-red';
+    const serverStatusColor = serverRunning ? 'bg-green' : 'stop-alert-icon';
+    const wsStatusColor = isConnected ? 'bg-green' : 'stop-alert-icon';
 
     return (
         <DropdownButton
-            buttonProps={{
-                text: overallStatus.text + pidSuffix + cameraCountSuffix,
+                        buttonProps={{
+                            text: overallStatus.text + cameraCountSuffix,
                 iconClass: overallStatus.iconClass,
                 rightSideIcon: 'dropdown',
                 textColor: 'text-gray',
@@ -91,7 +90,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                         {isElectron && (
                             <div className="row-1 gap-1 p-1 br-1 flex justify-content-space-between items-center h-25">
                                 <div className="text-container overflow-hidden flex items-center gap-1">
-                                    <span className={`${serverStatusColor} br-5`} style={{ width: 8, height: 8, flexShrink: 0 }} />
+                                    <span className={`${serverStatusColor} br-5 icon icon-warning icon-size-20`} style={{ width: 8, height: 8, flexShrink: 0 }} />
                                     <p className="text text-nowrap text-left bg">
                                         {serverRunning ? t('running') : serverLoading ? t('connecting') : t('stopped')}
                                     </p>
@@ -100,7 +99,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     text={serverRunning ? 'Stop server' : 'Launch server'}
                                     onClick={() => (serverRunning ? stopServer() : startServer())}
                                     disabled={serverLoading}
-                                    className={serverRunning ? 'secondary flex-shrink-0' : 'primary flex-shrink-0'}
+                                    className={serverRunning ? 'quaternary flex-shrink-0' : 'quaternary flex-shrink-0'}
                                 />
                             </div>
                         )}
@@ -149,12 +148,13 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     {/* Status dot */}
                                     <div className="flex items-center gap-1 p-1">
                                         <div
-                                            className={`${serverStatusColor} br-5 flex-shrink-0`}
+                                            className={`${serverStatusColor} br-5 flex-shrink-0 icon icon-warning icon-size-20`}
                                             style={{ width: 8, height: 8 }}
                                         />
                                         <p className="text sm text-gray">
                                             {serverRunning ? t('running') : t('stopped')}
                                             {processInfo?.pid ? ` (PID: ${processInfo.pid})` : ''}
+                                            {isConnected && serverPid != null ? ` · Server PID ${serverPid}` : ''}
                                         </p>
                                     </div>
 

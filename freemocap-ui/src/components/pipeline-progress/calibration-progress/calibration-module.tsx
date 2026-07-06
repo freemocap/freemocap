@@ -19,6 +19,9 @@ import {
   selectLoadedCalibration,
 } from "@/store/slices/calibration";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
+import { getTimestampString } from "@/store/slices/recording/getTimestampString";
+import "@/styles/calibration.css";
+
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
 type AppMode = "streaming" | "playback";
@@ -69,6 +72,9 @@ const CalibrationModule = ({
   const [showCharucoInfo, setShowCharucoInfo] = useState(false);
   const [calibrationSource, setCalibrationSource] =
     useState<CalibrationSource>("record");
+  const [isStopping, setIsStopping] = useState(false);
+  const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
 
   const hasAutoOpened = useRef(false);
 
@@ -111,6 +117,8 @@ const CalibrationModule = ({
   useEffect(() => {
     if (!isRecording) {
       setMessageIndex(0);
+      setIsStopping(false); // Reset stopping state when recording stops
+      setRecordingStartTime(null);
       return;
     }
     const interval = setInterval(() => {
@@ -118,6 +126,39 @@ const CalibrationModule = ({
     }, 3000);
     return () => clearInterval(interval);
   }, [isRecording, calibrationMessages.length]);
+
+  // Track recording start time for timestamp
+  useEffect(() => {
+    if (isRecording && !recordingStartTime) {
+      setRecordingStartTime(Date.now());
+      setElapsedSeconds(0);
+    }
+    if (!isRecording) {
+      setRecordingStartTime(null);
+      setElapsedSeconds(0);
+    }
+  }, [isRecording]);
+
+  // Update elapsed time every second during recording
+  useEffect(() => {
+    if (!isRecording) return;
+    
+    const interval = setInterval(() => {
+      if (recordingStartTime) {
+        const currentElapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        setElapsedSeconds(currentElapsed);
+      }
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [isRecording, recordingStartTime]);
+
+  // Format elapsed time as MM:SS
+  const formatElapsedTime = (totalSeconds: number): string => {
+    const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
+    const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+    return `${minutes}:${seconds}`;
+  };
 
 
   const isCalibrated = isCalibratedProp ?? !!loadedCalibration;
@@ -249,20 +290,20 @@ const CalibrationModule = ({
   // Recording in progress
   if (isRecording) {
     return (
-      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1">
+      <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1 min-w-0 w-full">
         {errorBanner}
-        <div className="flex flex-row items-center">
-          <div className="flex flex-col flex-1 justify-content-space-between items-center">
+        <div className="flex flex-row items-center min-w-0 w-full">
+          <div className="flex flex-col flex-1 justify-content-space-between items-center min-w-0 w-full">
             <div className="flex flex-row flex-1 justify-content-space-between items-center w-full">
-              <div className="flex flex-row  gap-1 items-center w-full text-nowrap">
+              <div className="flex flex-row  gap-1 items-center min-w-0 w-full text-nowrap">
                 <span className="icon icon-size-20 calibrating-icon"></span>
                 <SubactionHeader
                   className="text-white calibration-header-shimmer text-nowrap"
-                  text={calibrationMessages[messageIndex]}
+                  text={isStopping ? "Stopping..." : calibrationMessages[messageIndex]}
                 />
               </div>
 
-              <div className="flex flex-row flex-1 items-center">
+              <div className="flex flex-row items-center gap-2">
                 {/* TODO: recordingProgress doesn't update during recording, fix and re-enable
                 <span className="text md text-gray p-1">
                   {recordingProgress.toFixed(0)}%
@@ -300,12 +341,22 @@ const CalibrationModule = ({
             </span>
           ))}
         </div>
+  
         <div className="stop-calibration flex flex-row flex-1 justify-content-space-between items-center w-full">
           <ButtonSm
             iconClass=""
-            text="Stop Recording & Calibrate"
+            text={
+              isStopping 
+                ? "Stopping..." 
+                : recordingStartTime 
+                  ? `Stop Recording & Calibrate ${formatElapsedTime(elapsedSeconds)}` 
+                  : "Stop Recording & Calibrate"
+            }
             className="accent button min-w-full full-width-text-center"
-            onClick={dispatchStopCalibrationRecording}
+            onClick={() => {
+              setIsStopping(true);
+              dispatchStopCalibrationRecording();
+            }}
             tooltip={true}
             tooltipText="Stop Recording & Calibrate"
             tooltipPosition="pos-top"
@@ -416,7 +467,7 @@ const CalibrationModule = ({
 
   // Not calibrated, not recording
   return (
-    <div className="calibration-module-idle flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
+    <div className="calibration-module-idle  flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
@@ -464,6 +515,7 @@ const CalibrationModule = ({
             Charuco board
           </p>
         </div>
+        
         <div className="group-2 flex flex-row pos-rel items-center gap-1">
           <div className="group-2.1 charuco-settings-action-container flex flex-row items-center gap-1">
             {charucoTags.map((tag) => (
@@ -483,6 +535,9 @@ const CalibrationModule = ({
       {showCalibrationSettings && (
         <CalibrationSettings onClose={handleCloseSettings} />
       )}
+      
+     
+        
       <div className="p-1 group-3 calibration-action-container flex flex-row items-center">
         {/* 
           The calibration dropdown is always visible.
@@ -499,6 +554,7 @@ const CalibrationModule = ({
           dropdownClassName=""
         />
       </div>
+      
       <ToggleComponent
         text="Align to initial Charuco ground plane"
         iconClass="snaptogrid-icon"

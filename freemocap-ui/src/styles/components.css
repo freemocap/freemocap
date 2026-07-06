@@ -258,7 +258,7 @@
 
 /* Sidebar section dividers — always-visible grab handles between the
    vertically-resizable left-panel sections (Cameras / Calibration / Set folder / …). */
-.sidebar-section-divider {
+/* .sidebar-section-divider {
   position: relative;
   display: flex;
   align-items: center;
@@ -288,7 +288,7 @@
 .sidebar-section-divider[data-resize-handle-state="drag"]::before {
   background: white;
   width: 48px;
-}
+} */
 
 
 
@@ -549,9 +549,9 @@
   background-size: contain;
 }
 .mocap-settings-modal {
-  max-width: 550px;
+  max-width: 600px;
   max-height: 650px;
-  min-width: 550px;
+  min-width: 600px;
   min-height: 650px;
   /* width: 550px;
   height: 650px; */

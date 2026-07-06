@@ -8,6 +8,8 @@ import type {
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import IconButton from "@/components/ui-components/IconButton";
 import ValueSelector from "@/components/ui-components/ValueSelector";
+import SegmentedControl from "@/components/ui-components/SegmentedControl";
+import { Row } from "@/components/ui-components/Row";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 
 import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
@@ -235,16 +237,16 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
         <div className="modal-container pos-rel">
           <IconButton
-            icon={isOpen ? "close-icon" : "settings-icon"}
-            className="icon-size-25 br-2"
+            icon={isOpen ? "close-icon" : "grid2-icon"}
+            className="icon-size-32 br-2"
             onClick={() => setIsOpen(!isOpen)}
             title={isOpen ? t("closeSettings") : t("gridSettings")}
           />
 
       {/* SETTINGS PANEL */}
       {isOpen && (
-        <div
-          className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
+      <div
+          className="bg-dark border-1 border-black elevated-sharp br-2 elevated-sharp flex flex-col gap-1 p-1 min-h-0"
           style={{
             position: "absolute",
             top: "100%",
@@ -254,11 +256,30 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             minWidth: 260,
           }}
         >
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-row items-center gap-1">
-              <span className="icon grid4-icon icon-size-20" />
-              <p className="text bg text-white">{t("gridColumns")}</p>
+        <div className="flex flex-col right-0 p-1 gap-1 bg-middark br-1 z-1">
+              <Row label="Layout">
+
+                <SegmentedControl
+                     size="sm"
+                  className="segmented-control-sm bg-darkgray"
+                  value={settings.layoutDirection}
+                  options={[
+                    { label: "Horizontal", value: "horizontal" },
+                    { label: "Vertical", value: "vertical" },
+                  ]}
+                  onChange={(value) => handleLayoutDirectionChange(value as LayoutDirection)}
+                />
+              </Row>
+            <div className="flex pt-2 flex-row items-center w-full justify-content-space-between p-1">
+              {/* <span className="icon grid4-icon icon-size-20" /> */}
+              <p className="text bg">{t("gridColumns")}</p>
+              <p className="text sm text-gray">
+              {isAuto
+                ? `Auto: ${autoColumns} Columns`
+                : "Enter any positive number"}
+            </p>
             </div>
+          <div className="flex flex-col gap-2 align-end">
 
             <ToggleComponent
               text={t("auto")}
@@ -273,24 +294,20 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onChange={handleColumnsChange}
             />
 
-            <p className="text sm text-gray">
-              {isAuto
-                ? `Auto-detected: ${autoColumns} Columns`
-                : "Enter any positive number"}
-            </p>
+          
           </div>
 
-          <div
+          {/* <div
             style={{
               height: 1,
               backgroundColor: "var(--color-border-secondary)",
             }}
-          />
+          /> */}
 
-          <div className="flex flex-col gap-1">
+          <div className="pt-3 flex flex-col gap-1">
             <ToggleComponent
               text="3D Viewport"
-              iconClass="streaming-icon"
+              iconClass=""
               isToggled={settings.show3dView}
               onToggle={handle3dViewToggle}
             />
@@ -298,46 +315,16 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
           {settings.show3dView && (
             <>
-              <div
+              {/* <div
                 style={{
                   height: 1,
                   backgroundColor: "var(--color-border-secondary)",
                 }}
-              />
+              /> */}
 
-              <div className="flex flex-col gap-1">
-                <p className="text bg text-white">Layout</p>
-
-                <div className="flex flex-row gap-1">
-                  <button
-                    className={`button sm flex-1 ${
-                      settings.layoutDirection === "horizontal"
-                        ? "primary"
-                        : "secondary"
-                    }`}
-                    onClick={() =>
-                      handleLayoutDirectionChange("horizontal")
-                    }
-                  >
-                    <p className="text sm">Side by side</p>
-                  </button>
-
-                  <button
-                    className={`button sm flex-1 ${
-                      settings.layoutDirection === "vertical"
-                        ? "primary"
-                        : "secondary"
-                    }`}
-                    onClick={() =>
-                      handleLayoutDirectionChange("vertical")
-                    }
-                  >
-                    <p className="text sm">Stacked</p>
-                  </button>
-                </div>
-              </div>
             </>
           )}
+          </div>
         </div>
       )}
         </div>

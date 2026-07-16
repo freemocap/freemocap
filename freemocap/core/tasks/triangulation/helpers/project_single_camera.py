@@ -28,12 +28,15 @@ def project_2d_observation_to_3d(
     names = kpts.names  # tuple[str, ...]
     h, w = observation.image_size  # (height, width) in pixels
 
+    # Strip the stage prefix that Observation.to_keypoints() adds ("body.nose" → "nose")
     result: dict[str, NDArray[np.float64]] = {}
     for i, name in enumerate(names):
         u, v = xy[i]
         if np.isnan(u) or np.isnan(v):
             continue
-        result[name] = np.array([u - w / 2, 0.0, h - v], dtype=np.float64)
+        dot = name.find(".")
+        canonical = name[dot + 1:] if dot != -1 else name
+        result[canonical] = np.array([u - w / 2, 0.0, h - v], dtype=np.float64)
     return result
 
 

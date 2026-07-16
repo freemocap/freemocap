@@ -30,6 +30,16 @@ logger = logging.getLogger(__name__)
 MAX_CONSECUTIVE_FAILURES: int = 10
 
 
+def _strip_stage_prefix(name: str) -> str:
+    """Strip the stage prefix that Observation.to_keypoints() adds.
+
+    "body.nose" → "nose", "charuco.CharucoCorner-0" → "CharucoCorner-0".
+    Names without a dot are returned unchanged.
+    """
+    dot = name.find(".")
+    return name[dot + 1:] if dot != -1 else name
+
+
 class CalibrationStateTracker:
     """Tracks whether we have a valid calibration and provides safe triangulation.
 
@@ -306,11 +316,13 @@ class CalibrationStateTracker:
                 points_3d[bad_mask] = np.nan
 #             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 
-            # Build result dict, excluding NaN points
+            # Build result dict, excluding NaN points.
+            # Strip the stage prefix that to_keypoints() adds (e.g. "body.nose" → "nose")
+            # so downstream code sees the canonical unprefixed names.
             _t0 = time.perf_counter()
             valid_pt_mask = ~np.isnan(points_3d).any(axis=1)
             result: dict[str, NDArray[np.float64]] = {
-                name: points_3d[i]
+                _strip_stage_prefix(name): points_3d[i]
                 for i, name in enumerate(point_names_seq)
                 if valid_pt_mask[i]
             }

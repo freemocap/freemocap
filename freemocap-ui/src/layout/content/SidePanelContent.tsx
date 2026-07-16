@@ -299,12 +299,10 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                                         order={index}
                                         defaultSize={Math.max(defaultSizes[index], minSize)}
                                         minSize={minSize}
-                                        
-                                        style={{ overflow: 'unset' }}
-                                        
+                                        style={{ overflow: growable ? 'hidden' : 'unset' }}
                                     >
                                         {growable ? (
-                                            <div className="h-full min-h-0 flex flex-col">
+                                            <div className="h-full min-h-0 flex flex-col overflow-hidden">
                                                 <Component />
                                             </div>
                                         ) : (

@@ -93,7 +93,7 @@ class CharucoOverlayData(msgspec.Struct):
         aruco_markers: list[ArucoMarkerModel] = []
         n_aruco_detected = 0
         for marker_id, corners in aruco_corner_map.items():
-            filled = [(x, y) for (x, y) in corners if (x, y) is not None]
+            filled = [corner for corner in corners if corner is not None]
             if len(filled) == 4:
                 aruco_markers.append(
                     ArucoMarkerModel(id=marker_id, corners=filled)

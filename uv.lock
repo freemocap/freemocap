@@ -1966,7 +1966,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=philip%2Fstructural-rewrite#eafd4bbedf26810b915541dd2b50189a0d49a22a" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=philip%2Fstructural-rewrite#2ba97ff79609ab01539230876131ee3101ffd770" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

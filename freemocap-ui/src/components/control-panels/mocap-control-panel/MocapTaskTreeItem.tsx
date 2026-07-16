@@ -183,6 +183,20 @@ export const MocapTaskTreeItem: React.FC = () => {
                 ? "Ready"
                 : "Idle";
 
+    const processBlockedReason = useMemo((): string | null => {
+        if (canProcessMocapRecording) return null;
+        if (isRecording) return "Stop recording before processing";
+        if (isLoading) return "Processing already in progress";
+        if (!mocapRecordingPath) return "Select a recording folder to process";
+        if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
+        const hasAnyCalibration =
+            !!calibrationTomlPath ||
+            !!directoryInfo?.cameraMocapTomlPath ||
+            !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
+        if (!hasAnyCalibration) return "No calibration file found — select a calibration TOML or run calibration first";
+        return "Cannot process recording";
+    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
+
     // Primary controls: status icon + refresh + record start/stop
     const headerControls = (
         <div className="flex flex-row items-center gap-1">
@@ -365,9 +379,13 @@ export const MocapTaskTreeItem: React.FC = () => {
                         className="button sm secondary w-full"
                         onClick={dispatchProcessMocapRecording}
                         disabled={!canProcessMocapRecording || isLoading}
+                        title={processBlockedReason ?? undefined}
                     >
                         Process Selected Recording
                     </button>
+                    {processBlockedReason && (
+                        <p className="text sm text-gray">{processBlockedReason}</p>
+                    )}
                 </div>
             </div>
         </CollapsibleSidebarSection>

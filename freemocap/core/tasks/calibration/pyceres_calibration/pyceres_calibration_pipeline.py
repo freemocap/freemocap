@@ -21,7 +21,7 @@ from freemocap.core.tasks.calibration.pyceres_calibration.helpers.solver import 
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 
 logger = logging.getLogger(__name__)

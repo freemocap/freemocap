@@ -1,13 +1,34 @@
 from pydantic import BaseModel, ConfigDict, Field
-from skellytracker.trackers.base_tracker.detector_helpers import  SkeletonDetectorConfig
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
-from skellytracker.trackers.mediapipe_tracker import MediapipeDetectorConfig
+from skellytracker.core import DetectionStageConfig, TrackerConfig
+from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
+from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
+from skellytracker.core.temporal_processing.temporal_processing_config import (
+    BBoxPolicyConfig,
+    KeypointsWithinBBoxRatioConfig,
+)
+
+
+def _default_mocap_tracker_config() -> TrackerConfig:
+    return TrackerConfig(
+        stages=[
+            DetectionStageConfig(
+                name="body",
+                object_detector=YoloxPersonDetectorConfig(),
+                keypoint_detectors=[RTMPoseDetectorConfig()],
+                bbox_policy=BBoxPolicyConfig(
+                    redetect_interval=5,
+                    keypoint_bbox_expansion=0.2,
+                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.6)],
+                ),
+            )
+        ]
+    )
 
 
 class PosthocMocapPipelineConfig(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
-    skeleton_detector_config: SkeletonDetectorConfig = Field(default_factory= MediapipeDetectorConfig)#LegacyMediapipeDetectorConfig)
+    tracker_config: TrackerConfig = Field(default_factory=_default_mocap_tracker_config)
     calibration_toml_path: str | None = Field(
         default=None,
         alias="calibrationTomlPath",
@@ -28,4 +49,3 @@ class PosthocMocapPipelineConfig(BaseModel):
         alias="autoOpenBlendFile",
         description="If True, open the .blend file in Blender after export completes.",
     )
-

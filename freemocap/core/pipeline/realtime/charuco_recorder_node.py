@@ -11,8 +11,8 @@ from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_board_definition import CharucoBoardDefinition
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -33,7 +33,7 @@ OUTPUT_DATA_DIR = "output_data"
 
 @dataclass
 class CharucoRecorderNode(SourceNode):
-    """Buffers CharucoObservations during calibration recordings.
+    """Buffers Observations during calibration recordings.
 
     Subscribes to CameraNodeOutputTopic (for observations) and
     CalibrationRecordingStateTopic (for start/stop signals).
@@ -97,7 +97,7 @@ class CharucoRecorderNode(SourceNode):
         # `connection_frame_number` in the per-camera timestamps CSV, so posthoc
         # calibration can map each recorded video frame back to its observation
         # even though the realtime pipeline drops frames it can't keep up with.
-        buffer: dict[CameraIdString, dict[int, CharucoObservation]] = {
+        buffer: dict[CameraIdString, dict[int, Observation]] = {
             cid: {} for cid in camera_ids
         }
         recording_info = None
@@ -176,13 +176,13 @@ class CharucoRecorderNode(SourceNode):
 
 def _flush_buffer(
     *,
-    buffer: dict[CameraIdString, dict[int, CharucoObservation]],
+    buffer: dict[CameraIdString, dict[int, Observation]],
     recording_info,
     board_config: CharucoBoardDefinition,
 ) -> None:
     """Write the buffer to a pickle file.
 
-    ``observations`` maps camera_id -> {connection_frame_number: CharucoObservation}.
+    ``observations`` maps camera_id -> {connection_frame_number: Observation}.
     The connection frame number is the stable identifier shared with the recording's
     per-camera timestamps CSV, so posthoc calibration can align each recorded video
     frame to its realtime observation regardless of how many frames realtime dropped.

@@ -1,10 +1,13 @@
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field
-from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
+from skellytracker.core import DetectionStageConfig, TrackerConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import (
+    CharucoBoardDefinition,
+    CharucoDetectorConfig,
+)
 
 from freemocap.core.tasks.calibration.pyceres_calibration.helpers.models import PyceresCalibrationSolverConfig
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
@@ -51,5 +54,12 @@ class PosthocCalibrationPipelineConfig(BaseModel):
     )
 
     @property
-    def detector_config(self) -> CharucoDetectorConfig:
-        return CharucoDetectorConfig(board=self.charuco_board)
+    def detector_config(self) -> TrackerConfig:
+        return TrackerConfig(
+            stages=[
+                DetectionStageConfig(
+                    name="charuco",
+                    keypoint_detectors=[CharucoDetectorConfig(board=self.charuco_board)],
+                )
+            ]
+        )

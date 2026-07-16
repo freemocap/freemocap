@@ -12,7 +12,7 @@ import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -25,7 +25,6 @@ from freemocap.core.types.type_overloads import (
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 if TYPE_CHECKING:
-    from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
     from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
     from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
 
@@ -62,8 +61,8 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
-    charuco_observation: BaseObservation | None = None
-    skeleton_observation: BaseObservation | None = None
+    charuco_observation: Observation | None = None
+    skeleton_observation: Observation | None = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -82,7 +81,7 @@ class CameraNodeOutputMessage(TopicMessageABC):
 @dataclass
 class SkeletonInferenceResultMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
-    per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = field(default_factory=dict)
+    per_camera_skeleton: dict[CameraIdString, Observation | None] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -97,7 +96,7 @@ class SkeletonInferenceResultMessage(TopicMessageABC):
 class VideoNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
-    observation: BaseObservation = None
+    observation: Observation = None
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -134,13 +133,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @property
     def charuco_overlay_data(self) -> dict:
-        from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
         from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
 
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.charuco_observation is not None and isinstance(cam_output.charuco_observation, CharucoObservation):
-                overlay_data[camera_id] = CharucoOverlayData.from_charuco_observation(
+            if cam_output.charuco_observation is not None:
+                overlay_data[camera_id] = CharucoOverlayData.from_observation(
                     camera_id=camera_id,
                     observation=cam_output.charuco_observation,
                 )
@@ -148,16 +146,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @property
     def skeleton_overlay_data(self) -> dict:
-        # from skellytracker.trackers.legacy_mediapipe_tracker import LegacyMediapipeObservation
         from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
-        from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
 
         overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
-            # if cam_output.mediapipe_observation is not None and isinstance(cam_output.mediapipe_observation, LegacyMediapipeObservation):
-            if cam_output.skeleton_observation is not None and isinstance(cam_output.skeleton_observation, RTMPoseObservation):
-                # overlay_data[camera_id] = SkeletonOverlayData.from_mediapipe_observation(
-                overlay_data[camera_id] = SkeletonOverlayData.from_rtmpose_observation(
+            if cam_output.skeleton_observation is not None:
+                overlay_data[camera_id] = SkeletonOverlayData.from_observation(
                     camera_id=camera_id,
                     observation=cam_output.skeleton_observation,
                 )

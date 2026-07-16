@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 
 logger = logging.getLogger(__name__)

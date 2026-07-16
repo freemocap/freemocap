@@ -24,7 +24,7 @@ from numpy.typing import NDArray
 IntArray = np.ndarray
 
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 
 

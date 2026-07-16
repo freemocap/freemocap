@@ -24,12 +24,11 @@ from typing import TYPE_CHECKING
 import pyarrow  # noqa: F401
 
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
+from skellytracker.core.data_primitives.observation import Observation
 
 if TYPE_CHECKING:
     pass
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation, BaseRecorder
 
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
@@ -37,28 +36,27 @@ from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressR
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
+from freemocap.core.tracking.observation_buffer import ObservationBuffer
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
-from skellytracker.trackers.mediapipe_tracker import MediapipeObservation
-from skellytracker.trackers.mediapipe_tracker.names_and_connections import MEDIAPIPE_HOLISTIC_DEFINITION
-from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
 logger = logging.getLogger(__name__)
 
 
 def run_posthoc_mocap_aggregator_task(
         *,
-        frame_observations: list[dict[CameraIdString, BaseObservation]],
+        frame_observations: list[dict[CameraIdString, Observation]],
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
         task_config: PosthocMocapPipelineConfig,
         reporter: TaskProgressReporter | None = None,
 ) -> None:
     """
-    Run posthoc motion capture on collected mediapipe observations.
+    Run posthoc motion capture on collected skeleton observations.
 
     Args:
-        frame_observations: Per-frame dict of {camera_id: MediapipeObservation}.
+        frame_observations: Per-frame dict of {camera_id: Observation}.
         recording_info: Recording metadata.
         video_metadata: Per-camera metadata.
         reporter: Progress reporter for named stage updates.
@@ -67,21 +65,16 @@ def run_posthoc_mocap_aggregator_task(
     _reporter = reporter or TaskProgressReporter.noop()
     camera_ids = list(video_metadata.keys())
 
-    # ---- Build observation recorders ----
-    _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail="Building observation recorders")
+    # ---- Build observation buffers ----
+    _reporter.report(stage=MocapStage.BUILDING_RECORDERS, detail="Building observation buffers")
 
-    observation_recorders: dict[CameraIdString, BaseRecorder] = {
-        cam_id: BaseRecorder() for cam_id in camera_ids
+    observation_recorders: dict[CameraIdString, ObservationBuffer] = {
+        cam_id: ObservationBuffer() for cam_id in camera_ids
     }
 
     for frame_idx, frame_obs in enumerate(frame_observations):
         for cam_id, obs in frame_obs.items():
-            if not isinstance(obs, RTMPoseObservation) and not isinstance(obs, MediapipeObservation):
-                raise TypeError(
-                    f"Expected MediapipeObservation for camera {cam_id} frame {frame_idx}, "
-                    f"got {type(obs).__name__}"
-                )
-            observation_recorders[cam_id].add_observation(observation=obs)
+            observation_recorders[cam_id].add_observation(obs)
 
     # ---- Get calibration path: explicit path wins; else fall back to most-recent ----
     if task_config.calibration_toml_path:
@@ -119,11 +112,7 @@ def run_posthoc_mocap_aggregator_task(
     )
 
     # ---- Save tracker schema alongside outputs ----
-    first_obs = next(iter(frame_observations[0].values()))
-    if isinstance(first_obs, MediapipeObservation):
-        definition = MEDIAPIPE_HOLISTIC_DEFINITION
-    else:
-        definition = RTMPOSE_WHOLEBODY_DEFINITION
+    definition = RTMPOSE_WHOLEBODY_DEFINITION
 
     schema_path = recording_folder / "tracker_schema.json"
     schema_path.write_text(json.dumps(definition.model_dump(), indent=2))

@@ -1,6 +1,6 @@
 import msgspec
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.data_primitives.observation import Observation
 
 
 class CharucoPointModel(msgspec.Struct):
@@ -22,7 +22,6 @@ class CharucoMetadataModel(msgspec.Struct):
     n_charuco_total: int
     n_aruco_detected: int
     n_aruco_total: int
-    has_pose: bool
     image_width: int
     image_height: int
 
@@ -37,66 +36,81 @@ class CharucoOverlayData(msgspec.Struct):
     aruco_markers: list[ArucoMarkerModel] = []
 
     @classmethod
-    def from_charuco_observation(
+    def from_observation(
             cls,
             *,
             camera_id: CameraIdString,
-            observation: CharucoObservation,
-            scale: float = 1.0, ):
-        """
-        Convert CharucoObservation to Pydantic message model for websocket transmission.
+            observation: Observation,
+            scale: float = 1.0,
+    ) -> "CharucoOverlayData":
+        stage = observation.stages.get("charuco")
+        if stage is None or stage.keypoints is None:
+            return cls(
+                camera_id=camera_id,
+                frame_number=observation.frame_number,
+                charuco_corners=[],
+                aruco_markers=[],
+                metadata=CharucoMetadataModel(
+                    n_charuco_detected=0, n_charuco_total=0,
+                    n_aruco_detected=0, n_aruco_total=0,
+                    image_width=observation.image_size[1],
+                    image_height=observation.image_size[0],
+                ),
+            )
 
-        Args:
-            camera_id: ID of the camera that produced this observation
-            observation: The CharucoObservation to serialize
-
-        Returns:
-            CharucoObservationMessage ready for JSON serialization
-        """
-
-        # Build Charuco corner models
+        kpts = stage.keypoints
         charuco_corners: list[CharucoPointModel] = []
-        if not observation.charuco_empty:
-            for corner_id, corner_coords in observation.charuco_corners_dict.items():
-                charuco_corners.append(
-                    CharucoPointModel(
-                        id=int(corner_id),
-                        x=float(corner_coords[0]) * scale,
-                        y=float(corner_coords[1]) * scale,
-                    )
-                )
+        # marker_id -> list of 4 corner coords, indexed by j
+        aruco_corner_map: dict[int, list[tuple[float, float] | None]] = {}
+        n_charuco_total = 0
+        n_aruco_markers = 0
 
-        # Build ArUco marker models
+        for i, name in enumerate(kpts.names):
+            if name.startswith("CharucoCorner-"):
+                corner_id = int(name.split("-")[1])
+                n_charuco_total += 1
+                if kpts.visibility[i] > 0.0:
+                    charuco_corners.append(
+                        CharucoPointModel(
+                            id=corner_id,
+                            x=float(kpts.xyz[i, 0]) * scale,
+                            y=float(kpts.xyz[i, 1]) * scale,
+                        )
+                    )
+            elif name.startswith("ArucoMarkerCorner-"):
+                parts = name.split("-")
+                marker_id = int(parts[1])
+                j = int(parts[2])
+                if marker_id not in aruco_corner_map:
+                    aruco_corner_map[marker_id] = [None] * 4
+                    n_aruco_markers += 1
+                if kpts.visibility[i] > 0.0:
+                    aruco_corner_map[marker_id][j] = (
+                        float(kpts.xyz[i, 0]) * scale,
+                        float(kpts.xyz[i, 1]) * scale,
+                    )
+
         aruco_markers: list[ArucoMarkerModel] = []
-        if not observation.aruco_empty:
-            for marker_id, marker_corners in observation.aruco_corners_dict.items():
+        n_aruco_detected = 0
+        for marker_id, corners in aruco_corner_map.items():
+            filled = [(x, y) for (x, y) in corners if (x, y) is not None]
+            if len(filled) == 4:
                 aruco_markers.append(
-                    ArucoMarkerModel(
-                        id=int(marker_id),
-                        corners=[
-                            (float(marker_corners[i][0] * scale),
-                             float(marker_corners[i][1] * scale))
-                            for i in range(4)
-                        ],
-                    )
+                    ArucoMarkerModel(id=marker_id, corners=filled)
                 )
+                n_aruco_detected += 1
 
-        # Build metadata model
-        metadata = CharucoMetadataModel(
-            n_charuco_detected=0 if observation.charuco_empty else len(observation.detected_charuco_corner_ids),
-            n_charuco_total=len(observation.all_charuco_ids),
-            n_aruco_detected=0 if observation.aruco_empty else len(observation.detected_aruco_marker_ids),
-            n_aruco_total=len(observation.all_aruco_ids),
-            has_pose=observation.charuco_board_translation_vector is not None,
-            image_width=observation.image_size[1],
-            image_height=observation.image_size[0],
-        )
-
-        # Build complete message
         return cls(
             camera_id=camera_id,
             frame_number=observation.frame_number,
             charuco_corners=charuco_corners,
             aruco_markers=aruco_markers,
-            metadata=metadata,
+            metadata=CharucoMetadataModel(
+                n_charuco_detected=len(charuco_corners),
+                n_charuco_total=n_charuco_total,
+                n_aruco_detected=n_aruco_detected,
+                n_aruco_total=n_aruco_markers,
+                image_width=observation.image_size[1],
+                image_height=observation.image_size[0],
+            ),
         )

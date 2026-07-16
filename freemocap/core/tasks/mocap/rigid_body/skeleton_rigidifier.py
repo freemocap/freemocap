@@ -30,7 +30,7 @@ from skellyforge.skellymodels.models.tracking_model_info import (
     CanonicalBodyModelInfo,
     CanonicalHandModelInfo,
 )
-from skellytracker.trackers.base_tracker.tracker_mapping import TrackerMapping
+from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import OnlineBoneLengths
 
@@ -38,13 +38,13 @@ from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import OnlineB
 _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
 
 # Tracker->canonical mapping YAMLs (shipped with the skellytracker package).
-_SKELLYTRACKER_TRACKERS_DIR = Path(skellytracker.__file__).parent / "trackers"
+_SKELLYTRACKER_OLD_DIR = Path(skellytracker.__file__).parent / "old"
 _RTMPOSE_BODY_MAPPING_YAML = (
-    _SKELLYTRACKER_TRACKERS_DIR
+    _SKELLYTRACKER_OLD_DIR
     / "rtmpose_tracker" / "names_and_connections" / "rtmpose_body_to_canonical_mapping.yaml"
 )
 _RTMPOSE_HAND_MAPPING_YAML = (
-    _SKELLYTRACKER_TRACKERS_DIR
+    _SKELLYTRACKER_OLD_DIR
     / "rtmpose_tracker" / "names_and_connections" / "rtmpose_hand_to_canonical_mapping.yaml"
 )
 

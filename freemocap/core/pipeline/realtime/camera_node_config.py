@@ -1,24 +1,69 @@
 from pydantic import BaseModel, Field
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
-from skellytracker.trackers.base_tracker.detector_helpers import SkeletonDetectorConfig
-from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector_config import RTMPoseDetectorConfig
+from skellytracker.core import TrackerConfig, DetectionStageConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import (
+    CharucoBoardDefinition,
+    CharucoDetectorConfig,
+)
+from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
+from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
+from skellytracker.core.temporal_processing.temporal_processing_config import (
+    BBoxPolicyConfig,
+    KeypointsWithinBBoxRatioConfig,
+)
+
+
+def _default_skeleton_tracker_config() -> TrackerConfig:
+    return TrackerConfig(
+        stages=[
+            DetectionStageConfig(
+                name="body",
+                object_detector=YoloxPersonDetectorConfig(),
+                keypoint_detectors=[
+                    RTMPoseDetectorConfig(
+                        model_name="rtmw-x-l_256x192",
+                        confidence_threshold=0.0025,
+                    )
+                ],
+                bbox_policy=BBoxPolicyConfig(
+                    redetect_interval=5,
+                    keypoint_bbox_expansion=0.2,
+                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.6)],
+                ),
+            )
+        ]
+    )
+
+
+def _default_charuco_tracker_config() -> TrackerConfig:
+    return TrackerConfig(
+        stages=[
+            DetectionStageConfig(
+                name="charuco",
+                keypoint_detectors=[
+                    CharucoDetectorConfig(
+                        board=CharucoBoardDefinition.create_letter_size_5x3()
+                    )
+                ],
+            )
+        ]
+    )
 
 
 class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
-    charuco_detector_config: CharucoDetectorConfig|None = Field(default_factory=CharucoDetectorConfig)
-    # max_persons=1: we only support single-person tracking for now. Capping
+    charuco_tracker_config: TrackerConfig | None = Field(
+        default_factory=_default_charuco_tracker_config
+    )
+    # max_persons: we only support single-person tracking for now. Capping
     # detections to one crop per camera keeps the pose batch a fixed size
     # (N cameras), which prevents the ONNX Runtime GPU arena from growing on
-    # frames with spurious detections (the cause of intermittent OOMs). Bump to
-    # a higher value or None when multi-person tracking lands.
-    skeleton_detector_config: SkeletonDetectorConfig|None = Field(default_factory=lambda: RTMPoseDetectorConfig(mode="lightweight",
-                                                                                                                confidence_threshold=0.0025,
-                                                                                                                max_persons=1))
-    # skeleton_detector_config: LegacyMediapipeDetectorConfig|None = Field(default_factory=LegacyMediapipeDetectorConfig)
+    # frames with spurious detections (the cause of intermittent OOMs).
+    skeleton_tracker_config: TrackerConfig | None = Field(
+        default_factory=_default_skeleton_tracker_config
+    )
 
     # ---- 2D keypoint One Euro filter ----
     # When True, applies per-keypoint temporal smoothing to the 2D pixel
@@ -33,6 +78,10 @@ class CameraNodeConfig(BaseModel):
     keypoint_filter_beta: float = 0.0001
     # Velocity-estimate filter cutoff (Hz).
     keypoint_filter_d_cutoff: float = 1.0
+
+    # Confidence gating threshold — keypoints below this visibility score
+    # have their xy NaN-ed before publication so triangulation skips them.
+    confidence_threshold: float = 0.0025
 
     @property
     def tracking2d_enabled(self) -> bool:

@@ -18,7 +18,7 @@ from multiprocessing.sharedctypes import Synchronized
 
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig
+from skellytracker.core import TrackerConfig
 
 from freemocap.core.pipeline.abcs.pipeline_abc import PipelineABC
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -80,7 +80,7 @@ class PosthocPipeline(PipelineABC):
         cls,
         *,
         recording_info: RecordingInfo,
-        detector_config: BaseDetectorConfig,
+        detector_config: TrackerConfig,
         aggregation_task_fn: PosthocAggregationNodeTaskFn,
         pipeline_type: PosthocPipelineType,
         worker_registry: WorkerRegistry,

@@ -20,7 +20,7 @@ from scipy.spatial.transform import Rotation
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.transform_math import build_transformation_matrix, robust_average_transforms, \
     build_maximum_spanning_tree, find_spanning_tree_pairs, get_rtvec
 

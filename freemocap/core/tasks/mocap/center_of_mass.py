@@ -46,14 +46,14 @@ from skellyforge.skellymodels.utils.types import (
     SegmentConnection,
     SegmentName,
 )
-from skellytracker.trackers.base_tracker.tracker_mapping import TrackerMapping
+from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 # Tracker→canonical body mapping (shipped with skellytracker). This is the
 # single derivation of the computed centers (head/neck/trunk/hips_center) from
 # RTMPose keypoints — the same mapping the realtime skeleton fitter uses.
 _RTMPOSE_BODY_MAPPING_YAML = (
     Path(skellytracker.__file__).parent
-    / "trackers" / "rtmpose_tracker" / "names_and_connections"
+    / "old" / "rtmpose_tracker" / "names_and_connections"
     / "rtmpose_body_to_canonical_mapping.yaml"
 )
 

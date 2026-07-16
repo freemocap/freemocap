@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
-from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
@@ -173,7 +173,7 @@ class RealtimePipeline:
                 camera_ids=pipeline_camera_ids,
                 ipc=ipc,
                 pubsub=pubsub,
-                board_config=pipeline_config.camera_node_config.charuco_detector_config.board,
+                board_config=pipeline_config.camera_node_config.charuco_tracker_config.stages[0].keypoint_detectors[0].board,
                 worker_registry=worker_registry,
             )
 

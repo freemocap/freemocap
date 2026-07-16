@@ -13,7 +13,7 @@ from freemocap.core.tasks.calibration.charuco_board.charuco_board_ops import get
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString
 
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.transform_math import build_maximum_spanning_tree, build_transformation_matrix, \
     robust_average_transforms, find_spanning_tree_pairs, get_rtvec
 

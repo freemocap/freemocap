@@ -143,7 +143,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               onClick={() => scrollToPanel(2)}
             />
             <ButtonSm
-              text="MediaPipe Detector"
+              text="Detector"
               buttonType={activeButton === "button4" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(3)}

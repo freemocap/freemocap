@@ -15,17 +15,17 @@ import {
 // ==================== Types ====================
 
 /**
- * Mirrors skellytracker MediapipeModelComplexity enum.
+ * Legacy numeric complexity levels for the old MediaPipe realtime detector config.
  * 0 = LITE (fastest), 1 = FULL (balanced), 2 = HEAVY (most accurate)
  */
-export type MediapipeModelComplexity = 0 | 1 | 2;
+export type LegacyMediapipeModelComplexity = 0 | 1 | 2;
 
 /**
  * Mirrors skellytracker MediapipeDetectorConfig.
  * Field names use snake_case to match the backend JSON.
  */
 export interface MediapipeDetectorConfig {
-    model_complexity: MediapipeModelComplexity;
+    model_complexity: LegacyMediapipeModelComplexity;
     min_detection_confidence: number;
     min_tracking_confidence: number;
     confidence_threshold: number;
@@ -70,12 +70,25 @@ export interface RealtimeFilterConfig {
     prediction_velocity_decay: number;
 }
 
+export type DetectorType = "rtmpose" | "mediapipe";
+export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
+export type MediapipeModelComplexity = "lite" | "full" | "heavy";
+
 /**
  * Mirrors backend MocapPipelineConfig.
  */
 export interface MocapConfig {
     detector: MediapipeDetectorConfig;
     skeleton_filter: RealtimeFilterConfig;
+    detectorType: DetectorType;
+    rtmPoseModelName: RTMPoseModelName;
+    rtmPoseConfidenceThreshold: number;
+    mediapipeModelComplexity: MediapipeModelComplexity;
+    mediapipeDetectionConfidence: number;
+    mediapipePresenceConfidence: number;
+    mediapipeTrackingConfidence: number;
+    mediapipeNumHands: number;
+    mediapipeNumFaces: number;
 }
 
 /** Realtime preset matching MEDIAPIPE_TRACKER_REALTIME_PRESET on the backend. */
@@ -193,6 +206,15 @@ const initialState: MocapState = {
     config: _persistedMocapConfig ?? {
         detector: { ...MEDIAPIPE_REALTIME_PRESET },
         skeleton_filter: { ...DEFAULT_REALTIME_FILTER_CONFIG },
+        detectorType: "rtmpose" as DetectorType,
+        rtmPoseModelName: "rtmw-x-l_256x192" as RTMPoseModelName,
+        rtmPoseConfidenceThreshold: 0.004,
+        mediapipeModelComplexity: "heavy" as MediapipeModelComplexity,
+        mediapipeDetectionConfidence: 0.5,
+        mediapipePresenceConfidence: 0.5,
+        mediapipeTrackingConfidence: 0.5,
+        mediapipeNumHands: 2,
+        mediapipeNumFaces: 1,
     },
     isRecording: false,
     recordingProgress: 0,
@@ -210,6 +232,44 @@ export const mocapSlice = createSlice({
     name: 'mocap',
     initialState,
     reducers: {
+        /** Switch between rtmpose and mediapipe detector backends. */
+        mocapDetectorTypeChanged: (state, action: PayloadAction<DetectorType>) => {
+            state.config.detectorType = action.payload;
+        },
+
+        /** Change the RTMPose model variant. */
+        mocapRtmPoseModelNameChanged: (state, action: PayloadAction<RTMPoseModelName>) => {
+            state.config.rtmPoseModelName = action.payload;
+        },
+
+        /** Change the RTMPose keypoint confidence threshold. */
+        mocapRtmPoseConfidenceThresholdChanged: (state, action: PayloadAction<number>) => {
+            state.config.rtmPoseConfidenceThreshold = action.payload;
+        },
+
+        /** Change the MediaPipe model complexity (lite/full/heavy). */
+        mocapMediapipeComplexityChanged: (state, action: PayloadAction<MediapipeModelComplexity>) => {
+            state.config.mediapipeModelComplexity = action.payload;
+        },
+
+        /** Update a shared MediaPipe confidence value (applies to pose, hands, and face). */
+        mocapMediapipeDetectionConfidenceChanged: (state, action: PayloadAction<number>) => {
+            state.config.mediapipeDetectionConfidence = action.payload;
+        },
+        mocapMediapipePresenceConfidenceChanged: (state, action: PayloadAction<number>) => {
+            state.config.mediapipePresenceConfidence = action.payload;
+        },
+        mocapMediapipeTrackingConfidenceChanged: (state, action: PayloadAction<number>) => {
+            state.config.mediapipeTrackingConfidence = action.payload;
+        },
+
+        mocapMediapipeNumHandsChanged: (state, action: PayloadAction<number>) => {
+            state.config.mediapipeNumHands = action.payload;
+        },
+        mocapMediapipeNumFacesChanged: (state, action: PayloadAction<number>) => {
+            state.config.mediapipeNumFaces = action.payload;
+        },
+
         /** Replace the entire detector config (e.g. applying a preset). */
         mocapDetectorConfigReplaced: (state, action: PayloadAction<MediapipeDetectorConfig>) => {
             state.config.detector = action.payload;
@@ -317,6 +377,15 @@ export const selectMocap = (state: RootState) => state.mocap;
 export const selectMocapConfig = (state: RootState) => state.mocap.config;
 export const selectMocapDetectorConfig = (state: RootState) => state.mocap.config.detector;
 export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
+export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
+export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
+export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
+export const selectMocapMediapipeComplexity = (state: RootState) => state.mocap.config.mediapipeModelComplexity;
+export const selectMocapMediapipeDetectionConfidence = (state: RootState) => state.mocap.config.mediapipeDetectionConfidence;
+export const selectMocapMediapipePresenceConfidence = (state: RootState) => state.mocap.config.mediapipePresenceConfidence;
+export const selectMocapMediapipeTrackingConfidence = (state: RootState) => state.mocap.config.mediapipeTrackingConfidence;
+export const selectMocapMediapipeNumHands = (state: RootState) => state.mocap.config.mediapipeNumHands;
+export const selectMocapMediapipeNumFaces = (state: RootState) => state.mocap.config.mediapipeNumFaces;
 export const selectMocapIsLoading = (state: RootState) => state.mocap.isLoading;
 export const selectMocapIsRecording = (state: RootState) => state.mocap.isRecording;
 export const selectMocapProgress = (state: RootState) => state.mocap.recordingProgress;
@@ -366,6 +435,15 @@ export const selectCanProcessMocapRecording = createSelector(
 // ==================== Actions Export ====================
 
 export const {
+    mocapDetectorTypeChanged,
+    mocapRtmPoseModelNameChanged,
+    mocapRtmPoseConfidenceThresholdChanged,
+    mocapMediapipeComplexityChanged,
+    mocapMediapipeDetectionConfidenceChanged,
+    mocapMediapipePresenceConfidenceChanged,
+    mocapMediapipeTrackingConfidenceChanged,
+    mocapMediapipeNumHandsChanged,
+    mocapMediapipeNumFacesChanged,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,
     skeletonFilterConfigReplaced,

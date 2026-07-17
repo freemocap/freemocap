@@ -96,8 +96,11 @@ def run_posthoc_mocap_aggregator_task(
     # ---- Copy calibration file into recording folder ----
     recording_folder = Path(recording_info.full_recording_path)
     recording_calibration_copy = recording_folder / calibration_toml_path.name
-    shutil.copy2(calibration_toml_path, recording_calibration_copy)
-    logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
+    if calibration_toml_path.resolve() != recording_calibration_copy.resolve():
+        shutil.copy2(calibration_toml_path, recording_calibration_copy)
+        logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
+    else:
+        logger.info(f"Calibration file already in recording folder, skipping copy: {recording_calibration_copy}")
 
     # ---- Run skeleton triangulation ----
     _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")

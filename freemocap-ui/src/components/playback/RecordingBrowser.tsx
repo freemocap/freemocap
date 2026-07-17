@@ -234,7 +234,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
         const recName = rec
           ? rec.name
           : recordingPath.split(/[\\/]/).pop() || recordingPath;
-        const parsed = rec?.path ? splitParentAndName(rec.path) : null;
+        const parsed = splitParentAndName(rec?.path ?? recordingPath);
         const parentDir = parsed?.baseDirectory;
 
         const videosUrl = serverUrls.endpoints.playbackVideos(recName);

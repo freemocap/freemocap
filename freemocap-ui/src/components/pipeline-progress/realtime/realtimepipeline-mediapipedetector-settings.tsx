@@ -18,16 +18,16 @@ interface RTPMediaPipeDetectorSettingsProps {
     onClose: () => void;
 }
 
-const PRESET_OPTIONS = ["Lite (Fastest)", "PostHog (Accurate)", "Custom"];
+const PRESET_OPTIONS = ["Lite (Fastest)", "PostHoc (Accurate)", "Custom"];
 
 const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
     "Lite (Fastest)": "realtime",
-    "PostHog (Accurate)": "posthoc",
+    "PostHoc (Accurate)": "posthoc",
 };
 
 const presetValueToLabel: Record<string, string> = {
     realtime: "Lite (Fastest)",
-    posthoc: "PostHog (Accurate)",
+    posthoc: "PostHoc (Accurate)",
     custom: "Custom",
 };
 

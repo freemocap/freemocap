@@ -9,7 +9,7 @@ from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
 from skellyforge.skellymodels.managers.human import Human
-from skellyforge.skellymodels.models.tracking_model_info import RTMPoseModelInfo
+from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
@@ -101,7 +101,7 @@ def skeleton_from_mediapipe_observation_recorders(
 
     skeleton: Human = Human.from_tracked_points_numpy_array(
         name="human",
-        model_info=RTMPoseModelInfo(),
+        model_info=MediapipeModelInfo(),
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 

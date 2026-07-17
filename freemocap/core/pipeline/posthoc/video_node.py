@@ -62,11 +62,27 @@ def _extract_board_def(tracker_config: TrackerConfig) -> CharucoBoardDefinition:
     return CharucoBoardDefinition.create_letter_size_5x3()
 
 
+def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
+    """Return True if this TrackerConfig uses MediaPipe keypoint detectors."""
+    try:
+        from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
+            MediapipePoseDetectorConfig,
+        )
+    except ImportError:
+        return False
+    for stage in tracker_config.stages:
+        for kp_det in stage.keypoint_detectors:
+            if isinstance(kp_det, MediapipePoseDetectorConfig):
+                return True
+    return False
+
+
 def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
     """Build a (Tracker, session) pair from a TrackerConfig.
 
     For charuco configs, returns (Tracker, CpuSession).
-    For skeleton configs, returns (Tracker, OnnxSession).
+    For mediapipe configs, returns (Tracker, MediaPipeSession).
+    For RTMPose/ONNX configs, returns (Tracker, OnnxSession).
     """
     from freemocap.core.tracking.tracker_factory import (
         build_charuco_tracker,
@@ -74,10 +90,21 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
         build_skeleton_tracker,
     )
     from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
+    from skellytracker.core.tracker.tracker import Tracker
 
     if _is_charuco_config(tracker_config):
         board_def = _extract_board_def(tracker_config)
         return build_charuco_tracker(board_def)
+
+    if _is_mediapipe_config(tracker_config):
+        import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
+        from skellytracker.core.sessions.mediapipe_session import (
+            MediaPipeSession,
+            MediaPipeSessionConfig,
+        )
+        session = MediaPipeSession.create(MediaPipeSessionConfig())
+        tracker = Tracker.create(tracker_config, {"mediapipe": session})
+        return tracker, session
 
     model_name = "rtmw-x-l_256x192"
     for stage in tracker_config.stages:

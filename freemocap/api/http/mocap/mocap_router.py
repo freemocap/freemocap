@@ -142,6 +142,11 @@ async def process_mocap_recording(request: ProcessMocapRecordingRequest) -> Moca
     app = get_freemocap_app()
     try:
         recording_info = request.to_recording_info()
+        logger.info(
+            f"Processing mocap recording with detector_type='{request.mocap_config.detector_type}', "
+            f"tracker_config stages: {[s.name for s in request.mocap_config.tracker_config.stages]}, "
+            f"keypoint_detectors: {[[d.detector_type for d in s.keypoint_detectors] for s in request.mocap_config.tracker_config.stages]}"
+        )
         pipeline = await app.create_posthoc_mocap_pipeline(
             recording_info=recording_info,
             mocap_config=request.mocap_config,

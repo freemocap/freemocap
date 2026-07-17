@@ -5,7 +5,7 @@ import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
-import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
+import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import { useMocap } from "@/hooks/useMocap";
 
@@ -194,13 +194,13 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               />
             </div>
 
-            {/* Panel 4 - MediaPipe Detector */}
+            {/* Panel 4 - Detector */}
             <div
               ref={panel4Ref}
               data-panel="panel4"
               className="bg-secondary p-2 br-1"
             >
-              <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />
+              <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>
 
             {/* Panel 5 - Blender */}

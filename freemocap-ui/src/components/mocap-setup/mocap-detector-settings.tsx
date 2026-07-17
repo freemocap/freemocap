@@ -4,7 +4,7 @@ import ValueSelector from '@/components/ui-components/ValueSelector';
 import { useMocap } from '@/hooks/useMocap';
 import { DetectorType, MediapipeModelComplexity, RTMPoseModelName } from '@/store/slices/mocap';
 
-interface MOCAPMediaPipeDetectorSettingsProps {
+interface MOCAPDetectorSettingsProps {
     open: boolean;
     onClose: () => void;
 }
@@ -21,8 +21,8 @@ const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }
     { label: "Lite", value: "lite" },
 ];
 
-const MOCAPMediaPipeDetectorSettings: React.FC<
-    MOCAPMediaPipeDetectorSettingsProps
+const MOCAPDetectorSettings: React.FC<
+    MOCAPDetectorSettingsProps
 > = ({ open, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -161,4 +161,4 @@ const MOCAPMediaPipeDetectorSettings: React.FC<
     );
 };
 
-export default MOCAPMediaPipeDetectorSettings;
+export default MOCAPDetectorSettings;

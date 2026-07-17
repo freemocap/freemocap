@@ -6,16 +6,11 @@ export * from './overlay-renderer-factory';
 
 
 export {
-    MediapipePointSchema,
-    MediapipeOverlaySchema,
-    MediapipeOverlayDataMessageSchema,
     SkeletonPointSchema,
     SkeletonOverlaySchema,
     SkeletonOverlayDataMessageSchema,
-    type MediapipePoint,
-    type MediapipeObservation,
-    type MediapipeOverlayDataMessage,
     type SkeletonPoint,
     type SkeletonObservation,
-} from './mediapipe-types';
-export { MediapipeOverlayRenderer } from './mediapipe-overlay-renderer';
+    type SkeletonOverlayDataMessage,
+} from './skeleton-types';
+export { SkeletonOverlayRenderer } from './skeleton-overlay-renderer';

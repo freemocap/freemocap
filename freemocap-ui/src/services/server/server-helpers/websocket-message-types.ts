@@ -5,10 +5,10 @@ import {
     CharucoOverlayDataMessageSchema,
 } from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {
-    MediapipeObservation,
-    MediapipeOverlayDataMessage,
-    MediapipeOverlayDataMessageSchema,
-} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+    SkeletonObservation,
+    SkeletonOverlayDataMessage,
+    SkeletonOverlayDataMessageSchema,
+} from "@/services/server/server-helpers/image-overlay/skeleton-types";
 import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {OverlayRendererFactory} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
@@ -53,7 +53,7 @@ export interface FrontendPayloadMessage {
     message_type: 'frontend_payload';
     frame_number: number;
     charuco_overlays: Record<string, CharucoObservation>
-    skeleton_overlays: Record<string, MediapipeObservation>
+    skeleton_overlays: Record<string, SkeletonObservation>
     center_of_mass: Point3d | null;
     xcom: Point3d | null;
     body_kinematics: BodyKinematics | null;
@@ -72,7 +72,7 @@ export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
  * Tracker-schema handshake message — sent once on WS connect and again whenever
  * the pipeline's tracker configuration changes. `schemas` is keyed by tracker
  * id (e.g. `"rtmpose_wholebody"`); overlays reference a schema via the
- * `tracker_id` field in `MediapipeObservation`.
+ * `tracker_id` field in `SkeletonObservation`.
  */
 export interface TrackerSchemasMessage {
     message_type: 'tracker_schemas';

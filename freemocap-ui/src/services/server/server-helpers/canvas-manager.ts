@@ -1,5 +1,5 @@
 import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
-import type { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 export interface CanvasWorker {
@@ -205,7 +205,7 @@ export class CanvasManager {
      */
     public updateOverlays(
         charuco: Record<string, CharucoObservation> | null | undefined,
-        skeleton: Record<string, MediapipeObservation> | null | undefined,
+        skeleton: Record<string, SkeletonObservation> | null | undefined,
     ): void {
         const cameraIds = new Set<string>();
         if (charuco) for (const id of Object.keys(charuco)) cameraIds.add(id);

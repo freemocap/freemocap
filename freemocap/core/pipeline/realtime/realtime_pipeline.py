@@ -147,7 +147,6 @@ class RealtimePipeline:
                 pubsub=pubsub,
                 skeleton_inference_centralized=(
                     pipeline_config.use_centralized_gpu_inference
-                    and pipeline_config.camera_node_config.detector_type != "mediapipe"
                 ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
@@ -156,8 +155,7 @@ class RealtimePipeline:
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
         if (pipeline_config.use_centralized_gpu_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled
-                and pipeline_config.camera_node_config.detector_type != "mediapipe"):
+                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,

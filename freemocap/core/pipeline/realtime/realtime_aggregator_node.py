@@ -435,8 +435,7 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                 # ---- In GPU mode, also wait for the skeleton inference result ----
                 if (pipeline_config.use_centralized_gpu_inference
-                        and pipeline_config.camera_node_config.skeleton_tracking_enabled
-                        and pipeline_config.camera_node_config.detector_type != "mediapipe"):
+                        and pipeline_config.camera_node_config.skeleton_tracking_enabled):
                     expected_frame = next(iter(camera_node_outputs.values())).frame_number
                     if expected_frame not in pending_skeleton_results:
                         # Camera outputs are ready but skeleton inference hasn't

@@ -1,25 +1,31 @@
 """
-RealtimeSkeletonInferenceNode: dedicated GPU worker that owns one ONNX session
-for skeleton detection and serves all cameras via batched inference.
+RealtimeSkeletonInferenceNode: centralized worker that owns one tracker session
+for skeleton detection and serves all cameras from a single process.
 
 Why this exists:
-  Per-camera tracker construction (the legacy path) creates one CUDA context per
-  camera process. On consumer Windows GPUs there is no cooperative context
-  scheduling (no MPS), so N processes hammering one GPU serialize kernel-by-kernel
-  and pay per-context overhead. This node centralizes inference: one CUDA context,
-  one batched ONNX call per multi-camera frame.
+  Per-camera processes (the legacy path) pay IPC serialization cost to transfer
+  frames from shared memory to each camera process. This node eliminates that
+  overhead by reading all camera ring buffers directly and dispatching inference
+  in one call.
+
+  For ONNX-backed trackers (RTMPose): one CUDA context, one batched ORT call per
+  multi-camera frame avoids per-context overhead on consumer GPUs without MPS.
+
+  For MediaPipe: no batch tensor API exists, but process_batch dispatches per-camera
+  detectors via a ThreadPoolExecutor, exploiting MediaPipe's GIL-releasing C++
+  inference for real concurrency within a single process.
 
 Topology:
   - Subscribes to ProcessFrameNumberTopic (same trigger the camera nodes use).
   - Reads frame N's image directly from each camera's shared-memory ring buffer.
-  - Calls tracker.process_batch(images_dict, ...) — one ORT call for all cameras.
+  - Calls tracker.process_batch(images_dict, ...) — one call for all cameras.
   - Publishes a SkeletonInferenceResultMessage per frame with per-camera Observations.
   - The aggregator merges this with per-camera CameraNodeOutputMessage (charuco only
-    in GPU mode) by frame_number.
+    in centralized mode) by frame_number.
 
 Backpressure:
   Drains ProcessFrameNumberTopic to the latest message every iteration; older
-  messages are dropped rather than queued. If the GPU falls behind the camera
+  messages are dropped rather than queued. If inference falls behind the camera
   group's frame rate, we lose frames instead of accumulating lag.
 """
 import gc
@@ -72,7 +78,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RealtimeSkeletonInferenceNode(SourceNode):
-    """Worker node that hosts one batched OnnxSession for all cameras."""
+    """Worker node that centralizes skeleton inference for all cameras."""
 
     @classmethod
     def create(
@@ -136,7 +142,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             for camera_id in camera_ids
         }
 
-        tracker, onnx_session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+        tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
         if tracker is None:
             logger.error(
                 f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
@@ -254,7 +260,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         return
                     tracker.close()
                     gc.collect()
-                    tracker, onnx_session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+                    tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
                     if tracker is None:
                         logger.error(
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
@@ -324,18 +330,34 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 def _build_session_and_tracker(
     pipeline_config: RealtimePipelineConfig,
     num_cameras: int = 1,
-) -> tuple[Tracker | None, OnnxSession | None]:
-    """Construct the OnnxSession and Tracker from the pipeline config.
+) -> tuple[Tracker | None, object | None]:
+    """Construct the session and Tracker from the pipeline config.
 
-    Returns (None, None) on failure — caller should treat this as fatal in
-    centralized GPU mode.
+    Returns (None, None) on failure — caller should treat this as fatal.
     """
+    camera_node_config = pipeline_config.camera_node_config
+
+    if camera_node_config.detector_type == "mediapipe":
+        from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
+        try:
+            tracker, session = build_mediapipe_tracker(
+                model_complexity=camera_node_config.mediapipe_model_complexity,
+                detection_confidence=camera_node_config.mediapipe_detection_confidence,
+                presence_confidence=camera_node_config.mediapipe_presence_confidence,
+                tracking_confidence=camera_node_config.mediapipe_tracking_confidence,
+                num_hands=camera_node_config.mediapipe_num_hands,
+                num_faces=camera_node_config.mediapipe_num_faces,
+            )
+            return tracker, session
+        except Exception as e:
+            logger.error(f"Failed to construct MediaPipe tracker: {e!r}", exc_info=True)
+            return None, None
+
     from freemocap.core.tracking.tracker_factory import (
         build_skeleton_onnx_session,
         build_skeleton_tracker,
     )
 
-    camera_node_config = pipeline_config.camera_node_config
     inf_config = pipeline_config.skeleton_inference_node_config
     model_name = camera_node_config.rtmpose_model_name
     confidence_threshold = camera_node_config.rtmpose_confidence_threshold

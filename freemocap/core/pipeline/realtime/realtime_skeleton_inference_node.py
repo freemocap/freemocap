@@ -334,19 +334,11 @@ def _build_session_and_tracker(
         build_skeleton_onnx_session,
         build_skeleton_tracker,
     )
-    from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
 
-    skel_tracker_config = pipeline_config.camera_node_config.skeleton_tracker_config
+    camera_node_config = pipeline_config.camera_node_config
     inf_config = pipeline_config.skeleton_inference_node_config
-
-    # Extract model name from the tracker config.
-    model_name = "rtmw-x-l_256x192"
-    if skel_tracker_config is not None:
-        for stage in skel_tracker_config.stages:
-            for kp_det in stage.keypoint_detectors:
-                if isinstance(kp_det, RTMPoseDetectorConfig):
-                    model_name = kp_det.model_name
-                    break
+    model_name = camera_node_config.rtmpose_model_name
+    confidence_threshold = camera_node_config.rtmpose_confidence_threshold
 
     try:
         batch_size = min(inf_config.max_batch_size, num_cameras)
@@ -358,6 +350,7 @@ def _build_session_and_tracker(
         tracker = build_skeleton_tracker(
             onnx_session=onnx_session,
             model_name=model_name,
+            confidence_threshold=confidence_threshold,
         )
         return tracker, onnx_session
     except Exception as e:

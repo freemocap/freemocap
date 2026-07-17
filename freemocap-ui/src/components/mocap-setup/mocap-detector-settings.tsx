@@ -10,9 +10,9 @@ interface MOCAPDetectorSettingsProps {
 }
 
 const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
-    { label: "Default (256×192)", value: "rtmw-x-l_256x192" },
-    { label: "High Res (384×288)", value: "rtmw-x-l_384x288" },
-    { label: "Fastest (medium)", value: "rtmw-l-m_256x192" },
+    { label: "Default", value: "rtmw-x-l_256x192" },
+    { label: "High Res", value: "rtmw-x-l_384x288" },
+    { label: "Fast", value: "rtmw-l-m_256x192" },
 ];
 
 const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [

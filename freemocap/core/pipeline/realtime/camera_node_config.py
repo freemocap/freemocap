@@ -1,9 +1,14 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellytracker.core import TrackerConfig, DetectionStageConfig
 from skellytracker.core.detectors.keypoint_detectors.charuco import (
     CharucoBoardDefinition,
     CharucoDetectorConfig,
+)
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
+    MediapipePoseModelComplexity,
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
@@ -54,6 +59,17 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
+    detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose"
+    # RTMPose config (only used when detector_type="rtmpose")
+    rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
+    rtmpose_confidence_threshold: float = 0.0025
+    # MediaPipe config (only used when detector_type="mediapipe")
+    mediapipe_model_complexity: MediapipePoseModelComplexity = MediapipePoseModelComplexity.LITE
+    mediapipe_detection_confidence: float = 0.5
+    mediapipe_presence_confidence: float = 0.5
+    mediapipe_tracking_confidence: float = 0.5
+    mediapipe_num_hands: int = 2
+    mediapipe_num_faces: int = 1
     charuco_tracker_config: TrackerConfig | None = Field(
         default_factory=_default_charuco_tracker_config
     )

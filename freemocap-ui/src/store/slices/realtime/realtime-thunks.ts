@@ -2,7 +2,7 @@ import {createAsyncThunk} from "@reduxjs/toolkit";
 import {RootState, selectRealtimeEnabledCameraConfigs, selectSelectedCameraConfigs} from "@/store";
 import {serverUrls} from "@/services";
 import {PipelineApplyResponse, RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
-import {selectCalibrationConfig} from "@/store/slices/calibration/calibration-slice";
+import {selectCalibrationConfig, selectCalibrationDirectoryInfo} from "@/store/slices/calibration/calibration-slice";
 
 export const applyRealtimePipeline = createAsyncThunk<
     PipelineApplyResponse,
@@ -14,6 +14,16 @@ export const applyRealtimePipeline = createAsyncThunk<
         const cameraConfigs = selectSelectedCameraConfigs(getState());
         const realtimeCameraIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
         const calibrationConfig = selectCalibrationConfig(getState());
+        const calibrationDirectoryInfo = selectCalibrationDirectoryInfo(getState());
+
+        // Auto-inject the last-successful calibration path when none is explicitly set.
+        // This ensures the realtime triangulation uses the same calibration the user
+        // ran most recently, rather than whatever happens to be on disk when the
+        // aggregator process starts.
+        const calibrationTomlPath =
+            realtimeConfig.aggregator_config.calibration_toml_path
+            ?? calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
+            ?? null;
 
         const configWithBoard: RealtimePipelineConfig = {
             ...realtimeConfig,
@@ -22,6 +32,10 @@ export const applyRealtimePipeline = createAsyncThunk<
                 charuco_detector_config: {
                     board: calibrationConfig.charucoBoard,
                 },
+            },
+            aggregator_config: {
+                ...realtimeConfig.aggregator_config,
+                calibration_toml_path: calibrationTomlPath,
             },
         };
 

@@ -11,9 +11,10 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-import skellytracker.core.detectors.keypoint_detectors.charuco  # noqa: F401 (registry)
-import skellytracker.core.detectors.keypoint_detectors.rtmpose  # noqa: F401 (registry)
-import skellytracker.core.detectors.object_detectors.yolox      # noqa: F401 (registry)
+import skellytracker.core.detectors.keypoint_detectors.charuco    # noqa: F401 (registry)
+import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
+import skellytracker.core.detectors.keypoint_detectors.rtmpose    # noqa: F401 (registry)
+import skellytracker.core.detectors.object_detectors.yolox        # noqa: F401 (registry)
 
 from skellytracker.core import (
     DetectionStageConfig,
@@ -133,27 +134,66 @@ def build_skeleton_tracker(
     return Tracker.create(config, {"onnx": onnx_session})
 
 
-def build_mediapipe_tracker() -> tuple[Tracker, object]:
-    """Build a MediaPipe body-pose Tracker backed by a MediaPipeSession.
+def build_mediapipe_tracker(
+    *,
+    model_complexity=None,
+    detection_confidence: float = 0.5,
+    presence_confidence: float = 0.5,
+    tracking_confidence: float = 0.5,
+    num_hands: int = 2,
+    num_faces: int = 1,
+) -> tuple[Tracker, object]:
+    """Build a MediaPipe body+hands+face Tracker backed by a MediaPipeSession.
 
     Returns (tracker, session). The session type is MediaPipeSession from
     skellytracker.core.sessions.mediapipe_session.
     """
-    import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
-    from skellytracker.core.detectors.keypoint_detectors.mediapipe import (
+    from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
         MediapipePoseDetectorConfig,
+    )
+    from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
+        MediapipeFaceDetectorConfig,
+    )
+    from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
+        MediapipeHandDetectorConfig,
+    )
+    from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
+        MediapipePoseModelComplexity,
     )
     from skellytracker.core.sessions.mediapipe_session import (
         MediaPipeSession,
         MediaPipeSessionConfig,
     )
 
+    if model_complexity is None:
+        model_complexity = MediapipePoseModelComplexity.HEAVY
+
     session = MediaPipeSession.create(MediaPipeSessionConfig())
     config = TrackerConfig(
         stages=[
             DetectionStageConfig(
                 name="body",
-                keypoint_detectors=[MediapipePoseDetectorConfig()],
+                keypoint_detectors=[
+                    MediapipePoseDetectorConfig(
+                        model_complexity=model_complexity,
+                        num_poses=1,
+                        min_pose_detection_confidence=detection_confidence,
+                        min_pose_presence_confidence=presence_confidence,
+                        min_pose_tracking_confidence=tracking_confidence,
+                    ),
+                    MediapipeHandDetectorConfig(
+                        num_hands=num_hands,
+                        min_hand_detection_confidence=detection_confidence,
+                        min_hand_presence_confidence=presence_confidence,
+                        min_hand_tracking_confidence=tracking_confidence,
+                    ),
+                    MediapipeFaceDetectorConfig(
+                        num_faces=num_faces,
+                        min_face_detection_confidence=detection_confidence,
+                        min_face_presence_confidence=presence_confidence,
+                        min_face_tracking_confidence=tracking_confidence,
+                    ),
+                ],
             )
         ]
     )

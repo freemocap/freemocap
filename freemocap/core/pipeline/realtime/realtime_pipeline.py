@@ -145,7 +145,10 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
-                skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
+                skeleton_inference_centralized=(
+                    pipeline_config.use_centralized_gpu_inference
+                    and pipeline_config.camera_node_config.detector_type != "mediapipe"
+                ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
             for camera_id in pipeline_camera_ids
@@ -153,7 +156,8 @@ class RealtimePipeline:
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
         if (pipeline_config.use_centralized_gpu_inference
-                and pipeline_config.camera_node_config.skeleton_tracking_enabled):
+                and pipeline_config.camera_node_config.skeleton_tracking_enabled
+                and pipeline_config.camera_node_config.detector_type != "mediapipe"):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
                 camera_ids=pipeline_camera_ids,
@@ -440,13 +444,28 @@ class RealtimePipeline:
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            keypoints_binary_payload = build_keypoints_payload(
-                frame_number=aggregation_output.frame_number,
-                tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                keypoints_arrays=aggregation_output.keypoints_arrays,
-                skeleton_arrays=aggregation_output.skeleton,
-            )
+            detector_type = aggregation_output.pipeline_config.camera_node_config.detector_type
+            if detector_type == "mediapipe":
+                # Mediapipe keypoint names differ from RTMPose; embed them directly in the
+                # block so the frontend can render whatever was triangulated without needing
+                # the RTMPose schema. The SKELETON_3D rigidifier block is omitted since the
+                # rigidifier expects RTMPose wholebody point names.
+                keypoints_binary_payload = build_keypoints_payload(
+                    frame_number=aggregation_output.frame_number,
+                    tracker_id="mediapipe",
+                    point_names=list(aggregation_output.keypoints_arrays.keys()),
+                    keypoints_arrays=aggregation_output.keypoints_arrays,
+                    skeleton_arrays=None,
+                    embed_keypoint_names=True,
+                )
+            else:
+                keypoints_binary_payload = build_keypoints_payload(
+                    frame_number=aggregation_output.frame_number,
+                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
+                    keypoints_arrays=aggregation_output.keypoints_arrays,
+                    skeleton_arrays=aggregation_output.skeleton,
+                )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,

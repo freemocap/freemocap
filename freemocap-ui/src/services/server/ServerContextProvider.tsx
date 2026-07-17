@@ -32,6 +32,7 @@ import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import type {AppStateMessage} from "@/store/slices/connection/connection-types";
+import {loadCalibrationForRecording} from "@/store/slices/calibration";
 
 // Type guard for the server's authoritative APP_STATE snapshot
 function isAppState(data: any): data is AppStateMessage {
@@ -428,6 +429,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                             type: 'calibration/calibrationPipelineProgressReceived',
                                             payload: {phase: jsonData.phase},
                                         });
+                                        if (jsonData.phase === 'complete' && jsonData.recording_name) {
+                                            const recordingPath: string = jsonData.recording_path ?? '';
+                                            const recordingName: string = jsonData.recording_name;
+                                            const parentDir = recordingPath.endsWith(recordingName)
+                                                ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
+                                                : null;
+                                            store.dispatch(loadCalibrationForRecording({
+                                                recordingId: recordingName,
+                                                recordingParentDirectory: parentDir,
+                                            }));
+                                        }
                                     }
                                 }
                             }

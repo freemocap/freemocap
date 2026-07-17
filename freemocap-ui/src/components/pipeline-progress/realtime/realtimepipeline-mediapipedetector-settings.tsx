@@ -1,74 +1,42 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
-import NameDropdownSelector from '@/components/ui-components/NameDropdownSelector';
-import ToggleComponent from '@/components/ui-components/ToggleComponent';
 import ValueSelector from '@/components/ui-components/ValueSelector';
-import { useMocap } from '@/hooks/useMocap';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
-import {
-    detectPreset,
-    MEDIAPIPE_POSTHOC_PRESET,
-    MEDIAPIPE_REALTIME_PRESET,
-    MediapipeDetectorConfig,
-} from '@/store/slices/mocap';
+import { DetectorType, MediapipeModelComplexity, RTMPoseModelName } from '@/store/slices/mocap';
+import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
 
-interface RTPMediaPipeDetectorSettingsProps {
+interface RTPSkeletonSetupProps {
     open: boolean;
     onClose: () => void;
 }
 
-const PRESET_OPTIONS = ["Lite (Fastest)", "PostHoc (Accurate)", "Custom"];
+const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
+    { label: "Default (256×192)", value: "rtmw-x-l_256x192" },
+    { label: "High Res (384×288)", value: "rtmw-x-l_384x288" },
+    { label: "Fastest (medium)", value: "rtmw-l-m_256x192" },
+];
 
-const presetLabelToTarget: Record<string, "realtime" | "posthoc"> = {
-    "Lite (Fastest)": "realtime",
-    "PostHoc (Accurate)": "posthoc",
-};
+const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
+    { label: "Lite", value: "lite" },
+    { label: "Full", value: "full" },
+    { label: "Heavy", value: "heavy" },
+];
 
-const presetValueToLabel: Record<string, string> = {
-    realtime: "Lite (Fastest)",
-    posthoc: "PostHoc (Accurate)",
-    custom: "Custom",
-};
-
-const RTPMediaPipeDetectorSettings: React.FC<
-    RTPMediaPipeDetectorSettingsProps
-> = ({ open, onClose }) => {
+const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) => {
     const modalRef = useRef<HTMLDivElement>(null);
+    const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
 
-    const {
-        detectorConfig,
-        updateDetectorConfigLocalOnly,
-        replaceDetectorConfigLocalOnly,
-        isLoading,
-    } = useMocap();
-    const { triggerRealtimeApply } = useRealtimePipelineSync();
+    const detectorType: DetectorType = cameraNodeConfig.detector_type ?? "rtmpose";
 
-    const handleUpdateDetectorConfig = useCallback(
-        (updates: Partial<MediapipeDetectorConfig>) => {
-            updateDetectorConfigLocalOnly(updates);
-            triggerRealtimeApply();
+    const handleCameraNodeUpdate = useCallback(
+        (updates: Partial<CameraNodeConfig>) => {
+            applyOrUpdatePipelineConfig({
+                ...pipelineConfig,
+                camera_node_config: { ...cameraNodeConfig, ...updates },
+            });
         },
-        [updateDetectorConfigLocalOnly, triggerRealtimeApply]
-    );
-
-    const handleReplaceDetectorConfig = useCallback(
-        (config: MediapipeDetectorConfig) => {
-            replaceDetectorConfigLocalOnly(config);
-            triggerRealtimeApply();
-        },
-        [replaceDetectorConfigLocalOnly, triggerRealtimeApply]
-    );
-
-    const currentPreset = detectPreset(detectorConfig);
-
-    const handlePresetChange = useCallback(
-        (label: string) => {
-            const target = presetLabelToTarget[label];
-            if (target === "realtime") handleReplaceDetectorConfig({...MEDIAPIPE_REALTIME_PRESET});
-            else if (target === "posthoc") handleReplaceDetectorConfig({...MEDIAPIPE_POSTHOC_PRESET});
-        },
-        [handleReplaceDetectorConfig]
+        [applyOrUpdatePipelineConfig, pipelineConfig, cameraNodeConfig]
     );
 
     useEffect(() => {
@@ -104,87 +72,118 @@ const RTPMediaPipeDetectorSettings: React.FC<
 
                 {/* Header */}
                 <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="MediaPipe Settings" />
+                    <SubactionHeader text="Skeleton Setup" />
                     <IconButton icon="close-icon" onClick={onClose} />
                 </div>
 
-                {/* Preset dropdown */}
+                {/* Detector toggle */}
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Preset</span>
-
-                    <NameDropdownSelector
-                        key={currentPreset}
-                        options={PRESET_OPTIONS}
-                        initialValue={presetValueToLabel[currentPreset]}
-                        onChange={handlePresetChange}
-                        className="flex flex-row"
-                    />
+                    <span className="text-sm">Detector</span>
+                    <div className="flex flex-row gap-1">
+                        {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
+                            <button
+                                key={type}
+                                className={`button sm br-1 ${detectorType === type ? "primary accent" : "quaternary"}`}
+                                onClick={() => handleCameraNodeUpdate({ detector_type: type })}
+                            >
+                                {type === "rtmpose" ? "RTMPose" : "MediaPipe"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
-                {/* Min Detection Confidence */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Min detection confidence</span>
-                    <ValueSelector
-                        value={detectorConfig.min_detection_confidence}
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        unit=""
-                        onChange={(v) => handleUpdateDetectorConfig({ min_detection_confidence: v })}
-                    />
-                </div>
+                {/* RTMPose settings */}
+                {detectorType === "rtmpose" && (
+                    <>
+                        <p className="text-sm text-gray p-1">
+                            133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
+                        </p>
 
-                {/* Min Tracking Confidence */}
-                <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Min tracking confidence</span>
-                    <ValueSelector
-                        value={detectorConfig.min_tracking_confidence}
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        unit=""
-                        onChange={(v) => handleUpdateDetectorConfig({ min_tracking_confidence: v })}
-                    />
-                </div>
+                        {/* Model */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Model</span>
+                            <div className="flex flex-row gap-1">
+                                {RTMPOSE_MODELS.map(({ label, value }) => (
+                                    <button
+                                        key={value}
+                                        className={`button sm br-1 ${(cameraNodeConfig.rtmpose_model_name ?? "rtmw-x-l_256x192") === value ? "primary accent" : "quaternary"}`}
+                                        onClick={() => handleCameraNodeUpdate({ rtmpose_model_name: value })}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                {/* Toggles */}
-                <ToggleComponent
-                    text="Smooth landmarks"
-                    isToggled={detectorConfig.smooth_landmarks}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_landmarks: checked })}
-                    disabled={isLoading}
-                />
+                        {/* Confidence threshold */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Confidence threshold</span>
+                            <ValueSelector
+                                value={cameraNodeConfig.rtmpose_confidence_threshold ?? 0.0025}
+                                min={0} max={1} step={0.0005} unit=""
+                                onChange={(v) => handleCameraNodeUpdate({ rtmpose_confidence_threshold: v })}
+                            />
+                        </div>
+                    </>
+                )}
 
-                <ToggleComponent
-                    text="Segmentation"
-                    isToggled={detectorConfig.enable_segmentation}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ enable_segmentation: checked })}
-                    disabled={isLoading}
-                />
+                {/* MediaPipe settings */}
+                {detectorType === "mediapipe" && (
+                    <>
+                        <p className="text-sm text-gray p-1">
+                            Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.
+                        </p>
 
-                <ToggleComponent
-                    text="Smooth segmentation"
-                    isToggled={detectorConfig.smooth_segmentation}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ smooth_segmentation: checked })}
-                    disabled={isLoading || !detectorConfig.enable_segmentation}
-                />
+                        {/* Model size */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Model size</span>
+                            <div className="flex flex-row gap-1">
+                                {MEDIAPIPE_COMPLEXITIES.map(({ label, value }) => (
+                                    <button
+                                        key={value}
+                                        className={`button sm br-1 ${(cameraNodeConfig.mediapipe_model_complexity ?? "lite") === value ? "primary accent" : "quaternary"}`}
+                                        onClick={() => handleCameraNodeUpdate({ mediapipe_model_complexity: value })}
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                <ToggleComponent
-                    text="Refine face landmarks"
-                    isToggled={detectorConfig.refine_face_landmarks}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ refine_face_landmarks: checked })}
-                    disabled={isLoading}
-                />
+                        {/* Detection confidence */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Detection confidence</span>
+                            <ValueSelector
+                                value={cameraNodeConfig.mediapipe_detection_confidence ?? 0.5}
+                                min={0} max={1} step={0.05} unit=""
+                                onChange={(v) => handleCameraNodeUpdate({ mediapipe_detection_confidence: v })}
+                            />
+                        </div>
 
-                <ToggleComponent
-                    text="Static image mode"
-                    isToggled={detectorConfig.static_image_mode}
-                    onToggle={(checked) => handleUpdateDetectorConfig({ static_image_mode: checked })}
-                    disabled={isLoading}
-                />
+                        {/* Presence confidence */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Presence confidence</span>
+                            <ValueSelector
+                                value={cameraNodeConfig.mediapipe_presence_confidence ?? 0.5}
+                                min={0} max={1} step={0.05} unit=""
+                                onChange={(v) => handleCameraNodeUpdate({ mediapipe_presence_confidence: v })}
+                            />
+                        </div>
+
+                        {/* Tracking confidence */}
+                        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+                            <span className="text-sm">Tracking confidence</span>
+                            <ValueSelector
+                                value={cameraNodeConfig.mediapipe_tracking_confidence ?? 0.5}
+                                min={0} max={1} step={0.05} unit=""
+                                onChange={(v) => handleCameraNodeUpdate({ mediapipe_tracking_confidence: v })}
+                            />
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
 };
 
-export default RTPMediaPipeDetectorSettings;
+export default RTPSkeletonSetup;

@@ -457,12 +457,19 @@ class RealtimePipeline:
                     embed_keypoint_names=True,
                 )
             else:
+                # The rigidified skeleton covers body + hands but not face.
+                # Merge raw face keypoints from keypoints_arrays so the frontend's
+                # SKELETON_3D block includes face points and can draw face connections.
+                rtm_skeleton = dict(aggregation_output.skeleton) if aggregation_output.skeleton else {}
+                for name, coords in aggregation_output.keypoints_arrays.items():
+                    if name.startswith("face_"):
+                        rtm_skeleton[name] = coords
                 keypoints_binary_payload = build_keypoints_payload(
                     frame_number=aggregation_output.frame_number,
                     tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
                     point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
                     keypoints_arrays=aggregation_output.keypoints_arrays,
-                    skeleton_arrays=aggregation_output.skeleton,
+                    skeleton_arrays=rtm_skeleton,
                 )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,

@@ -37,6 +37,7 @@ from skellytracker.core.sessions.onnx_session import OnnxSession, OnnxSessionCon
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
+    KeypointResetPolicyConfig,
     KeypointsWithinBBoxRatioConfig,
 )
 
@@ -194,6 +195,7 @@ def build_mediapipe_tracker(
                         min_face_tracking_confidence=tracking_confidence,
                     ),
                 ],
+                keypoint_reset_policy=KeypointResetPolicyConfig(max_consecutive_misses=10),
             )
         ]
     )

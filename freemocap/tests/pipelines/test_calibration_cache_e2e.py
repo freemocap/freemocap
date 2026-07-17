@@ -57,7 +57,7 @@ def _build_charuco_pipeline_config(charuco_board: CharucoBoardDefinition) -> Rea
     return RealtimePipelineConfig(
         camera_node_config=camera_node_config,
         aggregator_config=aggregator_config,
-        use_centralized_gpu_inference=False,
+        use_centralized_inference=False,
         log_pipeline_times=False,
     )
 

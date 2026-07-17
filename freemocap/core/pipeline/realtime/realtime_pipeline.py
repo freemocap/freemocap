@@ -146,7 +146,7 @@ class RealtimePipeline:
                 ipc=ipc,
                 pubsub=pubsub,
                 skeleton_inference_centralized=(
-                    pipeline_config.use_centralized_gpu_inference
+                    pipeline_config.use_centralized_inference
                 ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
@@ -154,7 +154,7 @@ class RealtimePipeline:
         }
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if (pipeline_config.use_centralized_gpu_inference
+        if (pipeline_config.use_centralized_inference
                 and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
@@ -318,7 +318,7 @@ class RealtimePipeline:
                 self.skeleton_inference_node.shutdown()
             self.skeleton_inference_node = None
 
-        elif not old_skeleton and new_skeleton and new_config.use_centralized_gpu_inference:
+        elif not old_skeleton and new_skeleton and new_config.use_centralized_inference:
             # Skeleton tracking re-enabled: create and start a fresh inference node.
             logger.info(
                 f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "

@@ -134,7 +134,7 @@ def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
     return RealtimePipelineConfig(
         camera_node_config=camera_node_config,
         aggregator_config=aggregator_config,
-        use_centralized_gpu_inference=False,
+        use_centralized_inference=False,
         log_pipeline_times=False,
     )
 

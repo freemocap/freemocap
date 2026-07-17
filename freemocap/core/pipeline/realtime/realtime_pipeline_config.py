@@ -16,11 +16,10 @@ class RealtimePipelineConfig(BaseModel):
     aggregator_config: RealtimeAggregatorNodeConfig = Field(
         default_factory=RealtimeAggregatorNodeConfig,
     )
-    # When True, skeleton inference runs in a single dedicated worker process
-    # that batches frames from all cameras (one CUDA context, one ONNX session).
-    # When False, each camera node runs its own RTMPoseDetector inline (legacy
-    # behavior; suitable for CPU-only machines or for A/B comparison).
-    use_centralized_gpu_inference: bool = True
+    # When True, skeleton inference runs in a single dedicated worker process that
+    # reads all camera ring buffers directly and dispatches inference via process_batch.
+    # When False, each camera node runs its own tracker inline (legacy per-process path).
+    use_centralized_inference: bool = True
     log_pipeline_times: bool = True
 
     skeleton_inference_node_config: RealtimeSkeletonInferenceNodeConfig = Field(

@@ -37,6 +37,7 @@ from skellytracker.core.sessions.onnx_session import OnnxSession, OnnxSessionCon
 from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
+    BBoxSmoothingConfig,
     KeypointResetPolicyConfig,
     KeypointsWithinBBoxRatioConfig,
 )
@@ -100,19 +101,23 @@ def build_skeleton_onnx_session(
     return session
 
 
+_REDETECT_SECONDS = 5.0
+
+
 def build_skeleton_tracker(
     *,
     onnx_session: OnnxSession,
     model_name: str = "rtmw-x-l_256x192",
     confidence_threshold: float = 0.004,
-    redetect_interval: int = 5,
-    keypoint_bbox_expansion: float = 0.2,
+    video_fps: float = 30.0,
+    keypoint_bbox_expansion: float = 0.05,
 ) -> Tracker:
     """Build a body-pose Tracker (RTMPose + YOLOX) backed by an OnnxSession.
 
     The session must have been created with build_skeleton_onnx_session() using
     matching model names.
     """
+    redetect_interval = max(1, round(_REDETECT_SECONDS * video_fps))
     config = TrackerConfig(
         stages=[
             DetectionStageConfig(
@@ -127,8 +132,11 @@ def build_skeleton_tracker(
                 bbox_policy=BBoxPolicyConfig(
                     redetect_interval=redetect_interval,
                     keypoint_bbox_expansion=keypoint_bbox_expansion,
-                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.6)],
+                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.5)],
+                    min_shrink_ratio_per_frame=0.995,
+                    min_bbox_size_px=80.0,
                 ),
+                bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
             )
         ]
     )

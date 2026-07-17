@@ -14,11 +14,17 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetec
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
+    BBoxSmoothingConfig,
     KeypointsWithinBBoxRatioConfig,
 )
 
 
+_REDETECT_SECONDS = 5.0
+_ASSUMED_CAMERA_FPS = 30.0
+
+
 def _default_skeleton_tracker_config() -> TrackerConfig:
+    redetect_interval = max(1, round(_REDETECT_SECONDS * _ASSUMED_CAMERA_FPS))
     return TrackerConfig(
         stages=[
             DetectionStageConfig(
@@ -31,10 +37,13 @@ def _default_skeleton_tracker_config() -> TrackerConfig:
                     )
                 ],
                 bbox_policy=BBoxPolicyConfig(
-                    redetect_interval=5,
-                    keypoint_bbox_expansion=0.2,
-                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.6)],
+                    redetect_interval=redetect_interval,
+                    keypoint_bbox_expansion=0.05,
+                    fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.5)],
+                    min_shrink_ratio_per_frame=0.995,
+                    min_bbox_size_px=80.0,
                 ),
+                bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
             )
         ]
     )

@@ -87,7 +87,6 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
     from freemocap.core.tracking.tracker_factory import (
         build_charuco_tracker,
         build_skeleton_onnx_session,
-        build_skeleton_tracker,
     )
     from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
     from skellytracker.core.tracker.tracker import Tracker
@@ -113,7 +112,7 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
                 model_name = kp_det.model_name
                 break
     onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
-    tracker = build_skeleton_tracker(onnx_session=onnx_session, model_name=model_name)
+    tracker = Tracker.create(tracker_config, {"onnx": onnx_session})
     return tracker, onnx_session
 
 

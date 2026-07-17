@@ -18,6 +18,7 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetec
 from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
+    BBoxSmoothingConfig,
     KeypointsWithinBBoxRatioConfig,
 )
 
@@ -85,6 +86,12 @@ class PosthocMocapPipelineConfig(BaseModel):
         le=4,
         description="Number of faces to detect. Only used when detector_type='mediapipe'.",
     )
+    video_fps: float = Field(
+        default=30.0,
+        alias="videoFps",
+        gt=0.0,
+        description="Frames per second of the recorded video. Used to compute redetect_interval (redetect every 5 s). Set this from cv2.CAP_PROP_FPS before constructing the config for accurate cadence.",
+    )
     tracker_config: TrackerConfig | None = Field(default=None)
     calibration_toml_path: str | None = Field(
         default=None,
@@ -139,6 +146,7 @@ class PosthocMocapPipelineConfig(BaseModel):
                 ]
             )
         else:
+            redetect_interval = max(1, round(5.0 * self.video_fps))
             self.tracker_config = TrackerConfig(
                 stages=[
                     DetectionStageConfig(
@@ -151,10 +159,13 @@ class PosthocMocapPipelineConfig(BaseModel):
                             )
                         ],
                         bbox_policy=BBoxPolicyConfig(
-                            redetect_interval=5,
-                            keypoint_bbox_expansion=0.2,
-                            fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.6)],
+                            redetect_interval=redetect_interval,
+                            keypoint_bbox_expansion=0.05,
+                            fitness_checks=[KeypointsWithinBBoxRatioConfig(threshold=0.5)],
+                            min_shrink_ratio_per_frame=0.995,
+                            min_bbox_size_px=80.0,
                         ),
+                        bbox_smoothing=BBoxSmoothingConfig(alpha=0.4),
                     )
                 ]
             )

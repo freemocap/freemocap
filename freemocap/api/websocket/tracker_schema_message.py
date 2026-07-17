@@ -11,7 +11,7 @@ from typing import Any
 import msgspec
 
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
-from freemocap.core.tracking.tracker_definitions import TrackerDefinition, RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import TrackerDefinition, RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 
 
 class TrackerSchemasMessage(msgspec.Struct):
@@ -60,6 +60,7 @@ def collect_active_tracker_schemas() -> dict[str, dict[str, Any]]:
 
     active: dict[str, TrackerDefinition] = {
         RTMPOSE_WHOLEBODY_DEFINITION.name: RTMPOSE_WHOLEBODY_DEFINITION,
+        MEDIAPIPE_WHOLEBODY_DEFINITION.name: MEDIAPIPE_WHOLEBODY_DEFINITION,
     }
 
     # Canonical body schema

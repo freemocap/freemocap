@@ -289,6 +289,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 const frame: KeypointsFrame = { pointNames, interleaved };
 
                 if (block.kind === BLOCK_KIND.KEYPOINTS_3D) {
+                    // When a known-schema tracker sends a keypoints block, update the
+                    // active tracker so the 3D viewport uses the matching connection schema.
+                    if (
+                        block.trackerId in trackerSchemasRef.current &&
+                        activeTrackerIdRef.current !== block.trackerId
+                    ) {
+                        activeTrackerIdRef.current = block.trackerId;
+                        setActiveTrackerId(block.trackerId);
+                        canvasManagerRef.current?.setSchema(trackerSchemasRef.current, block.trackerId);
+                    }
                     keypointsRef.current = frame;
                     for (const cb of keypointsSubscribersRef.current) cb(frame);
                 } else if (block.kind === BLOCK_KIND.SKELETON_3D) {

@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
-from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
@@ -444,16 +444,16 @@ class RealtimePipeline:
             frames_bytearray, mf_timestamp = payload
             detector_type = aggregation_output.pipeline_config.camera_node_config.detector_type
             if detector_type == "mediapipe":
-                # Mediapipe keypoint names differ from RTMPose; embed them directly in the
-                # block so the frontend can render whatever was triangulated without needing
-                # the RTMPose schema. The SKELETON_3D rigidifier block is omitted since the
-                # rigidifier expects RTMPose wholebody point names.
+                # Mediapipe keypoints use body.{point} naming (stage-prefixed). Embed names
+                # in both the KEYPOINTS_3D block and a SKELETON_3D block so ConnectionRenderer
+                # can draw connections using the mediapipe_wholebody schema. No rigidified
+                # skeleton is available for mediapipe, so raw keypoints serve as the skeleton.
                 keypoints_binary_payload = build_keypoints_payload(
                     frame_number=aggregation_output.frame_number,
-                    tracker_id="mediapipe",
+                    tracker_id=MEDIAPIPE_WHOLEBODY_DEFINITION.name,
                     point_names=list(aggregation_output.keypoints_arrays.keys()),
                     keypoints_arrays=aggregation_output.keypoints_arrays,
-                    skeleton_arrays=None,
+                    skeleton_arrays=aggregation_output.keypoints_arrays,
                     embed_keypoint_names=True,
                 )
             else:

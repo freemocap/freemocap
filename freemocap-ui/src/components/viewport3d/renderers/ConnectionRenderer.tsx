@@ -223,6 +223,19 @@ export function ConnectionRenderer() {
         }
     };
 
+    // Clear stale skeleton data when the active schema changes (tracker switch).
+    // Without this, old point names from the previous tracker persist in
+    // pointsRef until the next skeleton frame overwrites them, causing ghost
+    // connections to briefly render with the wrong schema.
+    useEffect(() => {
+        const m = pointsRef.current;
+        for (const key of m.keys()) {
+            if (!isCalibPoint(key)) m.delete(key);
+        }
+        dirtyRef.current = true;
+        invalidate();
+    }, [activeSchema, invalidate]);
+
     // Skeleton: FABRIK-fitted canonical body + hand landmarks. These drive
     // the stick-figure connections. Each frame replaces the body/hand entries
     // in pointsRef.

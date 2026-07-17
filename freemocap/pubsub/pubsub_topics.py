@@ -147,6 +147,18 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     @property
     def skeleton_overlay_data(self) -> dict:
         from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
+        from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
+
+        detector_type = (
+            self.pipeline_config.camera_node_config.detector_type
+            if self.pipeline_config is not None
+            else "rtmpose"
+        )
+        tracker_def_name = (
+            MEDIAPIPE_WHOLEBODY_DEFINITION.name
+            if detector_type == "mediapipe"
+            else RTMPOSE_WHOLEBODY_DEFINITION.name
+        )
 
         overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
@@ -154,6 +166,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                 overlay_data[camera_id] = SkeletonOverlayData.from_observation(
                     camera_id=camera_id,
                     observation=cam_output.skeleton_observation,
+                    tracker_definition_name=tracker_def_name,
                 )
         return overlay_data
 

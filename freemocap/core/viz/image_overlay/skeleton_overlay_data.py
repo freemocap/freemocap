@@ -15,7 +15,7 @@ import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
 from skellytracker.core.data_primitives.observation import Observation
 
-from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 
 
 class SkeletonPointModel(msgspec.Struct):
@@ -55,12 +55,13 @@ class SkeletonOverlayData(msgspec.Struct):
             camera_id: CameraIdString,
             observation: Observation,
             scale: float = 1.0,
+            tracker_definition_name: str = RTMPOSE_WHOLEBODY_DEFINITION.name,
     ) -> "SkeletonOverlayData":
         """Flatten a skeleton Observation into the schema-driven payload.
 
         Names come from the "body" stage keypoints directly (unqualified, e.g.
-        "nose", "left_eye") so they match the schema connection names in
-        RTMPOSE_WHOLEBODY_DEFINITION. NaN rows are dropped. z is always 0.
+        "nose", "right_hand_wrist") so they match the schema connection names.
+        NaN rows are dropped. z is always 0.
         """
         body_stage = observation.stages.get("body")
 
@@ -96,7 +97,7 @@ class SkeletonOverlayData(msgspec.Struct):
         return cls(
             camera_id=camera_id,
             frame_number=observation.frame_number,
-            tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+            tracker_id=tracker_definition_name,
             image_width=observation.image_size[1],
             image_height=observation.image_size[0],
             message_type="skeleton_overlay",

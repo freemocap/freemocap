@@ -118,7 +118,11 @@ def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
 
 def _build_annotator(tracker_config: TrackerConfig):
     """Build an Annotator for the given TrackerConfig."""
-    from skellytracker.core.annotation.keypoint_annotator import KeypointAnnotator, KeypointAnnotatorConfig
+    from skellytracker.core.annotation.keypoint_annotator import (
+        KeypointAnnotator,
+        KeypointAnnotatorConfig,
+        StageAnnotationSchema,
+    )
     from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_observation_annotator import (
         CharucoObservationAnnotator,
         _CharucoObservationAnnotatorConfig,
@@ -129,7 +133,11 @@ def _build_annotator(tracker_config: TrackerConfig):
         return CharucoObservationAnnotator.create(
             _CharucoObservationAnnotatorConfig(board_def=board_def)
         )
-    return KeypointAnnotator(config=KeypointAnnotatorConfig())
+    return KeypointAnnotator(
+        config=KeypointAnnotatorConfig(
+            stage_schemas={"body": StageAnnotationSchema(draw_boxes=True)}
+        )
+    )
 
 
 @dataclass

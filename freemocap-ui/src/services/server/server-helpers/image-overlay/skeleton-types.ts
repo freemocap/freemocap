@@ -20,6 +20,12 @@ export const SkeletonOverlaySchema = z.object({
     image_width: z.number(),
     image_height: z.number(),
     points: z.array(SkeletonPointSchema),
+    // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
+    bbox_x1: z.number().optional(),
+    bbox_y1: z.number().optional(),
+    bbox_x2: z.number().optional(),
+    bbox_y2: z.number().optional(),
+    bbox_from_detector: z.boolean().optional(),
 });
 
 // Multi-camera message shape (matches CharucoOverlayDataMessage structure)

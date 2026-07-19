@@ -47,6 +47,9 @@ class SkeletonOverlayData(msgspec.Struct):
     bbox_y1: float = float("nan")
     bbox_x2: float = float("nan")
     bbox_y2: float = float("nan")
+    # True when the YOLOX detector actually ran this frame (redetect); False when the
+    # bbox was carried over/predicted from tracked keypoints.
+    bbox_from_detector: bool = False
 
     @classmethod
     def from_observation(
@@ -87,12 +90,14 @@ class SkeletonOverlayData(msgspec.Struct):
                 )
 
         bbox_x1 = bbox_y1 = bbox_x2 = bbox_y2 = float("nan")
+        bbox_from_detector = False
         if body_stage is not None and body_stage.bounding_boxes:
             bb = body_stage.bounding_boxes[0]
             bbox_x1 = float(bb.x1) * scale
             bbox_y1 = float(bb.y1) * scale
             bbox_x2 = float(bb.x2) * scale
             bbox_y2 = float(bb.y2) * scale
+            bbox_from_detector = bool(body_stage.detector_ran)
 
         return cls(
             camera_id=camera_id,
@@ -106,4 +111,5 @@ class SkeletonOverlayData(msgspec.Struct):
             bbox_y1=bbox_y1,
             bbox_x2=bbox_x2,
             bbox_y2=bbox_y2,
+            bbox_from_detector=bbox_from_detector,
         )

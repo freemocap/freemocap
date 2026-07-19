@@ -74,6 +74,12 @@ export type DetectorType = "rtmpose" | "mediapipe";
 export type RTMPoseModelName = "rtmw-x-l_256x192" | "rtmw-x-l_384x288" | "rtmw-l-m_256x192";
 export type MediapipeModelComplexity = "lite" | "full" | "heavy";
 
+export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
+    { label: "Default", value: "rtmw-x-l_256x192" },
+    { label: "High Res", value: "rtmw-x-l_384x288" },
+    { label: "Fast", value: "rtmw-l-m_256x192" },
+];
+
 /**
  * Mirrors backend MocapPipelineConfig.
  */

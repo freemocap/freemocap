@@ -3,19 +3,13 @@ import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
-import { DetectorType, MediapipeModelComplexity, RTMPoseModelName } from '@/store/slices/mocap';
+import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
 
 interface RTPSkeletonSetupProps {
     open: boolean;
     onClose: () => void;
 }
-
-const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
-    { label: "Default (256×192)", value: "rtmw-x-l_256x192" },
-    { label: "High Res (384×288)", value: "rtmw-x-l_384x288" },
-    { label: "Fastest (medium)", value: "rtmw-l-m_256x192" },
-];
 
 const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
     { label: "Lite", value: "lite" },

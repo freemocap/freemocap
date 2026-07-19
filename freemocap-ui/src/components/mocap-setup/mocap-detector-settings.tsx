@@ -2,18 +2,12 @@ import React, { useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import { useMocap } from '@/hooks/useMocap';
-import { DetectorType, MediapipeModelComplexity, RTMPoseModelName } from '@/store/slices/mocap';
+import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 
 interface MOCAPDetectorSettingsProps {
     open: boolean;
     onClose: () => void;
 }
-
-const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
-    { label: "Default", value: "rtmw-x-l_256x192" },
-    { label: "High Res", value: "rtmw-x-l_384x288" },
-    { label: "Fast", value: "rtmw-l-m_256x192" },
-];
 
 const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
     { label: "Heavy", value: "heavy" },

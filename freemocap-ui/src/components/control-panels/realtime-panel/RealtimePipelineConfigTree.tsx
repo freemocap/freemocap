@@ -3,7 +3,7 @@ import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
 import {useRealtimePipelineSync} from "@/hooks/useRealtimePipelineSync";
-import {DetectorType, MediapipeModelComplexity, RTMPoseModelName, RealtimeFilterConfig} from "@/store/slices/mocap";
+import {DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RealtimeFilterConfig} from "@/store/slices/mocap";
 import {useAppDispatch, useAppSelector} from "@/store/hooks";
 import {pipelineConfigUpdated, resetSkeletonFitter} from "@/store/slices/realtime";
 import ValueSelector from "@/components/ui-components/ValueSelector";
@@ -26,12 +26,6 @@ interface PipelineConfigTreeProps {
     rigidBodyEnabled: boolean;
     onRigidBodyToggle: (newValue: boolean) => void;
 }
-
-const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
-    { label: "Default (256×192)", value: "rtmw-x-l_256x192" },
-    { label: "High Res (384×288)", value: "rtmw-x-l_384x288" },
-    { label: "Fastest (medium)", value: "rtmw-l-m_256x192" },
-];
 
 export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     context,

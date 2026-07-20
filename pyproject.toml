@@ -58,9 +58,31 @@ packages = ["freemocap"]
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
   ]
 
+  # This project uses opencv-contrib-python (a superset of opencv-python); having
+  # both installed causes a file-collision error.
+  exclude-dependencies = ["opencv-python"]
+
   [[tool.uv.index]]
   name = "nvidia"
   url = "https://pypi.nvidia.com"
+
+# rtmlib==0.0.14 hard-depends on the CPU `onnxruntime` package. skellytracker[all-cuda]
+# pulls in `onnxruntime-gpu`. Both share the same top-level `onnxruntime` import and
+# cannot coexist on disk — whichever installs last clobbers the other's
+# `onnxruntime_pybind11_state.pyd`, so the CPU build wins and CUDA/TensorRT execution
+# providers disappear from `onnxruntime.get_available_providers()`.
+#
+# `[[tool.uv.dependency-metadata]]` is only honored for the root project, so
+# skellytracker's own copy of this override does not apply when freemocap resolves —
+# it must be repeated here to strip rtmlib's onnxruntime dep from the resolution graph.
+# rtmlib still imports fine at runtime because onnxruntime-gpu satisfies the import.
+#
+# [[tool.uv.dependency-metadata]] must come after all plain [tool.uv] keys because
+# TOML array tables absorb subsequent sibling keys into their scope.
+[[tool.uv.dependency-metadata]]
+name = "rtmlib"
+version = "0.0.14"
+requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 
 [tool.bumpver]
 current_version = "v1.4.7"

@@ -23,8 +23,8 @@ from numpy.typing import NDArray
 # avoid beartype rejecting a valid but narrower dtype.
 IntArray = np.ndarray
 
-from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel  # noqa: TC001
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition  # noqa: TC002
 
 
 

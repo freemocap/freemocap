@@ -13,7 +13,7 @@ import csv
 import logging
 import multiprocessing
 import pickle
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
@@ -462,7 +462,9 @@ def _build_recording_frame_cache(
     for recording_frame_number, connection_frame_number in recording_to_connection.items():
         observation = cache_by_connection_frame.get(connection_frame_number)
         if observation is not None:
-            cache_by_recording_frame[recording_frame_number] = observation
+            cache_by_recording_frame[recording_frame_number] = replace(
+                observation, frame_number=recording_frame_number
+            )
 
     if not cache_by_recording_frame:
         logger.info(

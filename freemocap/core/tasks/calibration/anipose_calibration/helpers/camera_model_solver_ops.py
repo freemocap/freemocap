@@ -6,10 +6,10 @@ functions here keep the shared CameraModel free of solver concerns.
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import NDArray  # noqa: TC002
 
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
-from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel  # noqa: TC001
 
 
 # Parameter layout per camera: [rvec(3), tvec(3), focal(1), dist0(1)] = 8 floats.

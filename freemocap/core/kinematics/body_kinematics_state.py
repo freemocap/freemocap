@@ -7,7 +7,7 @@ references. H_G / omega are added in Phase 2.
 from __future__ import annotations
 
 import msgspec
-from skellyforge.data_models.trajectory_3d import Point3d
+from skellyforge.data_models.trajectory_3d import Point3d  # noqa: TC002
 
 
 class BodyKinematicsState(msgspec.Struct):

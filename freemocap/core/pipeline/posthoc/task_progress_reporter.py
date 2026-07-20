@@ -9,7 +9,7 @@ or when the aggregation node has no WebSocket queue available).
 """
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable  # noqa: TC003
 
 
 class TaskProgressReporter:

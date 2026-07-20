@@ -52,9 +52,9 @@ from skellycam.core.types.type_overloads import (
     TopicSubscriptionQueue,
 )
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.core.data_primitives.observation import Observation
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellytracker.core.tracker.tracker import Tracker
-from skellytracker.core.tracker.tracker_state import TrackerState
+from skellytracker.core.tracker.tracker_state import TrackerState  # noqa: TC002
 from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC

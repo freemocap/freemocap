@@ -14,7 +14,7 @@ import pytest
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.kinematics.segment_lengths import (
     SegmentLengthReport,

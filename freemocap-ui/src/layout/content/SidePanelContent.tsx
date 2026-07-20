@@ -8,7 +8,6 @@ import {CameraConfigTreeView} from '@/components/control-panels/camera-config-pa
 import {RecordingPathPanel} from "@/components/control-panels/recording-info-panel/RecordingPathPanel";
 import {RecordingControlPanel} from "@/components/control-panels/recording-info-panel/RecordingControlPanel";
 import {RecordingInfoPanel as ProcessMocapPanel} from "@/components/control-panels/recording-info-panel/ProcessMocapPanel";
-import {MocapPanel} from "@/components/control-panels/mocap-control-panel/MocapPanel";
 import {ServerConnectionStatus} from "@/components/control-panels/server-connection";
 import {RecordingBrowserSection} from "@/components/playback/RecordingBrowserSection";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
@@ -34,7 +33,6 @@ const SECTION_COMPONENTS: Record<SectionId, React.FC> = {
     process_mocap: ProcessMocapPanel,
     recording_path: RecordingPathPanel,
     recording_control: RecordingControlPanel,
-    mocap: MocapPanel,
     recordings: RecordingBrowserSection,
 };
 

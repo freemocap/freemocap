@@ -7,13 +7,13 @@ and overwrites intrinsics fields per `camera_model_solver_ops`.
 from __future__ import annotations
 
 import logging
-import multiprocessing.synchronize
+import multiprocessing.synchronize  # noqa: TC003
 from typing import Any
 
 import cv2
 import numpy as np
 from freemocap.core.tasks.calibration.shared.transform_math import build_transformation_matrix, get_rtvec
-from numpy.typing import NDArray
+from numpy.typing import NDArray  # noqa: TC002
 from scipy import optimize
 from scipy.sparse import dok_matrix
 from skellycam.core.types.type_overloads import CameraIdString
@@ -38,8 +38,8 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.freemocap_anip
     transform_points, BoardObservations,
 )
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
-from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel  # noqa: TC001
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 

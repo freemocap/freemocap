@@ -25,8 +25,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
 
-from skellyforge.data_models.trajectory_3d import Trajectory3d
-import numpy as np
+from skellyforge.data_models.trajectory_3d import Trajectory3d  # noqa: TC002
+import numpy as np  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 

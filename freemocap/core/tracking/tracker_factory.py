@@ -34,7 +34,7 @@ from skellytracker.core.detectors.object_detectors.yolox import (
 )
 from skellytracker.core.sessions.cpu_session import CpuSession, CpuSessionConfig
 from skellytracker.core.sessions.onnx_session import OnnxSession, OnnxSessionConfig
-from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName
+from skellytracker.core.sessions.execution_provider_name import ExecutionProviderName  # noqa: TC002
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,

@@ -6,8 +6,8 @@ provides array-conversion helpers used by triangulation and calibration tasks.
 from __future__ import annotations
 
 import numpy as np
-from numpy.typing import NDArray
-from skellytracker.core.data_primitives.observation import Observation
+from numpy.typing import NDArray  # noqa: TC002
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 
 
 class ObservationBuffer:

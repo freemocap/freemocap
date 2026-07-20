@@ -12,8 +12,6 @@ import json
 import logging
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING
-
 # Load pyarrow FIRST, before the native libs pulled in by the imports below.
 # pandas>=3.0 uses the pyarrow-backed string dtype by default, so writing the
 # output CSV/parquet calls into pyarrow's native code. On Windows, if another
@@ -23,12 +21,9 @@ from typing import TYPE_CHECKING
 # up front makes it win the DLL load-order race. Do not remove or reorder.
 import pyarrow  # noqa: F401
 
-from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from skellytracker.core.data_primitives.observation import Observation
-
-if TYPE_CHECKING:
-    pass
-from skellycam.core.recorders.videos.recording_info import RecordingInfo
+from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig  # noqa: TC001
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from skellycam.core.recorders.videos.recording_info import RecordingInfo  # noqa: TC002
 
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
@@ -38,9 +33,9 @@ from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observatio
     skeleton_from_mediapipe_observation_recorders
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
-from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001
 logger = logging.getLogger(__name__)
 
 

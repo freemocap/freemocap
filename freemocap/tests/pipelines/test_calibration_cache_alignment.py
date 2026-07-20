@@ -18,14 +18,21 @@ import csv
 import logging
 import pickle
 from pathlib import Path
-from typing import Literal
+from unittest.mock import MagicMock
 
 import pytest
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig, TrackerType
-from skellytracker.trackers.charuco_tracker.charuco_board_definition import CharucoBoardDefinition
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
+from skellytracker.core import DetectionStageConfig, TrackerConfig
+from skellytracker.core.data_primitives.observation import Observation
+from skellytracker.core.detectors.keypoint_detectors.charuco import (
+    CharucoBoardDefinition,
+    CharucoDetectorConfig,
+)
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
+    MediapipePoseDetectorConfig,
+)
+from skellytracker.core.tracker.tracker import Tracker
+from skellytracker.core.tracker.tracker_state import TrackerState
 
 from freemocap.core.pipeline.posthoc.video_node import (
     CACHE_FILENAME,
@@ -42,8 +49,8 @@ BOARD = CharucoBoardDefinition(squares_x=5, squares_y=3, square_length_mm=54.0, 
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _obs(connection_frame_number: int) -> CharucoObservation:
-    return CharucoObservation(frame_number=connection_frame_number)
+def _obs(connection_frame_number: int) -> Observation:
+    return Observation(frame_number=connection_frame_number, image_size=(0, 0))
 
 
 def _write_cache(recording_path: Path, observations: dict, board: CharucoBoardDefinition = BOARD) -> None:
@@ -76,8 +83,10 @@ def _write_camera_csv(recording_path: Path, camera_id: str, recording_to_connect
             writer.writerow([recording_frame, connection_frame, 0.0])
 
 
-def _charuco_config(board: CharucoBoardDefinition = BOARD) -> CharucoDetectorConfig:
-    return CharucoDetectorConfig(board=board)
+def _charuco_config(board: CharucoBoardDefinition = BOARD) -> TrackerConfig:
+    return TrackerConfig(
+        stages=[DetectionStageConfig(name="charuco", keypoint_detectors=[CharucoDetectorConfig(board=board)])]
+    )
 
 
 @pytest.fixture
@@ -114,7 +123,13 @@ class TestPosthocCacheAlignment:
         # The cached obs carried its CONNECTION number (102). After lookup at
         # recorded frame 2 it must carry the RECORDING number so anipose rows align
         # with detected frames and across cameras.
-        out = _get_observation(frame_number=2, image=None, detector=None, cache=cache)
+        out, _ = _get_observation(
+            frame_number=2,
+            image=None,
+            tracker=MagicMock(spec=Tracker),
+            state=MagicMock(spec=TrackerState),
+            cache=cache,
+        )
         assert out.frame_number == 2
 
     def test_per_camera_drop_patterns_do_not_cross_contaminate(self, rec_path):
@@ -163,7 +178,7 @@ class TestPosthocCacheValidation:
 
     def test_board_mismatch_rejected_visibly(self, rec_path, caplog):
         _write_cache(rec_path, {"cam0": {0: _obs(0)}}, board=BOARD)  # 5x3, 54mm
-        wrong = CharucoDetectorConfig(
+        wrong = _charuco_config(
             board=CharucoBoardDefinition(squares_x=7, squares_y=5, square_length_mm=58.0),
         )
         with caplog.at_level(logging.INFO):
@@ -188,11 +203,11 @@ class TestPosthocCacheValidation:
     def test_non_charuco_detector_returns_none(self, rec_path):
         _write_cache(rec_path, {"cam0": {0: _obs(0)}})
 
-        class _MediapipeishConfig(BaseDetectorConfig):
-            tracker_type: Literal[TrackerType.MEDIAPIPE] = TrackerType.MEDIAPIPE
-
+        mediapipe_config = TrackerConfig(
+            stages=[DetectionStageConfig(name="body", keypoint_detectors=[MediapipePoseDetectorConfig()])]
+        )
         loaded = _load_cache_by_connection_frame(
-            recording_path=rec_path, camera_id="cam0", detector_config=_MediapipeishConfig(),
+            recording_path=rec_path, camera_id="cam0", detector_config=mediapipe_config,
         )
         assert loaded is None
 

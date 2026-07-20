@@ -104,6 +104,7 @@ def run_posthoc_mocap_aggregator_task(
     output_folder = Path(recording_info.full_recording_path) / "output_data"
 
     skeleton = skeleton_from_mediapipe_observation_recorders(
+        detector= task_config.detector_type,
         observation_recorders=observation_recorders,
         path_to_calibration_toml=calibration_toml_path,
         path_to_output_data_folder=output_folder,

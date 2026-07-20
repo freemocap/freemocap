@@ -9,25 +9,22 @@ each adapter just collects ``{landmark_name: (n_frames, 3)}``.
 """
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 
 import numpy as np
 
-from freemocap.core.kinematics.segment_lengths import load_body_positions_from_csv
-
-# Posthoc body 3D CSV is long-format: frame, keypoint, x, y, z
-_POSTHOC_BODY_CSV = "mediapipe_body_3d_xyz.csv"
+from freemocap.core.kinematics.segment_lengths import find_body_csv, load_body_positions_from_csv
 
 
 def load_posthoc_body_positions(output_dir: Path) -> dict[str, np.ndarray]:
     """Load the posthoc body 3D trajectories as ``{landmark_name: (n_frames, 3)}``.
 
-    Thin wrapper over the core ``load_body_positions_from_csv`` for the posthoc
-    pipeline's ``mediapipe_body_3d_xyz.csv``.
+    Thin wrapper over the core ``find_body_csv``/``load_body_positions_from_csv``.
+    The CSV is named after the tracking model (e.g. ``charuco_board_5_3_body_3d_xyz.csv``),
+    not a fixed ``mediapipe_body_3d_xyz.csv``, so resolution is delegated to
+    ``find_body_csv`` rather than hardcoding a filename here.
     """
-    csv_path = Path(output_dir) / _POSTHOC_BODY_CSV
-    if not csv_path.exists():
-        raise FileNotFoundError(f"Posthoc body CSV not found: {csv_path}")
+    csv_path = find_body_csv(output_dir)
     return load_body_positions_from_csv(csv_path)
 
 

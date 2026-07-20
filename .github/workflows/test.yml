@@ -15,6 +15,7 @@ jobs:
   backend-tests:
     name: Backend Tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     strategy:
       fail-fast: true
       matrix:
@@ -48,11 +49,12 @@ jobs:
         run: uv run ruff check freemocap/
 
       - name: Run tests
-        run: uv run pytest freemocap/tests/ -v --tb=short
+        run: uv run pytest freemocap/tests/ -v --tb=short --timeout=300 --timeout-method=thread
 
   frontend-typecheck:
     name: Frontend Typecheck
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     defaults:
       run:

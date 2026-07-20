@@ -8,6 +8,13 @@ export const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP_NAME = 'freemocap';
 const SERVER_EXE_NAME = process.platform === 'win32' ? 'freemocap_server.exe' : 'freemocap_server';
 
+// PyInstaller onedir output: a `freemocap_server/` directory holding the launcher
+// executable next to an `_internal/` tree of DLLs and data files. The executable
+// must stay inside this directory — it resolves its dependencies relative to itself.
+const SERVER_DIR_NAME = 'freemocap_server';
+const serverPathIn = (...basePath: string[]): string =>
+    path.join(...basePath, SERVER_DIR_NAME, SERVER_EXE_NAME);
+
 // Function to get the correct resources path based on environment
 const getResourcesPath = () => {
     if (app.isPackaged) {
@@ -43,22 +50,22 @@ const getDefaultInstallUnpackedPath = (): string => {
 export const PYTHON_EXECUTABLE_CANDIDATES = [
     {
         name: 'bundled',
-        path: path.join(getResourcesPath(), SERVER_EXE_NAME),
+        path: serverPathIn(getResourcesPath()),
         description: 'Executable bundled with the running app (asar-unpacked)'
     },
     {
         name: 'default-install',
-        path: path.join(getDefaultInstallUnpackedPath(), SERVER_EXE_NAME),
+        path: serverPathIn(getDefaultInstallUnpackedPath()),
         description: 'Executable in the platform default install location'
     },
     {
         name: 'development',
-        path: path.join(getResourcesPath(), '..', 'dist', SERVER_EXE_NAME),
+        path: serverPathIn(getResourcesPath(), '..', 'dist'),
         description: 'Development build executable (../dist/)'
     },
     {
         name: 'portable',
-        path: path.join(process.cwd(), SERVER_EXE_NAME),
+        path: serverPathIn(process.cwd()),
         description: 'Portable executable in the current working directory'
     },
     {

@@ -209,17 +209,20 @@ jobs:
           uv pip install pyinstaller
           uv run pyinstaller ./freemocap.spec --clean
 
-      # ── Move server binary into freemocap-ui/ ──
-      - name: Move server binary into freemocap-ui (Windows)
+      # ── Move server directory into freemocap-ui/ ──
+      # PyInstaller onedir emits dist/freemocap_server/ — the launcher plus an
+      # _internal/ tree. The whole directory moves as a unit; the launcher
+      # resolves its DLLs and data files relative to its own location.
+      - name: Move server directory into freemocap-ui (Windows)
         if: matrix.platform == 'windows'
         run: |
-          Move-Item -Path ".\dist\${{ matrix.server-binary }}" -Destination ".\freemocap-ui\${{ matrix.server-binary }}"
+          Move-Item -Path ".\dist\freemocap_server" -Destination ".\freemocap-ui\freemocap_server"
 
-      - name: Move server binary into freemocap-ui (macOS/Linux)
+      - name: Move server directory into freemocap-ui (macOS/Linux)
         if: matrix.platform != 'windows'
         run: |
-          mv "./dist/${{ matrix.server-binary }}" "./freemocap-ui/${{ matrix.server-binary }}"
-          chmod +x "./freemocap-ui/${{ matrix.server-binary }}"
+          mv "./dist/freemocap_server" "./freemocap-ui/freemocap_server"
+          chmod +x "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
 
       # ── Windows code signing (server binary) ──
       - name: Sign freemocap_server.exe with Trusted Signing
@@ -232,7 +235,7 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: freemocap
           certificate-profile-name: freemocap
-          files: ${{ github.workspace }}\freemocap-ui\freemocap_server.exe
+          files: ${{ github.workspace }}\freemocap-ui\freemocap_server\freemocap_server.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
@@ -242,10 +245,23 @@ jobs:
       - name: Sign freemocap_server with codesign
         if: matrix.platform == 'macos'
         run: |
+          SERVER_DIR="./freemocap-ui/freemocap_server"
+
+          # Every Mach-O in the onedir tree needs its own signature under the
+          # hardened runtime — notarization rejects unsigned nested binaries.
+          # Inner libraries sign first; the launcher must be signed last so its
+          # signature covers the already-signed dependencies.
+          find "$SERVER_DIR" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 |
+            while IFS= read -r -d '' lib; do
+              codesign --force --options runtime --sign "Developer ID Application" \
+                --timestamp "$lib"
+            done
+
           codesign --force --options runtime --sign "Developer ID Application" \
             --timestamp \
-            "./freemocap-ui/${{ matrix.server-binary }}"
-          codesign --verify --verbose "./freemocap-ui/${{ matrix.server-binary }}"
+            "$SERVER_DIR/${{ matrix.server-binary }}"
+
+          codesign --verify --verbose "$SERVER_DIR/${{ matrix.server-binary }}"
           echo "Server binary signed and verified successfully"
       # ── Upload server-only artifact ──
       - name: Upload server binary artifact
@@ -253,7 +269,7 @@ jobs:
         with:
           name: server-${{ matrix.label }}
           path: |
-            freemocap-ui/${{ matrix.server-binary }}
+            freemocap-ui/freemocap_server
           include-hidden-files: true
 
       # ── Electron build ──
@@ -261,19 +277,30 @@ jobs:
       # ── Validate server binary exists and is executable ──
       - name: Validate server binary present and executable
         run: |
-          echo "Checking for server binary at ./freemocap-ui/${{ matrix.server-binary }}"
-          if [ ! -f "./freemocap-ui/${{ matrix.server-binary }}" ]; then
-            echo "::error::Server binary not found: ./freemocap-ui/${{ matrix.server-binary }}"
-            ls -la ./freemocap-ui || true
+          SERVER_EXE="./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
+
+          echo "Checking for server binary at $SERVER_EXE"
+          if [ ! -f "$SERVER_EXE" ]; then
+            echo "::error::Server binary not found: $SERVER_EXE"
+            ls -la ./freemocap-ui/freemocap_server || ls -la ./freemocap-ui || true
             exit 1
           fi
+
+          # The launcher loads everything from its sibling _internal/ directory,
+          # so its absence means the onedir tree was moved or collected wrong.
+          if [ ! -d "./freemocap-ui/freemocap_server/_internal" ]; then
+            echo "::error::Missing _internal/ next to the server launcher"
+            ls -la ./freemocap-ui/freemocap_server
+            exit 1
+          fi
+
           echo "Found server binary:"
-          ls -la "./freemocap-ui/${{ matrix.server-binary }}"
+          ls -la "$SERVER_EXE"
           # On Unix-like, ensure executable bit is set
           if [ "${{ matrix.platform }}" != "windows" ]; then
-            if [ ! -x "./freemocap-ui/${{ matrix.server-binary }}" ]; then
+            if [ ! -x "$SERVER_EXE" ]; then
               echo "Server binary is not executable, setting +x"
-              chmod +x "./freemocap-ui/${{ matrix.server-binary }}" || true
+              chmod +x "$SERVER_EXE" || true
             fi
           fi
 
@@ -448,14 +475,22 @@ jobs:
           for dir in artifacts/server-*; do
             label=$(basename "$dir" | sed 's/^server-//')
 
-            if [ -f "$dir/freemocap_server.exe" ]; then
-              cp "$dir/freemocap_server.exe" "release-assets/freemocap_server_${VERSION}_${label}.exe"
-            elif [ -f "$dir/freemocap_server" ]; then
-              cp "$dir/freemocap_server" "release-assets/freemocap_server_${VERSION}_${label}"
-            else
-              echo "::error::No server binary found in $dir"
+            # The server is a onedir tree, so it ships as a zip rather than a
+            # bare executable — the launcher is useless without its _internal/
+            # sibling directory.
+            if [ ! -d "$dir/freemocap_server" ]; then
+              echo "::error::No freemocap_server directory found in $dir"
               exit 1
             fi
+
+            if [ ! -f "$dir/freemocap_server/freemocap_server.exe" ] \
+               && [ ! -f "$dir/freemocap_server/freemocap_server" ]; then
+              echo "::error::No server launcher found in $dir/freemocap_server"
+              exit 1
+            fi
+
+            (cd "$dir" && zip -qr - freemocap_server) \
+              > "release-assets/freemocap_server_${VERSION}_${label}.zip"
           done
 
           # ── App installers ──

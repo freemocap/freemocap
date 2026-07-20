@@ -7,13 +7,13 @@
   "files": [
     "dist-electron",
     "dist",
-    "freemocap_server*",
+    "freemocap_server/**/*",
     "../shared/freemocap-logo/freemocap-favicon.ico",
     "../shared/freemocap-logo/freemocap-logo.png"
   ],
   "asar": true,
   "asarUnpack": [
-    "**/freemocap_server*",
+    "**/freemocap_server/**/*",
     "**/freemocap-logo.png"
   ],
   "compression": "normal",
@@ -21,6 +21,10 @@
   "win": {
     "icon": "../shared/freemocap-logo/freemocap-favicon.ico",
     "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
       {
         "target": "zip",
         "arch": ["x64"]

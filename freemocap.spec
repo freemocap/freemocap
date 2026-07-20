@@ -84,19 +84,23 @@ hiddenimports.extend([
 # skellytracker's rtmpose_detector does `find_spec("nvidia")` +
 # `nvidia_root.glob("*/bin")` at runtime to discover CUDA libraries.
 #
-# Included — required by ONNX Runtime CUDA execution provider:
-#   nvidia.cublas       (737 MB) — GEMM/BLAS for GPU tensor ops
-#   nvidia.cuda_runtime  (11 MB) — core CUDA runtime (cudart)
-#   nvidia.cudnn       (1006 MB) — cuDNN: primitives for deep neural network inference
+# `onnxruntime_providers_cuda.dll` imports exactly five CUDA libraries. All five
+# must be bundled or the provider DLL fails to load, ONNX Runtime silently drops
+# CUDAExecutionProvider from its list, and every model runs on CPU (~1-2 fps
+# instead of ~20). Verified against the provider DLL's PE import table:
+#   cublas64_12.dll + cublaslt64_12.dll  <- nvidia.cublas       (737 MB)
+#   cudart64_12.dll                      <- nvidia.cuda_runtime  (11 MB)
+#   cudnn64_9.dll                        <- nvidia.cudnn       (1006 MB)
+#   cufft64_11.dll                       <- nvidia.cufft        (275 MB)
 #
-# Excluded — only needed by TensorRT EP (not currently functional):
-#   nvidia.cufft        (275 MB) — FFT library, not used by ONNX inference
-#   nvidia.cuda_nvrtc   (179 MB) — runtime compilation, TensorRT-only
-#   nvidia.nvjitlink     (84 MB) — JIT linker, TensorRT-only
+# Excluded — imported by neither the CUDA provider nor its transitive deps:
+#   nvidia.cuda_nvrtc   (179 MB) — runtime NVRTC compilation
+#   nvidia.nvjitlink     (84 MB) — JIT linker
 for nvidia_subpkg in [
     'nvidia.cublas',
     'nvidia.cuda_runtime',
     'nvidia.cudnn',
+    'nvidia.cufft',
 ]:
     try:
         nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
@@ -202,24 +206,37 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data)
 
+# Onedir build: emits dist/freemocap_server/ containing freemocap_server(.exe)
+# alongside an _internal/ tree of DLLs and data files. The bundled CUDA libraries
+# total roughly 2 GB; a onefile build would extract all of that to a temp
+# directory on every launch, adding tens of seconds of startup latency per run.
+# Onedir loads them in place, so startup cost is paid once at install time.
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='freemocap_server',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=['nvcuda', 'nvrtc', 'cudnn', 'cublas', 'cufft', 'cudart'],
-    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=['nvcuda', 'nvrtc', 'cudnn', 'cublas', 'cufft', 'cudart'],
+    name='freemocap_server',
 )

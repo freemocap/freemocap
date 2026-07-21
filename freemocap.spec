@@ -54,6 +54,21 @@ hiddenimports.extend([
     'mediapipe.tasks.python.vision',
 ])
 
+# `mediapipe.tasks.python.core.mediapipe_c_bindings` loads a native shared
+# library (libmediapipe.dll/.dylib/.so) out of the `mediapipe.tasks.c`
+# package directory via `importlib.resources.files('mediapipe.tasks.c')` at
+# runtime. PyInstaller won't discover that binary on its own since it's
+# never `import`ed as a normal module — it must be bundled as data so it
+# lands next to `tasks/c/__init__.py` in the frozen app, and `tasks.c` must
+# be a hiddenimport so the package (and thus its resource location) exists.
+mp_tasks_c_path = os.path.join(mp_path, 'tasks', 'c')
+if os.path.isdir(mp_tasks_c_path):
+    for lib_name in ('libmediapipe.dll', 'libmediapipe.dylib', 'libmediapipe.so'):
+        lib_file = os.path.join(mp_tasks_c_path, lib_name)
+        if os.path.isfile(lib_file):
+            binaries.append((lib_file, 'mediapipe/tasks/c'))
+hiddenimports.append('mediapipe.tasks.c')
+
 # ── skellyforge (yaml config files needed at runtime) ──
 import skellyforge
 sf_path = os.path.dirname(skellyforge.__file__)

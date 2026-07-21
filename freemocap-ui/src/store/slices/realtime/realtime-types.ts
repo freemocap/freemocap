@@ -9,7 +9,7 @@ export interface CharucoBoardConfigForPipeline {
 export interface CameraNodeConfig {
     charuco_tracking_enabled: boolean;
     skeleton_tracking_enabled: boolean;
-    charuco_detector_config?: { board: CharucoBoardConfigForPipeline } | null;
+    charuco_board?: CharucoBoardConfigForPipeline;
     detector_type?: DetectorType;
     rtmpose_model_name?: RTMPoseModelName;
     rtmpose_confidence_threshold?: number;

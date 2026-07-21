@@ -29,6 +29,7 @@ from freemocap.app.freemocap_application import create_freemocap_app
 from freemocap.system.default_paths import (
     get_default_freemocap_base_folder_path, FREEMOCAP_FAVICON_ICO_PATH
 )
+from freemocap.system.telemetry.telemetry import initialize_telemetry, shutdown_telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -341,6 +342,9 @@ async def app_lifespan(
     base_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Base folder: {base_path}")
 
+    # Start anonymous usage telemetry (no-op if the user opted out)
+    initialize_telemetry()
+
     app_url = f"{PROTOCOL}://{HOSTNAME}:{app.state.port}"
 
     logger.success(
@@ -352,6 +356,9 @@ async def app_lifespan(
 
     # ===== SHUTDOWN =====
     logger.api("FreeMoCap API shutting down...")
+
+    # Flush any buffered telemetry before we tear the app down
+    shutdown_telemetry()
 
     app.state.global_kill_flag.value = True
 

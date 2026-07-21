@@ -1992,7 +1992,7 @@ source = { git = "https://github.com/freemocap/skellylogs#9114990350d7fb36747526
 [[package]]
 name = "skellypings"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellypings#4423bb4230c19308ed7258cac881eb4dc930feb3" }
+source = { git = "https://github.com/freemocap/skellypings#4c5bffc92f58ae7af0a933ecf4b924068ab26488" }
 dependencies = [
     { name = "python-dotenv", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "requests", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

@@ -30,6 +30,15 @@
 #
 # =============================================================================
 
+# Global environment applied to every task below. PYTHONUTF8=1 puts Python into
+# UTF-8 mode so bumpver's `--dry` diff — which includes the 💀✨ emoji from the
+# [project] description — prints on Windows' cp1252 console instead of dying with
+# UnicodeEncodeError. Kept as ONE global setting (not copy-pasted onto each bump
+# task) so it can't drift; it's harmless for the other tasks and also heads off the
+# same emoji-encoding crash in pytest log output on Windows.
+[tool.poe]
+env = { PYTHONUTF8 = "1" }
+
 [tool.poe.tasks]
 
 # ── Type-checking ───────────────────────────────────────────────────────

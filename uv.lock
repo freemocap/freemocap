@@ -1729,20 +1729,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rtmlib"
-version = "0.0.14"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
-    { name = "opencv-contrib-python", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
-    { name = "tqdm", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/1e/74/b3a33e88f1961a3fa80d7a6a3e2910670ebbb10b9c1d06d334ac2115843b/rtmlib-0.0.14.tar.gz", hash = "sha256:2d3090b1e93f7eddcedb01233f2181fb6f974ab3250e356eb94eae872358317a", size = 40656, upload-time = "2025-11-05T16:54:56.993Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c4/d5/3c55515efe506ea33c221e29b12d9d9ddfff7e4995eb8fbcb47589fbdcb3/rtmlib-0.0.14-py3-none-any.whl", hash = "sha256:dbba2a0a8d7de7bfd8bfb3fa557607f7a9ad6266ace3ceff89665c2d743bfe58", size = 51464, upload-time = "2025-11-05T16:54:55.732Z" },
-]
-
-[[package]]
 name = "ruff"
 version = "0.15.22"
 source = { registry = "https://pypi.org/simple" }
@@ -2002,7 +1988,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#61925420a9f2a172208f8c911f6fd7800210ecda" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=main#7a8f80ce3d59ceccd01a215add72c2e6e26e767b" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2022,7 +2008,6 @@ all-cpu = [
     { name = "mediapipe", marker = "(platform_machine != 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "onnx", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "onnxruntime", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
-    { name = "rtmlib", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
 all-cuda = [
     { name = "mediapipe", marker = "(platform_machine != 'x86_64' and sys_platform == 'darwin') or (platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
@@ -2032,7 +2017,6 @@ all-cuda = [
     { name = "nvidia-cufft-cu12", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
     { name = "onnx", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "onnxruntime-gpu", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32')" },
-    { name = "rtmlib", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
 
 [[package]]

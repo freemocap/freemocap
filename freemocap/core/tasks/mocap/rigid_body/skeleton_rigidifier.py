@@ -21,6 +21,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 
@@ -28,6 +29,12 @@ from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStruc
 from skellyforge.skellymodels.models.tracking_model_info import (
     CanonicalBodyModelInfo,
     CanonicalHandModelInfo,
+)
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
+    MediapipePoseKeypointDetector,
+)
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
+    MediapipeHandKeypointDetector,
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
     RTMPoseBodyDetector,
@@ -42,9 +49,17 @@ from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import OnlineB
 # Direction used for a bone that has never been observed (no carried direction).
 _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
 
-# Tracker->canonical mapping YAMLs (shipped with the skellytracker package).
-_RTMPOSE_BODY_MAPPING_YAML = RTMPoseBodyDetector.canonical_mapping_path()
-_RTMPOSE_HAND_MAPPING_YAML = RTMPoseHandDetector.canonical_mapping_path()
+# Tracker->canonical mapping YAMLs (shipped with skellytracker), keyed by
+# CameraNodeConfig.detector_type so RealtimeSkeletonRigidifier.create() can
+# pick the mapping that matches the configured detector's keypoint names.
+_BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
+    "rtmpose": RTMPoseBodyDetector.canonical_mapping_path(),
+    "mediapipe": MediapipePoseKeypointDetector.canonical_mapping_path(),
+}
+_HAND_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
+    "rtmpose": RTMPoseHandDetector.canonical_mapping_path(),
+    "mediapipe": MediapipeHandKeypointDetector.canonical_mapping_path(),
+}
 
 
 class TreeRigidifier:
@@ -137,11 +152,11 @@ class TreeRigidifier:
 def _build_hand_mapping(yaml_path: Path, *, side: str) -> tuple[TrackerMapping, dict[str, str]]:
     """Build a hand tracker->canonical mapping + a canonical->tracker reverse map.
 
-    RTMPose composes hand landmarks with a uniform ``{side}_hand_`` prefix
-    (``right_hand_thumb1`` ...), so the mapping strips that prefix to match the
-    unprefixed entries in the mapping YAML (``thumb1`` ...). The reverse map
-    converts fitted canonical hand names back to tracker names so they key into
-    the frontend's RTMPose hand schema.
+    Both RTMPose and MediaPipe compose hand landmarks with a uniform
+    ``{side}_hand_`` prefix (``right_hand_thumb1`` ...), so the mapping strips
+    that prefix to match the unprefixed entries in the mapping YAML
+    (``thumb1`` ...). The reverse map converts fitted canonical hand names back
+    to tracker names so they key into the frontend's hand schema.
     """
     import yaml
     with open(yaml_path, "r", encoding="utf-8") as fh:
@@ -191,9 +206,10 @@ def _hand_errors(
     Parameters
     ----------
     errors : dict[str, float] | None
-        Per-tracker-keypoint reprojection errors (px), keyed by RTMPose
-        tracker names (e.g. ``"right_hand_thumb1"``). ``None`` means no
-        errors are available — all samples are treated as equally confident.
+        Per-tracker-keypoint reprojection errors (px), keyed by the configured
+        detector's side-prefixed tracker names (e.g. ``"right_hand_thumb1"``
+        for RTMPose). ``None`` means no errors are available — all samples are
+        treated as equally confident.
     name_to_tracker : dict[str, str]
         Reverse map from canonical hand landmark name to side-prefixed
         tracker name, as built by ``_build_hand_mapping``. For example
@@ -225,9 +241,11 @@ def _hand_errors(
 class RigidifyResult:
     """Rigidified skeleton positions for one frame.
 
-    Body positions use canonical landmark names; hand positions use RTMPose
-    tracker names (``right_hand_thumb1`` ...) so they key into the frontend's
-    hand schema. Trees with insufficient data (missing root) come back empty.
+    Body positions use canonical landmark names; hand positions use the
+    configured detector's side-prefixed tracker names (``right_hand_thumb1``
+    for RTMPose, ``right_hand_thumb_cmc`` for MediaPipe) so they key into the
+    frontend's hand schema. Trees with insufficient data (missing root) come
+    back empty.
     """
 
     body_positions: dict[str, np.ndarray]
@@ -239,8 +257,10 @@ class RigidifyResult:
 class RealtimeSkeletonRigidifier:
     """Per-frame rigid-body skeleton correction: map -> estimate -> rigidify.
 
-    Created once at aggregator init. Each frame: map RTMPose keypoints onto the
-    canonical body + hand models, update each bone's online length estimate
+    Created once at aggregator init for a specific detector type (RTMPose or
+    MediaPipe — see ``create``). Each frame: map the configured detector's raw
+    keypoints onto the canonical body + hand models, update each bone's online
+    length estimate
     (a best-K-by-reprojection-error median), and run a single closed-form
     forward pass that holds those lengths while following the observed pose.
 
@@ -270,6 +290,7 @@ class RealtimeSkeletonRigidifier:
     def create(
         cls,
         *,
+        detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose",
         height_mm: float = 1750.0,
         buffer_capacity: int = 64,
         decay_tau_s: float = 30.0,
@@ -281,6 +302,11 @@ class RealtimeSkeletonRigidifier:
 
         Parameters
         ----------
+        detector_type : "rtmpose" | "mediapipe"
+            Which detector's raw keypoint names to map from — must match
+            ``CameraNodeConfig.detector_type`` for the pipeline this rigidifier
+            is attached to, since the two detectors use different keypoint
+            naming conventions.
         height_mm : float
             Subject standing height (mm); scales the anthropometric bone-length
             seeds used until real observations accumulate.
@@ -305,9 +331,10 @@ class RealtimeSkeletonRigidifier:
         if hand_anatomy.joint_hierarchy is None:
             raise ValueError("Canonical hand model has no joint_hierarchy")
 
-        body_mapping = TrackerMapping.from_yaml(_RTMPOSE_BODY_MAPPING_YAML)
-        hand_mapping_r, name_to_tracker_r = _build_hand_mapping(_RTMPOSE_HAND_MAPPING_YAML, side="right")
-        hand_mapping_l, name_to_tracker_l = _build_hand_mapping(_RTMPOSE_HAND_MAPPING_YAML, side="left")
+        body_mapping = TrackerMapping.from_yaml(_BODY_MAPPING_YAML_BY_DETECTOR[detector_type])
+        hand_yaml = _HAND_MAPPING_YAML_BY_DETECTOR[detector_type]
+        hand_mapping_r, name_to_tracker_r = _build_hand_mapping(hand_yaml, side="right")
+        hand_mapping_l, name_to_tracker_l = _build_hand_mapping(hand_yaml, side="left")
 
         body_seeds = _seeds_from_ratios(
             joint_hierarchy=body_anatomy.joint_hierarchy,
@@ -352,14 +379,15 @@ class RealtimeSkeletonRigidifier:
         t: float | None = None,
         errors: dict[str, float] | None = None,
     ) -> RigidifyResult:
-        """Rigidify one frame of RTMPose keypoints.
+        """Rigidify one frame of the configured detector's raw keypoints.
 
         ``errors`` (optional) maps **tracker** keypoint name -> reprojection
         error (px); the bone-length estimator uses it to rank/gate samples so
-        high-error frames don't corrupt the lengths. Body limb landmarks share
-        names with the canonical model (1:1 COCO), so they are used directly;
-        hand errors are remapped from the side-prefixed tracker names. When
-        absent, samples are treated as equally confident.
+        high-error frames don't corrupt the lengths. Most body limb landmarks
+        share names with the canonical model directly (both RTMPose and
+        MediaPipe use core COCO limb names); hand errors are remapped from the
+        side-prefixed tracker names. When absent, samples are treated as
+        equally confident.
         """
         if t is None:
             t = time.perf_counter()

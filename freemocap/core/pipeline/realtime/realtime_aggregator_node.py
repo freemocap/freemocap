@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 from freemocap.core.tasks.mocap.center_of_mass import (
-    load_rtmpose_biomechanics,
+    load_body_biomechanics,
     CenterOfMassResult,
     calculate_center_of_mass_per_frame,
     calculate_center_of_mass_from_canonical,
@@ -217,11 +217,14 @@ class RealtimeAggregatorNode(AggregatorNode):
             max_rejected_streak=filter_config.max_rejected_streak,
         )
 
-        # Load RTMPose body biomechanics for per-frame center of mass calculation.
-        # Validated once at init via skellyforge's AnatomicalStructure — no Pydantic
-        # in the hot loop.
+        # Load body biomechanics for per-frame center of mass calculation, using
+        # the tracker->canonical mapping that matches the configured detector
+        # (RTMPose and MediaPipe use different keypoint naming conventions).
+        # Validated once at init via skellyforge's AnatomicalStructure — no
+        # Pydantic in the hot loop.
+        detector_type = pipeline_config.camera_node_config.detector_type
         biomechanics = (
-            load_rtmpose_biomechanics()
+            load_body_biomechanics(detector_type)
             if aggregator_config.center_of_mass_enabled
             else None
         )
@@ -232,6 +235,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
         if aggregator_config.skeleton_fitting_enabled:
             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                detector_type=detector_type,
                 height_mm=filter_config.height_mm,
                 buffer_capacity=filter_config.segment_length_buffer_capacity,
                 decay_tau_s=filter_config.segment_length_decay_s,
@@ -319,6 +323,41 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"RealtimeAggregationNode [{camera_group_id}] reloaded "
                             f"calibration from {calibration.calibration_path}"
                         )
+
+                    # Rebuild biomechanics / skeleton rigidifier if the detector
+                    # type changed (RTMPose <-> MediaPipe use different tracker
+                    # keypoint names, so the loaded canonical mapping would
+                    # otherwise silently go stale) or if center-of-mass /
+                    # skeleton-fitting were toggled on/off.
+                    new_detector_type = pipeline_config.camera_node_config.detector_type
+                    detector_type_changed = new_detector_type != detector_type
+                    detector_type = new_detector_type
+
+                    if aggregator_config.center_of_mass_enabled:
+                        if biomechanics is None or detector_type_changed:
+                            biomechanics = load_body_biomechanics(detector_type)
+                            logger.info(
+                                f"RealtimeAggregationNode [{camera_group_id}] "
+                                f"(re)loaded body biomechanics for detector_type={detector_type}"
+                            )
+                    else:
+                        biomechanics = None
+
+                    if aggregator_config.skeleton_fitting_enabled:
+                        if skeleton_rigidifier is None or detector_type_changed:
+                            skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                                detector_type=detector_type,
+                                height_mm=filter_config.height_mm,
+                                buffer_capacity=filter_config.segment_length_buffer_capacity,
+                                decay_tau_s=filter_config.segment_length_decay_s,
+                                plausibility_tol=filter_config.segment_length_plausibility_tol,
+                            )
+                            logger.info(
+                                f"RealtimeAggregationNode [{camera_group_id}] "
+                                f"(re)created skeleton rigidifier for detector_type={detector_type}"
+                            )
+                    else:
+                        skeleton_rigidifier = None
 
                 # ---- Handle skeleton fitter reset signals ----
                 # Drain unconditionally so the queue can't grow while skeleton

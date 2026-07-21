@@ -116,7 +116,7 @@ requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 # so `git describe` still resolves to v1.4.7. Every bump command therefore passes
 # --ignore-vcs-tag to bypass those stale VCS tags (baked into the poe tasks).
 [tool.bumpver]
-current_version = "v2.0.0-alpha.3"
+current_version = "v2.0.0-alpha.4"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG.NUM]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -124,10 +124,19 @@ tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-# The `# bumpver` marker pins this to the [project] version line ONLY — a bare
-# `version = "..."` pattern also matches the rtmlib [[tool.uv.dependency-metadata]]
-# pin above and clobbers it. (Both the marker and that pin go away when rtmlib does.)
-"pyproject.toml" = ['version = "{pep440_version}"  # bumpver']
+# current_version (the canonical field in [tool.bumpver] above) MUST be listed here
+# explicitly: bumpver only auto-updates current_version when the config file is
+# ABSENT from file_patterns. pyproject.toml is present (for the [project] version
+# line below), which suppresses that auto-update — so without the first pattern here,
+# current_version never advances and every bump recomputes the same already-released
+# version, producing an empty diff ("nothing to commit") and a duplicate tag.
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    # The `# bumpver` marker pins this to the [project] version line ONLY — a bare
+    # `version = "..."` pattern also matches the rtmlib [[tool.uv.dependency-metadata]]
+    # pin above and clobbers it. (Both the marker and that pin go away when rtmlib does.)
+    'version = "{pep440_version}"  # bumpver',
+]
 "freemocap/__init__.py" = ['__version__ = "{version}"']
 "freemocap-ui/package.json" = ['"version": "MAJOR.MINOR.PATCH[-TAG.NUM]"']
 # freemocap-docs is a separate repo (not tracked here), so bumpver can't git-add it

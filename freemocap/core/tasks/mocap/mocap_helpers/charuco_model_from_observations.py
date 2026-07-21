@@ -107,6 +107,6 @@ def charuco_model_from_observations(
     charuco_model.save_out_csv_data(output_data_folder)
     # charuco_model.save_out_all_data_csv(output_data_folder) #saves out the exact same data as the above two lines, so don't need it
     # charuco_model.save_out_all_xyz_numpy_data(output_data_folder) #saves out the exact same data as the above two lines, so don't need it
-        charuco_model.save_out_all_data_parquet(output_data_folder)
+    charuco_model.save_out_all_data_parquet(output_data_folder)
 
     return charuco_model

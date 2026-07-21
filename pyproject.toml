@@ -22,15 +22,21 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
-    #    "skellytracker[rtmpose-gpu]",
-    #    "skellytracker[mediapipe]",
-    "skellytracker[all-cuda]; sys_platform != 'darwin'",
-    "skellytracker[all-cpu]; sys_platform == 'darwin'",
     #skelly utils
     "skellylogs",
     "skellypings",
     #    "skellymodels",
 ]
+
+# Published, pip-installable variant selection — for PyPI users, not `uv sync`
+# (which gets skellytracker automatically via the "tracker-default" dependency
+# group below; dependency-groups aren't part of a package's published metadata,
+# so this is the only channel pip users have):
+#   pip install freemocap[cuda]   (Windows/Linux, NVIDIA GPU acceleration)
+#   pip install freemocap[cpu]    (macOS, or Windows/Linux without a supported GPU)
+[project.optional-dependencies]
+cuda = ["skellytracker[all-cuda]"]
+cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
@@ -54,6 +60,16 @@ packages = ["freemocap"]
       "sys_platform == 'linux' and platform_machine == 'x86_64'",
       "sys_platform == 'win32' and platform_machine == 'AMD64'",
   ]
+  # Plain `uv sync` always installs a working skellytracker via the "tracker-default"
+  # group below, which platform-switches between CUDA (Windows/Linux) and CPU
+  # (macOS) automatically. To force a specific variant regardless of platform —
+  # e.g. the CI build matrix building a CPU installer on a Windows/Linux runner —
+  # bypass the default and pick a group explicitly:
+  #   uv sync --no-default-groups --group cuda
+  #   uv sync --no-default-groups --group cpu
+  # (--no-default-groups is required — cuda and cpu both ship skellytracker with a
+  # different onnxruntime backend and can't coexist on disk, see the rtmlib note below.)
+  default-groups = ["tracker-default"]
   override-dependencies = [
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
   ]
@@ -107,6 +123,16 @@ push = true
 # =============================================================================
 
 [dependency-groups]
+# skellytracker's CUDA vs. CPU onnxruntime backend — mutually exclusive, select
+# exactly one via --group (see the default-groups note under [tool.uv] above).
+cuda = ["skellytracker[all-cuda]"]
+cpu = ["skellytracker[all-cpu]"]
+# Platform-switched default used by plain `uv sync` (via [tool.uv] default-groups):
+# CUDA on Windows/Linux, CPU on macOS — mirrors the old sys_platform-marker setup.
+tracker-default = [
+    "skellytracker[all-cuda]; sys_platform != 'darwin'",
+    "skellytracker[all-cpu]; sys_platform == 'darwin'",
+]
 pyceres = [
     "pyceres>=2.5",
 ]

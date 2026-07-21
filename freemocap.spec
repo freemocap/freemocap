@@ -96,20 +96,30 @@ hiddenimports.extend([
 # Excluded — imported by neither the CUDA provider nor its transitive deps:
 #   nvidia.cuda_nvrtc   (179 MB) — runtime NVRTC compilation
 #   nvidia.nvjitlink     (84 MB) — JIT linker
-for nvidia_subpkg in [
-    'nvidia.cublas',
-    'nvidia.cuda_runtime',
-    'nvidia.cudnn',
-    'nvidia.cufft',
-]:
-    try:
-        nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
-        datas.extend(nv_datas)
-        binaries.extend(nv_binaries)
-        hiddenimports.extend(nv_hidden)
-    except Exception as e:
-        print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
-              f"— GPU acceleration may not work in the frozen build. ({e})")
+#
+# Skipped entirely for CPU-only builds (`FREEMOCAP_BUILD_VARIANT=cpu`, set by
+# the CI matrix's `variant` axis) — those envs never install the `nvidia.*`
+# packages in the first place, since `uv sync --extra cpu` pulls
+# skellytracker[all-cpu] instead of [all-cuda].
+build_variant = os.environ.get('FREEMOCAP_BUILD_VARIANT', 'cuda').lower()
+if build_variant == 'cuda':
+    for nvidia_subpkg in [
+        'nvidia.cublas',
+        'nvidia.cuda_runtime',
+        'nvidia.cudnn',
+        'nvidia.cufft',
+    ]:
+        try:
+            nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
+            datas.extend(nv_datas)
+            binaries.extend(nv_binaries)
+            hiddenimports.extend(nv_hidden)
+        except Exception as e:
+            print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
+                  f"— GPU acceleration may not work in the frozen build. ({e})")
+else:
+    print(f"[freemocap.spec] FREEMOCAP_BUILD_VARIANT={build_variant} — "
+          f"skipping NVIDIA CUDA runtime bundling (CPU-only build).")
 
 # ── onnxruntime (GPU build — only DLLs + capi bindings; exclude dev tools) ──
 binaries.extend(collect_dynamic_libs('onnxruntime'))

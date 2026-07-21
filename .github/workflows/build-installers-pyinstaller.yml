@@ -21,16 +21,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Windows/Linux x64 ship both a CUDA (GPU-accelerated) and a CPU-only
+          # variant — same OS/arch, different onnxruntime backend, selected via
+          # `uv sync --extra ${{ matrix.variant }}` and FREEMOCAP_BUILD_VARIANT.
+          # macOS and Linux arm64 only ever build the CPU variant: macOS has no
+          # CUDA path, and NVIDIA's PyPI CUDA wheels used here are x86_64-only.
           - os: windows-latest
             platform: windows
             arch: x64
-            label: windows-x64
+            variant: cuda
+            label: windows-x64-cuda
+            server-binary: freemocap_server.exe
+            electron-arch: x64
+
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            variant: cpu
+            label: windows-x64-cpu
             server-binary: freemocap_server.exe
             electron-arch: x64
 
           - os: macos-15-intel
             platform: macos
             arch: x64
+            variant: cpu
             label: macos-x64-intel
             server-binary: freemocap_server
             electron-arch: x64
@@ -38,6 +53,7 @@ jobs:
           - os: macos-latest
             platform: macos
             arch: arm64
+            variant: cpu
             label: macos-arm64-apple-silicon
             server-binary: freemocap_server
             electron-arch: arm64
@@ -45,13 +61,23 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             arch: x64
-            label: linux-x64
+            variant: cuda
+            label: linux-x64-cuda
+            server-binary: freemocap_server
+            electron-arch: x64
+
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            variant: cpu
+            label: linux-x64-cpu
             server-binary: freemocap_server
             electron-arch: x64
 
           - os: ubuntu-22.04-arm
             platform: linux
             arch: arm64
+            variant: cpu
             label: linux-arm64
             server-binary: freemocap_server
             electron-arch: arm64
@@ -70,7 +96,6 @@ jobs:
           if (-not "${{ secrets.AZURE_CLIENT_ID }}") { $missingSecrets += "AZURE_CLIENT_ID" }
           if (-not "${{ secrets.AZURE_CLIENT_SECRET }}") { $missingSecrets += "AZURE_CLIENT_SECRET" }
           if (-not "freemocap") { $missingSecrets += "TRUSTED_SIGNING_ACCOUNT_NAME" }
-          if (-nfreemocap
 
           if ($missingSecrets.Count -gt 0) {
             Write-Error "Missing required secrets for code signing: $($missingSecrets -join ', ')"
@@ -173,7 +198,7 @@ jobs:
         run: uv venv
 
       - name: Install the project dependencies
-        run: uv sync
+        run: uv sync --no-default-groups --group ${{ matrix.variant }}
 
       - name: Verify installation 1/3
         run: uv pip show freemocap
@@ -205,6 +230,8 @@ jobs:
 
       # ── PyInstaller build ──
       - name: Build with PyInstaller
+        env:
+          FREEMOCAP_BUILD_VARIANT: ${{ matrix.variant }}
         run: |
           uv pip install pyinstaller
           uv run pyinstaller ./freemocap.spec --clean
@@ -383,8 +410,11 @@ jobs:
           include-hidden-files: true
 
       # ── Upload auto-update metadata (latest*.yml) ──
+      # electron-updater supports only one update channel per platform/arch, so
+      # the CUDA variant is treated as the auto-update channel; CPU-variant
+      # users get new installers manually via the release page.
       - name: Upload auto-update metadata (Windows)
-        if: matrix.platform == 'windows'
+        if: matrix.platform == 'windows' && matrix.variant == 'cuda'
         uses: actions/upload-artifact@v7
         with:
           name: update-metadata-${{ matrix.label }}
@@ -411,7 +441,7 @@ jobs:
           include-hidden-files: true
 
       - name: Upload auto-update metadata (Linux)
-        if: matrix.platform == 'linux' && matrix.arch == 'x64'
+        if: matrix.platform == 'linux' && matrix.arch == 'x64' && matrix.variant == 'cuda'
         uses: actions/upload-artifact@v7
         with:
           name: update-metadata-${{ matrix.label }}
@@ -461,8 +491,9 @@ jobs:
 
           # ── Server binaries ──
           # Artifact directories are named server-<label>, e.g.:
-          #   server-windows-x64, server-macos-x64-intel,
-          #   server-macos-arm64-apple-silicon, server-linux-x64, server-linux-arm64
+          #   server-windows-x64-cuda, server-windows-x64-cpu, server-macos-x64-intel,
+          #   server-macos-arm64-apple-silicon, server-linux-x64-cuda,
+          #   server-linux-x64-cpu, server-linux-arm64
           # Strip the "server-" prefix to get the human-readable suffix.
           # Each artifact is a PyInstaller onedir folder (exe + _internal/ support
           # files), so it's zipped into a single release asset rather than copied.
@@ -484,7 +515,8 @@ jobs:
 
           # ── App installers ──
           # Artifact directories are named installer-<label>, e.g.:
-          #   installer-windows-x64, installer-macos-x64-intel, etc.
+          #   installer-windows-x64-cuda, installer-windows-x64-cpu,
+          #   installer-macos-x64-intel, etc.
           # Electron-builder names only contain the arch (x64/arm64),
           # so we rename each file to: freemocap_<VERSION>_<label>.<ext>
           for dir in artifacts/installer-*; do
@@ -512,12 +544,13 @@ jobs:
           # Copy latest.yml files from update-metadata artifacts and patch
           # the file references to match the renamed release asset names.
 
-          # Windows: latest.yml
-          if [ -d "artifacts/update-metadata-windows-x64" ]; then
-            YML=$(find artifacts/update-metadata-windows-x64 -name 'latest.yml' | head -1)
+          # Windows: latest.yml (CUDA variant is the auto-update channel — see
+          # the "Upload auto-update metadata" step comment in the build job)
+          if [ -d "artifacts/update-metadata-windows-x64-cuda" ]; then
+            YML=$(find artifacts/update-metadata-windows-x64-cuda -name 'latest.yml' | head -1)
             if [ -n "$YML" ]; then
               # Replace the original artifact filename with the renamed one
-              sed -i "s|freemocap_.*_installer\.exe|freemocap_${VERSION}_windows-x64.exe|g" "$YML"
+              sed -i "s|freemocap_.*_installer\.exe|freemocap_${VERSION}_windows-x64-cuda.exe|g" "$YML"
               cp "$YML" "release-assets/latest.yml"
               echo "Copied latest.yml for Windows"
             fi
@@ -539,11 +572,11 @@ jobs:
             echo "Copied latest-mac.yml for macOS"
           fi
 
-          # Linux: latest-linux.yml
-          if [ -d "artifacts/update-metadata-linux-x64" ]; then
-            YML=$(find artifacts/update-metadata-linux-x64 -name 'latest-linux.yml' | head -1)
+          # Linux: latest-linux.yml (CUDA variant is the auto-update channel)
+          if [ -d "artifacts/update-metadata-linux-x64-cuda" ]; then
+            YML=$(find artifacts/update-metadata-linux-x64-cuda -name 'latest-linux.yml' | head -1)
             if [ -n "$YML" ]; then
-              sed -i "s|freemocap_.*\.AppImage|freemocap_${VERSION}_linux-x64.AppImage|g" "$YML"
+              sed -i "s|freemocap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cuda.AppImage|g" "$YML"
               cp "$YML" "release-assets/latest-linux.yml"
               echo "Copied latest-linux.yml for Linux"
             fi

@@ -48,11 +48,11 @@
     "target": [
       {
         "target": "dmg",
-        "arch": ["x64", "arm64"]
+        "arch": ["arm64"]
       },
       {
         "target": "zip",
-        "arch": ["x64", "arm64"]
+        "arch": [ "arm64"]
       }
     ],
     "artifactName": "${productName}_${version}_${arch}_installer.${ext}",

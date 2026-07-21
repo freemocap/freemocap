@@ -130,7 +130,8 @@ push = true
 "pyproject.toml" = ['version = "{pep440_version}"  # bumpver']
 "freemocap/__init__.py" = ['__version__ = "{version}"']
 "freemocap-ui/package.json" = ['"version": "MAJOR.MINOR.PATCH[-TAG.NUM]"']
-"freemocap-docs/src/components/download/data/downloads.ts" = ["DEFAULT_VERSION = 'MAJOR.MINOR.PATCH[-TAG.NUM]'"]
+# freemocap-docs is a separate repo (not tracked here), so bumpver can't git-add it
+# — its DEFAULT_VERSION is bumped in that repo, not from freemocap.
 
 
 

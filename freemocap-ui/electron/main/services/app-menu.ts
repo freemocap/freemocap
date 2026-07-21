@@ -1,6 +1,5 @@
 import {app, BrowserWindow, Menu, shell} from 'electron';
-import path from 'node:path';
-import os from 'node:os';
+import {getBaseDataFolder} from '../base-folder';
 
 /**
  * Build and set the native application menu.
@@ -80,17 +79,9 @@ export function buildAppMenu(mainWindow: BrowserWindow): void {
                 },
                 { type: 'separator' as const },
                 {
-                    label: 'Open Config Folder',
-                    click: () => {
-                        const configDir = path.join(os.homedir(), '.freemocap');
-                        shell.openPath(configDir);
-                    },
-                },
-                {
                     label: 'Open Data Folder',
                     click: () => {
-                        const dataDir = path.join(os.homedir(), 'freemocap_data');
-                        shell.openPath(dataDir);
+                        shell.openPath(getBaseDataFolder());
                     },
                 },
             ],

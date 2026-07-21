@@ -18,7 +18,8 @@ export interface ActiveRecordingState {
     layoutPreset: RecordingLayoutPresetName;
 }
 
-const DEFAULT_BASE_DIRECTORY = '~/freemocap_data/recordings';
+// Empty until hydrated from the base data folder at startup (see useHydrateDataFolder).
+const DEFAULT_BASE_DIRECTORY = '';
 const DEFAULT_LAYOUT_PRESET: RecordingLayoutPresetName = 'canonical';
 
 interface PersistedActiveRecording {

@@ -82,6 +82,7 @@ const config: Config = {
       items: [
         { type: 'docSidebar', sidebarId: 'docsSidebar', position: 'left', label: 'Docs' },
         { to: '/blog', label: 'Blog', position: 'left' },
+        { to: '/download', label: 'Download', position: 'left' },
         { to: '/roadmap', label: 'Roadmap', position: 'left' },
         { href: 'https://github.com/freemocap/freemocap', label: 'Code', position: 'right' },
       ],
@@ -104,6 +105,7 @@ const config: Config = {
         {
           title: 'More',
           items: [
+            { label: 'Download', to: '/download' },
             { label: 'Blog', to: '/blog' },
             { label: 'Website', href: 'https://freemocap.org/' },
           ],

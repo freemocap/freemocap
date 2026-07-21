@@ -1,0 +1,112 @@
+{
+  "appId": "freemocap.app",
+  "productName": "FreeMoCap",
+  "directories": {
+    "output": "release/${version}"
+  },
+  "files": [
+    "dist-electron",
+    "dist",
+    "freemocap_server/**",
+    "../shared/freemocap-logo/freemocap-favicon.ico",
+    "../shared/freemocap-logo/freemocap-logo.png"
+  ],
+  "asar": true,
+  "asarUnpack": [
+    "**/freemocap_server/**",
+    "**/freemocap-logo.png"
+  ],
+  "compression": "normal",
+
+  "win": {
+    "icon": "../shared/freemocap-logo/freemocap-favicon.ico",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["x64"]
+      }
+    ],
+    "artifactName": "${productName}_${version}_${arch}_installer.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "deleteAppDataOnUninstall": false,
+    "language": "1033"
+  },
+
+  "mac": {
+    "icon": "../shared/freemocap-logo/freemocap-logo.png",
+    "category": "public.app-category.video",
+    "entitlements": "entitlements.mac.plist",
+    "entitlementsInherit": "entitlements.mac.plist",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["arm64"]
+      },
+      {
+        "target": "zip",
+        "arch": [ "arm64"]
+      }
+    ],
+    "artifactName": "${productName}_${version}_${arch}_installer.${ext}",
+    "hardenedRuntime": true,
+    "notarize": true,
+    "extendInfo": {
+      "NSCameraUsageDescription": "FreeMoCap needs camera access to capture video for motion capture recording.",
+      "NSMicrophoneUsageDescription": "FreeMoCap needs microphone access to record audio alongside video.",
+      "NSCameraUseContinuityCameraDeviceType": true
+    }
+  },
+  "dmg": {
+    "contents": [
+      { "x": 130, "y": 220 },
+      { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+    ]
+  },
+
+  "linux": {
+    "icon": "../shared/freemocap-logo/freemocap-logo.png",
+    "category": "Video",
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64", "arm64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "artifactName": "${productName}_${version}_${arch}.${ext}",
+    "desktop": {
+      "entry": {
+        "Name": "FreeMoCap",
+        "Comment": "Camera backend for FreeMoCap",
+        "Categories": "Video;AudioVideo;"
+      }
+    }
+  },
+  "deb": {
+    "depends": [
+      "libgl1-mesa-glx",
+      "libglib2.0-0",
+      "libsm6",
+      "libxext6",
+      "libxrender1",
+      "libv4l-0"
+    ]
+  },
+
+  "publish": {
+    "provider": "github",
+    "owner": "freemocap",
+    "repo": "freemocap"
+  }
+}

@@ -1,31 +1,120 @@
-# __main__.py
+import asyncio
+import logging
+import multiprocessing
+import os
+import signal
 import sys
-from multiprocessing import freeze_support
-from pathlib import Path
 
-try:
-    from freemocap.gui.qt.freemocap_main import qt_gui_main
-except Exception:
-    base_package_path = Path(__file__).parent.parent
-    print(f"adding base_package_path: {base_package_path} : to sys.path")
-    sys.path.insert(0, str(base_package_path))  # add parent directory to sys.path
-    from freemocap.gui.qt.freemocap_main import qt_gui_main
+# Ensure sys.stdout/sys.stderr are valid — PyInstaller frozen subprocesses
+# may set them to None, which breaks libraries like tqdm that write to stderr.
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
-
-def main():
-    # set up so you can change the taskbar icon - https://stackoverflow.com/a/74531530/14662833
-    import ctypes
-    import freemocap
-
-    if sys.platform == "win32":
-        myappid = f"{freemocap.__package_name__}_{freemocap.__version__}"  # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
-    qt_gui_main()
+logger = logging.getLogger(__name__)
 
 
+async def main(force_preferred_port:bool=True) -> None:
+    # Heavy imports are here (not at module level) so that multiprocessing
+    # child processes don't re-import the entire app tree on Windows.
+    # Windows uses the `spawn` start method, which re-executes this file
+    # in every child process — but only `main()` needs these imports,
+    # and children never call `main()`.
+    import uvicorn
+    from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+    from skellycam.core.ipc.process_management.managed_worker import WorkerMode
+    from skellycam.utilities.kill_process_on_port import kill_process_on_port
+    from skellycam.utilities.wait_functions import await_1s
+
+    from freemocap.api.server_constants import (
+        HOSTNAME,
+        find_available_port,
+        PREFERRED_PORT,
+        format_port_sentinel,
+    )
+    from freemocap.app.app import create_fastapi_app
+    from freemocap.utilities.asyncio_exception_handler import suppress_proactor_connection_reset
+
+
+    if force_preferred_port:
+        port = PREFERRED_PORT
+        kill_process_on_port(port=port)
+    else:
+        port = find_available_port()
+    # Print the port sentinel to stdout so the Electron main process can discover it.
+    # flush=True ensures it arrives immediately even when stdout is buffered.
+    print(format_port_sentinel(port=port), flush=True)
+
+    suppress_proactor_connection_reset(asyncio.get_running_loop())
+
+    global_kill_flag = multiprocessing.Value("b", False)
+    worker_registry = WorkerRegistry(
+        global_kill_flag=global_kill_flag,
+        worker_mode=WorkerMode.PROCESS
+    )
+    worker_registry.start_heartbeat()
+
+    server: uvicorn.Server | None = None
+    signum_to_signal_name = {
+        signal.SIGINT: "signal.SIGINT",
+        signal.SIGTERM: "signal.SIGTERM",
+    }
+
+    def handle_signal(signum: int, frame: object) -> None:
+        """Handle shutdown signals."""
+        logger.info(f"Received signal {signum}({signum_to_signal_name[signum]}), initiating shutdown...")
+        global_kill_flag.value = True
+        if server:
+            server.should_exit = True
+
+    for sigint, signal_name in signum_to_signal_name.items():
+        logger.trace(f"Registering shutdown signal {sigint}: ({signum_to_signal_name[sigint]})")
+        signal.signal(sigint, handle_signal)
+
+    try:
+        kill_process_on_port(port=port)
+
+        app = create_fastapi_app(
+            global_kill_flag=global_kill_flag,
+            worker_registry=worker_registry,
+            port=port,
+        )
+
+        config = uvicorn.Config(
+            app=app,
+            host=HOSTNAME,
+            port=port,
+            log_level="warning",
+            reload=False,
+        )
+        server = uvicorn.Server(config)
+
+        logger.info(f"Starting server on {HOSTNAME}:{port}")
+        await server.serve()
+
+    except KeyboardInterrupt:
+        logger.info("Keyboard interrupt received")
+    except Exception as e:
+        logger.error(f"Fatal error: {e}")
+        raise
+    finally:
+        global_kill_flag.value = True
+        if server:
+            server.should_exit = True
+            await await_1s()
+
+        worker_registry.shutdown_all()
+        logger.success("Done! Thank you for using FreeMocap")
+
+def run_main() -> None:
+    asyncio.run(main())
 if __name__ == "__main__":
-    freeze_support()
-    print(f"Running `freemocap.__main__` from - {__file__}")
-
-    main()
+    multiprocessing.freeze_support()  # Required for PyInstaller + multiprocessing on Windows
+    try:
+        run_main()
+    except Exception as e:
+        logger.exception(f"Unhandled exception: {e}")
+        os._exit(1)
+    print("Done!")
+    os._exit(0)

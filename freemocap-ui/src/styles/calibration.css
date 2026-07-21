@@ -1,0 +1,50 @@
+.calibration-module-recording,
+.calibration-module-recording {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Top border animation - centered red gradient, pulsing */
+.calibration-module-recording::before,
+.calibration-module-recording::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  /* Centered red gradient with transparent edges */
+  background: linear-gradient(to right, transparent 0%, var(--color-danger) 50%, transparent 100%);
+  animation: pulse-border 2s infinite ease-in-out;
+  z-index: 10;
+}
+
+@keyframes pulse-border {
+  0% {
+    opacity: 0;
+    transform: scaleX(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(0.5);
+  }
+}
+
+/* Randomized animation for idle state */
+.calibration-module-recording::before {
+  animation-delay: 0s;
+}
+
+/* More intense animation for recording state */
+.calibration-module-recording::before {
+  animation-duration: 1.5s;
+  animation-iteration-count: infinite;
+}

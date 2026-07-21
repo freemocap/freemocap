@@ -1,0 +1,587 @@
+"""
+Simplified VideoHelper with OpenCV best practices.
+Includes smart frame reading and caching.
+"""
+
+import json
+import logging
+from collections import OrderedDict
+from pathlib import Path
+
+import cv2
+import numpy as np
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+
+from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename, VIDEO_EXTENSIONS
+from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
+
+logger = logging.getLogger(__name__)
+
+# Module level constants
+DEFAULT_CACHE_SIZE_MB = 500
+SEQUENTIAL_READ_THRESHOLD = 5  # If reading within 5 frames ahead, use sequential
+
+
+class VideoMetadata(BaseModel):
+    """Video metadata container"""
+    file_path: Path
+    width: int
+    height: int
+    fps: float
+    frame_count: int
+    fourcc: str
+    duration_seconds: float
+    start_frame: int = 0
+    end_frame: int
+
+    @model_validator(mode="before")
+    def validate_frames(cls, values):
+        start_frame = values.get("start_frame", 0)
+        total_frame_count = values.get("frame_count")
+        values["end_frame"] = values.get("end_frame", total_frame_count)
+        end_frame = values["end_frame"]
+        if end_frame is not None and total_frame_count is not None:
+            if not (0 <= start_frame < end_frame):
+                raise ValueError(
+                    f"Invalid frame range: start_frame={start_frame}, end_frame={end_frame}"
+                )
+            if end_frame > total_frame_count:
+                raise ValueError(
+                    f"end_frame ({end_frame}) exceeds total frame_count ({total_frame_count})"
+                )
+        return values
+
+    @property
+    def parsed_filename(self) -> ParsedVideoFilename:
+        return ParsedVideoFilename.from_path(self.file_path)
+
+    @property
+    def recording_name(self) -> str:
+        return self.parsed_filename.recording_name
+
+    @property
+    def camera_id(self) -> CameraIdString:
+        return self.parsed_filename.camera_id
+    @property
+    def camera_index(self) -> CameraIndexInt:
+        return self.parsed_filename.camera_index
+
+
+
+class FrameCache(BaseModel):
+    """LRU cache for video frames with memory management"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    max_size_mb: int = DEFAULT_CACHE_SIZE_MB
+    frame_cache: OrderedDict[int, np.ndarray] = Field(default_factory=OrderedDict)
+    current_bytes: int = Field(default=0)
+
+    @property
+    def _max_bytes(self) -> int:
+        return self.max_size_mb * 1024 * 1024
+
+    def get(self, frame_number: int) -> np.ndarray | None:
+        if frame_number not in self.frame_cache:
+            return None
+        # Move to end (most recently used)
+        self.frame_cache.move_to_end(frame_number)
+        return self.frame_cache[frame_number].copy()
+
+    def put(self, frame_number: int, frame: np.ndarray) -> None:
+        frame_bytes = frame.nbytes
+
+        # If frame already exists, update it
+        if frame_number in self.frame_cache:
+            old_bytes = self.frame_cache[frame_number].nbytes
+            self.current_bytes -= old_bytes
+            self.frame_cache.move_to_end(frame_number)
+
+        # Evict frames if necessary based on size only
+        while self.frame_cache and self.current_bytes + frame_bytes > self._max_bytes:
+            evicted_frame_num, evicted_frame = self.frame_cache.popitem(last=False)
+            self.current_bytes -= evicted_frame.nbytes
+
+        # Add new frame
+        self.frame_cache[frame_number] = frame.copy()
+        self.current_bytes += frame_bytes
+
+    def clear(self) -> None:
+        self.frame_cache.clear()
+        self.current_bytes = 0
+
+
+class VideoHelper(BaseModel):
+    """Video helper with caching and optimized frame reading"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    video_path: Path
+    video_reader: cv2.VideoCapture = Field(exclude=True)
+    metadata: VideoMetadata
+    cache: FrameCache = Field(default_factory=lambda: FrameCache())
+
+    # Reading optimization state
+    last_read_frame: int = Field(default=-1)
+    sequential_threshold: int = Field(default=SEQUENTIAL_READ_THRESHOLD)
+
+    @property
+    def has_frames(self) -> bool:
+        """Check if video has frames."""
+        return self.metadata.frame_count > 0 and self.last_read_frame < self.metadata.frame_count - 1
+
+    @classmethod
+    def from_video_path(
+        cls,
+        video_path: Path,
+        *,
+        cache_size_mb: int = DEFAULT_CACHE_SIZE_MB
+    ) -> "VideoHelper":
+        """
+        Create a VideoHelper instance.
+
+        Args:
+            video_path: Path to the video file
+            cache_size_mb: Maximum cache size in megabytes
+        """
+        if not video_path.exists():
+            raise FileNotFoundError(f"Video file not found: {video_path}")
+
+        # Open video capture
+        video_reader = cv2.VideoCapture(str(video_path))
+        if not video_reader.isOpened():
+            raise RuntimeError(f"Failed to open video file: {video_path}")
+
+        # Extract metadata
+        width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = video_reader.get(cv2.CAP_PROP_FPS)
+        frame_count = int(video_reader.get(cv2.CAP_PROP_FRAME_COUNT))
+        fourcc_code = int(video_reader.get(cv2.CAP_PROP_FOURCC))
+
+        # Convert fourcc to string
+        fourcc = "".join([chr((fourcc_code >> 8 * i) & 0xFF) for i in range(4)])
+
+        # Calculate duration
+        duration_seconds = frame_count / fps if fps > 0 else 0.0
+
+        metadata = VideoMetadata(
+            file_path = video_path,
+            width=width,
+            height=height,
+            fps=fps,
+            frame_count=frame_count,
+            fourcc=fourcc,
+            duration_seconds=duration_seconds
+        )
+
+        # Create cache
+        cache = FrameCache(max_size_mb=cache_size_mb)
+
+        return cls(
+            video_path=video_path,
+            video_reader=video_reader,
+            metadata=metadata,
+            cache=cache
+        )
+
+    def read_next_frame(self) -> np.ndarray| None:
+        """
+        Read the next frame in sequence. If the last read frame is -1, reads frame 0. If the last read frame is the last frame, returns None.
+
+        Returns:
+            Frame as numpy array
+        """
+        next_frame_number = self.last_read_frame + 1
+        if next_frame_number >= self.metadata.frame_count:
+            return None
+        return self.read_frame_number(next_frame_number)
+
+    def read_frame_number(self, frame_number: int) -> np.ndarray:
+        """
+        Read a specific frame with caching and access pattern optimization.
+
+        Args:
+            frame_number: Frame index to read (0-based)
+
+        Returns:
+            Frame as numpy array
+        """
+        # Validate frame number
+        if not 0 <= frame_number < self.metadata.frame_count:
+            raise ValueError(
+                f"Frame {frame_number} out of bounds [0, {self.metadata.frame_count})"
+            )
+
+        # Check cache first
+        cached_frame = self.cache.get(frame_number)
+        if cached_frame is not None:
+            return cached_frame
+
+        frame = self._read_sequential(frame_number)
+
+
+        if frame is None:
+            raise RuntimeError(f"Failed to read frame {frame_number}")
+
+        # Cache the frame
+        self.cache.put(frame_number, frame)
+        self.last_read_frame = frame_number
+
+        return frame
+
+
+
+    def _read_sequential(self, frame_number: int) -> np.ndarray:
+        """Read a frame by seeking forward from the last read position.
+
+        Skips the frames between the last read and the target with grab() (cheap,
+        no decode), then read()s the target frame itself (grab + decode). The
+        target must be grabbed too — calling retrieve() alone would decode the
+        previously-grabbed frame, and on the very first read (last_read_frame=-1)
+        there is no grabbed frame at all.
+        """
+        frames_to_skip = frame_number - self.last_read_frame - 1
+        for _ in range(frames_to_skip):
+            if not self.video_reader.grab():
+                raise RuntimeError(f"Failed to grab frame while seeking to {frame_number}")
+
+        # Grab + decode the target frame.
+        ret, frame = self.video_reader.read()
+        if not ret or frame is None:
+            raise RuntimeError(f"Failed to retrieve frame {frame_number}")
+
+        return frame
+
+
+
+    def read_frame_batch(self, frame_numbers: list[int]) -> list[np.ndarray]:
+        """
+        Read multiple frames efficiently.
+
+        Args:
+            frame_numbers: List of frame indices to read
+
+        Returns:
+            List of frames in the same order as requested
+        """
+        # Check cache and determine what needs reading
+        results = {}
+        frames_to_read = []
+
+        for frame_number in frame_numbers:
+            cached = self.cache.get(frame_number)
+            if cached is not None:
+                results[frame_number] = cached
+            else:
+                frames_to_read.append(frame_number)
+
+        if frames_to_read:
+            # Sort for optimal reading
+            frames_to_read.sort()
+
+            # Read missing frames
+            for frame_number in frames_to_read:
+                frame = self.read_frame_number(frame_number)
+                results[frame_number] = frame
+
+        # Return in original order
+        return [results[frame_number] for frame_number in frame_numbers]
+
+    def get_frame_timestamp(self, frame_number: int) -> float:
+        """Get timestamp in seconds for a given frame number."""
+        if self.metadata.fps <= 0:
+            raise RuntimeError("Invalid FPS value")
+        return frame_number / self.metadata.fps
+
+    def get_frame_at_timestamp(self, timestamp_seconds: float) -> np.ndarray:
+        """Read frame at specific timestamp."""
+        if self.metadata.fps <= 0:
+            raise RuntimeError("Invalid FPS value")
+        frame_number = int(timestamp_seconds * self.metadata.fps)
+        return self.read_frame_number(frame_number)
+
+    def extract_frames_interval(
+        self,
+        start_frame: int,
+        end_frame: int,
+        step: int = 1
+    ) -> list[np.ndarray]:
+        """
+        Extract frames from an interval efficiently.
+
+        Args:
+            start_frame: Starting frame index
+            end_frame: Ending frame index (exclusive)
+            step: Step size between frames
+
+        Returns:
+            List of extracted frames
+        """
+        frame_numbers = list(range(start_frame, end_frame, step))
+        return self.read_frame_batch(frame_numbers)
+
+    def close(self) -> None:
+        """Clean up resources."""
+        self.video_reader.release()
+        self.cache.clear()
+
+    def __str__(self) -> str:
+        metadata = self.metadata
+        lines = [
+            f"VideoHelper:",
+            f"  video_path           = {self.video_path}",
+            f"  metadata:",
+            f"    file_path          = {metadata.file_path}",
+            f"    width              = {metadata.width}",
+            f"    height             = {metadata.height}",
+            f"    frames_per_second  = {metadata.fps}",
+            f"    frame_count        = {metadata.frame_count}",
+            f"    fourcc             = {metadata.fourcc}",
+            f"    duration_seconds   = {metadata.duration_seconds}",
+            f"    start_frame        = {metadata.start_frame}",
+            f"    end_frame          = {metadata.end_frame}",
+            f"  last_read_frame      = {self.last_read_frame}",
+            f"  sequential_threshold = {self.sequential_threshold}",
+        ]
+        return "\n".join(lines)
+
+
+    def __enter__(self) -> "VideoHelper":
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """Context manager exit."""
+        self.close()
+
+
+class VideoGroupHelper(BaseModel):
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        validate_assignment=True,
+        extra="forbid",
+        frozen=True
+    )
+    videos: dict[CameraIdString, VideoHelper]
+    video_metadata_by_id: dict[CameraIdString, VideoMetadata]
+    # True if camera_id keys came from the recording manifest (authoritative).
+    # False if they came from filename parsing (best-effort).
+    keyed_from_manifest: bool = False
+    # True if filename parsing had to fall back to alphabetical reindex
+    # because indices were missing or colliding. Operator should verify
+    # the camera assignment is correct. Always False when keyed_from_manifest.
+    filename_reindex_applied: bool = False
+
+    @property
+    def camera_ids(self) -> list[CameraIdString]:
+        return list(self.videos.keys())
+
+    @property
+    def frame_count(self) -> int:
+        frame_counts = {video.metadata.frame_count for video in self.videos.values()}
+        if len(frame_counts) != 1:
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
+        return list(frame_counts)[0]
+
+    @model_validator(mode="after")
+    def validate_videos(self):
+        if len(self.videos) == 0:
+            raise ValueError("VideoGroup must contain at least one video.")
+        if len(set(video.metadata.frame_count for video in self.videos.values())) != 1:
+            raise ValueError(_frame_count_mismatch_detail(self.videos))
+        return self
+
+    @classmethod
+    def from_video_paths(cls, video_paths: list[str | Path], close_videos: bool = True) -> "VideoGroupHelper":
+        """Create VideoGroupHelper from a list of video file paths.
+
+        Camera IDs and indices are extracted via ParsedVideoFilename.from_path(),
+        which tries the canonical SkellyCam format first then falls back to
+        heuristic extraction (cam-prefix, trailing-int, alphabetical ordering).
+        """
+        paths = sorted(Path(p) for p in video_paths)
+        parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
+
+        # Detect collisions or unknown indices (-1 sentinel) and re-assign
+        indices = [pv.camera_index for pv in parsed_list]
+        reindex_applied = -1 in indices or len(set(indices)) < len(indices)
+        if reindex_applied:
+            filename_index_list = ", ".join(
+                f"{path.name} (idx={pv.camera_index}, id={pv.camera_id})"
+                for pv, path in zip(parsed_list, paths)
+            )
+            logger.warning(
+                f"Camera indices are ambiguous or colliding ({indices}); "
+                f"re-assigning by alphabetical filename order. "
+                f"This usually means the folder contains videos from more than one recording "
+                f"(stale/leftover files). Files: {filename_index_list}. "
+                f"Verify the camera_id → video mapping is correct."
+            )
+            for i, pv in enumerate(parsed_list):
+                pv.camera_index = i
+
+        # Sort by camera_index and build VideoHelper map keyed by camera_id
+        pairs = sorted(zip(parsed_list, paths), key=lambda x: x[0].camera_index)
+
+        videos: dict[CameraIdString, VideoHelper] = {}
+        for pv, path in pairs:
+            videos[pv.camera_id] = VideoHelper.from_video_path(path)
+
+        instance = cls(
+            videos=videos,
+            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+            keyed_from_manifest=False,
+            filename_reindex_applied=reindex_applied,
+        )
+        if close_videos:
+            instance.close()
+        return instance
+
+    @classmethod
+    def from_manifest_videos(
+        cls,
+        *,
+        manifest_videos: dict[str, str],
+        videos_dir: Path,
+        close_videos: bool = True,
+    ) -> "VideoGroupHelper":
+        """Build from an authoritative camera_id → relative-filename mapping."""
+        videos: dict[CameraIdString, VideoHelper] = {}
+        for camera_id, filename in manifest_videos.items():
+            video_path = videos_dir / filename
+            if not video_path.exists():
+                raise FileNotFoundError(
+                    f"Manifest references video '{filename}' for camera '{camera_id}' "
+                    f"but the file does not exist at {video_path}"
+                )
+            videos[camera_id] = VideoHelper.from_video_path(video_path)
+
+        instance = cls(
+            videos=videos,
+            video_metadata_by_id={vid_id: vid.metadata for vid_id, vid in videos.items()},
+            keyed_from_manifest=True,
+            filename_reindex_applied=False,
+        )
+        if close_videos:
+            instance.close()
+        return instance
+
+    @classmethod
+    def from_video_folder_path(cls, video_folder_path: Path) -> "VideoGroupHelper":
+        paths = sorted(
+            p for p in video_folder_path.glob("*")
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        )
+        if not paths:
+            raise FileNotFoundError(f"No video files found in {video_folder_path}")
+        return cls.from_video_paths(paths)
+
+    @classmethod
+    def from_recording_path(cls, recording_path: str,
+                            video_subfolder_name: str = 'synchronized_videos') -> "VideoGroupHelper":
+        """Build a VideoGroup for a recording.
+
+        Prefers the manifest's `videos` map (camera_id → filename) when
+        present; falls back to filename parsing of the synchronized-videos
+        folder when the manifest is missing or has no videos map.
+        """
+        recording_path_obj = Path(recording_path)
+        videos_dir = recording_path_obj / video_subfolder_name
+
+        manifest_videos = _load_manifest_videos(recording_path_obj)
+        if manifest_videos:
+            return cls.from_manifest_videos(
+                manifest_videos=manifest_videos,
+                videos_dir=videos_dir,
+            )
+        return cls.from_video_folder_path(videos_dir)
+
+    def close(self):
+        for video in self.videos.values():
+            video.close()
+
+    def __str__(self) -> str:
+        lines = [
+            f"VideoGroupHelper:",
+            f"  number_of_videos     = {len(self.videos)}",
+            f"  frame_count          = {self.frame_count}",
+            f"  keyed_from_manifest  = {self.keyed_from_manifest}",
+            f"  filename_reindex_applied = {self.filename_reindex_applied}",
+            f"  camera_ids:",
+        ]
+        for camera_id in self.camera_ids:
+            lines.append(f"    {camera_id}")
+        return "\n".join(lines)
+
+
+def _frame_count_mismatch_detail(videos: dict[CameraIdString, "VideoHelper"]) -> str:
+    """Build a diagnostic message listing each video's frame count.
+
+    A frame-count mismatch almost always means the videos folder contains clips from more
+    than one recording session (e.g. stale/leftover files from a previous capture), so the
+    glob picked up an incoherent set. The terse "all videos must have the same frame count"
+    message hid that; this spells out exactly which files disagree.
+    """
+    lines = [
+        f"    {camera_id}: {video.metadata.frame_count} frames  ({video.video_path})"
+        for camera_id, video in videos.items()
+    ]
+    return (
+        "All videos in a VideoGroup must have the same frame count, but they differ:\n"
+        + "\n".join(lines)
+        + "\nThis usually means the synchronized_videos/ folder contains videos from more "
+        "than one recording (stale or leftover files). Check for and remove videos that do "
+        "not belong to this recording."
+    )
+
+
+def _load_manifest_videos(recording_path: Path) -> dict[str, str] | None:
+    """Return the manifest's `videos` map if present, else None.
+
+    The manifest is `{recording_name}_recording_info.json` (or the legacy
+    `{recording_name}_info.json` from SkellyCam). A missing or unreadable
+    manifest, or a manifest without a populated `videos` field, returns None.
+    """
+    candidates = [
+        recording_path / f"{recording_path.name}_recording_info.json",
+        recording_path / f"{recording_path.name}_info.json",
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r") as f:
+                data = json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Failed to read recording manifest at {path}: {e}")
+            continue
+        videos = data.get("videos")
+        if isinstance(videos, dict) and videos:
+            return {str(k): str(v) for k, v in videos.items()}
+    return None
+
+# Example usage
+if __name__ == "__main__":
+    video_path = Path(r"C:\Users\jonma\Downloads\2025-07-01_ferret_757_EyeCameras_P33_EO5_1m_20s-2m_20s(2).mp4")
+
+    # Using context manager for automatic cleanup
+    with VideoHelper.from_video_path(
+        video_path,
+        cache_size_mb=1000
+    ) as vh:
+        # Read single frame
+        frame = vh.read_frame_number(100)
+        print(f"Frame shape: {frame.shape}")
+
+        # Read batch of frames efficiently
+        frames = vh.read_frame_batch([10, 50, 100, 150, 200])
+        print(f"Read {len(frames)} frames")
+
+        # Extract interval
+        interval_frames = vh.extract_frames_interval(0, 100, step=10)
+        print(f"Extracted {len(interval_frames)} frames from interval")
+
+        # Get frame at timestamp
+        frame_at_5s = vh.get_frame_at_timestamp(5.0)
+        print(f"Frame at 5s shape: {frame_at_5s.shape}")

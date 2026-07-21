@@ -1,0 +1,301 @@
+// src/services/server/server-helpers/log-store.ts
+
+import {z} from 'zod';
+
+export const LogRecordSchema = z.object({
+    name: z.string(),
+    msg: z.string().nullable().default(""),
+    args: z.array(z.any()),
+    levelname: z.string(),
+    levelno: z.number(),
+    pathname: z.string(),
+    filename: z.string(),
+    module: z.string(),
+    exc_info: z.string().nullable(),
+    exc_text: z.string().nullable(),
+    stack_info: z.string().nullable(),
+    lineno: z.number(),
+    funcName: z.string(),
+    created: z.number(),
+    msecs: z.number(),
+    relativeCreated: z.number(),
+    thread: z.number(),
+    threadName: z.string(),
+    processName: z.string(),
+    process: z.number(),
+    delta_t: z.string(),
+    message: z.string(),
+    asctime: z.string(),
+    formatted_message: z.string(),
+    type: z.string(),
+    // 'ui' for browser console logs, 'server' (default) for backend logs
+    source: z.string().optional().default('server'),
+});
+
+export type LogRecord = z.infer<typeof LogRecordSchema>;
+
+const MAX_ENTRIES = 10_000;
+// Only the most recent slice is persisted to localStorage. Serializing the full
+// 10k-entry in-memory buffer on every save was a ~84ms main-thread stall on the
+// save interval (seen in profiles); persisting a small tail keeps writes cheap
+// while logs still survive restarts. The full 10k stays in memory for scrollback.
+const MAX_PERSISTED_ENTRIES = 300;
+const STORAGE_KEY = 'freemocap_log_store';
+// Longer interval (was 5s) so the JSON.stringify + localStorage write happens far
+// less often. The periodic write is also deferred to requestIdleCallback so it
+// never blocks a render frame. The dirty flag still gates writes to real changes.
+const AUTO_SAVE_INTERVAL_MS = 20_000;
+
+export type LogSnapshot = {
+    entries: LogRecord[];
+    hasErrors: boolean;
+    countsByLevel: Record<string, number>;
+    version: number;
+};
+
+/**
+ * Mutable store for streaming log records from the backend.
+ * Lives in a ref — no Redux, no immutable copies, no re-renders on every message.
+ * Components poll via getSnapshot() on their own schedule (typically ~500ms).
+ *
+ * Uses a version counter to avoid copying the entries array when nothing has
+ * changed since the last snapshot. The snapshot's entries array is only
+ * reallocated when new logs have arrived.
+ *
+ * Persists log entries to localStorage so logs survive page refreshes / app
+ * restarts. A divider entry is inserted on each mount to visually separate
+ * sessions. Persistence uses a dirty flag + periodic save to avoid serializing
+ * the full entries array on every incoming log message.
+ */
+export class LogStore {
+    private entries: LogRecord[] = [];
+    private countsByLevel: Record<string, number> = {};
+    private hasErrors: boolean = false;
+
+    /** Incremented on every mutation (add / clear). */
+    private version: number = 0;
+
+    /** Version at which the last snapshot was taken. */
+    private lastSnapshotVersion: number = -1;
+
+    /** Cached snapshot entries — reused when version hasn't changed. */
+    private cachedEntries: LogRecord[] = [];
+    private cachedCountsByLevel: Record<string, number> = {};
+
+    /** Set when entries change since the last persist. */
+    private dirty: boolean = false;
+
+    /** Periodic save timer handle. */
+    private saveInterval: ReturnType<typeof setInterval> | null = null;
+
+    /** Pending idle-callback handle for a deferred persist (so we don't double-schedule). */
+    private idlePersistHandle: number | null = null;
+
+    constructor() {
+        this.restoreFromLocalStorage();
+        this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
+    }
+
+    /** Stop the auto-save timer and flush one last time. Call on teardown. */
+    dispose(): void {
+        if (this.saveInterval !== null) {
+            clearInterval(this.saveInterval);
+            this.saveInterval = null;
+        }
+        if (this.idlePersistHandle !== null) {
+            const cic = (globalThis as typeof globalThis & {
+                cancelIdleCallback?: (handle: number) => void;
+            }).cancelIdleCallback;
+            if (cic) cic(this.idlePersistHandle);
+            else clearTimeout(this.idlePersistHandle);
+            this.idlePersistHandle = null;
+        }
+        // Final flush is synchronous — idle callbacks won't run during unload.
+        this.persistToLocalStorage();
+    }
+
+    add(record: LogRecord): void {
+        this.entries.push(record);
+        this.version++;
+
+        // Update counts
+        const level = record.levelname;
+        this.countsByLevel[level] = (this.countsByLevel[level] || 0) + 1;
+
+        // Track error state
+        if (level === 'ERROR' || level === 'CRITICAL') {
+            this.hasErrors = true;
+        }
+
+        // Trim to capacity
+        if (this.entries.length > MAX_ENTRIES) {
+            const removed = this.entries.splice(0, this.entries.length - MAX_ENTRIES);
+            for (const r of removed) {
+                this.countsByLevel[r.levelname]--;
+                if (this.countsByLevel[r.levelname] <= 0) {
+                    delete this.countsByLevel[r.levelname];
+                }
+            }
+            this.hasErrors = (this.countsByLevel['ERROR'] ?? 0) > 0
+                || (this.countsByLevel['CRITICAL'] ?? 0) > 0;
+        }
+
+        this.dirty = true;
+    }
+
+    /**
+     * Returns a snapshot for React components to read during render.
+     * Only copies the entries array when new logs have arrived since the
+     * last call, avoiding the per-poll GC pressure of unconditional .slice().
+     */
+    getSnapshot(): LogSnapshot {
+        if (this.version !== this.lastSnapshotVersion) {
+            this.cachedEntries = this.entries.slice();
+            this.cachedCountsByLevel = { ...this.countsByLevel };
+            this.lastSnapshotVersion = this.version;
+        }
+
+        return {
+            entries: this.cachedEntries,
+            hasErrors: this.hasErrors,
+            countsByLevel: this.cachedCountsByLevel,
+            version: this.version,
+        };
+    }
+
+    clear(): void {
+        this.entries = [];
+        this.countsByLevel = {};
+        this.hasErrors = false;
+        this.dirty = false;
+        this.version++;
+        this.cachedEntries = [];
+        this.cachedCountsByLevel = {};
+        this.lastSnapshotVersion = this.version;
+        this.clearLocalStorage();
+    }
+
+    /** Force an immediate persist (used for beforeunload). */
+    persistNow(): void {
+        this.persistToLocalStorage();
+    }
+
+    // ── private persistence helpers ──────────────────────────────────────
+
+    private persistIfDirty(): void {
+        if (!this.dirty || this.idlePersistHandle !== null) return;
+        // Defer the serialize + write to idle time so it can't land inside a
+        // streaming render frame. Falls back to a macrotask where rIC is absent.
+        const ric = (globalThis as typeof globalThis & {
+            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+        }).requestIdleCallback;
+        const run = (): void => {
+            this.idlePersistHandle = null;
+            this.persistToLocalStorage();
+        };
+        this.idlePersistHandle = ric
+            ? ric(run, { timeout: AUTO_SAVE_INTERVAL_MS })
+            : (setTimeout(run, 0) as unknown as number);
+    }
+
+    private persistToLocalStorage(): void {
+        try {
+            // Persist only the most recent slice — serializing all 10k entries
+            // on the main thread was the source of a periodic save-interval stall.
+            const toPersist = this.entries.length > MAX_PERSISTED_ENTRIES
+                ? this.entries.slice(this.entries.length - MAX_PERSISTED_ENTRIES)
+                : this.entries;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
+            this.dirty = false;
+        } catch {
+            // localStorage full or unavailable — silently ignore
+        }
+    }
+
+    private restoreFromLocalStorage(): void {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed) || parsed.length === 0) return;
+
+            // Validate each entry (schema-safe against future changes)
+            const restored: LogRecord[] = [];
+            for (const item of parsed) {
+                const result = LogRecordSchema.safeParse(item);
+                if (result.success) {
+                    restored.push(result.data);
+                }
+            }
+
+            if (restored.length === 0) return;
+
+            // Truncate to capacity, leaving room for the divider + new logs
+            if (restored.length >= MAX_ENTRIES) {
+                restored.splice(0, restored.length - MAX_ENTRIES + 1);
+            }
+
+            this.entries = restored;
+
+            // Recalculate aggregate state from restored entries
+            this.countsByLevel = {};
+            this.hasErrors = false;
+            for (const entry of this.entries) {
+                if (entry.type === 'divider') continue;
+                const lvl = entry.levelname;
+                this.countsByLevel[lvl] = (this.countsByLevel[lvl] || 0) + 1;
+                if (lvl === 'ERROR' || lvl === 'CRITICAL') {
+                    this.hasErrors = true;
+                }
+            }
+
+            this.addDivider();
+            this.version++;
+        } catch {
+            // Corrupted data — start fresh
+        }
+    }
+
+    private addDivider(): void {
+        const now = new Date();
+        const divider: LogRecord = {
+            name: '',
+            msg: '',
+            args: [],
+            levelname: 'DIVIDER',
+            levelno: -1,
+            pathname: '',
+            filename: '',
+            module: '',
+            exc_info: null,
+            exc_text: null,
+            stack_info: null,
+            lineno: 0,
+            funcName: '',
+            created: now.getTime() / 1000,
+            msecs: now.getMilliseconds(),
+            relativeCreated: 0,
+            thread: 0,
+            threadName: '',
+            processName: '',
+            process: 0,
+            delta_t: '',
+            message: '────── App restarted ──────',
+            asctime: now.toLocaleString(),
+            formatted_message: '',
+            type: 'divider',
+            source: 'system',
+        };
+        this.entries.push(divider);
+        this.dirty = true;
+    }
+
+    private clearLocalStorage(): void {
+        try {
+            localStorage.removeItem(STORAGE_KEY);
+        } catch {
+            // ignore
+        }
+    }
+}

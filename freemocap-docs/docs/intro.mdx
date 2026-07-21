@@ -1,0 +1,52 @@
+---
+sidebar_position: 1
+title: Introduction
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+:::warning AI GENERATED DOCS
+A robot wrote these docs based on the code in the `freemocap/` repo. Expect jank.
+
+We'll get to human curating and cleaning them up "soon"
+
+For now, they are significantly better than nothing, which is the alternative option :)
+:::
+
+# FreeMoCap
+
+FreeMoCap is a free-and-open-source **markerless motion capture system** — no reflective markers, no special suits, no expensive hardware. Point USB cameras at a person, record synchronized video, and the software produces 3D skeleton data you can use in Blender, biomechanics analysis, game development, or research.
+
+## Architecture at a Glance
+
+FreeMoCap is a **stand-alone desktop application** with a React/TypeScript frontend (Electron) that talks to a Python backend (FastAPI) over REST and WebSocket. Multiple USB cameras feed synchronized frames into processing pipelines that run state-of-the-art pose detection, multi-view triangulation, and skeleton filtering — all on consumer hardware.
+
+FreeMoCap does not require an internet connection or a login to work (and never will!). We access the internet to download MediaPipe and RTMPose models that SkellyTracker uses, but once they are downloaded FreeMoCap will happily run offline and air-gapped for as long as you care to run it.
+
+| Capability | Description |
+|---|---|
+| **Multi-camera recording** | Synchronized video from 2+ USB cameras |
+| **Realtime 3D skeleton** | Live 3D pose estimation streamed to the viewport |
+| **Camera calibration** | Automatic ChArUco-based intrinsic/extrinsic calibration |
+| **Post-processing** | Offline mocap pipeline with highest-accuracy settings |
+| **Blender export** | One-click export to .blend with skeleton mesh, camera frustums, lighting |
+| **Extensible** | Modular pipeline architecture — swap detectors, filters, exporters |
+
+## Quick Start
+
+1. **Install**: Clone the repo and install dependencies (see [Contributing](https://github.com/freemocap/freemocap/blob/main/CONTRIBUTING.md))
+2. **Connect cameras**: Plug in 2+ USB cameras
+3. **Calibrate**: Wave a printed ChArUco board in front of the cameras
+4. **Record**: Press record and perform your movement
+5. **Process**: Run the mocap pipeline to get 3D skeleton data
+6. **Export**: Open in Blender or analyze the `.npy`/`.parquet` data
+
+## Documentation Structure
+
+- **Architecture** — How the system works under the hood. Start with the [Architecture Overview](./architecture/overview) for the big picture, then drill into the frontend, API boundary, or backend sections.
+- **API Notes** — Working notes on the evolving API design.
+- **Roadmap** — What we're building next, pulled live from GitHub issues
+
+<Tip shortInfo="This documentation site is built with Docusaurus v3 and the @freemocap/skellydocs shared theme package. It focuses on architecture and developer documentation. User-facing guides (installation walkthroughs, camera setup, Blender tutorials) are coming soon." />

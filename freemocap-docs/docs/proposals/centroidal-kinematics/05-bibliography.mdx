@@ -1,0 +1,97 @@
+---
+sidebar_position: 6
+title: Bibliography & Sources
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Bibliography & Sources
+
+<Tip shortInfo="Links go to direct-PDF / open-access copies (author-hosted PDFs where available, otherwise sci-hub) rather than publisher paywalls. DOIs are given as plain text for citation. Each entry notes what it contributes to this proposal." />
+
+## Reaction Mass Pendulum & centroidal dynamics
+
+**Lee, S.-H. & Goswami, A. (2007).** "Reaction Mass Pendulum (RMP): An explicit model for
+centroidal angular momentum of humanoid robots." *IEEE ICRA 2007*, pp. 4667–4672.
+[PDF](https://sci-hub.cat/10.1109/ROBOT.2007.364198) · DOI: 10.1109/ROBOT.2007.364198
+— The foundational RMP paper. The *estimation* original: how to build the reaction-mass
+ellipsoid from a body's mass distribution. Closest published thing to what we implement.
+
+**Lee, S.-H. & Goswami, A. (2009).** "The Reaction Mass Pendulum (RMP) Model for Humanoid
+Robot Gait and Balance Control." In *Humanoid Robots* (InTech).
+[PDF](http://ambarish.com/paper/Lee_Goswami_intech2009.pdf)
+— The Lie-group (SE(3)) construction of the RMP-of-a-humanoid; composite/locked inertia
+(Eq. 12), parallel-axis spatial inertia (Eq. 9), and the reaction-mass ellipsoid figures we
+reproduce in the viewport.
+
+**Sanyal, A. K. & Goswami, A. (2013).** "Dynamics and Balance Control of the Reaction Mass
+Pendulum: A Three-Dimensional Multibody Pendulum With Variable Body Inertia." *ASME J. of
+Dynamic Systems, Measurement, and Control*, 136(2), 021002.
+[PDF](https://sci-hub.box/storage/2024/4852/6a27ccba07f27cbfc5b19b08fb2facce/sanyal2013.pdf) · DOI: 10.1115/1.4025607
+— Full 3D RMP dynamics and a Morse-Lyapunov *controller*. We use its representation of the
+variable body inertia; the control half is out of scope (we measure, not actuate).
+
+**Orin, D. E., Goswami, A. & Lee, S.-H. (2013).** "Centroidal dynamics of a humanoid robot."
+*Autonomous Robots*, 35(2–3), 161–176.
+[PDF](https://sci-hub.cat/10.1007/s10514-013-9341-4) · DOI: 10.1007/s10514-013-9341-4
+— The computational reference: the Centroidal Composite Rigid Body Inertia (`I_G`, Eq. 22),
+the average spatial velocity `ω = I_G⁻¹ H_G` (Eq. 24), and an efficient O(N) algorithm.
+Reports full centroidal dynamics at ~3 kHz on 2013 hardware → our subset is trivially
+realtime.
+
+## Balance metrics & ground-reference points
+
+**Popovic, M. B., Goswami, A. & Herr, H. (2005).** "Ground reference points in legged
+locomotion: Definitions, biomechanics, and applications." *Int. J. of Robotics Research*,
+24(12), 1013–1032.
+[PDF](http://ambarish.com/paper/Popovic_Goswami_Herr_IJRR_Dec_2005.pdf) · DOI: 10.1177/0278364905058363
+— Definitions of ZMP, FRI, and the Centroidal Moment Pivot (CMP). Source for the CoP/CMP
+relationship (CMP−CoP = angular-momentum-rate readout) and for the kinematics-only ZMP
+reconstruction (Eq. 5) we note as a future force-plate-free CoP upgrade.
+
+**Koolen, T., de Boer, T., Rebula, J., Goswami, A. & Pratt, J. (2012).**
+"Capturability-based analysis and control of legged locomotion, Part 1: Theory and
+application to three simple gait models." *Int. J. of Robotics Research*, 31(9), 1094–1113.
+[PDF](http://ambarish.com/paper/2012_Capturability_IJRR_Part1.pdf) · DOI: 10.1177/0278364912452673
+— The N-step capturability framework. States explicitly that the instantaneous capture point
+equals Hof's extrapolated CoM, and shows how angular momentum (flywheel / RMP territory)
+extends the capture region beyond the single XCoM point.
+
+**Pratt, J., Carff, J., Drakunov, S. & Goswami, A. (2006).** "Capture point: A step toward
+humanoid push recovery." *IEEE-RAS Humanoids 2006*.
+[PDF](https://sci-hub.cat/10.1109/ICHR.2006.321385) · DOI: 10.1109/ICHR.2006.321385
+— Introduces the capture point; the robotics-side origin of the quantity Hof named the XCoM.
+
+**Hof, A. L. (2008).** "The 'extrapolated center of mass' concept suggests a simple control
+of balance in walking." *Human Movement Science*, 27(1), 112–125.
+[PDF](https://sci-hub.cat/10.1016/j.humov.2007.08.003) · DOI: 10.1016/j.humov.2007.08.003
+— The XCoM and the "margin of stability." This is the formula freemocap already implements;
+the biomechanics-side origin of the capture point.
+
+## Anthropometric segment-inertia data (Phase 2)
+
+**de Leva, P. (1996).** "Adjustments to Zatsiorsky-Seluyanov's segment inertia parameters."
+*J. of Biomechanics*, 29(9), 1223–1230.
+[PDF](https://sci-hub.cat/storage/2024/213/d739373bc9af25177cd9d6ac0214487f/deleva1996.pdf) · DOI: 10.1016/0021-9290(95)00178-6
+— Per-segment mass, CoM location, **and radii of gyration** (Table 4, female + male).
+**Transcribed into `freemocap/core/kinematics/inertial/anthropometry.py`** — both sexes
+recorded, mean used by default; mass fractions sum to 1.0 (verified by test).
+
+**Dumas, R., Chèze, L. & Verriest, J.-P. (2007).** "Adjustments to McConville et al. and
+Young et al. body segment inertial parameters." *J. of Biomechanics*, 40(3), 543–553.
+[PDF](https://sci-hub.cat/10.1016/j.jbiomech.2006.02.013) · DOI: 10.1016/j.jbiomech.2006.02.013
+— Full 3D segment inertia tensors (including off-diagonal terms). Alternative to de Leva for
+higher-fidelity ellipsoids.
+
+**Winter, D. A. (2009).** *Biomechanics and Motor Control of Human Movement* (4th ed.).
+Wiley. — freemocap's existing source for segment mass fractions and CoM locations; its full
+tables also include radii of gyration.
+
+## Internal references
+
+- The math: [Theory & Math](./01-theory-and-math.mdx)
+- The code: [Module Architecture](./02-module-architecture.mdx)
+- The pipeline: [Data Flow & Frontend](./03-data-flow-and-frontend.mdx)
+- The build order: [Implementation Plan](./04-implementation-plan.mdx)

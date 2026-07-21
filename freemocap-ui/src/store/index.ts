@@ -1,0 +1,15 @@
+export { store } from './store';
+export type { RootState, AppDispatch, AppThunk } from './types';
+export { useAppDispatch, useAppSelector } from './hooks';
+
+
+// Re-export all slice actions and selectors for a nice 'barrel' design pattern, which makes imports cleaner
+export * from './slices/cameras';
+export * from './slices/recording';
+export * from './slices/videos';
+export * from './slices/realtime';
+export * from './slices/connection';
+export * from './slices/mocap';
+export * from './slices/pipelines';
+export * from './slices/blender';
+export * from './slices/active-recording';

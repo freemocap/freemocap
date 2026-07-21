@@ -1,0 +1,53 @@
+name: Deploy docs site
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'freemocap-docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: freemocap-docs
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: freemocap-docs/package-lock.json
+
+      - run: npm ci
+
+      - run: npm run build
+        env:
+          NODE_OPTIONS: '--max-old-space-size=4096'
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: freemocap-docs/build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

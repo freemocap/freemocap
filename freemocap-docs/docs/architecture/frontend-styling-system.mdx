@@ -1,0 +1,234 @@
+---
+sidebar_position: 4
+title: Frontend Styling System
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Frontend Styling System
+
+The new UI uses a **hand-rolled CSS utility-class framework** — not Tailwind, not CSS modules, not CSS-in-JS. Everything is global CSS with a flat namespace. This is a deliberate choice for simplicity, discoverability, and zero build-step magic.
+
+If you're coming from the old MUI-based UI: there is no `ThemeProvider`, no `sx` prop, no `createTheme`. All theming is CSS custom properties. All layout is utility classes.
+
+## Architecture
+
+```
+src/index.css
+  → src/styles/App.css          (master import file)
+      → reset.css                CSS reset
+      → font.css                 Global font stack
+      → icons.css                Icon class definitions
+      → color.css                Design tokens (CSS custom properties)
+      → animation.css            Keyframe animations
+      → log-terminal.css         Log terminal styles
+      → framerate.css            Framerate viewer styles
+      → camera.css               Camera feed styles
+      → checkbox.css             Custom checkbox styles
+      → components.css           Component-level classes
+      → calibration-module.css   Calibration UI styles
+      → playback.css             Playback page styles
+      → tooltips.css             Tooltip system
+      → toggle.css               Toggle switch styles
+      → button-sm.css            Small button variants
+      → (utility classes)        Hundreds of hand-written utilities
+```
+
+No CSS modules. No scoping. Every class is globally available. This means:
+
+- You can inspect any element in devtools and see exactly which classes apply
+- You never wonder "where is this style defined?"
+- You never fight CSS module import issues
+- The cost: you need to be careful about naming collisions
+
+## Design Tokens (`color.css`)
+
+All colors are tokenized as CSS custom properties. There are four layers of abstraction:
+
+### Raw Values
+```css
+--gray-900: #060606;
+--gray-800: #1b1b1b;
+--gray-700: #272727;
+--blue-500: #2ba4ff;
+--green-100: #16dd12;
+--red-500: #d7184b;
+--warning-500: #e64900;
+```
+
+### Alpha / Opacity Tokens
+```css
+--gray-100-alpha-10: rgba(228, 228, 228, 0.1);
+--blue-500-alpha-10: rgba(43, 164, 255, 0.1);
+--red-500-alpha-10: rgba(215, 24, 75, 0.1);
+```
+
+### Semantic Tokens (the ones you actually use)
+```css
+--color-bg-primary: var(--gray-900);
+--color-bg-secondary: var(--gray-800);
+--color-bg-tertiary: var(--gray-700);
+--color-text-primary: var(--gray-100);
+--color-text-muted: var(--gray-400);
+--color-border-primary: var(--gray-500);
+--color-success: var(--green-100);
+--color-danger: var(--red-500);
+--color-warning: var(--warning-500);
+--color-info: var(--blue-500);
+```
+
+### Speed Tokens
+```css
+--speed-1: 150ms;    /* Fast transitions */
+--speed-2: 300ms;    /* Medium transitions */
+```
+
+### Utility Classes Generated from Tokens
+
+Every semantic token has corresponding utility classes. For example, `--color-success` generates:
+
+```css
+.text-success           { color: var(--color-success); }
+.text-success-strong    { color: var(--color-success-strong); }
+.text-success-muted     { color: var(--color-success-muted); }
+.bg-success             { background-color: var(--color-success); }
+.bg-success-surface     { background-color: var(--color-success-surface); }
+.border-success         { border-color: var(--color-success); }
+.hover\:bg-success:hover { background-color: var(--color-success); }
+```
+
+The pattern is consistent: `{property}-{semantic-name}[-{intensity}]`. Intensities: (none), `strong`, `medium`, `muted`, `idle`, `surface`.
+
+## Utility Class System
+
+All utility classes are defined in `App.css`. They follow a predictable naming convention: `{property-abbrev}-{value}`.
+
+### Layout
+| Class | Effect |
+|---|---|
+| `flex` | `display: flex` |
+| `flex-col` | `flex-direction: column` |
+| `flex-row` | `flex-direction: row` |
+| `flex-wrap` | `flex-wrap: wrap` |
+| `flex-1` | `flex: 1` |
+| `items-center` | `align-items: center` |
+| `items-start` | `align-items: flex-start` |
+| `justify-center` | `justify-content: center` |
+| `justify-between` | `justify-content: space-between` |
+| `gap-0` through `gap-4` | `gap` in increments |
+
+### Spacing
+| Class pattern | Effect |
+|---|---|
+| `p-0` through `p-4` | `padding` all sides |
+| `pt-0` through `pt-4` | `padding-top` |
+| `pb-0` through `pb-4` | `padding-bottom` |
+| `pl-0` through `pl-4` | `padding-left` |
+| `pr-0` through `pr-4` | `padding-right` |
+| `m-0` through `m-4` | `margin` |
+| `mt-45` | Special top margin (used for header spacing) |
+
+### Positioning
+| Class | Effect |
+|---|---|
+| `pos-rel` | `position: relative` |
+| `pos-abs` | `position: absolute` |
+| `pos-sticky` | `position: sticky` |
+| `pos-fixed` | `position: fixed` |
+
+### Sizing
+| Class | Effect |
+|---|---|
+| `w-full` | `width: 100%` |
+| `h-full` | `height: 100%` |
+| `min-h-0` | `min-height: 0` (critical for flex children) |
+| `min-w-0` | `min-width: 0` |
+| `h-25` | Fixed height 25px |
+| `max-w-350` | `max-width: 350px` |
+
+### Visual
+| Class | Effect |
+|---|---|
+| `bg-dark` | `background-color: var(--color-bg-primary)` |
+| `bg-darkgray` | `background-color: var(--color-bg-secondary)` |
+| `bg-gray` | `background-color: var(--color-bg-tertiary)` |
+| `overflow-hidden` | `overflow: hidden` |
+| `overflow-y` | `overflow-y: auto` |
+| `text-center` / `text-left` / `text-right` | Text alignment |
+| `text-nowrap` | `white-space: nowrap` |
+| `br-1` through `br-5` | `border-radius` |
+| `border-1` through `border-5` | `border-width` |
+| `z-1` through `z-10` | `z-index` |
+
+## Icon System
+
+Icons are SVG files in `src/assets/icons/`. They're referenced as CSS custom properties and used via class names.
+
+```css
+/* In icons.css */
+--camera-icon: url('../assets/icons/camera.svg');
+--expand-icon: url('../assets/icons/expand.svg');
+
+.icon {
+    /* base icon styles: mask-image, sizing, etc. */
+}
+.load-icon {
+    mask-image: var(--load-icon);
+    -webkit-mask-image: var(--load-icon);
+}
+```
+
+Usage in JSX:
+```jsx
+<div className="icon camera-icon" />
+```
+
+To add a new icon:
+1. Add the SVG file to `src/assets/icons/`
+2. Declare a CSS custom property in `icons.css`
+3. Create an icon class that references it
+
+## Sub-Style Sheets
+
+| File | What it covers |
+|---|---|
+| `reset.css` | Box-sizing, margin/padding reset |
+| `font.css` | `font-family`, `font-size` on `html` and `body` |
+| `components.css` | Tags/badges, video tiles, segmented controls, headers, resizable panels, version badges, sidebar styles, modals, search inputs, pipeline cards |
+| `camera.css` | Camera tile layout, overlay positioning |
+| `framerate.css` | D3 chart container styles |
+| `log-terminal.css` | Log row formatting, level colors, stack traces |
+| `playback.css` | Video player layout, transport bar, recording browser |
+| `calibration-module.css` | Calibration config form, progress indicators |
+| `checkbox.css` | Custom checkbox appearance |
+| `toggle.css` | Toggle switch appearance |
+| `button-sm.css` | Small button variant |
+| `tooltips.css` | Tooltip positioning and animation |
+
+## Common Pitfalls
+
+### Don't create a new CSS file without importing it in App.css
+
+`App.css` is the master import file. If you add a new `.css` file and forget to `@import` it there, the styles won't load.
+
+### Don't use inline styles — check if a utility class exists first
+
+The utility class system covers most layout needs. Adding inline `style={{}}` props fragments the styling across JSX and CSS. Always check if a utility class exists before reaching for inline styles.
+
+### Don't duplicate a utility class with a slightly different name
+
+If you need `gap-5`, check if the existing `gap-0` through `gap-4` pattern can be extended. Don't create `gap-lg` or `gap-large` — follow the numbering convention.
+
+### Utility classes are added manually, not generated
+
+Unlike Tailwind's build-time class generation, these classes are written by hand. `gap-5` doesn't exist until someone adds it. This means the class list is finite and auditable — but it also means you occasionally need to add a class.
+
+### CSS custom properties are the only theming mechanism
+
+There is no JavaScript theme object, no `ThemeProvider`, no dark/light mode toggle that swaps CSS files. The dark theme is the default (and currently only) theme. If a light theme is added later, it will be done by swapping CSS custom property values.
+
+### min-h-0 is often necessary on flex children
+
+Flexbox children have an implicit `min-height: auto` that can prevent them from shrinking below their content size. If you have a flex child that needs to scroll or be sized by its parent, add `min-h-0` (or `min-w-0` for horizontal).

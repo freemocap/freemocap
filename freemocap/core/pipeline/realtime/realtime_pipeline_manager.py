@@ -1,0 +1,167 @@
+"""
+RealtimePipelineManager: lifecycle manager for long-lived realtime pipelines.
+
+Each realtime pipeline is bound to a CameraGroup and runs indefinitely,
+processing live frames through detection and (optionally) triangulation.
+
+Responsibilities:
+  - Creating/finding pipelines by camera ID set
+  - Pushing config updates to running pipelines
+  - Streaming aggregated frontend payloads
+  - Recording orchestration (start/stop across all pipelines)
+  - Orderly shutdown
+"""
+import asyncio
+import logging
+import multiprocessing
+import multiprocessing.synchronize
+from dataclasses import dataclass, field
+
+from skellycam.core.camera_group.camera_group import CameraGroup
+from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
+from skellycam.core.types.type_overloads import CameraIdString
+
+from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
+from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
+from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class RealtimePipelineManager(PipelineManagerABC):
+    """
+    Manages the lifecycle of realtime (camera-bound) pipelines.
+
+    Each pipeline is a singleton per camera ID set — creating a pipeline
+    for an already-tracked camera group returns the existing one (with
+    an updated config).
+    """
+
+    worker_registry: WorkerRegistry
+    lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
+    pipelines: dict[PipelineIdString, RealtimePipeline] = field(default_factory=dict)
+
+    # ------------------------------------------------------------------
+    # Pipeline CRUD
+    # ------------------------------------------------------------------
+
+    def create_pipeline(
+        self,
+        *,
+        camera_group: CameraGroup,
+        pipeline_config: RealtimePipelineConfig,
+        realtime_camera_ids: list[CameraIdString] | None = None,
+    ) -> RealtimePipeline:
+        # The camera IDs this pipeline will actually drive: the explicit realtime
+        # subset if provided, otherwise every camera in the group. Mirrors the
+        # selection logic in RealtimePipeline.create (`pipeline_camera_ids`).
+        target_camera_ids = (
+            set(realtime_camera_ids)
+            if realtime_camera_ids is not None
+            else set(camera_group.camera_ids)
+        )
+        with self.lock:
+            # Return existing pipeline for this camera set (with updated config)
+            for pipeline in self.pipelines.values():
+                if set(pipeline.camera_ids) == target_camera_ids:
+                    logger.info(
+                        f"Found existing RealtimePipeline [{pipeline.id}] "
+                        f"for camera group [{pipeline.camera_group_id}]"
+                    )
+                    pipeline.update_config(new_config=pipeline_config)
+                    return pipeline
+
+            pipeline = RealtimePipeline.create(
+                pipeline_config=pipeline_config,
+                camera_group=camera_group,
+                worker_registry=self.worker_registry,
+                realtime_camera_ids=realtime_camera_ids,
+            )
+            pipeline.start()
+            self.pipelines[pipeline.id] = pipeline
+            logger.info(
+                f"Created RealtimePipeline [{pipeline.id}] "
+                f"for camera group [{pipeline.camera_group_id}]"
+            )
+            return pipeline
+
+    def update_pipeline_config(
+        self,
+        *,
+        pipeline_id: PipelineIdString,
+        new_config: RealtimePipelineConfig,
+    ) -> RealtimePipeline:
+        with self.lock:
+            pipeline = self.pipelines.get(pipeline_id)
+            if pipeline is None:
+                raise KeyError(f"No realtime pipeline with ID '{pipeline_id}'")
+            pipeline.update_config(new_config=new_config)
+            return pipeline
+
+    def get_pipeline_by_camera_ids(
+        self,
+        camera_ids: list[CameraIdString],
+    ) -> RealtimePipeline | None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                if set(pipeline.camera_ids) == set(camera_ids):
+                    return pipeline
+        return None
+
+    # ------------------------------------------------------------------
+    # Frontend payload streaming
+    # ------------------------------------------------------------------
+
+    async def wait_for_any_result_ready(self, timeout: float = 0.5) -> None:
+        """Wait until at least one active pipeline has a processed frame ready.
+
+        Returns as soon as any pipeline signals its result_ready_event, or
+        after `timeout` seconds if none does. Falls back to a short sleep when
+        there are no alive pipelines (camera-only or idle mode) so callers
+        don't busy-spin while waiting for a pipeline to start.
+        """
+        with self.lock:
+            alive = [p for p in self.pipelines.values() if p.alive]
+        if not alive:
+            await asyncio.sleep(0.01)
+            return
+        # Wait on all alive pipelines concurrently; return on the first hit.
+        tasks = [asyncio.create_task(p.wait_for_result_ready(timeout)) for p in alive]
+        _done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+        for t in pending:
+            t.cancel()
+
+    def get_latest_frontend_payloads(
+            self,
+            if_newer_than: FrameNumberInt,
+            display_image_sizes: dict[str, dict[str, float]] | None = None,
+    ) -> list[FrontendImagePacket]:
+        latest: list[FrontendImagePacket] = []
+        with self.lock:
+            for pipeline_id, pipeline in self.pipelines.items():
+                packet = pipeline.get_latest_frontend_payload(
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
+                )
+                if packet is not None:
+                    latest.append(packet)
+        return latest
+
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def pause_unpause_all(self) -> None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                pipeline.camera_group.pause_unpause()
+
+    def shutdown(self) -> None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                pipeline.shutdown()
+            self.pipelines.clear()
+        logger.info("RealtimePipelineManager: all pipelines shut down")

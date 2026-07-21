@@ -1,0 +1,135 @@
+---
+sidebar_position: 14
+title: Old vs New UI Comparison
+---
+
+import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner />
+
+# Old vs New UI Comparison
+
+The new `freemocap-ui` is a ground-up rewrite of `freemocap-ui-old`. The conceptual architecture is the same (Redux slices, WebSocket + REST, `HashRouter`, `react-resizable-panels`), but the implementation shed MUI and adopted a custom CSS utility-class system.
+
+This page is a reference for developers who worked on the old UI and need to understand what changed, what's missing, and how to port features.
+
+## What Changed
+
+### Styling: MUI → Custom CSS
+
+| Concern | Old UI | New UI |
+|---|---|---|
+| Component library | MUI v5 (`@mui/material`) | Custom components in `src/components/ui-components/` |
+| Theming | `ThemeProvider` + `paperbase-theme.ts` (~200 lines of MUI overrides) | CSS custom properties in `color.css` (no JS theme provider) |
+| Styling method | MUI `sx` prop, Tailwind directives | Hand-rolled utility classes (`flex`, `gap-2`, `bg-darkgray`, `br-2`) |
+| Dark/light mode | Runtime theme toggle | CSS custom property swap (light theme not yet implemented) |
+| Scrollbar styling | Per-component `sx` | Global `::-webkit-scrollbar` rules in `App.css` |
+
+The philosophy shift: styles moved from JavaScript to CSS. When porting an old component, replace:
+- MUI `sx={{ ... }}` props → utility classes in `className`
+- MUI components (`<Box>`, `<Stack>`, `<Typography>`) → plain `<div>`/`<span>` with utility classes
+- `ThemeProvider` theme access → CSS custom properties (available everywhere, no hook needed)
+
+### Routing
+
+| Old UI | New UI |
+|---|---|
+| `/` → `/welcome` | `/` → `/streaming` |
+| `/welcome` (landing page) | **Removed** |
+| `/streaming` (live cameras) | `/streaming` (same) |
+| `/browse` (recording list) | `/browse` → redirect to `/playback` |
+| `/playback` (synced video) | `/playback` (same) |
+| `/active-recording` (status) | `/active-recording` (same) |
+
+### Layout
+
+| Old UI | New UI |
+|---|---|
+| Sidebar sections drag-reorderable via `@dnd-kit` | Sidebar sections are static |
+| Bottom panel: tabbed (framerate + pipeline tabs) | Bottom panel: framerate left, log terminal right (streaming/active-recording); log terminal only (playback) |
+| Bottom panel always visible | Bottom panel collapsed by default |
+
+### Redux Slices
+
+| Old UI (14 slices) | New UI (13 slices) |
+|---|---|
+| `pupilLabs` | **Removed** |
+| All other 13 slices | Same structure, same names (plus `theme` slice exists on disk but is not registered in the store) |
+
+The `locale` slice exists in both but the keyboard shortcut toggle (`Ctrl+Shift+L`) is commented out in the new UI. Language switching still works through the `LanguageSwitcher` component dropdown.
+
+## Features Removed
+
+### Pupil Labs Integration
+The `pupil-labs` Redux slice and `PupilLabsPanel` component were removed. Pupil Labs is an eye-tracking hardware/software system that could optionally feed gaze data into the mocap pipeline. If this feature needs to return, the old implementation is in `freemocap-ui-old/src/store/slices/pupil-labs/` and `freemocap-ui-old/src/components/control-panels/pupil-labs-panel/`.
+
+### Welcome Page
+The `/welcome` route with logo, "Connect to Cameras" CTA, language switcher, telemetry toggle, and external links was removed. The root now redirects directly to `/streaming`. A `WelcomeModal` component exists in the new UI (shown on first launch), but it's a modal, not a full page.
+
+### Drag-and-Drop Sidebar Reordering
+The old UI used `@dnd-kit/core` to let users reorder sidebar sections by dragging. The new UI has a fixed section order. The old implementation is in `freemocap-ui-old/src/layout/content/SidePanelContent.tsx`.
+
+### Dedicated Recording Browser Page
+The old UI had a `/browse` route with a full-page recording browser. In the new UI, the recording browser is a sidebar section (`RecordingBrowserSection`) visible on the Playback and Active Recording tabs.
+
+## Potentially Vestigial Code
+
+### videos Redux Slice
+The `videos` slice in `src/store/slices/videos/` tracks video folder selection and file browsing. In practice, playback now uses `playbackData` slice (cached bundles) and `PlaybackContext` (loaded videos, timestamps, sources). The `videos` slice appears to have no active consumers — but verify before removing.
+
+### locale Slice Toggle
+The `locale` slice has `localeToggled` action for cycling between current and previous locale via `Ctrl+Shift+L`. This is wired in `useKeyboardShortcuts.ts` but the menu action dispatch in `useMenuActions.ts` has the toggle commented out. The slice itself is still used for `localeChanged` (normal switching via dropdown).
+
+### Worker File Duplication
+Files like `frame-decode.worker.ts` and `offscreen-renderer.worker.ts` exist in both old and new UIs. The new UI's versions are the canonical ones. The old UI's copies can be ignored.
+
+## Migration Guide: Porting an Old Feature to the New UI
+
+### Step 1: Copy the logic, not the components
+The Redux slices and thunks are architecturally identical between old and new. Start by ensuring the slice exists in the new UI. If it doesn't (like `pupil-labs`), copy the slice directory and add it to `store.ts`.
+
+### Step 2: Rewrite the component shell
+Replace MUI components with plain HTML elements and utility classes:
+
+```
+Old:  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2 }}>
+New:  <div className="flex flex-col gap-2 p-2">
+
+Old:  <Typography variant="h6">Title</Typography>
+New:  <h3>Title</h3>   (styling via parent or utility class)
+
+Old:  <Button variant="contained" color="primary">Click</Button>
+New:  <ButtonSm text="Click" onClick={handler} />   (or a custom button component)
+```
+
+### Step 3: Replace MUI icons
+The old UI used MUI's `@mui/icons-material`. The new UI uses custom SVG icons referenced as CSS classes:
+
+```
+Old:  <SettingsIcon />
+New:  <div className="icon settings-icon" />
+```
+
+Check `src/assets/icons/` for available icons and `src/styles/icons.css` for their class names.
+
+### Step 4: Convert styles from `sx` to utility classes
+MUI's `sx` prop maps to CSS properties. Find the equivalent utility class:
+
+| MUI `sx` | New utility class |
+|---|---|
+| `display: 'flex'` | `flex` |
+| `flexDirection: 'column'` | `flex-col` |
+| `gap: '8px'` | `gap-2` (rough mapping) |
+| `padding: '8px'` | `p-2` |
+| `backgroundColor: '...'` | `bg-dark`, `bg-darkgray`, `bg-primary`, etc. |
+| `borderRadius: '8px'` | `br-2` |
+| `overflow: 'hidden'` | `overflow-hidden` |
+| Colors referencing theme | Semantic color utility classes (`text-success`, `bg-danger-surface`, etc.) |
+
+If a utility class doesn't exist for what you need, add it following the existing naming convention in `App.css`.
+
+### Step 5: Decide: Context, Redux, or ref?
+New state in a ported feature needs a home. Follow the decision tree:
+- Survives navigation? → Redux slice
+- Only needed by a subtree? → React Context
+- Changes at frame rate? → `useRef`

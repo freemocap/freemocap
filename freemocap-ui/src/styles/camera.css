@@ -1,0 +1,696 @@
+/* ============================================================
+   Camera Page & Grid
+   ============================================================ */
+
+.cameras-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: inherit;
+  overflow: hidden;
+  position: relative;
+  padding: 4px;
+  gap: 0;
+}
+
+.cameras-page-content {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.cameras-page-footer {
+  flex-shrink: 0;
+  padding: 4px;
+}
+
+.camera-grid-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.camera-grid-empty {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+  padding: 16px;
+  color: var(--color-text-muted);
+}
+
+/* ============================================================
+   Camera Cell
+   ============================================================ */
+
+.camera-cell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-muted);
+  /* box-shadow dropped from the transition — animating it forces a repaint. */
+  transition: border-color 0.3s ease;
+}
+
+.camera-cell.recording {
+  border: 2px solid var(--color-danger);
+}
+
+/* Recording pulse: a glow ring on ::after that animates ONLY opacity, which the
+   compositor handles on the GPU. The previous keyframes animated box-shadow +
+   border-color on every camera tile every frame → a full repaint per frame per
+   camera. Inset glow so the parent's overflow:hidden doesn't clip it. */
+.camera-cell.recording::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 0 8px 2px var(--red-500-alpha-40);
+  pointer-events: none;
+  animation: recording-pulse-opacity 3s infinite ease-in-out;
+}
+
+@keyframes recording-pulse-opacity {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* Recording border pulse: used by CameraViewsGrid inline animation.
+   Animates border-color and box-shadow on the compositor (only opacity changes
+   go to the GPU, but this runs on the camera grid container, not per-tile,
+   so repaint cost is bounded). */
+@keyframes recordingBorderPulse {
+  0% { border-color: var(--color-danger); box-shadow: 0 0 4px var(--red-500-alpha-40); }
+  50% { border-color: var(--color-danger-muted); box-shadow: 0 0 8px var(--red-500-alpha-15); }
+  100% { border-color: var(--color-danger); box-shadow: 0 0 4px var(--red-500-alpha-40); }
+}
+
+/* ============================================================
+   React Grid Layout Overrides
+   ============================================================ */
+
+.camera-grid-container .react-grid-placeholder {
+  background-color: var(--color-info-muted);
+  opacity: 0.15;
+  border-radius: 4px;
+}
+
+.camera-grid-container .react-grid-item > .react-resizable-handle {
+  z-index: 10;
+  opacity: 0.4;
+  transition: opacity 0.2s ease;
+}
+
+.camera-grid-container .react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
+
+.camera-grid-container .react-grid-item > .react-resizable-handle::after {
+  width: 10px;
+  height: 10px;
+  right: 4px;
+  bottom: 4px;
+  /* border-right: 2px solid var(--color-white-alpha-50);
+  border-bottom: 2px solid var(--color-white-alpha-50); */
+}
+
+/* ============================================================
+   Resizable Camera View
+   ============================================================ */
+
+.resizable-camera-view {
+  position: absolute;
+  border: 1px solid var(--color-border-muted);
+  border-radius: 4px;
+  overflow: hidden;
+  /* hover/active only change border-color, so box-shadow had nothing to animate. */
+  transition: border-color 0.15s ease;
+}
+
+.resizable-camera-view:hover {
+  border-color: var(--color-white-alpha-40);
+}
+
+.resizable-camera-view.active {
+  border-color: var(--color-info-muted);
+}
+
+.resizable-move-area {
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.resizable-move-area.dragging {
+  cursor: grabbing;
+}
+
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 2;
+}
+
+.resize-handle::after {
+  content: "";
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--color-white-alpha-45);
+  border-bottom: 2px solid var(--color-white-alpha-45);
+}
+
+.resize-handle:hover::after,
+.resize-handle.active::after {
+  border-color: var(--color-info-muted);
+}
+
+/* ============================================================
+   View Settings Overlay
+   ============================================================ */
+
+.settings-overlay-trigger {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 100;
+}
+
+.settings-overlay-panel {
+  position: absolute;
+  top: 30px;
+  right: 8px;
+  z-index: 99;
+  min-width: 220px;
+}
+
+/* ============================================================
+   Range Input
+   ============================================================ */
+
+.range-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--color-border-secondary);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.range-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-info-muted);
+  cursor: pointer;
+  transition: background var(--speed-1);
+}
+
+.range-input:disabled::-webkit-slider-thumb {
+  background: var(--color-text-disabled);
+}
+
+.range-input::-webkit-slider-thumb:hover {
+  background: var(--metric-stddev);
+}
+
+.range-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-info-muted);
+  cursor: pointer;
+  border: none;
+}
+
+/* ============================================================
+   Camera Config Tree
+   ============================================================ */
+
+.camera-tree-root {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.camera-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--color-info-idle);
+  flex-shrink: 0;
+}
+
+.camera-section-header {
+  background-color: var(--color-bg-tertiary);
+}
+
+.camera-settings-button {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.camera-section-header:hover {
+  background-color: var(--color-bg-elevated);
+}
+
+.camera-item-row {
+  background-color: var(--color-bg-secondary);
+  transition: background-color var(--speed-1);
+}
+
+.camera-item-row.expanded {
+  background-color: var(--color-bg-tertiary);
+}
+
+/* ============================================================
+   Camera Status
+   ============================================================ */
+
+.camera-status-connected {
+  color: var(--color-success);
+}
+
+.camera-status-available {
+  color: var(--color-info-muted);
+}
+
+.camera-status-error {
+  color: var(--color-danger);
+}
+
+.camera-status-connected {
+  background-color: var(--color-success);
+  color: var(--color-bg-primary);
+}
+
+.camera-status-available {
+  background-color: var(--color-info-muted);
+  color: var(--color-text-primary);
+}
+
+.camera-status-error {
+  background-color: var(--color-danger);
+  color: var(--color-text-primary);
+}
+
+/* ============================================================
+   Config Chips
+   ============================================================ */
+
+.camera-config-chip {
+  padding: 0 4px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   Expanded Config Panel
+   ============================================================ */
+
+.config-panel {
+  margin-left: 20px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border-secondary);
+  background-color: var(--color-bg-tertiary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-panel-divider {
+  border-bottom: 1px solid var(--color-border-secondary);
+  padding-top: 4px;
+}
+
+/* ============================================================
+   Start/Stop Recording Button
+   ============================================================ */
+
+.record-button {
+  padding: 6px 8px;
+  min-height: 36px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.record-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.record-button-duration {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.7rem;
+  color: var(--color-white-alpha-60);
+  letter-spacing: 0.5px;
+}
+
+.record-button-idle {
+  background-color: var(--color-danger);
+}
+
+.record-button-idle:not(:disabled):hover {
+  background-color: var(--metric-median);
+}
+
+.record-button-active {
+  background-color: var(--metric-median);
+  animation: recording-button-pulse 2s infinite ease-in-out;
+}
+
+.record-button-pending {
+  background-color: var(--color-border-secondary);
+}
+
+@keyframes recording-button-pulse {
+  0%,
+  100% {
+    background-color: var(--log-critical);
+  }
+
+  50% {
+    background-color: var(--color-danger-muted);
+  }
+}
+
+/* ============================================================
+   Recording Panel
+   ============================================================ */
+
+.recording-path-preview {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+}
+
+.recording-path-part {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.recording-path-part p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-selector-constrained {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.directory-input-popup input.input-field {
+  width: 100%;
+}
+
+.recording-countdown {
+  text-align: center;
+  color: var(--color-warning);
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 8px;
+}
+
+/* ============================================================
+   Recording Browser
+   ============================================================ */
+
+.recording-list {
+  overflow-y: auto;
+  /* border: 1px solid var(--color-border-secondary);
+  border-radius: 4px; */
+}
+
+
+.recording-row-disabled {
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+.sort-select {
+  min-width: 90px;
+  background-color: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   Playback Controls
+   ============================================================ */
+
+.playback-controls {
+  border-top: 1px solid var(--color-bg-tertiary);
+  background-color: var(--color-bg-secondary);
+  flex-shrink: 0;
+}
+
+.playback-slider {
+  flex: 1;
+  height: 4px;
+  accent-color: var(--metric-stddev);
+  cursor: pointer;
+}
+
+.playback-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+}
+
+.playback-timecode {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-success);
+  min-width: 70px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.playback-timecode.text-gray {
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.playback-frame-badge {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-success);
+  background-color: var(--color-success-alpha-08);
+  border: 1px solid var(--color-success-alpha-20);
+  border-radius: 4px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.playback-fps-badge {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 11px;
+  color: var(--color-warning-soft);
+  background-color: var(--color-warning-alpha-08);
+  border: 1px solid var(--color-warning-alpha-20);
+  border-radius: 4px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.playback-transport {
+  font-size: 14px;
+}
+
+.playback-play-btn {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--color-success);
+  color: var(--color-success);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playback-play-btn:hover,
+.playback-play-btn.playing {
+  background-color: var(--color-success-alpha-10);
+}
+
+.playback-info-left {
+  min-width: 220px;
+  justify-content: flex-end;
+  margin-right: 8px;
+}
+
+.playback-info-right {
+  margin-left: 8px;
+}
+
+.playback-settings-popup {
+  min-width: 260px;
+}
+
+.playback-sync-info {
+  padding: 6px 8px;
+  border-radius: 4px;
+  background-color: var(--color-warning-alpha-06);
+  border: 1px solid var(--color-warning-alpha-15);
+}
+
+.playback-sync-title {
+  color: var(--color-warning-soft);
+  font-weight: 600;
+}
+
+/* ============================================================
+   Camera Grid Cell Overlay
+   ============================================================ */
+
+.camera-cell-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  background: linear-gradient(
+    to bottom,
+    var(--overlay-65) 0%,
+    transparent 100%
+  );
+
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+.camera-cell:hover .camera-cell-overlay {
+  opacity: 1;
+}
+
+.camera-cell-toggle {
+  background-color: var(--overlay-50);
+  border: 1px solid var(--color-border-muted);
+}
+
+.camera-cell-toggle:hover {
+  background-color: var(--overlay-75);
+}
+
+/* ============================================================
+   Config Panel Layout Helpers
+   ============================================================ */
+
+.config-panel .segmented-control-container {
+  max-width: 100%;
+  width: 100%;
+}
+
+.config-panel .segmented-control-button {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ============================================================
+   Compact Config Panel
+   ============================================================ */
+
+.config-panel-compact {
+  overflow: hidden;
+}
+
+.config-panel-compact .name-dropdown-selector {
+  width: 100%;
+  display: block;
+}
+
+.config-panel-compact .name-dropdown-selector > button {
+  width: 100%;
+}
+
+.config-panel-compact .segmented-control-container {
+  max-width: 100%;
+  width: 100%;
+  flex-direction: column;
+}
+
+.config-panel-compact .segmented-control-button {
+  min-width: 0;
+  width: 100%;
+}
+
+/* ============================================================
+   REQUIRED MISSING TOKENS
+   ADD THESE TO color.css
+   ============================================================ */
+
+/*
+
+--color-white-alpha-40: rgba(255,255,255,0.4);
+--color-white-alpha-45: rgba(255,255,255,0.45);
+--color-white-alpha-50: rgba(255,255,255,0.5);
+--color-white-alpha-60: rgba(255,255,255,0.6);
+
+--overlay-50: rgba(0,0,0,0.5);
+--overlay-65: rgba(0,0,0,0.65);
+--overlay-75: rgba(0,0,0,0.75);
+
+--red-500-alpha-15: rgba(215,24,75,0.15);
+--red-500-alpha-40: rgba(215,24,75,0.4);
+
+--color-success-alpha-08: rgba(22,221,18,0.08);
+--color-success-alpha-10: rgba(22,221,18,0.1);
+--color-success-alpha-20: rgba(22,221,18,0.2);
+
+--color-warning-alpha-06: rgba(230,73,0,0.06);
+--color-warning-alpha-08: rgba(230,73,0,0.08);
+--color-warning-alpha-15: rgba(230,73,0,0.15);
+--color-warning-alpha-20: rgba(230,73,0,0.2);
+
+--color-warning-soft: #ffcc80;
+
+*/

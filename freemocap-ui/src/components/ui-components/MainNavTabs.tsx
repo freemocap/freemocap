@@ -1,0 +1,101 @@
+import React, { useCallback, useMemo } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "@/store";
+import {
+    activeRecordingCleared,
+    selectActiveRecordingFullPath,
+    selectActiveRecordingName,
+} from "@/store/slices/active-recording/active-recording-slice";
+import { useElectronIPC } from "@/services";
+import IconButton from "@/components/ui-components/IconButton";
+
+const NAV_TABS = [
+    { path: '/streaming', label: 'Streaming' },
+    { path: '/playback', label: 'Playback' },
+    { path: '/active-recording', label: 'Active Recording' },
+] as const;
+
+const ActiveRecordingLabel: React.FC = () => {
+    const dispatch = useAppDispatch();
+    const recordingName = useAppSelector(selectActiveRecordingName);
+    const fullPath = useAppSelector(selectActiveRecordingFullPath);
+    const { api } = useElectronIPC();
+
+    const handleOpenFolder = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!fullPath) return;
+        try {
+            await api?.fileSystem.openFolder.mutate({ path: fullPath });
+        } catch (err) {
+            console.error('Failed to open recording folder:', err);
+        }
+    };
+
+    const handleClearRecording = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        dispatch(activeRecordingCleared());
+    };
+
+    return (
+        <span className="flex flex-row items-center gap-1">
+            <span className="text-gray">Active Recording</span>
+            {recordingName ? (
+                <span
+                    className="flex flex-row text-nowrap tag text sm text-white"
+                    style={{ fontFamily: 'monospace', maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                    title={fullPath ?? recordingName}
+                    onClick={handleOpenFolder}
+                >
+                    {recordingName}
+                    <IconButton
+                        icon="close-icon"
+                        iconSize="icon-size-12"
+                        className="ml-1"
+                        onClick={handleClearRecording}
+                        style={{ lineHeight: 1 }}
+                        title="Clear active recording"
+                    />
+                </span>
+            ) : (
+                <span className="text sm text-gray" style={{ fontStyle: 'italic' }}>(none)</span>
+            )}
+        </span>
+    );
+};
+
+export const MainNavTabs = () => {
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    const activeIdx = useMemo(() => {
+        const idx = NAV_TABS.findIndex(t => location.pathname === t.path);
+        return idx >= 0 ? idx : 0;
+    }, [location.pathname]);
+
+    const handleClick = useCallback((path: string) => {
+        navigate(path);
+    }, [navigate]);
+
+    return (
+        <div className="main-tab-bar main-tab-bar-container pos-abs top-0 left-0 main-segmented-control-container">
+            <div className="segmented-control-container bg-middark br-2 gap-1 p-1 z-1 flex flex-row">
+                {NAV_TABS.map((tab, idx) => {
+                    const isActive = idx === activeIdx;
+                    return (
+                        <div
+                            key={tab.path}
+                            className={`segmented-control-button justify-center button pl-2 pr-2 gap-1 br-1 flex-inline items-center cursor-pointer${isActive ? ' bg-dark' : ''}`}
+                            onClick={() => handleClick(tab.path)}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(tab.path); } }}
+                        >
+                            {tab.path === '/active-recording'
+                                ? <ActiveRecordingLabel />
+                                : <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
+                            }
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};

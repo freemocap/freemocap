@@ -74,14 +74,6 @@ jobs:
             server-binary: freemocap_server
             electron-arch: x64
 
-          - os: ubuntu-22.04-arm
-            platform: linux
-            arch: arm64
-            variant: cpu
-            label: linux-arm64
-            server-binary: freemocap_server
-            electron-arch: arm64
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -297,6 +289,7 @@ jobs:
 
       # ── Validate server binary exists and is executable ──
       - name: Validate server binary present and executable
+        shell: bash
         run: |
           echo "Checking for server binary at ./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
           if [ ! -d "./freemocap-ui/freemocap_server" ] || [ ! -f "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}" ]; then
@@ -493,7 +486,7 @@ jobs:
           # Artifact directories are named server-<label>, e.g.:
           #   server-windows-x64-cuda, server-windows-x64-cpu, server-macos-x64-intel,
           #   server-macos-arm64-apple-silicon, server-linux-x64-cuda,
-          #   server-linux-x64-cpu, server-linux-arm64
+          #   server-linux-x64-cpu
           # Strip the "server-" prefix to get the human-readable suffix.
           # Each artifact is a PyInstaller onedir folder (exe + _internal/ support
           # files), so it's zipped into a single release asset rather than copied.

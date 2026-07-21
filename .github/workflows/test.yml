@@ -3,6 +3,7 @@ name: Tests
 on:
   pull_request:
     branches: [main, development]
+  workflow_dispatch:
 
 concurrency:
   group: tests-${{ github.ref }}

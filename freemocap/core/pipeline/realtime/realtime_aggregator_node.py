@@ -84,6 +84,15 @@ from freemocap.pubsub.pubsub_topics import (
 # camera nodes lag (e.g. one camera unplugged). Older entries get dropped.
 _MAX_PENDING_SKELETON_RESULTS: int = 2
 
+# Max time to wait for a specific frame's skeleton-inference result before
+# giving up on it and proceeding without a skeleton for that frame. Without
+# this, a SkeletonInferenceNode restart (e.g. detector swap) orphans whatever
+# frame request the old node's process was mid-flight on — its pub/sub
+# subscription dies with it and the new node's subscription only sees
+# requests published after it was created — so waiting unconditionally here
+# would deadlock the whole pipeline (camera feed included) forever.
+_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS: float = 2.0
+
 logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
@@ -261,6 +270,10 @@ class RealtimeAggregatorNode(AggregatorNode):
         # by the centralized SkeletonInferenceNode (when GPU mode is on);
         # consumed when the matching camera outputs arrive for that frame.
         pending_skeleton_results: dict[int, dict[CameraIdString, object | None]] = {}
+        # Wall-clock time we started waiting on the currently-expected frame's
+        # skeleton result; None when not waiting. Reset whenever the wait
+        # resolves (found, or times out and is abandoned).
+        skeleton_wait_started_at: float | None = None
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.perf_counter()
@@ -477,19 +490,40 @@ class RealtimeAggregatorNode(AggregatorNode):
                         and pipeline_config.camera_node_config.skeleton_tracking_enabled):
                     expected_frame = next(iter(camera_node_outputs.values())).frame_number
                     if expected_frame not in pending_skeleton_results:
-                        # Camera outputs are ready but skeleton inference hasn't
-                        # caught up yet. Loop again — `camera_node_outputs` stays
-                        # populated, and the skeleton result will land in the
-                        # `skeleton_inference_sub` drain at the top of the next
-                        # iteration.
-                        continue
-                    # Splice the per-camera skeletons into each CameraNodeOutputMessage
-                    # so downstream triangulation code (which reads
-                    # `output.skeleton_observation`) needs no changes.
-                    skeleton_per_camera = pending_skeleton_results.pop(expected_frame)
-                    for cam_id, output_msg in camera_node_outputs.items():
-                        if output_msg is not None:
-                            output_msg.skeleton_observation = skeleton_per_camera.get(cam_id)
+                        now = time.perf_counter()
+                        if skeleton_wait_started_at is None:
+                            skeleton_wait_started_at = now
+                            continue
+                        elif now - skeleton_wait_started_at > _SKELETON_RESULT_WAIT_TIMEOUT_SECONDS:
+                            # The result for this frame is never coming — most
+                            # likely the SkeletonInferenceNode was restarted
+                            # (e.g. detector swap) mid-flight and its pub/sub
+                            # subscription was orphaned. Give up on this frame's
+                            # skeleton rather than deadlocking the pipeline
+                            # (which would also freeze the frontend camera feed,
+                            # since it's served from this node's output).
+                            logger.warning(
+                                f"RealtimeAggregationNode [{camera_group_id}] gave up waiting "
+                                f"on skeleton result for frame {expected_frame} after "
+                                f"{_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS}s — proceeding without it"
+                            )
+                            skeleton_wait_started_at = None
+                        else:
+                            # Camera outputs are ready but skeleton inference hasn't
+                            # caught up yet. Loop again — `camera_node_outputs` stays
+                            # populated, and the skeleton result will land in the
+                            # `skeleton_inference_sub` drain at the top of the next
+                            # iteration.
+                            continue
+                    else:
+                        # Splice the per-camera skeletons into each CameraNodeOutputMessage
+                        # so downstream triangulation code (which reads
+                        # `output.skeleton_observation`) needs no changes.
+                        skeleton_per_camera = pending_skeleton_results.pop(expected_frame)
+                        for cam_id, output_msg in camera_node_outputs.items():
+                            if output_msg is not None:
+                                output_msg.skeleton_observation = skeleton_per_camera.get(cam_id)
+                        skeleton_wait_started_at = None
 
                 frame_numbers = [
                     msg.frame_number

@@ -1,8 +1,9 @@
 """
 Per-frame center of mass calculation for the real-time pipeline.
 
-Loads RTMPose body biomechanics from the existing skellyforge YAML
-(validated once at init via AnatomicalStructure), then computes
+Loads body biomechanics from the existing skellyforge YAML (validated once
+at init via AnatomicalStructure, using the tracker→canonical mapping for
+whichever detector — RTMPose or MediaPipe — is configured), then computes
 whole-body and per-segment center of mass from a dict[str, np.ndarray]
 of named 3D keypoint positions — the exact format the real-time
 aggregator node already produces.
@@ -32,13 +33,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
+from pathlib import Path
+from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from pathlib import Path
-
-import skellytracker
 from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
 from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo
 from skellyforge.skellymodels.utils.types import (
@@ -46,16 +46,23 @@ from skellyforge.skellymodels.utils.types import (
     SegmentConnection,
     SegmentName,
 )
-from skellytracker.trackers.base_tracker.tracker_mapping import TrackerMapping
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
+    MediapipePoseKeypointDetector,
+)
+from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
+    RTMPoseBodyDetector,
+)
+from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 # Tracker→canonical body mapping (shipped with skellytracker). This is the
 # single derivation of the computed centers (head/neck/trunk/hips_center) from
-# RTMPose keypoints — the same mapping the realtime skeleton fitter uses.
-_RTMPOSE_BODY_MAPPING_YAML = (
-    Path(skellytracker.__file__).parent
-    / "trackers" / "rtmpose_tracker" / "names_and_connections"
-    / "rtmpose_body_to_canonical_mapping.yaml"
-)
+# raw tracker keypoints — the same mapping the realtime skeleton fitter uses.
+# Keyed by CameraNodeConfig.detector_type so the loader can pick the mapping
+# that actually matches the keypoint names the configured detector produces.
+_BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
+    "rtmpose": RTMPoseBodyDetector.canonical_mapping_path(),
+    "mediapipe": MediapipePoseKeypointDetector.canonical_mapping_path(),
+}
 
 # ---------------------------------------------------------------------------
 # Anatomical limb chains, distal → proximal.
@@ -111,14 +118,16 @@ def _build_mass_lookup(
     return {seg: info["segment_com_percentage"] for seg, info in com_defs.items()}
 
 
-class RTMPoseBodyBiomechanics(BaseModel):
-    """Validated body biomechanics for the RTMPose pipeline, loaded once at
+class BodyBiomechanics(BaseModel):
+    """Validated body biomechanics for the realtime pipeline, loaded once at
     aggregator init.
 
     Mirrors the relevant fields of skellyforge's canonical ``AnatomicalStructure``
     so the hot loop never touches Pydantic validation. ``tracker_mapping`` is the
     one tracker→canonical mapping used to derive the computed centers
-    (head/neck/trunk/hips_center) from RTMPose keypoints each frame.
+    (head/neck/trunk/hips_center) from the configured detector's raw keypoints
+    each frame — selected by detector type at load time, see
+    ``load_body_biomechanics``.
     """
 
     tracked_point_names: list[str]
@@ -163,12 +172,15 @@ class CenterOfMassResult:
 # ---------------------------------------------------------------------------
 
 
-def load_rtmpose_biomechanics() -> RTMPoseBodyBiomechanics:
+def load_body_biomechanics(
+    detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose",
+) -> BodyBiomechanics:
     """Load body biomechanics from the single canonical skellyforge model.
 
     Segment connections + Winter COM table come from the canonical body model;
     the computed centers are derived each frame via the skellytracker
-    RTMPose→canonical mapping (the same one the skeleton fitter uses).
+    tracker→canonical mapping for the given ``detector_type`` (the same one
+    the skeleton fitter uses).
     """
     body_structure: AnatomicalStructure = AnatomicalStructure.from_model_info(
         model_info=CanonicalBodyModelInfo(), aspect_name="body"
@@ -176,9 +188,9 @@ def load_rtmpose_biomechanics() -> RTMPoseBodyBiomechanics:
 
     com_defs = body_structure.center_of_mass_definitions or {}
 
-    return RTMPoseBodyBiomechanics(
+    return BodyBiomechanics(
         tracked_point_names=body_structure.tracked_point_names,
-        tracker_mapping=TrackerMapping.from_yaml(_RTMPOSE_BODY_MAPPING_YAML),
+        tracker_mapping=TrackerMapping.from_yaml(_BODY_MAPPING_YAML_BY_DETECTOR[detector_type]),
         segment_connections=body_structure.segment_connections,
         center_of_mass_definitions=com_defs,
         mass_percentages=_build_mass_lookup(com_defs),
@@ -221,7 +233,7 @@ def _calculate_all_segments_com_per_frame(
 
 def _calculate_total_body_com_with_redistribution(
     segment_com_data: dict[str, np.ndarray],
-    biomechanics: RTMPoseBodyBiomechanics,
+    biomechanics: BodyBiomechanics,
 ) -> tuple[np.ndarray, float]:
     """Weighted total body CoM with mass redistribution along limb chains.
 
@@ -327,7 +339,7 @@ def calculate_xcom(
 
 def calculate_center_of_mass_per_frame(
     keypoints: dict[str, np.ndarray],
-    biomechanics: RTMPoseBodyBiomechanics,
+    biomechanics: BodyBiomechanics,
 ) -> CenterOfMassResult:
     """Compute center of mass from raw RTMPose **tracker** keypoints for one frame.
 
@@ -341,7 +353,7 @@ def calculate_center_of_mass_per_frame(
 
 def calculate_center_of_mass_from_canonical(
     canonical_positions: dict[str, np.ndarray],
-    biomechanics: RTMPoseBodyBiomechanics,
+    biomechanics: BodyBiomechanics,
 ) -> CenterOfMassResult:
     """Compute center of mass from already-canonical-named positions for one frame.
 

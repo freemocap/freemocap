@@ -26,11 +26,10 @@ const VIRTUAL_POINT_SPECS: Record<string, VirtualPointSpec> = {
         neck_center: ['left_shoulder', 'right_shoulder'],
         hips_center: ['left_hip', 'right_hip'],
     },
-    // Legacy MediaPipe-style schemas
-    mediapipe_body: {
-        head_center: ['body.left_ear', 'body.right_ear'],
-        neck_center: ['body.left_shoulder', 'body.right_shoulder'],
-        hips_center: ['body.left_hip', 'body.right_hip'],
+    mediapipe_wholebody: {
+        head_center: ['left_ear', 'right_ear'],
+        neck_center: ['left_shoulder', 'right_shoulder'],
+        hips_center: ['left_hip', 'right_hip'],
     },
 };
 

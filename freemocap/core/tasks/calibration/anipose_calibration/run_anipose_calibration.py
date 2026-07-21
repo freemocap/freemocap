@@ -9,8 +9,8 @@ from pathlib import Path
 
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.data_primitives.observation import Observation
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.anipose_calibration_helpers import (
@@ -24,26 +24,23 @@ from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntr
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.charuco_board.charuco_observation_aggregator import CharucoObservationAggregator
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
+from freemocap.core.tracking.observation_buffer import ObservationBuffer
 
 logger = logging.getLogger(__name__)
 
 
 def run_anipose_calibration(
     *,
-    charuco_observations_by_frame: list[dict[CameraIdString, CharucoObservation]],
+    charuco_observations_by_frame: list[dict[CameraIdString, Observation]],
     board: CharucoBoardDefinition,
     video_metadata: dict[CameraIdString, VideoMetadata],
     recording_info: RecordingInfo,
     pin_camera_0_to_origin: bool = True,
     use_charuco_as_groundplane: bool = True,
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
-    """Run anipose calibration from charuco observations.
-
-    Returns a CalibrationResult with optimized camera models.
-    """
+    """Run anipose calibration from charuco observations."""
     t_start = time.perf_counter()
 
     cameras: list[CameraModel] = [
@@ -77,7 +74,9 @@ def run_anipose_calibration(
     if charuco_observation_aggregator is None:
         raise ValueError("No charuco observations were provided for calibration")
 
-    all_camera_rows = charuco_observation_aggregator.to_anipose_rows(n_corners=board.n_corners)
+    all_camera_rows = charuco_observation_aggregator.to_anipose_rows(
+        n_corners=board.n_corners, board_def=board
+    )
     logger.info(f"Aggregated charuco observations for {len(all_camera_rows)} cameras")
 
     error, merged, charuco_frame_numbers = calibrate_cameras_from_rows(
@@ -94,21 +93,16 @@ def run_anipose_calibration(
 
     ground_plane_result: GroundPlaneResult | None = None
     if use_charuco_as_groundplane:
-        observation_recorders_by_camera: dict[CameraIdString, BaseRecorder] = {
-            camera_id: BaseRecorder() for camera_id in charuco_observations_by_frame[0].keys()
+        observation_buffers: dict[CameraIdString, ObservationBuffer] = {
+            camera_id: ObservationBuffer()
+            for camera_id in charuco_observations_by_frame[0].keys()
         }
-        for frame_number, charuco_observations_by_camera in enumerate(charuco_observations_by_frame):
-            if not all(
-                isinstance(output, CharucoObservation) for output in charuco_observations_by_camera.values()
-            ):
-                raise ValueError(
-                    f"Non-CharucoObservation found in frame {frame_number} observations"
-                )
-            for camera_id, recorder in observation_recorders_by_camera.items():
-                recorder.add_observation(observation=charuco_observations_by_camera[camera_id])
+        for charuco_observations_by_camera in charuco_observations_by_frame:
+            for camera_id, buf in observation_buffers.items():
+                buf.add_observation(charuco_observations_by_camera[camera_id])
 
         cameras, groundplane_success, ground_plane_result = set_charuco_board_as_groundplane(
-            observation_recorders=observation_recorders_by_camera,
+            observation_buffers=observation_buffers,
             cameras=cameras,
             board=board,
             recording_folder_path=Path(recording_info.full_recording_path),

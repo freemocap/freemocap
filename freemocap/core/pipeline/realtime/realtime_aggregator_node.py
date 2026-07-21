@@ -30,7 +30,7 @@ from pathlib import Path
 
 import numpy as np
 from freemocap.core.tasks.mocap.center_of_mass import (
-    load_rtmpose_biomechanics,
+    load_body_biomechanics,
     CenterOfMassResult,
     calculate_center_of_mass_per_frame,
     calculate_center_of_mass_from_canonical,
@@ -83,6 +83,15 @@ from freemocap.pubsub.pubsub_topics import (
 # camera-node charuco outputs to arrive. Prevents unbounded memory growth if
 # camera nodes lag (e.g. one camera unplugged). Older entries get dropped.
 _MAX_PENDING_SKELETON_RESULTS: int = 2
+
+# Max time to wait for a specific frame's skeleton-inference result before
+# giving up on it and proceeding without a skeleton for that frame. Without
+# this, a SkeletonInferenceNode restart (e.g. detector swap) orphans whatever
+# frame request the old node's process was mid-flight on — its pub/sub
+# subscription dies with it and the new node's subscription only sees
+# requests published after it was created — so waiting unconditionally here
+# would deadlock the whole pipeline (camera feed included) forever.
+_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS: float = 2.0
 
 logger = logging.getLogger(__name__)
 
@@ -217,11 +226,14 @@ class RealtimeAggregatorNode(AggregatorNode):
             max_rejected_streak=filter_config.max_rejected_streak,
         )
 
-        # Load RTMPose body biomechanics for per-frame center of mass calculation.
-        # Validated once at init via skellyforge's AnatomicalStructure — no Pydantic
-        # in the hot loop.
+        # Load body biomechanics for per-frame center of mass calculation, using
+        # the tracker->canonical mapping that matches the configured detector
+        # (RTMPose and MediaPipe use different keypoint naming conventions).
+        # Validated once at init via skellyforge's AnatomicalStructure — no
+        # Pydantic in the hot loop.
+        detector_type = pipeline_config.camera_node_config.detector_type
         biomechanics = (
-            load_rtmpose_biomechanics()
+            load_body_biomechanics(detector_type)
             if aggregator_config.center_of_mass_enabled
             else None
         )
@@ -232,6 +244,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
         if aggregator_config.skeleton_fitting_enabled:
             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                detector_type=detector_type,
                 height_mm=filter_config.height_mm,
                 buffer_capacity=filter_config.segment_length_buffer_capacity,
                 decay_tau_s=filter_config.segment_length_decay_s,
@@ -257,9 +270,14 @@ class RealtimeAggregatorNode(AggregatorNode):
         # by the centralized SkeletonInferenceNode (when GPU mode is on);
         # consumed when the matching camera outputs arrive for that frame.
         pending_skeleton_results: dict[int, dict[CameraIdString, object | None]] = {}
+        # Wall-clock time we started waiting on the currently-expected frame's
+        # skeleton result; None when not waiting. Reset whenever the wait
+        # resolves (found, or times out and is abandoned).
+        skeleton_wait_started_at: float | None = None
         latest_requested_frame: int = -1
         last_received_frame: int = -1
         last_calibration_poll: float = time.perf_counter()
+        _empty_3d_logged: bool = False  # Rate-limit the "no 3D keypoints" warning
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}") if log_pipeline_times else None
         t_frame_requested: float = time.perf_counter() if timer is not None else 0.0
@@ -318,6 +336,41 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"RealtimeAggregationNode [{camera_group_id}] reloaded "
                             f"calibration from {calibration.calibration_path}"
                         )
+
+                    # Rebuild biomechanics / skeleton rigidifier if the detector
+                    # type changed (RTMPose <-> MediaPipe use different tracker
+                    # keypoint names, so the loaded canonical mapping would
+                    # otherwise silently go stale) or if center-of-mass /
+                    # skeleton-fitting were toggled on/off.
+                    new_detector_type = pipeline_config.camera_node_config.detector_type
+                    detector_type_changed = new_detector_type != detector_type
+                    detector_type = new_detector_type
+
+                    if aggregator_config.center_of_mass_enabled:
+                        if biomechanics is None or detector_type_changed:
+                            biomechanics = load_body_biomechanics(detector_type)
+                            logger.info(
+                                f"RealtimeAggregationNode [{camera_group_id}] "
+                                f"(re)loaded body biomechanics for detector_type={detector_type}"
+                            )
+                    else:
+                        biomechanics = None
+
+                    if aggregator_config.skeleton_fitting_enabled:
+                        if skeleton_rigidifier is None or detector_type_changed:
+                            skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                                detector_type=detector_type,
+                                height_mm=filter_config.height_mm,
+                                buffer_capacity=filter_config.segment_length_buffer_capacity,
+                                decay_tau_s=filter_config.segment_length_decay_s,
+                                plausibility_tol=filter_config.segment_length_plausibility_tol,
+                            )
+                            logger.info(
+                                f"RealtimeAggregationNode [{camera_group_id}] "
+                                f"(re)created skeleton rigidifier for detector_type={detector_type}"
+                            )
+                    else:
+                        skeleton_rigidifier = None
 
                 # ---- Handle skeleton fitter reset signals ----
                 # Drain unconditionally so the queue can't grow while skeleton
@@ -433,23 +486,44 @@ class RealtimeAggregatorNode(AggregatorNode):
                         continue
 
                 # ---- In GPU mode, also wait for the skeleton inference result ----
-                if (pipeline_config.use_centralized_gpu_inference
+                if (pipeline_config.use_centralized_inference
                         and pipeline_config.camera_node_config.skeleton_tracking_enabled):
                     expected_frame = next(iter(camera_node_outputs.values())).frame_number
                     if expected_frame not in pending_skeleton_results:
-                        # Camera outputs are ready but skeleton inference hasn't
-                        # caught up yet. Loop again — `camera_node_outputs` stays
-                        # populated, and the skeleton result will land in the
-                        # `skeleton_inference_sub` drain at the top of the next
-                        # iteration.
-                        continue
-                    # Splice the per-camera skeletons into each CameraNodeOutputMessage
-                    # so downstream triangulation code (which reads
-                    # `output.skeleton_observation`) needs no changes.
-                    skeleton_per_camera = pending_skeleton_results.pop(expected_frame)
-                    for cam_id, output_msg in camera_node_outputs.items():
-                        if output_msg is not None:
-                            output_msg.skeleton_observation = skeleton_per_camera.get(cam_id)
+                        now = time.perf_counter()
+                        if skeleton_wait_started_at is None:
+                            skeleton_wait_started_at = now
+                            continue
+                        elif now - skeleton_wait_started_at > _SKELETON_RESULT_WAIT_TIMEOUT_SECONDS:
+                            # The result for this frame is never coming — most
+                            # likely the SkeletonInferenceNode was restarted
+                            # (e.g. detector swap) mid-flight and its pub/sub
+                            # subscription was orphaned. Give up on this frame's
+                            # skeleton rather than deadlocking the pipeline
+                            # (which would also freeze the frontend camera feed,
+                            # since it's served from this node's output).
+                            logger.warning(
+                                f"RealtimeAggregationNode [{camera_group_id}] gave up waiting "
+                                f"on skeleton result for frame {expected_frame} after "
+                                f"{_SKELETON_RESULT_WAIT_TIMEOUT_SECONDS}s — proceeding without it"
+                            )
+                            skeleton_wait_started_at = None
+                        else:
+                            # Camera outputs are ready but skeleton inference hasn't
+                            # caught up yet. Loop again — `camera_node_outputs` stays
+                            # populated, and the skeleton result will land in the
+                            # `skeleton_inference_sub` drain at the top of the next
+                            # iteration.
+                            continue
+                    else:
+                        # Splice the per-camera skeletons into each CameraNodeOutputMessage
+                        # so downstream triangulation code (which reads
+                        # `output.skeleton_observation`) needs no changes.
+                        skeleton_per_camera = pending_skeleton_results.pop(expected_frame)
+                        for cam_id, output_msg in camera_node_outputs.items():
+                            if output_msg is not None:
+                                output_msg.skeleton_observation = skeleton_per_camera.get(cam_id)
+                        skeleton_wait_started_at = None
 
                 frame_numbers = [
                     msg.frame_number
@@ -539,6 +613,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                         )
                         if timer is not None:
                             timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
+
+                    if not raw_keypoints and skeleton_observations_by_camera and not _empty_3d_logged:
+                        _empty_3d_logged = True
+                        logger.warning(
+                            f"RealtimeAggregationNode [{camera_group_id}]: "
+                            f"skeleton observations received from {len(skeleton_observations_by_camera)} camera(s) "
+                            f"but triangulation produced zero 3D keypoints. "
+                            f"Check backend logs for 'no keypoints visible in ≥2 cameras' or reprojection error warnings. "
+                            f"Calibration path: {calibration.calibration_path}"
+                        )
 
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:

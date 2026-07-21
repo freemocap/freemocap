@@ -6,7 +6,8 @@ import time
 import pytest
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
+from skellytracker.core import DetectionStageConfig, TrackerConfig
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoDetectorConfig
 
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
@@ -122,8 +123,16 @@ def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
         worker_mode=WorkerMode.THREAD,
         charuco_tracking_enabled=charuco_enabled,
         skeleton_tracking_enabled=skeleton_enabled,
-        charuco_detector_config=(
-            CharucoDetectorConfig(board=charuco_board) if charuco_enabled else None
+        charuco_tracker_config=(
+            TrackerConfig(
+                stages=[
+                    DetectionStageConfig(
+                        name="charuco",
+                        keypoint_detectors=[CharucoDetectorConfig(board=charuco_board)],
+                    )
+                ]
+            )
+            if charuco_enabled else None
         ),
     )
     aggregator_config = RealtimeAggregatorNodeConfig(
@@ -134,7 +143,7 @@ def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
     return RealtimePipelineConfig(
         camera_node_config=camera_node_config,
         aggregator_config=aggregator_config,
-        use_centralized_gpu_inference=False,
+        use_centralized_inference=True,
         log_pipeline_times=False,
     )
 

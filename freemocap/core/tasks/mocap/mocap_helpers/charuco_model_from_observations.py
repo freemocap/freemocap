@@ -14,26 +14,27 @@ from skellyforge.post_processing.interpolation.apply_interpolation import interp
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
 from skellyforge.skellymodels.managers.board import Board
 from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3ModelInfo
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.mocap.mocap_helpers.triangulate_trajectory_array import triangulate_dict
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 
 
-from skellyforge.data_models.trajectory_3d import Trajectory3d
-import numpy as np
+from skellyforge.data_models.trajectory_3d import Trajectory3d  # noqa: TC002
+import numpy as np  # noqa: TC002
 
 logger = logging.getLogger(__name__)
 
 
 def charuco_model_from_observations(
     *,
-    observation_recorders: dict[CameraIdString, BaseRecorder],
+    observation_buffers: dict[CameraIdString, ObservationBuffer],
+    board_def: CharucoBoardDefinition,
     output_data_folder: Path | str,
     calibration_toml_path: Path | str | None,
     triangulator: Triangulator | None = None,
@@ -60,13 +61,14 @@ def charuco_model_from_observations(
     Path(output_data_folder).mkdir(parents=True, exist_ok=True)
 
     data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
-    if len(observation_recorders) == 0:
-        raise ValueError("No observation recorders provided to process.")
+    if len(observation_buffers) == 0:
+        raise ValueError("No observation buffers provided to process.")
 
-    for camera_id, recorder in observation_recorders.items():
-        if not all(isinstance(observation, CharucoObservation) for observation in recorder.observations):
-            raise TypeError(f"Recorder for camera ID {camera_id} contains non-Charuco observations.")
-        data2d_fr_id_xyc = recorder.to_array.copy()
+    for camera_id, buf in observation_buffers.items():
+        for obs in buf.observations:
+            if "charuco" not in obs.stages:
+                raise TypeError(f"Buffer for camera ID {camera_id} contains non-charuco observations.")
+        data2d_fr_id_xyc = buf.to_stage_array("charuco", n_points=board_def.n_corners).copy()
         logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 

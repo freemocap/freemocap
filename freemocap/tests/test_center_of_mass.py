@@ -11,7 +11,7 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     CoMConfidence,
     calculate_center_of_mass_from_canonical,
     calculate_center_of_mass_per_frame,
-    load_rtmpose_biomechanics,
+    load_body_biomechanics,
 )
 
 
@@ -32,7 +32,7 @@ def _upright_rtmpose_pose() -> dict[str, np.ndarray]:
 
 
 def test_center_of_mass_uses_canonical_model():
-    bio = load_rtmpose_biomechanics()
+    bio = load_body_biomechanics()
     assert bio.segment_connections is not None
     assert bio.center_of_mass_definitions is not None
     assert bio.tracker_mapping is not None
@@ -48,7 +48,7 @@ def test_center_of_mass_uses_canonical_model():
 def test_com_from_canonical_matches_tracker_path():
     # The refactor must be behaviour-preserving: feeding canonical positions
     # directly equals mapping tracker keypoints then computing CoM.
-    bio = load_rtmpose_biomechanics()
+    bio = load_body_biomechanics()
     pose = _upright_rtmpose_pose()
 
     via_tracker = calculate_center_of_mass_per_frame(pose, bio)

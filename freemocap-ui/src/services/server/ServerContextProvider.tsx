@@ -32,6 +32,7 @@ import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import type {AppStateMessage} from "@/store/slices/connection/connection-types";
+import {loadCalibrationForRecording} from "@/store/slices/calibration";
 
 // Type guard for the server's authoritative APP_STATE snapshot
 function isAppState(data: any): data is AppStateMessage {
@@ -288,6 +289,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 const frame: KeypointsFrame = { pointNames, interleaved };
 
                 if (block.kind === BLOCK_KIND.KEYPOINTS_3D) {
+                    // When a known-schema tracker sends a keypoints block, update the
+                    // active tracker so the 3D viewport uses the matching connection schema.
+                    if (
+                        block.trackerId in trackerSchemasRef.current &&
+                        activeTrackerIdRef.current !== block.trackerId
+                    ) {
+                        activeTrackerIdRef.current = block.trackerId;
+                        setActiveTrackerId(block.trackerId);
+                        canvasManagerRef.current?.setSchema(trackerSchemasRef.current, block.trackerId);
+                    }
                     keypointsRef.current = frame;
                     for (const cb of keypointsSubscribersRef.current) cb(frame);
                 } else if (block.kind === BLOCK_KIND.SKELETON_3D) {
@@ -428,6 +439,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                                             type: 'calibration/calibrationPipelineProgressReceived',
                                             payload: {phase: jsonData.phase},
                                         });
+                                        if (jsonData.phase === 'complete' && jsonData.recording_name) {
+                                            const recordingPath: string = jsonData.recording_path ?? '';
+                                            const recordingName: string = jsonData.recording_name;
+                                            const parentDir = recordingPath.endsWith(recordingName)
+                                                ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
+                                                : null;
+                                            store.dispatch(loadCalibrationForRecording({
+                                                recordingId: recordingName,
+                                                recordingParentDirectory: parentDir,
+                                            }));
+                                        }
                                     }
                                 }
                             }

@@ -4,6 +4,30 @@ import {selectMocapRecordingPath} from "./mocap-slice";
 import {getDetailedErrorMessage} from "@/store/slices/thunk-helpers";
 import {serverUrls} from "@/services";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
+import {selectLoadedCalibration} from "@/store/slices/calibration";
+
+function buildPosthocConfig(state: RootState) {
+    const { config } = state.mocap;
+    const blender = state.blender;
+    // Explicit override wins; fall back to the calibration loaded in the calibration panel
+    const calibrationTomlPath =
+        state.mocap.calibrationTomlPath ?? selectLoadedCalibration(state)?.path ?? null;
+    return {
+        detectorType: config.detectorType,
+        rtmPoseModelName: config.rtmPoseModelName,
+        rtmPoseConfidenceThreshold: config.rtmPoseConfidenceThreshold,
+        mediapipeModelComplexity: config.mediapipeModelComplexity,
+        mediapipeDetectionConfidence: config.mediapipeDetectionConfidence,
+        mediapipePresenceConfidence: config.mediapipePresenceConfidence,
+        mediapipeTrackingConfidence: config.mediapipeTrackingConfidence,
+        mediapipeNumHands: config.mediapipeNumHands,
+        mediapipeNumFaces: config.mediapipeNumFaces,
+        calibrationTomlPath,
+        exportToBlender: blender.exportToBlenderEnabled,
+        blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
+        autoOpenBlendFile: blender.autoOpenBlendFile,
+    };
+}
 
 export const startMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; mocapRecordingPath?: string },
@@ -14,22 +38,13 @@ export const startMocapRecording = createAsyncThunk<
     async (_, { getState, rejectWithValue }) => {
         try {
             const state = getState();
-            const mocapTaskConfig = state.mocap.config;
             const mocapRecordingDirectory = selectMocapRecordingPath(state);
 
             if (!mocapRecordingDirectory) {
                 return rejectWithValue('Recording directory is not set');
             }
 
-            const calibrationTomlPath = state.mocap.calibrationTomlPath;
-            const blender = state.blender;
-            const configWithCalibration = {
-                ...mocapTaskConfig,
-                calibrationTomlPath: calibrationTomlPath,
-                exportToBlender: blender.exportToBlenderEnabled,
-                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
-                autoOpenBlendFile: blender.autoOpenBlendFile,
-            };
+            const configWithCalibration = buildPosthocConfig(state);
 
             console.log('🎬 Starting mocap recording with:', {
                 mocapRecordingDirectory,
@@ -70,18 +85,7 @@ export const stopMocapRecording = createAsyncThunk<
     async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
-            const mocapTaskConfig = state.mocap.config;
-
-
-            const calibrationTomlPath = state.mocap.calibrationTomlPath;
-            const blender = state.blender;
-            const configWithCalibration = {
-                ...mocapTaskConfig,
-                calibrationTomlPath: calibrationTomlPath,
-                exportToBlender: blender.exportToBlenderEnabled,
-                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
-                autoOpenBlendFile: blender.autoOpenBlendFile,
-            };
+            const configWithCalibration = buildPosthocConfig(state);
 
             console.log(`🎬 Stopping mocap recording and starting mocap with: ${JSON.stringify(configWithCalibration, null, 2)}`);
 
@@ -127,27 +131,18 @@ export const processMocapRecording = createAsyncThunk<
     async (_, { getState, rejectWithValue, dispatch }) => {
         try {
             const state = getState();
-            const mocapTaskConfig = state.mocap.config;
             const mocapRecordingDirectory = selectMocapRecordingPath(state);
 
             if (!mocapRecordingDirectory) {
                 return rejectWithValue('No mocap recording path available. Please set a recording directory or record a mocap first.');
             }
 
-            console.log('🔧 Calibrating recording:', {
-                mocapRecordingDirectory,
-                mocapTaskConfig,
-            });
+            const configWithCalibration = buildPosthocConfig(state);
 
-            const calibrationTomlPath = state.mocap.calibrationTomlPath;
-            const blender = state.blender;
-            const configWithCalibration = {
-                ...mocapTaskConfig,
-                calibrationTomlPath: calibrationTomlPath,
-                exportToBlender: blender.exportToBlenderEnabled,
-                blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
-                autoOpenBlendFile: blender.autoOpenBlendFile,
-            };
+            console.log('🔧 Processing recording:', {
+                mocapRecordingDirectory,
+                mocapTaskConfig: configWithCalibration,
+            });
 
             const response = await fetch(serverUrls.endpoints.processMocapRecording, {
                 method: 'POST',

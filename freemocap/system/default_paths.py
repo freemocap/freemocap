@@ -1,8 +1,14 @@
+import os
 import time
 from datetime import datetime
 from pathlib import Path
 
 DEFAULT_FREEMOCAP_BASE_FOLDER_NAME = "freemocap_data"
+
+# The Electron shell passes the user-chosen data folder to the Python server via this
+# environment variable. When the server runs standalone (dev/tests) it is unset and we
+# fall back to `~/freemocap_data`. This is the single point where the base folder is resolved.
+FREEMOCAP_BASE_FOLDER_ENV_VAR = "FREEMOCAP_BASE_FOLDER"
 SYNCHRONIZED_VIDEOS_FOLDER_NAME = "synchronized_videos"
 ANNOTATED_VIDEOS_FOLDER_NAME = "annotated_videos"
 LOGS_INFO_AND_SETTINGS_FOLDER_NAME = "logs_info_and_settings"
@@ -31,6 +37,9 @@ def os_independent_home_dir() -> str:
 
 
 def get_default_freemocap_base_folder_path() -> str:
+    override = os.environ.get(FREEMOCAP_BASE_FOLDER_ENV_VAR)
+    if override:
+        return str(Path(override))
     return str(Path(os_independent_home_dir()) / DEFAULT_FREEMOCAP_BASE_FOLDER_NAME)
 
 

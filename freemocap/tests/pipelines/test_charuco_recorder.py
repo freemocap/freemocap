@@ -9,11 +9,11 @@ original defect: it silently mis-aligned the cache to the calibration videos.)
 import pickle
 from pathlib import Path
 
-import cv2
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.charuco_tracker.charuco_board_definition import CharucoBoardDefinition
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.data_primitives.keypoints import Keypoints
+from skellytracker.core.data_primitives.observation import Observation, StageObservation
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.pipeline.realtime.charuco_recorder_node import (
     CACHE_FILENAME,
@@ -22,58 +22,34 @@ from freemocap.core.pipeline.realtime.charuco_recorder_node import (
 
 
 # ---------------------------------------------------------------------------
-# Helpers: build real CharucoObservations
+# Helpers: build real Observations for a "charuco" stage
 # ---------------------------------------------------------------------------
 
-def _board_observation_data(board_def: CharucoBoardDefinition) -> dict:
-    charuco_board = cv2.aruco.CharucoBoard(
-        size=(board_def.squares_x, board_def.squares_y),
-        squareLength=board_def.square_length_mm,
-        markerLength=board_def.aruco_marker_length_mm,
-        dictionary=board_def.aruco_dictionary,
-    )
-    return {
-        "all_charuco_ids": list(range(board_def.n_corners)),
-        "all_charuco_corners_in_object_coordinates": board_def.corner_positions_board_frame.astype(np.float32),
-        "all_aruco_ids": [int(i) for i in charuco_board.getIds()],
-        "all_aruco_corners_in_object_coordinates": np.array(charuco_board.getObjPoints(), dtype=np.float32),
-    }
+_CHARUCO_CORNER_NAMES = tuple(f"CharucoCorner-{i}" for i in range(4))
 
 
-def make_detected_charuco_observation(frame_number: int = 0) -> CharucoObservation:
-    board_def = CharucoBoardDefinition.create_test_data_7x5()
-    obs_data = _board_observation_data(board_def)
-    charuco_corners = np.array(
-        [[[100.0, 200.0]], [[150.0, 200.0]], [[200.0, 200.0]], [[250.0, 200.0]]],
-        dtype=np.float32,
+def make_detected_charuco_observation(frame_number: int = 0) -> Observation:
+    xyz = np.array(
+        [[100.0, 200.0, 0.0], [150.0, 200.0, 0.0], [200.0, 200.0, 0.0], [250.0, 200.0, 0.0]],
+        dtype=np.float64,
     )
-    charuco_ids = np.array([0, 1, 2, 3], dtype=np.int32).reshape(-1, 1)
-    marker_corners_list = [
-        np.array([[[0.0, 0.0]], [[10.0, 0.0]], [[10.0, 10.0]], [[0.0, 10.0]]], dtype=np.float32)
-    ]
-    marker_ids = np.array([obs_data["all_aruco_ids"][0]], dtype=np.int32).reshape(-1, 1)
-    return CharucoObservation.from_detection_results(
+    visibility = np.ones(4, dtype=np.float64)
+    keypoints = Keypoints(names=_CHARUCO_CORNER_NAMES, xyz=xyz, visibility=visibility)
+    return Observation(
         frame_number=frame_number,
-        detected_charuco_corners=charuco_corners,
-        detected_charuco_corner_ids=charuco_ids,
-        detected_aruco_marker_corners=marker_corners_list,
-        detected_aruco_marker_ids=marker_ids,
-        image_size=(1920, 1080),
-        **obs_data,
+        image_size=(1080, 1920),
+        stages={"charuco": StageObservation(name="charuco", keypoints=keypoints)},
     )
 
 
-def make_empty_charuco_observation(frame_number: int = 0) -> CharucoObservation:
-    board_def = CharucoBoardDefinition.create_test_data_7x5()
-    obs_data = _board_observation_data(board_def)
-    return CharucoObservation.from_detection_results(
+def make_empty_charuco_observation(frame_number: int = 0) -> Observation:
+    xyz = np.full((4, 3), np.nan, dtype=np.float64)
+    visibility = np.zeros(4, dtype=np.float64)
+    keypoints = Keypoints(names=_CHARUCO_CORNER_NAMES, xyz=xyz, visibility=visibility)
+    return Observation(
         frame_number=frame_number,
-        detected_charuco_corners=None,
-        detected_charuco_corner_ids=None,
-        detected_aruco_marker_corners=None,
-        detected_aruco_marker_ids=None,
-        image_size=(1920, 1080),
-        **obs_data,
+        image_size=(1080, 1920),
+        stages={"charuco": StageObservation(name="charuco", keypoints=keypoints)},
     )
 
 
@@ -121,7 +97,7 @@ class TestCharucoRecorderFlush:
         assert set(observations["cam_1"].keys()) == {10, 11}
         # The object at a key is the observation captured at THAT connection frame.
         assert observations["cam_0"][10].frame_number == 10
-        assert observations["cam_0"][13].charuco_empty
+        assert np.isnan(observations["cam_0"][13].stages["charuco"].keypoints.xyz).all()
         # Board round-trips; frame_range is the min/max connection number seen.
         assert data["board_definition"].squares_x == board.squares_x
         assert data["frame_range"] == (10, 13)

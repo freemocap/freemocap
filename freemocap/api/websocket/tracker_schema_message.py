@@ -3,24 +3,23 @@ Tracker-schema handshake message.
 
 Sent once when a WebSocket client connects, and rebroadcast if the pipeline's
 tracker configuration changes. Carries every active tracker's
-`TrackedObjectDefinition` so the frontend can render points and connections
+`TrackerDefinition` so the frontend can render points and connections
 without hardcoding any tracker schema.
 """
 from typing import Any
 
 import msgspec
-from skellytracker.trackers.base_tracker.tracked_object_definition import TrackedObjectDefinition
-from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
 
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
+from freemocap.core.tracking.tracker_definitions import TrackerDefinition, RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 
 
 class TrackerSchemasMessage(msgspec.Struct):
-    """Dict of ``tracker_id -> TrackedObjectDefinition.model_dump()``.
+    """Dict of ``tracker_id -> TrackerDefinition.model_dump()``.
 
     Values are pre-serialized to plain dicts because msgspec.Struct cannot
     carry arbitrary Pydantic models directly. The frontend treats the inner
-    dicts as the canonical TS ``TrackedObjectDefinition`` shape.
+    dicts as the canonical TS ``TrackerDefinition`` shape.
     """
     schemas: dict[str, dict[str, Any]]
     message_type: WebsocketMessageType = WebsocketMessageType.TRACKER_SCHEMAS
@@ -31,29 +30,16 @@ def _build_canonical_schema(
     name: str,
     landmark_names: list[str],
     segment_connections: dict[str, dict[str, str]] | None,
-) -> TrackedObjectDefinition | None:
-    """Build a ``TrackedObjectDefinition`` from canonical anatomical data.
-
-    Parameters
-    ----------
-    name : str
-        Schema identifier (e.g. ``"canonical_body"``).
-    landmark_names : list of str
-        All landmark names (tracked + virtual markers).
-    segment_connections : dict or None
-        Mapping of segment name → ``{"proximal": name, "distal": name}``.
-        If ``None``, the schema carries no connections.
-    """
+) -> TrackerDefinition | None:
+    """Build a ``TrackerDefinition`` from canonical anatomical data."""
     connections: tuple[tuple[str, str], ...] = ()
     if segment_connections is not None:
         connections = tuple(
             (conn["proximal"], conn["distal"])
             for conn in segment_connections.values()
         )
-    return TrackedObjectDefinition(
+    return TrackerDefinition(
         name=name,
-        tracker_type="canonical",
-        landmark_schema="canonical",
         tracked_points=tuple(landmark_names),
         connections=connections,
     )
@@ -72,8 +58,9 @@ def collect_active_tracker_schemas() -> dict[str, dict[str, Any]]:
         CanonicalHandModelInfo,
     )
 
-    active: dict[str, TrackedObjectDefinition] = {
+    active: dict[str, TrackerDefinition] = {
         RTMPOSE_WHOLEBODY_DEFINITION.name: RTMPOSE_WHOLEBODY_DEFINITION,
+        MEDIAPIPE_WHOLEBODY_DEFINITION.name: MEDIAPIPE_WHOLEBODY_DEFINITION,
     }
 
     # Canonical body schema

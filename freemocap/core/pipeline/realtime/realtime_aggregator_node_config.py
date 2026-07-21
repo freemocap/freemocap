@@ -7,7 +7,6 @@ from freemocap.core.tasks.triangulation.helpers.triangulation_config import Tria
 class RealtimeAggregatorNodeConfig(BaseModel):
     calibration_toml_path: str | None = Field(
         default=None,
-        alias="calibrationTomlPath",
         description="Path to calibration TOML. If None, the most-recent successful calibration is used (and hot-reloaded).",
     )
     triangulation_enabled: bool = True

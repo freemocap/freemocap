@@ -1,4 +1,4 @@
-// mediapipe-overlay-renderer.ts
+// skeleton-overlay-renderer.ts
 //
 // Schema-driven 2D skeleton overlay. Point names and connections come from a
 // `TrackedObjectDefinition` pushed over the `tracker_schemas` handshake
@@ -12,7 +12,7 @@ import {
 } from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
-export interface MediapipePoint {
+export interface SkeletonPoint {
     name: string;
     x: number;
     y: number;
@@ -20,14 +20,14 @@ export interface MediapipePoint {
     visibility?: number;
 }
 
-export interface MediapipeObservation {
+export interface SkeletonObservation {
     message_type: 'skeleton_overlay';
     camera_id: string;
     frame_number: number;
     tracker_id: string;
     image_width: number;
     image_height: number;
-    points: MediapipePoint[];
+    points: SkeletonPoint[];
     // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
     bbox_x1?: number;
     bbox_y1?: number;
@@ -65,7 +65,7 @@ function classifyFace(name: string): boolean {
     return lc.startsWith('face') || lc.startsWith('face_') || lc.startsWith('face.');
 }
 
-export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
+export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
     private schema: TrackedObjectDefinition | null = null;
 
     // --- Styles keyed by classification ---
@@ -153,7 +153,7 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
      */
     public async compositeFrame(
         sourceBitmap: ImageBitmap,
-        observation: MediapipeObservation | null,
+        observation: SkeletonObservation | null,
     ): Promise<ImageBitmap> {
         this.prepareCanvas(
             sourceBitmap,
@@ -168,7 +168,7 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         return this.createBitmap(sourceBitmap);
     }
 
-    private drawSkeletonOverlay(observation: MediapipeObservation): void {
+    private drawSkeletonOverlay(observation: SkeletonObservation): void {
         this.ctx.save();
 
         const { scaleX, scaleY } = this;
@@ -200,7 +200,7 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         this.ctx.restore();
     }
 
-    private drawBbox(obs: MediapipeObservation): void {
+    private drawBbox(obs: SkeletonObservation): void {
         const { bbox_x1, bbox_y1, bbox_x2, bbox_y2, bbox_from_detector } = obs;
         if (bbox_x1 === undefined || bbox_y1 === undefined
             || bbox_x2 === undefined || bbox_y2 === undefined) return;
@@ -282,7 +282,7 @@ export class MediapipeOverlayRenderer extends BaseOverlayRenderer {
         }
     }
 
-    private drawInfo(observation: MediapipeObservation): void {
+    private drawInfo(observation: SkeletonObservation): void {
         const {points, frame_number, tracker_id} = observation;
 
         this.ctx.fillStyle = this.INFO_BG;

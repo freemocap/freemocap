@@ -13,8 +13,9 @@ not editing renderer code on either side.
 import msgspec
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
-from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
+from skellytracker.core.data_primitives.observation import Observation
+
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 
 
 class SkeletonPointModel(msgspec.Struct):
@@ -46,64 +47,69 @@ class SkeletonOverlayData(msgspec.Struct):
     bbox_y1: float = float("nan")
     bbox_x2: float = float("nan")
     bbox_y2: float = float("nan")
-    # True = bbox from YOLOX detector, False = from tracking prediction.
-    bbox_from_detector: bool = True
+    # True when the YOLOX detector actually ran this frame (redetect); False when the
+    # bbox was carried over/predicted from tracked keypoints.
+    bbox_from_detector: bool = False
 
     @classmethod
-    def from_rtmpose_observation(
+    def from_observation(
             cls,
             *,
             camera_id: CameraIdString,
-            observation: RTMPoseObservation,
+            observation: Observation,
             scale: float = 1.0,
+            tracker_definition_name: str = RTMPOSE_WHOLEBODY_DEFINITION.name,
     ) -> "SkeletonOverlayData":
-        """Flatten an RTMPose COCO-WholeBody observation into the schema-driven
-        payload.
+        """Flatten a skeleton Observation into the schema-driven payload.
 
-        Names come straight from `observation.points.names`, which already match
-        the prefixed names in `RTMPOSE_WHOLEBODY_DEFINITION.tracked_points`
-        (`body.*`, `face.*`, `left_hand.*`, `right_hand.*`). NaN rows are dropped.
-        RTMPose is 2D only so z is always 0.
+        Names come from the "body" stage keypoints directly (unqualified, e.g.
+        "nose", "right_hand_wrist") so they match the schema connection names.
+        NaN rows are dropped. z is always 0.
         """
-        xyz: np.ndarray = observation.points.xyz * scale
-        visibility: np.ndarray = observation.points.visibility
-        names: tuple[str, ...] = observation.points.names
+        body_stage = observation.stages.get("body")
 
         points: list[SkeletonPointModel] = []
-        for i, name in enumerate(names):
-            x, y, z = xyz[i]
-            if np.isnan(x) or np.isnan(y) or np.isnan(z):
-                continue
-            points.append(
-                SkeletonPointModel(
-                    name=name,
-                    x=float(x),
-                    y=float(y),
-                    z=float(z),
-                    visibility=float(visibility[i]),
-                )
-            )
+        if body_stage is not None and body_stage.keypoints is not None:
+            kpts = body_stage.keypoints
+            xyz: np.ndarray = kpts.xyz * scale
+            visibility: np.ndarray = kpts.visibility
+            names: tuple[str, ...] = kpts.names
 
-        # Bbox: (4,) or (1,4) xyxy, or None. Flatten and apply the same scale
-        # as the skeleton points so the bbox aligns with the displayed overlay.
-        bb = observation.bbox
-        if bb is not None:
-            flat = np.asarray(bb, dtype=np.float64).reshape(-1)
-            if len(flat) < 4:
-                bb = None
-            else:
-                bb = flat[:4] * scale  # (4,) float64, scaled to display coords
+            for i, name in enumerate(names):
+                x, y, z = xyz[i]
+                if np.isnan(x) or np.isnan(y):
+                    continue
+                points.append(
+                    SkeletonPointModel(
+                        name=name,
+                        x=float(x),
+                        y=float(y),
+                        z=float(z),
+                        visibility=float(visibility[i]),
+                    )
+                )
+
+        bbox_x1 = bbox_y1 = bbox_x2 = bbox_y2 = float("nan")
+        bbox_from_detector = False
+        if body_stage is not None and body_stage.bounding_boxes:
+            bb = body_stage.bounding_boxes[0]
+            bbox_x1 = float(bb.x1) * scale
+            bbox_y1 = float(bb.y1) * scale
+            bbox_x2 = float(bb.x2) * scale
+            bbox_y2 = float(bb.y2) * scale
+            bbox_from_detector = bool(body_stage.detector_ran)
+
         return cls(
             camera_id=camera_id,
             frame_number=observation.frame_number,
-            tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+            tracker_id=tracker_definition_name,
             image_width=observation.image_size[1],
             image_height=observation.image_size[0],
             message_type="skeleton_overlay",
             points=points,
-            bbox_x1=float(bb[0]) if bb is not None else float("nan"),
-            bbox_y1=float(bb[1]) if bb is not None else float("nan"),
-            bbox_x2=float(bb[2]) if bb is not None else float("nan"),
-            bbox_y2=float(bb[3]) if bb is not None else float("nan"),
-            bbox_from_detector=observation.bbox_from_detector,
+            bbox_x1=bbox_x1,
+            bbox_y1=bbox_y1,
+            bbox_x2=bbox_x2,
+            bbox_y2=bbox_y2,
+            bbox_from_detector=bbox_from_detector,
         )

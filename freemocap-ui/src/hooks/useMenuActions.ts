@@ -11,6 +11,7 @@ import {calibrationConfigUpdated} from '@/store/slices/calibration/calibration-s
 import {pipelineSnackbarShown} from '@/store/slices/pipelines';
 // import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
 import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
+import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 import {SUPPORTED_LOCALES} from '@/i18n';
 import type {MenuAction} from '../../electron/main/services/menu-builder';
 
@@ -111,7 +112,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                     navigate('/playback');
                     break;
                 case 'navigate-settings':
-                    navigate('/settings');
+                    window.dispatchEvent(new CustomEvent('open-settings'));
                     break;
 
                 // View
@@ -176,9 +177,8 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                 case 'load-test-data': {
                     if (!api) break;
                     try {
-                        const home: string = await api.fileSystem.getHomeDirectory.query();
-                        const sep = home.includes('\\') ? '\\' : '/';
-                        const baseDirectory = `${home}${sep}freemocap_data${sep}recordings`;
+                        const baseFolder: string = await api.fileSystem.getBaseDataFolder.query();
+                        const baseDirectory = recordingsDirFromBaseFolder(baseFolder);
                         dispatch(activeRecordingSet({
                             baseDirectory,
                             recordingName: 'freemocap_test_data',

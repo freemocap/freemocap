@@ -127,7 +127,11 @@ export function useServerPanel(): ServerPanelState {
             const result = await api.pythonServer.getExecutableCandidates.query();
             const typed = result as ExecutableCandidate[];
             setCandidates(typed);
-            if (!selectedExePath) {
+            // Fall back to an auto-detected candidate if there's no persisted
+            // selection, or the persisted one (e.g. from a previous app version
+            // with a different bundle layout) no longer validates.
+            const persistedIsValid = typed.some((c) => c.path === selectedExePath && c.isValid);
+            if (!selectedExePath || !persistedIsValid) {
                 const firstValid = typed.find((c) => c.isValid);
                 if (firstValid) setSelectedExePath(firstValid.path);
             }

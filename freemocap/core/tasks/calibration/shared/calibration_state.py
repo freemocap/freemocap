@@ -15,7 +15,7 @@ from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
+from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
@@ -28,6 +28,16 @@ logger = logging.getLogger(__name__)
 
 # Invalidate calibration after this many consecutive triangulation failures
 MAX_CONSECUTIVE_FAILURES: int = 10
+
+
+def _strip_stage_prefix(name: str) -> str:
+    """Strip the stage prefix that Observation.to_keypoints() adds.
+
+    "body.nose" → "nose", "charuco.CharucoCorner-0" → "CharucoCorner-0".
+    Names without a dot are returned unchanged.
+    """
+    dot = name.find(".")
+    return name[dot + 1:] if dot != -1 else name
 
 
 class CalibrationStateTracker:
@@ -64,6 +74,9 @@ class CalibrationStateTracker:
         self._cam_id_name_cache: dict[str, str] = {}
         # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
         self._last_incoming_cam_ids: frozenset | None = None
+        # Rate-limit per-frame diagnostic logs (fire once per root cause category).
+        self._logged_no_visible_pts: bool = False
+        self._logged_all_reproj_bad: bool = False
         # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
@@ -147,7 +160,10 @@ class CalibrationStateTracker:
                 logger.info(f"Found calibration file at {path}")
                 return self._try_load_from_path(path)
             else:
-                logger.debug(f"No calibration file found at {path}")
+                logger.warning(
+                    f"No calibration file found at {path}. "
+                    f"Triangulation will be disabled until a calibration TOML is present at this path."
+                )
                 return False
         except Exception as e:
             logger.debug(f"No existing calibration found: {e}")
@@ -181,6 +197,8 @@ class CalibrationStateTracker:
             self._subset_triangulator_cache.clear()
             self._cam_id_name_cache.clear()
             self._last_incoming_cam_ids = None
+            self._logged_no_visible_pts = False
+            self._logged_all_reproj_bad = False
             return True
         except Exception as e:
             logger.warning(f"Failed to load calibration from {path}: {e}", exc_info=True)
@@ -190,13 +208,13 @@ class CalibrationStateTracker:
         self,
         *,
         frame_number: int,
-        frame_observations_by_camera: dict[CameraIdString, BaseObservation],
+        frame_observations_by_camera: dict[CameraIdString, Observation],
         max_reprojection_error_px: float,
         triangulation_config: TriangulationConfig | None = None,
     ) -> dict[str, NDArray[np.float64]] | None:
         """Attempt triangulation with reprojection error gating.
 
-        Uses to_tracked_points() to get named 2D observations from each camera,
+        Uses to_keypoints() to get named 2D observations from each camera,
         finds points visible in ≥2 cameras, triangulates via DLT, and rejects
         points whose mean reprojection error exceeds max_reprojection_error_px.
 
@@ -225,7 +243,7 @@ class CalibrationStateTracker:
                 self._last_incoming_cam_ids = incoming_cam_ids
 
             # Resolve runtime cam_id -> calibration camera name once per cam.
-            matched_obs_by_cam: dict[str, BaseObservation] = {}
+            matched_obs_by_cam: dict[str, Observation] = {}
             for cam_id, obs in frame_observations_by_camera.items():
                 if cam_id not in self._cam_id_name_cache:
                     self._cam_id_name_cache[cam_id] = _match_camera_name(
@@ -260,71 +278,37 @@ class CalibrationStateTracker:
             ordered_cam_names: list[str] = sub_triangulator.camera_ids
             n_cameras = len(ordered_cam_names)
 
-            # Fast path: when every observation type uses the canonical
-            # PointCloud-only `to_tracked_points` (i.e. doesn't add any extra
-            # named points beyond `obs.points`), and all cameras share the same
-            # PointCloud names tuple, we can stack `xyz[:, :2]` arrays directly
-            # and skip per-keypoint dict construction. RTMPose hits this path.
-            ordered_obs: list[BaseObservation] = [
+            # All observations are now the same Observation type; use to_keypoints()
+            # uniformly. Stack (n_cameras, n_points, 2) then filter to ≥2-camera points.
+            ordered_obs: list[Observation] = [
                 matched_obs_by_cam[c] for c in ordered_cam_names
             ]
-            first_obs = ordered_obs[0]
-            canonical_names: tuple[str, ...] = first_obs.points.names
-            fast_path = (
-                type(first_obs).to_tracked_points is BaseObservation.to_tracked_points
-                and all(
-                    type(o).to_tracked_points is BaseObservation.to_tracked_points
-                    and o.points.names == canonical_names
-                    for o in ordered_obs[1:]
-                )
-            )
+            first_kpts = ordered_obs[0].to_keypoints()
+            canonical_names: tuple[str, ...] = first_kpts.names
 
             _t0 = time.perf_counter()
-            if fast_path:
-                # Build (n_cameras, n_points, 2) by stacking xy slices.
-                stacked = np.stack(
-                    [np.ascontiguousarray(o.points.xy, dtype=np.float64) for o in ordered_obs]
-                )
-                point_names_seq: tuple[str, ...] = canonical_names
-                # Filter to points visible in ≥2 cameras
-                visible_per_point = (~np.isnan(stacked[..., 0])).sum(axis=0)
-                keep_mask = visible_per_point >= 2
-                if not bool(keep_mask.any()):
-                    return {}
-                if not bool(keep_mask.all()):
-                    stacked = stacked[:, keep_mask, :]
-                    point_names_seq = tuple(
-                        n for n, k in zip(canonical_names, keep_mask.tolist()) if k
+            stacked = np.stack(
+                [np.ascontiguousarray(obs.to_keypoints().xyz[:, :2], dtype=np.float64)
+                 for obs in ordered_obs]
+            )
+            point_names_seq: tuple[str, ...] = canonical_names
+            # Filter to points visible in ≥2 cameras
+            visible_per_point = (~np.isnan(stacked[..., 0])).sum(axis=0)
+            keep_mask = visible_per_point >= 2
+            if not bool(keep_mask.any()):
+                if not self._logged_no_visible_pts:
+                    self._logged_no_visible_pts = True
+                    logger.warning(
+                        f"Triangulation frame {frame_number}: no keypoints visible in ≥2 cameras "
+                        f"(all {len(canonical_names)} keypoints are NaN in at least {n_cameras - 1} cameras). "
+                        f"Check that the person is visible to multiple cameras and confidence gating is not too aggressive."
                     )
-            else:
-                # Fallback for observations whose `to_tracked_points` adds extra
-                # named points (e.g. CharucoObservation injects per-aruco-corner
-                # entries). Original dict-based assembly.
-                tracked_by_cam: dict[str, dict[str, NDArray[np.float64]]] = {
-                    cam_name: {
-                        name: np.asarray(pt, dtype=np.float64)[:2]
-                        for name, pt in matched_obs_by_cam[cam_name].to_tracked_points().items()
-                    }
-                    for cam_name in ordered_cam_names
-                }
-                all_point_names: set[str] = set()
-                for pts in tracked_by_cam.values():
-                    all_point_names.update(pts.keys())
-                point_names_list: list[str] = sorted(
-                    name for name in all_point_names
-                    if sum(1 for cam in ordered_cam_names if name in tracked_by_cam[cam]) >= 2
+                return {}
+            if not bool(keep_mask.all()):
+                stacked = stacked[:, keep_mask, :]
+                point_names_seq = tuple(
+                    n for n, k in zip(canonical_names, keep_mask.tolist()) if k
                 )
-                if not point_names_list:
-                    return {}
-                point_names_seq = tuple(point_names_list)
-                stacked = np.full(
-                    (n_cameras, len(point_names_seq), 2), np.nan, dtype=np.float64
-                )
-                for cam_idx, cam_name in enumerate(ordered_cam_names):
-                    cam_points = tracked_by_cam[cam_name]
-                    for pt_idx, pt_name in enumerate(point_names_seq):
-                        if pt_name in cam_points:
-                            stacked[cam_idx, pt_idx, :] = cam_points[pt_name]
             # self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
 
             # Triangulate the single frame
@@ -344,14 +328,28 @@ class CalibrationStateTracker:
             )  # (n_points,)
             bad_mask = mean_reproj_error > max_reprojection_error_px
             if np.any(bad_mask):
+                n_bad = int(np.sum(bad_mask))
+                n_total = len(point_names_seq)
+                if n_bad == n_total and not self._logged_all_reproj_bad:
+                    self._logged_all_reproj_bad = True
+                    logger.warning(
+                        f"Triangulation frame {frame_number}: ALL {n_total} keypoints rejected by "
+                        f"reprojection error gate (threshold={max_reprojection_error_px}px, "
+                        f"min_error={float(mean_reproj_error.min()):.1f}px, "
+                        f"max_error={float(mean_reproj_error.max()):.1f}px). "
+                        f"Calibration may be stale or cameras may have moved. "
+                        f"Try re-running calibration or increasing max_reprojection_error_px in filter settings."
+                    )
                 points_3d[bad_mask] = np.nan
 #             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 
-            # Build result dict, excluding NaN points
+            # Build result dict, excluding NaN points.
+            # Strip the stage prefix that to_keypoints() adds (e.g. "body.nose" → "nose")
+            # so downstream code sees the canonical unprefixed names.
             _t0 = time.perf_counter()
             valid_pt_mask = ~np.isnan(points_3d).any(axis=1)
             result: dict[str, NDArray[np.float64]] = {
-                name: points_3d[i]
+                _strip_stage_prefix(name): points_3d[i]
                 for i, name in enumerate(point_names_seq)
                 if valid_pt_mask[i]
             }

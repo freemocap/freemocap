@@ -1,6 +1,6 @@
 // overlay-renderer-factory.ts
 import {CharucoOverlayRenderer} from './charuco-overlay-renderer';
-import {MediapipeObservation, MediapipeOverlayRenderer} from './mediapipe-overlay-renderer';
+import {SkeletonObservation, SkeletonOverlayRenderer} from './skeleton-overlay-renderer';
 import {BaseOverlayRenderer, ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {CharucoObservation} from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
@@ -51,23 +51,23 @@ export class OverlayRendererFactory {
 /**
  * Manager for handling overlay rendering across multiple cameras.
  *
- * Composites both charuco and mediapipe overlays sequentially onto each
- * frame: source → charuco → mediapipe. Each renderer draws on top of
+ * Composites both charuco and skeleton overlays sequentially onto each
+ * frame: source → charuco → skeleton. Each renderer draws on top of
  * the previous result rather than clearing and redrawing from scratch.
  */
 export class OverlayManager {
     private charucoRenderer: CharucoOverlayRenderer = new CharucoOverlayRenderer();
-    private mediapipeRenderer: MediapipeOverlayRenderer = new MediapipeOverlayRenderer();
+    private skeletonRenderer: SkeletonOverlayRenderer = new SkeletonOverlayRenderer();
 
     /**
      * Composite both overlay types onto a single frame, chained sequentially.
-     * The charuco overlay is drawn first, then mediapipe on top of the result.
+     * The charuco overlay is drawn first, then the skeleton overlay on top.
      */
     public async processFrame(
         cameraId: string,
         sourceBitmap: ImageBitmap,
         charucoObservation: CharucoObservation | null,
-        mediapipeObservation: MediapipeObservation | null,
+        skeletonObservation: SkeletonObservation | null,
     ): Promise<ImageBitmap> {
         let currentBitmap = sourceBitmap;
 
@@ -78,10 +78,10 @@ export class OverlayManager {
             );
         }
 
-        if (mediapipeObservation) {
-            currentBitmap = await this.mediapipeRenderer.compositeFrame(
+        if (skeletonObservation) {
+            currentBitmap = await this.skeletonRenderer.compositeFrame(
                 currentBitmap,
-                mediapipeObservation,
+                skeletonObservation,
             );
         }
 
@@ -93,7 +93,7 @@ export class OverlayManager {
      */
     public setModelInfo(modelInfo: ModelInfo): void {
         this.charucoRenderer.setModelInfo(modelInfo);
-        this.mediapipeRenderer.setModelInfo(modelInfo);
+        this.skeletonRenderer.setModelInfo(modelInfo);
     }
 
     /**
@@ -107,11 +107,11 @@ export class OverlayManager {
     ): void {
         const keys = Object.keys(schemas);
         if (keys.length === 0) {
-            this.mediapipeRenderer.setSchema(null);
+            this.skeletonRenderer.setSchema(null);
             return;
         }
         const id = activeTrackerId && schemas[activeTrackerId] ? activeTrackerId : keys[0];
-        this.mediapipeRenderer.setSchema(schemas[id]);
+        this.skeletonRenderer.setSchema(schemas[id]);
     }
 
     /**
@@ -119,8 +119,8 @@ export class OverlayManager {
      */
     public clearAll(): void {
         this.charucoRenderer.destroy();
-        this.mediapipeRenderer.destroy();
+        this.skeletonRenderer.destroy();
         this.charucoRenderer = new CharucoOverlayRenderer();
-        this.mediapipeRenderer = new MediapipeOverlayRenderer();
+        this.skeletonRenderer = new SkeletonOverlayRenderer();
     }
 }

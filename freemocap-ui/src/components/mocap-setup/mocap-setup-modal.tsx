@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
 import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
-import MOCAPMediaPipeDetectorSettings from "@/components/mocap-setup/mocap-mediapipedetector-settings";
+import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import { useMocap } from "@/hooks/useMocap";
 
@@ -20,8 +20,29 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
   onClose,
   mode = "playback",
 }) => {
-  const { canProcessMocapRecording, isLoading, dispatchProcessMocapRecording } =
-    useMocap();
+  const {
+    canProcessMocapRecording,
+    isLoading,
+    isRecording,
+    mocapRecordingPath,
+    directoryInfo,
+    calibrationTomlPath,
+    dispatchProcessMocapRecording,
+  } = useMocap();
+
+  const processBlockedReason = useMemo((): string | null => {
+    if (canProcessMocapRecording) return null;
+    if (isRecording) return "Stop recording before processing";
+    if (isLoading) return "Processing already in progress";
+    if (!mocapRecordingPath) return "Select a recording folder to process";
+    if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
+    const hasAnyCalibration =
+      !!calibrationTomlPath ||
+      !!directoryInfo?.cameraMocapTomlPath ||
+      !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
+    if (!hasAnyCalibration) return "No calibration file found — select a calibration TOML or run calibration first";
+    return "Cannot process recording";
+  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
   const [activeButton, setActiveButton] = useState<
     "button1" | "button2" | "button3" | "button4" | "button5"
   >("button1");
@@ -122,7 +143,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               onClick={() => scrollToPanel(2)}
             />
             <ButtonSm
-              text="MediaPipe Detector"
+              text="Detector"
               buttonType={activeButton === "button4" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(3)}
@@ -173,13 +194,13 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               />
             </div>
 
-            {/* Panel 4 - MediaPipe Detector */}
+            {/* Panel 4 - Detector */}
             <div
               ref={panel4Ref}
               data-panel="panel4"
               className="bg-secondary p-2 br-1"
             >
-              <MOCAPMediaPipeDetectorSettings open={true} onClose={() => {}} />
+              <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>
 
             {/* Panel 5 - Blender */}
@@ -224,7 +245,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
                 disabled={!canProcessMocapRecording || isLoading}
                 tooltip={true}
                 tooltipPosition="pos-top"
-                tooltipText="Start mocap processing"
+                tooltipText={processBlockedReason ?? "Start mocap processing"}
               />
             ) : (
               <ButtonSm

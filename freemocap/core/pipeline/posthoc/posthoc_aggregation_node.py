@@ -9,7 +9,7 @@ The task function signature must be:
 
     def my_task(
         *,
-        frame_observations: list[dict[CameraIdString, BaseObservation]],
+        frame_observations: list[dict[CameraIdString, Observation]],
         recording_info: RecordingInfo,
         video_metadata: dict[CameraIdString, VideoMetadata],
         reporter: TaskProgressReporter | None = None,

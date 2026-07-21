@@ -1,31 +1,33 @@
 """
-VideoNode: reads frames from a video file, runs a detector, publishes observations.
+VideoNode: reads frames from a video file, runs a tracker, publishes observations.
 
-Generic video processing node parameterized by BaseDetectorConfig — the same node
-handles charuco detection, mediapipe detection, or any future detector type.
+Generic video processing node parameterized by TrackerConfig — the same node
+handles charuco detection, RTMPose skeleton detection, or any future tracker type.
 
 Optionally saves annotated video output. If an existing annotated video is found
 in the annotated_videos/ folder, new annotations are drawn on top of those frames
-(allowing layering of e.g. charuco + mediapipe annotations). Otherwise, annotations
+(allowing layering of e.g. charuco + skeleton annotations). Otherwise, annotations
 are drawn on the source video frames.
 """
 import csv
 import logging
 import multiprocessing
 import pickle
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import cv2
 from tqdm import tqdm
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseDetectorConfig, BaseObservation
-from skellytracker.trackers.base_tracker.detector_helpers import create_detector_from_config, \
-    create_annotator_from_config
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
-from skellytracker.trackers.charuco_tracker.charuco_tracker_config import CharucoDetectorConfig
-from skellytracker.trackers.charuco_tracker.charuco_board_definition import CharucoBoardDefinition
+from skellytracker.core import TrackerConfig
+from skellytracker.core.data_primitives.observation import Observation
+from skellytracker.core.detectors.keypoint_detectors.charuco import (
+    CharucoDetectorConfig,
+    CharucoBoardDefinition,
+)
+from skellytracker.core.tracker.tracker import Tracker
+from skellytracker.core.tracker.tracker_state import TrackerState
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -43,6 +45,115 @@ from freemocap.system.default_paths import ANNOTATED_VIDEOS_FOLDER_NAME
 logger = logging.getLogger(__name__)
 
 
+def _is_charuco_config(tracker_config: TrackerConfig) -> bool:
+    """Return True if this TrackerConfig is for charuco board detection."""
+    for stage in tracker_config.stages:
+        for kp_det in stage.keypoint_detectors:
+            if isinstance(kp_det, CharucoDetectorConfig):
+                return True
+    return False
+
+
+def _extract_board_def(tracker_config: TrackerConfig) -> CharucoBoardDefinition:
+    for stage in tracker_config.stages:
+        for kp_det in stage.keypoint_detectors:
+            if isinstance(kp_det, CharucoDetectorConfig):
+                return kp_det.board
+    return CharucoBoardDefinition.create_letter_size_5x3()
+
+
+def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
+    """Return True if this TrackerConfig uses MediaPipe keypoint detectors."""
+    try:
+        from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
+            MediapipePoseDetectorConfig,
+        )
+    except ImportError:
+        return False
+    for stage in tracker_config.stages:
+        for kp_det in stage.keypoint_detectors:
+            if isinstance(kp_det, MediapipePoseDetectorConfig):
+                return True
+    return False
+
+
+def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
+    """Build a (Tracker, session) pair from a TrackerConfig.
+
+    For charuco configs, returns (Tracker, CpuSession).
+    For mediapipe configs, returns (Tracker, MediaPipeSession).
+    For RTMPose/ONNX configs, returns (Tracker, OnnxSession).
+    """
+    from freemocap.core.tracking.tracker_factory import (
+        build_charuco_tracker,
+        build_skeleton_onnx_session,
+    )
+    from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
+    from skellytracker.core.tracker.tracker import Tracker
+
+    if _is_charuco_config(tracker_config):
+        board_def = _extract_board_def(tracker_config)
+        return build_charuco_tracker(board_def)
+
+    if _is_mediapipe_config(tracker_config):
+        import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
+        from skellytracker.core.sessions.mediapipe_session import (
+            MediaPipeSession,
+            MediaPipeSessionConfig,
+        )
+        session = MediaPipeSession.create(MediaPipeSessionConfig())
+        tracker = Tracker.create(tracker_config, {"mediapipe": session})
+        return tracker, session
+
+    model_name = "rtmw-x-l_256x192"
+    for stage in tracker_config.stages:
+        for kp_det in stage.keypoint_detectors:
+            if isinstance(kp_det, RTMPoseDetectorConfig):
+                model_name = kp_det.model_name
+                break
+    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
+    tracker = Tracker.create(tracker_config, {"onnx": onnx_session})
+    return tracker, onnx_session
+
+
+def _build_annotator(tracker_config: TrackerConfig):
+    """Build an Annotator for the given TrackerConfig."""
+    from skellytracker.core.annotation.keypoint_annotator import (
+        KeypointAnnotator,
+        KeypointAnnotatorConfig,
+    )
+    from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_observation_annotator import (
+        CharucoObservationAnnotator,
+        _CharucoObservationAnnotatorConfig,
+    )
+
+    if _is_charuco_config(tracker_config):
+        board_def = _extract_board_def(tracker_config)
+        return CharucoObservationAnnotator.create(
+            _CharucoObservationAnnotatorConfig(board_def=board_def)
+        )
+
+    from freemocap.core.pipeline.posthoc.annotation_style import build_skeleton_stage_schema
+    from freemocap.core.tracking.tracker_definitions import (
+        MEDIAPIPE_WHOLEBODY_DEFINITION,
+        RTMPOSE_WHOLEBODY_DEFINITION,
+    )
+
+    tracker_definition = (
+        MEDIAPIPE_WHOLEBODY_DEFINITION
+        if _is_mediapipe_config(tracker_config)
+        else RTMPOSE_WHOLEBODY_DEFINITION
+    )
+    return KeypointAnnotator(
+        config=KeypointAnnotatorConfig(
+            stage_schemas={
+                "body": build_skeleton_stage_schema(
+                    tracker_definition.connections, tracker_definition.tracked_points
+                )
+            }
+        )
+    )
+
 
 @dataclass
 class VideoNode(SourceNode):
@@ -56,7 +167,7 @@ class VideoNode(SourceNode):
         *,
         camera_id: CameraIdString,
         video_path: Path,
-        detector_config: BaseDetectorConfig,
+        detector_config: TrackerConfig,
         worker_registry: WorkerRegistry,
         ipc: PipelineIPC,
         pubsub: PubSubTopicManager,
@@ -100,23 +211,11 @@ class VideoNode(SourceNode):
         recording_path: Path,
         video_path: Path,
     ) -> tuple[Path, Path | None]:
-        """
-        Determine the output path for the annotated video and check if an
-        existing annotated video can be used as the base for layered annotation.
-
-        Returns:
-            (output_path, existing_base_path_or_none)
-        """
         annotated_dir = recording_path / ANNOTATED_VIDEOS_FOLDER_NAME
         annotated_dir.mkdir(parents=True, exist_ok=True)
 
         output_path = annotated_dir / f"{video_path.stem}_annotated{video_path.suffix}"
 
-
-
-
-        # If an annotated video already exists, rename it so we can read from it
-        # while writing the new layered version
         existing_base_path: Path | None = None
         if output_path.exists():
             existing_base_path = output_path.with_suffix(
@@ -137,7 +236,7 @@ class VideoNode(SourceNode):
         *,
         camera_id: CameraIdString,
         video_path: Path,
-        detector_config: BaseDetectorConfig,
+        detector_config: TrackerConfig,
         ipc: PipelineIPC,
         video_output_pub: TopicPublicationQueue,
         video_progress_pub: TopicPublicationQueue,
@@ -147,28 +246,20 @@ class VideoNode(SourceNode):
         pipeline_id: PipelineIdString,
         pipeline_type: PosthocPipelineType,
     ) -> None:
-        # Compound pipeline_id groups this camera node under the base pipeline on the frontend.
         node_pipeline_id = f"{pipeline_id}:{camera_id}"
-        # Emit immediately so the frontend shows the pipeline before the (potentially slow) model load.
         video_progress_pub.put(VideoNodeProgressMessage(
             camera_id=camera_id,
             pipeline_id=node_pipeline_id,
             pipeline_type=str(pipeline_type),
             phase=VideoNodePhase.SETTING_UP,
             progress_fraction=0.0,
-            detail="Loading detector...",
+            detail="Loading tracker...",
             recording_name=recording_path.name,
             recording_path=str(recording_path),
         ))
-        detector = create_detector_from_config(detector_config)
+        tracker, session = _build_tracker(detector_config)
+        tracker_state = TrackerState()
 
-        # Try to reuse Charuco observations captured by the realtime pipeline
-        # during the calibration recording. The cache is keyed by connection frame
-        # number; the recording's timestamps CSV maps each recorded (positional)
-        # video frame to its connection frame number. We resolve both into a
-        # {recording_frame_number: observation} map so detection is skipped only for
-        # frames we actually have — every miss falls back to detection, so the
-        # result is identical to a full detect, just faster.
         cache = _build_recording_frame_cache(
             recording_path=recording_path,
             camera_id=camera_id,
@@ -195,7 +286,6 @@ class VideoNode(SourceNode):
             recording_path=str(recording_path),
         ))
 
-        # Set up annotation pipeline if requested
         annotator = None
         video_writer: cv2.VideoWriter | None = None
         base_reader: cv2.VideoCapture | None = None
@@ -205,13 +295,12 @@ class VideoNode(SourceNode):
         _error_occurred = False
         try:
             if save_annotated_video:
-                annotator = create_annotator_from_config(detector_config)
+                annotator = _build_annotator(detector_config)
                 annotated_output_path, prev_annotated_path = VideoNode._resolve_annotated_video_paths(
                     recording_path=recording_path,
                     video_path=video_path,
                 )
 
-                # Open base reader if we have a previous annotated video to layer on
                 if prev_annotated_path is not None:
                     base_reader = cv2.VideoCapture(str(prev_annotated_path), cv2.CAP_FFMPEG)
                     if not base_reader.isOpened():
@@ -221,13 +310,9 @@ class VideoNode(SourceNode):
                         )
                         base_reader = None
 
-                # Create video writer matching source video properties
                 fps = video_reader.get(cv2.CAP_PROP_FPS)
                 width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
                 height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
-                # Prefer H.264 ("avc1") so annotated videos play directly in browsers/Electron's
-                # <video> element. Fall back to "mp4v" if the local OpenCV/ffmpeg build lacks an
-                # H.264 encoder — playable in desktop players but not in <video> tags.
                 video_writer = cv2.VideoWriter(
                     str(annotated_output_path), cv2.VideoWriter_fourcc(*"avc1"), fps, (width, height)
                 )
@@ -235,7 +320,7 @@ class VideoNode(SourceNode):
                     video_writer.release()
                     logger.warning(
                         f"H.264 ('avc1') encoder unavailable for {video_path.stem} — "
-                        f"falling back to 'mp4v' (annotated video will not play in browser <video> tags)"
+                        f"falling back to 'mp4v'"
                     )
                     video_writer = cv2.VideoWriter(
                         str(annotated_output_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height)
@@ -258,10 +343,11 @@ class VideoNode(SourceNode):
             ) as pbar:
                 success, image = video_reader.read()
                 while success and not shutdown_self_flag.value and ipc.should_continue:
-                    observation = _get_observation(
+                    observation, tracker_state = _get_observation(
                         frame_number=frame_number,
                         image=image,
-                        detector=detector,
+                        tracker=tracker,
+                        state=tracker_state,
                         cache=cache,
                     )
                     video_output_pub.put(
@@ -272,9 +358,7 @@ class VideoNode(SourceNode):
                         ),
                     )
 
-                    # Annotate and write frame if enabled
                     if annotator is not None and video_writer is not None:
-                        # Use previous annotated frame as base if available, else source frame
                         if base_reader is not None:
                             base_ok, base_frame = base_reader.read()
                             if not base_ok or base_frame is None:
@@ -290,10 +374,7 @@ class VideoNode(SourceNode):
                         else:
                             annotation_base = image
 
-                        annotated_frame = annotator.annotate_image(
-                            image=annotation_base,
-                            observation=observation,
-                        )
+                        annotated_frame = annotator.annotate(annotation_base, observation)
                         video_writer.write(annotated_frame)
 
                     success, image = video_reader.read()
@@ -331,10 +412,8 @@ class VideoNode(SourceNode):
                 recording_path=str(recording_path),
             ))
             ipc.shutdown_pipeline()
-            # Do NOT re-raise: unhandled exceptions here kill the worker, and the WorkerRegistry
-            # child monitor escalates that to a parent-process shutdown (exit code 15).
-            # The error is surfaced via the progress message so the frontend can report it.
         finally:
+            tracker.close()
             video_reader.release()
             if not _error_occurred:
                 video_progress_pub.put(VideoNodeProgressMessage(
@@ -350,7 +429,6 @@ class VideoNode(SourceNode):
                 video_writer.release()
             if base_reader is not None:
                 base_reader.release()
-            # Clean up the .prev file after we're done reading from it
             if prev_annotated_path is not None and prev_annotated_path.exists():
                 prev_annotated_path.unlink()
             logger.debug(f"VideoNode for {video_path.stem} exiting")
@@ -373,19 +451,9 @@ def _build_recording_frame_cache(
     *,
     recording_path: Path,
     camera_id: CameraIdString,
-    detector_config: BaseDetectorConfig,
-) -> dict[int, BaseObservation] | None:
-    """Resolve the realtime cache into a {recording_frame_number: observation} map.
-
-    The realtime cache is keyed by connection frame number; the recording's
-    per-camera timestamps CSV maps each recorded (positional) video frame to its
-    connection frame number. BOTH are required to align: a cache with no CSV cannot
-    be trusted to any video frame, so we detect everything in that case.
-
-    Returns ``None`` (→ full detection) when the cache is absent/inapplicable or
-    cannot be aligned. Otherwise returns only the frames we have observations for;
-    the caller detects every frame not present in the returned map.
-    """
+    detector_config: TrackerConfig,
+) -> dict[int, Observation] | None:
+    """Resolve the realtime cache into a {recording_frame_number: observation} map."""
     cache_by_connection_frame = _load_cache_by_connection_frame(
         recording_path=recording_path,
         camera_id=camera_id,
@@ -405,11 +473,13 @@ def _build_recording_frame_cache(
         )
         return None
 
-    cache_by_recording_frame: dict[int, BaseObservation] = {}
+    cache_by_recording_frame: dict[int, Observation] = {}
     for recording_frame_number, connection_frame_number in recording_to_connection.items():
         observation = cache_by_connection_frame.get(connection_frame_number)
         if observation is not None:
-            cache_by_recording_frame[recording_frame_number] = observation
+            cache_by_recording_frame[recording_frame_number] = replace(
+                observation, frame_number=recording_frame_number
+            )
 
     if not cache_by_recording_frame:
         logger.info(
@@ -429,24 +499,12 @@ def _load_cache_by_connection_frame(
     *,
     recording_path: Path,
     camera_id: CameraIdString,
-    detector_config: BaseDetectorConfig,
-) -> dict[int, BaseObservation] | None:
-    """Load this camera's realtime observations keyed by connection frame number.
-
-    Returns ``None`` when the cache is missing or genuinely does not apply (a
-    non-Charuco detector, or a board that does not match). A cache that exists but
-    is structurally wrong is logged LOUDLY and rejected — never silently swallowed.
-    """
-    # The cache only applies to Charuco calibration detection. We compare against
-    # the board directly (both CharucoBoardDefinition) rather than the detector
-    # config's delegating properties, which are NOT 1:1 — e.g. the config exposes
-    # ``square_length``, not ``square_length_mm``. Accessing the latter is what
-    # previously raised AttributeError and got silently swallowed, disabling the
-    # whole feature without a trace.
-    if not isinstance(detector_config, CharucoDetectorConfig):
+    detector_config: TrackerConfig,
+) -> dict[int, Observation] | None:
+    """Load realtime charuco observations keyed by connection frame number."""
+    if not _is_charuco_config(detector_config):
         logger.debug(
-            f"VideoNode [{camera_id}]: detector is "
-            f"{type(detector_config).__name__}, not Charuco — realtime cache N/A"
+            f"VideoNode [{camera_id}]: not a charuco config — realtime cache N/A"
         )
         return None
 
@@ -456,10 +514,6 @@ def _load_cache_by_connection_frame(
         return None
 
     try:
-        # Trusted source: this pickle was written by our own CharucoRecorderNode
-        # into this recording's output_data folder during the same session. It
-        # holds typed objects (CharucoObservation with numpy arrays, the pydantic
-        # board) that aren't cleanly JSON-serializable, so pickle is appropriate.
         with open(cache_path, "rb") as f:
             cache_data = pickle.load(f)
     except Exception:
@@ -475,11 +529,11 @@ def _load_cache_by_connection_frame(
         logger.warning(
             f"VideoNode [{camera_id}]: cache board_definition is "
             f"{type(cached_board).__name__}, expected CharucoBoardDefinition — "
-            f"rejecting cache (cache-format bug, not an expected miss)"
+            f"rejecting cache (stale cache format)"
         )
         return None
 
-    request_board = detector_config.board
+    request_board = _extract_board_def(detector_config)
     if (
         cached_board.squares_x != request_board.squares_x
         or cached_board.squares_y != request_board.squares_y
@@ -515,8 +569,7 @@ def _load_cache_by_connection_frame(
     if not isinstance(obs_by_connection_frame, dict):
         logger.warning(
             f"VideoNode [{camera_id}]: cached observations are "
-            f"{type(obs_by_connection_frame).__name__}, expected a dict keyed by "
-            f"connection frame number (stale cache format?) — rejecting cache"
+            f"{type(obs_by_connection_frame).__name__}, expected dict — rejecting cache"
         )
         return None
 
@@ -532,13 +585,6 @@ def _load_recording_to_connection_frame_map(
     recording_path: Path,
     camera_id: CameraIdString,
 ) -> dict[int, int] | None:
-    """Map recording_frame_number (positional video index) → connection_frame_number.
-
-    Reads skellycam's per-camera timestamps CSV — the authoritative record of which
-    connection frame each recorded video frame came from, written during recording
-    finalization. Returns ``None`` (→ full detection) if the CSV is missing or
-    unreadable.
-    """
     recording_info = RecordingInfo(
         recording_name=recording_path.name,
         recording_directory=str(recording_path.parent),
@@ -573,23 +619,13 @@ def _get_observation(
     *,
     frame_number: int,
     image,
-    detector,
-    cache: dict[int, BaseObservation] | None,
-) -> BaseObservation:
-    """Get observation for a frame — from cache if available, else detect.
-
-    ``cache`` is keyed by recording_frame_number (the positional video index), so a
-    hit is the realtime observation for exactly this frame. We re-stamp its
-    ``frame_number`` to the recording index so cached and detected observations share
-    identical frame numbering downstream (anipose rows, cross-camera correspondence).
-    The video I/O loop is otherwise unchanged.
-    """
+    tracker: Tracker,
+    state: TrackerState,
+    cache: dict[int, Observation] | None,
+) -> tuple[Observation, TrackerState]:
+    """Get observation for a frame — from cache if available, else detect."""
     if cache is not None and frame_number in cache:
         observation = cache[frame_number]
-        observation.frame_number = frame_number
-        return observation
+        return observation, state
 
-    return detector.detect(
-        frame_number=frame_number,
-        image=image,
-    )
+    return tracker.process_image(image, frame_number, state)

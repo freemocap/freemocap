@@ -84,28 +84,42 @@ hiddenimports.extend([
 # skellytracker's rtmpose_detector does `find_spec("nvidia")` +
 # `nvidia_root.glob("*/bin")` at runtime to discover CUDA libraries.
 #
-# Included — required by ONNX Runtime CUDA execution provider:
-#   nvidia.cublas       (737 MB) — GEMM/BLAS for GPU tensor ops
-#   nvidia.cuda_runtime  (11 MB) — core CUDA runtime (cudart)
-#   nvidia.cudnn       (1006 MB) — cuDNN: primitives for deep neural network inference
+# `onnxruntime_providers_cuda.dll` imports exactly five CUDA libraries. All five
+# must be bundled or the provider DLL fails to load, ONNX Runtime silently drops
+# CUDAExecutionProvider from its list, and every model runs on CPU (~1-2 fps
+# instead of ~20). Verified against the provider DLL's PE import table:
+#   cublas64_12.dll + cublaslt64_12.dll  <- nvidia.cublas       (737 MB)
+#   cudart64_12.dll                      <- nvidia.cuda_runtime  (11 MB)
+#   cudnn64_9.dll                        <- nvidia.cudnn       (1006 MB)
+#   cufft64_11.dll                       <- nvidia.cufft        (275 MB)
 #
-# Excluded — only needed by TensorRT EP (not currently functional):
-#   nvidia.cufft        (275 MB) — FFT library, not used by ONNX inference
-#   nvidia.cuda_nvrtc   (179 MB) — runtime compilation, TensorRT-only
-#   nvidia.nvjitlink     (84 MB) — JIT linker, TensorRT-only
-for nvidia_subpkg in [
-    'nvidia.cublas',
-    'nvidia.cuda_runtime',
-    'nvidia.cudnn',
-]:
-    try:
-        nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
-        datas.extend(nv_datas)
-        binaries.extend(nv_binaries)
-        hiddenimports.extend(nv_hidden)
-    except Exception as e:
-        print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
-              f"— GPU acceleration may not work in the frozen build. ({e})")
+# Excluded — imported by neither the CUDA provider nor its transitive deps:
+#   nvidia.cuda_nvrtc   (179 MB) — runtime NVRTC compilation
+#   nvidia.nvjitlink     (84 MB) — JIT linker
+#
+# Skipped entirely for CPU-only builds (`FREEMOCAP_BUILD_VARIANT=cpu`, set by
+# the CI matrix's `variant` axis) — those envs never install the `nvidia.*`
+# packages in the first place, since `uv sync --extra cpu` pulls
+# skellytracker[all-cpu] instead of [all-cuda].
+build_variant = os.environ.get('FREEMOCAP_BUILD_VARIANT', 'cuda').lower()
+if build_variant == 'cuda':
+    for nvidia_subpkg in [
+        'nvidia.cublas',
+        'nvidia.cuda_runtime',
+        'nvidia.cudnn',
+        'nvidia.cufft',
+    ]:
+        try:
+            nv_datas, nv_binaries, nv_hidden = collect_all(nvidia_subpkg)
+            datas.extend(nv_datas)
+            binaries.extend(nv_binaries)
+            hiddenimports.extend(nv_hidden)
+        except Exception as e:
+            print(f"[freemocap.spec] WARNING: could not collect '{nvidia_subpkg}' "
+                  f"— GPU acceleration may not work in the frozen build. ({e})")
+else:
+    print(f"[freemocap.spec] FREEMOCAP_BUILD_VARIANT={build_variant} — "
+          f"skipping NVIDIA CUDA runtime bundling (CPU-only build).")
 
 # ── onnxruntime (GPU build — only DLLs + capi bindings; exclude dev tools) ──
 binaries.extend(collect_dynamic_libs('onnxruntime'))
@@ -205,21 +219,29 @@ pyz = PYZ(a.pure, a.zipped_data)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name='freemocap_server',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
     upx_exclude=['nvcuda', 'nvrtc', 'cudnn', 'cublas', 'cufft', 'cudart'],
-    runtime_tmpdir=None,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=['nvcuda', 'nvrtc', 'cudnn', 'cublas', 'cufft', 'cudart'],
+    name='freemocap_server',
 )

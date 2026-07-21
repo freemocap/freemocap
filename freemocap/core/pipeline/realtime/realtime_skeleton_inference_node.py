@@ -1,28 +1,31 @@
 """
-RealtimeSkeletonInferenceNode: dedicated GPU worker that owns one ONNX session
-for skeleton detection and serves all cameras via batched inference.
+RealtimeSkeletonInferenceNode: centralized worker that owns one tracker session
+for skeleton detection and serves all cameras from a single process.
 
 Why this exists:
-  Per-camera RTMPoseDetector construction (the legacy path) creates one CUDA
-  context per camera process. On consumer Windows GPUs there is no cooperative
-  context scheduling (no MPS), so N processes hammering one GPU serialize
-  kernel-by-kernel and pay per-context overhead. This node centralizes
-  inference: one CUDA context, one batched ONNX call per multi-camera frame.
+  Per-camera processes (the legacy path) pay IPC serialization cost to transfer
+  frames from shared memory to each camera process. This node eliminates that
+  overhead by reading all camera ring buffers directly and dispatching inference
+  in one call.
+
+  For ONNX-backed trackers (RTMPose): one CUDA context, one batched ORT call per
+  multi-camera frame avoids per-context overhead on consumer GPUs without MPS.
+
+  For MediaPipe: no batch tensor API exists, but process_batch dispatches per-camera
+  detectors via a ThreadPoolExecutor, exploiting MediaPipe's GIL-releasing C++
+  inference for real concurrency within a single process.
 
 Topology:
-  - Subscribes to ProcessFrameNumberTopic (the same topic the camera nodes
-    use as their "process frame N" trigger).
-  - Reads frame N's image directly from each camera's shared-memory ring buffer
-    (the same DTO the aggregator already gets).
-  - Calls RTMPoseSession.predict_batch(images) — one session.run for all cameras.
-  - Publishes a single SkeletonInferenceResultMessage per frame, keyed by
-    frame_number, with per-camera RTMPoseObservation.
-  - The aggregator merges this with per-camera CameraNodeOutputMessage
-    (charuco-only in GPU mode) by frame_number.
+  - Subscribes to ProcessFrameNumberTopic (same trigger the camera nodes use).
+  - Reads frame N's image directly from each camera's shared-memory ring buffer.
+  - Calls tracker.process_batch(images_dict, ...) — one call for all cameras.
+  - Publishes a SkeletonInferenceResultMessage per frame with per-camera Observations.
+  - The aggregator merges this with per-camera CameraNodeOutputMessage (charuco only
+    in centralized mode) by frame_number.
 
 Backpressure:
   Drains ProcessFrameNumberTopic to the latest message every iteration; older
-  messages are dropped rather than queued. If the GPU falls behind the camera
+  messages are dropped rather than queued. If inference falls behind the camera
   group's frame rate, we lose frames instead of accumulating lag.
 """
 import gc
@@ -49,19 +52,10 @@ from skellycam.core.types.type_overloads import (
     TopicSubscriptionQueue,
 )
 from skellycam.utilities.wait_functions import wait_1ms
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseObservation
-from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetectorConfig
-from skellytracker.trackers.rtmpose_tracker.rtmpose_observation import RTMPoseObservation
-from skellytracker.trackers.rtmpose_tracker.rtmpose_session import (
-    RTMPoseSession,
-    RTMPoseSessionConfig,
-)
-from skellytracker.trackers.rtmpose_tracker.rtmpose_annotator import (
-    draw_text_with_background,
-)
-from skellytracker.trackers.rtmpose_tracker.rtmpose_tracking_state import (
-    PersonTrackingState,
-)
+from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
+from skellytracker.core.tracker.tracker import Tracker
+from skellytracker.core.tracker.tracker_state import TrackerState  # noqa: TC002
+from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
@@ -84,7 +78,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RealtimeSkeletonInferenceNode(SourceNode):
-    """Worker node that hosts one batched RTMPoseSession for all cameras."""
+    """Worker node that centralizes skeleton inference for all cameras."""
 
     @classmethod
     def create(
@@ -140,9 +134,6 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             shm_dto=camera_group_shm_dto,
             read_only=True,
         )
-        # Per-camera ring buffer handles for direct image reads. We mirror
-        # `camera_node.py`'s recreate call but read-only since this worker
-        # never writes frames.
         camera_shms: dict[CameraIdString, CameraSharedMemoryRingBuffer] = {
             camera_id: CameraSharedMemoryRingBuffer.recreate(
                 dto=camera_group_shm_dto.camera_shm_dtos[camera_id],
@@ -151,39 +142,37 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             for camera_id in camera_ids
         }
 
-        session = _build_session(pipeline_config)
-        if session is None:
+        tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+        if tracker is None:
             logger.error(
                 f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
-                f"construct RTMPoseSession; exiting."
+                f"construct tracker/session; exiting."
             )
             ipc.kill_everything()
             return
 
         log_pipeline_times = pipeline_config.log_pipeline_times
-        timer = PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}") if log_pipeline_times else None
+        timer = (
+            PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+            if log_pipeline_times else None
+        )
         _MAX_SESSION_RESTARTS = 3
         session_restart_count = 0
-        # Per-camera scratch recarrays (avoids reallocating each frame).
+
         frame_recarrays: dict[CameraIdString, np.recarray | None] = {
             cam_id: None for cam_id in camera_ids
         }
-        # Per-camera tracking state for YOLOX-skip logic. When tracking is
-        # enabled, these are threaded through predict_batch_with_tracking()
-        # and updated each frame with the latest bbox + pose confidence.
-        tracking_states: dict[CameraIdString, PersonTrackingState] = {
-            cam_id: PersonTrackingState() for cam_id in camera_ids
-        }
+        # Per-camera temporal state; empty dict means first frame auto-inits.
+        tracker_states: dict[CameraIdString, TrackerState] = {}
 
         try:
             logger.debug(
-                f"RealtimeSkeletonInferenceNode [{camera_group_id}] entering main loop "
-                f"(active_provider={session.active_provider!r})"
+                f"RealtimeSkeletonInferenceNode [{camera_group_id}] entering main loop"
             )
             while ipc.should_continue and not shutdown_self_flag.value:
                 wait_1ms()
 
-                # ---- Handle config updates (only act on flips that change session shape) ----
+                # ---- Handle config updates ----
                 while True:
                     try:
                         msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
@@ -192,8 +181,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     pipeline_config = msg.pipeline_config
                     logger.debug(
                         f"RealtimeSkeletonInferenceNode [{camera_group_id}] "
-                        f"received config update (no hot-reload of session; "
-                        f"changes to detector mode require a pipeline restart)"
+                        f"received config update (session changes require pipeline restart)"
                     )
 
                 # ---- Drain to latest frame number (drop stale) ----
@@ -233,53 +221,30 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     timer.record("frame_read", (time.perf_counter() - t_read) * 1e3)
 
                 if not images:
-                    # Ring buffer didn't have the frame for any camera (e.g.     
-                    # overwritten during slow init). Publish a null result so the
-                    # aggregator doesn't hang waiting for a result that never comes.                                                                              
-                    skeleton_result_pub.put(                                     
-                        SkeletonInferenceResultMessage(                          
-                            frame_number=requested_frame_number,                 
-                            per_camera_skeleton={cam_id: None for cam_id in camera_ids},                                                                          
-                        ),                                                       
-                    )          
+                    skeleton_result_pub.put(
+                        SkeletonInferenceResultMessage(
+                            frame_number=requested_frame_number,
+                            per_camera_skeleton={cam_id: None for cam_id in camera_ids},
+                        ),
+                    )
+                    continue
 
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter() if timer is not None else 0.0
+                images_dict = {
+                    cam_id: img
+                    for cam_id, img in zip(ordered_camera_ids, images)
+                }
                 try:
-                    if session._tracking_enabled:
-                        # Build tracking state list parallel to ordered_camera_ids.
-                        states_list = [
-                            tracking_states[cid] for cid in ordered_camera_ids
-                        ]
-                        batch_results, updated_states = (
-                            session.predict_batch_with_tracking(
-                                images, states_list,
-                            )
-                        )
-                        # Write back updated states.
-                        for cid, new_state in zip(
-                            ordered_camera_ids, updated_states,
-                        ):
-                            tracking_states[cid] = new_state
-
-                        # ---- Debug: draw bboxes on inference images ----
-                        if pipeline_config.skeleton_inference_node_config.debug_draw_bboxes:
-                            _debug_write_bbox_frames(
-                                camera_ids=ordered_camera_ids,
-                                images=images,
-                                tracking_states=updated_states,
-                                frame_number=requested_frame_number,
-                            )
-                    else:
-                        batch_results = session.predict_batch(images)
+                    observations, tracker_states = tracker.process_batch(
+                        images_dict, requested_frame_number, tracker_states
+                    )
                 except Exception as mem_err:
-                    # Catch Python MemoryError (raised by rtmpose_session when it
-                    # detects a BFC Arena OOM) and any ONNX RuntimeException that
-                    # slips through with an OOM message — both indicate GPU VRAM
-                    # exhaustion and should trigger the session restart below.
-                    if not (isinstance(mem_err, MemoryError)
-                            or "BFCArena" in str(mem_err)
-                            or "Available memory" in str(mem_err)):
+                    if not (
+                        isinstance(mem_err, MemoryError)
+                        or "BFCArena" in str(mem_err)
+                        or "Available memory" in str(mem_err)
+                    ):
                         raise
                     logger.error(
                         f"RealtimeSkeletonInferenceNode [{camera_group_id}] GPU OOM during "
@@ -293,64 +258,42 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         )
                         ipc.kill_everything()
                         return
-                    del session
+                    tracker.close()
                     gc.collect()
-                    session = _build_session(pipeline_config)
-                    if session is None:
+                    tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+                    if tracker is None:
                         logger.error(
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
-                            f"session after MemoryError — giving up."
+                            f"tracker after MemoryError — giving up."
                         )
                         ipc.kill_everything()
                         return
+                    tracker_states = {}
                     session_restart_count += 1
                     logger.info(
-                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] session rebuilt "
+                        f"RealtimeSkeletonInferenceNode [{camera_group_id}] tracker rebuilt "
                         f"successfully after MemoryError."
                     )
-                    continue  # skip this frame, resume on next
+                    continue
+
                 if timer is not None:
                     inf_ms = (time.perf_counter() - t_inf) * 1e3
                     timer.record("predict_batch", inf_ms)
-                    # Per-camera-equivalent latency, for comparing with the legacy
-                    # per-camera `skeleton_detection` timer in camera_node logs.
                     timer.record("predict_per_camera", inf_ms / max(len(images), 1))
 
-                # ---- Build per-camera observations ----
-                per_camera_skeleton: dict[CameraIdString, BaseObservation | None] = {}
-                bboxes = session.last_bboxes
-                bbox_from_det = session.last_bboxes_from_detector
-                conf_threshold: float = (
-                    pipeline_config.camera_node_config.skeleton_detector_config.confidence_threshold
-                    if pipeline_config.camera_node_config.skeleton_detector_config is not None
-                    else 0.004
-                )
-                for idx, (camera_id, image, (keypoints, scores)) in enumerate(
-                        zip(ordered_camera_ids, images, batch_results),
-                ):
-                    raw_bb = bboxes[idx] if bboxes and idx < len(bboxes) else None
-                    cam_bbox = (
-                        np.asarray(raw_bb, dtype=np.float64) if raw_bb is not None and len(raw_bb) > 0 else None
-                    )
-                    cam_bbox_src = (
-                        bbox_from_det[idx] if bbox_from_det and idx < len(bbox_from_det) else True
-                    )
-                    obs = RTMPoseObservation.from_detection_results(
-                        frame_number=requested_frame_number,
-                        keypoints=keypoints,
-                        scores=scores,
-                        image_size=(int(image.shape[0]), int(image.shape[1])),
-                        bbox=cam_bbox,
-                        bbox_from_detector=cam_bbox_src,
-                    )
-                    # ---- Confidence gating: NaN-out low-confidence 2D keypoints ----
-                    low_conf = obs.points.visibility < conf_threshold
-                    if low_conf.any():
-                        obs.points.xyz[low_conf, :2] = np.nan
+                # ---- Apply confidence gating per camera ----
+                conf_threshold = pipeline_config.camera_node_config.confidence_threshold
+                per_camera_skeleton: dict[CameraIdString, Observation | None] = {}
+                for camera_id, obs in observations.items():
+                    body_stage = obs.stages.get("body")
+                    if body_stage is not None and body_stage.keypoints is not None:
+                        kpts = body_stage.keypoints
+                        low_conf = kpts.visibility < conf_threshold
+                        if low_conf.any():
+                            kpts.xyz[low_conf, :2] = np.nan
                     per_camera_skeleton[camera_id] = obs
-                # Cameras whose frame we couldn't read get None — aggregator
-                # treats this as "no skeleton this frame for this camera"
-                # (same semantics as today's missing-detection path).
+
+                # Cameras whose frame we couldn't read get None.
                 for camera_id in camera_ids:
                     per_camera_skeleton.setdefault(camera_id, None)
 
@@ -374,6 +317,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             ipc.kill_everything()
             raise
         finally:
+            if tracker is not None:
+                tracker.close()
             logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] exiting")
 
 
@@ -382,56 +327,61 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 # ---------------------------------------------------------------------------
 
 
-def _build_session(pipeline_config: RealtimePipelineConfig) -> RTMPoseSession | None:
-    """Construct the centralized RTMPoseSession from the pipeline config.
+def _build_session_and_tracker(
+    pipeline_config: RealtimePipelineConfig,
+    num_cameras: int = 1,
+) -> tuple[Tracker | None, object | None]:
+    """Construct the session and Tracker from the pipeline config.
 
-    Reads model size / mode from `camera_node_config.skeleton_detector_config`
-    so a single source of truth governs which model is used in either pipeline
-    mode. Reads provider / cache settings from `skeleton_inference_node_config`.
-    Returns None if the skeleton detector isn't an RTMPose config (caller
-    should treat this as a fatal misconfiguration in GPU mode).
+    Returns (None, None) on failure — caller should treat this as fatal.
     """
-    skel_config = pipeline_config.camera_node_config.skeleton_detector_config
-    if not isinstance(skel_config, RTMPoseDetectorConfig):
-        logger.warning(
-            f"Centralized GPU inference is enabled but the skeleton detector "
-            f"config is not RTMPoseDetectorConfig (got {type(skel_config).__name__}). "
-            f"Falling back to legacy per-camera inference."
-        )
-        return None
+    camera_node_config = pipeline_config.camera_node_config
 
-    inf_config = pipeline_config.skeleton_inference_node_config
-    #TODO - this is dumb, I think? WE should be able to just use the inference node config directly  without this nonsense?
+    if camera_node_config.detector_type == "mediapipe":
+        from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
+        try:
+            tracker, session = build_mediapipe_tracker(
+                model_complexity=camera_node_config.mediapipe_model_complexity,
+                detection_confidence=camera_node_config.mediapipe_detection_confidence,
+                presence_confidence=camera_node_config.mediapipe_presence_confidence,
+                tracking_confidence=camera_node_config.mediapipe_tracking_confidence,
+                num_hands=camera_node_config.mediapipe_num_hands,
+                num_faces=camera_node_config.mediapipe_num_faces,
+            )
+            return tracker, session
+        except Exception as e:
+            logger.error(f"Failed to construct MediaPipe tracker: {e!r}", exc_info=True)
+            return None, None
 
-    # Pick mode safely. RTMPoseSessionConfig accepts a Literal of three values;
-    # other strings (e.g. legacy values) get coerced to "balanced" rather than
-    # failing pydantic validation — keeps the pipeline alive on weird configs.
-    mode = skel_config.mode if skel_config.mode in ("performance", "lightweight", "balanced") else "balanced"
-
-    session_config = RTMPoseSessionConfig(
-        mode=mode,
-        execution_provider=inf_config.execution_provider,
-        engine_cache_dir=inf_config.engine_cache_dir,
-        max_batch_size=inf_config.max_batch_size,
-        on_provider_missing="fallback" if inf_config.fallback_on_missing_provider else "raise",
-        # Forward the per-frame detector knobs that the centralized path would
-        # otherwise drop. `max_persons` bounds the pose batch (single-person =
-        # 1 crop/camera) so the ONNX arena can't grow without limit; `device_id`
-        # lets an explicit GPU choice override auto-selection.
-        max_persons=skel_config.max_persons,
-        device_id=skel_config.device_id,
-        yolox_image_scale=inf_config.yolox_image_scale,
-        enable_tracking_skip=inf_config.enable_tracking_skip,
+    from freemocap.core.tracking.tracker_factory import (
+        build_skeleton_onnx_session,
+        build_skeleton_tracker,
     )
 
+    inf_config = pipeline_config.skeleton_inference_node_config
+    model_name = camera_node_config.rtmpose_model_name
+    confidence_threshold = camera_node_config.rtmpose_confidence_threshold
+
     try:
-        return RTMPoseSession.create(session_config)
+        batch_size = min(inf_config.max_batch_size, num_cameras)
+        onnx_session = build_skeleton_onnx_session(
+            batch_size=batch_size,
+            execution_provider=inf_config.execution_provider,
+            model_name=model_name,
+        )
+        tracker = build_skeleton_tracker(
+            onnx_session=onnx_session,
+            model_name=model_name,
+            confidence_threshold=confidence_threshold,
+        )
+        return tracker, onnx_session
     except Exception as e:
         logger.error(
-            f"Failed to construct RTMPoseSession with provider={inf_config.execution_provider!r}: {e!r}",
+            f"Failed to construct OnnxSession/Tracker with provider="
+            f"{inf_config.execution_provider!r}: {e!r}",
             exc_info=True,
         )
-        return None
+        return None, None
 
 
 def _read_frames(
@@ -441,17 +391,7 @@ def _read_frames(
         frame_recarrays: dict[CameraIdString, np.recarray | None],
         requested_frame_number: int,
 ) -> tuple[list[NDArray[np.uint8]], list[CameraIdString]]:
-    """Read frame `requested_frame_number` from each camera's ring buffer.
-
-    Returns parallel lists `(images, camera_ids)` for the cameras whose ring
-    buffer actually contained the requested frame. Cameras whose buffer was
-    overwritten or whose frame metadata mismatched are silently skipped (the
-    aggregator already tolerates missing per-camera observations on a frame).
-
-    Mirrors the rotation-handling logic from `camera_node.py:171-178` so the
-    image fed to ONNX is identical to what the legacy per-camera path would
-    have inferred over.
-    """
+    """Read frame `requested_frame_number` from each camera's ring buffer."""
     images: list[NDArray[np.uint8]] = []
     ordered_camera_ids: list[CameraIdString] = []
 
@@ -472,8 +412,6 @@ def _read_frames(
 
         actual_frame_number = int(frame_recarray.frame_metadata.frame_number[0])
         if actual_frame_number != requested_frame_number:
-            # Ring buffer has moved on — use the frame that's actually there
-            # rather than dropping the camera entirely.
             logger.warning(
                 f"SkeletonInferenceNode: requested frame {requested_frame_number} "
                 f"from camera {camera_id} but got {actual_frame_number} — "
@@ -493,54 +431,3 @@ def _read_frames(
         ordered_camera_ids.append(camera_id)
 
     return images, ordered_camera_ids
-
-
-def _debug_write_bbox_frames(
-    *,
-    camera_ids: list[str],
-    images: list[NDArray[np.uint8]],
-    tracking_states: list[object],  # PersonTrackingState
-    frame_number: int,
-) -> None:
-    """Write debug images with bbox overlays (every 10th frame).
-
-    Green = YOLOX, orange = tracking-predicted.
-    """
-    if frame_number % 10 != 0:
-        return
-    import os
-    from pathlib import Path
-
-    out_dir = Path(os.environ.get("FREEMOCAP_DATA", Path.home() / "freemocap_data")) / "debug_bboxes"
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    GREEN = (0, 255, 0)
-    ORANGE = (0, 165, 255)
-
-    for cid, img, st in zip(camera_ids, images, tracking_states):
-        bb = getattr(st, "bbox", None)
-        if bb is None:
-            continue
-        bbox_arr = bb[0] if bb.ndim == 2 else bb
-        x1, y1, x2, y2 = int(bbox_arr[0]), int(bbox_arr[1]), int(bbox_arr[2]), int(bbox_arr[3])
-        # YOLOX ran this frame iff consecutive_skips was just reset to 0
-        # (update_tracking_state does this when from_detector=True, and
-        #  predict_batch_with_tracking skips the increment in that case).
-        consecutive_skips: int = getattr(st, "consecutive_skips", 0)
-        from_detector = consecutive_skips == 0
-        color = GREEN if from_detector else ORANGE
-
-        # Build compact stats line.
-        conf: float = getattr(st, "pose_confidence", 0.0)
-        parts = ["YOLOX" if from_detector else "track", f"conf:{conf:.2f}", f"skips:{consecutive_skips}"]
-        stats_text = "  ".join(parts)
-
-        debug_img = img.copy()
-        cv2.rectangle(debug_img, (x1, y1), (x2, y2), color, 2)
-        draw_text_with_background(
-            debug_img, stats_text,
-            anchor_xy=(x1, y1 - 2),
-            anchor_edge="bottom",
-            text_color=color,
-        )
-        cv2.imwrite(str(out_dir / f"f{frame_number:06d}_{cid}.jpg"), debug_img)

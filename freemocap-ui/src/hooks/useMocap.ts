@@ -5,22 +5,43 @@ import {useElectronIPC} from '@/services';
 import {
     calibrationTomlPathChanged,
     calibrationTomlPathCleared,
+    DetectorType,
     MediapipeDetectorConfig,
+    MediapipeModelComplexity,
     MocapDirectoryInfo,
     mocapDetectorConfigReplaced,
     mocapDetectorConfigUpdated,
+    mocapDetectorTypeChanged,
     mocapDirectoryInfoUpdated,
     mocapErrorCleared,
+    mocapMediapipeComplexityChanged,
+    mocapMediapipeDetectionConfidenceChanged,
+    mocapMediapipeNumFacesChanged,
+    mocapMediapipeNumHandsChanged,
+    mocapMediapipePresenceConfidenceChanged,
+    mocapMediapipeTrackingConfidenceChanged,
+    mocapRtmPoseConfidenceThresholdChanged,
+    mocapRtmPoseModelNameChanged,
     processMocapRecording,
     RealtimeFilterConfig,
+    RTMPoseModelName,
     selectCalibrationTomlPath,
     selectCanProcessMocapRecording,
     selectCanStartMocapRecording,
     selectIsUsingManualMocapPath,
     selectMocap,
     selectMocapDetectorConfig,
+    selectMocapDetectorType,
     selectMocapDirectoryInfo,
+    selectMocapMediapipeComplexity,
+    selectMocapMediapipeDetectionConfidence,
+    selectMocapMediapipeNumFaces,
+    selectMocapMediapipeNumHands,
+    selectMocapMediapipePresenceConfidence,
+    selectMocapMediapipeTrackingConfidence,
     selectMocapRecordingPath,
+    selectMocapRtmPoseConfidenceThreshold,
+    selectMocapRtmPoseModelName,
     selectSkeletonFilterConfig,
     skeletonFilterConfigReplaced,
     skeletonFilterConfigUpdated,
@@ -53,6 +74,15 @@ export function useMocap() {
     const {api, isElectron} = useElectronIPC();
     const mocapState = useAppSelector(selectMocap);
     const detectorConfig = useAppSelector(selectMocapDetectorConfig);
+    const detectorType = useAppSelector(selectMocapDetectorType);
+    const rtmPoseModelName = useAppSelector(selectMocapRtmPoseModelName);
+    const rtmPoseConfidenceThreshold = useAppSelector(selectMocapRtmPoseConfidenceThreshold);
+    const mediapipeModelComplexity = useAppSelector(selectMocapMediapipeComplexity);
+    const mediapipeDetectionConfidence = useAppSelector(selectMocapMediapipeDetectionConfidence);
+    const mediapipePresenceConfidence = useAppSelector(selectMocapMediapipePresenceConfidence);
+    const mediapipeTrackingConfidence = useAppSelector(selectMocapMediapipeTrackingConfidence);
+    const mediapipeNumHands = useAppSelector(selectMocapMediapipeNumHands);
+    const mediapipeNumFaces = useAppSelector(selectMocapMediapipeNumFaces);
     const skeletonFilterConfig = useAppSelector(selectSkeletonFilterConfig);
     const canStartRecording = useAppSelector(selectCanStartMocapRecording);
     const canProcessMocapRecording = useAppSelector(selectCanProcessMocapRecording);
@@ -60,6 +90,50 @@ export function useMocap() {
     const directoryInfo = useAppSelector(selectMocapDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualMocapPath);
     const calibrationTomlPath = useAppSelector(selectCalibrationTomlPath);
+
+    const setDetectorType = useCallback(
+        (type: DetectorType) => {
+            dispatch(mocapDetectorTypeChanged(type));
+        },
+        [dispatch]
+    );
+
+    const setRtmPoseModelName = useCallback(
+        (modelName: RTMPoseModelName) => {
+            dispatch(mocapRtmPoseModelNameChanged(modelName));
+        },
+        [dispatch]
+    );
+
+    const setRtmPoseConfidenceThreshold = useCallback(
+        (threshold: number) => {
+            dispatch(mocapRtmPoseConfidenceThresholdChanged(threshold));
+        },
+        [dispatch]
+    );
+
+    const setMediapipeModelComplexity = useCallback(
+        (complexity: MediapipeModelComplexity) => {
+            dispatch(mocapMediapipeComplexityChanged(complexity));
+        },
+        [dispatch]
+    );
+
+    const setMediapipeDetectionConfidence = useCallback(
+        (v: number) => dispatch(mocapMediapipeDetectionConfidenceChanged(v)), [dispatch]
+    );
+    const setMediapipePresenceConfidence = useCallback(
+        (v: number) => dispatch(mocapMediapipePresenceConfidenceChanged(v)), [dispatch]
+    );
+    const setMediapipeTrackingConfidence = useCallback(
+        (v: number) => dispatch(mocapMediapipeTrackingConfidenceChanged(v)), [dispatch]
+    );
+    const setMediapipeNumHands = useCallback(
+        (v: number) => dispatch(mocapMediapipeNumHandsChanged(v)), [dispatch]
+    );
+    const setMediapipeNumFaces = useCallback(
+        (v: number) => dispatch(mocapMediapipeNumFacesChanged(v)), [dispatch]
+    );
 
     const updateDetectorConfig = useCallback(
         (updates: Partial<MediapipeDetectorConfig>) => {
@@ -190,6 +264,15 @@ export function useMocap() {
         // State
         config: mocapState.config,
         detectorConfig,
+        detectorType,
+        rtmPoseModelName,
+        rtmPoseConfidenceThreshold,
+        mediapipeModelComplexity,
+        mediapipeDetectionConfidence,
+        mediapipePresenceConfidence,
+        mediapipeTrackingConfidence,
+        mediapipeNumHands,
+        mediapipeNumFaces,
         skeletonFilterConfig,
         error: mocapState.error,
         isLoading: mocapState.isLoading,
@@ -204,6 +287,15 @@ export function useMocap() {
         canProcessMocapRecording,
         calibrationTomlPath,
         // Actions
+        setDetectorType,
+        setRtmPoseModelName,
+        setRtmPoseConfidenceThreshold,
+        setMediapipeModelComplexity,
+        setMediapipeDetectionConfidence,
+        setMediapipePresenceConfidence,
+        setMediapipeTrackingConfidence,
+        setMediapipeNumHands,
+        setMediapipeNumFaces,
         updateDetectorConfig,
         replaceDetectorConfig,
         updateSkeletonFilterConfig,

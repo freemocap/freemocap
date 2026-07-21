@@ -96,7 +96,7 @@ class PipelineTimingReporter:
             self._thread.join(timeout=timeout)
 
     def _run(self) -> None:
-        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
+        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage  # noqa: TC001
 
         last_report = time.perf_counter()
         try:

@@ -9,11 +9,11 @@ from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
 from skellyforge.skellymodels.managers.human import Human
-from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
+
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_batch_to_3d
@@ -23,14 +23,15 @@ logger = logging.getLogger(__name__)
 
 
 def skeleton_from_mediapipe_observation_recorders(
-    observation_recorders: dict[CameraIdString, BaseRecorder],
+    detector:str,
+    observation_recorders: dict[CameraIdString, ObservationBuffer],
     path_to_calibration_toml: Path | str,
     path_to_output_data_folder: Path | str,
     triangulation_config: TriangulationConfig | None = None,
     interp_config: InterpolationConfig | None = None,
     filter_config: FilterConfig | None = None,
 ) -> Human:
-    """Triangulate mediapipe 2D observations into a 3D skeleton.
+    """Triangulate skeleton 2D observations into a 3D skeleton.
 
     Camera matching: observation_recorders keys (CameraIdString)
     are matched to calibration camera names. Each key must have an exact match
@@ -48,10 +49,10 @@ def skeleton_from_mediapipe_observation_recorders(
     if len(observation_recorders) == 0:
         raise ValueError("No observation recorders provided to process.")
 
-    # Extract 2D data from observation recorders
+    # Extract 2D data from observation buffers
     data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
-    for camera_id, recorder in observation_recorders.items():
-        data2d_fr_id_xyc = recorder.to_array.copy()
+    for camera_id, buf in observation_recorders.items():
+        data2d_fr_id_xyc = buf.to_keypoints_array().copy()
         logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 
@@ -99,12 +100,25 @@ def skeleton_from_mediapipe_observation_recorders(
         config=filter_config,
     )
 
+    match detector:
+        case "mediapipe":
+            from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
+            model_info = MediapipeModelInfo()
+        case "rtmpose":
+            from skellyforge.skellymodels.models.tracking_model_info import RTMPoseModelInfo
+            model_info = RTMPoseModelInfo()
+        case _:
+            raise ValueError(f"Unknown detector: {detector}")
+
     skeleton: Human = Human.from_tracked_points_numpy_array(
         name="human",
-        model_info=MediapipeModelInfo(),
+        model_info=model_info,
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
+    print("DETECTOR: ", detector)
+    print("MODEL INFO: ", model_info)
+    print(f"SKELETON: {skeleton}")
 
     if len(camera_ids) > 1 and not calibration.groundplane_aligned:
         try:

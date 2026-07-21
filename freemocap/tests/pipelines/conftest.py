@@ -4,17 +4,26 @@ These tests run the REAL posthoc + realtime pipelines against the canonical test
 recording at ``FREEMOCAP_TEST_DATA_PATH`` (3 synchronized videos, 222 frames: a
 7x5 charuco calibration sequence followed by mocap movement). Pipelines run
 in-place in the recording folder, exactly as the app runs them.
+
+If the recording isn't found locally, it's downloaded once per session (lazily,
+on first use of the ``test_recording_path`` fixture) and cached under
+``~/.cache/freemocap/test_data`` (mirrors the download-once-and-cache pattern in
+skellytracker's conftest.py — see ``_get_or_download_test_recording``). Any
+failure there just records an error string; tests that need the recording skip
+with that message rather than the whole session failing to collect.
 """
 import logging
 import multiprocessing
 import time
+import zipfile
 from pathlib import Path
 
 import pytest
+import requests
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.kinematics.segment_lengths import (
     SegmentLengthReport,
@@ -34,6 +43,72 @@ from freemocap.tests.pipelines.anthropometry import load_posthoc_body_positions
 from freemocap.tests.pipelines.helpers import wait_for_pipeline
 
 logger = logging.getLogger(__name__)
+
+_TEST_RECORDING_URL = "https://github.com/freemocap/skellysamples/releases/download/test_data_v06_09_25/freemocap_test_data.zip"
+_MAX_RETRIES = 3
+_VIDEO_CACHE_DIR = Path.home() / ".cache" / "freemocap" / "test_data"
+
+
+class _SessionInfo:
+    """Populated once in pytest_sessionstart; read by the test_recording_path fixture."""
+    test_recording_path: Path | None = None
+    test_recording_error: str | None = None
+
+
+def _has_synchronized_videos(path: Path) -> bool:
+    sync_videos = path / "synchronized_videos"
+    return sync_videos.exists() and bool(list(sync_videos.glob("*.mp4")))
+
+
+def _find_recording_root(search_root: Path) -> Path | None:
+    """Recursively find a synchronized_videos/ dir with .mp4s; return its parent
+    (the recording root), regardless of how the zip's top-level folder is named."""
+    candidates = [
+        c for c in search_root.rglob("synchronized_videos")
+        if c.is_dir() and list(c.glob("*.mp4"))
+    ]
+    return candidates[0].parent if candidates else None
+
+
+def _get_or_download_test_recording() -> Path | None:
+    """Three-tier lookup: canonical freemocap_data path, then cache, then download."""
+    canonical = Path(FREEMOCAP_TEST_DATA_PATH)
+    if _has_synchronized_videos(canonical):
+        logger.debug(f"Using existing test recording at {canonical}")
+        return canonical
+
+    cached_root = _find_recording_root(_VIDEO_CACHE_DIR)
+    if cached_root is not None and _has_synchronized_videos(cached_root):
+        logger.debug(f"Using cached test recording at {cached_root}")
+        return cached_root
+
+    _VIDEO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    zip_path = _VIDEO_CACHE_DIR / "freemocap_test_data.zip"
+
+    for attempt in range(_MAX_RETRIES):
+        try:
+            r = requests.get(_TEST_RECORDING_URL, timeout=(10, 300), allow_redirects=True, stream=True)
+            r.raise_for_status()
+            with open(zip_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1 << 20):
+                    f.write(chunk)
+            break
+        except Exception as e:
+            logger.warning(f"Recording download attempt {attempt + 1} failed: {e}")
+            if zip_path.exists():
+                zip_path.unlink()
+    else:
+        return None
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extractall(_VIDEO_CACHE_DIR)
+    except zipfile.BadZipFile as e:
+        logger.warning(f"Downloaded zip is corrupt: {e}")
+        zip_path.unlink(missing_ok=True)
+        return None
+
+    return _find_recording_root(_VIDEO_CACHE_DIR)
 
 
 def pytest_addoption(parser):
@@ -57,6 +132,48 @@ def pytest_addoption(parser):
             "instead of the default freemocap_test_data (222 frames)."
         ),
     )
+    parser.addoption(
+        "--fail-on-skip",
+        action="store_true",
+        default=False,
+        help="Fail (rather than skip) any test that would otherwise be skipped.",
+    )
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo):
+    outcome = yield
+    report = outcome.get_result()
+    if report.skipped and item.config.getoption("--fail-on-skip", default=False):
+        report.outcome = "failed"
+        report.longrepr = f"[--fail-on-skip] {report.longrepr}"
+
+
+def _resolve_test_recording_once() -> None:
+    """Populate _SessionInfo on first call; subsequent calls are no-ops.
+
+    Deliberately NOT a pytest_sessionstart hook: this conftest.py lives in a
+    subdirectory (freemocap/tests/pipelines/), and pytest only auto-imports
+    "initial" conftests along the path of the args given on the command line
+    before sessionstart fires. When invoked against a parent dir (e.g. the CI
+    command `pytest freemocap/tests/`), this conftest isn't imported yet at
+    that point, so a pytest_sessionstart hook defined here would silently
+    never run. A session-scoped fixture already only executes once per
+    session regardless of hook-loading order, so resolving lazily here is
+    both correct and sufficient — no per-test cost either way.
+    """
+    if _SessionInfo.test_recording_path is not None or _SessionInfo.test_recording_error is not None:
+        return
+    result = _get_or_download_test_recording()
+    if result is None:
+        _SessionInfo.test_recording_error = (
+            f"Could not find test recording at {FREEMOCAP_TEST_DATA_PATH}, in the "
+            f"cache at {_VIDEO_CACHE_DIR}, or by downloading from {_TEST_RECORDING_URL} "
+            f"after {_MAX_RETRIES} attempts."
+        )
+        logger.warning(_SessionInfo.test_recording_error)
+    else:
+        _SessionInfo.test_recording_path = result
 
 
 @pytest.fixture(scope="session")
@@ -69,17 +186,17 @@ def realtime_max_frames(request) -> int:
 
 @pytest.fixture(scope="session")
 def sample_recording_path() -> Path:
-    """The full (non-downsampled, ~1100-frame) sample recording."""
+    """The full (non-downsampled, ~1100-frame) sample recording.
+
+    No download source is known for this one (unlike freemocap_test_data), so
+    it's local-only: skip if it isn't already on disk.
+    """
     path = Path(FREEMOCAP_TEST_DATA_PATH).parent / "freemocap_sample_data"
     logger.info(f"Looking for sample recording at: {path}")
-    if not path.exists():
+    if not _has_synchronized_videos(path):
         logger.warning(f"Sample data not found at {path} — skipping")
         pytest.skip(f"Sample data not found at {path}")
-    sync_videos = path / "synchronized_videos"
-    if not sync_videos.exists() or not list(sync_videos.glob("*.mp4")):
-        logger.warning(f"No synchronized_videos in {path} — skipping")
-        pytest.skip(f"No synchronized_videos found in {path}")
-    videos = sorted(sync_videos.glob("*.mp4"))
+    videos = sorted((path / "synchronized_videos").glob("*.mp4"))
     logger.info(f"Sample recording found: {path} ({len(videos)} videos)")
     return path
 
@@ -97,20 +214,19 @@ def test_recording_path(request) -> Path:
     if use_sample:
         path = Path(FREEMOCAP_TEST_DATA_PATH).parent / "freemocap_sample_data"
         label = "sample data (~1100 frames)"
+        if not _has_synchronized_videos(path):
+            logger.warning(f"{label} not found at {path} — skipping")
+            pytest.skip(f"{label} not found at {path}.")
     else:
-        path = Path(FREEMOCAP_TEST_DATA_PATH)
         label = "test data (222 frames)"
-    logger.info(f"test_recording_path: using {label} at {path}")
-    if not path.exists():
-        logger.warning(f"{label} not found at {path} — skipping")
-        pytest.skip(f"{label} not found at {path}.")
-    sync_videos = path / "synchronized_videos"
-    if not sync_videos.exists() or not list(sync_videos.glob("*.mp4")):
-        logger.warning(f"No synchronized_videos in {path} — skipping")
-        pytest.skip(f"No synchronized_videos found in {path}")
-    videos = sorted(sync_videos.glob("*.mp4"))
+        _resolve_test_recording_once()
+        if _SessionInfo.test_recording_error is not None:
+            pytest.skip(_SessionInfo.test_recording_error)
+        path = _SessionInfo.test_recording_path
+
+    videos = sorted((path / "synchronized_videos").glob("*.mp4"))
     logger.info(
-        f"Recording ready: {path.name}  |  {len(videos)} videos  |  "
+        f"Recording ready ({label}): {path}  |  {len(videos)} videos  |  "
         + ", ".join(v.name for v in videos)
     )
     return path

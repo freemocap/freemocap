@@ -4,13 +4,13 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {
     detectPreset,
     DetectorPreset,
+    LegacyMediapipeModelComplexity,
     MEDIAPIPE_POSTHOC_PRESET,
     MEDIAPIPE_REALTIME_PRESET,
     MediapipeDetectorConfig,
-    MediapipeModelComplexity,
 } from "@/store/slices/mocap";
 
-const MODEL_COMPLEXITY_LABELS: Record<MediapipeModelComplexity, string> = {
+const MODEL_COMPLEXITY_LABELS: Record<LegacyMediapipeModelComplexity, string> = {
     0: "Lite (fastest)",
     1: "Full (balanced)",
     2: "Heavy (most accurate)",
@@ -78,7 +78,7 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
                     value={detectorConfig.model_complexity}
                     onChange={(e) =>
                         updateDetectorConfig({
-                            model_complexity: Number(e.target.value) as MediapipeModelComplexity,
+                            model_complexity: Number(e.target.value) as LegacyMediapipeModelComplexity,
                         })
                     }
                     disabled={isLoading}

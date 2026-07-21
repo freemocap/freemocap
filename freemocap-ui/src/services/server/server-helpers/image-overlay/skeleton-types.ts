@@ -20,20 +20,17 @@ export const SkeletonOverlaySchema = z.object({
     image_width: z.number(),
     image_height: z.number(),
     points: z.array(SkeletonPointSchema),
+    // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
+    bbox_x1: z.number().optional(),
+    bbox_y1: z.number().optional(),
+    bbox_x2: z.number().optional(),
+    bbox_y2: z.number().optional(),
+    bbox_from_detector: z.boolean().optional(),
 });
 
 // Multi-camera message shape (matches CharucoOverlayDataMessage structure)
 export const SkeletonOverlayDataMessageSchema = z.record(z.string(), SkeletonOverlaySchema);
 
-// Type exports — names kept as "Mediapipe*" to minimize churn in callers that
-// haven't been renamed yet. These are now tracker-agnostic.
-export type MediapipePoint = z.infer<typeof SkeletonPointSchema>;
-export type MediapipeObservation = z.infer<typeof SkeletonOverlaySchema>;
-export type MediapipeOverlayDataMessage = z.infer<typeof SkeletonOverlayDataMessageSchema>;
-
-// New preferred names for downstream code
-export type SkeletonPoint = MediapipePoint;
-export type SkeletonObservation = MediapipeObservation;
-export const MediapipePointSchema = SkeletonPointSchema;
-export const MediapipeOverlaySchema = SkeletonOverlaySchema;
-export const MediapipeOverlayDataMessageSchema = SkeletonOverlayDataMessageSchema;
+export type SkeletonPoint = z.infer<typeof SkeletonPointSchema>;
+export type SkeletonObservation = z.infer<typeof SkeletonOverlaySchema>;
+export type SkeletonOverlayDataMessage = z.infer<typeof SkeletonOverlayDataMessageSchema>;

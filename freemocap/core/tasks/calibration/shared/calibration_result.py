@@ -2,7 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import toml
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel

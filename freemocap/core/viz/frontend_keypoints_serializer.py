@@ -119,11 +119,13 @@ def build_keypoints_payload(
         point_names: tuple[str, ...] | list[str],
         keypoints_arrays: dict[str, np.ndarray],
         skeleton_arrays: dict[str, np.ndarray] | None = None,
+        embed_keypoint_names: bool = False,
 ) -> bytearray:
     """Serialize the per-frame 3D keypoints + skeleton into the binary wire format.
 
     Emits, in order:
-      * a schema-backed KEYPOINTS_3D block of RTMPose points,
+      * a KEYPOINTS_3D block (schema-backed when embed_keypoint_names=False,
+        self-describing when embed_keypoint_names=True),
       * an embedded-names KEYPOINTS_3D block for charuco/aruco calibration
         corners (no tracker schema on the frontend), when present,
       * an embedded-names SKELETON_3D block of the rigidified canonical
@@ -131,13 +133,15 @@ def build_keypoints_payload(
     """
     blocks: list[bytes] = []
 
-    # RTMPose keypoints (schema-backed — point names from tracker_schemas).
+    # Primary keypoints block. RTMPose uses schema-backed (no embedded names);
+    # mediapipe uses embedded names since there is no frontend schema for it.
     blocks.append(
         _build_block(
             kind=BlockKind.KEYPOINTS_3D,
             tracker_id=tracker_id,
             point_names=point_names,
             sparse_arrays=keypoints_arrays,
+            embed_names=embed_keypoint_names,
         )
     )
 

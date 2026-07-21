@@ -385,10 +385,18 @@ class WebsocketServer:
                                     self.last_received_frontend_confirmation = data["frameNumber"]
                                     raw_sizes = data.get("displayImageSizes", None)
                                     if raw_sizes is not None:
-                                        self._display_image_sizes = {
+                                        parsed = {
                                             cam_id: {k: float(v) for k, v in dims.items()}
                                             for cam_id, dims in raw_sizes.items()
                                         }
+                                        # Drop any entries where the display container hasn't
+                                        # been laid out yet (zero width or height would make
+                                        # cv2.resize fail with an assertion error).
+                                        self._display_image_sizes = {
+                                            cam_id: dims
+                                            for cam_id, dims in parsed.items()
+                                            if dims.get("width", 0) > 0 and dims.get("height", 0) > 0
+                                        } or None
                                     else:
                                         self._display_image_sizes = None
                                 else:

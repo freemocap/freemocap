@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
-from skellytracker.trackers.rtmpose_tracker.names_and_connections import RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
@@ -145,14 +145,16 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
-                skeleton_inference_centralized=pipeline_config.use_centralized_gpu_inference,
+                skeleton_inference_centralized=(
+                    pipeline_config.use_centralized_inference
+                ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
             )
             for camera_id in pipeline_camera_ids
         }
 
         skeleton_inference_node: RealtimeSkeletonInferenceNode | None = None
-        if (pipeline_config.use_centralized_gpu_inference
+        if (pipeline_config.use_centralized_inference
                 and pipeline_config.camera_node_config.skeleton_tracking_enabled):
             skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=camera_group.id,
@@ -173,7 +175,7 @@ class RealtimePipeline:
                 camera_ids=pipeline_camera_ids,
                 ipc=ipc,
                 pubsub=pubsub,
-                board_config=pipeline_config.camera_node_config.charuco_detector_config.board,
+                board_config=pipeline_config.camera_node_config.charuco_tracker_config.stages[0].keypoint_detectors[0].board,
                 worker_registry=worker_registry,
             )
 
@@ -297,10 +299,15 @@ class RealtimePipeline:
         """Push a config update to all pipeline workers via pubsub.
 
         Also manages SkeletonInferenceNode lifecycle when skeleton_tracking_enabled
-        transitions between True and False.
+        transitions between True and False, or when detector_type changes while
+        skeleton tracking stays enabled (the centralized inference node holds its
+        tracker/session for its whole lifetime, so a detector swap requires a
+        fresh node rather than an in-place config update).
         """
         old_skeleton = self.config.camera_node_config.skeleton_tracking_enabled
         new_skeleton = new_config.camera_node_config.skeleton_tracking_enabled
+        old_detector = self.config.camera_node_config.detector_type
+        new_detector = new_config.camera_node_config.detector_type
 
         self.config = new_config
         logger.trace(f"Pushing new config to realtime pipeline: {self.id} \n {new_config.model_dump_json(indent=4)}")
@@ -316,12 +323,39 @@ class RealtimePipeline:
                 self.skeleton_inference_node.shutdown()
             self.skeleton_inference_node = None
 
-        elif not old_skeleton and new_skeleton and new_config.use_centralized_gpu_inference:
+        elif not old_skeleton and new_skeleton and new_config.use_centralized_inference:
             # Skeleton tracking re-enabled: create and start a fresh inference node.
             logger.info(
                 f"Starting centralized SkeletonInferenceNode for pipeline [{self.id}] — "
                 f"first run may pause for ~1-3 minutes while TensorRT compiles engines."
             )
+            self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
+                camera_group_id=self.camera_group.id,
+                camera_ids=self.camera_group.camera_ids,
+                worker_registry=self.worker_registry,
+                camera_group_shm_dto=self.camera_group.shm.to_dto(),
+                config=new_config,
+                ipc=self.ipc,
+                pubsub=self.pubsub,
+            )
+            self.skeleton_inference_node.start()
+
+        elif (
+            old_skeleton
+            and new_skeleton
+            and old_detector != new_detector
+            and new_config.use_centralized_inference
+        ):
+            # Detector swapped while tracking stayed on: the centralized inference
+            # node's tracker/session are built once at startup and never rebuilt
+            # from a config update, so it must be torn down and recreated to pick
+            # up the new detector.
+            logger.info(
+                f"RealtimePipeline [{self.id}]: detector_type changed ({old_detector} -> {new_detector}) — "
+                f"restarting SkeletonInferenceNode"
+            )
+            if self.skeleton_inference_node is not None and self.skeleton_inference_node.is_alive:
+                self.skeleton_inference_node.shutdown()
             self.skeleton_inference_node = RealtimeSkeletonInferenceNode.create(
                 camera_group_id=self.camera_group.id,
                 camera_ids=self.camera_group.camera_ids,
@@ -440,13 +474,35 @@ class RealtimePipeline:
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            keypoints_binary_payload = build_keypoints_payload(
-                frame_number=aggregation_output.frame_number,
-                tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                keypoints_arrays=aggregation_output.keypoints_arrays,
-                skeleton_arrays=aggregation_output.skeleton,
-            )
+            detector_type = aggregation_output.pipeline_config.camera_node_config.detector_type
+            if detector_type == "mediapipe":
+                # Mediapipe keypoints use body.{point} naming (stage-prefixed). Embed names
+                # in both the KEYPOINTS_3D block and a SKELETON_3D block so ConnectionRenderer
+                # can draw connections using the mediapipe_wholebody schema. No rigidified
+                # skeleton is available for mediapipe, so raw keypoints serve as the skeleton.
+                keypoints_binary_payload = build_keypoints_payload(
+                    frame_number=aggregation_output.frame_number,
+                    tracker_id=MEDIAPIPE_WHOLEBODY_DEFINITION.name,
+                    point_names=list(aggregation_output.keypoints_arrays.keys()),
+                    keypoints_arrays=aggregation_output.keypoints_arrays,
+                    skeleton_arrays=aggregation_output.keypoints_arrays,
+                    embed_keypoint_names=True,
+                )
+            else:
+                # The rigidified skeleton covers body + hands but not face.
+                # Merge raw face keypoints from keypoints_arrays so the frontend's
+                # SKELETON_3D block includes face points and can draw face connections.
+                rtm_skeleton = dict(aggregation_output.skeleton) if aggregation_output.skeleton else {}
+                for name, coords in aggregation_output.keypoints_arrays.items():
+                    if name.startswith("face_"):
+                        rtm_skeleton[name] = coords
+                keypoints_binary_payload = build_keypoints_payload(
+                    frame_number=aggregation_output.frame_number,
+                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
+                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
+                    keypoints_arrays=aggregation_output.keypoints_arrays,
+                    skeleton_arrays=rtm_skeleton,
+                )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,

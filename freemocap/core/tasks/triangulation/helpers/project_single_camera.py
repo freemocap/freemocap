@@ -16,24 +16,27 @@ from freemocap.core.tasks.triangulation.helpers.triangulation_result import Tria
 
 def project_2d_observation_to_3d(
     *,
-    observation,  # BaseObservation
+    observation,  # skellytracker.core.data_primitives.observation.Observation
 ) -> dict[str, NDArray[np.float64]]:
     """Project a single camera's per-frame observation to 3D on the Y=0 plane.
 
-    Uses the fast-path convention: observation.points.xy + observation.points.names.
     Returns {point_name: ndarray(3,)} — the same shape try_angulate() returns
     for multi-camera triangulation.
     """
-    xy = observation.points.xy  # (n_points, 2)
-    names = observation.points.names  # tuple[str, ...]
+    kpts = observation.to_keypoints()
+    xy = kpts.xyz[:, :2]  # (n_points, 2)
+    names = kpts.names  # tuple[str, ...]
     h, w = observation.image_size  # (height, width) in pixels
 
+    # Strip the stage prefix that Observation.to_keypoints() adds ("body.nose" → "nose")
     result: dict[str, NDArray[np.float64]] = {}
     for i, name in enumerate(names):
         u, v = xy[i]
         if np.isnan(u) or np.isnan(v):
             continue
-        result[name] = np.array([u - w / 2, 0.0, h - v], dtype=np.float64)
+        dot = name.find(".")
+        canonical = name[dot + 1:] if dot != -1 else name
+        result[canonical] = np.array([u - w / 2, 0.0, h - v], dtype=np.float64)
     return result
 
 

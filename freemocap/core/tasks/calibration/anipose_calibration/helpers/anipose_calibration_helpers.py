@@ -10,8 +10,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from skellycam.core.types.type_overloads import CameraIdString
-from skellytracker.trackers.base_tracker.base_tracker_abcs import BaseRecorder
-from skellytracker.trackers.charuco_tracker.charuco_observation import CharucoObservation
+from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_solver_ops import (
     apply_extrinsics,
@@ -19,7 +18,6 @@ from freemocap.core.tasks.calibration.anipose_calibration.helpers.camera_model_s
     stack_translations,
 )
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
-from skellytracker.trackers.charuco_tracker import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tasks.calibration.shared.groundplane_math import (
     CharucoGeometryError,
@@ -28,10 +26,9 @@ from freemocap.core.tasks.calibration.shared.groundplane_math import (
     estimate_board_groundplane,
 )
 from freemocap.core.tasks.calibration.shared.interpolate_trajectories import interpolate_trajectory_data
+from freemocap.core.tracking.observation_buffer import ObservationBuffer
 
 logger = logging.getLogger(__name__)
-
-CharucoObservations = dict[CameraIdString, CharucoObservation | None]
 
 
 class GroundPlaneSuccess:
@@ -41,11 +38,7 @@ class GroundPlaneSuccess:
 
 
 def pin_camera_zero_to_origin(cameras: list[CameraModel]) -> list[CameraModel]:
-    """Re-express all camera extrinsics relative to camera 0.
-
-    Camera 0 ends up with identity rotation and zero translation.
-    All other cameras are expressed relative to camera 0.
-    """
+    """Re-express all camera extrinsics relative to camera 0."""
     rvecs = stack_rodrigues(cameras)
     tvecs = stack_translations(cameras)
 
@@ -56,7 +49,6 @@ def pin_camera_zero_to_origin(cameras: list[CameraModel]) -> list[CameraModel]:
         Ri_new, _ = cv2.Rodrigues(Ri @ R0.T)
         rvecs_new[i] = Ri_new.flatten()
 
-    # Use R0_new (identity for camera 0 after alignment) — not original R0
     R0_new, _ = cv2.Rodrigues(rvecs_new[0])
     delta_to_origin_world = -R0_new.T @ tvecs[0, :]
     tvecs_new = np.zeros_like(tvecs)
@@ -71,7 +63,7 @@ def pin_camera_zero_to_origin(cameras: list[CameraModel]) -> list[CameraModel]:
 
 def set_charuco_board_as_groundplane(
     *,
-    observation_recorders: dict[CameraIdString, BaseRecorder],
+    observation_buffers: dict[CameraIdString, ObservationBuffer],
     cameras: list[CameraModel],
     board: CharucoBoardDefinition,
     recording_folder_path: "Path | None" = None,
@@ -81,13 +73,15 @@ def set_charuco_board_as_groundplane(
 
     logger.info("Getting 2D Charuco data")
     data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
-    if len(observation_recorders) == 0:
-        raise ValueError("No observation recorders provided to process.")
+    if len(observation_buffers) == 0:
+        raise ValueError("No observation buffers provided to process.")
 
-    for camera_id, recorder in observation_recorders.items():
-        if not all(isinstance(observation, CharucoObservation) for observation in recorder.observations):
-            raise TypeError(f"Recorder for camera ID {camera_id} contains non-Charuco observations.")
-        data2d_fr_id_xyc = recorder.to_array.copy()
+    for camera_id, buf in observation_buffers.items():
+        for obs in buf.observations:
+            if "charuco" not in obs.stages:
+                raise TypeError(f"Buffer for camera ID {camera_id} contains non-charuco observations.")
+        # (frames, n_corners, 3) — xyz with z=0 for 2D detections
+        data2d_fr_id_xyc = buf.to_stage_array("charuco", n_points=board.n_corners).copy()
         logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 

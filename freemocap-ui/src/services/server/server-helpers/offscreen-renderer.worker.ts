@@ -8,7 +8,7 @@
 
 import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
-import type { MediapipeObservation } from "@/services/server/server-helpers/image-overlay/mediapipe-types";
+import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 // tsconfig uses the DOM lib (no WebWorker lib); cast self for postMessage.
@@ -26,7 +26,7 @@ let renderScheduled = false;
 // latest observation per type is all the state it needs.
 const overlayManager = new OverlayManager();
 let latestCharuco: CharucoObservation | null = null;
-let latestMediapipe: MediapipeObservation | null = null;
+let latestSkeleton: SkeletonObservation | null = null;
 let lastOverlayTime = 0;
 let charucoEnabled = true;
 let skeletonEnabled = true;
@@ -36,7 +36,7 @@ interface FrameMessage { type: "frame"; pixelBuffer: ArrayBuffer; width: number;
 interface OverlaysMessage {
     type: "overlays";
     charuco: CharucoObservation | null;
-    skeleton: MediapipeObservation | null;
+    skeleton: SkeletonObservation | null;
 }
 interface VisibilityMessage { type: "visibility"; charuco: boolean; skeleton: boolean; }
 interface SchemaMessage {
@@ -60,14 +60,14 @@ self.addEventListener("message", (event: MessageEvent) => {
         case "overlays":
             // null means "no update this message" (not "clear") — staleness evicts.
             if (msg.charuco !== null) latestCharuco = msg.charuco;
-            if (msg.skeleton !== null) latestMediapipe = msg.skeleton;
+            if (msg.skeleton !== null) latestSkeleton = msg.skeleton;
             lastOverlayTime = performance.now();
             break;
         case "visibility":
             charucoEnabled = msg.charuco;
             skeletonEnabled = msg.skeleton;
             if (!charucoEnabled) latestCharuco = null;
-            if (!skeletonEnabled) latestMediapipe = null;
+            if (!skeletonEnabled) latestSkeleton = null;
             break;
         case "schema":
             overlayManager.setTrackerSchemas(msg.schemas, msg.activeId ?? undefined);
@@ -83,10 +83,10 @@ function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): v
     const overlayFresh = performance.now() - lastOverlayTime <= OVERLAY_STALE_MS;
     if (!overlayFresh) {
         latestCharuco = null;
-        latestMediapipe = null;
+        latestSkeleton = null;
     }
     const charucoObs = charucoEnabled && overlayFresh ? latestCharuco : null;
-    const mediapipeObs = skeletonEnabled && overlayFresh ? latestMediapipe : null;
+    const skeletonObs = skeletonEnabled && overlayFresh ? latestSkeleton : null;
 
     // Create ImageBitmap from raw pixels — this is the GPU upload step,
     // happening independently in each per-camera worker instead of batched
@@ -98,9 +98,9 @@ function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): v
         height,
     );
     createImageBitmap(imageData).then((rawBitmap) => {
-        if (charucoObs || mediapipeObs) {
+        if (charucoObs || skeletonObs) {
             overlayManager
-                .processFrame("", rawBitmap, charucoObs, mediapipeObs)
+                .processFrame("", rawBitmap, charucoObs, skeletonObs)
                 .then((composite) => setPending(composite))
                 .catch((err) => {
                     rawBitmap.close();

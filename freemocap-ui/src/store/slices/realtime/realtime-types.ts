@@ -1,3 +1,5 @@
+import {DetectorType, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
+
 export interface CharucoBoardConfigForPipeline {
     squares_x: number;
     squares_y: number;
@@ -7,7 +9,16 @@ export interface CharucoBoardConfigForPipeline {
 export interface CameraNodeConfig {
     charuco_tracking_enabled: boolean;
     skeleton_tracking_enabled: boolean;
-    charuco_detector_config?: { board: CharucoBoardConfigForPipeline } | null;
+    charuco_board?: CharucoBoardConfigForPipeline;
+    detector_type?: DetectorType;
+    rtmpose_model_name?: RTMPoseModelName;
+    rtmpose_confidence_threshold?: number;
+    mediapipe_model_complexity?: MediapipeModelComplexity;
+    mediapipe_detection_confidence?: number;
+    mediapipe_presence_confidence?: number;
+    mediapipe_tracking_confidence?: number;
+    mediapipe_num_hands?: number;
+    mediapipe_num_faces?: number;
 }
 
 export interface RealtimeAggregatorNodeConfig {
@@ -28,6 +39,15 @@ export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
     camera_node_config: {
         charuco_tracking_enabled: true,
         skeleton_tracking_enabled: true,
+        detector_type: "rtmpose",
+        rtmpose_model_name: "rtmw-x-l_256x192",
+        rtmpose_confidence_threshold: 0.0025,
+        mediapipe_model_complexity: "lite",
+        mediapipe_detection_confidence: 0.5,
+        mediapipe_presence_confidence: 0.5,
+        mediapipe_tracking_confidence: 0.5,
+        mediapipe_num_hands: 2,
+        mediapipe_num_faces: 1,
     },
     aggregator_config: {
         calibration_toml_path: null,

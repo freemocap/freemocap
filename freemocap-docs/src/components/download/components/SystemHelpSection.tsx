@@ -1,4 +1,4 @@
-import { SYSTEM_HELP_SECTIONS } from '../data/systemHelp';
+import { SYSTEM_HELP_SECTIONS } from '../systemHelp';
 import CollapsibleSection from './CollapsibleSection';
 import styles from '../DownloadPage.module.css';
 

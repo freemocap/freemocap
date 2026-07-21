@@ -1,5 +1,5 @@
-import type { OsType } from '../data/downloads';
-import { getTerminalTipContent } from '../data/installInstructions';
+import type { OsType } from '../downloads';
+import { getTerminalTipContent } from '../installInstructions';
 import CollapsibleSection from './CollapsibleSection';
 import styles from '../DownloadPage.module.css';
 

@@ -1,4 +1,4 @@
-import type { DownloadEntry } from '../data/downloads';
+import type { DownloadEntry } from '../downloads';
 import DownloadCard from './DownloadCard';
 import CollapsibleSection from './CollapsibleSection';
 import styles from '../DownloadPage.module.css';

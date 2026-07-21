@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { OsType, ArchType } from './data/downloads';
+import type { OsType, ArchType } from './downloads';
 import {
   DEFAULT_VERSION,
   getReleaseBaseUrl,
@@ -9,11 +9,11 @@ import {
   matchesExpectedPattern,
   stripVersionPrefix,
   OS_NOTES,
-} from './data/downloads';
+} from './downloads';
 import {
   getAppInstallInstructions,
   getServerInstallInstructions,
-} from './data/installInstructions';
+} from './installInstructions';
 import { useSystemDetection } from './hooks/useSystemDetection';
 import { useReleaseVersions } from './hooks/useReleaseVersions';
 

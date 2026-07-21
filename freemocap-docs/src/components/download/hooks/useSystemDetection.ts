@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { OsType, ArchType } from '../data/downloads';
+import type { OsType, ArchType } from '../downloads';
 
 export interface SystemInfo {
   os: OsType | 'unknown';

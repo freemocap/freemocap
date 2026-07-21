@@ -1,5 +1,5 @@
-import type { DownloadEntry } from '../data/downloads';
-import { formatMeta } from '../data/downloads';
+import type { DownloadEntry } from '../downloads';
+import { formatMeta } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 type CardVariant = 'recommended' | 'server-rec' | 'secondary';

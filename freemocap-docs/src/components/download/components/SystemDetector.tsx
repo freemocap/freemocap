@@ -1,5 +1,5 @@
-import type { OsType, ArchType } from '../data/downloads';
-import { OS_LABELS, archLabel, OS_PILL_OPTIONS } from '../data/downloads';
+import type { OsType, ArchType } from '../downloads';
+import { OS_LABELS, archLabel, OS_PILL_OPTIONS } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 interface SystemDetectorProps {

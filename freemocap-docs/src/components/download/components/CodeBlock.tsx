@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { CodeLine } from '../data/installInstructions';
+import type { CodeLine } from '../installInstructions';
 import styles from '../DownloadPage.module.css';
 
 interface CodeBlockProps {

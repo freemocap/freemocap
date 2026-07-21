@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import type { DownloadEntry, OsNoteEntry } from '../data/downloads';
-import type { InstructionBlock } from '../data/installInstructions';
+import type { DownloadEntry, OsNoteEntry } from '../downloads';
+import type { InstructionBlock } from '../installInstructions';
 import DownloadCard from './DownloadCard';
 import CollapsibleSection from './CollapsibleSection';
 import CodeBlock from './CodeBlock';

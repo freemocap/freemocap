@@ -1,5 +1,5 @@
-import type { GitHubAsset } from '../data/downloads';
-import { formatBytes } from '../data/downloads';
+import type { GitHubAsset } from '../downloads';
+import { formatBytes } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 interface LegacyReleaseViewProps {

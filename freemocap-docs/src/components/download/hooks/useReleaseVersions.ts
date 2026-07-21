@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { GitHubRelease } from '../data/downloads';
-import { REPO } from '../data/downloads';
+import type { GitHubRelease } from '../downloads';
+import { REPO } from '../downloads';
 
 const CACHE_KEY = 'freemocap-releases';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes

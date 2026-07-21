@@ -1,5 +1,5 @@
-import type { OsType, ArchType } from '../data/downloads';
-import { getTerminalInstallBlocks } from '../data/installInstructions';
+import type { OsType, ArchType } from '../downloads';
+import { getTerminalInstallBlocks } from '../installInstructions';
 import CollapsibleSection from './CollapsibleSection';
 import CodeBlock from './CodeBlock';
 import TerminalTip from './TerminalTip';

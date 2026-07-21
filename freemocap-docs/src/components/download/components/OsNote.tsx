@@ -1,5 +1,5 @@
 import { LinkedIssues } from '@freemocap/skellydocs';
-import type { OsNoteEntry } from '../data/downloads';
+import type { OsNoteEntry } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 const VARIANT_ICONS: Record<OsNoteEntry['variant'], string> = {

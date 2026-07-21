@@ -1,4 +1,4 @@
-import type { GitHubRelease } from '../data/downloads';
+import type { GitHubRelease } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 interface VersionSelectorProps {

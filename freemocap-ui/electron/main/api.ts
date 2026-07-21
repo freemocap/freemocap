@@ -10,7 +10,7 @@ import pkg from 'electron-updater';
 import path from 'node:path';
 import fs from 'node:fs';
 import {APP_PATHS} from './app-paths';
-import {getBaseDataFolder, setBaseDataFolder} from './base-folder';
+import {getBaseDataFolder, setBaseDataFolder, resetBaseDataFolder} from './base-folder';
 
 const { autoUpdater } = pkg;
 
@@ -118,6 +118,19 @@ function writeTelemetryConfig(config: TelemetryConfig): void {
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 }
 
+/**
+ * Restart the Python server ONLY if Electron launched it. If the server is running from source
+ * (standalone / `uv run`), Electron does not own it — we must not touch it; the user restarts it
+ * themselves. Returns whether a restart actually happened.
+ */
+async function restartServerIfOwned(): Promise<boolean> {
+    if (!PythonServer.isRunning()) return false;
+    const currentExe = PythonServer.getCurrentExecutablePath();
+    await PythonServer.shutdown();
+    await PythonServer.start(currentExe);
+    return true;
+}
+
 // Create the main API router
 export const api = t.router({
     // Python Server Management
@@ -172,12 +185,15 @@ export const api = t.router({
             .input(z.object({ path: z.string() }))
             .mutation(async ({ input }) => {
                 setBaseDataFolder(input.path);
-                // Restart the Python server so it picks up the new FREEMOCAP_BASE_FOLDER env var,
-                // preserving the currently-selected executable across the restart.
-                const currentExe = PythonServer.getCurrentExecutablePath();
-                await PythonServer.shutdown();
-                await PythonServer.start(currentExe);
-                return getBaseDataFolder();
+                const serverRestarted = await restartServerIfOwned();
+                return { baseFolder: getBaseDataFolder(), serverRestarted };
+            }),
+
+        resetBaseDataFolder: t.procedure
+            .mutation(async () => {
+                resetBaseDataFolder();
+                const serverRestarted = await restartServerIfOwned();
+                return { baseFolder: getBaseDataFolder(), serverRestarted };
             }),
 
         getFolderContents: t.procedure

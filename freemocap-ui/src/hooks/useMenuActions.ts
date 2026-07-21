@@ -112,7 +112,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                     navigate('/playback');
                     break;
                 case 'navigate-settings':
-                    navigate('/settings');
+                    window.dispatchEvent(new CustomEvent('open-settings'));
                     break;
 
                 // View

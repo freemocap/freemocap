@@ -85,3 +85,22 @@ export function setBaseDataFolder(dir: string): void {
     existing[BASE_FOLDER_KEY] = dir;
     fs.writeFileSync(configPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
 }
+
+/** Clear the base-folder override so it reverts to the default `~/freemocap_data`. */
+export function resetBaseDataFolder(): void {
+    const configPath = getConfigFilePath();
+    if (!fs.existsSync(configPath)) return;
+
+    let existing: Record<string, unknown> = {};
+    try {
+        const parsed: unknown = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            existing = parsed as Record<string, unknown>;
+        }
+    } catch (err) {
+        console.error(`Overwriting unreadable base-folder config at ${configPath}:`, err);
+    }
+
+    delete existing[BASE_FOLDER_KEY];
+    fs.writeFileSync(configPath, JSON.stringify(existing, null, 2) + '\n', 'utf-8');
+}

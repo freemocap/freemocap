@@ -24,11 +24,16 @@ from pathlib import Path
 
 import numpy as np
 
-import skellytracker
 from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
 from skellyforge.skellymodels.models.tracking_model_info import (
     CanonicalBodyModelInfo,
     CanonicalHandModelInfo,
+)
+from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
+    RTMPoseBodyDetector,
+)
+from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_detector import (
+    RTMPoseHandDetector,
 )
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
@@ -38,15 +43,8 @@ from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import OnlineB
 _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
 
 # Tracker->canonical mapping YAMLs (shipped with the skellytracker package).
-_SKELLYTRACKER_OLD_DIR = Path(skellytracker.__file__).parent / "old"
-_RTMPOSE_BODY_MAPPING_YAML = (
-    _SKELLYTRACKER_OLD_DIR
-    / "rtmpose_tracker" / "names_and_connections" / "rtmpose_body_to_canonical_mapping.yaml"
-)
-_RTMPOSE_HAND_MAPPING_YAML = (
-    _SKELLYTRACKER_OLD_DIR
-    / "rtmpose_tracker" / "names_and_connections" / "rtmpose_hand_to_canonical_mapping.yaml"
-)
+_RTMPOSE_BODY_MAPPING_YAML = RTMPoseBodyDetector.canonical_mapping_path()
+_RTMPOSE_HAND_MAPPING_YAML = RTMPoseHandDetector.canonical_mapping_path()
 
 
 class TreeRigidifier:

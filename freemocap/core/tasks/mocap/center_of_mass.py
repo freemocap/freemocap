@@ -36,9 +36,6 @@ from enum import IntEnum
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from pathlib import Path
-
-import skellytracker
 from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
 from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo
 from skellyforge.skellymodels.utils.types import (
@@ -46,16 +43,15 @@ from skellyforge.skellymodels.utils.types import (
     SegmentConnection,
     SegmentName,
 )
+from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
+    RTMPoseBodyDetector,
+)
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 # Tracker→canonical body mapping (shipped with skellytracker). This is the
 # single derivation of the computed centers (head/neck/trunk/hips_center) from
 # RTMPose keypoints — the same mapping the realtime skeleton fitter uses.
-_RTMPOSE_BODY_MAPPING_YAML = (
-    Path(skellytracker.__file__).parent
-    / "old" / "rtmpose_tracker" / "names_and_connections"
-    / "rtmpose_body_to_canonical_mapping.yaml"
-)
+_RTMPOSE_BODY_MAPPING_YAML = RTMPoseBodyDetector.canonical_mapping_path()
 
 # ---------------------------------------------------------------------------
 # Anatomical limb chains, distal → proximal.

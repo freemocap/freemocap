@@ -72,6 +72,7 @@ packages = ["freemocap"]
   default-groups = ["tracker-default"]
   override-dependencies = [
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
+      "pandas>=2.2.2,<3",  # pandas<2.2.2 wheels are built against the NumPy 1.x C ABI and crash importing against NumPy 2.x; <3 avoids the major-version jump
   ]
 
   # This project uses opencv-contrib-python (a superset of opencv-python); having

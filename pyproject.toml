@@ -39,10 +39,10 @@ cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
-skellycam = { git = "https://github.com/freemocap/skellycam", branch = "development" }
-skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development"}
-skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development" }
-freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development" }
+skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
+skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
+skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
+freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }

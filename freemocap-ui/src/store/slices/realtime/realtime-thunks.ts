@@ -29,9 +29,7 @@ export const applyRealtimePipeline = createAsyncThunk<
             ...realtimeConfig,
             camera_node_config: {
                 ...realtimeConfig.camera_node_config,
-                charuco_detector_config: {
-                    board: calibrationConfig.charucoBoard,
-                },
+                charuco_board: calibrationConfig.charucoBoard,
             },
             aggregator_config: {
                 ...realtimeConfig.aggregator_config,

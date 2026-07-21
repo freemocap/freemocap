@@ -46,7 +46,7 @@ const getDefaultInstallUnpackedPath = (): string => {
     }
 };
 
-// Python server executable candidates in order of preference
+// Python server executable candidates in order of preference.
 export const PYTHON_EXECUTABLE_CANDIDATES = [
     {
         name: 'bundled',

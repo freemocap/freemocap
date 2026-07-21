@@ -9,7 +9,7 @@ from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
 from skellyforge.skellymodels.managers.human import Human
-from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
+
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def skeleton_from_mediapipe_observation_recorders(
+    detector:str,
     observation_recorders: dict[CameraIdString, ObservationBuffer],
     path_to_calibration_toml: Path | str,
     path_to_output_data_folder: Path | str,
@@ -99,12 +100,25 @@ def skeleton_from_mediapipe_observation_recorders(
         config=filter_config,
     )
 
+    match detector:
+        case "mediapipe":
+            from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
+            model_info = MediapipeModelInfo()
+        case "rtmpose":
+            from skellyforge.skellymodels.models.tracking_model_info import RTMPoseModelInfo
+            model_info = RTMPoseModelInfo()
+        case _:
+            raise ValueError(f"Unknown detector: {detector}")
+
     skeleton: Human = Human.from_tracked_points_numpy_array(
         name="human",
-        model_info=MediapipeModelInfo(),
+        model_info=model_info,
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
+    print("DETECTOR: ", detector)
+    print("MODEL INFO: ", model_info)
+    print(f"SKELETON: {skeleton}")
 
     if len(camera_ids) > 1 and not calibration.groundplane_aligned:
         try:

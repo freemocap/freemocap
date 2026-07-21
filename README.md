@@ -17,8 +17,8 @@
    - Windows: `.venv/bin/activate`
    - Mac/Linux: `source .venv/bin/activate`
 6. Install dependencies
-  - `uv sync`
-  - 
+  - `uv sync` — installs skellytracker with NVIDIA GPU acceleration on Windows/Linux, or CPU-only on macOS, automatically
+  - No supported GPU on Windows/Linux? Force the CPU-only build instead: `uv sync --no-default-groups --group cpu`
 ### React GUI
 0. Install Node.js
    - https://nodejs.org/en/download/
@@ -103,8 +103,14 @@ https://user-images.githubusercontent.com/15314521/192062522-2a8d9305-f181-4869-
 #### 0. Create a a Python 3.9 through 3.11 environment (python3.11 recommended)¶
 #### 1. Install software via [pip](https://pypi.org/project/freemocap/#description):
 
+`freemocap` requires the `cuda` or `cpu` extra to be specified — plain `pip install freemocap` will install without its tracker. Pick one:
+
 ```
-pip install freemocap
+pip install freemocap[cuda]   # Windows/Linux with an NVIDIA GPU
+```
+
+```
+pip install freemocap[cpu]    # macOS, or Windows/Linux without a supported GPU
 ```
 
 #### 2. Launch the GUI by entering the command:
@@ -126,45 +132,63 @@ freemocap
 ___
 ## Install/run from source code (i.e. the code in this repo)
 
-Open an [Anaconda-enabled command prompt](https://www.anaconda.org) (or your preferred method of environmnet management) and enter the following commands:
+This repo's dependencies (`skellytracker`, `skellycam`, etc.) are pulled from
+private git repos via [`uv`](https://github.com/astral-sh/uv), so `conda` +
+`pip install -e .` will not work here — use `uv` instead:
 
-1) Create a `Python` environment (Recommended version  is `python3.11`)
+1) Install `uv`
+   - https://github.com/astral-sh/uv?tab=readme-ov-file#installation
 
-```bash
-conda create -n freemocap-env python=3.11
-```
-
-2) Activate that newly created environment
-
-```bash
-conda activate freemocap-env
-```
-
-3) Clone the repository
+2) Clone the repository
 
 ```bash
 git clone https://github.com/freemocap/freemocap
 ```
 
-4) Navigate into the newly cloned/downloaded `freemocap` folder
+3) Navigate into the newly cloned/downloaded `freemocap` folder
 
 ```bash
 cd freemocap
 ```
 
-5) Install the package via the `pyproject.toml` file
+4) Create a virtual environment
 
 ```bash
-pip install -e .
+uv venv
 ```
 
-6) Launch the GUI (via the `freemocap.__main__.py` entry point)
+5) Install dependencies
 
 ```bash
-python -m freemocap
+uv sync
 ```
 
-A GUI should pop up!
+This installs `skellytracker` with NVIDIA GPU acceleration on Windows/Linux, or
+CPU-only on macOS, automatically. If you're on Windows/Linux without a
+supported GPU, force the CPU-only build instead:
+
+```bash
+uv sync --no-default-groups --group cpu
+```
+
+6) Launch the Python server
+
+```bash
+uv run python freemocap/__main__.py
+```
+
+The server starts on `http://localhost:8005`.
+
+7) In a separate terminal, launch the React/Electron GUI (requires
+   [Node.js](https://nodejs.org/en/download/)):
+
+```bash
+cd freemocap-ui
+npm install
+npm run dev
+```
+
+An Electron window should pop up with the FreeMoCap GUI!
 
 ___
 

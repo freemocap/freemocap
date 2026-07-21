@@ -21,16 +21,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Windows/Linux x64 ship both a CUDA (GPU-accelerated) and a CPU-only
+          # variant — same OS/arch, different onnxruntime backend, selected via
+          # `uv sync --extra ${{ matrix.variant }}` and FREEMOCAP_BUILD_VARIANT.
+          # macOS and Linux arm64 only ever build the CPU variant: macOS has no
+          # CUDA path, and NVIDIA's PyPI CUDA wheels used here are x86_64-only.
           - os: windows-latest
             platform: windows
             arch: x64
-            label: windows-x64
+            variant: cuda
+            label: windows-x64-cuda
+            server-binary: freemocap_server.exe
+            electron-arch: x64
+
+          - os: windows-latest
+            platform: windows
+            arch: x64
+            variant: cpu
+            label: windows-x64-cpu
             server-binary: freemocap_server.exe
             electron-arch: x64
 
           - os: macos-15-intel
             platform: macos
             arch: x64
+            variant: cpu
             label: macos-x64-intel
             server-binary: freemocap_server
             electron-arch: x64
@@ -38,6 +53,7 @@ jobs:
           - os: macos-latest
             platform: macos
             arch: arm64
+            variant: cpu
             label: macos-arm64-apple-silicon
             server-binary: freemocap_server
             electron-arch: arm64
@@ -45,13 +61,23 @@ jobs:
           - os: ubuntu-22.04
             platform: linux
             arch: x64
-            label: linux-x64
+            variant: cuda
+            label: linux-x64-cuda
+            server-binary: freemocap_server
+            electron-arch: x64
+
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            variant: cpu
+            label: linux-x64-cpu
             server-binary: freemocap_server
             electron-arch: x64
 
           - os: ubuntu-22.04-arm
             platform: linux
             arch: arm64
+            variant: cpu
             label: linux-arm64
             server-binary: freemocap_server
             electron-arch: arm64
@@ -70,7 +96,6 @@ jobs:
           if (-not "${{ secrets.AZURE_CLIENT_ID }}") { $missingSecrets += "AZURE_CLIENT_ID" }
           if (-not "${{ secrets.AZURE_CLIENT_SECRET }}") { $missingSecrets += "AZURE_CLIENT_SECRET" }
           if (-not "freemocap") { $missingSecrets += "TRUSTED_SIGNING_ACCOUNT_NAME" }
-          if (-nfreemocap
 
           if ($missingSecrets.Count -gt 0) {
             Write-Error "Missing required secrets for code signing: $($missingSecrets -join ', ')"
@@ -173,7 +198,7 @@ jobs:
         run: uv venv
 
       - name: Install the project dependencies
-        run: uv sync
+        run: uv sync --no-default-groups --group ${{ matrix.variant }}
 
       - name: Verify installation 1/3
         run: uv pip show freemocap
@@ -205,20 +230,22 @@ jobs:
 
       # ── PyInstaller build ──
       - name: Build with PyInstaller
+        env:
+          FREEMOCAP_BUILD_VARIANT: ${{ matrix.variant }}
         run: |
           uv pip install pyinstaller
           uv run pyinstaller ./freemocap.spec --clean
 
-      # ── Move server directory into freemocap-ui/ ──
-      # PyInstaller onedir emits dist/freemocap_server/ — the launcher plus an
-      # _internal/ tree. The whole directory moves as a unit; the launcher
-      # resolves its DLLs and data files relative to its own location.
-      - name: Move server directory into freemocap-ui (Windows)
+      # ── Move server binary into freemocap-ui/ ──
+      # PyInstaller onedir output is a directory (dist/freemocap_server/) containing
+      # the exe plus its _internal/ support files — always named "freemocap_server"
+      # regardless of platform (the .exe extension only applies to the exe inside it).
+      - name: Move server binary into freemocap-ui (Windows)
         if: matrix.platform == 'windows'
         run: |
           Move-Item -Path ".\dist\freemocap_server" -Destination ".\freemocap-ui\freemocap_server"
 
-      - name: Move server directory into freemocap-ui (macOS/Linux)
+      - name: Move server binary into freemocap-ui (macOS/Linux)
         if: matrix.platform != 'windows'
         run: |
           mv "./dist/freemocap_server" "./freemocap-ui/freemocap_server"
@@ -235,33 +262,27 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: freemocap
           certificate-profile-name: freemocap
-          files: ${{ github.workspace }}\freemocap-ui\freemocap_server\freemocap_server.exe
+          files: ${{ github.workspace }}\freemocap-ui\freemocap_server\${{ matrix.server-binary }}
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
 
       # ── macOS code signing (server binary) ──
+      # Onedir ships many loose .dylib/.so files under _internal/ that notarization
+      # also requires to be signed, not just the main executable.
       - name: Sign freemocap_server with codesign
         if: matrix.platform == 'macos'
         run: |
-          SERVER_DIR="./freemocap-ui/freemocap_server"
+          echo "Signing nested binaries in freemocap_server/_internal..."
+          find "./freemocap-ui/freemocap_server/_internal" -type f \( -name "*.dylib" -o -name "*.so" \) -exec \
+            codesign --force --options runtime --sign "Developer ID Application" --timestamp {} \;
 
-          # Every Mach-O in the onedir tree needs its own signature under the
-          # hardened runtime — notarization rejects unsigned nested binaries.
-          # Inner libraries sign first; the launcher must be signed last so its
-          # signature covers the already-signed dependencies.
-          find "$SERVER_DIR" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 |
-            while IFS= read -r -d '' lib; do
-              codesign --force --options runtime --sign "Developer ID Application" \
-                --timestamp "$lib"
-            done
-
+          echo "Signing main executable..."
           codesign --force --options runtime --sign "Developer ID Application" \
             --timestamp \
-            "$SERVER_DIR/${{ matrix.server-binary }}"
-
-          codesign --verify --verbose "$SERVER_DIR/${{ matrix.server-binary }}"
+            "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
+          codesign --verify --deep --verbose "./freemocap-ui/freemocap_server"
           echo "Server binary signed and verified successfully"
       # ── Upload server-only artifact ──
       - name: Upload server binary artifact
@@ -269,7 +290,7 @@ jobs:
         with:
           name: server-${{ matrix.label }}
           path: |
-            freemocap-ui/freemocap_server
+            freemocap-ui/freemocap_server/
           include-hidden-files: true
 
       # ── Electron build ──
@@ -277,12 +298,10 @@ jobs:
       # ── Validate server binary exists and is executable ──
       - name: Validate server binary present and executable
         run: |
-          SERVER_EXE="./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
-
-          echo "Checking for server binary at $SERVER_EXE"
-          if [ ! -f "$SERVER_EXE" ]; then
-            echo "::error::Server binary not found: $SERVER_EXE"
-            ls -la ./freemocap-ui/freemocap_server || ls -la ./freemocap-ui || true
+          echo "Checking for server binary at ./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
+          if [ ! -d "./freemocap-ui/freemocap_server" ] || [ ! -f "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}" ]; then
+            echo "::error::Server binary not found: ./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
+            ls -la ./freemocap-ui || true
             exit 1
           fi
 
@@ -295,12 +314,12 @@ jobs:
           fi
 
           echo "Found server binary:"
-          ls -la "$SERVER_EXE"
+          ls -la "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
           # On Unix-like, ensure executable bit is set
           if [ "${{ matrix.platform }}" != "windows" ]; then
-            if [ ! -x "$SERVER_EXE" ]; then
+            if [ ! -x "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}" ]; then
               echo "Server binary is not executable, setting +x"
-              chmod +x "$SERVER_EXE" || true
+              chmod +x "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}" || true
             fi
           fi
 
@@ -391,8 +410,11 @@ jobs:
           include-hidden-files: true
 
       # ── Upload auto-update metadata (latest*.yml) ──
+      # electron-updater supports only one update channel per platform/arch, so
+      # the CUDA variant is treated as the auto-update channel; CPU-variant
+      # users get new installers manually via the release page.
       - name: Upload auto-update metadata (Windows)
-        if: matrix.platform == 'windows'
+        if: matrix.platform == 'windows' && matrix.variant == 'cuda'
         uses: actions/upload-artifact@v7
         with:
           name: update-metadata-${{ matrix.label }}
@@ -419,7 +441,7 @@ jobs:
           include-hidden-files: true
 
       - name: Upload auto-update metadata (Linux)
-        if: matrix.platform == 'linux' && matrix.arch == 'x64'
+        if: matrix.platform == 'linux' && matrix.arch == 'x64' && matrix.variant == 'cuda'
         uses: actions/upload-artifact@v7
         with:
           name: update-metadata-${{ matrix.label }}
@@ -469,33 +491,32 @@ jobs:
 
           # ── Server binaries ──
           # Artifact directories are named server-<label>, e.g.:
-          #   server-windows-x64, server-macos-x64-intel,
-          #   server-macos-arm64-apple-silicon, server-linux-x64, server-linux-arm64
+          #   server-windows-x64-cuda, server-windows-x64-cpu, server-macos-x64-intel,
+          #   server-macos-arm64-apple-silicon, server-linux-x64-cuda,
+          #   server-linux-x64-cpu, server-linux-arm64
           # Strip the "server-" prefix to get the human-readable suffix.
+          # Each artifact is a PyInstaller onedir folder (exe + _internal/ support
+          # files), so it's zipped into a single release asset rather than copied.
           for dir in artifacts/server-*; do
             label=$(basename "$dir" | sed 's/^server-//')
 
-            # The server is a onedir tree, so it ships as a zip rather than a
-            # bare executable — the launcher is useless without its _internal/
-            # sibling directory.
-            if [ ! -d "$dir/freemocap_server" ]; then
-              echo "::error::No freemocap_server directory found in $dir"
+            if [ -f "$dir/freemocap_server.exe" ]; then
+              exe_name="freemocap_server.exe"
+            elif [ -f "$dir/freemocap_server" ]; then
+              exe_name="freemocap_server"
+            else
+              echo "::error::No server binary found in $dir"
               exit 1
             fi
 
-            if [ ! -f "$dir/freemocap_server/freemocap_server.exe" ] \
-               && [ ! -f "$dir/freemocap_server/freemocap_server" ]; then
-              echo "::error::No server launcher found in $dir/freemocap_server"
-              exit 1
-            fi
-
-            (cd "$dir" && zip -qr - freemocap_server) \
-              > "release-assets/freemocap_server_${VERSION}_${label}.zip"
+            chmod +x "$dir/$exe_name" || true
+            (cd "$dir" && zip -r -q -X "$OLDPWD/release-assets/freemocap_server_${VERSION}_${label}.zip" .)
           done
 
           # ── App installers ──
           # Artifact directories are named installer-<label>, e.g.:
-          #   installer-windows-x64, installer-macos-x64-intel, etc.
+          #   installer-windows-x64-cuda, installer-windows-x64-cpu,
+          #   installer-macos-x64-intel, etc.
           # Electron-builder names only contain the arch (x64/arm64),
           # so we rename each file to: freemocap_<VERSION>_<label>.<ext>
           for dir in artifacts/installer-*; do
@@ -523,12 +544,13 @@ jobs:
           # Copy latest.yml files from update-metadata artifacts and patch
           # the file references to match the renamed release asset names.
 
-          # Windows: latest.yml
-          if [ -d "artifacts/update-metadata-windows-x64" ]; then
-            YML=$(find artifacts/update-metadata-windows-x64 -name 'latest.yml' | head -1)
+          # Windows: latest.yml (CUDA variant is the auto-update channel — see
+          # the "Upload auto-update metadata" step comment in the build job)
+          if [ -d "artifacts/update-metadata-windows-x64-cuda" ]; then
+            YML=$(find artifacts/update-metadata-windows-x64-cuda -name 'latest.yml' | head -1)
             if [ -n "$YML" ]; then
               # Replace the original artifact filename with the renamed one
-              sed -i "s|freemocap_.*_installer\.exe|freemocap_${VERSION}_windows-x64.exe|g" "$YML"
+              sed -i "s|freemocap_.*_installer\.exe|freemocap_${VERSION}_windows-x64-cuda.exe|g" "$YML"
               cp "$YML" "release-assets/latest.yml"
               echo "Copied latest.yml for Windows"
             fi
@@ -550,11 +572,11 @@ jobs:
             echo "Copied latest-mac.yml for macOS"
           fi
 
-          # Linux: latest-linux.yml
-          if [ -d "artifacts/update-metadata-linux-x64" ]; then
-            YML=$(find artifacts/update-metadata-linux-x64 -name 'latest-linux.yml' | head -1)
+          # Linux: latest-linux.yml (CUDA variant is the auto-update channel)
+          if [ -d "artifacts/update-metadata-linux-x64-cuda" ]; then
+            YML=$(find artifacts/update-metadata-linux-x64-cuda -name 'latest-linux.yml' | head -1)
             if [ -n "$YML" ]; then
-              sed -i "s|freemocap_.*\.AppImage|freemocap_${VERSION}_linux-x64.AppImage|g" "$YML"
+              sed -i "s|freemocap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cuda.AppImage|g" "$YML"
               cp "$YML" "release-assets/latest-linux.yml"
               echo "Copied latest-linux.yml for Linux"
             fi

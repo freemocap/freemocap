@@ -116,7 +116,7 @@ requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 # so `git describe` still resolves to v1.4.7. Every bump command therefore passes
 # --ignore-vcs-tag to bypass those stale VCS tags (baked into the poe tasks).
 [tool.bumpver]
-current_version = "v2.0.0-alpha.2"
+current_version = "v2.0.0-alpha.3"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG.NUM]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true

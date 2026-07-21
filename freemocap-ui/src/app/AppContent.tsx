@@ -11,12 +11,16 @@ import { useTranslation } from "react-i18next";
 import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
+import { useHydrateDataFolder } from "@/hooks/useHydrateDataFolder";
 
 export const AppContent = function () {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
+
+    // Seed recording directories from the configured base data folder on startup.
+    useHydrateDataFolder();
 
     React.useEffect(() => {
         document.documentElement.dir = direction;

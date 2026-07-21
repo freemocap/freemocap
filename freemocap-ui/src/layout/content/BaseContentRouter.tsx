@@ -3,6 +3,7 @@ import {Navigate, Route, Routes} from 'react-router-dom';
 import {StreamingViewPage} from "@/pages/StreamingViewPage";
 import PlaybackPage from "@/pages/PlaybackPage";
 import ActiveRecordingPage from "@/pages/ActiveRecordingPage";
+import SettingsPage from "@/pages/SettingsPage";
 
 export const BaseContentRouter: React.FC = () => {
     return (
@@ -12,6 +13,7 @@ export const BaseContentRouter: React.FC = () => {
             <Route path="/browse" element={<Navigate to="/playback" replace/>}/>
             <Route path="/playback" element={<PlaybackPage/>}/>
             <Route path="/active-recording" element={<ActiveRecordingPage/>}/>
+            <Route path="/settings" element={<SettingsPage/>}/>
             <Route path="*" element={<Navigate to="/streaming" replace/>}/>
         </Routes>
     );

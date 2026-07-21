@@ -1,9 +1,9 @@
 import os from 'node:os';
 import fs from 'node:fs';
-import path from 'node:path';
 import {exec, execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {app} from 'electron';
+import {getBaseDataFolder} from '../base-folder';
 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
@@ -258,7 +258,7 @@ async function scanGpus(): Promise<GpuInfo[]> {
 }
 
 async function scanDisk(): Promise<DiskInfo> {
-    const dataDir = path.join(app.getPath('home'), 'freemocap_data');
+    const dataDir = getBaseDataFolder();
     // Use the drive/mount that the data directory lives on
     const targetPath = fs.existsSync(dataDir) ? dataDir : app.getPath('home');
 

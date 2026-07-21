@@ -5,6 +5,7 @@ import {LifecycleLogger} from "./logger";
 import {promisify} from 'util';
 import treeKill from "tree-kill";
 import {PYTHON_EXECUTABLE_CANDIDATES} from "../app-paths";
+import {getBaseDataFolder, FREEMOCAP_BASE_FOLDER_ENV_VAR} from "../base-folder";
 
 const treeKillAsync = promisify(treeKill);
 let pythonProcess: ReturnType<typeof exec> | null = null;
@@ -54,6 +55,8 @@ export class PythonServer {
             pythonProcess = exec(`"${executablePath}"`, {
                 env: {
                     ...process.env,
+                    // Tell the Python server which data folder to use (see base-folder.ts).
+                    [FREEMOCAP_BASE_FOLDER_ENV_VAR]: getBaseDataFolder(),
                 },
                 maxBuffer: 1024 * 1024 * 100 // 100MB buffer
             });

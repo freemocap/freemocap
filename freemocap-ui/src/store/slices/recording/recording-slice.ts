@@ -42,7 +42,8 @@ const computeRecordingPath = (
     };
 };
 
-const DEFAULT_RECORDING_DIRECTORY = '~/freemocap_data/recordings';
+// Empty until hydrated from the base data folder at startup (see useHydrateDataFolder).
+const DEFAULT_RECORDING_DIRECTORY = '';
 
 const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
     useDelayStart: false,

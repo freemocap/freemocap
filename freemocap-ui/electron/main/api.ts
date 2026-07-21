@@ -9,8 +9,8 @@ import {app, dialog, shell} from 'electron';
 import pkg from 'electron-updater';
 import path from 'node:path';
 import fs from 'node:fs';
-import os from 'node:os';
 import {APP_PATHS} from './app-paths';
+import {getBaseDataFolder, setBaseDataFolder} from './base-folder';
 
 const { autoUpdater } = pkg;
 
@@ -72,29 +72,33 @@ function findCameraCalibrationToml(dirPath: string): string | null {
     }
 }
 
-const LAST_SUCCESSFUL_CALIBRATION_PATH = path.join(
-    os.homedir(), 'freemocap_data', 'calibrations', 'last_successful_camera_calibration.toml'
-);
+function getLastSuccessfulCalibrationPath(): string {
+    return path.join(getBaseDataFolder(), 'calibrations', 'last_successful_camera_calibration.toml');
+}
 
 function findLastSuccessfulCalibrationToml(): string | null {
     try {
-        return fs.existsSync(LAST_SUCCESSFUL_CALIBRATION_PATH) ? LAST_SUCCESSFUL_CALIBRATION_PATH : null;
+        const calibrationPath = getLastSuccessfulCalibrationPath();
+        return fs.existsSync(calibrationPath) ? calibrationPath : null;
     } catch {
         return null;
     }
 }
 
-// Telemetry config lives in ~/freemocap_data/telemetry_config.json
-const TELEMETRY_CONFIG_PATH = path.join(os.homedir(), 'freemocap_data', 'telemetry_config.json');
+// Telemetry config lives inside the base data folder (default ~/freemocap_data/telemetry_config.json)
+function getTelemetryConfigPath(): string {
+    return path.join(getBaseDataFolder(), 'telemetry_config.json');
+}
 
 interface TelemetryConfig {
     telemetry_enabled: boolean;
 }
 
 function readTelemetryConfig(): TelemetryConfig {
+    const configPath = getTelemetryConfigPath();
     try {
-        if (fs.existsSync(TELEMETRY_CONFIG_PATH)) {
-            const raw = fs.readFileSync(TELEMETRY_CONFIG_PATH, 'utf-8');
+        if (fs.existsSync(configPath)) {
+            const raw = fs.readFileSync(configPath, 'utf-8');
             const parsed = JSON.parse(raw);
             return { telemetry_enabled: Boolean(parsed.telemetry_enabled) };
         }
@@ -106,11 +110,12 @@ function readTelemetryConfig(): TelemetryConfig {
 }
 
 function writeTelemetryConfig(config: TelemetryConfig): void {
-    const dir = path.dirname(TELEMETRY_CONFIG_PATH);
+    const configPath = getTelemetryConfigPath();
+    const dir = path.dirname(configPath);
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
-    fs.writeFileSync(TELEMETRY_CONFIG_PATH, JSON.stringify(config, null, 2) + '\n');
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 }
 
 // Create the main API router
@@ -159,6 +164,21 @@ export const api = t.router({
 
         getHomeDirectory: t.procedure
             .query(() => app.getPath('home')),
+
+        getBaseDataFolder: t.procedure
+            .query(() => getBaseDataFolder()),
+
+        setBaseDataFolder: t.procedure
+            .input(z.object({ path: z.string() }))
+            .mutation(async ({ input }) => {
+                setBaseDataFolder(input.path);
+                // Restart the Python server so it picks up the new FREEMOCAP_BASE_FOLDER env var,
+                // preserving the currently-selected executable across the restart.
+                const currentExe = PythonServer.getCurrentExecutablePath();
+                await PythonServer.shutdown();
+                await PythonServer.start(currentExe);
+                return getBaseDataFolder();
+            }),
 
         getFolderContents: t.procedure
             .input(z.object({ path: z.string() }))

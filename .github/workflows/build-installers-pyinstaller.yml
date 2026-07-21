@@ -42,13 +42,13 @@ jobs:
             server-binary: freemocap_server.exe
             electron-arch: x64
 
-          - os: macos-15-intel
-            platform: macos
-            arch: x64
-            variant: cpu
-            label: macos-x64-intel
-            server-binary: freemocap_server
-            electron-arch: x64
+          # - os: macos-15-intel
+          #   platform: macos
+          #   arch: x64
+          #   variant: cpu
+          #   label: macos-x64-intel
+          #   server-binary: freemocap_server
+          #   electron-arch: x64
 
           - os: macos-latest
             platform: macos

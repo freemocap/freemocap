@@ -1,7 +1,7 @@
 [project]
 name = "freemocap"
-version = "0.1.0"
-description = "Add your description here"
+version = "2.0.0a3"  # bumpver
+description = "A free and open source markerless motion capture system for everyone 💀✨"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -102,18 +102,35 @@ name = "rtmlib"
 version = "0.0.14"
 requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 
+# ---- Version Bumping (bumpver) ----
+# Run with: uv run poe bump-alpha   (see [tool.poe.tasks] in poe_tasks.toml)
+#
+# `current_version` below is the ONE canonical version. bumpver writes it to
+# every file in the format that ecosystem requires:
+#   - pyproject.toml `version`               PEP 440,  e.g. 2.0.0a2        (pip/uv)
+#   - freemocap/__init__.py `__version__`     display,  e.g. v2.0.0-alpha.2 (Python runtime)
+#   - freemocap-ui/package.json `version`     npm semver, e.g. 2.0.0-alpha.2 (Electron)
+#   - freemocap-docs .../downloads.ts         display,  e.g. 2.0.0-alpha.2  (docs site)
+#
+# The v2 rewrite lives on `development`, which branched before the v1.5+ tags,
+# so `git describe` still resolves to v1.4.7. Every bump command therefore passes
+# --ignore-vcs-tag to bypass those stale VCS tags (baked into the poe tasks).
 [tool.bumpver]
-current_version = "v1.4.7"
-version_pattern = "vMAJOR.MINOR.PATCH[-TAG]"
+current_version = "v2.0.0-alpha.2"
+version_pattern = "vMAJOR.MINOR.PATCH[-TAG.NUM]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
 tag = true
 push = true
 
 [tool.bumpver.file_patterns]
-#"pyproject.toml" = ['current_version = "{version}"', 'version = "{version}"']
-"freemocap/__init__.py" = ["{version}"]
-".github/workflows/*_installer.yml" = ['export PYAPP_PROJECT_VERSION={version}']
+# The `# bumpver` marker pins this to the [project] version line ONLY — a bare
+# `version = "..."` pattern also matches the rtmlib [[tool.uv.dependency-metadata]]
+# pin above and clobbers it. (Both the marker and that pin go away when rtmlib does.)
+"pyproject.toml" = ['version = "{pep440_version}"  # bumpver']
+"freemocap/__init__.py" = ['__version__ = "{version}"']
+"freemocap-ui/package.json" = ['"version": "MAJOR.MINOR.PATCH[-TAG.NUM]"']
+"freemocap-docs/src/components/download/data/downloads.ts" = ["DEFAULT_VERSION = 'MAJOR.MINOR.PATCH[-TAG.NUM]'"]
 
 
 

@@ -13,7 +13,7 @@ from skellyforge.post_processing.filters.filter_config import FilterConfig
 from skellyforge.post_processing.interpolation.apply_interpolation import interpolate_trajectory
 from skellyforge.post_processing.interpolation.interpolation_config import InterpolationConfig
 from skellyforge.skellymodels.managers.board import Board
-from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3ModelInfo
+from skellyforge.skellymodels.models.tracking_model_info import CharucoBoard5x3ModelInfo, CharucoBoard7x5ModelInfo
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
@@ -88,16 +88,25 @@ def charuco_model_from_observations(
         config=filter_config,
     )
 
+    if board_def.squares_x == 5 and board_def.squares_y == 3:
+        model_info = CharucoBoard5x3ModelInfo()
+        name = "charuco_board_5x3"
+    elif board_def.squares_x == 7 and board_def.squares_y == 5:
+        model_info = CharucoBoard7x5ModelInfo()
+        name = "charuco_board_7x5"
+    else:
+        raise ValueError(f"Unsupported board definition: x: {board_def.squares_x}, y: {board_def.squares_y}")
+
     charuco_model = Board.from_tracked_points_numpy_array(
-        name="charuco_board_5x3",
-        model_info=CharucoBoard5x3ModelInfo(),
+        name=name,
+        model_info=model_info,
         tracked_points_numpy_array=filtered_trajectory_3d.triangulated_data,
     )
 
     charuco_model.save_out_numpy_data(output_data_folder)
     charuco_model.save_out_csv_data(output_data_folder)
-    charuco_model.save_out_all_data_csv(output_data_folder)
+    # charuco_model.save_out_all_data_csv(output_data_folder) #saves out the exact same data as the above two lines, so don't need it
+    # charuco_model.save_out_all_xyz_numpy_data(output_data_folder) #saves out the exact same data as the above two lines, so don't need it
     charuco_model.save_out_all_data_parquet(output_data_folder)
-    charuco_model.save_out_all_xyz_numpy_data(output_data_folder)
 
     return charuco_model

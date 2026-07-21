@@ -54,6 +54,21 @@ test-pipelines = { cmd = "pytest freemocap/tests/pipelines/ -v --timeout=600 --t
 test-pipelines-fast = { cmd = "pytest freemocap/tests/pipelines/ -v -m 'not slow' --timeout=600 --timeout-method=thread", help = "E2E pipeline tests minus the slow full-skeleton realtime case" }
 test-all = { sequence = ["test"], help = "Run all backend tests (run `npm test` in freemocap-ui/ separately for frontend)" }
 
+# ── Version bumping (bumpver) ───────────────────────────────────────────
+# The canonical version lives in [tool.bumpver] current_version (pyproject.toml).
+# bumpver rewrites it into the Python package, Electron package.json, and docs
+# in each ecosystem's format, then commits + tags + pushes (see [tool.bumpver]).
+#
+# --ignore-vcs-tag skips the stale v1.x git tags (git describe finds v1.4.7 on
+# `development`, which predates the v2 rewrite). Add --dry to preview any bump.
+version    = { cmd = "bumpver show",                                              help = "Show the current canonical version" }
+bump-alpha = { cmd = "bumpver update --tag=alpha --tag-num --ignore-vcs-tag",     help = "Bump alpha number: v2.0.0-alpha.2 -> v2.0.0-alpha.3" }
+bump-beta  = { cmd = "bumpver update --tag=beta --ignore-vcs-tag",                help = "Promote to beta:  v2.0.0-alpha.X -> v2.0.0-beta.0" }
+bump-rc    = { cmd = "bumpver update --tag=rc --ignore-vcs-tag",                  help = "Promote to rc:    v2.0.0-beta.X  -> v2.0.0-rc.0" }
+bump-final = { cmd = "bumpver update --tag=final --ignore-vcs-tag",               help = "Promote to final: v2.0.0-rc.X   -> v2.0.0" }
+bump-minor = { cmd = "bumpver update --minor --tag=alpha --tag-num --ignore-vcs-tag", help = "Next minor alpha: v2.0.0 -> v2.1.0-alpha.0" }
+bump-major = { cmd = "bumpver update --major --tag=alpha --tag-num --ignore-vcs-tag", help = "Next major alpha: v2.0.0 -> v3.0.0-alpha.0" }
+
 [tool.poe.tasks.test-ui]
 cmd = "npm run test"
 cwd = "freemocap-ui"

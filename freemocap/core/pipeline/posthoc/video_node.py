@@ -121,7 +121,6 @@ def _build_annotator(tracker_config: TrackerConfig):
     from skellytracker.core.annotation.keypoint_annotator import (
         KeypointAnnotator,
         KeypointAnnotatorConfig,
-        StageAnnotationSchema,
     )
     from skellytracker.core.detectors.keypoint_detectors.charuco.charuco_observation_annotator import (
         CharucoObservationAnnotator,
@@ -133,9 +132,25 @@ def _build_annotator(tracker_config: TrackerConfig):
         return CharucoObservationAnnotator.create(
             _CharucoObservationAnnotatorConfig(board_def=board_def)
         )
+
+    from freemocap.core.pipeline.posthoc.annotation_style import build_skeleton_stage_schema
+    from freemocap.core.tracking.tracker_definitions import (
+        MEDIAPIPE_WHOLEBODY_DEFINITION,
+        RTMPOSE_WHOLEBODY_DEFINITION,
+    )
+
+    tracker_definition = (
+        MEDIAPIPE_WHOLEBODY_DEFINITION
+        if _is_mediapipe_config(tracker_config)
+        else RTMPOSE_WHOLEBODY_DEFINITION
+    )
     return KeypointAnnotator(
         config=KeypointAnnotatorConfig(
-            stage_schemas={"body": StageAnnotationSchema(draw_boxes=True)}
+            stage_schemas={
+                "body": build_skeleton_stage_schema(
+                    tracker_definition.connections, tracker_definition.tracked_points
+                )
+            }
         )
     )
 

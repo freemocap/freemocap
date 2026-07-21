@@ -6,6 +6,7 @@ import {
     CamerasState,
     createDefaultCameraConfig,
     extractConfigSettings,
+    reconcileDetectedCameras,
 } from './cameras-types';
 import {camerasConnectOrUpdate, closeCameras, detectCameras, pauseUnpauseCameras, recommendExposureSent,} from './cameras-thunks';
 import {serverStateReceived, serverDisconnected} from '../connection/connection-slice';
@@ -137,21 +138,7 @@ export const cameraSlice = createSlice({
             })
             .addCase(detectCameras.fulfilled, (state, action) => {
                 state.isLoading = false;
-                const previousCameras = state.cameras;
-                state.cameras = action.payload.map(camera => {
-                    const existing = previousCameras.find(cam => cam.id === camera.id);
-                    if (!existing) return camera;
-                    return {
-                        ...camera,
-                        actualConfig: existing.actualConfig,
-                        desiredConfig: existing.desiredConfig,
-                        hasConfigMismatch: existing.hasConfigMismatch,
-                        connectionStatus: existing.connectionStatus,
-                        selected: existing.selected,
-                        realtimeEnabled: existing.realtimeEnabled,
-                        metrics: existing.metrics,
-                    };
-                });
+                state.cameras = reconcileDetectedCameras(state.cameras, action.payload);
                 persistAllCameraSettings(state);
             })
             .addCase(detectCameras.rejected, (state, action) => {

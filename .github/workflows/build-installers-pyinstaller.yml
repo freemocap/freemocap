@@ -274,7 +274,7 @@ jobs:
           codesign --force --options runtime --sign "Developer ID Application" \
             --timestamp \
             "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
-          codesign --verify --deep --verbose "./freemocap-ui/freemocap_server"
+          codesign --verify --verbose "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
           echo "Server binary signed and verified successfully"
       # ── Upload server-only artifact ──
       - name: Upload server binary artifact

@@ -177,3 +177,36 @@ export function extractConfigSettings(
         writer_fourcc: config.writer_fourcc,
     };
 }
+
+// Reconcile a fresh detection result against the cameras already in the store.
+//
+// A camera's `camera_id` is stable across replugs (it is a hash of the device
+// path), but its `camera_index` (the OS enumeration slot) is volatile — plugging
+// or unplugging a device can renumber the others. So for a camera we already
+// know, we keep the user's tuned settings but always take `camera_index` from the
+// fresh detection. This mirrors what the persistence layer does: `extractConfigSettings`
+// deliberately omits `camera_index` because it is detection-owned, never a saved
+// setting. Trusting a cached index here is what lets two cameras claim the same
+// index and get rejected by the backend's uniqueness check.
+export function reconcileDetectedCameras(
+    previousCameras: Camera[],
+    detectedCameras: Camera[],
+): Camera[] {
+    return detectedCameras.map(camera => {
+        const existing = previousCameras.find(cam => cam.id === camera.id);
+        if (!existing) return camera;
+        return {
+            ...camera,
+            actualConfig: existing.actualConfig,
+            desiredConfig: {
+                ...existing.desiredConfig,
+                camera_index: camera.index,
+            },
+            hasConfigMismatch: existing.hasConfigMismatch,
+            connectionStatus: existing.connectionStatus,
+            selected: existing.selected,
+            realtimeEnabled: existing.realtimeEnabled,
+            metrics: existing.metrics,
+        };
+    });
+}

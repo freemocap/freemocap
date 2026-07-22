@@ -2,13 +2,15 @@ import { useState, useMemo, useEffect } from 'react';
 import type { OsType, ArchType, VariantType } from './downloads';
 import {
   DEFAULT_VERSION,
-  getReleaseBaseUrl,
   buildAppDownloads,
   buildServerDownloads,
   enrichDownloadsWithAssets,
+  enrichDownloadsWithR2Sizes,
   matchesExpectedPattern,
   stripVersionPrefix,
   hasVariant,
+  isR2Hosted,
+  downloadUrl,
   OS_NOTES,
 } from './downloads';
 import {
@@ -18,6 +20,7 @@ import {
 import { useSystemDetection } from './hooks/useSystemDetection';
 import { useGpuDetection } from './hooks/useGpuDetection';
 import { useReleaseVersions } from './hooks/useReleaseVersions';
+import { useR2FileSizes } from './hooks/useR2FileSizes';
 
 import Header from './components/Header';
 import SystemDetector from './components/SystemDetector';
@@ -96,12 +99,21 @@ export default function DownloadPage() {
   );
 
   const version = stripVersionPrefix(selectedTag);
-  const baseUrl = getReleaseBaseUrl(version);
 
   const isLegacy = useMemo(() => {
     if (!selectedRelease) return false;
     return !matchesExpectedPattern(selectedRelease.assets, version);
   }, [selectedRelease, version]);
+
+  // R2-hosted files (currently just Linux CUDA) have no GitHub asset to read a size
+  // from — fetch their real size via HEAD request instead of guessing.
+  const r2Urls = useMemo(() => {
+    const all = [...buildAppDownloads(version), ...buildServerDownloads(version)];
+    return all
+      .filter(d => isR2Hosted(d.os, d.variant))
+      .map(d => downloadUrl(d.file, d.os, version, d.variant));
+  }, [version]);
+  const r2Sizes = useR2FileSizes(r2Urls);
 
   // Build download entries for the selected version
   const { appDownloads, serverDownloads } = useMemo(() => {
@@ -113,8 +125,11 @@ export default function DownloadPage() {
       server = enrichDownloadsWithAssets(server, selectedRelease.assets);
     }
 
+    app = enrichDownloadsWithR2Sizes(app, version, r2Sizes);
+    server = enrichDownloadsWithR2Sizes(server, version, r2Sizes);
+
     return { appDownloads: app, serverDownloads: server };
-  }, [version, selectedRelease]);
+  }, [version, selectedRelease, r2Sizes]);
 
   // Sort into recommended / alternate / other
   const { recApp, altApp, otherApp, recServer, otherServer } = useMemo(() => {
@@ -220,7 +235,7 @@ export default function DownloadPage() {
               recommended={recApp}
               alternates={altApp}
               installInstructions={appInstructions}
-              baseUrl={baseUrl}
+              version={version}
               variant="primary"
               noDetectMessage={
                 noDetect
@@ -242,7 +257,6 @@ export default function DownloadPage() {
                 arch={selectedArch}
                 variant={variantForInstructions}
                 version={version}
-                baseUrl={baseUrl}
               />
             )}
 
@@ -262,7 +276,7 @@ export default function DownloadPage() {
                   detailsContent="Just the camera backend server binary, no GUI. Useful for headless capture rigs, remote systems you connect to over a network, or building a custom client against the FreeMoCap API. <strong>You don't need this if you downloaded the App Installer above.</strong>"
                   recommended={recServer}
                   installInstructions={serverInstructions}
-                  baseUrl={baseUrl}
+                  version={version}
                   variant="secondary"
                   showTerminalTip={osForInstructions != null && osForInstructions !== 'windows'}
                   terminalTipContent={
@@ -277,7 +291,7 @@ export default function DownloadPage() {
             <AllPlatformsSection
               otherApp={otherApp}
               otherServer={otherServer}
-              baseUrl={baseUrl}
+              version={version}
               defaultOpen={noDetect}
             />
           </>

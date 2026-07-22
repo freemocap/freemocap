@@ -46,6 +46,26 @@ export function getReleaseBaseUrl(version: string): string {
   return `https://github.com/${REPO}/releases/download/v${version}`;
 }
 
+// Assets too large for a GitHub release (currently just Linux CUDA — see the
+// "release" job in .github/workflows/build-installers-pyinstaller.yml) are
+// hosted on Cloudflare R2 instead.
+export const R2_PUBLIC_URL = 'https://pub-0a275a10417e425c94e48de393793129.r2.dev';
+
+export function getR2BaseUrl(version: string): string {
+  return `${R2_PUBLIC_URL}/${version}`;
+}
+
+/** True for the one build whose release assets live on R2 instead of GitHub. */
+export function isR2Hosted(os: OsType, variant?: VariantType): boolean {
+  return os === 'linux' && variant === 'cuda';
+}
+
+/** Resolves the actual download URL for a file, routing R2-hosted builds correctly. */
+export function downloadUrl(file: string, os: OsType, version: string, variant?: VariantType): string {
+  const base = isR2Hosted(os, variant) ? getR2BaseUrl(version) : getReleaseBaseUrl(version);
+  return `${base}/${file}`;
+}
+
 // Filenames mirror the release job's naming in
 // .github/workflows/build-installers-pyinstaller.yml exactly:
 //   freemocap_<version>_<matrix.label>.<ext>
@@ -92,6 +112,21 @@ export function enrichDownloadsWithAssets(
   return downloads.map(d => {
     const asset = assetMap.get(d.file);
     return asset ? { ...d, size: formatBytes(asset.size) } : d;
+  });
+}
+
+/** R2-hosted entries have no GitHub asset to read a size from — this overlays a real,
+ * measured size (from a HEAD request against the R2 object, see useR2FileSizes) instead.
+ * An entry with no matching measurement is left with size: '', which renders no badge. */
+export function enrichDownloadsWithR2Sizes(
+  downloads: DownloadEntry[],
+  version: string,
+  sizeByUrl: Record<string, number>,
+): DownloadEntry[] {
+  return downloads.map(d => {
+    if (!isR2Hosted(d.os, d.variant)) return d;
+    const size = sizeByUrl[downloadUrl(d.file, d.os, version, d.variant)];
+    return size != null ? { ...d, size: formatBytes(size) } : d;
   });
 }
 

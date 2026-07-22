@@ -18,7 +18,7 @@ interface DownloadSectionProps {
   recommended: DownloadEntry[];
   alternates?: DownloadEntry[];
   installInstructions: InstructionBlock[];
-  baseUrl: string;
+  version: string;
   variant: SectionVariant;
   noDetectMessage?: string;
   showTerminalTip?: boolean;
@@ -35,7 +35,7 @@ export default function DownloadSection({
   recommended,
   alternates,
   installInstructions,
-  baseUrl,
+  version,
   variant,
   noDetectMessage,
   showTerminalTip,
@@ -74,7 +74,7 @@ export default function DownloadSection({
               key={d.file}
               download={d}
               variant={cardVariant}
-              baseUrl={baseUrl}
+              version={version}
             />
           ))
         )}
@@ -89,7 +89,7 @@ export default function DownloadSection({
                 key={d.file}
                 download={d}
                 variant="secondary"
-                baseUrl={baseUrl}
+                version={version}
               />
             ))}
           </div>

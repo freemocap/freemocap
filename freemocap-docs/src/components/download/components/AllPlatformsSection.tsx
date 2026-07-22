@@ -6,14 +6,14 @@ import styles from '../DownloadPage.module.css';
 interface AllPlatformsSectionProps {
   otherApp: DownloadEntry[];
   otherServer: DownloadEntry[];
-  baseUrl: string;
+  version: string;
   defaultOpen?: boolean;
 }
 
 export default function AllPlatformsSection({
   otherApp,
   otherServer,
-  baseUrl,
+  version,
   defaultOpen = false,
 }: AllPlatformsSectionProps) {
   if (otherApp.length === 0 && otherServer.length === 0) return null;
@@ -35,7 +35,7 @@ export default function AllPlatformsSection({
                 key={d.file}
                 download={d}
                 variant="secondary"
-                baseUrl={baseUrl}
+                version={version}
               />
             ))}
           </div>
@@ -52,7 +52,7 @@ export default function AllPlatformsSection({
                 key={d.file}
                 download={d}
                 variant="secondary"
-                baseUrl={baseUrl}
+                version={version}
               />
             ))}
           </div>

@@ -1,5 +1,5 @@
 import type { DownloadEntry } from '../downloads';
-import { formatMeta } from '../downloads';
+import { downloadUrl, formatMeta } from '../downloads';
 import styles from '../DownloadPage.module.css';
 
 type CardVariant = 'recommended' | 'server-rec' | 'secondary';
@@ -7,10 +7,10 @@ type CardVariant = 'recommended' | 'server-rec' | 'secondary';
 interface DownloadCardProps {
   download: DownloadEntry;
   variant: CardVariant;
-  baseUrl: string;
+  version: string;
 }
 
-export default function DownloadCard({ download, variant, baseUrl }: DownloadCardProps) {
+export default function DownloadCard({ download, variant, version }: DownloadCardProps) {
   const cardClasses = [styles.dlCard];
   if (variant === 'recommended') cardClasses.push(styles.dlCardRecommended);
   if (variant === 'server-rec') cardClasses.push(styles.dlCardServerRec, styles.dlCardServer);
@@ -38,7 +38,7 @@ export default function DownloadCard({ download, variant, baseUrl }: DownloadCar
 
   return (
     <a
-      href={`${baseUrl}/${download.file}`}
+      href={downloadUrl(download.file, download.os, version, download.variant)}
       className={cardClasses.join(' ')}
     >
       <div className={styles.dlInfo}>

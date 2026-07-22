@@ -10,7 +10,6 @@ interface TerminalInstallSectionProps {
   arch: ArchType;
   variant?: VariantType;
   version: string;
-  baseUrl: string;
 }
 
 export default function TerminalInstallSection({
@@ -18,11 +17,10 @@ export default function TerminalInstallSection({
   arch,
   variant,
   version,
-  baseUrl,
 }: TerminalInstallSectionProps) {
   if (os === 'windows' || os === 'unknown') return null;
 
-  const blocks = getTerminalInstallBlocks(os, arch, variant, version, baseUrl);
+  const blocks = getTerminalInstallBlocks(os, arch, variant, version);
   if (blocks.length === 0) return null;
 
   return (
@@ -32,8 +30,7 @@ export default function TerminalInstallSection({
           One-liner install from terminal
         </div>
         <p className={styles.installHint}>
-          Download and run directly using <code>curl</code>. These pull from the
-          GitHub Release.
+          Download and run directly using <code>curl</code>.
         </p>
         {blocks.map((block, i) =>
           block.codeLines ? <CodeBlock key={i} lines={block.codeLines} /> : null,

@@ -53,8 +53,14 @@ export const TourController: React.FC = () => {
             (document.querySelector(a.target) as HTMLElement | null)?.click();
         };
 
-        // Close whatever the previous step opened.
-        runOnce(prevExitRef.current);
+        const exit = prevExitRef.current;
+        const enter = currentStep?.onEnter;
+        // If the new step is just going to re-open the same panel this one opened,
+        // don't close-then-reopen it (that's the flicker). onEnter's own guard keeps
+        // it from double-toggling.
+        const enterSupersedesExit =
+            !!enter && enter.type === 'click' && !!exit && exit.type === 'click' && enter.target === exit.target;
+        if (!enterSupersedesExit) runOnce(exit);
 
         if (!isTourActive) {
             prevExitRef.current = undefined;
@@ -62,7 +68,6 @@ export const TourController: React.FC = () => {
         }
         prevExitRef.current = currentStep?.onExit;
 
-        const enter = currentStep?.onEnter;
         if (!enter || enter.type !== 'click') return;
         let cancelled = false;
         let tries = 0;

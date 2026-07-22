@@ -13,7 +13,6 @@ import { fetchAllRecordings } from "@/store/slices/recording-status/recording-st
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
 import { TutorialProvider, TourController } from "@/components/tutorial";
-import { useHydrateDataFolder } from "@/hooks/useHydrateDataFolder";
 
 export const AppContent = function () {
     const { i18n } = useTranslation();
@@ -21,9 +20,6 @@ export const AppContent = function () {
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
-
-    // Seed recording directories from the configured base data folder on startup.
-    useHydrateDataFolder();
 
     // The native menu's "Settings…" fires this event (see useMenuActions).
     React.useEffect(() => {

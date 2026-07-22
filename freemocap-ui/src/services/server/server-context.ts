@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
+import type { SkeletonFitStateStore } from './server-helpers/skeleton-fit-state-store';
 import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
 import type { Point3d, BodyKinematics } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
@@ -18,6 +19,7 @@ export interface ServerContextValue {
     getServerFps: () => number | null;
     getFramerateStore: () => FramerateStore;
     getLogStore: () => LogStore;
+    getSkeletonFitStateStore: () => SkeletonFitStateStore;
     connectedCameraIds: string[];
     updateServerConnection: (host: string, port: number) => void;
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;

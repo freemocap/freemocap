@@ -10,8 +10,15 @@ hands out of frame, a limb never visible — keep their seeds and stay live.
     IDLE        — normal live fitting (the hardened buffers — trust region,
                   agreement gating, error ranking — do the work).
     COUNTDOWN   — armed; buffers cleared; no updates until the deadline passes.
-    CAPTURING   — updates only on quality-gated frames; a bad frame resets the
-                  consecutive-good streak.
+    CAPTURING   — two quality tiers. "Updatable" frames (enough real keypoints
+                  to teach something, low error) feed the per-bone buffers —
+                  partial bodies still calibrate what the cameras can see, so
+                  a seated subject's torso and arms fit even though the legs
+                  never will. "Good" frames (nearly everything visible)
+                  advance the consecutive-good streak toward the fast-path
+                  freeze. A timeout bounds the window: on expiry, whatever
+                  bones reached agreement are re-anchored (best effort); if
+                  nothing agreed, the ritual drops back to IDLE.
     FITTED      — captured bones are re-anchored; updates continue, so lengths
                   drift slowly inside the re-anchored trust region.
 """
@@ -40,6 +47,9 @@ class FitStateSnapshot:
     countdown_remaining_s: float
     capture_good_streak: int
     capture_required_good_frames: int
+    capture_min_visible_fraction: float
+    capture_max_mean_error_px: float
+    capture_timeout_remaining_s: float
     visible_fraction: float
     mean_error_px: float | None
     n_fitted_body_bones: int
@@ -59,6 +69,8 @@ class SegmentFitRitual:
         capture_min_visible_fraction: float,
         capture_max_mean_error_px: float,
         capture_consecutive_good_frames: int,
+        capture_update_min_visible_fraction: float,
+        capture_timeout_s: float,
     ) -> None:
         self._lengths = {
             "body": body_lengths,
@@ -69,6 +81,8 @@ class SegmentFitRitual:
         self._countdown_s = float(countdown_s)
         self._min_visible = float(capture_min_visible_fraction)
         self._max_mean_error = float(capture_max_mean_error_px)
+        self._update_min_visible = float(capture_update_min_visible_fraction)
+        self._timeout_s = float(capture_timeout_s)
         # The freeze can only capture bones whose buffers reached agreement,
         # which needs min_samples consecutive samples — so the required streak
         # can never be shorter than the largest min_samples. Enforcing it here
@@ -81,6 +95,7 @@ class SegmentFitRitual:
         self._state = FitRitualState.IDLE
         self._refit_pending = False
         self._deadline_t = 0.0
+        self._capture_start_t = 0.0
         self._good_streak = 0
         self._last_t = 0.0
         self._n_fitted_body_bones = 0
@@ -125,27 +140,39 @@ class SegmentFitRitual:
         if self._state is FitRitualState.COUNTDOWN:
             if t >= self._deadline_t:
                 self._state = FitRitualState.CAPTURING
+                self._capture_start_t = t
             return
 
         if self._state is FitRitualState.CAPTURING:
-            good = (
-                self._last_visible_fraction >= self._min_visible
-                and (
-                    self._last_mean_error_px is None
-                    or self._last_mean_error_px <= self._max_mean_error
+            error_ok = (
+                self._last_mean_error_px is None
+                or self._last_mean_error_px <= self._max_mean_error
+            )
+            good = self._last_visible_fraction >= self._min_visible and error_ok
+            updatable = self._last_visible_fraction >= self._update_min_visible and error_ok
+            if updatable:
+                # Partial-visibility frames still teach the bones they can
+                # see — a bone's buffer only samples when both endpoints are
+                # really observed, so a hidden leg pollutes nothing.
+                self._update_all(
+                    measured_body, measured_rhand, measured_lhand,
+                    errors_body, errors_rhand, errors_lhand, t,
                 )
-            )
-            if not good:
-                self._good_streak = 0
+            if good:
+                self._good_streak += 1
+                if self._good_streak >= self._required_good_frames:
+                    self._freeze()
+                    self._state = FitRitualState.FITTED
                 return
-            self._update_all(
-                measured_body, measured_rhand, measured_lhand,
-                errors_body, errors_rhand, errors_lhand, t,
-            )
-            self._good_streak += 1
-            if self._good_streak >= self._required_good_frames:
-                self._freeze()
-                self._state = FitRitualState.FITTED
+            self._good_streak = 0
+            if t - self._capture_start_t >= self._timeout_s:
+                # Best-effort freeze: re-anchor whatever reached agreement
+                # (a seated subject's torso/arms; the legs keep their seeds).
+                # Nothing agreed -> normal live fitting, no fanfare.
+                if self._freeze() > 0:
+                    self._state = FitRitualState.FITTED
+                else:
+                    self._state = FitRitualState.IDLE
             return
 
         # IDLE and FITTED both update every frame; FITTED bones are re-anchored,
@@ -186,8 +213,12 @@ class SegmentFitRitual:
         self._lengths["rhand"].update(measured_rhand, t=t, errors=errors_rhand)
         self._lengths["lhand"].update(measured_lhand, t=t, errors=errors_lhand)
 
-    def _freeze(self) -> None:
-        """Re-anchor every bone that reached agreement on its captured length."""
+    def _freeze(self) -> int:
+        """Re-anchor every bone that reached agreement on its captured length.
+
+        Returns the number of bones re-anchored across body and both hands.
+        """
+        n_captured = 0
         deviations: list[float] = []
         for tree_name, lengths in self._lengths.items():
             medians = lengths.agreed_medians()
@@ -195,6 +226,7 @@ class SegmentFitRitual:
             captured = {bone: m for bone, m in medians.items() if m is not None}
             if not captured:
                 continue
+            n_captured += len(captured)
             if tree_name == "body":
                 self._n_fitted_body_bones = len(captured)
                 deviations = [
@@ -204,6 +236,7 @@ class SegmentFitRitual:
             lengths.reseed(captured)
         if deviations:
             self._median_seed_deviation = float(np.median(deviations))
+        return n_captured
 
     def snapshot(self) -> FitStateSnapshot:
         countdown_remaining = (
@@ -211,11 +244,19 @@ class SegmentFitRitual:
             if self._state is FitRitualState.COUNTDOWN
             else 0.0
         )
+        timeout_remaining = (
+            max(0.0, self._timeout_s - (self._last_t - self._capture_start_t))
+            if self._state is FitRitualState.CAPTURING
+            else 0.0
+        )
         return FitStateSnapshot(
             state=str(self._state),
             countdown_remaining_s=countdown_remaining,
             capture_good_streak=self._good_streak,
             capture_required_good_frames=self._required_good_frames,
+            capture_min_visible_fraction=self._min_visible,
+            capture_max_mean_error_px=self._max_mean_error,
+            capture_timeout_remaining_s=timeout_remaining,
             visible_fraction=self._last_visible_fraction,
             mean_error_px=self._last_mean_error_px,
             n_fitted_body_bones=self._n_fitted_body_bones,

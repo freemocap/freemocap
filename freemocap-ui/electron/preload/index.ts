@@ -2,6 +2,11 @@ import {contextBridge, ipcRenderer} from 'electron';
 
 // Expose a simple tRPC bridge + menu action listener + menu label updater
 contextBridge.exposeInMainWorld('electronAPI', {
+    // Resolved synchronously (override-or-default, see electron/main/base-folder.ts) so the
+    // renderer's Redux store can seed recording paths with a real value before first render —
+    // never an empty string. See ipc.ts's 'get-base-data-folder-sync' handler.
+    baseDataFolder: ipcRenderer.sendSync('get-base-data-folder-sync') as string,
+
     invoke: (path: string, input?: unknown) =>
         ipcRenderer.invoke('trpc', { path, input }),
 

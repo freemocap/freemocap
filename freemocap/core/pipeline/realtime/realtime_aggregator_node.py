@@ -270,6 +270,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                 capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
                 capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
                 capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
+                capture_update_min_visible_fraction=filter_config.calibration_capture_update_min_visible_fraction,
+                capture_timeout_s=filter_config.calibration_capture_timeout_s,
             )
             rigidifier_filter_config = filter_config
             logger.debug(
@@ -404,6 +406,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
                                 capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
                                 capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
+                                capture_update_min_visible_fraction=filter_config.calibration_capture_update_min_visible_fraction,
+                                capture_timeout_s=filter_config.calibration_capture_timeout_s,
                             )
                             rigidifier_filter_config = filter_config
                             logger.info(

@@ -229,6 +229,9 @@ class SkeletonFitStateMessage(TopicMessageABC):
     countdown_remaining_s: float = 0.0
     capture_good_streak: int = 0
     capture_required_good_frames: int = 0
+    capture_min_visible_fraction: float = 0.0
+    capture_max_mean_error_px: float = 0.0
+    capture_timeout_remaining_s: float = 0.0
     visible_fraction: float = 0.0
     mean_error_px: float | None = None
     n_fitted_body_bones: int = 0
@@ -241,6 +244,9 @@ class SkeletonFitStateMessage(TopicMessageABC):
             countdown_remaining_s=snapshot.countdown_remaining_s,
             capture_good_streak=snapshot.capture_good_streak,
             capture_required_good_frames=snapshot.capture_required_good_frames,
+            capture_min_visible_fraction=snapshot.capture_min_visible_fraction,
+            capture_max_mean_error_px=snapshot.capture_max_mean_error_px,
+            capture_timeout_remaining_s=snapshot.capture_timeout_remaining_s,
             visible_fraction=snapshot.visible_fraction,
             mean_error_px=snapshot.mean_error_px,
             n_fitted_body_bones=snapshot.n_fitted_body_bones,

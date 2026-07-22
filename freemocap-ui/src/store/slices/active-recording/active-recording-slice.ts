@@ -4,6 +4,7 @@ import {startRecording, stopRecording} from '@/store/slices/recording/recording-
 import {buildRecordingStructure, RecordingStructure} from './recording-structure';
 import type {RecordingLayoutPresetName} from './layout-presets/layout-presets';
 import {loadFromStorage} from '@/store/persistence';
+import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 
 export type ActiveRecordingOrigin =
     | 'pending-capture'
@@ -18,8 +19,18 @@ export interface ActiveRecordingState {
     layoutPreset: RecordingLayoutPresetName;
 }
 
-// Empty until hydrated from the base data folder at startup (see useHydrateDataFolder).
-const DEFAULT_BASE_DIRECTORY = '';
+// The base directory must NEVER be empty — see the identical invariant (and full rationale) on
+// DEFAULT_RECORDING_DIRECTORY in recording-slice.ts. Resolved synchronously from the same source.
+const FALLBACK_BASE_DIRECTORY = '~/freemocap_data/recordings';
+
+function resolveDefaultBaseDirectory(): string {
+    const baseDataFolder = typeof window !== 'undefined' && window.electronAPI
+        ? window.electronAPI.baseDataFolder
+        : undefined;
+    return baseDataFolder ? recordingsDirFromBaseFolder(baseDataFolder) : FALLBACK_BASE_DIRECTORY;
+}
+
+const DEFAULT_BASE_DIRECTORY = resolveDefaultBaseDirectory();
 const DEFAULT_LAYOUT_PRESET: RecordingLayoutPresetName = 'canonical';
 
 interface PersistedActiveRecording {
@@ -29,9 +40,13 @@ interface PersistedActiveRecording {
 }
 
 const _persisted = loadFromStorage<PersistedActiveRecording | null>('activeRecording', null);
+// A blank/whitespace persisted value means "not actually set" — never carry '' forward.
+const _initialBaseDirectory = _persisted?.baseDirectory && _persisted.baseDirectory.trim()
+    ? _persisted.baseDirectory
+    : DEFAULT_BASE_DIRECTORY;
 
 const initialState: ActiveRecordingState = {
-    baseDirectory: _persisted?.baseDirectory ?? DEFAULT_BASE_DIRECTORY,
+    baseDirectory: _initialBaseDirectory,
     recordingName: _persisted?.recordingName ?? null,
     // Normalize origin on restore — 'just-captured' and 'auto-latest' are transient
     origin: _persisted?.recordingName ? 'browsed' : null,

@@ -40,6 +40,8 @@ def _ritual(body: OnlineBoneLengths, **overrides) -> SegmentFitRitual:
         capture_min_visible_fraction=0.5,
         capture_max_mean_error_px=5.0,
         capture_consecutive_good_frames=3,
+        capture_update_min_visible_fraction=0.25,
+        capture_timeout_s=15.0,
     )
     kwargs.update(overrides)
     return SegmentFitRitual(**kwargs)
@@ -168,4 +170,58 @@ def test_fitted_drift_is_bounded_by_captured_anchor():
     # trust region (440 x (1 +/- 0.5) = [220, 660]).
     wild = dict(GOOD_FRAME, spine=np.array([0.0, 900.0, 0.0]))
     _frame(ritual, t=12.0, body_frame=wild)
+    assert body.lengths["hips->spine"] == pytest.approx(440.0)
+
+
+def test_timeout_best_effort_freeze_fits_visible_bones():
+    # The desk scenario: the "good" gate (min_visible=0.9) never passes
+    # because a third of the body is always hidden, but updatable frames
+    # (floor=0.5) still teach the visible bones — and the timeout ends the
+    # ritual instead of capturing forever.
+    body = _lengths()
+    ritual = _ritual(
+        body,
+        capture_min_visible_fraction=0.9,
+        capture_update_min_visible_fraction=0.5,
+        capture_timeout_s=5.0,
+    )
+    ritual.request_refit()
+    _frame(ritual, t=10.0)
+    _frame(ritual, t=11.0)  # capturing
+
+    partial = {"hips": HIPS, "spine": SPINE}  # 2/3 visible: updatable, never good
+    for i in range(6):
+        _frame(ritual, t=11.1 + i * 0.1, body_frame=partial)
+        assert ritual.state == FitRitualState.CAPTURING
+        assert ritual.snapshot().capture_good_streak == 0
+
+    snap = ritual.snapshot()
+    assert snap.capture_timeout_remaining_s == pytest.approx(5.0 - 0.6)
+
+    _frame(ritual, t=16.1, body_frame=partial)  # past the 5 s timeout
+    assert ritual.state == FitRitualState.FITTED
+    assert body.lengths["hips->spine"] == pytest.approx(440.0)  # visible bone fitted
+    assert body.lengths["spine->chest"] == 300.0  # hidden bone keeps its seed
+    assert ritual.snapshot().n_fitted_body_bones == 1
+
+
+def test_timeout_without_any_agreement_returns_to_idle():
+    # Every frame fails the error gate: nothing is updatable, nothing agrees,
+    # so the timeout drops the ritual back to normal live fitting — seeds
+    # untouched, no FITTED fanfare.
+    body = _lengths()
+    ritual = _ritual(body, capture_timeout_s=5.0)
+    ritual.request_refit()
+    _frame(ritual, t=10.0)
+    _frame(ritual, t=11.0)  # capturing
+
+    noisy = {"hips": 50.0, "spine": 50.0, "chest": 50.0}
+    _frame(ritual, t=11.5, errors_body=noisy)
+    _frame(ritual, t=16.2, errors_body=noisy)  # past the timeout
+    assert ritual.state == FitRitualState.IDLE
+    assert body.lengths["hips->spine"] == 400.0
+
+    # IDLE resumes ungated live fitting.
+    for i in range(3):
+        _frame(ritual, t=17.0 + i * 0.1)
     assert body.lengths["hips->spine"] == pytest.approx(440.0)

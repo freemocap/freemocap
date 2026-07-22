@@ -307,6 +307,8 @@ class RealtimeSkeletonRigidifier:
         capture_min_visible_fraction: float = 0.8,
         capture_max_mean_error_px: float = 10.0,
         capture_consecutive_good_frames: int = 30,
+        capture_update_min_visible_fraction: float = 0.25,
+        capture_timeout_s: float = 15.0,
     ) -> "RealtimeSkeletonRigidifier":
         """Load canonical models + tracker mappings and build the per-tree state.
 
@@ -345,6 +347,12 @@ class RealtimeSkeletonRigidifier:
             capture frame to count as good.
         capture_consecutive_good_frames : int
             Consecutive good frames required to freeze the capture.
+        capture_update_min_visible_fraction : float
+            Lower visibility floor for a capture frame to still teach the
+            bones it can see (partial bodies calibrate their visible bones).
+        capture_timeout_s : float
+            Max seconds in the capture window before a best-effort freeze of
+            whatever bones reached agreement (none -> back to live fitting).
         """
         body_anatomy = AnatomicalStructure.from_model_info(CanonicalBodyModelInfo(), "body")
         hand_anatomy = AnatomicalStructure.from_model_info(CanonicalHandModelInfo(), "hand")
@@ -392,6 +400,8 @@ class RealtimeSkeletonRigidifier:
             capture_min_visible_fraction=capture_min_visible_fraction,
             capture_max_mean_error_px=capture_max_mean_error_px,
             capture_consecutive_good_frames=capture_consecutive_good_frames,
+            capture_update_min_visible_fraction=capture_update_min_visible_fraction,
+            capture_timeout_s=capture_timeout_s,
         )
 
         return cls(

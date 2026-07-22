@@ -294,6 +294,16 @@
       "title": "Realtime pipeline",
       "text": "These controls run the live pipeline. Toggle 2D skeleton tracking, 3D triangulation, and filtering on or off, and choose which tracking model to use — all live as you stream."
     },
+    "realtimeDeep": {
+      "controls": {
+        "title": "Turning it on & off",
+        "text": "The lightning toggle turns the live pipeline fully on or off (it's not a pause — pausing the cameras is what pauses the pipeline, automatically). If you turn it on while your cameras are off, it connects your selected cameras first, then starts the pipeline. With it on, switch 2D skeleton tracking, 3D triangulation, and filtering on or off, and pick the tracking model — each stage adds detail (and compute), so turn off what you don't need."
+      },
+      "recording": {
+        "title": "It never slows your recording",
+        "text": "The realtime pipeline is designed so it can't interfere with recording. Even if the live preview can't keep up with your cameras' full frame rate, the videos saved to disk are captured at the full requested frame rate — so when you process a recording later, you get full-frame-rate data no matter how fast the live pipeline ran."
+      }
+    },
     "calibration": {
       "title": "Calibrate your cameras",
       "text": "To get 3D motion capture from multiple cameras, calibrate them first — this works out where each camera sits in space. (A single camera works without calibration.) See the guide to calibrate with a ChArUco board."

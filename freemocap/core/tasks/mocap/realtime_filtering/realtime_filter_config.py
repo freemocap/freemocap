@@ -124,6 +124,17 @@ class RealtimeFilterConfig(BaseModel):
     # Consecutive good frames required to freeze the capture. ~1 s at 30 fps.
     calibration_capture_consecutive_good_frames: int = 30
 
+    # Lower visibility floor for a capture frame to still teach the bones it
+    # can see (per-bone buffers only sample really-observed endpoints, so a
+    # partial body — seated at a desk, legs under the table — calibrates its
+    # visible bones even though the full-body "good" gate never passes).
+    calibration_capture_update_min_visible_fraction: float = 0.25
+
+    # Max seconds in the capture window before a best-effort freeze: whatever
+    # bones reached agreement are re-anchored; if none did, the ritual drops
+    # back to normal live fitting. Bounds the ritual so it always terminates.
+    calibration_capture_timeout_s: float = 15.0
+
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco
     # calibration produces mm-scale coordinates, so the bone-length seeds

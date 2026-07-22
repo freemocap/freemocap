@@ -29,7 +29,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
     const { isElectron, api } = useElectronIPC();
     const { connectedCameraIds } = useServer();
     const cameras = useAppSelector(selectCameras);
-    const { startTour, completed: tourCompleted } = useTutorial();
+    const { startTour } = useTutorial();
     const prevCountRef = useRef(connectedCameraIds.length);
 
     // Close automatically when cameras first connect
@@ -155,9 +155,9 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                             <div className="mt-2">
                                 <ButtonSm
                                     iconClass="learn-icon"
-                                    text={tourCompleted ? t('tour.replay') : t('tour.take')}
-                                    textColor={tourCompleted ? 'text-gray' : 'text-white'}
-                                    className={`full-width justify-center${tourCompleted ? '' : ' primary accent tour-nudge-pulse'}`}
+                                    text={t('tour.take')}
+                                    textColor="text-white"
+                                    className="full-width justify-center primary accent tour-nudge-pulse"
                                     onClick={handleStartTour}
                                 />
                             </div>

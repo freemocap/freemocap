@@ -63,6 +63,9 @@ class SkeletonFitStateResponse(BaseModel):
     countdown_remaining_s: float = Field(alias="countdownRemainingS")
     capture_good_streak: int = Field(alias="captureGoodStreak")
     capture_required_good_frames: int = Field(alias="captureRequiredGoodFrames")
+    capture_min_visible_fraction: float = Field(alias="captureMinVisibleFraction")
+    capture_max_mean_error_px: float = Field(alias="captureMaxMeanErrorPx")
+    capture_timeout_remaining_s: float = Field(alias="captureTimeoutRemainingS")
     visible_fraction: float = Field(alias="visibleFraction")
     mean_error_px: float | None = Field(alias="meanErrorPx")
     n_fitted_body_bones: int = Field(alias="nFittedBodyBones")
@@ -75,6 +78,9 @@ class SkeletonFitStateResponse(BaseModel):
             countdown_remaining_s=msg.countdown_remaining_s,
             capture_good_streak=msg.capture_good_streak,
             capture_required_good_frames=msg.capture_required_good_frames,
+            capture_min_visible_fraction=msg.capture_min_visible_fraction,
+            capture_max_mean_error_px=msg.capture_max_mean_error_px,
+            capture_timeout_remaining_s=msg.capture_timeout_remaining_s,
             visible_fraction=msg.visible_fraction,
             mean_error_px=msg.mean_error_px,
             n_fitted_body_bones=msg.n_fitted_body_bones,

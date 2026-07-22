@@ -4,8 +4,15 @@ import {api} from './api';
 import superjson from 'superjson';
 import type {MenuBuildParams} from './services/menu-builder';
 import {buildApplicationMenu} from './services/menu-builder';
+import {getBaseDataFolder} from './base-folder';
 
 export function setupIPC(): void {
+  // Synchronous handoff so the renderer can seed its store with a real path (never '')
+  // before the first React render — see preload/index.ts and useAppStore's initial state.
+  ipcMain.on('get-base-data-folder-sync', (event) => {
+    event.returnValue = getBaseDataFolder();
+  });
+
   ipcMain.handle('trpc', async (_event, { path, input }) => {
     try {
       const caller = api.createCaller({});

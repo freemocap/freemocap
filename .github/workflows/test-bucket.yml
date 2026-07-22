@@ -1,0 +1,41 @@
+name: Test R2 bucket upload
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-upload:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_S3_ENDPOINT }}
+    steps:
+      - name: Create test file
+        run: |
+          mkdir -p test-upload
+          cat > test-upload/hello.txt << EOF
+          FreeMoCap R2 bucket test upload
+          run: ${{ github.run_id }} (#${{ github.run_number }})
+          triggered by: ${{ github.actor }}
+          commit: ${{ github.sha }}
+          timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+          cat test-upload/hello.txt
+
+      - name: Upload to Cloudflare R2
+        run: |
+          aws s3 cp test-upload/hello.txt "s3://freemocap-releases/test/hello.txt" \
+            --endpoint-url "$R2_ENDPOINT" \
+            --no-progress
+
+      - name: Verify object exists in bucket
+        run: |
+          aws s3 ls "s3://freemocap-releases/test/" \
+            --endpoint-url "$R2_ENDPOINT"
+
+      - name: Print public download URL
+        run: |
+          echo "If the bucket's public access is working, this should be downloadable at:"
+          echo "https://pub-0a275a10417e425c94e48de393793129.r2.dev/test/hello.txt"

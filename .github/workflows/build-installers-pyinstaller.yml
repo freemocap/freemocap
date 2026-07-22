@@ -24,10 +24,12 @@ jobs:
           # Windows x64 ships both a CUDA (GPU-accelerated) and a CPU-only
           # variant — same OS/arch, different onnxruntime backend, selected via
           # `uv sync --extra ${{ matrix.variant }}` and FREEMOCAP_BUILD_VARIANT.
-          # Linux x64's CUDA variant exists but is currently disabled (see
-          # below — its release assets exceed GitHub's 2GB limit). macOS and
-          # Linux arm64 only ever build the CPU variant: macOS has no CUDA
-          # path, and NVIDIA's PyPI CUDA wheels used here are x86_64-only.
+          # Linux x64 ships both variants too. CUDA's release assets exceed
+          # GitHub's 2GB release-asset limit, so the release job publishes
+          # them to Cloudflare R2 instead of the GitHub Release (see the
+          # "release" job below). macOS and Linux arm64 only ever build the
+          # CPU variant: macOS has no CUDA path, and NVIDIA's PyPI CUDA
+          # wheels used here are x86_64-only.
           - os: windows-latest
             platform: windows
             arch: x64
@@ -61,19 +63,14 @@ jobs:
             label: macos-arm64-apple-silicon
             server-binary: freemocap_server
             electron-arch: arm64
-#
-#          # Linux x64's CUDA variant is disabled: its release assets (the
-#          # AppImage and the standalone server bundle) both run ~2.2GB, over
-#          # GitHub's 2GB release-asset limit. Re-enable once CUDA assets are
-#          # hosted externally instead of as GitHub release assets.
-#          - os: ubuntu-22.04
-#            platform: linux
-#            arch: x64
-#            variant: cuda
-#            label: linux-x64-cuda
-#            server-binary: freemocap_server
-#            electron-arch: x64
-#
+          - os: ubuntu-22.04
+            platform: linux
+            arch: x64
+            variant: cuda
+            label: linux-x64-cuda
+            server-binary: freemocap_server
+            electron-arch: x64
+
           - os: ubuntu-22.04
             platform: linux
             arch: x64
@@ -485,7 +482,7 @@ jobs:
 
       - name: Prepare release assets
         run: |
-          mkdir -p release-assets
+          mkdir -p release-assets r2-assets
 
           # Extract version from tag (e.g. refs/tags/v2.0.0 → 2.0.0)
           VERSION="${GITHUB_REF#refs/tags/v}"
@@ -499,6 +496,8 @@ jobs:
           # Strip the "server-" prefix to get the human-readable suffix.
           # Each artifact is a PyInstaller onedir folder (exe + _internal/ support
           # files), so it's zipped into a single release asset rather than copied.
+          # linux-x64-cuda's zip exceeds GitHub's 2GB release-asset limit, so it
+          # goes to r2-assets/ (uploaded to Cloudflare R2) instead of release-assets/.
           for dir in artifacts/server-*; do
             label=$(basename "$dir" | sed 's/^server-//')
 
@@ -512,7 +511,13 @@ jobs:
             fi
 
             chmod +x "$dir/$exe_name" || true
-            (cd "$dir" && zip -r -q -X "$OLDPWD/release-assets/freemocap_server_${VERSION}_${label}.zip" .)
+
+            if [ "$label" = "linux-x64-cuda" ]; then
+              dest="r2-assets"
+            else
+              dest="release-assets"
+            fi
+            (cd "$dir" && zip -r -q -X "$OLDPWD/$dest/freemocap_server_${VERSION}_${label}.zip" .)
           done
 
           # ── App installers ──
@@ -521,8 +526,15 @@ jobs:
           #   installer-macos-arm64-apple-silicon, etc.
           # Electron-builder names only contain the arch (x64/arm64),
           # so we rename each file to: freemocap_<VERSION>_<label>.<ext>
+          # Same linux-x64-cuda → r2-assets/ routing as above.
           for dir in artifacts/installer-*; do
             label=$(basename "$dir" | sed 's/^installer-//')
+
+            if [ "$label" = "linux-x64-cuda" ]; then
+              dest="r2-assets"
+            else
+              dest="release-assets"
+            fi
 
             find "$dir" -type f \( \
               -name '*.exe' -o \
@@ -532,12 +544,30 @@ jobs:
               -name '*.deb' \
             \) | while read -r file; do
               ext="${file##*.}"
-              cp "$file" "release-assets/freemocap_${VERSION}_${label}.${ext}"
+              cp "$file" "$dest/freemocap_${VERSION}_${label}.${ext}"
             done
           done
 
           echo "=== Release assets ==="
           ls -lh release-assets/
+          echo "=== R2 assets (Linux CUDA) ==="
+          ls -lh r2-assets/
+
+      - name: Upload Linux CUDA build to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          for file in r2-assets/*; do
+            echo "Uploading $(basename "$file") to R2..."
+            aws s3 cp "$file" "s3://freemocap-releases/${VERSION}/$(basename "$file")" \
+              --endpoint-url "${{ secrets.CLOUDFLARE_R2_S3_ENDPOINT }}" \
+              --no-progress
+          done
+
+          echo "=== Uploaded to R2 under ${VERSION}/ ==="
 
       - name: Prepare auto-update metadata
         run: |
@@ -572,14 +602,14 @@ jobs:
 
           # Linux: no update channel published right now — see the comment
           # above the "Upload auto-update metadata" step in the build job.
-#          if [ -d "artifacts/update-metadata-linux-x64-cpu" ]; then
-#            YML=$(find artifacts/update-metadata-linux-x64-cpu -name 'latest-linux.yml' | head -1)
-#            if [ -n "$YML" ]; then
-#              sed -i "s|[Ff]ree[Mm]o[Cc]ap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cpu.AppImage|g" "$YML"
-#              cp "$YML" "release-assets/latest-linux.yml"
-#              echo "Copied latest-linux.yml for Linux"
-#            fi
-#          fi
+          #          if [ -d "artifacts/update-metadata-linux-x64-cpu" ]; then
+          #            YML=$(find artifacts/update-metadata-linux-x64-cpu -name 'latest-linux.yml' | head -1)
+          #            if [ -n "$YML" ]; then
+          #              sed -i "s|[Ff]ree[Mm]o[Cc]ap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cpu.AppImage|g" "$YML"
+          #              cp "$YML" "release-assets/latest-linux.yml"
+          #              echo "Copied latest-linux.yml for Linux"
+          #            fi
+          #          fi
 
           echo "=== Final release assets ==="
           ls -lh release-assets/
@@ -603,3 +633,32 @@ jobs:
               --generate-notes \
               --title "$TAG"
           fi
+
+      - name: Add Cloudflare R2 links to release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          R2_PUBLIC_URL="https://pub-0a275a10417e425c94e48de393793129.r2.dev"
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body > current-notes.md
+
+          if grep -q "Linux (CUDA/GPU build)" current-notes.md; then
+            echo "R2 download links already present in release notes — skipping"
+            exit 0
+          fi
+
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "**Linux (CUDA/GPU build)** — too large for a GitHub release asset, hosted separately:"
+            echo ""
+            for file in r2-assets/*; do
+              name=$(basename "$file")
+              echo "- [$name](${R2_PUBLIC_URL}/${VERSION}/${name})"
+            done
+          } >> current-notes.md
+
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file current-notes.md

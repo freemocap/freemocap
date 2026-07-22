@@ -1,0 +1,156 @@
+# FreeMoCap Alpha: Running Post-Hoc Motion Capture
+
+Post-hoc motion capture processes previously recorded, synchronized camera videos and reconstructs a 3D skeleton. Use this workflow when you have already recorded a session and want to process—or reprocess—it with RTMPose or MediaPipe.
+
+> **Alpha note:** This is an early build. Expect bugs, crahses, and for this documentation and workflow to change significantly before the final release. 
+
+## Before you begin
+
+You will need:
+
+- A FreeMoCap recording containing synchronized videos from at least two cameras.
+
+
+Your recording folder should look approximately like this:
+
+```text
+recording_folder/
+├── synchronized_videos/
+│   ├── camera_0.mp4
+│   ├── camera_1.mp4
+│   └── ...
+└── ...
+
+```
+
+
+
+## Process an existing recording
+
+### 1. Select the recording
+
+Open the **Playback** tab and select the recording you want to process.
+
+Click **Continue to Mocap Setup** to open the post-hoc processing settings.
+
+### 2. Confirm the processing directory
+
+Under **Processing Directory**, select the recording's top-level folder.
+
+The selected folder must contain a `synchronized_videos` subfolder with the videos you want to process. Use the re-check button if you add or change files after selecting the directory. *Bug*: If the `Process Mocap` button is disabled at the bottom even after properly selecting a recording, try pressing the `Re-check Folder` button to refresh the status
+
+### 3. Select the calibration
+
+Under **Calibration**, confirm that the correct camera calibration is loaded. You can:
+
+- Use a calibration TOML found in the recording folder.
+- Import an existing calibration TOML.
+- Import and process calibration videos.
+
+> **Important:** A calibration is only valid while the cameras remain in the same positions and orientations. If any camera moved, create a new calibration before processing.
+
+*Bug*: When selecting calibration videos, make sure to select the outer top-level recording folder (so the foldering CONTAINING the `synchronized_videos` subfolder) or else it will not find the calibration videos. We will fix this in a future update.
+
+### 4. Choose a detector
+
+Under **Detector**, select either MediaPipe or RTMPose. Then select the detector model and confidence threshold.
+
+*NOTE:* RTMPose does not currently have a working blender export, so while you will get 3d data for it, the Blender export currently only works with MediaPipe. We will fix this in a future update.
+
+### 5. Configure Blender export (optional)
+
+Under **Blender**, turn off **Export to Blender after mocap processing** if you only need the motion-capture data files.
+
+If Blender export is enabled:
+
+- Confirm that the correct Blender executable has been detected or selected.
+- Enable **Auto-open .blend file in Blender when done** if you want the completed file to open automatically.
+
+### 6. Start processing
+
+Click **Process Mocap**.
+
+The pipeline progress window will show the current processing stage. Keep FreeMoCap open until the pipeline reports that processing is complete.
+
+Processing can take a substantial amount of time depending on:
+
+- Recording length.
+- Number and resolution of camera videos.
+- Selected detector and model.
+- Available CPU and GPU resources.
+
+## Find and review the results
+
+The results are saved inside the selected recording folder:
+
+```text
+recording_folder/
+├── synchronized_videos/
+├── annotated_videos/
+├── output_data/
+│   ├── *.npy
+│   ├── *.csv
+│   ├── *.parquet
+│   └── per_camera_weights.npy
+├── tracker_schema.json
+└── camera_calibration.toml
+```
+
+- **`annotated_videos/`** contains copies of the camera videos with detected 2D keypoints drawn over the images.
+- **`output_data/`** contains the reconstructed and post-processed 3D motion-capture data.
+- **`tracker_schema.json`** describes the keypoint structure used by the tracker.
+- **The calibration TOML** is copied into the recording folder so the calibration used for processing is preserved with the results.
+
+After processing, reload the recording in Playback to inspect the synchronized videos and reconstructed 3D skeleton.
+
+## Reprocessing a recording
+
+You can run post-hoc processing again to test a different detector or detector configuration. Before reprocessing an important recording, make a copy of any existing results you want to preserve.
+
+Annotated videos from an earlier run may be renamed with a `.prev` suffix when new annotated videos are generated. Other output files may be replaced by the new processing run.
+
+## Current Alpha limitation
+
+The settings displayed under **3D Reconstruction**, including Point Gate, One Euro Filter, and FABRIK settings, are not currently passed into the post-hoc pipeline. Changing these controls will not change post-hoc output in this Alpha build.
+
+The following settings are passed into post-hoc processing:
+
+- Selected recording directory.
+- Selected camera calibration.
+- RTMPose or MediaPipe detector selection.
+- Detector model and confidence settings.
+- Blender export settings.
+
+## Troubleshooting
+
+
+### FreeMoCap reports that the video frame counts do not match
+
+Check `synchronized_videos` for stale or unrelated video files. The folder should contain only the synchronized camera videos from one recording session, and every video should have the same number of frames.
+
+### Calibration or camera-ID error
+
+Confirm that the selected calibration was created with the same cameras used for the recording. Camera identifiers in the recording must correspond to camera identifiers in the calibration TOML.
+
+### The reconstructed skeleton looks distorted or appears in the wrong location
+
+Possible causes include:
+
+- A camera moved after calibration.
+- The wrong calibration TOML was selected.
+- The calibration did not adequately cover the capture volume.
+- Keypoints were not visible in enough camera views.
+
+Review the annotated videos first. If the 2D detections look reasonable but the 3D reconstruction does not, repeat calibration and reprocess the recording.
+
+### Processing fails or stops unexpectedly
+
+When reporting an Alpha issue, include:
+
+- FreeMoCap version or commit.
+- Operating system and relevant hardware, especially the GPU.
+- Recording name and number of cameras.
+- Selected detector and model.
+- The pipeline stage where processing stopped.
+- The full error message and relevant log output.
+

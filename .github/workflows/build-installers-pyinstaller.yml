@@ -180,6 +180,8 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: freemocap-ui/package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@v6
@@ -189,7 +191,8 @@ jobs:
       - name: Install uv and enable cache
         uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57
         with:
-          enable-cache: false
+          enable-cache: true
+          cache-suffix: ${{ matrix.label }}
 
       - name: Create venv
         run: uv venv
@@ -321,6 +324,20 @@ jobs:
             fi
           fi
 
+
+      - name: Cache Electron build tooling
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/electron
+            ~/.cache/electron-builder
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-cache-${{ matrix.os }}-${{ hashFiles('freemocap-ui/package-lock.json') }}
+          restore-keys: |
+            electron-cache-${{ matrix.os }}-
 
       - name: Install UI dependencies
         run: |

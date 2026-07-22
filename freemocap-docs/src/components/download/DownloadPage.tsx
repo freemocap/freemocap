@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { OsType, ArchType } from './downloads';
+import type { OsType, ArchType, VariantType } from './downloads';
 import {
   DEFAULT_VERSION,
   getReleaseBaseUrl,
@@ -8,6 +8,7 @@ import {
   enrichDownloadsWithAssets,
   matchesExpectedPattern,
   stripVersionPrefix,
+  hasVariant,
   OS_NOTES,
 } from './downloads';
 import {
@@ -15,10 +16,12 @@ import {
   getServerInstallInstructions,
 } from './installInstructions';
 import { useSystemDetection } from './hooks/useSystemDetection';
+import { useGpuDetection } from './hooks/useGpuDetection';
 import { useReleaseVersions } from './hooks/useReleaseVersions';
 
 import Header from './components/Header';
 import SystemDetector from './components/SystemDetector';
+import VariantDetector from './components/VariantDetector';
 import SystemHelpSection from './components/SystemHelpSection';
 import VersionSelector from './components/VersionSelector';
 import DownloadSection from './components/DownloadSection';
@@ -31,6 +34,7 @@ import styles from './DownloadPage.module.css';
 
 export default function DownloadPage() {
   const detected = useSystemDetection();
+  const detectedGpu = useGpuDetection();
   const { releases, isLoading: releasesLoading } = useReleaseVersions();
 
   // Selected system (seeded from detection, overridable via pills)
@@ -51,6 +55,23 @@ export default function DownloadPage() {
     setSelectedArch(arch);
     setHasManuallySelected(true);
   };
+
+  // Selected GPU/CPU variant (seeded from detection, overridable via pills)
+  const [selectedVariant, setSelectedVariant] = useState<VariantType>('cpu');
+  const [hasManuallySelectedVariant, setHasManuallySelectedVariant] = useState(false);
+
+  useEffect(() => {
+    if (!hasManuallySelectedVariant && detectedGpu.detected) {
+      setSelectedVariant(detectedGpu.variant);
+    }
+  }, [detectedGpu.detected, detectedGpu.variant, hasManuallySelectedVariant]);
+
+  const handleSelectVariant = (v: VariantType) => {
+    setSelectedVariant(v);
+    setHasManuallySelectedVariant(true);
+  };
+
+  const showVariantPicker = selectedOs !== 'unknown' && hasVariant(selectedOs, selectedArch);
 
   // Selected version (defaults to latest release or hardcoded)
   const [selectedTag, setSelectedTag] = useState<string>(`v${DEFAULT_VERSION}`);
@@ -97,12 +118,15 @@ export default function DownloadPage() {
 
   // Sort into recommended / alternate / other
   const { recApp, altApp, otherApp, recServer, otherServer } = useMemo(() => {
+    const matchesVariant = (d: { variant?: VariantType }) =>
+      !d.variant || d.variant === selectedVariant;
+
     const rA: typeof appDownloads = [];
     const aA: typeof appDownloads = [];
     const oA: typeof appDownloads = [];
 
     for (const d of appDownloads) {
-      if (d.os === selectedOs && d.arch === selectedArch) {
+      if (d.os === selectedOs && d.arch === selectedArch && matchesVariant(d)) {
         (d.recommended ? rA : aA).push(d);
       } else {
         oA.push(d);
@@ -112,7 +136,7 @@ export default function DownloadPage() {
     const rS: typeof serverDownloads = [];
     const oS: typeof serverDownloads = [];
     for (const d of serverDownloads) {
-      if (d.os === selectedOs && d.arch === selectedArch) {
+      if (d.os === selectedOs && d.arch === selectedArch && matchesVariant(d)) {
         rS.push(d);
       } else {
         oS.push(d);
@@ -120,15 +144,25 @@ export default function DownloadPage() {
     }
 
     return { recApp: rA, altApp: aA, otherApp: oA, recServer: rS, otherServer: oS };
-  }, [appDownloads, serverDownloads, selectedOs, selectedArch]);
+  }, [appDownloads, serverDownloads, selectedOs, selectedArch, selectedVariant]);
+
+  // A manually-known system (not "unknown") with nothing built for it yet —
+  // e.g. macOS Intel, Linux ARM64. Install instructions and terminal one-liners
+  // fabricate filenames unconditionally, so they must be suppressed here rather
+  // than left to silently point at the wrong (or a nonexistent) file.
+  const isUnavailablePlatform =
+    selectedOs !== 'unknown' && recApp.length === 0 && altApp.length === 0 && recServer.length === 0;
 
   const osForInstructions = selectedOs === 'unknown' ? undefined : selectedOs;
-  const appInstructions = osForInstructions
-    ? getAppInstallInstructions(osForInstructions, selectedArch, version)
-    : [];
-  const serverInstructions = osForInstructions
-    ? getServerInstallInstructions(osForInstructions, selectedArch, version)
-    : [];
+  const variantForInstructions = showVariantPicker ? selectedVariant : undefined;
+  const appInstructions =
+    osForInstructions && !isUnavailablePlatform
+      ? getAppInstallInstructions(osForInstructions, selectedArch, variantForInstructions, version)
+      : [];
+  const serverInstructions =
+    osForInstructions && !isUnavailablePlatform
+      ? getServerInstallInstructions(osForInstructions, selectedArch, variantForInstructions, version)
+      : [];
 
   // Filter OS notes for the selected system
   const activeNotes = OS_NOTES.filter(
@@ -149,6 +183,14 @@ export default function DownloadPage() {
           onSelectSystem={handleSelectSystem}
         />
 
+        {showVariantPicker && (
+          <VariantDetector
+            variant={selectedVariant}
+            detected={detectedGpu.detected}
+            onSelectVariant={handleSelectVariant}
+          />
+        )}
+
         <SystemHelpSection />
 
         <VersionSelector
@@ -166,7 +208,7 @@ export default function DownloadPage() {
         ) : (
           <>
             <DownloadSection
-              icon={'\uD83D\uDC80\uD83D\uDCF8'}
+              icon={'💀📸'}
               title="FreeMoCap App Installer"
               subtitle={
                 <>
@@ -194,36 +236,43 @@ export default function DownloadPage() {
               notes={activeNotes}
             />
 
-            <TerminalInstallSection
-              os={selectedOs}
-              arch={selectedArch}
-              version={version}
-              baseUrl={baseUrl}
-            />
+            {!isUnavailablePlatform && (
+              <TerminalInstallSection
+                os={selectedOs}
+                arch={selectedArch}
+                variant={variantForInstructions}
+                version={version}
+                baseUrl={baseUrl}
+              />
+            )}
 
-            <hr className={styles.sectionDivider} />
+            {!isUnavailablePlatform && (
+              <>
+                <hr className={styles.sectionDivider} />
 
-            <DownloadSection
-              icon={'\u26A1'}
-              title="FreeMoCap Backend Server"
-              subtitle={
-                <>
-                  <strong>Advanced</strong> &mdash; headless machines, Raspberry Pi, API use
-                </>
-              }
-              detailsLabel="When do I need this?"
-              detailsContent="Just the camera backend server binary, no GUI. Useful for headless capture rigs, remote systems you connect to over a network, or building a custom client against the FreeMoCap API. <strong>You don't need this if you downloaded the App Installer above.</strong>"
-              recommended={recServer}
-              installInstructions={serverInstructions}
-              baseUrl={baseUrl}
-              variant="secondary"
-              showTerminalTip={osForInstructions != null && osForInstructions !== 'windows'}
-              terminalTipContent={
-                osForInstructions && osForInstructions !== 'windows' ? (
-                  <TerminalTip os={osForInstructions} />
-                ) : undefined
-              }
-            />
+                <DownloadSection
+                  icon={'⚡'}
+                  title="FreeMoCap Backend Server"
+                  subtitle={
+                    <>
+                      <strong>Advanced</strong> &mdash; headless machines, remote capture rigs, API use
+                    </>
+                  }
+                  detailsLabel="When do I need this?"
+                  detailsContent="Just the camera backend server binary, no GUI. Useful for headless capture rigs, remote systems you connect to over a network, or building a custom client against the FreeMoCap API. <strong>You don't need this if you downloaded the App Installer above.</strong>"
+                  recommended={recServer}
+                  installInstructions={serverInstructions}
+                  baseUrl={baseUrl}
+                  variant="secondary"
+                  showTerminalTip={osForInstructions != null && osForInstructions !== 'windows'}
+                  terminalTipContent={
+                    osForInstructions && osForInstructions !== 'windows' ? (
+                      <TerminalTip os={osForInstructions} />
+                    ) : undefined
+                  }
+                />
+              </>
+            )}
 
             <AllPlatformsSection
               otherApp={otherApp}

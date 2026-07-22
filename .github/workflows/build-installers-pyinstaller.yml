@@ -21,11 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # Windows/Linux x64 ship both a CUDA (GPU-accelerated) and a CPU-only
+          # Windows x64 ships both a CUDA (GPU-accelerated) and a CPU-only
           # variant — same OS/arch, different onnxruntime backend, selected via
           # `uv sync --extra ${{ matrix.variant }}` and FREEMOCAP_BUILD_VARIANT.
-          # macOS and Linux arm64 only ever build the CPU variant: macOS has no
-          # CUDA path, and NVIDIA's PyPI CUDA wheels used here are x86_64-only.
+          # Linux x64's CUDA variant exists but is currently disabled (see
+          # below — its release assets exceed GitHub's 2GB limit). macOS and
+          # Linux arm64 only ever build the CPU variant: macOS has no CUDA
+          # path, and NVIDIA's PyPI CUDA wheels used here are x86_64-only.
           - os: windows-latest
             platform: windows
             arch: x64
@@ -59,15 +61,19 @@ jobs:
             label: macos-arm64-apple-silicon
             server-binary: freemocap_server
             electron-arch: arm64
-
-          - os: ubuntu-22.04
-            platform: linux
-            arch: x64
-            variant: cuda
-            label: linux-x64-cuda
-            server-binary: freemocap_server
-            electron-arch: x64
-
+#
+#          # Linux x64's CUDA variant is disabled: its release assets (the
+#          # AppImage and the standalone server bundle) both run ~2.2GB, over
+#          # GitHub's 2GB release-asset limit. Re-enable once CUDA assets are
+#          # hosted externally instead of as GitHub release assets.
+#          - os: ubuntu-22.04
+#            platform: linux
+#            arch: x64
+#            variant: cuda
+#            label: linux-x64-cuda
+#            server-binary: freemocap_server
+#            electron-arch: x64
+#
           - os: ubuntu-22.04
             platform: linux
             arch: x64
@@ -405,9 +411,17 @@ jobs:
           include-hidden-files: true
 
       # ── Upload auto-update metadata (latest*.yml) ──
-      # electron-updater supports only one update channel per platform/arch, so
-      # the CUDA variant is treated as the auto-update channel; CPU-variant
-      # users get new installers manually via the release page.
+      # electron-updater supports only one update channel per platform/arch,
+      # and the app can't tell CUDA and CPU builds apart at runtime (see
+      # update-handler.ts) — so whichever variant we point a channel at gets
+      # silently offered to installs of the OTHER variant too. Windows tracks
+      # CUDA safely (both variants fit under GitHub's 2GB release-asset
+      # limit). Linux tracks nothing for now: CUDA is disabled for being
+      # oversized, and CPU is deliberately NOT used as a stand-in channel,
+      # since that would silently swap existing CUDA installs onto a non-GPU
+      # build on their next update check. Everyone on Linux gets new
+      # installers manually via the release page until Linux has real
+      # per-variant channels.
       - name: Upload auto-update metadata (Windows)
         if: matrix.platform == 'windows' && matrix.variant == 'cuda'
         uses: actions/upload-artifact@v7
@@ -426,14 +440,16 @@ jobs:
             freemocap-ui/release/**/latest-mac.yml
           include-hidden-files: true
 
-      - name: Upload auto-update metadata (Linux)
-        if: matrix.platform == 'linux' && matrix.arch == 'x64' && matrix.variant == 'cuda'
-        uses: actions/upload-artifact@v7
-        with:
-          name: update-metadata-${{ matrix.label }}
-          path: |
-            freemocap-ui/release/**/latest-linux.yml
-          include-hidden-files: true
+      # Linux's channel is disabled entirely (see comment above) — neither
+      # variant is safe to publish as a shared channel right now.
+#      - name: Upload auto-update metadata (Linux)
+#        if: matrix.platform == 'linux' && matrix.arch == 'x64' && matrix.variant == 'cpu'
+#        uses: actions/upload-artifact@v7
+#        with:
+#          name: update-metadata-${{ matrix.label }}
+#          path: |
+#            freemocap-ui/release/**/latest-linux.yml
+#          include-hidden-files: true
 
 
       # ── macOS keychain cleanup ──
@@ -554,15 +570,16 @@ jobs:
             echo "Copied latest-mac.yml for macOS"
           fi
 
-          # Linux: latest-linux.yml (CUDA variant is the auto-update channel)
-          if [ -d "artifacts/update-metadata-linux-x64-cuda" ]; then
-            YML=$(find artifacts/update-metadata-linux-x64-cuda -name 'latest-linux.yml' | head -1)
-            if [ -n "$YML" ]; then
-              sed -i "s|[Ff]ree[Mm]o[Cc]ap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cuda.AppImage|g" "$YML"
-              cp "$YML" "release-assets/latest-linux.yml"
-              echo "Copied latest-linux.yml for Linux"
-            fi
-          fi
+          # Linux: no update channel published right now — see the comment
+          # above the "Upload auto-update metadata" step in the build job.
+#          if [ -d "artifacts/update-metadata-linux-x64-cpu" ]; then
+#            YML=$(find artifacts/update-metadata-linux-x64-cpu -name 'latest-linux.yml' | head -1)
+#            if [ -n "$YML" ]; then
+#              sed -i "s|[Ff]ree[Mm]o[Cc]ap_.*\.AppImage|freemocap_${VERSION}_linux-x64-cpu.AppImage|g" "$YML"
+#              cp "$YML" "release-assets/latest-linux.yml"
+#              echo "Copied latest-linux.yml for Linux"
+#            fi
+#          fi
 
           echo "=== Final release assets ==="
           ls -lh release-assets/

@@ -3,10 +3,12 @@ export type { LinkedIssue };
 
 export type OsType = 'windows' | 'macos' | 'linux';
 export type ArchType = 'x64' | 'arm64';
+export type VariantType = 'cuda' | 'cpu';
 
 export interface DownloadEntry {
   os: OsType;
   arch: ArchType;
+  variant?: VariantType;
   fmt: string;
   recommended: boolean;
   label: string;
@@ -37,34 +39,43 @@ export interface GitHubRelease {
   prerelease: boolean;
 }
 
-export const DEFAULT_VERSION = '2.0.0-alpha.3';
+export const DEFAULT_VERSION = '2.0.0-alpha.6';
 export const REPO = 'freemocap/freemocap';
 
 export function getReleaseBaseUrl(version: string): string {
   return `https://github.com/${REPO}/releases/download/v${version}`;
 }
 
+// Filenames mirror the release job's naming in
+// .github/workflows/build-installers-pyinstaller.yml exactly:
+//   freemocap_<version>_<matrix.label>.<ext>
+// matrix.label is windows-x64-{cuda,cpu} | macos-arm64-apple-silicon | linux-x64-{cuda,cpu}.
+// There is deliberately no macos-x64-intel or linux-arm64 entry here — CI doesn't
+// build either yet (see OS_NOTES below for why, and the linked tracking issues).
 export function buildAppDownloads(version: string): DownloadEntry[] {
   return [
-    { os: 'windows', arch: 'x64',   fmt: 'exe',      recommended: true,  label: 'Windows Installer',              file: `freemocap_${version}_windows-x64.exe`,               size: '' },
-    { os: 'macos',   arch: 'arm64', fmt: 'dmg',      recommended: true,  label: 'macOS Installer (Apple Silicon)', file: `freemocap_${version}_macos-arm64-apple-silicon.dmg`,  size: '' },
-    { os: 'macos',   arch: 'x64',   fmt: 'dmg',      recommended: true,  label: 'macOS Installer (Intel)',         file: `freemocap_${version}_macos-x64-intel.dmg`,            size: '' },
-    { os: 'macos',   arch: 'arm64', fmt: 'zip',      recommended: false, label: 'macOS Portable (Apple Silicon)',  file: `freemocap_${version}_macos-arm64-apple-silicon.zip`,  size: '' },
-    { os: 'macos',   arch: 'x64',   fmt: 'zip',      recommended: false, label: 'macOS Portable (Intel)',          file: `freemocap_${version}_macos-x64-intel.zip`,            size: '' },
-    { os: 'linux',   arch: 'x64',   fmt: 'AppImage', recommended: true,  label: 'Linux AppImage (x64)',            file: `freemocap_${version}_linux-x64.AppImage`,             size: '' },
-    { os: 'linux',   arch: 'arm64', fmt: 'AppImage', recommended: true,  label: 'Linux AppImage (ARM64)',          file: `freemocap_${version}_linux-arm64.AppImage`,            size: '' },
-    { os: 'linux',   arch: 'x64',   fmt: 'deb',      recommended: false, label: 'Linux .deb (x64)',                file: `freemocap_${version}_linux-x64.deb`,                  size: '' },
-    { os: 'linux',   arch: 'arm64', fmt: 'deb',      recommended: false, label: 'Linux .deb (ARM64)',              file: `freemocap_${version}_linux-arm64.deb`,                 size: '' },
+    { os: 'windows', arch: 'x64', variant: 'cuda', fmt: 'exe', recommended: true, label: 'Windows Installer (GPU · CUDA)', file: `freemocap_${version}_windows-x64-cuda.exe`, size: '' },
+    { os: 'windows', arch: 'x64', variant: 'cpu',  fmt: 'exe', recommended: true, label: 'Windows Installer (CPU-only)',      file: `freemocap_${version}_windows-x64-cpu.exe`,  size: '' },
+
+    { os: 'macos', arch: 'arm64', fmt: 'dmg', recommended: true,  label: 'macOS Installer (Apple Silicon)', file: `freemocap_${version}_macos-arm64-apple-silicon.dmg`, size: '' },
+    { os: 'macos', arch: 'arm64', fmt: 'zip', recommended: false, label: 'macOS Portable (Apple Silicon)',  file: `freemocap_${version}_macos-arm64-apple-silicon.zip`, size: '' },
+
+    { os: 'linux', arch: 'x64', variant: 'cuda', fmt: 'AppImage', recommended: true,  label: 'Linux AppImage (GPU · CUDA)', file: `freemocap_${version}_linux-x64-cuda.AppImage`, size: '' },
+    { os: 'linux', arch: 'x64', variant: 'cuda', fmt: 'deb',      recommended: false, label: 'Linux .deb (GPU · CUDA)',     file: `freemocap_${version}_linux-x64-cuda.deb`,      size: '' },
+    { os: 'linux', arch: 'x64', variant: 'cpu',  fmt: 'AppImage', recommended: true,  label: 'Linux AppImage (CPU-only)',       file: `freemocap_${version}_linux-x64-cpu.AppImage`,  size: '' },
+    { os: 'linux', arch: 'x64', variant: 'cpu',  fmt: 'deb',      recommended: false, label: 'Linux .deb (CPU-only)',           file: `freemocap_${version}_linux-x64-cpu.deb`,       size: '' },
   ];
 }
 
+// Server binaries always ship as .zip: PyInstaller's onedir output is the exe
+// plus a required _internal/ support directory, so it can never be a lone file.
 export function buildServerDownloads(version: string): DownloadEntry[] {
   return [
-    { os: 'windows', arch: 'x64',   fmt: 'exe', recommended: false, label: 'Server \u2014 Windows x64',        file: `freemocap_server_${version}_windows-x64.exe`,           size: '' },
-    { os: 'macos',   arch: 'arm64', fmt: 'bin', recommended: false, label: 'Server \u2014 macOS Apple Silicon', file: `freemocap_server_${version}_macos-arm64-apple-silicon`,  size: '' },
-    { os: 'macos',   arch: 'x64',   fmt: 'bin', recommended: false, label: 'Server \u2014 macOS Intel',         file: `freemocap_server_${version}_macos-x64-intel`,            size: '' },
-    { os: 'linux',   arch: 'x64',   fmt: 'bin', recommended: false, label: 'Server \u2014 Linux x64',           file: `freemocap_server_${version}_linux-x64`,                  size: '' },
-    { os: 'linux',   arch: 'arm64', fmt: 'bin', recommended: false, label: 'Server \u2014 Linux ARM64',          file: `freemocap_server_${version}_linux-arm64`,                size: '' },
+    { os: 'windows', arch: 'x64',   variant: 'cuda', fmt: 'zip', recommended: false, label: 'Server — Windows x64 (CUDA)',   file: `freemocap_server_${version}_windows-x64-cuda.zip`,          size: '' },
+    { os: 'windows', arch: 'x64',   variant: 'cpu',  fmt: 'zip', recommended: false, label: 'Server — Windows x64 (CPU)',    file: `freemocap_server_${version}_windows-x64-cpu.zip`,           size: '' },
+    { os: 'macos',   arch: 'arm64',                  fmt: 'zip', recommended: false, label: 'Server — macOS Apple Silicon',  file: `freemocap_server_${version}_macos-arm64-apple-silicon.zip`, size: '' },
+    { os: 'linux',   arch: 'x64',   variant: 'cuda', fmt: 'zip', recommended: false, label: 'Server — Linux x64 (CUDA)',     file: `freemocap_server_${version}_linux-x64-cuda.zip`,            size: '' },
+    { os: 'linux',   arch: 'x64',   variant: 'cpu',  fmt: 'zip', recommended: false, label: 'Server — Linux x64 (CPU)',      file: `freemocap_server_${version}_linux-x64-cpu.zip`,             size: '' },
   ];
 }
 
@@ -96,16 +107,23 @@ export function matchesExpectedPattern(assets: GitHubAsset[], version: string): 
   return matchCount >= 3;
 }
 
-export function fileLabel(os: OsType, arch: ArchType): string {
-  if (os === 'macos') return arch === 'arm64' ? 'macos-arm64-apple-silicon' : 'macos-x64-intel';
-  if (os === 'linux') return arch === 'arm64' ? 'linux-arm64' : 'linux-x64';
-  return 'windows-x64';
+/** True for the os/arch combos that ship separate GPU (CUDA) and CPU-only builds. */
+export function hasVariant(os: OsType, arch: ArchType): boolean {
+  return (os === 'windows' || os === 'linux') && arch === 'x64';
+}
+
+// Only ever called for buildable combos (windows-x64, macos-arm64, linux-x64) —
+// callers gate unbuilt platforms (macos-x64, linux-arm64) before reaching here.
+export function fileLabel(os: OsType, arch: ArchType, variant?: VariantType): string {
+  if (os === 'macos') return 'macos-arm64-apple-silicon';
+  const base = os === 'linux' ? 'linux-x64' : 'windows-x64';
+  return variant ? `${base}-${variant}` : base;
 }
 
 export function formatMeta(d: DownloadEntry): string {
   const parts = [d.fmt.toUpperCase()];
   if (d.os !== 'windows') parts.push(d.arch === 'arm64' ? 'ARM64' : 'x64');
-  return parts.join(' \u00B7 ');
+  return parts.join(' · ');
 }
 
 export const OS_LABELS: Record<string, string> = {
@@ -125,12 +143,46 @@ export function stripVersionPrefix(tag: string): string {
 
 // Per-OS/arch advisories shown above the download cards for the matching system.
 // Add FreeMoCap-specific notes here (platform caveats, known issues, help wanted).
-export const OS_NOTES: OsNoteEntry[] = [];
+export const OS_NOTES: OsNoteEntry[] = [
+  {
+    os: 'macos',
+    arch: 'x64',
+    variant: 'warning',
+    title: 'Intel Mac builds aren’t available yet',
+    content:
+      'FreeMoCap’s pose-tracking backend (onnxruntime, via skellytracker) doesn’t currently publish a macOS x86_64 wheel, so we can’t build for Intel Macs yet. If you’re on Apple Silicon, select that option above instead.',
+    issues: [
+      {
+        label: 'Add macOS Intel (x86_64) installer build',
+        url: 'https://github.com/freemocap/freemocap/issues/823',
+      },
+    ],
+  },
+  {
+    os: 'linux',
+    arch: 'arm64',
+    variant: 'warning',
+    title: 'Linux ARM64 builds aren’t available yet',
+    content:
+      'We don’t currently build a Linux ARM64 release (e.g. for Raspberry Pi). Nothing upstream is blocking it — it just hasn’t been built yet.',
+    issues: [
+      {
+        label: 'Add Linux ARM64 installer build',
+        url: 'https://github.com/freemocap/freemocap/issues/822',
+      },
+    ],
+  },
+];
 
 export const OS_PILL_OPTIONS = [
   { os: 'windows' as OsType, arch: 'x64' as ArchType, label: 'Windows' },
-  { os: 'macos' as OsType, arch: 'arm64' as ArchType, label: 'Mac (Apple\u00A0Silicon)' },
+  { os: 'macos' as OsType, arch: 'arm64' as ArchType, label: 'Mac (Apple Silicon)' },
   { os: 'macos' as OsType, arch: 'x64' as ArchType, label: 'Mac (Intel)' },
   { os: 'linux' as OsType, arch: 'x64' as ArchType, label: 'Linux x64' },
   { os: 'linux' as OsType, arch: 'arm64' as ArchType, label: 'Linux ARM64' },
+] as const;
+
+export const VARIANT_PILL_OPTIONS = [
+  { variant: 'cuda' as VariantType, label: 'GPU (CUDA)' },
+  { variant: 'cpu' as VariantType, label: 'CPU only' },
 ] as const;

@@ -1,4 +1,4 @@
-import type { OsType, ArchType } from '../downloads';
+import type { OsType, ArchType, VariantType } from '../downloads';
 import { getTerminalInstallBlocks } from '../installInstructions';
 import CollapsibleSection from './CollapsibleSection';
 import CodeBlock from './CodeBlock';
@@ -8,6 +8,7 @@ import styles from '../DownloadPage.module.css';
 interface TerminalInstallSectionProps {
   os: OsType | 'unknown';
   arch: ArchType;
+  variant?: VariantType;
   version: string;
   baseUrl: string;
 }
@@ -15,12 +16,13 @@ interface TerminalInstallSectionProps {
 export default function TerminalInstallSection({
   os,
   arch,
+  variant,
   version,
   baseUrl,
 }: TerminalInstallSectionProps) {
   if (os === 'windows' || os === 'unknown') return null;
 
-  const blocks = getTerminalInstallBlocks(os, arch, version, baseUrl);
+  const blocks = getTerminalInstallBlocks(os, arch, variant, version, baseUrl);
   if (blocks.length === 0) return null;
 
   return (

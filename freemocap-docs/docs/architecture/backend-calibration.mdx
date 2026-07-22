@@ -9,7 +9,7 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # Calibration
 
-Calibration estimates each camera's position, orientation, and lens parameters by observing a known physical target — a ChArUco board — from multiple viewpoints. The output is a `CalibrationResult`: a set of camera models that enable 3D triangulation.
+Calibration estimates each camera's position, orientation, and lens parameters by observing a known physical target — a ChArUco board — from multiple viewpoints. The output is a `CalibrationResult`: a set of camera models that enable 3D triangulation. ChArUco detection and the `CharucoBoardDefinition` geometry come from [SkellyTracker](https://freemocap.github.io/skellytracker/); calibration consumes the resulting `Observation`s.
 
 ## When Calibration Runs
 

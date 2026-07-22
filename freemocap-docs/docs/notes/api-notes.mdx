@@ -4,10 +4,15 @@ title: API Notes
 ---
 
 
-# API notes
+import { AiGeneratedBanner } from '@freemocap/skellydocs';
 
+<AiGeneratedBanner />
 
-# Current API structure
+# API Notes
+
+The canonical endpoint reference is the [API Boundary](/docs/architecture/api-boundary) page; SkellyCam's `/skellycam/*` routes are documented in the [SkellyCam docs](https://freemocap.github.io/skellycam/). Below is a compact route sketch and the planned API redesign.
+
+## Current routes (sketch)
 ```
 WebSocket
     /websocket/connect
@@ -49,7 +54,7 @@ SkellyCam
 ```
 
 
-# Planned
+## Planned redesign (sketch)
 
 ```
 WebSocket

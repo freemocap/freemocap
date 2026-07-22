@@ -24,22 +24,20 @@ Every recording session — whether calibration, mocap, or both — produces a s
     │   └── annotated/             # Videos with detection overlays
     │       ├── camera_0_annotated.mp4
     │       └── ...
-    ├── output/                     # Per-stage processed artifacts (canonical)
-    │   ├── mediapipe_body_3d_xyz.npy
-    │   ├── mediapipe_face_3d_xyz.npy
-    │   ├── mediapipe_right_hand_right_hand.npy
-    │   ├── mediapipe_left_hand_left_hand.npy
-    │   ├── mediapipe_body_total_body_center_of_mass.npy
-    │   ├── mediapipe_body_segment_center_of_mass.npy
-    │   ├── calibration_observations.json
-    │   └── ...
-    │   (legacy: output_data/ also supported for backward compatibility)
+    ├── output/                     # Per-stage processed artifacts
+    │   ├── *.npy                   # 3D keypoints, center-of-mass, etc.
+    │   ├── *.csv
+    │   └── *.parquet
     ├── logs/                      # Per-recording log files
     ├── {name}_calibration.toml    # Authoritative calibration data
     ├── {name}_recording_info.json # Camera configs + recording type tags
     ├── {name}_data.parquet        # Primary mocap data store
     └── {name}.blend               # Blender export (optional)
 ```
+
+:::note Current runtime layout
+The synchronized camera videos are recorded by [SkellyCam](https://freemocap.github.io/skellycam/). The recording and post-hoc pipelines currently still write the **legacy** layout — `synchronized_videos/`, `annotated_videos/`, `output_data/`, and `{recording_name}_camera_calibration.toml` (see `system/default_paths.py` and the [Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap)). `RecordingStructure.validate_layout()` accepts **both** layouts and reports which markers are present; the `videos/…` + `output/` layout above is the migration target.
+:::
 
 ## RecordingStructure Model
 
@@ -50,23 +48,25 @@ class RecordingStructure(BaseModel):
     base_directory: Path
     recording_name: str
 
-    # Computed properties
+    # Computed properties (all @computed_field)
     @property
     def full_path(self) -> Path: ...
     @property
-    def synchronized_videos_dir(self) -> Path: ...
+    def videos_synchronized_dir(self) -> Path: ...   # {full}/videos/synchronized
     @property
-    def annotated_videos_dir(self) -> Path: ...
+    def videos_annotated_dir(self) -> Path: ...      # {full}/videos/annotated
     @property
-    def output_dir(self) -> Path: ...
+    def output_dir(self) -> Path: ...                # {full}/output
+    @property
+    def logs_dir(self) -> Path: ...
     @property
     def calibration_toml_path(self) -> Path: ...
+    @property
+    def recording_info_path(self) -> Path: ...
     @property
     def data_parquet_path(self) -> Path: ...
     @property
     def blend_path(self) -> Path: ...
-    @property
-    def recording_info_path(self) -> Path: ...
 ```
 
 `validate_layout()` checks both canonical (`output/`) and legacy (`output_data/`) layouts, providing backward compatibility with recordings from older versions.

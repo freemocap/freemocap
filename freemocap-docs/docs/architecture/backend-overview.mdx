@@ -29,7 +29,10 @@ skellycam/                      ← Camera domain
 └── skellycam-rust/             Rust rewrite (in development)
 
 skellytracker/                  ← Pose estimation domain
-    (RTMPose, CharUco detection)
+├── skellytracker/              Unified Tracker → Session → Detector API
+│                               (MediaPipe, RTMPose, YOLOX, ArUco, ChArUco;
+│                                batched multi-camera inference)
+└── skellytracker-docs/         SkellyTracker documentation site
 
 skellydocs/                     ← Shared Docusaurus theme (npm package)
     (@freemocap/skellydocs)
@@ -47,7 +50,7 @@ graph TD
     end
 
     subgraph Track["skellytracker/"]
-        Tracker["Pose Estimation<br/>RTMPose, CharUco"]
+        Tracker["Pose Estimation<br/>unified Tracker API<br/>+ batched inference"]
     end
 
     Backend -->|"imports"| SkellyBackend
@@ -57,6 +60,8 @@ graph TD
 ```
 
 <Tip shortInfo="SkellyCam has its own documentation at freemocap.github.io/skellycam. SkellyCam owns camera detection, configuration, shared memory ring buffers, and recording to disk. Freemocap imports SkellyCam as a library and builds pipelines on top of it." />
+
+<Tip shortInfo="SkellyTracker has its own documentation at freemocap.github.io/skellytracker. It owns pose estimation — the unified Tracker → Session → Detector API, the detectors (MediaPipe, RTMPose, YOLOX, ArUco, ChArUco), and batched multi-camera inference. Freemocap imports it as a library; see the Tracking Integration page." />
 
 ## FastAPI Application
 
@@ -142,6 +147,7 @@ This split is deliberate: commands are request/response and fit REST naturally. 
 The following pages dive into each subsystem in detail:
 
 - [Pipeline Architecture](/docs/architecture/backend-pipeline-architecture) — Realtime and posthoc pipelines, node topology, phases
+- [Tracking Integration](/docs/architecture/tracking-integration) — How FreeMoCap builds and drives SkellyTracker (batched inference, tracker schemas)
 - [WebSocket Server](/docs/architecture/backend-websocket-server) — The three concurrent asyncio tasks, backpressure, serialization
 - [Calibration](/docs/architecture/backend-calibration) — Anipose solver, calibration state tracker, camera models
 - [Mocap & Skeleton Processing](/docs/architecture/backend-mocap) — Pose detection, skeleton filtering, triangulation, Blender export
@@ -152,4 +158,4 @@ The following pages dive into each subsystem in detail:
 
 - **SkellyCam architecture**: [freemocap.github.io/skellycam/docs/technical/architecture](https://freemocap.github.io/skellycam/docs/technical/architecture) — Camera detection, shared memory ring buffers, recording, frame synchronization
 - **SkellyCam WebSocket protocol**: [freemocap.github.io/skellycam/docs/technical/websocket-protocol](https://freemocap.github.io/skellycam/docs/technical/websocket-protocol)
-- **SkellyTracker**: Pose estimation (RTMPose, CharUco) — integrated as a library dependency
+- **SkellyTracker**: [freemocap.github.io/skellytracker](https://freemocap.github.io/skellytracker/) — the unified Tracker → Session → Detector API, detectors, sessions, and batched multi-camera inference. Integrated as a library dependency; see [Tracking Integration](/docs/architecture/tracking-integration).

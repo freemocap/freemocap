@@ -69,12 +69,12 @@ freemocap/
 │
 ├── freemocap-docs/        This documentation site (Docusaurus v3 + SkellyDocs)
 │
-├── shared/                Shared assets (charuco boards, logos, macOS packaging)
-│
-└── freemocap-ui-old/      Previous MUI-based frontend (superseded)
+└── shared/                Shared assets (charuco boards, logos, macOS packaging)
 ```
 
-<Tip shortInfo="The old UI (freemocap-ui-old/) still exists in the repo but is no longer developed. See the Old vs New Comparison page for what changed." />
+FreeMoCap builds on two sibling projects, each with its own docs site:
+[**SkellyCam**](https://freemocap.github.io/skellycam/) (the camera backend) and
+[**SkellyTracker**](https://freemocap.github.io/skellytracker/) (the pose-estimation backend).
 
 ## Communication Flow
 
@@ -126,7 +126,7 @@ Every decision — backend selection, config flag, feature toggle — should hav
 
 ### Zero Backwards Compatibility (Aspirational)
 
-New code targets the current architecture without shims or migration layers. However, the project retains some legacy compatibility: the `RecordingStructure` model supports both canonical and legacy recording layouts, the old MUI-based UI still exists in `freemocap-ui-old/` as a reference, and some pipeline configs offer legacy operating modes (e.g., inline vs centralized GPU inference). Legacy support is pragmatic — it keeps existing recordings usable while the system evolves.
+New code targets the current architecture without shims or migration layers. However, the project retains some legacy compatibility: the `RecordingStructure` model supports both canonical and legacy recording layouts, and some pipeline configs offer legacy operating modes (e.g., inline per-camera skeleton detection vs the default centralized GPU inference). Legacy support is pragmatic — it keeps existing recordings usable while the system evolves.
 
 ## Quick Reference
 

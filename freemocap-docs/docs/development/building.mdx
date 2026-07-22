@@ -75,14 +75,14 @@ Build and deployment workflows live in `.github/workflows/`:
 
 | Workflow | Purpose |
 |---|---|
-| `build-installers.yml` | Builds platform-specific installers on push to main |
+| `build-installers-pyinstaller.yml` | Builds platform-specific installers on push to main |
 | `deploy-docs.yml` | Builds and deploys this documentation site to GitHub Pages |
 | `test.yml` | Runs backend + frontend tests on PR |
 
 ## Versioning
 
-- **Backend version**: `v1.4.7` (in `freemocap/__init__.py`), managed by `bumpver`
+- **Backend version**: `v2.0.0-alpha.11` (in `freemocap/__init__.py`), managed by `bumpver`
 - **Frontend version**: `2.0.0-alpha.1` (in `freemocap-ui/package.json`)
 - **Electron updater**: `electron-updater` handles auto-updates for installed releases
 
-<Tip shortInfo="The version numbers are currently out of sync between the Python backend (v1.4.7) and the frontend (v2.0.0-alpha.1). This reflects the v2 rewrite of the frontend while the backend is being incrementally updated." />
+<Tip shortInfo="Both the Python backend (v2.0.0-alpha.x) and the frontend (v2.0.0-alpha.x) are on the v2 alpha line. The two are bumped independently, so the exact alpha/patch numbers may differ." />

@@ -309,14 +309,15 @@ Pipeline phases: `queued` → `setting_up` → `processing_videos` → `aggregat
 {
     "message_type": "tracker_schemas",
     "schemas": {
-        "mediapipe_pose": {
-            "keypoint_names": ["nose", "left_eye", ...],
-            "connections": [[0, 1], [1, 2], ...]
+        "rtmpose_wholebody": {
+            "name": "rtmpose_wholebody",
+            "tracked_points": ["nose", "left_eye", ...],
+            "connections": [["left_shoulder", "left_elbow"], ["left_elbow", "left_wrist"], ...]
         }
     }
 }
 ```
-Note: message type is `"tracker_schemas"` (plural). The `schemas` field is a dict of tracker_id → TrackedObjectDefinition — multiple schemas are sent in one message.
+Note: message type is `"tracker_schemas"` (plural). The `schemas` field is a dict of tracker name → `TrackerDefinition` — each with `name`, `tracked_points`, and name-pair `connections` (from `core/tracking/tracker_definitions.py`, e.g. `RTMPOSE_WHOLEBODY_DEFINITION`). Multiple schemas are sent in one message. See [Tracking Integration](/docs/architecture/tracking-integration).
 
 ### Client → Server Messages
 

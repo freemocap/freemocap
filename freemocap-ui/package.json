@@ -1,6 +1,6 @@
 {
   "name": "freemocap",
-  "version": "2.0.0-alpha.8",
+  "version": "2.0.0-alpha.11",
   "main": "dist-electron/main/index.js",
   "description": "FreeMoCap - Free Open Source Markerless Motion Capture For Everyone",
   "author": "Skelly FreeMocap <info@freemocap.org>",

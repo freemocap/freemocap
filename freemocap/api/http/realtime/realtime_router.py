@@ -1,7 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Body, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.camera_group.camera_group import CameraConfigs
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
@@ -11,6 +11,7 @@ from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.pubsub.pubsub_topics import (
     SkeletonFitterResetMessage,
     SkeletonFitterResetTopic,
+    SkeletonFitStateMessage,
 )
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,31 @@ class RealtimePipelineCloseResponse(BaseModel):
 
 class RealtimePipelineUpdateRequest(BaseModel):
     config: RealtimePipelineConfig = Field(default_factory=RealtimePipelineConfig, examples=[RealtimePipelineConfig()])
+
+class SkeletonFitStateResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    state: str = Field(description="Ritual state: idle | countdown | capturing | fitted")
+    countdown_remaining_s: float = Field(alias="countdownRemainingS")
+    capture_good_streak: int = Field(alias="captureGoodStreak")
+    capture_required_good_frames: int = Field(alias="captureRequiredGoodFrames")
+    visible_fraction: float = Field(alias="visibleFraction")
+    mean_error_px: float | None = Field(alias="meanErrorPx")
+    n_fitted_body_bones: int = Field(alias="nFittedBodyBones")
+    median_seed_deviation: float | None = Field(alias="medianSeedDeviation")
+
+    @classmethod
+    def from_message(cls, msg: SkeletonFitStateMessage) -> "SkeletonFitStateResponse":
+        return cls(
+            state=msg.state,
+            countdown_remaining_s=msg.countdown_remaining_s,
+            capture_good_streak=msg.capture_good_streak,
+            capture_required_good_frames=msg.capture_required_good_frames,
+            visible_fraction=msg.visible_fraction,
+            mean_error_px=msg.mean_error_px,
+            n_fitted_body_bones=msg.n_fitted_body_bones,
+            median_seed_deviation=msg.median_seed_deviation,
+        )
 
 
 @realtime_router.post(
@@ -120,15 +146,16 @@ async def pipeline_close_endpoint() -> None:
 @realtime_router.post(
     "/reset-skeleton-fitter",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Reset the skeleton fitter — forget learned bone lengths and start over",
+    summary="Arm the skeleton refit ritual — countdown, quality-gated capture, freeze",
 )
 async def reset_skeleton_fitter_endpoint() -> None:
-    """Fully reset the realtime skeleton fitter.
+    """Arm the segment-fit calibration ritual on every live pipeline.
 
-    Signals every live pipeline to forget its learned per-bone lengths (the online
-    best-K-by-reprojection-error median estimates) and carried bone directions, so
-    the next frame re-seeds from anthropometric priors exactly as if the pipeline
-    had just started — no process restart needed. Fire-and-forget: 204 No Content.
+    Each pipeline's fitter clears its learned bone lengths and enters the ritual:
+    a countdown (so the subject can get into view and hold still), a quality-gated
+    capture window (only consecutive good frames count), then a freeze that
+    re-anchors each bone's trust region on the captured length. Poll
+    `GET /realtime/skeleton-fitter-state` for progress. Fire-and-forget: 204 No Content.
     """
     logger.api("Received `realtime/reset-skeleton-fitter` POST request")
     try:
@@ -148,4 +175,35 @@ async def reset_skeleton_fitter_endpoint() -> None:
         raise HTTPException(
             status_code=500,
             detail=f"Error resetting skeleton fitter: {type(e).__name__} - {e}",
+        )
+
+
+@realtime_router.get(
+    "/skeleton-fitter-state",
+    summary="Current segment-fit ritual state per pipeline (idle/countdown/capturing/fitted)",
+)
+async def skeleton_fitter_state_endpoint() -> dict[str, SkeletonFitStateResponse | None]:
+    """Latest segment-fit ritual state for every live pipeline.
+
+    Values are None for pipelines whose fitter hasn't published a state yet
+    (skeleton fitting disabled, or no frames processed since startup).
+    """
+    logger.api("Received `realtime/skeleton-fitter-state` GET request")
+    try:
+        app = get_freemocap_app()
+        result: dict[str, SkeletonFitStateResponse | None] = {}
+        for pipeline in app.realtime_pipeline_manager.pipelines.values():
+            state = pipeline.get_latest_skeleton_fit_state()
+            result[pipeline.id] = (
+                SkeletonFitStateResponse.from_message(state)
+                if state is not None
+                else None
+            )
+        return result
+    except Exception as e:
+        logger.error(f"Error reading skeleton fitter state: {type(e).__name__} - {e}")
+        logger.exception(e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading skeleton fitter state: {type(e).__name__} - {e}",
         )

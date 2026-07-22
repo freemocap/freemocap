@@ -5,6 +5,10 @@ Applies per-keypoint One Euro smoothing to 2D or 3D positions and predicts
 (extrapolates) positions for keypoints that temporarily disappear, so the
 output stream doesn't blink when tracking is lost for a few frames.
 
+Predicted positions are extrapolations, not measurements: every ``filter``
+call reports which keypoints were predicted this frame so downstream consumers
+(bone-length estimation) can exclude them while still using them for display.
+
 Works on ``dict[str, ndarray(dims,)]`` — set ``dims=2`` for pixel-space
 (camera node) or ``dims=3`` for world-space (aggregator).
 """
@@ -17,6 +21,22 @@ import numpy as np
 from freemocap.core.tasks.mocap.realtime_filtering.one_euro_filter import OneEuroFilter1D
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True, frozen=True)
+class FilteredKeypoints:
+    """Smoothed keypoints for one frame, with provenance.
+
+    positions : dict[str, ndarray(dims,)]
+        Smoothed positions; includes extrapolations for recently-seen
+        keypoints absent this frame.
+    predicted_names : frozenset[str]
+        Names whose position this frame is an extrapolation, not a
+        measurement. Must not feed length estimation.
+    """
+
+    positions: dict[str, np.ndarray]
+    predicted_names: frozenset[str]
 
 
 @dataclass
@@ -49,8 +69,8 @@ class RealtimeKeypointFilter:
     # ------------------------------------------------------------------
     def filter(
         self, *, t: float, raw_keypoints: dict[str, np.ndarray],
-    ) -> dict[str, np.ndarray]:
-        """Return smoothed + gap-filled keypoints.
+    ) -> FilteredKeypoints:
+        """Return smoothed + gap-filled keypoints with predicted-name provenance.
 
         Args:
             t: Monotonic timestamp in seconds.
@@ -59,15 +79,16 @@ class RealtimeKeypointFilter:
                            responsible for pre-filtering.
 
         Returns:
-            dict mapping point name → filtered ``(dims,)`` ndarray.
-            Includes predictions for recently-seen keypoints absent this frame.
+            ``FilteredKeypoints`` — smoothed positions including predictions
+            for recently-seen keypoints absent this frame, plus the set of
+            names that were predicted rather than observed.
         """
         if self._last_t is not None and t <= self._last_t:
             logger.warning(
                 f"Non-monotonic timestamp: t={t} <= last_t={self._last_t}. "
                 f"Skipping filter for this frame."
             )
-            return raw_keypoints
+            return FilteredKeypoints(positions=raw_keypoints, predicted_names=frozenset())
         self._last_t = t
 
         result: dict[str, np.ndarray] = {}
@@ -95,6 +116,7 @@ class RealtimeKeypointFilter:
                 ])
 
         # Predict keypoints absent this frame (gap filling).
+        predicted: set[str] = set()
         for name, filts in self._filters.items():
             if name in raw_keypoints:
                 continue
@@ -105,8 +127,9 @@ class RealtimeKeypointFilter:
                     for i in range(self.dims)
                 ])
                 self._prediction_counts[name] = count + 1
+                predicted.add(name)
 
-        return result
+        return FilteredKeypoints(positions=result, predicted_names=frozenset(predicted))
 
     def reset(self) -> None:
         """Clear all filter state (call on calibration / coordinate change)."""

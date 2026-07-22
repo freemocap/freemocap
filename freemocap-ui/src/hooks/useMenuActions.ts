@@ -13,6 +13,7 @@ import {pipelineSnackbarShown} from '@/store/slices/pipelines';
 import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
 import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 import {SUPPORTED_LOCALES} from '@/i18n';
+import {useTutorial} from '@/components/tutorial';
 import type {MenuAction} from '../../electron/main/services/menu-builder';
 
 // i18n keys that the menu builder needs for translated labels
@@ -25,6 +26,7 @@ const MENU_LABEL_KEYS = [
     'menuLoadTestData',
     'menuClearActiveRecording',
     'menuHelp',
+    'menuTakeTour',
     'menuDetectCameras',
     'menuConnectCameras',
     'menuCloseAllCameras',
@@ -65,6 +67,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
     const navigate = useNavigate();
     const { t, i18n } = useTranslation();
     const { api } = useElectronIPC();
+    const { startTour } = useTutorial();
 
     const isRecording = useAppSelector((state) => state.recording.isRecording);
     // const currentLocale = useAppSelector(selectLocale);
@@ -164,6 +167,11 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
                     window.dispatchEvent(new CustomEvent('check-for-updates'));
                     break;
 
+                // Help
+                case 'start-tutorial':
+                    startTour('getting-started');
+                    break;
+
                 // File actions
                 case 'open-recording-folder':
                     dispatch(selectVideoLoadFolder());
@@ -199,5 +207,5 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
         });
 
         return cleanup;
-    }, [dispatch, navigate, isRecording, onToggleSidebar, api]);
+    }, [dispatch, navigate, isRecording, onToggleSidebar, api, startTour]);
 }

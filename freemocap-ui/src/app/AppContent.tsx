@@ -12,6 +12,7 @@ import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
+import { TutorialProvider, TourController } from "@/components/tutorial";
 import { useHydrateDataFolder } from "@/hooks/useHydrateDataFolder";
 
 export const AppContent = function () {
@@ -43,13 +44,16 @@ export const AppContent = function () {
     return (
         <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AutoUpdateProvider>
-                <PlaybackProvider>
-                    <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
-                        <BaseContentRouter />
-                    </BasePanelLayout>
-                    <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
-                    <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-                </PlaybackProvider>
+                <TutorialProvider>
+                    <PlaybackProvider>
+                        <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
+                            <BaseContentRouter />
+                        </BasePanelLayout>
+                        <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
+                        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+                        <TourController />
+                    </PlaybackProvider>
+                </TutorialProvider>
                 <UpdateBanner />
                 <PipelineProgressSnackbar />
             </AutoUpdateProvider>

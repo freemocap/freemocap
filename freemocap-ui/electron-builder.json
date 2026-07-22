@@ -70,12 +70,10 @@
     "category": "Video",
     "target": [
       {
-        "target": "AppImage",
-        "arch": ["x64", "arm64"]
+        "target": "AppImage"
       },
       {
-        "target": "deb",
-        "arch": ["x64", "arm64"]
+        "target": "deb"
       }
     ],
     "artifactName": "${productName}_${version}_${arch}.${ext}",

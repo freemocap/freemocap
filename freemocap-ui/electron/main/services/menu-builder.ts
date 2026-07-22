@@ -24,6 +24,7 @@ export type MenuAction =
     | 'toggle-fullscreen'
     | 'toggle-locale'
     | 'check-for-updates'
+    | 'start-tutorial'
     | `change-locale:${string}`;
 
 export interface LocaleEntry {
@@ -41,6 +42,7 @@ export interface MenuLabels {
     menuLoadTestData: string;
     menuClearActiveRecording: string;
     menuHelp: string;
+    menuTakeTour: string;
     menuDetectCameras: string;
     menuConnectCameras: string;
     menuCloseAllCameras: string;
@@ -77,6 +79,7 @@ const DEFAULT_LABELS: MenuLabels = {
     menuLoadTestData: 'Load Test Data',
     menuClearActiveRecording: 'Clear Active Recording',
     menuHelp: 'Help',
+    menuTakeTour: 'Take the Tour',
     menuDetectCameras: 'Detect Cameras',
     menuConnectCameras: 'Connect Cameras',
     menuCloseAllCameras: 'Close All Cameras',
@@ -280,6 +283,11 @@ function buildHelpMenu(t: MenuLabels): MenuItemConstructorOptions {
     return {
         label: t.menuHelp,
         submenu: [
+            {
+                label: t.menuTakeTour,
+                click: () => sendMenuAction('start-tutorial'),
+            },
+            { type: 'separator' },
             {
                 label: t.menuDocumentation,
                 click: () => {

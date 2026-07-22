@@ -239,6 +239,7 @@
   "menuLoadTestData": "Load Test Data",
   "menuClearActiveRecording": "Clear Active Recording",
   "menuHelp": "Help",
+  "menuTakeTour": "Take the Tour",
   "menuDetectCameras": "Detect Cameras",
   "menuConnectCameras": "Connect Cameras",
   "menuCloseAllCameras": "Close All Cameras",
@@ -268,5 +269,71 @@
   "checkForUpdates": "Check for Updates",
   "upToDate": "You are up to date",
   "updateError": "Update check failed",
-  "serverNotConnected": "Connect to server to enable controls"
+  "serverNotConnected": "Connect to server to enable controls",
+  "tour": {
+    "take": "Take a quick tour",
+    "replay": "Replay tour",
+    "welcome": {
+      "title": "Welcome to FreeMoCap",
+      "text": "Let's walk the main path: connecting the local server, your cameras, the realtime pipeline, calibration, and your first recording. It only takes a minute.",
+      "start": "Start the tour"
+    },
+    "tabs": {
+      "title": "Streaming vs Playback",
+      "text": "Last thing — these two tabs up top. Streaming (where you are now) is for live cameras and recording; your captures then show up under Playback, where you review and process them."
+    },
+    "server": {
+      "title": "Server connection",
+      "text": "FreeMoCap is a client–server app: this window talks to a FreeMoCap server running locally on your own computer. This panel shows that connection — it links up automatically, and you can toggle it here to reconnect."
+    },
+    "camera": {
+      "title": "Connect your cameras",
+      "text": "Once the server is connected, detect and connect your cameras here. Each camera has its own settings, and you can toggle whether it's included in the realtime pipeline."
+    },
+    "realtime": {
+      "title": "Realtime pipeline",
+      "text": "These controls run the live pipeline. Toggle 2D skeleton tracking, 3D triangulation, and filtering on or off, and choose which tracking model to use — all live as you stream."
+    },
+    "calibration": {
+      "title": "Calibrate your cameras",
+      "text": "To get 3D motion capture from multiple cameras, calibrate them first — this works out where each camera sits in space. (A single camera works without calibration.) See the guide to calibrate with a ChArUco board."
+    },
+    "recording": {
+      "title": "Record your capture",
+      "text": "When you're ready, hit Start Recording. Auto-process is on by default, so FreeMoCap runs motion capture automatically as soon as the recording finishes."
+    },
+    "finish": {
+      "title": "You're all set!",
+      "text": "That's the main path — server, cameras, pipeline, calibration, and recording. Dig into the docs for more, and replay this tour any time from the Welcome screen, Settings, or the Help menu.",
+      "done": "Finish"
+    },
+    "serverDeep": {
+      "status": {
+        "title": "Connection status",
+        "text": "The colored dot shows whether the local server is reachable, and the row below it shows the websocket — FreeMoCap is \"connected\" once that websocket is open."
+      },
+      "toggle": {
+        "title": "Start, stop & reconnect",
+        "text": "Open this panel to start or stop the local server and reconnect the websocket. It reconnects on its own, but this is where you take manual control if something gets stuck."
+      }
+    },
+    "cameraDeep": {
+      "detect": {
+        "title": "Detect & connect",
+        "text": "Detect scans for plugged-in cameras; Connect starts streaming from the ones you've selected. Each detected camera shows up as a row you can expand."
+      },
+      "settings": {
+        "title": "Per-camera settings",
+        "text": "Expand a camera to set its resolution, exposure and rotation, and use the toggles to include or exclude it from the capture group and the realtime pipeline."
+      }
+    },
+    "controls": {
+      "back": "Back",
+      "next": "Next",
+      "deeper": "Deeper",
+      "skip": "Skip tour",
+      "docs": "Read the calibration guide",
+      "targetHidden": "Can't highlight this right now — it may be in a collapsed panel. Click Next to continue."
+    }
+  }
 }

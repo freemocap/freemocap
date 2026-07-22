@@ -85,9 +85,44 @@ class RealtimeFilterConfig(BaseModel):
     # adapting (never permanently frozen on old data).
     segment_length_decay_s: float = 30.0
 
-    # Reject a measured length deviating more than this fraction from the
-    # running median (guards against low-error-but-wrong samples). None = off.
-    segment_length_plausibility_tol: float | None = 0.5
+    # Trust-region half-width (fraction of the seed length). A measured length
+    # outside seed × (1 ± fit_ratio) — lower bound floored at 0.25 × seed — is
+    # rejected outright, and reported estimates are clamped to the same band.
+    # 0.0 = lengths locked to the seeds; 1.0 = up to double/half the seed.
+    segment_length_fit_ratio: float = 0.2
+
+    # Measurements a bone's buffer must retain before its median may replace
+    # the seed. Bootstrap protection: one frame teaches nothing.
+    segment_length_min_samples: int = 5
+
+    # Max relative MAD (median absolute deviation / median) across a buffer's
+    # retained samples for them to count as agreeing. A flickering or bimodal
+    # measurement stream never replaces the seed.
+    segment_length_agreement_tol: float = 0.05
+
+    # Reprojection-error gate for admitting a length measurement (pixels).
+    # Distinct from the triangulation survival gate below: a point may survive
+    # triangulation yet be too sloppy to teach bone lengths.
+    segment_length_max_reprojection_error_px: float = 15.0
+
+    # ---- Segment-fit calibration ritual ----
+    # "Reset skeleton fit" arms this ritual instead of re-fitting instantly:
+    # countdown (subject gets into view) → quality-gated capture window →
+    # freeze (captured lengths re-anchor the trust regions) → bounded drift.
+
+    # Seconds between arming a refit and the capture window opening.
+    calibration_countdown_s: float = 3.0
+
+    # Fraction of measurable body keypoints that must be really observed (not
+    # extrapolated) for a capture frame to count as good.
+    calibration_capture_min_visible_fraction: float = 0.8
+
+    # Max mean reprojection error across measured body keypoints for a capture
+    # frame to count as good (pixels).
+    calibration_capture_max_mean_error_px: float = 10.0
+
+    # Consecutive good frames required to freeze the capture. ~1 s at 30 fps.
+    calibration_capture_consecutive_good_frames: int = 30
 
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco

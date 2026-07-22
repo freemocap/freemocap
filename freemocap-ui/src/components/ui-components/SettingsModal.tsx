@@ -8,6 +8,7 @@ import ButtonSm from '@/components/ui-components/ButtonSm';
 import IconButton from '@/components/ui-components/IconButton';
 import Checkbox from '@/components/ui-components/Checkbox';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import {useTutorial} from '@/components/tutorial';
 
 interface SettingsModalProps {
     open: boolean;
@@ -22,6 +23,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
     const isRecording = useAppSelector(selectIsAnyRecording);
+    const {startTour} = useTutorial();
 
     const [baseFolder, setBaseFolder] = useState<string>('');
     const [telemetryEnabled, setTelemetryEnabled] = useState<boolean>(true);
@@ -117,6 +119,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
         await api.fileSystem.openFolder.mutate({path: baseFolder});
     }, [api, baseFolder]);
 
+    const handleReplayTour = useCallback(() => {
+        startTour('getting-started');
+        onClose();
+    }, [startTour, onClose]);
+
     const handleTelemetryToggle = useCallback(async (checked: boolean) => {
         setTelemetryEnabled(checked);
         try {
@@ -192,6 +199,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
                                 onChange={(e) => handleTelemetryToggle(e.target.checked)}
                             />
                         )}
+                    </div>
+
+                    {/* Getting started */}
+                    <div className="flex flex-col gap-2 bg-secondary p-2 br-1">
+                        <SubactionHeader text="Getting started" className="text-gray"/>
+                        <p className="text sm text-gray">Replay the guided tour of the basics.</p>
+                        <div className="flex flex-row">
+                            <ButtonSm
+                                text="Replay tutorial"
+                                buttonType="quaternary"
+                                onClick={handleReplayTour}
+                            />
+                        </div>
                     </div>
 
                     {/* Bottom actions */}

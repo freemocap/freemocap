@@ -128,7 +128,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
   return (
     <>
-      <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
+      <div data-onboarding="realtime:pipeline" className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
         <div className="live-action-buttons-container flex flex-row gap-4">
 
           {/* GROUP 1 */}

@@ -42,6 +42,8 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
     SkeletonFitterResetTopic,
+    SkeletonFitStateMessage,
+    SkeletonFitStateTopic,
 )
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ class RealtimePipeline:
     skeleton_inference_node: RealtimeSkeletonInferenceNode | None
     charuco_recorder_node: CharucoRecorderNode | None
     aggregation_output_subscription: TopicSubscriptionQueue
+    skeleton_fit_state_subscription: TopicSubscriptionQueue
     result_ready_event: multiprocessing.synchronize.Event
     result_consumed_event: multiprocessing.synchronize.Event
     ipc: PipelineIPC
@@ -75,6 +78,7 @@ class RealtimePipeline:
     # Config stashed while a calibration recording temporarily forces Charuco-only
     # mode (skeleton inference paused). None whenever not in that mode.
     _pre_calibration_config: RealtimePipelineConfig | None = None
+    _latest_fit_state: SkeletonFitStateMessage | None = None
 
     @property
     def alive(self) -> bool:
@@ -193,6 +197,9 @@ class RealtimePipeline:
         skeleton_fitter_reset_sub = pubsub.get_subscription(
             SkeletonFitterResetTopic,
         )
+        skeleton_fit_state_subscription = pubsub.get_subscription(
+            SkeletonFitStateTopic,
+        )
 
         aggregation_node = RealtimeAggregatorNode.create(
             camera_group_id=camera_group.id,
@@ -220,6 +227,7 @@ class RealtimePipeline:
             skeleton_inference_node=skeleton_inference_node,
             charuco_recorder_node=charuco_recorder_node,
             aggregation_output_subscription=aggregation_output_subscription,
+            skeleton_fit_state_subscription=skeleton_fit_state_subscription,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
             ipc=ipc,
@@ -425,6 +433,16 @@ class RealtimePipeline:
         loop while the aggregator is processing the next frame.
         """
         return await asyncio.to_thread(self.result_ready_event.wait, timeout)
+
+    def get_latest_skeleton_fit_state(self) -> SkeletonFitStateMessage | None:
+        """Newest segment-fit ritual state (drains the subscription to latest),
+        or None if the fitter hasn't published one yet."""
+        while True:
+            try:
+                self._latest_fit_state = self.skeleton_fit_state_subscription.get_nowait()
+            except Empty:
+                break
+        return self._latest_fit_state
 
     def get_latest_frontend_payload(
         self,

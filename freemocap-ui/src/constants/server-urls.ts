@@ -90,6 +90,9 @@ class ServerUrls {
             stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,
             stopAllPipelines: `${baseUrl}/freemocap/posthoc/pipeline`,
 
+            // Telemetry
+            trackTelemetry: `${baseUrl}/freemocap/telemetry/track`,
+
             // Blender endpoints
             blenderDetect: `${baseUrl}/freemocap/blender/detect`,
             blenderExport: `${baseUrl}/freemocap/blender/export`,

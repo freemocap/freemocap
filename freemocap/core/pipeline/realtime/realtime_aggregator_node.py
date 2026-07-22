@@ -14,10 +14,11 @@ the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
 Rigid-body correction (``RealtimeSkeletonRigidifier``) runs on the triangulated
 3D points: each bone's length is estimated online (a best-K-by-reprojection-error
-median, seeded from anthropometry) and enforced by a single closed-form forward
-pass. The fitter is fully reset on calibration reload (and on demand via the
-reset signal): both the carried directions and the learned lengths are dropped,
-so it re-fits from anthropometric seeds.
+median, seeded from anthropometry and bounded to a trust region around the seed)
+and enforced by a single closed-form forward pass. Only real (non-extrapolated)
+keypoints teach lengths. The reset signal arms a calibration ritual — countdown,
+quality-gated capture, freeze — instead of re-fitting on the next frame; the
+ritual state is published every frame on SkeletonFitStateTopic.
 """
 import logging
 import multiprocessing.synchronize
@@ -59,6 +60,7 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePi
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
+from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import RealtimePointGate, \
     GateResult
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
@@ -77,6 +79,8 @@ from freemocap.pubsub.pubsub_topics import (
     SkeletonInferenceResultMessage,
     SkeletonInferenceResultTopic,
     PipelineTimingTopic,
+    SkeletonFitStateMessage,
+    SkeletonFitStateTopic,
 )
 
 # Cap on how many pending skeleton-inference results we hold while waiting for
@@ -98,15 +102,18 @@ logger = logging.getLogger(__name__)
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 
-def _merge_triangulated_arrays(
+def _merge_angulation(
         *,
-        triangulated: dict[str, np.ndarray] | None,
-        into: dict[str, np.ndarray],
+        angulation: AngulationResult | None,
+        into_points: dict[str, np.ndarray],
+        into_errors: dict[str, float],
 ) -> None:
-    """Merge triangulated 3D point arrays into the output dict, skipping NaN entries."""
-    if triangulated is None:
+    """Merge one frame's triangulated points and their reprojection errors into
+    the output dicts, skipping NaN entries. Error-less results (single-camera
+    planar projection) merge points only."""
+    if angulation is None:
         return
-    for point_name, coords in triangulated.items():
+    for point_name, coords in angulation.points.items():
         if not isinstance(coords, np.ndarray):
             raise TypeError(
                 f"Unexpected type for triangulated point '{point_name}': "
@@ -114,7 +121,9 @@ def _merge_triangulated_arrays(
             )
         if np.any(np.isnan(coords)):
             continue
-        into[point_name] = coords
+        into_points[point_name] = coords
+        if angulation.errors_px is not None and point_name in angulation.errors_px:
+            into_errors[point_name] = angulation.errors_px[point_name]
 
 
 @dataclass
@@ -170,6 +179,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 result_ready_event=result_ready_event,
                 result_consumed_event=result_consumed_event,
                 skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
+                skeleton_fit_state_pub=pubsub.get_publication_queue(
+                    SkeletonFitStateTopic,
+                ),
             ),
         )
         return cls(
@@ -196,6 +208,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
             skeleton_fitter_reset_sub: TopicSubscriptionQueue,
+            skeleton_fit_state_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
         aggregator_config = pipeline_config.aggregator_config
@@ -242,14 +255,23 @@ class RealtimeAggregatorNode(AggregatorNode):
         # length estimators + forward-pass tree rigidifiers). Loaded once at
         # init; the per-frame hot path is pure numpy.
         skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
+        rigidifier_filter_config: RealtimeFilterConfig | None = None
         if aggregator_config.skeleton_fitting_enabled:
             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
                 detector_type=detector_type,
                 height_mm=filter_config.height_mm,
                 buffer_capacity=filter_config.segment_length_buffer_capacity,
                 decay_tau_s=filter_config.segment_length_decay_s,
-                plausibility_tol=filter_config.segment_length_plausibility_tol,
+                fit_ratio=filter_config.segment_length_fit_ratio,
+                min_samples=filter_config.segment_length_min_samples,
+                agreement_tol=filter_config.segment_length_agreement_tol,
+                max_reprojection_error=filter_config.segment_length_max_reprojection_error_px,
+                countdown_s=filter_config.calibration_countdown_s,
+                capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
+                capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
+                capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
             )
+            rigidifier_filter_config = filter_config
             logger.debug(
                 f"RealtimeAggregationNode [{camera_group_id}] skeleton rigidifier created "
                 f"(body bones: {len(skeleton_rigidifier.body_bone_lengths)}, "
@@ -356,21 +378,41 @@ class RealtimeAggregatorNode(AggregatorNode):
                     else:
                         biomechanics = None
 
+                    # Recreate the rigidifier when the detector naming changes or
+                    # any fit parameter changed — silently stale fit params are
+                    # worse than a one-time canonical-model reload.
+                    filter_config_changed = (
+                        rigidifier_filter_config is not None
+                        and filter_config != rigidifier_filter_config
+                    )
                     if aggregator_config.skeleton_fitting_enabled:
-                        if skeleton_rigidifier is None or detector_type_changed:
+                        if (
+                            skeleton_rigidifier is None
+                            or detector_type_changed
+                            or filter_config_changed
+                        ):
                             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
                                 detector_type=detector_type,
                                 height_mm=filter_config.height_mm,
                                 buffer_capacity=filter_config.segment_length_buffer_capacity,
                                 decay_tau_s=filter_config.segment_length_decay_s,
-                                plausibility_tol=filter_config.segment_length_plausibility_tol,
+                                fit_ratio=filter_config.segment_length_fit_ratio,
+                                min_samples=filter_config.segment_length_min_samples,
+                                agreement_tol=filter_config.segment_length_agreement_tol,
+                                max_reprojection_error=filter_config.segment_length_max_reprojection_error_px,
+                                countdown_s=filter_config.calibration_countdown_s,
+                                capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
+                                capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
+                                capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
                             )
+                            rigidifier_filter_config = filter_config
                             logger.info(
                                 f"RealtimeAggregationNode [{camera_group_id}] "
                                 f"(re)created skeleton rigidifier for detector_type={detector_type}"
                             )
                     else:
                         skeleton_rigidifier = None
+                        rigidifier_filter_config = None
 
                 # ---- Handle skeleton fitter reset signals ----
                 # Drain unconditionally so the queue can't grow while skeleton
@@ -383,10 +425,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         break
                     reset_requested = True
                 if reset_requested and skeleton_rigidifier is not None:
-                    skeleton_rigidifier.reset()
+                    skeleton_rigidifier.request_refit()
                     logger.info(
-                        f"RealtimeAggregationNode [{camera_group_id}] skeleton fitter "
-                        f"reset — forgot learned bone lengths + directions (fresh start)"
+                        f"RealtimeAggregationNode [{camera_group_id}] segment-fit "
+                        f"ritual armed (countdown → capture → freeze)"
                     )
 
                 # ---- Periodically check if calibration file changed on disk ----
@@ -404,11 +446,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # New calibration → full reset of the fitter: the lengths
-                        # were learned under the old calibration, so re-fit from
-                        # scratch (anthropometric seeds) under the new one.
+                        # New calibration → re-arm the refit ritual: the lengths
+                        # were learned under the old calibration, so capture
+                        # fresh ones under the new one.
                         if skeleton_rigidifier is not None:
-                            skeleton_rigidifier.reset()
+                            skeleton_rigidifier.request_refit()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -565,8 +607,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # All processing stays in dict[str, ndarray] until final
                 # conversion to Point3d for the output message.
                 raw_keypoints: dict[str, np.ndarray] = {}
+                raw_errors_px: dict[str, float] = {}
                 filtered_keypoints: dict[str, np.ndarray] = {}
+                measured_keypoints: dict[str, np.ndarray] = {}
                 skeleton_keypoints: dict[str, np.ndarray] = {}
+                frame_time = time.perf_counter()
                 com_result: CenterOfMassResult | None = None
                 xcom: Point3d | None = None
                 body_kinematics = None
@@ -581,14 +626,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                     }
                     if skeleton_observations_by_camera:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        _merge_triangulated_arrays(
-                            triangulated=calibration.try_angulate(
+                        _merge_angulation(
+                            angulation=calibration.try_angulate(
                                 frame_number=last_received_frame,
                                 frame_observations_by_camera=skeleton_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
-                            into=raw_keypoints,
+                            into_points=raw_keypoints,
+                            into_errors=raw_errors_px,
                         )
                         if timer is not None:
                             timer.record("skeleton_triangulation", (time.perf_counter() - t0) * 1e3)
@@ -602,14 +648,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                     }
                     if charuco_observations_by_camera:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        _merge_triangulated_arrays(
-                            triangulated=calibration.try_angulate(
+                        _merge_angulation(
+                            angulation=calibration.try_angulate(
                                 frame_number=last_received_frame,
                                 frame_observations_by_camera=charuco_observations_by_camera,
                                 max_reprojection_error_px=filter_config.max_reprojection_error_px,
                                 triangulation_config=aggregator_config.triangulation_config,
                             ),
-                            into=raw_keypoints,
+                            into_points=raw_keypoints,
+                            into_errors=raw_errors_px,
                         )
                         if timer is not None:
                             timer.record("charuco_triangulation", (time.perf_counter() - t0) * 1e3)
@@ -627,10 +674,18 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # One Euro filter: smooth raw keypoints and gap-fill brief occlusions
                     if raw_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        filtered_keypoints = keypoint_filter.filter(
-                            t=time.perf_counter(),
+                        filter_result = keypoint_filter.filter(
+                            t=frame_time,
                             raw_keypoints=raw_keypoints,
                         )
+                        filtered_keypoints = filter_result.positions
+                        # Real measurements only: gap-filled (extrapolated)
+                        # points still display, but never teach bone lengths.
+                        measured_keypoints = {
+                            name: pos
+                            for name, pos in filter_result.positions.items()
+                            if name not in filter_result.predicted_names
+                        }
                         if timer is not None:
                             timer.record("keypoint_filter", (time.perf_counter() - t0) * 1e3)
 
@@ -639,13 +694,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if raw_keypoints:
                             t0 = time.perf_counter() if timer is not None else 0.0
                             gate_result: GateResult = point_gate.gate(
-                                t=time.perf_counter(),
+                                t=frame_time,
                                 points=raw_keypoints,
                             )
-                            _merge_triangulated_arrays(
-                                triangulated=gate_result.positions,
-                                into=filtered_keypoints,
-                            )
+                            for point_name, coords in gate_result.positions.items():
+                                if not np.any(np.isnan(coords)):
+                                    filtered_keypoints[point_name] = coords
                             if timer is not None:
                                 timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
@@ -655,7 +709,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                         and filtered_keypoints
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        rigid_result = skeleton_rigidifier.rigidify_frame(filtered_keypoints)
+                        rigid_result = skeleton_rigidifier.rigidify_frame(
+                            filtered_keypoints,
+                            measured=measured_keypoints,
+                            t=frame_time,
+                            errors=raw_errors_px if raw_errors_px else None,
+                        )
+                        skeleton_fit_state_pub.put(
+                            SkeletonFitStateMessage.from_snapshot(
+                                skeleton_rigidifier.fit_state
+                            )
+                        )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
@@ -747,18 +811,18 @@ class RealtimeAggregatorNode(AggregatorNode):
                             >= proportion_report.thresholds.min_assessable_segments
                         ):
                             drift = proportion_report.human_shape_violations(check_rigidity=False)
-                            if drift:
-                                logger.warning(
-                                    f"RealtimeAggregationNode [{camera_group_id}] "
-                                    f"body-proportion drift: " + "; ".join(drift)
-                                )
-                            else:
-                                logger.debug(
-                                    f"RealtimeAggregationNode [{camera_group_id}] body "
-                                    f"proportions OK — implied height "
-                                    f"{proportion_report.implied_height_median_mm:.0f}mm "
-                                    f"(cv {proportion_report.implied_height_cv:.2f})"
-                                )
+                            # if drift:
+                            #     logger.warning(
+                            #         f"RealtimeAggregationNode [{camera_group_id}] "
+                            #         f"body-proportion drift: " + "; ".join(drift)
+                            #     )
+                            # else:
+                            #     logger.debug(
+                            #         f"RealtimeAggregationNode [{camera_group_id}] body "
+                            #         f"proportions OK — implied height "
+                            #         f"{proportion_report.implied_height_median_mm:.0f}mm "
+                            #         f"(cv {proportion_report.implied_height_cv:.2f})"
+                            #     )
 
                 # ---- Publish aggregated output ----
                 aggregation_output_pub.put(

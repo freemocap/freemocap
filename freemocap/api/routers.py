@@ -8,6 +8,7 @@ from freemocap.api.http.calibration.calibration_router import calibration_router
 from freemocap.api.http.mocap.mocap_router import mocap_router
 from freemocap.api.http.posthoc.posthoc_router import posthoc_router
 from freemocap.api.http.realtime.realtime_router import realtime_router
+from freemocap.api.http.telemetry.telemetry_router import telemetry_router
 
 APP_ROUTERS = [health_router,
                shutdown_router]
@@ -21,5 +22,6 @@ FREEMOCAP_ROUTERS = [realtime_router,
                      mocap_router,
                      posthoc_router,
                      blender_router,
-                     playback_router
+                     playback_router,
+                     telemetry_router
                      ]

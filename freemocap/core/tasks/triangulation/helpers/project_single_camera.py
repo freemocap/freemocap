@@ -20,8 +20,8 @@ def project_2d_observation_to_3d(
 ) -> dict[str, NDArray[np.float64]]:
     """Project a single camera's per-frame observation to 3D on the Y=0 plane.
 
-    Returns {point_name: ndarray(3,)} — the same shape try_angulate() returns
-    for multi-camera triangulation.
+    Returns {point_name: ndarray(3,)} — the same shape as the ``points`` dict
+    try_angulate() produces for multi-camera triangulation.
     """
     kpts = observation.to_keypoints()
     xy = kpts.xyz[:, :2]  # (n_points, 2)

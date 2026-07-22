@@ -29,6 +29,10 @@ def _upright_rtmpose_pose() -> dict[str, np.ndarray]:
     }
 
 
+def _frame(rig: RealtimeSkeletonRigidifier, pose: dict[str, np.ndarray], t: float):
+    return rig.rigidify_frame(pose, measured=pose, t=t, errors=None)
+
+
 def test_create_seeds_all_bones():
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
     assert len(rig.body_bone_lengths) == 26
@@ -38,7 +42,7 @@ def test_create_seeds_all_bones():
 
 def test_body_includes_canonical_centers():
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
-    out = rig.rigidify_frame(_upright_rtmpose_pose())
+    out = _frame(rig, _upright_rtmpose_pose(), t=0.0)
     assert "hips_center" in out.body_positions
     assert "left_elbow" in out.body_positions
 
@@ -47,7 +51,7 @@ def test_output_segment_length_equals_estimate():
     # The rigid guarantee: an output bone's length is exactly the current
     # estimate, not whatever this frame's noisy observation happened to be.
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
-    out = rig.rigidify_frame(_upright_rtmpose_pose())
+    out = _frame(rig, _upright_rtmpose_pose(), t=0.0)
     est = rig.body_bone_lengths["left_shoulder->left_elbow"]
     body = out.body_positions
     measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
@@ -57,11 +61,11 @@ def test_output_segment_length_equals_estimate():
 def test_segment_length_is_rigid_to_pose_change():
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
     pose1 = _upright_rtmpose_pose()
-    rig.rigidify_frame(pose1)
+    _frame(rig, pose1, t=0.0)
     # Bend the elbow drastically (very different observed upper-arm length).
     pose2 = dict(pose1)
     pose2["left_elbow"] = pose1["left_shoulder"] + np.array([0.0, -100.0, 0.0])
-    out2 = rig.rigidify_frame(pose2)
+    out2 = _frame(rig, pose2, t=0.1)
     est = rig.body_bone_lengths["left_shoulder->left_elbow"]
     body = out2.body_positions
     measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
@@ -70,20 +74,48 @@ def test_segment_length_is_rigid_to_pose_change():
 
 def test_body_only_input_returns_empty_hands():
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
-    out = rig.rigidify_frame(_upright_rtmpose_pose())  # no hand keypoints
+    out = _frame(rig, _upright_rtmpose_pose(), t=0.0)  # no hand keypoints
     assert out.left_hand_positions == {}
     assert out.right_hand_positions == {}
 
 
-def test_reset_forgets_learned_lengths():
-    # Reset must drop learned bone lengths back to the anthropometric seeds, so
-    # the next frame re-fits from scratch as if the pipeline had just started.
+def test_predicted_points_never_teach_lengths():
+    # Gap-filled (extrapolated) keypoints are excluded from `measured`: the
+    # rigidified output still uses them, but they cannot move the estimates.
     rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
+    pose = _upright_rtmpose_pose()
     seed = rig.body_bone_lengths["left_shoulder->left_elbow"]
-    rig.rigidify_frame(_upright_rtmpose_pose())
-    learned = rig.body_bone_lengths["left_shoulder->left_elbow"]
-    assert abs(learned - seed) > 1.0  # a real measurement replaced the seed
-
-    rig.reset()
-
+    measured = dict(pose)
+    del measured["left_elbow"]  # simulated: elbow extrapolated this frame
+    for i in range(6):
+        rig.rigidify_frame(pose, measured=measured, t=float(i), errors=None)
     assert rig.body_bone_lengths["left_shoulder->left_elbow"] == pytest.approx(seed)
+
+
+def test_request_refit_reruns_capture_before_learning_again():
+    rig = RealtimeSkeletonRigidifier.create(
+        height_mm=1750.0,
+        countdown_s=0.5,
+        capture_min_visible_fraction=0.1,
+        capture_consecutive_good_frames=3,
+    )
+    pose = _upright_rtmpose_pose()
+    seed = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    for i in range(6):
+        _frame(rig, pose, t=float(i))
+    learned = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    assert abs(learned - seed) > 1.0  # consistent measurements replaced the seed
+
+    rig.request_refit()
+    _frame(rig, pose, t=10.0)  # countdown begins; buffers cleared
+    assert rig.body_bone_lengths["left_shoulder->left_elbow"] == pytest.approx(seed)
+    assert rig.fit_state.state == "countdown"
+
+    _frame(rig, pose, t=10.6)  # deadline passed -> capture window opens
+    # The required streak is max(3 configured, min_samples=5) = 5 consecutive
+    # good frames — the freeze only captures bones that reached agreement.
+    for i in range(6):
+        _frame(rig, pose, t=10.7 + i * 0.1)
+    assert rig.fit_state.state == "fitted"
+    refit = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    assert refit == pytest.approx(learned, rel=0.05)

@@ -1,11 +1,19 @@
 name: Deploy docs site
 
 on:
+  # Docs-only changes pushed to the active branch.
   push:
-    branches: [development]
+    branches: [main]
     paths:
       - 'freemocap-docs/**'
       - '.github/workflows/deploy-docs.yml'
+  # Rebuild after every release/installer run so the download page picks up the new
+  # version and its R2 asset links. Fires when the build-installers workflow finishes
+  # (which runs on every v* tag). NOTE: workflow_run only triggers when THIS file is on
+  # the repo's default branch.
+  workflow_run:
+    workflows: ['Build installers (Pyinstaller + Electron)']
+    types: [completed]
   workflow_dispatch:
 
 permissions:

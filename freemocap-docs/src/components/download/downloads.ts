@@ -52,7 +52,9 @@ export function getReleaseBaseUrl(version: string): string {
 export const R2_PUBLIC_URL = 'https://pub-0a275a10417e425c94e48de393793129.r2.dev';
 
 export function getR2BaseUrl(version: string): string {
-  return `${R2_PUBLIC_URL}/${version}`;
+  // Must match the R2 object key the release workflow uploads to:
+  //   s3://<bucket>/releases/v<version>/<file>   (see build-installers-pyinstaller.yml)
+  return `${R2_PUBLIC_URL}/releases/v${version}`;
 }
 
 /** True for builds whose release assets live on R2 instead of GitHub.

@@ -35,9 +35,7 @@ dependencies = [
 #   pip install freemocap[cuda]   (Windows/Linux, NVIDIA GPU acceleration)
 #   pip install freemocap[cpu]    (macOS, or Windows/Linux without a supported GPU)
 [project.optional-dependencies]
-# aarch64 has no NVIDIA GPU wheels — gate the cuda extra off it so the resolver
-# (which must satisfy every environment in [tool.uv].environments) can still lock.
-cuda = ["skellytracker[all-cuda]; platform_machine != 'aarch64'"]
+cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
@@ -58,9 +56,8 @@ packages = ["freemocap"]
   [tool.uv]
   package = true
   environments = [
-      "sys_platform == 'darwin' and platform_machine == 'arm64'",
+      "sys_platform == 'darwin'",
       "sys_platform == 'linux' and platform_machine == 'x86_64'",
-      "sys_platform == 'linux' and platform_machine == 'aarch64'",
       "sys_platform == 'win32' and platform_machine == 'AMD64'",
   ]
   # Plain `uv sync` always installs a working skellytracker via the "tracker-default"
@@ -157,15 +154,13 @@ push = true
 [dependency-groups]
 # skellytracker's CUDA vs. CPU onnxruntime backend — mutually exclusive, select
 # exactly one via --group (see the default-groups note under [tool.uv] above).
-# aarch64 has no NVIDIA GPU wheels, so the cuda group excludes it (keeps the
-# universal lock solvable for the aarch64 environment).
-cuda = ["skellytracker[all-cuda]; platform_machine != 'aarch64'"]
+cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 # Platform-switched default used by plain `uv sync` (via [tool.uv] default-groups):
 # CUDA on Windows/Linux, CPU on macOS — mirrors the old sys_platform-marker setup.
 tracker-default = [
-    "skellytracker[all-cuda]; sys_platform != 'darwin' and platform_machine != 'aarch64'",
-    "skellytracker[all-cpu]; sys_platform == 'darwin' or platform_machine == 'aarch64'",
+    "skellytracker[all-cuda]; sys_platform != 'darwin'",
+    "skellytracker[all-cpu]; sys_platform == 'darwin'",
 ]
 pyceres = [
     "pyceres>=2.5",

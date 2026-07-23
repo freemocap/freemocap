@@ -76,15 +76,12 @@ jobs:
             electron-arch: x64
             install-gpu: true
 
-          # ── Linux ARM64 CPU only (onnxruntime-gpu has no aarch64 wheels) ──
-          - os: ubuntu-22.04-arm
-            platform: linux
-            arch: arm64
-            variant: cpu
-            label: linux-arm64-cpu
-            server-binary: freemocap_server
-            electron-arch: arm64
-            install-gpu: false
+          # NOTE: Linux ARM64 is intentionally NOT built. mediapipe==0.10.33 (a hard
+          # dependency of skellytracker) publishes no aarch64-linux wheel, so the
+          # resolve is unsatisfiable there. Adding an aarch64 environment to
+          # pyproject's [tool.uv].environments breaks `uv sync` on ALL platforms
+          # (the universal lock must satisfy every declared environment). Don't
+          # re-add this target until mediapipe ships aarch64-linux wheels.
 
     steps:
       - name: Checkout code

@@ -46,15 +46,16 @@ jobs:
             electron-arch: x64
             install-gpu: true
 
-          # ── macOS Apple Silicon ──
+          # ── macOS Apple Silicon (CPU only — macOS has no NVIDIA CUDA; the CPU
+          #    onnxruntime backend is the only variant, so there is no separate GPU build) ──
           - os: macos-latest
             platform: macos
             arch: arm64
-            variant: gpu
+            variant: cpu
             label: macos-arm64-apple-silicon
             server-binary: freemocap_server
             electron-arch: arm64
-            install-gpu: true
+            install-gpu: false
 
           # ── Linux x64 CPU (fits on GitHub Releases) ──
           - os: ubuntu-22.04
@@ -201,26 +202,28 @@ jobs:
         run: uv venv
 
       # ── Conditional dependency install ──
-      # CPU variant:  uv sync --group cpu  → skellytracker[all-cpu] (onnxruntime CPU,
-      #               zero NVIDIA packages — installer fits on GitHub Releases).
-      # CUDA variant: plain uv sync → tracker-default, which platform-switches to
-      #               skellytracker[all-cuda] on Windows/Linux and [all-cpu] on macOS.
+      # CPU variant  (macOS + Windows/Linux CPU): uv sync --group cpu →
+      #               skellytracker[all-cpu] (onnxruntime CPU, zero NVIDIA packages).
+      # CUDA variant (Windows/Linux GPU only):     uv sync --group cuda →
+      #               skellytracker[all-cuda] (onnxruntime-gpu + NVIDIA CUDA stack).
       - name: Install dependencies (CPU variant)
         if: "!matrix.install-gpu"
         shell: bash
         run: |
           echo "=== CPU BUILD — skellytracker[all-cpu] (onnxruntime CPU, zero NVIDIA packages) ==="
-          # Plain `uv sync` uses the tracker-default group, which resolves to
-          # skellytracker[all-cuda] on Linux/Windows (dragging in onnxruntime-gpu + the
-          # ~1.5 GB NVIDIA CUDA stack — and there are NO aarch64 GPU wheels at all).
-          # Force the CPU group explicitly so CPU installers stay small and arm64 resolves.
+          # Runs for the macOS, Windows-CPU and Linux-CPU jobs. Plain `uv sync` would use
+          # the tracker-default group, which pulls skellytracker[all-cuda] (onnxruntime-gpu
+          # + the ~1.5 GB NVIDIA CUDA stack) on Windows/Linux. Force the CPU group so these
+          # installers stay small, and macOS gets the CPU onnxruntime it needs.
           uv sync --no-default-groups --group cpu
 
       - name: Install dependencies (CUDA variant)
         if: matrix.install-gpu
         run: |
-          echo "=== CUDA BUILD — tracker-default (skellytracker[all-cuda] on Win/Linux, [all-cpu] on macOS) ==="
-          uv sync
+          echo "=== CUDA BUILD — skellytracker[all-cuda] (onnxruntime-gpu + NVIDIA CUDA stack) ==="
+          # Runs only for the Windows-CUDA and Linux-CUDA jobs (install-gpu: true).
+          # Force the CUDA group explicitly — symmetric with the CPU step above.
+          uv sync --no-default-groups --group cuda
 
       - name: Verify installation 1/3
         run: uv pip show freemocap
@@ -463,7 +466,10 @@ jobs:
             VERSION="dev-${{ github.run_number }}"
           fi
 
-          for file in freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb; do
+          # CUDA app installers: Windows .exe (NSIS) + Linux .AppImage/.deb. The matching
+          # CUDA server zips are pushed to R2 by the release job. (macOS is CPU-only, so
+          # this step never runs there.)
+          for file in freemocap-ui/release/*/*.exe freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb; do
             [ -f "$file" ] || continue
             ext="${file##*.}"
             aws s3 cp "$file" \
@@ -598,6 +604,11 @@ jobs:
         run: find artifacts -type f | sort
 
       - name: Prepare release assets
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           mkdir -p release-assets
 
@@ -605,33 +616,58 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION"
 
-          # ── Server bundles (onedir: launcher + _internal/ tree) ──
-          # Artifact directories are named server-<label>, e.g.:
-          #   server-windows-x64-cpu, server-windows-x64-cuda,
-          #   server-macos-arm64-apple-silicon,
-          #   server-linux-x64-cpu, server-linux-x64-cuda, server-linux-arm64-cpu
-          # Each holds a PyInstaller onedir bundle — the launcher won't run without its
-          # _internal/ tree, so ship the whole bundle as a zip.
+          # ── ROUTING RULE (single source of truth; mirrored by isR2Hosted() in
+          #    freemocap-docs/src/components/download/downloads.ts) ──
+          # CUDA builds bundle the ~1.5-2 GB NVIDIA CUDA stack and exceed GitHub's 2 GB
+          # per-asset limit, so EVERY CUDA asset (app installer AND server zip) is hosted
+          # on Cloudflare R2. CPU/macOS builds go to the GitHub Release.
+          # CUDA *app installers* were already pushed to R2 by the build job; CUDA *server
+          # zips* are built and pushed here (on this Linux runner, where `zip` is reliable
+          # for >2 GB archives). The size guard below enforces that nothing left in
+          # release-assets/ (i.e. GitHub-bound) exceeds the limit.
+          R2_READY=0
+          if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_BUCKET" ]; then
+            pip install --quiet awscli && R2_READY=1
+          else
+            echo "::warning::R2 credentials not configured — CUDA server bundles will be skipped"
+          fi
+
+          # ── Server bundles (onedir launcher + _internal/ → single .zip) ──
           for dir in artifacts/server-*; do
+            [ -d "$dir" ] || continue
             label=$(basename "$dir" | sed 's/^server-//')
             if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
               echo "::warning::Empty server artifact in $dir — skipping"
               continue
             fi
-            ( cd "$dir" && zip -qr "$OLDPWD/release-assets/freemocap_server_${VERSION}_${label}.zip" . )
-            echo "Zipped server bundle: freemocap_server_${VERSION}_${label}.zip"
+            asset="freemocap_server_${VERSION}_${label}.zip"
+            ( cd "$dir" && zip -qr "$OLDPWD/${asset}" . )
+            case "$label" in
+              *-cuda)
+                if [ "$R2_READY" = 1 ]; then
+                  aws s3 cp "${asset}" "s3://${R2_BUCKET}/releases/v${VERSION}/${asset}" \
+                    --endpoint-url "${R2_ENDPOINT}" --no-progress
+                  echo "R2: ${asset}"
+                else
+                  echo "::warning::Skipping CUDA server bundle ${asset} (no R2 credentials)"
+                fi
+                rm -f "${asset}"
+                ;;
+              *)
+                mv "${asset}" "release-assets/${asset}"
+                echo "GitHub: ${asset}"
+                ;;
+            esac
           done
 
-          # ── App installers — all except Linux CUDA (which goes to R2) ──
-          # CPU installers + Windows CUDA fit under GitHub's 2 GB file limit.
-          # Linux CUDA bundles NVIDIA runtime libraries (~1.5 GB extra, >2 GB total)
-          # and is uploaded to Cloudflare R2 during the build job instead.
+          # ── App installers — CUDA → R2 (already uploaded by the build job),
+          #    CPU/macOS → GitHub. ──
           for dir in artifacts/installer-*; do
             label=$(basename "$dir" | sed 's/^installer-//')
 
-            # Skip Linux CUDA — it goes to R2
+            # CUDA installers live on R2 (uploaded during the build job) — skip here.
             case "$label" in
-              linux-*-cuda) continue ;;
+              *-cuda) continue ;;
             esac
 
             find "$dir" -type f \( \
@@ -646,7 +682,29 @@ jobs:
             done
           done
 
-          echo "=== Release assets ==="
+          # ── Collect R2 (GPU/CUDA) download links for the release notes ──
+          # These live on R2 (too big for GitHub), so they must be linked in the notes or
+          # they're invisible on the Releases page. Keys mirror the R2 uploads (app
+          # installers from the build job, server zips from this job), under releases/v<ver>/.
+          R2_PUBLIC_BASE="https://pub-0a275a10417e425c94e48de393793129.r2.dev/releases/v${VERSION}"
+          : > r2-links.md
+          for dir in artifacts/installer-*-cuda; do
+            [ -d "$dir" ] || continue
+            label=$(basename "$dir" | sed 's/^installer-//')
+            find "$dir" -type f \( -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' \) | while read -r f; do
+              name="freemocap_${VERSION}_${label}.${f##*.}"
+              echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
+            done
+          done
+          for dir in artifacts/server-*-cuda; do
+            [ -d "$dir" ] || continue
+            label=$(basename "$dir" | sed 's/^server-//')
+            name="freemocap_server_${VERSION}_${label}.zip"
+            echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
+          done
+          echo "=== R2 (GPU/CUDA) links ==="; cat r2-links.md || true
+
+          echo "=== GitHub-bound release assets ==="
           ls -lh release-assets/
 
       - name: Prepare auto-update metadata
@@ -693,18 +751,33 @@ jobs:
             fi
           fi
 
-          # Also include linux-arm64-cpu latest-linux.yml if present
-          if [ -d "artifacts/update-metadata-linux-arm64-cpu" ]; then
-            YML=$(find artifacts/update-metadata-linux-arm64-cpu -name 'latest-linux.yml' | head -1)
-            if [ -n "$YML" ]; then
-              echo "Linux ARM64 latest-linux.yml available at: $YML"
-              # Note: electron-updater currently only supports one latest-linux.yml;
-              # ARM64 auto-update metadata is available for future use.
-            fi
-          fi
-
           echo "=== Final release assets ==="
           ls -lh release-assets/
+
+      # ── Size guard — the "double check" on our R2/GitHub routing ──
+      # GitHub caps release assets at 2 GiB. Everything oversized is supposed to be
+      # routed to R2 (all CUDA builds). This verifies that by measuring every file left
+      # in release-assets/ (i.e. everything about to be uploaded to GitHub) and failing
+      # loudly if any is over the limit — instead of a cryptic mid-upload failure. If this
+      # trips, route that build to R2: add it to the CUDA path here AND to isR2Hosted()
+      # in freemocap-docs/src/components/download/downloads.ts so the download link matches.
+      - name: Guard against oversized GitHub assets
+        run: |
+          MAX=$((2 * 1000 * 1000 * 1000))   # 2 GB — conservative margin under GitHub's 2 GiB cap
+          over=0
+          echo "=== GitHub-bound asset sizes ==="
+          for f in release-assets/*; do
+            [ -f "$f" ] || continue
+            size=$(stat -c%s "$f")
+            echo "  $((size / 1000000)) MB  $(basename "$f")"
+            if [ "$size" -gt "$MAX" ]; then
+              echo "::error::$(basename "$f") is $((size / 1000000)) MB — over GitHub's 2 GB asset limit."
+              echo "::error::Route this build to R2 (CUDA path in 'Prepare release assets' + isR2Hosted() in downloads.ts)."
+              over=1
+            fi
+          done
+          [ "$over" = 0 ] || { echo "::error::Refusing to publish oversized asset(s)."; exit 1; }
+          echo "OK — all GitHub-bound assets are under 2 GB."
 
       - name: Create or update GitHub Release
         env:
@@ -725,3 +798,16 @@ jobs:
               --generate-notes \
               --title "$TAG"
           fi
+
+          # ── Append the download guide + R2 (GPU/CUDA) links to the notes ──
+          # GPU builds are on Cloudflare R2 (too big for GitHub) so they must be linked
+          # here; everyone also gets a pointer to the "which build?" picker.
+          EXTRA=$'\n\n''---'$'\n''**Not sure which build to download?** See the download guide: https://docs.freemocap.org/freemocap/download'
+          if [ -s r2-links.md ]; then
+            EXTRA="${EXTRA}"$'\n\n''## GPU (CUDA) builds — hosted on Cloudflare R2'$'\n''(Too large for GitHub'"'"'s 2 GB asset limit.)'$'\n\n'"$(cat r2-links.md)"
+          fi
+          BODY="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body -q .body 2>/dev/null || echo '')"
+          case "$BODY" in
+            *"docs.freemocap.org/freemocap/download"*) echo "Notes already contain the download guide/links" ;;
+            *) gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes "${BODY}${EXTRA}" ;;
+          esac

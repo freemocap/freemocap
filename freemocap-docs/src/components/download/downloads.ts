@@ -46,18 +46,22 @@ export function getReleaseBaseUrl(version: string): string {
   return `https://github.com/${REPO}/releases/download/v${version}`;
 }
 
-// Assets too large for a GitHub release (currently just Linux CUDA — see the
-// "release" job in .github/workflows/build-installers-pyinstaller.yml) are
-// hosted on Cloudflare R2 instead.
+// Assets too large for a GitHub release (the CUDA / GPU builds — they bundle the
+// ~1.5-2 GB NVIDIA CUDA stack; see isR2Hosted() and the "release" job in
+// .github/workflows/build-installers-pyinstaller.yml) are hosted on Cloudflare R2.
 export const R2_PUBLIC_URL = 'https://pub-0a275a10417e425c94e48de393793129.r2.dev';
 
 export function getR2BaseUrl(version: string): string {
   return `${R2_PUBLIC_URL}/${version}`;
 }
 
-/** True for the one build whose release assets live on R2 instead of GitHub. */
+/** True for builds whose release assets live on R2 instead of GitHub.
+ *  Mirrors the routing rule in .github/workflows/build-installers-pyinstaller.yml:
+ *  every CUDA build (app installer + server zip) bundles the ~1.5-2 GB NVIDIA CUDA stack
+ *  and exceeds GitHub's 2 GB per-asset limit, so it is hosted on R2. CPU / macOS → GitHub.
+ *  (`os` is kept in the signature for call-site symmetry; routing is purely by variant.) */
 export function isR2Hosted(os: OsType, variant?: VariantType): boolean {
-  return os === 'linux' && variant === 'cuda';
+  return variant === 'cuda';
 }
 
 /** Resolves the actual download URL for a file, routing R2-hosted builds correctly. */
@@ -197,9 +201,9 @@ export const OS_NOTES: OsNoteEntry[] = [
     os: 'linux',
     arch: 'arm64',
     variant: 'warning',
-    title: 'Linux ARM64 builds aren’t available yet',
+    title: 'Linux ARM64 builds aren’t available',
     content:
-      'We don’t currently build a Linux ARM64 release (e.g. for Raspberry Pi). Nothing upstream is blocking it — it just hasn’t been built yet.',
+      'We can’t build a Linux ARM64 release (e.g. for Raspberry Pi) yet: mediapipe — a core dependency of the pose-tracking backend — ships no linux-aarch64 wheel, so the build is unsatisfiable on that platform. It’ll stay unavailable until mediapipe publishes ARM64 Linux wheels.',
     issues: [
       {
         label: 'Add Linux ARM64 installer build',

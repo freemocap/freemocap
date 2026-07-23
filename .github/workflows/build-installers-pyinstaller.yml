@@ -46,16 +46,6 @@ jobs:
             electron-arch: x64
             install-gpu: true
 
-          # ── macOS Intel (macos-13 is the last Intel runner) ──
-          - os: macos-13
-            platform: macos
-            arch: x64
-            variant: gpu
-            label: macos-x64-intel
-            server-binary: freemocap_server
-            electron-arch: x64
-            install-gpu: true
-
           # ── macOS Apple Silicon ──
           - os: macos-latest
             platform: macos
@@ -214,22 +204,25 @@ jobs:
         run: uv venv
 
       # ── Conditional dependency install ──
-      # CPU variant: swap skellytracker[recommended] → skellytracker[mediapipe]
-      # (installs mediapipe but zero NVIDIA CUDA packages — AppImage fits on GitHub)
-      # CUDA variant: keep skellytracker[recommended] (full CUDA 12 + TensorRT stack)
+      # CPU variant:  uv sync --group cpu  → skellytracker[all-cpu] (onnxruntime CPU,
+      #               zero NVIDIA packages — installer fits on GitHub Releases).
+      # CUDA variant: plain uv sync → tracker-default, which platform-switches to
+      #               skellytracker[all-cuda] on Windows/Linux and [all-cpu] on macOS.
       - name: Install dependencies (CPU variant)
         if: "!matrix.install-gpu"
         shell: bash
         run: |
-          echo "=== CPU BUILD — swapping to skellytracker[mediapipe] (no NVIDIA packages) ==="
-          sed -i 's/"skellytracker\[recommended\]"/"skellytracker[mediapipe]"/' pyproject.toml
-          grep 'skellytracker' pyproject.toml
-          uv sync
+          echo "=== CPU BUILD — skellytracker[all-cpu] (onnxruntime CPU, zero NVIDIA packages) ==="
+          # Plain `uv sync` uses the tracker-default group, which resolves to
+          # skellytracker[all-cuda] on Linux/Windows (dragging in onnxruntime-gpu + the
+          # ~1.5 GB NVIDIA CUDA stack — and there are NO aarch64 GPU wheels at all).
+          # Force the CPU group explicitly so CPU installers stay small and arm64 resolves.
+          uv sync --no-default-groups --group cpu
 
       - name: Install dependencies (CUDA variant)
         if: matrix.install-gpu
         run: |
-          echo "=== CUDA BUILD — using skellytracker[recommended] (full GPU stack) ==="
+          echo "=== CUDA BUILD — tracker-default (skellytracker[all-cuda] on Win/Linux, [all-cpu] on macOS) ==="
           uv sync
 
       - name: Verify installation 1/3
@@ -261,22 +254,33 @@ jobs:
           sed 's/SKELLYPINGS_SECRET:.*/SKELLYPINGS_SECRET: str = "***"/' freemocap/build_info.py
 
       # ── PyInstaller build ──
+      # FREEMOCAP_BUILD_VARIANT tells freemocap.spec whether to bundle the NVIDIA CUDA
+      # runtime. Only x64 Windows/Linux GPU builds install those packages; macOS (even
+      # the "gpu" matrix row uses CPU onnxruntime) and every CPU build must be 'cpu' so
+      # the spec skips NVIDIA collection instead of swallowing a "package not found".
       - name: Build with PyInstaller
+        env:
+          FREEMOCAP_BUILD_VARIANT: ${{ (matrix.install-gpu && matrix.platform != 'macos') && 'cuda' || 'cpu' }}
         run: |
           uv pip install pyinstaller
           uv run pyinstaller ./freemocap.spec --clean
 
-      # ── Move server binary into freemocap-ui/ ──
-      - name: Move server binary into freemocap-ui (Windows)
+      # ── Move server BUNDLE into freemocap-ui/ ──
+      # PyInstaller runs in onedir mode (freemocap.spec ends in COLLECT), so the
+      # output is a *folder* `dist/freemocap_server/` holding the launcher next to
+      # an `_internal/` tree of DLLs/data — NOT a single file. Move the whole folder;
+      # electron bundles it via the "freemocap_server/**" glob in electron-builder.json
+      # and launches `freemocap_server/<exe>` (see electron/main/app-paths.ts).
+      - name: Move server bundle into freemocap-ui (Windows)
         if: matrix.platform == 'windows'
         run: |
-          Move-Item -Path ".\dist\${{ matrix.server-binary }}" -Destination ".\freemocap-ui\${{ matrix.server-binary }}"
+          Move-Item -Path ".\dist\freemocap_server" -Destination ".\freemocap-ui\freemocap_server"
 
-      - name: Move server binary into freemocap-ui (macOS/Linux)
+      - name: Move server bundle into freemocap-ui (macOS/Linux)
         if: matrix.platform != 'windows'
         run: |
-          mv "./dist/${{ matrix.server-binary }}" "./freemocap-ui/${{ matrix.server-binary }}"
-          chmod +x "./freemocap-ui/${{ matrix.server-binary }}"
+          mv "./dist/freemocap_server" "./freemocap-ui/freemocap_server"
+          chmod +x "./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
 
       # ── Windows code signing (server binary) ──
       - name: Sign freemocap_server.exe with Trusted Signing
@@ -289,29 +293,39 @@ jobs:
           endpoint: https://eus.codesigning.azure.net/
           trusted-signing-account-name: freemocap
           certificate-profile-name: freemocap
-          files: ${{ github.workspace }}\freemocap-ui\freemocap_server.exe
+          files: ${{ github.workspace }}\freemocap-ui\freemocap_server\freemocap_server.exe
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
 
 
-      # ── macOS code signing (server binary) ──
+      # ── macOS code signing (server bundle) ──
+      # An onedir bundle contains many Mach-O files (dylibs/.so under _internal/).
+      # They must be signed inside-out — nested libraries first, then the launcher —
+      # or notarization (and Gatekeeper on the standalone artifact) rejects it.
       - name: Sign freemocap_server with codesign
         if: matrix.platform == 'macos'
         run: |
-          codesign --force --options runtime --sign "Developer ID Application" \
-            --timestamp \
-            "./freemocap-ui/${{ matrix.server-binary }}"
-          codesign --verify --verbose "./freemocap-ui/${{ matrix.server-binary }}"
-          echo "Server binary signed and verified successfully"
+          SERVER_DIR="./freemocap-ui/freemocap_server"
+          echo "Signing nested Mach-O libraries (inside-out)..."
+          find "$SERVER_DIR" -type f \( -name '*.dylib' -o -name '*.so' \) -print0 \
+            | while IFS= read -r -d '' lib; do
+                codesign --force --options runtime --timestamp \
+                  --sign "Developer ID Application" "$lib"
+              done
+          echo "Signing launcher executable..."
+          codesign --force --options runtime --timestamp \
+            --sign "Developer ID Application" "$SERVER_DIR/${{ matrix.server-binary }}"
+          codesign --verify --verbose "$SERVER_DIR/${{ matrix.server-binary }}"
+          echo "Server bundle signed and verified successfully"
 
-      # ── Upload server-only artifact ──
-      - name: Upload server binary artifact
+      # ── Upload server-only artifact (the whole onedir bundle) ──
+      - name: Upload server bundle artifact
         uses: actions/upload-artifact@v7
         with:
           name: server-${{ matrix.label }}
           path: |
-            freemocap-ui/${{ matrix.server-binary }}
+            freemocap-ui/freemocap_server/**
           include-hidden-files: true
 
       # ── Electron build ──
@@ -320,19 +334,21 @@ jobs:
       - name: Validate server binary present and executable
         shell: bash
         run: |
-          echo "Checking for server binary at ./freemocap-ui/${{ matrix.server-binary }}"
-          if [ ! -f "./freemocap-ui/${{ matrix.server-binary }}" ]; then
-            echo "::error::Server binary not found: ./freemocap-ui/${{ matrix.server-binary }}"
-            ls -la ./freemocap-ui || true
+          # onedir layout: freemocap-ui/freemocap_server/<launcher>[.exe] + _internal/
+          SERVER_EXE="./freemocap-ui/freemocap_server/${{ matrix.server-binary }}"
+          echo "Checking for server binary at $SERVER_EXE"
+          if [ ! -f "$SERVER_EXE" ]; then
+            echo "::error::Server binary not found: $SERVER_EXE"
+            ls -la ./freemocap-ui/freemocap_server || true
             exit 1
           fi
           echo "Found server binary:"
-          ls -la "./freemocap-ui/${{ matrix.server-binary }}"
+          ls -la "$SERVER_EXE"
           # On Unix-like, ensure executable bit is set
           if [ "${{ matrix.platform }}" != "windows" ]; then
-            if [ ! -x "./freemocap-ui/${{ matrix.server-binary }}" ]; then
+            if [ ! -x "$SERVER_EXE" ]; then
               echo "Server binary is not executable, setting +x"
-              chmod +x "./freemocap-ui/${{ matrix.server-binary }}" || true
+              chmod +x "$SERVER_EXE" || true
             fi
           fi
 
@@ -530,15 +546,6 @@ jobs:
             freemocap-ui/release/**/latest.yml
           include-hidden-files: true
 
-      - name: Upload auto-update metadata (macOS)
-        if: matrix.platform == 'macos' && matrix.arch == 'x64'
-        uses: actions/upload-artifact@v7
-        with:
-          name: update-metadata-${{ matrix.label }}
-          path: |
-            freemocap-ui/release/**/latest-mac.yml
-          include-hidden-files: true
-
       - name: Upload auto-update metadata (macOS ARM)
         if: matrix.platform == 'macos' && matrix.arch == 'arm64'
         uses: actions/upload-artifact@v7
@@ -601,21 +608,21 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           echo "VERSION=$VERSION"
 
-          # ── Server binaries (all variants — small enough for GitHub) ──
+          # ── Server bundles (onedir: launcher + _internal/ tree) ──
           # Artifact directories are named server-<label>, e.g.:
           #   server-windows-x64-cpu, server-windows-x64-cuda,
-          #   server-macos-x64-intel, server-macos-arm64-apple-silicon,
+          #   server-macos-arm64-apple-silicon,
           #   server-linux-x64-cpu, server-linux-x64-cuda, server-linux-arm64-cpu
+          # Each holds a PyInstaller onedir bundle — the launcher won't run without its
+          # _internal/ tree, so ship the whole bundle as a zip.
           for dir in artifacts/server-*; do
             label=$(basename "$dir" | sed 's/^server-//')
-
-            if [ -f "$dir/freemocap_server.exe" ]; then
-              cp "$dir/freemocap_server.exe" "release-assets/freemocap_server_${VERSION}_${label}.exe"
-            elif [ -f "$dir/freemocap_server" ]; then
-              cp "$dir/freemocap_server" "release-assets/freemocap_server_${VERSION}_${label}"
-            else
-              echo "::warning::No server binary found in $dir — skipping"
+            if [ -z "$(ls -A "$dir" 2>/dev/null)" ]; then
+              echo "::warning::Empty server artifact in $dir — skipping"
+              continue
             fi
+            ( cd "$dir" && zip -qr "$OLDPWD/release-assets/freemocap_server_${VERSION}_${label}.zip" . )
+            echo "Zipped server bundle: freemocap_server_${VERSION}_${label}.zip"
           done
 
           # ── App installers — all except Linux CUDA (which goes to R2) ──
@@ -673,8 +680,8 @@ jobs:
             fi
           done
           if [ -n "$MAC_YML" ]; then
-            # Patch filenames to match renamed assets
-            sed -i "s|freemocap_.*_installer\.zip|freemocap_${VERSION}_macos-x64-intel.zip|g" "$MAC_YML"
+            # Patch filenames to match renamed assets (Apple Silicon only)
+            sed -i "s|freemocap_.*_installer\.zip|freemocap_${VERSION}_macos-arm64-apple-silicon.zip|g" "$MAC_YML"
             cp "$MAC_YML" "release-assets/latest-mac.yml"
             echo "Copied latest-mac.yml for macOS"
           fi

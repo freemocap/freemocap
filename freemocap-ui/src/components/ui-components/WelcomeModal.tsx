@@ -13,6 +13,7 @@ import ButtonSm from '@/components/ui-components/ButtonSm';
 import ButtonCard from '@/components/ui-components/ButtonCard';
 import IconButton from '@/components/ui-components/IconButton';
 import Checkbox from '@/components/ui-components/Checkbox';
+import { useTutorial } from '@/components/tutorial';
 
 interface WelcomeModalProps {
     open: boolean;
@@ -28,6 +29,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
     const { isElectron, api } = useElectronIPC();
     const { connectedCameraIds } = useServer();
     const cameras = useAppSelector(selectCameras);
+    const { startTour } = useTutorial();
     const prevCountRef = useRef(connectedCameraIds.length);
 
     // Close automatically when cameras first connect
@@ -93,6 +95,11 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
         onClose();
     }, [navigate, onClose]);
 
+    const handleStartTour = useCallback(() => {
+        startTour('getting-started');
+        onClose();
+    }, [startTour, onClose]);
+
     if (!open) return null;
 
     return (
@@ -141,6 +148,17 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                                     text={t('videoPlayback')}
                                     iconClass="importVideos-icon icon-size-42"
                                     onClick={handleGoToPlayback}
+                                />
+                            </div>
+
+                            {/* Guided tour launcher — emphasized until the user finishes it once */}
+                            <div className="mt-2">
+                                <ButtonSm
+                                    iconClass="learn-icon"
+                                    text={t('tour.take')}
+                                    textColor="text-white"
+                                    className="full-width justify-center primary accent tour-nudge-pulse"
+                                    onClick={handleStartTour}
                                 />
                             </div>
 

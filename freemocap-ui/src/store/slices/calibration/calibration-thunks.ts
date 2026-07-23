@@ -77,10 +77,10 @@ export const startCalibrationRecording = createAsyncThunk<
             // (that's what `calibrateRecording` does, to re-process an existing recording).
             // Using the active path here let new videos pile into an old recording folder,
             // mixing camera sets / frame counts and breaking posthoc calibration.
+            //
+            // recordingDirectory is guaranteed non-empty from store initialization onward
+            // (see recording-slice.ts) — no need to guard it here.
             const recordingsRoot = state.recording.recordingDirectory;
-            if (!recordingsRoot) {
-                return rejectWithValue('Recordings directory is not set');
-            }
             const base = recordingsRoot.replace(/[\\/]+$/, '');
             const calibrationRecordingDirectory = `${base}/${getTimestampString()}_calibration`;
 

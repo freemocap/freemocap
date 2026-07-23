@@ -4,6 +4,7 @@ import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo}
 import {startRecording, stopRecording} from './recording-thunks';
 import {loadFromStorage} from '@/store/persistence';
 import {getTimestampString} from './getTimestampString';
+import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 
 const computeRecordingPath = (
     recordingDirectory: string,
@@ -42,8 +43,26 @@ const computeRecordingPath = (
     };
 };
 
-// Empty until hydrated from the base data folder at startup (see useHydrateDataFolder).
-const DEFAULT_RECORDING_DIRECTORY = '';
+// The recording directory must NEVER be empty — it is always either the user's persisted
+// override or a real path derived from the base data folder. The base data folder itself is
+// resolved by Electron main (override-or-`~/freemocap_data`, see electron/main/base-folder.ts)
+// and handed to the renderer *synchronously* at preload time (electron/preload/index.ts), so it
+// is available before this module — and therefore this initial state — ever runs. There is no
+// async hydration step and no window where this can be blank.
+//
+// The literal fallback below only activates when there is no Electron main process to ask at all
+// (e.g. `npm run dev`'s bare Vite server opened directly in a browser tab) — a dev-only scenario
+// with no real filesystem to resolve `~` against client-side.
+const FALLBACK_RECORDING_DIRECTORY = '~/freemocap_data/recordings';
+
+function resolveDefaultRecordingDirectory(): string {
+    const baseDataFolder = typeof window !== 'undefined' && window.electronAPI
+        ? window.electronAPI.baseDataFolder
+        : undefined;
+    return baseDataFolder ? recordingsDirFromBaseFolder(baseDataFolder) : FALLBACK_RECORDING_DIRECTORY;
+}
+
+const DEFAULT_RECORDING_DIRECTORY = resolveDefaultRecordingDirectory();
 
 const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
     useDelayStart: false,
@@ -61,10 +80,15 @@ const DEFAULT_RECORDING_CONFIG: RecordingConfig = {
 
 const _persistedConfig = loadFromStorage<RecordingConfig | null>('recording.config', null);
 const _persistedDirectory = loadFromStorage<string | null>('recording.directory', null);
+// A blank/whitespace persisted value means "not actually set" (e.g. saved while this bug was
+// live) — treat it the same as no persisted value at all, never carry '' forward.
+const _initialRecordingDirectory = _persistedDirectory && _persistedDirectory.trim()
+    ? _persistedDirectory
+    : DEFAULT_RECORDING_DIRECTORY;
 
 const initialState: RecordingInfo = {
     isRecording: false,
-    recordingDirectory: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
+    recordingDirectory: _initialRecordingDirectory,
     recordingName: null,
     startedAt: null,
     duration: 0,
@@ -73,7 +97,7 @@ const initialState: RecordingInfo = {
     computed: {
         recordingName: '',
         subfolderName: '',
-        fullRecordingPath: _persistedDirectory ?? DEFAULT_RECORDING_DIRECTORY,
+        fullRecordingPath: _initialRecordingDirectory,
     },
     pendingOperation: null,
     countdown: null,

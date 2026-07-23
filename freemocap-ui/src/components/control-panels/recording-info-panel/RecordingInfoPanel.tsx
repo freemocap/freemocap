@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  recordingInfoUpdated,
   startRecording,
   stopRecording,
   useAppDispatch,
@@ -25,7 +24,6 @@ import {
 import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
 import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
-import { useElectronIPC } from "@/services/electron-ipc/electron-ipc";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
@@ -63,7 +61,6 @@ export const RecordingInfoPanel: React.FC = () => {
     getTimestampString(),
   );
 
-  const { isElectron, api } = useElectronIPC();
   const { connectedCameraIds } = useServer();
   const { t } = useTranslation();
   const noCamerasConnected = connectedCameraIds.length === 0;
@@ -94,29 +91,6 @@ export const RecordingInfoPanel: React.FC = () => {
     }, remaining);
     return () => clearTimeout(timer);
   }, [dispatch, pendingOperation]);
-
-  useEffect(() => {
-    if (
-      recordingInfo?.recordingDirectory?.startsWith("~") &&
-      isElectron &&
-      api
-    ) {
-      api.fileSystem.getHomeDirectory
-        .query()
-        .then((homePath: string) => {
-          const updatedDirectory = recordingInfo.recordingDirectory
-            .replace("~", homePath)
-            .replace(/\\/g, "/");
-          dispatch(
-            recordingInfoUpdated({ recordingDirectory: updatedDirectory }),
-          );
-        })
-        .catch((error: unknown) => {
-          console.error("Failed to get home directory:", error);
-          throw error;
-        });
-    }
-  }, [recordingInfo.recordingDirectory, isElectron, api, dispatch]);
 
   useEffect(() => {
     if (countdown === null) return;

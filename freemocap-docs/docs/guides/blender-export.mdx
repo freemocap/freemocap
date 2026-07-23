@@ -11,10 +11,14 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 FreeMoCap can export processed mocap data directly to Blender, creating a complete 3D scene with skeleton mesh, camera frustums, and lighting.
 
+:::note MediaPipe only (for now)
+Blender export currently works with **MediaPipe** mocap output only — RTMPose 3D data does not yet have a working Blender export. See the [Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap).
+:::
+
 ## Prerequisites
 
 - **Blender** installed on your system (detected automatically or specified manually)
-- A **processed recording** with mocap data (all `.npy` files present in the `output/` directory)
+- A **processed recording** with mocap data (all required `.npy` files present in the recording's output data directory)
 - The `freemocap_blender_addon` (installed automatically by the backend)
 
 ## Export Flow

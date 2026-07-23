@@ -21,6 +21,7 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from freemocap.api.websocket.tracker_schema_message import TrackerSchemasMessage, collect_active_tracker_schemas
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
+from freemocap.pubsub.pubsub_topics import SkeletonFitStateMessage
 
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
@@ -158,6 +159,10 @@ class WebsocketServer:
                 self._app_state_sender(),
                 name="WebsocketAppStateSender",
             ),
+            asyncio.create_task(
+                self._skeleton_fit_state_sender(),
+                name="WebsocketSkeletonFitStateSender",
+            ),
         ]
 
         try:
@@ -195,6 +200,38 @@ class WebsocketServer:
             logger.info("Client disconnected, ending app-state sender task...")
         except Exception as e:
             logger.exception(f"Error in app-state sender: {e.__class__}: {e}")
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+            raise
+
+    async def _skeleton_fit_state_sender(self):
+        """Push per-pipeline segment-fit ritual state whenever it changes.
+
+        Drives the frontend's calibration-ritual overlay (countdown → hold-
+        still capture → locked) with no HTTP polling. States only change while
+        a ritual runs, so an idle fitter costs zero messages.
+        """
+        logger.info("Starting skeleton-fit-state sender task...")
+        previous: dict[str, SkeletonFitStateMessage | None] | None = None
+        try:
+            while self.should_continue:
+                states = {
+                    pipeline.id: pipeline.get_latest_skeleton_fit_state()
+                    for pipeline in self._app.realtime_pipeline_manager.pipelines.values()
+                }
+                if previous is None or states != previous:
+                    await self._send_msgspec_json({
+                        "message_type": WebsocketMessageType.SKELETON_FIT_STATE,
+                        "pipelines": states,
+                    })
+                await asyncio.sleep(0.25)
+                previous = states
+        except asyncio.CancelledError:
+            pass
+        except WebSocketDisconnect:
+            logger.info("Client disconnected, ending skeleton-fit-state sender task...")
+        except Exception as e:
+            logger.exception(f"Error in skeleton-fit-state sender: {e.__class__}: {e}")
             self._websocket_should_continue = False
             self._global_kill_flag.value = True
             raise

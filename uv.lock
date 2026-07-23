@@ -371,7 +371,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a8"
+version = "2.0.0a11"
 source = { editable = "." }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

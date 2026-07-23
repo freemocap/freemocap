@@ -17,6 +17,7 @@ import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import { useServer } from "@/services/server/ServerContextProvider";
 import { useAppSelector } from "@/store";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
+import { useTutorial } from "@/components/tutorial";
 
 export const BasePanelLayout = ({
   children,
@@ -33,6 +34,9 @@ export const BasePanelLayout = ({
   const { isConnected, isFailed, connectedCameraIds } = useServer();
   const location = useLocation();
   const isCamerasLoading = useAppSelector(selectIsLoading);
+  // While a guided tour runs, hide the ad-hoc onboarding tooltips so the tour's
+  // own bubble is the only thing pointing at a shared target (e.g. camera:connect-camera).
+  const { isTourActive } = useTutorial();
 
   useEffect(() => {
     bottomPanelRef.current?.collapse();
@@ -73,7 +77,7 @@ export const BasePanelLayout = ({
       >
         <PromptTooltip
           className={isFailed ? "" : "loading"}
-          show={!isConnected}
+          show={!isConnected && !isTourActive}
           title={isFailed ? "Service Unavailable" : "Connecting..."}
           text={isFailed
             ? "Make sure you have the service running"
@@ -91,7 +95,8 @@ export const BasePanelLayout = ({
       !isFailed &&                   // <-- optional extra safety
       location.pathname === "/streaming" &&
       connectedCameraIds.length === 0 &&
-      !isCamerasLoading
+      !isCamerasLoading &&
+      !isTourActive                  // <-- tour owns the stage while it runs
     }
     title="Connect Cameras"
     text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."

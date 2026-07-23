@@ -12,3 +12,4 @@ class WebsocketMessageType(str, enum.Enum):
     LOG_RECORD = "log_record"
     TRACKER_SCHEMAS = "tracker_schemas"
     APP_STATE = "app_state"
+    SKELETON_FIT_STATE = "skeleton_fit_state"

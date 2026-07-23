@@ -1,5 +1,5 @@
 ---
-sidebar_position: 1
+sidebar_position: 4
 title: GPU & ONNX Setup
 ---
 
@@ -9,7 +9,7 @@ import { AiGeneratedBanner, Tip } from '@freemocap/skellydocs';
 
 # GPU & ONNX Runtime Setup
 
-FreeMoCap uses ONNX Runtime for GPU-accelerated pose detection via RTMPose. GPU acceleration significantly improves realtime pipeline throughput — especially with multiple cameras.
+FreeMoCap uses ONNX Runtime for GPU-accelerated pose detection via RTMPose. GPU acceleration significantly improves realtime pipeline throughput — especially with multiple cameras. The models and execution-provider selection are implemented in [SkellyTracker](https://freemocap.github.io/skellytracker/guides/gpu-setup); FreeMoCap configures them through the pipeline.
 
 ## How GPU Detection Works
 
@@ -51,7 +51,7 @@ When `use_centralized_inference=True`, a single `RealtimeSkeletonInferenceNode` 
 
 ### Inline Mode (Per-Camera)
 
-When `use_centralized_inference=False`, each `CameraNode` runs its own `RTMPoseDetector` inline. This is the legacy path and uses more GPU memory but has no inter-camera dependency.
+When `use_centralized_inference=False`, each `CameraNode` builds its own skeleton `Tracker` (via `tracker_factory`) and runs it inline. This per-camera fallback uses more GPU memory and gives up batching, but has no inter-camera dependency — useful for CPU-bound or single-camera setups.
 
 ## GPU OOM Recovery
 

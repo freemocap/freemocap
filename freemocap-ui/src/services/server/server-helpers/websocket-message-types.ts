@@ -89,6 +89,39 @@ export function isTrackerSchemas(data: any): data is TrackerSchemasMessage {
     );
 }
 
+/**
+ * Segment-fit calibration ritual state for one pipeline — pushed by the
+ * backend whenever it changes (snake_case, straight off the dataclass).
+ */
+export interface SkeletonFitStateSnapshot {
+    state: string; // "idle" | "countdown" | "capturing" | "fitted"
+    countdown_remaining_s: number;
+    capture_good_streak: number;
+    capture_required_good_frames: number;
+    capture_min_visible_fraction: number;
+    capture_max_mean_error_px: number;
+    capture_timeout_remaining_s: number;
+    visible_fraction: number;
+    mean_error_px: number | null;
+    n_fitted_body_bones: number;
+    median_seed_deviation: number | null;
+}
+
+export interface SkeletonFitStateWsMessage {
+    message_type: 'skeleton_fit_state';
+    pipelines: Record<string, SkeletonFitStateSnapshot | null>;
+}
+
+export function isSkeletonFitState(data: any): data is SkeletonFitStateWsMessage {
+    return (
+        data &&
+        typeof data === 'object' &&
+        data.message_type === 'skeleton_fit_state' &&
+        data.pipelines &&
+        typeof data.pipelines === 'object'
+    );
+}
+
 export const PosthocProgressSchema = z.object({
     message_type: z.literal('posthoc_progress'),
     pipeline_id: z.string(),

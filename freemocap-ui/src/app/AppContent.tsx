@@ -12,7 +12,7 @@ import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
-import { useHydrateDataFolder } from "@/hooks/useHydrateDataFolder";
+import { TutorialProvider, TourController } from "@/components/tutorial";
 
 export const AppContent = function () {
     const { i18n } = useTranslation();
@@ -20,9 +20,6 @@ export const AppContent = function () {
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
-
-    // Seed recording directories from the configured base data folder on startup.
-    useHydrateDataFolder();
 
     // The native menu's "Settings…" fires this event (see useMenuActions).
     React.useEffect(() => {
@@ -43,13 +40,16 @@ export const AppContent = function () {
     return (
         <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AutoUpdateProvider>
-                <PlaybackProvider>
-                    <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
-                        <BaseContentRouter />
-                    </BasePanelLayout>
-                    <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
-                    <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-                </PlaybackProvider>
+                <TutorialProvider>
+                    <PlaybackProvider>
+                        <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
+                            <BaseContentRouter />
+                        </BasePanelLayout>
+                        <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
+                        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+                        <TourController />
+                    </PlaybackProvider>
+                </TutorialProvider>
                 <UpdateBanner />
                 <PipelineProgressSnackbar />
             </AutoUpdateProvider>

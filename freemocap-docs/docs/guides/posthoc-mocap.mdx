@@ -1,8 +1,17 @@
+---
+title: Post-Hoc Motion Capture
+sidebar_position: 1
+---
+
+import { AiGeneratedBanner } from '@freemocap/skellydocs';
+
+<AiGeneratedBanner generationType="human-generated" />
+
 # FreeMoCap Alpha: Running Post-Hoc Motion Capture
 
 Post-hoc motion capture processes previously recorded, synchronized camera videos and reconstructs a 3D skeleton. Use this workflow when you have already recorded a session and want to process—or reprocess—it with RTMPose or MediaPipe.
 
-> **Alpha note:** This is an early build. Expect bugs, crahses, and for this documentation and workflow to change significantly before the final release. 
+> **Alpha note:** This is an early build. Expect bugs, crashes, and for this documentation and workflow to change significantly before the final release.
 
 ## Before you begin
 
@@ -49,7 +58,7 @@ Under **Calibration**, confirm that the correct camera calibration is loaded. Yo
 
 > **Important:** A calibration is only valid while the cameras remain in the same positions and orientations. If any camera moved, create a new calibration before processing.
 
-*Bug*: When selecting calibration videos, make sure to select the outer top-level recording folder (so the foldering CONTAINING the `synchronized_videos` subfolder) or else it will not find the calibration videos. We will fix this in a future update.
+*Bug*: When selecting calibration videos, make sure to select the outer top-level recording folder (the folder CONTAINING the `synchronized_videos` subfolder) or else it will not find the calibration videos. We will fix this in a future update.
 
 ### 4. Choose a detector
 

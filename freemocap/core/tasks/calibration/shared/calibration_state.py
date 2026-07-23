@@ -20,6 +20,7 @@ from skellytracker.core.data_primitives.observation import Observation
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
+from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
@@ -211,22 +212,27 @@ class CalibrationStateTracker:
         frame_observations_by_camera: dict[CameraIdString, Observation],
         max_reprojection_error_px: float,
         triangulation_config: TriangulationConfig | None = None,
-    ) -> dict[str, NDArray[np.float64]] | None:
+    ) -> AngulationResult | None:
         """Attempt triangulation with reprojection error gating.
 
         Uses to_keypoints() to get named 2D observations from each camera,
         finds points visible in ≥2 cameras, triangulates via DLT, and rejects
         points whose mean reprojection error exceeds max_reprojection_error_px.
 
-        Returns the triangulated 3D points as a dict of {point_name: xyz},
-        or None if no valid calibration is loaded or triangulation failed.
+        Returns an ``AngulationResult`` — triangulated 3D points plus their
+        per-point mean reprojection errors (None on the single-camera planar
+        path, where reprojection error is undefined) — or None if no valid
+        calibration is loaded or triangulation failed.
         """
         if not self.is_valid:
             # Single-camera: projection doesn't need calibration
             if len(frame_observations_by_camera) == 1:
                 obs = next(iter(frame_observations_by_camera.values()))
                 self._consecutive_failure_count = 0
-                return project_2d_observation_to_3d(observation=obs)
+                return AngulationResult(
+                    points=project_2d_observation_to_3d(observation=obs),
+                    errors_px=None,
+                )
             return None
 
         if triangulation_config is None:
@@ -253,12 +259,12 @@ class CalibrationStateTracker:
                 matched_obs_by_cam[self._cam_id_name_cache[cam_id]] = obs
 
             if len(matched_obs_by_cam) == 0:
-                return {}
+                return AngulationResult(points={}, errors_px={})
             if len(matched_obs_by_cam) == 1:
                 obs = next(iter(matched_obs_by_cam.values()))
                 result = project_2d_observation_to_3d(observation=obs)
                 self._consecutive_failure_count = 0
-                return result
+                return AngulationResult(points=result, errors_px=None)
 
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.
@@ -303,7 +309,7 @@ class CalibrationStateTracker:
                         f"(all {len(canonical_names)} keypoints are NaN in at least {n_cameras - 1} cameras). "
                         f"Check that the person is visible to multiple cameras and confidence gating is not too aggressive."
                     )
-                return {}
+                return AngulationResult(points={}, errors_px={})
             if not bool(keep_mask.all()):
                 stacked = stacked[:, keep_mask, :]
                 point_names_seq = tuple(
@@ -343,22 +349,25 @@ class CalibrationStateTracker:
                 points_3d[bad_mask] = np.nan
 #             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 
-            # Build result dict, excluding NaN points.
-            # Strip the stage prefix that to_keypoints() adds (e.g. "body.nose" → "nose")
-            # so downstream code sees the canonical unprefixed names.
+            # Build result, excluding NaN points. Strip the stage prefix that
+            # to_keypoints() adds (e.g. "body.nose" → "nose") so downstream code
+            # sees the canonical unprefixed names. Each surviving point keeps
+            # its mean reprojection error alongside its position.
             _t0 = time.perf_counter()
             valid_pt_mask = ~np.isnan(points_3d).any(axis=1)
-            result: dict[str, NDArray[np.float64]] = {
-                _strip_stage_prefix(name): points_3d[i]
-                for i, name in enumerate(point_names_seq)
-                if valid_pt_mask[i]
-            }
+            points: dict[str, NDArray[np.float64]] = {}
+            errors_px: dict[str, float] = {}
+            for i, name in enumerate(point_names_seq):
+                if valid_pt_mask[i]:
+                    stripped = _strip_stage_prefix(name)
+                    points[stripped] = points_3d[i]
+                    errors_px[stripped] = float(mean_reproj_error[i])
 #             self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
 #             self._timer.maybe_report()
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0
-            return result
+            return AngulationResult(points=points, errors_px=errors_px)
 
         except Exception as e:
             self._consecutive_failure_count += 1

@@ -302,7 +302,7 @@ class CameraNode(SourceNode):
                                 raw_keypoints=raw_2d,
                             )
                             xyz = kpts.xyz
-                            for name, coords in filtered_2d.items():
+                            for name, coords in filtered_2d.positions.items():
                                 try:
                                     idx = kpts.index_of(name)
                                     xyz[idx, 0] = coords[0]

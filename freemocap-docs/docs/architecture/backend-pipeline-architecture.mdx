@@ -20,7 +20,7 @@ Pipelines are the central abstraction of the FreeMoCap backend. A pipeline takes
 | **Accuracy** | Best-effort (frame dropping is acceptable) | Highest possible (no drops, full dataset) |
 | **Lifetime** | Long-lived, bound to camera group | Fire-and-forget, ends when video ends |
 | **Dataset access** | Current frame only | Full video (forward/backward, global context) |
-| **GPU inference** | Batched centralized node (optional) | Inline per video node |
+| **GPU inference** | Batched centralized node (default) | Inline per video node |
 | **Output** | WebSocket → frontend (streaming) | Files on disk → playback |
 
 ```mermaid
@@ -97,12 +97,12 @@ CameraGroup (shared memory ring buffers, one per camera)
     ▼
 CameraNodes (one child process per camera)
     │ Reads from ring buffer, blocks on ProcessFrameNumberTopic
-    │ Runs CharUcoDetector and RTMPoseDetector inline
+    │ Runs ChArUco detection inline (CPU); skeleton only in per-camera mode
     │ Publishes CameraNodeOutputMessage per frame
     │
-    ▼  (optionally)
-RealtimeSkeletonInferenceNode (centralized GPU, optional)
-    │ Batched ONNX inference across all cameras
+    ▼  (default: use_centralized_inference=True)
+RealtimeSkeletonInferenceNode (centralized GPU — the default skeleton path)
+    │ One OnnxSession; tracker.process_batch() batches all cameras in one call
     │ Drains to latest frame (drops stale frames)
     │ Publishes SkeletonInferenceResultMessage
     │
@@ -126,22 +126,22 @@ Each camera gets its own child process running a `CameraNode`:
 
 1. **Reads frames** from the camera's `CameraSharedMemoryRingBuffer` (shared memory, no copy)
 2. **Blocks on `ProcessFrameNumberTopic`** — the aggregator tells it which frame to process (up to 5ms timeout)
-3. **Runs detectors inline**: `RTMPoseDetector` for skeleton, `CharucoDetector` (from skellytracker) for calibration markers
+3. **Runs trackers inline** via `tracker_factory` (`core/tracking/`): a ChArUco `Tracker` (CPU) for calibration markers, and — only in per-camera mode — a skeleton `Tracker` (RTMPose or MediaPipe). Each is a SkellyTracker `Tracker`; the node calls `tracker.process_image(image, frame_number, state)`.
 4. **Applies image rotation** from camera metadata (if the camera is physically rotated)
 5. **Verifies frame_number** matches the requested frame — detects ring buffer overwrites (camera writing faster than pipeline reads)
 6. **Publishes `CameraNodeOutputMessage`** per frame (observations + metadata)
 7. **On exception**: calls `ipc.kill_everything()` — the nuclear option. A camera node crash means the pipeline can't produce valid output, so everything stops.
 
-In **centralized GPU mode**, CameraNodes skip skeleton detection — the `RealtimeSkeletonInferenceNode` handles it separately.
+**By default** (`use_centralized_inference=True`) CameraNodes run **ChArUco only** and skip skeleton detection — the centralized `RealtimeSkeletonInferenceNode` does batched skeleton inference for all cameras. Inline per-camera skeleton detection is the `use_centralized_inference=False` fallback (more GPU memory, no batching; useful for CPU-bound setups). See [Tracking Integration](/docs/architecture/tracking-integration).
 
 ### RealtimeSkeletonInferenceNode (`realtime_skeleton_inference_node.py`, ~435 lines)
 
-Optional dedicated GPU worker for batched ONNX inference. When enabled:
+The **default** skeleton path (`use_centralized_inference=True`): a dedicated GPU worker doing batched inference for all cameras. See [Tracking Integration](/docs/architecture/tracking-integration) for how the tracker is built.
 
-1. **One CUDA context, one `RTMPoseSession`** — avoids per-node GPU context switching overhead
+1. **One CUDA context, one `OnnxSession` + `Tracker`** (built via `tracker_factory`) — avoids per-node GPU context switching overhead
 2. **Subscribes to `ProcessFrameNumberTopic`**, drains to the latest frame (drops stale frames when GPU falls behind)
 3. **Reads images directly** from per-camera ring buffers (read-only, no copy)
-4. **Calls `session.predict_batch(images)`** — one ONNX `session.run` per multi-camera frame
+4. **Calls `tracker.process_batch(images_dict)`** — one batched SkellyTracker call (one ONNX `session.run` per model) for all cameras at once
 5. **Publishes `SkeletonInferenceResultMessage`** — per-camera skeleton observations keyed by frame_number
 6. **GPU OOM recovery**: catches `MemoryError`, rebuilds session (up to 3 retries), skips the affected frame
 7. **TensorRT engine compilation** available when configured with execution provider `"trt"` (1–3 minutes on first run, cached on subsequent runs). The default execution provider is `"cuda"`.
@@ -200,7 +200,7 @@ Output files on disk → Playback via REST API
 Each video gets a child process:
 
 1. **Reads frames** via OpenCV `cv2.VideoCapture` (sequential, no frame dropping)
-2. **Creates detector** from config (any `BaseDetectorConfig` — charuco, mediapipe, RTMPose)
+2. **Builds a SkellyTracker `Tracker`** from its `TrackerConfig` / `DetectionStageConfig` (ChArUco, MediaPipe, or RTMPose) and calls `tracker.process_image()` per frame
 3. **Publishes `VideoNodeOutputMessage`** per frame (detection observations)
 4. **Annotated video output**: layers detection annotations on frames
    - Tries H.264 ("avc1") encoder first, falls back to mp4v

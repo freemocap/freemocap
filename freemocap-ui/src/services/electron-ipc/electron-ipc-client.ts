@@ -5,6 +5,9 @@ import type {AppAPI} from '../../../electron/main/api';
 
 // Type for the electron API exposed via preload
 interface ElectronAPI {
+    // Resolved synchronously at preload time — override-or-default, never empty.
+    // See electron/main/base-folder.ts (getBaseDataFolder) and electron/preload/index.ts.
+    baseDataFolder: string;
     invoke: (path: string, input?: any) => Promise<any>;
     onMenuAction: (callback: (action: string) => void) => () => void;
     sendMenuLabels: (params: Record<string, unknown>) => void;

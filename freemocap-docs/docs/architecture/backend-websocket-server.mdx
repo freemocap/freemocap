@@ -121,7 +121,7 @@ A send lock (`asyncio.Lock`) prevents concurrent writes to the same WebSocket co
 
 ## Tracker Schemas
 
-On connection, the server sends `TrackerSchemasMessage` containing `RTMPOSE_WHOLEBODY_DEFINITION`. This tells the frontend:
+On connection, the server sends `TrackerSchemasMessage` containing every active tracker's `TrackerDefinition` — e.g. `rtmpose_wholebody`, `mediapipe_wholebody`, and the canonical body/hand schemas (`collect_active_tracker_schemas()`). This tells the frontend:
 - What keypoints exist (names and indices)
 - How keypoints connect (skeleton lines to draw)
 - Without hardcoding any skeleton topology in the frontend

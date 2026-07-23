@@ -4,6 +4,7 @@ import { useViewportState } from "./ViewportStateContext";
 import IconButton from "@/components/ui-components/IconButton";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { resetSkeletonFitter, selectIsPipelineConnected } from "@/store/slices/realtime";
+import { SkeletonFitRitualIndicator } from "./SkeletonFitRitualIndicator";
 
 interface ViewportOverlayProps {
   onFitCamera: () => void;
@@ -76,6 +77,7 @@ export function ViewportOverlay({
 
   return (
     <>
+      {isRealtimeConnected && <SkeletonFitRitualIndicator />}
       <div
         className="viewport-options pos-abs top-0 left-0 p-2 br-1"
         style={{

@@ -20,20 +20,20 @@ Mocap processing takes 2D pose detections from multiple camera views, triangulat
 RTMPose is a top-down pose estimation model from MMPose, running via ONNX Runtime. It's the default skeleton detector for both realtime and posthoc pipelines.
 
 **Configuration** (`RTMPoseDetectorConfig`):
-- `mode`: "balanced" (default), "speed", or "accuracy" — trades off inference time vs detection quality
-- `confidence_threshold`: minimum confidence for a keypoint to be included (default: 5, range 0–10)
+- `model_name`: RTMPose model variant (e.g. `"rtmw-x-l_256x192"`) — trades off inference time vs detection quality
+- `confidence_threshold`: minimum confidence for a keypoint to be kept (a float, e.g. `0.004`)
 
 **Two deployment modes:**
 
 | Mode | Where it runs | Tradeoff |
 |---|---|---|
-| **Inline** | Each CameraNode/VideoNode runs its own detector | Simpler, no inter-camera dependency, higher total GPU memory |
-| **Centralized GPU** | `RealtimeSkeletonInferenceNode` batches all cameras | One CUDA context, one ONNX session, batched inference, lower latency |
+| **Centralized GPU** (realtime default) | `RealtimeSkeletonInferenceNode` batches all cameras | One CUDA context, one `OnnxSession`, batched `process_batch`, lower latency |
+| **Inline** (per-camera fallback / posthoc) | Each CameraNode/VideoNode runs its own `Tracker` | Simpler, no inter-camera dependency, higher total GPU memory |
 
-In centralized GPU mode:
-- CameraNodes skip skeleton detection entirely
+In centralized GPU mode (the realtime default):
+- CameraNodes skip skeleton detection entirely (they still run ChArUco on CPU)
 - `RealtimeSkeletonInferenceNode` reads raw frames from all camera ring buffers
-- Calls `session.predict_batch(images)` — one ONNX `session.run` for all cameras simultaneously
+- Calls `tracker.process_batch(images_dict)` — one batched SkellyTracker call (one ONNX `session.run` per model) for all cameras simultaneously
 - TensorRT engine compilation on first run (1–3 minutes, cached)
 - GPU OOM recovery: catches `MemoryError`, rebuilds session (up to 3 retries)
 
@@ -43,7 +43,7 @@ Runs alongside skeleton detection to find ChArUco board markers. Used for calibr
 
 ### Detector Config Flexibility
 
-Posthoc pipelines accept any `BaseDetectorConfig`, so they can work with CharUco (for calibration), MediaPipe (legacy skeleton), or RTMPose (current skeleton). The realtime pipeline is currently RTMPose-focused.
+Posthoc pipelines build a SkellyTracker `Tracker` from a `TrackerConfig` / `DetectionStageConfig`, so they can work with ChArUco (for calibration), MediaPipe, or RTMPose — MediaPipe and RTMPose are both first-class skeleton detectors. The realtime pipeline defaults to RTMPose but can also run MediaPipe (in per-camera mode).
 
 ## Skeleton Filtering Pipeline (Realtime)
 
@@ -113,32 +113,35 @@ The `Triangulator` (`core/tasks/triangulation/triangulator.py`, ~578 lines) is a
 
 ## Posthoc Mocap Task
 
-Orchestrated by `posthoc_mocap_task.py` (~150 lines):
+Orchestrated by `run_posthoc_mocap_aggregator_task()` in `posthoc_mocap_task.py`:
 
-1. Receives collected observations from all VideoNodes
-2. Builds `BaseRecorder` per camera (for saving per-camera detection data)
-3. Validates observations are `RTMPoseObservation` or `MediapipeObservation`
-4. Loads calibration TOML (most recent or specified path), copies into recording folder
-5. Calls `skeleton_from_mediapipe_observation_recorders()` for triangulated 3D skeleton
-6. Saves `tracker_schema.json` alongside outputs (keypoint names, connections)
-7. Optionally triggers Blender export
+1. Receives `frame_observations` — a per-frame list of `{camera_id: Observation}` collected from all VideoNodes (unified SkellyTracker `Observation`s)
+2. Builds an `ObservationBuffer` per camera and accumulates each camera's observations
+3. Resolves the calibration TOML (explicit path wins; otherwise the most-recent successful calibration) and copies it into the recording folder
+4. Calls `skeleton_from_mediapipe_observation_recorders(detector=…, observation_recorders=…, …)` to triangulate the 3D skeleton into `output_data/`
+5. Writes `tracker_schema.json` from the active `TrackerDefinition` (e.g. `RTMPOSE_WHOLEBODY_DEFINITION`)
+6. Optionally triggers Blender export
 
 ## Output Artifacts
 
-After mocap processing, a recording folder contains:
+After mocap processing, results are written under the recording folder:
 
-| File | Content |
-|---|---|
-| `mediapipe_body_3d_xyz.npy` | Body keypoints in 3D (num_frames × num_keypoints × 3) |
-| `mediapipe_right_hand_right_hand.npy` | Right hand keypoints |
-| `mediapipe_left_hand_left_hand.npy` | Left hand keypoints |
-| `mediapipe_face_3d_xyz.npy` | Face mesh keypoints |
-| `mediapipe_body_total_body_center_of_mass.npy` | Whole-body center of mass trajectory |
-| `mediapipe_body_segment_center_of_mass.npy` | Per-segment center of mass trajectories |
-| `{name}_data.parquet` | Primary mocap data store (all data in one file) |
-| `tracker_schema.json` | Keypoint names and skeleton connections |
-| `{name}_calibration.toml` | Calibration used for this recording |
-| `{name}.blend` | Blender export (if enabled) |
+```text
+recording_folder/
+├── synchronized_videos/      Input camera videos
+├── annotated_videos/         Videos with detected 2D keypoints drawn on
+├── output_data/              Reconstructed + post-processed 3D data
+│   ├── *.npy                 3D keypoint arrays (frames × keypoints × 3), CoM, etc.
+│   ├── *.csv
+│   ├── *.parquet             Primary tabular mocap data store
+│   └── per_camera_weights.npy
+├── tracker_schema.json       Keypoint names + connections (from the TrackerDefinition)
+├── <calibration>.toml        Calibration used for this recording (copied in)
+└── <name>.blend              Blender export (if enabled)
+```
+
+For the end-user walkthrough that produces these, see the
+[Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap).
 
 ## Blender Export
 
@@ -162,7 +165,7 @@ Since the posthoc pipeline was ported from V1 while the realtime pipeline was bu
 |---|---|---|
 | Filtering | One Euro + velocity gate + rigid-body correction | V1 filtering pipeline (being updated) |
 | Triangulation | DLT with subset-ensemble outlier rejection | DLT with configurable outlier rejection |
-| Detector | RTMPose (ONNX) | RTMPose or MediaPipe (configurable) |
+| Detector | RTMPose (default); MediaPipe in per-camera mode | RTMPose or MediaPipe (configurable) |
 | Output format | WebSocket streaming | .npy + .parquet files |
 
-These gaps are known and will be closed as the posthoc pipeline is updated to match the realtime pipeline's filtering and triangulation approach.
+These gaps are known and will be closed as the posthoc pipeline is updated to match the realtime pipeline's filtering and triangulation approach. See the [Post-Hoc Motion Capture guide](/docs/guides/posthoc-mocap) for the current user-facing limitations (e.g. the **3D Reconstruction** filter settings — Point Gate, One Euro, FABRIK — are not yet passed into posthoc processing).

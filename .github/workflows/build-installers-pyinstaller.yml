@@ -466,10 +466,11 @@ jobs:
             VERSION="dev-${{ github.run_number }}"
           fi
 
-          # CUDA app installers: Windows .exe (NSIS) + Linux .AppImage/.deb. The matching
-          # CUDA server zips are pushed to R2 by the release job. (macOS is CPU-only, so
-          # this step never runs there.)
-          for file in freemocap-ui/release/*/*.exe freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb; do
+          # Only the Linux CUDA app installer is oversized → R2. (Windows CUDA .exe is
+          # ~1.x GB and small enough for GitHub, so it's intentionally NOT matched here —
+          # this glob only picks up Linux .AppImage/.deb. macOS is CPU-only, so this step
+          # never runs there.)
+          for file in freemocap-ui/release/*/*.AppImage freemocap-ui/release/*/*.deb; do
             [ -f "$file" ] || continue
             ext="${file##*.}"
             aws s3 cp "$file" \
@@ -643,13 +644,13 @@ jobs:
             asset="freemocap_server_${VERSION}_${label}.zip"
             ( cd "$dir" && zip -qr "$OLDPWD/${asset}" . )
             case "$label" in
-              *-cuda)
+              linux-*-cuda)   # only the >2 GB build goes to R2; everything else → GitHub
                 if [ "$R2_READY" = 1 ]; then
                   aws s3 cp "${asset}" "s3://${R2_BUCKET}/releases/v${VERSION}/${asset}" \
                     --endpoint-url "${R2_ENDPOINT}" --no-progress
                   echo "R2: ${asset}"
                 else
-                  echo "::warning::Skipping CUDA server bundle ${asset} (no R2 credentials)"
+                  echo "::warning::Skipping Linux CUDA server bundle ${asset} (no R2 credentials)"
                 fi
                 rm -f "${asset}"
                 ;;
@@ -660,14 +661,14 @@ jobs:
             esac
           done
 
-          # ── App installers — CUDA → R2 (already uploaded by the build job),
-          #    CPU/macOS → GitHub. ──
+          # ── App installers — only Linux CUDA goes to R2 (uploaded by the build job);
+          #    everything else, INCLUDING the smaller Windows CUDA .exe, → GitHub. ──
           for dir in artifacts/installer-*; do
             label=$(basename "$dir" | sed 's/^installer-//')
 
-            # CUDA installers live on R2 (uploaded during the build job) — skip here.
+            # Linux CUDA installer lives on R2 (uploaded during the build job) — skip here.
             case "$label" in
-              *-cuda) continue ;;
+              linux-*-cuda) continue ;;
             esac
 
             find "$dir" -type f \( \
@@ -682,27 +683,28 @@ jobs:
             done
           done
 
-          # ── Collect R2 (GPU/CUDA) download links for the release notes ──
-          # These live on R2 (too big for GitHub), so they must be linked in the notes or
-          # they're invisible on the Releases page. Keys mirror the R2 uploads (app
-          # installers from the build job, server zips from this job), under releases/v<ver>/.
+          # ── Collect R2 download links for the release notes ──
+          # ONLY the Linux CUDA build lives on R2 (it exceeds GitHub's 2 GB limit); it must
+          # be linked in the notes or it's invisible on the Releases page. Keys mirror the
+          # R2 uploads (installer from the build job, server zip from this job) under
+          # releases/v<ver>/. Must stay in sync with isR2Hosted() in the docs' downloads.ts.
           R2_PUBLIC_BASE="https://pub-0a275a10417e425c94e48de393793129.r2.dev/releases/v${VERSION}"
           : > r2-links.md
-          for dir in artifacts/installer-*-cuda; do
+          for dir in artifacts/installer-linux-*-cuda; do
             [ -d "$dir" ] || continue
             label=$(basename "$dir" | sed 's/^installer-//')
-            find "$dir" -type f \( -name '*.exe' -o -name '*.AppImage' -o -name '*.deb' \) | while read -r f; do
+            find "$dir" -type f \( -name '*.AppImage' -o -name '*.deb' \) | while read -r f; do
               name="freemocap_${VERSION}_${label}.${f##*.}"
               echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
             done
           done
-          for dir in artifacts/server-*-cuda; do
+          for dir in artifacts/server-linux-*-cuda; do
             [ -d "$dir" ] || continue
             label=$(basename "$dir" | sed 's/^server-//')
             name="freemocap_server_${VERSION}_${label}.zip"
             echo "- [\`${name}\`](${R2_PUBLIC_BASE}/${name})" >> r2-links.md
           done
-          echo "=== R2 (GPU/CUDA) links ==="; cat r2-links.md || true
+          echo "=== R2 (Linux CUDA) links ==="; cat r2-links.md || true
 
           echo "=== GitHub-bound release assets ==="
           ls -lh release-assets/

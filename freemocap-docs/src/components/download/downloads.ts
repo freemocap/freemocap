@@ -46,9 +46,9 @@ export function getReleaseBaseUrl(version: string): string {
   return `https://github.com/${REPO}/releases/download/v${version}`;
 }
 
-// Assets too large for a GitHub release (the CUDA / GPU builds — they bundle the
-// ~1.5-2 GB NVIDIA CUDA stack; see isR2Hosted() and the "release" job in
-// .github/workflows/build-installers-pyinstaller.yml) are hosted on Cloudflare R2.
+// Assets too large for a GitHub release (currently just the Linux CUDA build — its
+// NVIDIA stack pushes it past GitHub's 2 GB limit; see isR2Hosted() and the "release"
+// job in .github/workflows/build-installers-pyinstaller.yml) are hosted on Cloudflare R2.
 export const R2_PUBLIC_URL = 'https://pub-0a275a10417e425c94e48de393793129.r2.dev';
 
 export function getR2BaseUrl(version: string): string {
@@ -59,11 +59,11 @@ export function getR2BaseUrl(version: string): string {
 
 /** True for builds whose release assets live on R2 instead of GitHub.
  *  Mirrors the routing rule in .github/workflows/build-installers-pyinstaller.yml:
- *  every CUDA build (app installer + server zip) bundles the ~1.5-2 GB NVIDIA CUDA stack
- *  and exceeds GitHub's 2 GB per-asset limit, so it is hosted on R2. CPU / macOS → GitHub.
- *  (`os` is kept in the signature for call-site symmetry; routing is purely by variant.) */
+ *  ONLY the Linux CUDA build exceeds GitHub's 2 GB per-asset limit (its NVIDIA stack
+ *  pushes it >2 GB), so it alone is hosted on R2. Everything else — including the smaller
+ *  Windows CUDA build (~1.x GB) — goes to the GitHub Release. */
 export function isR2Hosted(os: OsType, variant?: VariantType): boolean {
-  return variant === 'cuda';
+  return os === 'linux' && variant === 'cuda';
 }
 
 /** Resolves the actual download URL for a file, routing R2-hosted builds correctly. */

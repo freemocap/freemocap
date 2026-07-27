@@ -229,6 +229,32 @@ a = Analysis(
     noarchive=False,
 )
 
+# ── Blender export launcher ──
+# Blender executes this with `blender --python`, so it must remain a real
+# source file in the collected onedir bundle rather than only being embedded
+# in PyInstaller's Python archive.
+blender_export_script = os.path.join(
+    SPECPATH,
+    "freemocap",
+    "core",
+    "blender",
+    "helpers",
+    "run_blender_export.py",
+)
+
+if not os.path.isfile(blender_export_script):
+    raise FileNotFoundError(
+        f"Blender export script not found: {blender_export_script}"
+    )
+
+a.datas.append(
+    (
+        "freemocap/core/blender/helpers/run_blender_export.py",
+        blender_export_script,
+        "DATA",
+    )
+)
+
 pyz = PYZ(a.pure, a.zipped_data)
 
 exe = EXE(

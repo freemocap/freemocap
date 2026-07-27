@@ -10,7 +10,11 @@ from PyInstaller.utils.hooks import (
     collect_submodules,
 )
 import cv2
+import importlib.util
 import os
+from pathlib import Path
+
+from PyInstaller.building.datastruct import Tree
 
 datas = []
 binaries = []
@@ -227,6 +231,57 @@ a = Analysis(
         'setuptools._distutils.tests',
     ],
     noarchive=False,
+)
+
+# ── Blender export resources ──
+# Blender executes this script using Blender's own Python interpreter. It must
+# therefore exist as a real source file outside PyInstaller's embedded archive.
+blender_export_script = os.path.join(
+    SPECPATH,
+    "freemocap",
+    "core",
+    "blender",
+    "helpers",
+    "run_blender_export.py",
+)
+
+if not os.path.isfile(blender_export_script):
+    raise FileNotFoundError(
+        f"Blender export script not found: {blender_export_script}"
+    )
+
+a.datas.append(
+    (
+        "freemocap/core/blender/helpers/run_blender_export.py",
+        blender_export_script,
+        "DATA",
+    )
+)
+
+# Blender also needs the add-on as loose Python source files because Blender's
+# Python interpreter cannot import it from PyInstaller's embedded PYZ archive.
+blender_addon_spec = importlib.util.find_spec("freemocap_blender_addon")
+
+if (
+    blender_addon_spec is None
+    or blender_addon_spec.submodule_search_locations is None
+):
+    raise ModuleNotFoundError(
+        "Could not locate installed package: freemocap_blender_addon"
+    )
+
+blender_addon_source = Path(
+    next(iter(blender_addon_spec.submodule_search_locations))
+).resolve()
+
+print(
+    "[freemocap.spec] Bundling Blender add-on source from:",
+    blender_addon_source,
+)
+
+a.datas += Tree(
+    str(blender_addon_source),
+    prefix="freemocap_blender_addon",
 )
 
 pyz = PYZ(a.pure, a.zipped_data)

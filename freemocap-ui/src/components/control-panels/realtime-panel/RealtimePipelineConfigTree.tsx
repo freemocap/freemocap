@@ -395,9 +395,9 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 >
                     <div className="p-1 pl-4 flex flex-col gap-1">
                         <p className="text sm text-gray">
-                            Skeleton fitter learns bone lengths online. Reset forgets
-                            everything and re-seeds from anthropometric priors — the next
-                            frame re-fits from scratch.
+                            Skeleton fitter holds each bone at the median length measured
+                            over the last ~10s. Reset clears that window, so it re-fits from
+                            anthropometric priors over the next few seconds.
                         </p>
                         <button
                             className="button sm"

@@ -13,12 +13,11 @@ second. If the file has changed (e.g. after posthoc calibration completes),
 the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
 Rigid-body correction (``RealtimeSkeletonRigidifier``) runs on the triangulated
-3D points: each bone's length is estimated online (a best-K-by-reprojection-error
-median, seeded from anthropometry and bounded to a trust region around the seed)
-and enforced by a single closed-form forward pass. Only real (non-extrapolated)
-keypoints teach lengths. The reset signal arms a calibration ritual — countdown,
-quality-gated capture, freeze — instead of re-fitting on the next frame; the
-ritual state is published every frame on SkeletonFitStateTopic.
+3D points: each bone's length is the median of its measured lengths over a
+rolling time window (seeded from anthropometry until the window fills) and
+enforced by a single closed-form forward pass. Only real (non-extrapolated)
+keypoints teach lengths. The reset signal clears the rolling window so the next
+~window seconds re-fit from scratch.
 """
 import logging
 import multiprocessing.synchronize
@@ -79,8 +78,6 @@ from freemocap.pubsub.pubsub_topics import (
     SkeletonInferenceResultMessage,
     SkeletonInferenceResultTopic,
     PipelineTimingTopic,
-    SkeletonFitStateMessage,
-    SkeletonFitStateTopic,
 )
 
 # Cap on how many pending skeleton-inference results we hold while waiting for
@@ -179,9 +176,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                 result_ready_event=result_ready_event,
                 result_consumed_event=result_consumed_event,
                 skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
-                skeleton_fit_state_pub=pubsub.get_publication_queue(
-                    SkeletonFitStateTopic,
-                ),
             ),
         )
         return cls(
@@ -208,7 +202,6 @@ class RealtimeAggregatorNode(AggregatorNode):
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
             skeleton_fitter_reset_sub: TopicSubscriptionQueue,
-            skeleton_fit_state_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
         aggregator_config = pipeline_config.aggregator_config
@@ -260,18 +253,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
                 detector_type=detector_type,
                 height_mm=filter_config.height_mm,
-                buffer_capacity=filter_config.segment_length_buffer_capacity,
-                decay_tau_s=filter_config.segment_length_decay_s,
-                fit_ratio=filter_config.segment_length_fit_ratio,
-                min_samples=filter_config.segment_length_min_samples,
-                agreement_tol=filter_config.segment_length_agreement_tol,
-                max_reprojection_error=filter_config.segment_length_max_reprojection_error_px,
-                countdown_s=filter_config.calibration_countdown_s,
-                capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
-                capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
-                capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
-                capture_update_min_visible_fraction=filter_config.calibration_capture_update_min_visible_fraction,
-                capture_timeout_s=filter_config.calibration_capture_timeout_s,
+                window_s=filter_config.segment_length_window_s,
             )
             rigidifier_filter_config = filter_config
             logger.debug(
@@ -396,18 +378,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
                                 detector_type=detector_type,
                                 height_mm=filter_config.height_mm,
-                                buffer_capacity=filter_config.segment_length_buffer_capacity,
-                                decay_tau_s=filter_config.segment_length_decay_s,
-                                fit_ratio=filter_config.segment_length_fit_ratio,
-                                min_samples=filter_config.segment_length_min_samples,
-                                agreement_tol=filter_config.segment_length_agreement_tol,
-                                max_reprojection_error=filter_config.segment_length_max_reprojection_error_px,
-                                countdown_s=filter_config.calibration_countdown_s,
-                                capture_min_visible_fraction=filter_config.calibration_capture_min_visible_fraction,
-                                capture_max_mean_error_px=filter_config.calibration_capture_max_mean_error_px,
-                                capture_consecutive_good_frames=filter_config.calibration_capture_consecutive_good_frames,
-                                capture_update_min_visible_fraction=filter_config.calibration_capture_update_min_visible_fraction,
-                                capture_timeout_s=filter_config.calibration_capture_timeout_s,
+                                window_s=filter_config.segment_length_window_s,
                             )
                             rigidifier_filter_config = filter_config
                             logger.info(
@@ -429,10 +400,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         break
                     reset_requested = True
                 if reset_requested and skeleton_rigidifier is not None:
-                    skeleton_rigidifier.request_refit()
+                    skeleton_rigidifier.reset()
                     logger.info(
-                        f"RealtimeAggregationNode [{camera_group_id}] segment-fit "
-                        f"ritual armed (countdown → capture → freeze)"
+                        f"RealtimeAggregationNode [{camera_group_id}] skeleton fit "
+                        f"reset — rolling length window cleared"
                     )
 
                 # ---- Periodically check if calibration file changed on disk ----
@@ -450,11 +421,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # New calibration → re-arm the refit ritual: the lengths
-                        # were learned under the old calibration, so capture
-                        # fresh ones under the new one.
+                        # New calibration → clear the learned lengths: they were
+                        # measured under the old calibration, so re-fit fresh
+                        # ones under the new one.
                         if skeleton_rigidifier is not None:
-                            skeleton_rigidifier.request_refit()
+                            skeleton_rigidifier.reset()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -717,12 +688,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                             filtered_keypoints,
                             measured=measured_keypoints,
                             t=frame_time,
-                            errors=raw_errors_px if raw_errors_px else None,
-                        )
-                        skeleton_fit_state_pub.put(
-                            SkeletonFitStateMessage.from_snapshot(
-                                skeleton_rigidifier.fit_state
-                            )
                         )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)

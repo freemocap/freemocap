@@ -138,15 +138,15 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             />
             <ButtonSm
               text="Detector"
-              buttonType={activeButton === "button4" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(3)}
-            />
-            <ButtonSm
-              text="3D Reconstruction"
               buttonType={activeButton === "button3" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(2)}
+            />
+            <ButtonSm
+              text="3D Reconstruction"
+              buttonType={activeButton === "button4" ? "activated" : "idle"}
+              className="full-width quaternary"
+              onClick={() => scrollToPanel(3)}
             />
             <ButtonSm
               text="Blender"

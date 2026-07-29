@@ -1932,7 +1932,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/domisjustanumber/skellycam?branch=dom%2Fpipeline-metrics-rebased#d8282a0175731a044c8bc01e5262d07e35fc3140" }
+source = { git = "https://github.com/domisjustanumber/skellycam?branch=dom%2Fpipeline-metrics-rebased#903677e008f8ce087b39f48e4fe18c822542e2aa" }
 dependencies = [
     { name = "av", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

@@ -45,6 +45,13 @@ export interface EstimatorConfig {
     iqr_confidence_sensitivity: number;
 }
 
+export interface TriangulationConfig {
+    use_outlier_rejection: boolean;
+    minimum_cameras_for_triangulation: number;
+    maximum_cameras_to_drop: number;
+    target_reprojection_error: number;
+}
+
 export interface PosthocFilterConfig {
     method: "butter_low_pass";
     cutoff: number;
@@ -93,6 +100,7 @@ export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
 export interface MocapConfig {
     detector: MediapipeDetectorConfig;
     skeleton_filter: RealtimeFilterConfig;
+    triangulation: TriangulationConfig;
     posthoc_filter: PosthocFilterConfig;
     detectorType: DetectorType;
     rtmPoseModelName: RTMPoseModelName;
@@ -173,6 +181,14 @@ export function detectPreset(
  *   NOTE: beta = 0.3 (meter-space convention) is ~1000× too high.
  */
 
+export const DEFAULT_TRIANGULATION_CONFIG: TriangulationConfig = {
+    use_outlier_rejection: true,
+    minimum_cameras_for_triangulation: 2,
+    maximum_cameras_to_drop: 1,
+    target_reprojection_error: 0.01,
+};
+
+
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
     min_cutoff: 1.0,
     beta: 0.007,
@@ -225,6 +241,7 @@ export interface MocapState {
 
 const DEFAULT_MOCAP_CONFIG: MocapConfig = {
     detector: {...MEDIAPIPE_REALTIME_PRESET},
+    triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
     skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
     posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
 
@@ -250,6 +267,11 @@ const initialMocapConfig: MocapConfig = {
     detector: {
         ...DEFAULT_MOCAP_CONFIG.detector,
         ...(_persistedMocapConfig?.detector ?? {}),
+    },
+
+    triangulation: {
+        ...DEFAULT_MOCAP_CONFIG.triangulation,
+        ...(_persistedMocapConfig?.triangulation ?? {}),
     },
 
     skeleton_filter: {
@@ -337,6 +359,10 @@ export const mocapSlice = createSlice({
         /** Partially update individual skeleton filter fields. */
         skeletonFilterConfigUpdated: (state, action: PayloadAction<Partial<RealtimeFilterConfig>>) => {
             state.config.skeleton_filter = { ...state.config.skeleton_filter, ...action.payload };
+        },
+
+        triangulationConfigUpdated: (state, action: PayloadAction<Partial<TriangulationConfig>>) => {
+            state.config.triangulation = { ...state.config.triangulation, ...action.payload };
         },
 
         posthocFilterConfigUpdated: (state, action: PayloadAction<Partial<PosthocFilterConfig>>) => {
@@ -429,6 +455,7 @@ export const mocapSlice = createSlice({
 export const selectMocap = (state: RootState) => state.mocap;
 export const selectMocapConfig = (state: RootState) => state.mocap.config;
 export const selectMocapDetectorConfig = (state: RootState) => state.mocap.config.detector;
+export const selectMocapTriangulationConfig = (state: RootState) => state.mocap.config.triangulation;
 export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
 export const selectPosthocFilterConfig = (state: RootState) => state.mocap.config.posthoc_filter;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
@@ -502,6 +529,7 @@ export const {
     mocapDetectorConfigUpdated,
     skeletonFilterConfigReplaced,
     skeletonFilterConfigUpdated,
+    triangulationConfigUpdated,
     posthocFilterConfigUpdated,
     mocapProgressUpdated,
     mocapErrorCleared,

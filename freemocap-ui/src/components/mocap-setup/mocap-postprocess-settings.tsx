@@ -20,11 +20,11 @@ const PosthocFilterSettings:React.FC = () => {
         <div className = "flex flex-col gap-1">
             <SubactionHeader text = "Butterworth Low-Pass Filter" />
 
-            <p className = "text sm text-gray">
+            <p className = "text sm text-gray p-1">
                 Method: Butterworth low-pass
             </p>
 
-            <div className = "flex flex-row items-center justify-content-space-between">
+            <div className = "flex flex-row p-1 items-center justify-content-space-between">
                 <span className = "text sm"> Sampling Rate </span>
                 <ValueSelector
                     value = {config.sampling_rate}
@@ -51,7 +51,7 @@ const PosthocFilterSettings:React.FC = () => {
                 />
             </div>
 
-            <div className = "flex flex-row items-center justify-content-space-between">
+            <div className = "flex flex-row p-1 items-center justify-content-space-between">
                 <span className = "text sm"> Cutoff (Hz)</span>
 
                 <ValueSelector 
@@ -68,7 +68,7 @@ const PosthocFilterSettings:React.FC = () => {
                     />
             </div>
 
-            <div className="flex flex-row items-center justify-content-space-between">
+            <div className="flex flex-row p-1 items-center justify-content-space-between">
                 <span className="text sm">Order</span>
 
                 <ValueSelector

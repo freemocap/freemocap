@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import ValueSelector from '@/components/ui-components/ValueSelector';
+import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useMocap } from '@/hooks/useMocap';
 import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 
@@ -69,15 +70,16 @@ const MOCAPDetectorSettings: React.FC<
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                     <span className="text-sm">Detector</span>
                     <div className="flex flex-row gap-1">
-                        {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
-                            <button
-                                key={type}
-                                className={`button sm br-1 ${(detectorType ?? "rtmpose") === type ? "primary accent" : "quaternary"}`}
-                                onClick={() => setDetectorType(type)}
-                            >
-                                {type === "rtmpose" ? "RTMPose" : "MediaPipe"}
-                            </button>
-                        ))}
+                        <SegmentedControl
+                            size="sm"
+                            className="segmented-control-sm bg-darkgray"
+                            value={detectorType ?? "rtmpose"}
+                            options={[
+                                { label: "RTMPose", value: "rtmpose" },
+                                { label: "MediaPipe", value: "mediapipe" },
+                            ]}
+                            onChange={(value) => setDetectorType(value as DetectorType)}
+                        />
                     </div>
                 </div>
 
@@ -92,15 +94,13 @@ const MOCAPDetectorSettings: React.FC<
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Model</span>
                             <div className="flex flex-row gap-1">
-                                {RTMPOSE_MODELS.map(({ label, value }) => (
-                                    <button
-                                        key={value}
-                                        className={`button sm br-1 ${(rtmPoseModelName ?? "rtmw-x-l_256x192") === value ? "primary accent" : "quaternary"}`}
-                                        onClick={() => setRtmPoseModelName(value)}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                <SegmentedControl
+                                    size="sm"
+                                    className="segmented-control-sm bg-darkgray"
+                                    value={rtmPoseModelName ?? "rtmw-x-l_256x192"}
+                                    options={RTMPOSE_MODELS}
+                                    onChange={(value) => setRtmPoseModelName(value)}
+                                />
                             </div>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
@@ -125,15 +125,13 @@ const MOCAPDetectorSettings: React.FC<
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Pose model size</span>
                             <div className="flex flex-row gap-1">
-                                {MEDIAPIPE_COMPLEXITIES.map(({ label, value }) => (
-                                    <button
-                                        key={value}
-                                        className={`button sm br-1 ${(mediapipeModelComplexity ?? "heavy") === value ? "primary accent" : "quaternary"}`}
-                                        onClick={() => setMediapipeModelComplexity(value)}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                <SegmentedControl
+                                    size="sm"
+                                    className="segmented-control-sm bg-darkgray"
+                                    value={mediapipeModelComplexity ?? "heavy"}
+                                    options={MEDIAPIPE_COMPLEXITIES}
+                                    onChange={(value) => setMediapipeModelComplexity(value as MediapipeModelComplexity)}
+                                />
                             </div>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">

@@ -179,7 +179,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                         </div>
 
                         {/* Bottom links */}
-                        <div className="splash-bottom-links flex flex-col gap-1 pl-1">
+                        <div className="splash-bottom-links flex flex-col gap-1 pl-2">
                             <ButtonSm
                                 iconClass="learn-icon"
                                 text={t('documentation')}
@@ -188,7 +188,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                                 onClick={() => window.open(EXTERNAL_URLS.DOCS, '_blank')}
                             />
                             <ButtonSm
-                                iconClass=""
+                                iconClass="empty-icon"
                                 text={t('roadmap')}
                                 rightSideIcon="externallink"
                                 textColor="text-gray"

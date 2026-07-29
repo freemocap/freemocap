@@ -5,6 +5,7 @@ description = "A free and open source markerless motion capture system for every
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "tabulate>=0.9.0",
     #    "aniposelib>=0.7.0",
     "numba>=0.65.1",
     "libsass>=0.23.0",
@@ -39,8 +40,8 @@ cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
-skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
-skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
+skellycam = { git = "https://github.com/domisjustanumber/skellycam", branch = "dom/pipeline-metrics-rebased" }
+skellytracker = { git = "https://github.com/domisjustanumber/skellytracker", branch = "dom/pipeline-metrics-rebased" }
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }
 
@@ -71,6 +72,7 @@ packages = ["freemocap"]
   # different onnxruntime backend and can't coexist on disk, see the rtmlib note below.)
   default-groups = ["tracker-default"]
   override-dependencies = [
+    "tabulate>=0.9.0",
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
       "pandas>=2.2.2,<3",  # pandas<2.2.2 wheels are built against the NumPy 1.x C ABI and crash importing against NumPy 2.x; <3 avoids the major-version jump
       "mediapipe==0.10.33; sys_platform != 'darwin' or platform_machine != 'x86_64'",
@@ -78,7 +80,8 @@ packages = ["freemocap"]
 
   # This project uses opencv-contrib-python (a superset of opencv-python); having
   # both installed causes a file-collision error.
-  exclude-dependencies = ["opencv-python"]
+  exclude-dependencies = [
+    "tabulate>=0.9.0","opencv-python"]
 
   [[tool.uv.index]]
   name = "nvidia"
@@ -232,3 +235,4 @@ runtime-evaluated-decorators = [
     "dataclasses.dataclass",
 ]
 exempt-modules = ["typing", "typing_extensions"]
+

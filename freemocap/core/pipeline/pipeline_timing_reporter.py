@@ -47,16 +47,27 @@ SECTION_LAYOUTS: dict[str, _SectionLayout] = {
             "skeleton_filter",
         ),
         wrapper="full_frame_processing",
-        framing=("frame_collection_wait", "loop_time"),
+        framing=("capture_to_aggregator_ms", "frame_collection_wait", "loop_time"),
     ),
     "skeleton_inference": _SectionLayout(
-        substages=("frame_read", "predict_batch"),
+        substages=(
+            "frame_read",
+            "human_detection_letterbox",
+            "human_detection_batch_pack",
+            "human_detection_preprocess",
+            "human_detection",
+            "human_detection_postprocess",
+            "pose_estimation_preprocess",
+            "pose_estimation",
+            "pose_estimation_postprocess",
+            "predict_batch",
+        ),
         wrapper=None,
-        framing=("predict_per_camera", "dropped_frames"),
+        framing=("dropped_frames",),
     ),
     "camera": _SectionLayout(
         substages=("skeleton_detection", "charuco_detection"),
-        wrapper="total_camera_node",
+        wrapper=None,
     ),
 }
 
@@ -96,7 +107,7 @@ class PipelineTimingReporter:
             self._thread.join(timeout=timeout)
 
     def _run(self) -> None:
-        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage  # noqa: TC001
+        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
 
         last_report = time.perf_counter()
         try:

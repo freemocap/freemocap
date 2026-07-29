@@ -5,15 +5,15 @@ import {
     CharucoOverlayDataMessageSchema,
 } from "@/services/server/server-helpers/image-overlay/charuco-types";
 import {
-    SkeletonObservation,
-    SkeletonOverlayDataMessage,
-    SkeletonOverlayDataMessageSchema,
-} from "@/services/server/server-helpers/image-overlay/skeleton-types";
+    MediapipeObservation,
+    MediapipeOverlayDataMessage,
+    MediapipeOverlayDataMessageSchema,
+} from "@/services/server/server-helpers/image-overlay/mediapipe-types";
 import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
 import {OverlayRendererFactory} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
-import {Point3d, BodyKinematics} from "@/components/viewport3d";
+import {Point3d, RigidBodyPose} from "@/components/viewport3d";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 // Type guard to check if a message is a log record
@@ -35,6 +35,31 @@ export interface FramerateUpdateMessage {
     frontend_framerate: DetailedFramerate;
 }
 
+import type {PipelineTimingEventPayload} from '@/services/server/server-helpers/pipeline-timing-types';
+
+export interface PipelineTimingWsMessage {
+    message_type: 'pipeline_timing';
+    camera_group_id: string;
+    log_pipeline_times_enabled?: boolean;
+    realtime_pipeline_active?: boolean;
+    configured_camera_fps_hz?: number | null;
+    per_node?: Record<string, Record<string, number[]>>;
+    per_camera?: Record<string, Record<string, number[]>>;
+    events?: PipelineTimingEventPayload[];
+    clock_domain?: string;
+    relay_perf_counter_ns?: number;
+    dropped_timing_events?: number;
+}
+
+export function isPipelineTiming(data: unknown): data is PipelineTimingWsMessage {
+    if (!data || typeof data !== 'object') return false;
+    const o = data as Record<string, unknown>;
+    return (
+        o.message_type === 'pipeline_timing'
+        && typeof o.camera_group_id === 'string'
+    );
+}
+
 // Type guard to check if a message is a framerate update
 export function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
     return (
@@ -53,10 +78,10 @@ export interface FrontendPayloadMessage {
     message_type: 'frontend_payload';
     frame_number: number;
     charuco_overlays: Record<string, CharucoObservation>
-    skeleton_overlays: Record<string, SkeletonObservation>
-    center_of_mass: Point3d | null;
-    xcom: Point3d | null;
-    body_kinematics: BodyKinematics | null;
+    skeleton_overlays: Record<string, MediapipeObservation>
+    keypoints_raw: Record<string, Point3d>
+    keypoints_filtered: Record<string, Point3d>
+    rigid_body_poses: Record<string, RigidBodyPose>;
 }
 
 export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
@@ -72,7 +97,7 @@ export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
  * Tracker-schema handshake message — sent once on WS connect and again whenever
  * the pipeline's tracker configuration changes. `schemas` is keyed by tracker
  * id (e.g. `"rtmpose_wholebody"`); overlays reference a schema via the
- * `tracker_id` field in `SkeletonObservation`.
+ * `tracker_id` field in `MediapipeObservation`.
  */
 export interface TrackerSchemasMessage {
     message_type: 'tracker_schemas';
@@ -86,39 +111,6 @@ export function isTrackerSchemas(data: any): data is TrackerSchemasMessage {
         data.message_type === 'tracker_schemas' &&
         data.schemas &&
         typeof data.schemas === 'object'
-    );
-}
-
-/**
- * Segment-fit calibration ritual state for one pipeline — pushed by the
- * backend whenever it changes (snake_case, straight off the dataclass).
- */
-export interface SkeletonFitStateSnapshot {
-    state: string; // "idle" | "countdown" | "capturing" | "fitted"
-    countdown_remaining_s: number;
-    capture_good_streak: number;
-    capture_required_good_frames: number;
-    capture_min_visible_fraction: number;
-    capture_max_mean_error_px: number;
-    capture_timeout_remaining_s: number;
-    visible_fraction: number;
-    mean_error_px: number | null;
-    n_fitted_body_bones: number;
-    median_seed_deviation: number | null;
-}
-
-export interface SkeletonFitStateWsMessage {
-    message_type: 'skeleton_fit_state';
-    pipelines: Record<string, SkeletonFitStateSnapshot | null>;
-}
-
-export function isSkeletonFitState(data: any): data is SkeletonFitStateWsMessage {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'skeleton_fit_state' &&
-        data.pipelines &&
-        typeof data.pipelines === 'object'
     );
 }
 

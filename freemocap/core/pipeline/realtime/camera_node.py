@@ -1,9 +1,9 @@
 """
-RealtimeCameraNode: reads frames from shared memory, runs enabled trackers,
+RealtimeCameraNode: reads frames from shared memory, runs enabled detectors,
 publishes CameraNodeOutputMessages.
 
 Runs indefinitely until shutdown. Responds to pipeline config updates
-(toggling trackers, changing charuco board params, etc).
+(toggling detectors, changing charuco board params, etc).
 """
 import logging
 import queue
@@ -15,13 +15,15 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_shared_memory_ring_buffer import CameraSharedMemoryRingBuffer
 from skellycam.core.ipc.shared_memory.ring_buffer_shared_memory import SharedMemoryRingBufferDTO
 from skellycam.core.types.type_overloads import CameraIdString, TopicSubscriptionQueue
+# from skellytracker.trackers.legacy_mediapipe_tracker.legacy_mediapipe_detector import LegacyMediapipeDetector
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+from freemocap.core.pipeline.realtime.rtmpose_model_size import rtmpose_mode_for_size
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
-from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
+from freemocap.core.pipeline.pipeline_timing_events import make_stage_interval_event, perf_counter_ns
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
@@ -34,54 +36,9 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 import numpy as np
+from skellytracker.trackers.rtmpose_tracker.rtmpose_detector import RTMPoseDetector, RTMPoseDetectorConfig
 
 logger = logging.getLogger(__name__)
-
-
-def _build_charuco_tracker_from_config(node_config: CameraNodeConfig):
-    """Return (Tracker, CpuSession) for charuco detection."""
-    from skellytracker.core.detectors.keypoint_detectors.charuco import (
-        CharucoDetectorConfig,
-        CharucoBoardDefinition,
-    )
-    from freemocap.core.tracking.tracker_factory import build_charuco_tracker
-
-    board_def = CharucoBoardDefinition.create_letter_size_5x3()
-    for stage in node_config.charuco_tracker_config.stages:
-        for kp_det in stage.keypoint_detectors:
-            if isinstance(kp_det, CharucoDetectorConfig):
-                board_def = kp_det.board
-                break
-    return build_charuco_tracker(board_def)
-
-
-def _build_skeleton_tracker_from_config(node_config: CameraNodeConfig):
-    """Return (Tracker, session) for skeleton detection in per-camera mode."""
-    if node_config.detector_type == "mediapipe":
-        from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
-        return build_mediapipe_tracker(
-            model_complexity=node_config.mediapipe_model_complexity,
-            detection_confidence=node_config.mediapipe_detection_confidence,
-            presence_confidence=node_config.mediapipe_presence_confidence,
-            tracking_confidence=node_config.mediapipe_tracking_confidence,
-            num_hands=node_config.mediapipe_num_hands,
-            num_faces=node_config.mediapipe_num_faces,
-        )
-
-    from freemocap.core.tracking.tracker_factory import (
-        build_skeleton_onnx_session,
-        build_skeleton_tracker,
-    )
-
-    model_name = node_config.rtmpose_model_name
-    confidence_threshold = node_config.rtmpose_confidence_threshold
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
-    tracker = build_skeleton_tracker(
-        onnx_session=onnx_session,
-        model_name=model_name,
-        confidence_threshold=confidence_threshold,
-    )
-    return tracker, onnx_session
 
 
 @dataclass
@@ -98,7 +55,6 @@ class CameraNode(SourceNode):
             config: CameraNodeConfig,
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
-            skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
@@ -111,7 +67,6 @@ class CameraNode(SourceNode):
                 ipc=ipc,
                 config=config,
                 camera_shm_dto=camera_shm_dto,
-                skeleton_inference_centralized=skeleton_inference_centralized,
                 log_pipeline_times=log_pipeline_times,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
@@ -145,11 +100,10 @@ class CameraNode(SourceNode):
             timing_pub: TopicPublicationQueue,
             shutdown_self_flag: Synchronized,
             camera_shm_dto: SharedMemoryRingBufferDTO,
-            skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
     ) -> None:
         import cv2
-        from skellytracker.core.tracker.tracker_state import TrackerState
+        from skellytracker.trackers.charuco_tracker.charuco_detector import CharucoDetector
 
         logger.debug(f"RealtimeCameraNode [{camera_id}] initializing")
         camera_shm = CameraSharedMemoryRingBuffer.recreate(
@@ -157,38 +111,38 @@ class CameraNode(SourceNode):
             read_only=False,
         )
 
-        charuco_tracker = None
-        charuco_session = None
-        charuco_state = TrackerState()
-        skeleton_tracker = None
-        skeleton_session = None
-        skeleton_state = TrackerState()
+        charuco_detector: CharucoDetector | None = None
+        skeleton_detector: RTMPoseDetector | None = None
+        # skeleton_detector: LegacyMediapipeDetector | None = None
 
-        if config.charuco_tracking_enabled and config.charuco_tracker_config is not None:
-            charuco_tracker, charuco_session = _build_charuco_tracker_from_config(config)
-
+        if config.charuco_tracking_enabled and config.charuco_detector_config is not None:
+            charuco_detector = CharucoDetector.create(
+                config=config.charuco_detector_config,
+            )
         if (
                 config.skeleton_tracking_enabled
-                and config.skeleton_tracker_config is not None
-                and not skeleton_inference_centralized
+                and config.skeleton_detector_config is not None
+                and not config.skip_inline_skeleton_detection
         ):
             # In centralized GPU mode, the dedicated SkeletonInferenceNode owns
             # the ONNX session and serves all cameras via batched inference.
-            skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(config)
-
-        keypoint_filter: RealtimeKeypointFilter | None = None
-        if config.enable_keypoint_filter:
-            keypoint_filter = RealtimeKeypointFilter(
-                dims=2,
-                min_cutoff=config.keypoint_filter_min_cutoff,
-                beta=config.keypoint_filter_beta,
-                d_cutoff=config.keypoint_filter_d_cutoff,
+            # Skipping per-camera construction here is what avoids spawning
+            # N independent CUDA contexts on a single GPU.
+            # skeleton_detector = LegacyMediapipeDetector.create(
+            #     config=config.skeleton_detector_config ,
+            # )
+            skel_cfg = config.skeleton_detector_config
+            if isinstance(skel_cfg, RTMPoseDetectorConfig):
+                skel_cfg = skel_cfg.model_copy(
+                    update={"mode": rtmpose_mode_for_size(config.realtime_model_size)},
+                )
+            skeleton_detector = RTMPoseDetector.create(
+                config=skel_cfg,
             )
 
         frame_recarray: np.recarray | None = None
-        timer = None
-        if log_pipeline_times:
-            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
+        timer: PipelineStageTimer | None = None
+        log_times_enabled: bool = log_pipeline_times
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -200,45 +154,42 @@ class CameraNode(SourceNode):
                     except queue.Empty:
                         break
                     new_config: CameraNodeConfig = update_msg.pipeline_config.camera_node_config
+                    log_times_enabled = update_msg.pipeline_config.log_pipeline_times
                     logger.debug(f"RealtimeCameraNode [{camera_id}] received config update")
 
-                    if new_config.charuco_tracking_enabled and new_config.charuco_tracker_config is not None:
-                        if charuco_tracker is not None:
-                            charuco_tracker.close()
-                        charuco_tracker, charuco_session = _build_charuco_tracker_from_config(new_config)
-                        charuco_state = TrackerState()
+                    if new_config.charuco_tracking_enabled and new_config.charuco_detector_config is not None:
+                        charuco_detector = CharucoDetector.create(
+                            config=new_config.charuco_detector_config,
+                        )
                     elif not new_config.charuco_tracking_enabled:
-                        if charuco_tracker is not None:
-                            charuco_tracker.close()
-                        charuco_tracker = None
-                        charuco_session = None
+                        charuco_detector = None
 
                     if (
                             new_config.skeleton_tracking_enabled
-                            and new_config.skeleton_tracker_config is not None
-                            and not skeleton_inference_centralized
+                            and new_config.skeleton_detector_config is not None
+                            and not new_config.skip_inline_skeleton_detection
                     ):
-                        if skeleton_tracker is not None:
-                            skeleton_tracker.close()
-                        skeleton_tracker, skeleton_session = _build_skeleton_tracker_from_config(new_config)
-                        skeleton_state = TrackerState()
-                    elif not new_config.skeleton_tracking_enabled or skeleton_inference_centralized:
-                        if skeleton_tracker is not None:
-                            skeleton_tracker.close()
-                        skeleton_tracker = None
-                        skeleton_session = None
-
-                    if new_config.enable_keypoint_filter:
-                        keypoint_filter = RealtimeKeypointFilter(
-                            dims=2,
-                            min_cutoff=new_config.keypoint_filter_min_cutoff,
-                            beta=new_config.keypoint_filter_beta,
-                            d_cutoff=new_config.keypoint_filter_d_cutoff,
+                        skel_cfg = new_config.skeleton_detector_config
+                        if isinstance(skel_cfg, RTMPoseDetectorConfig):
+                            skel_cfg = skel_cfg.model_copy(
+                                update={"mode": rtmpose_mode_for_size(new_config.realtime_model_size)},
+                            )
+                        skeleton_detector = RTMPoseDetector.create(
+                            config=skel_cfg,
                         )
-                    else:
-                        keypoint_filter = None
+                    elif (
+                            not new_config.skeleton_tracking_enabled
+                            or new_config.skip_inline_skeleton_detection
+                    ):
+                        skeleton_detector = None
 
                     config = new_config
+
+                if log_times_enabled:
+                    if timer is None:
+                        timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
+                else:
+                    timer = None
 
                 # ---- Check shared memory validity every iteration ----
                 if not camera_shm.valid:
@@ -249,6 +200,8 @@ class CameraNode(SourceNode):
                     break
 
                 # ---- Block until a frame request arrives (up to 5ms) ----
+                # Replaces the busy-poll (empty() check + 1ms sleep) with an
+                # efficient OS-level wait, cutting latency and CPU waste.
                 try:
                     frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get(timeout=0.005)
                 except queue.Empty:
@@ -262,6 +215,7 @@ class CameraNode(SourceNode):
                     image = cv2.rotate(
                         src=frame_recarray.image[0],
                         rotateCode=frame_recarray.frame_metadata.camera_info.rotation[0]
+
                     )
                 else:
                     image = frame_recarray.image[0]
@@ -270,9 +224,7 @@ class CameraNode(SourceNode):
                 actual_camera_id: CameraIdString = frame_recarray.frame_metadata.camera_info.camera_id[0]
                 if actual_camera_id != camera_id:
                     raise RuntimeError(
-                        f"RealtimeCameraNode [{camera_id}]: expected camera ID {camera_id} "
-                        f"but got frame with camera ID {actual_camera_id}"
-                    )
+                        f"RealtimeCameraNode [{camera_id}]: expected camera ID {camera_id} but got frame with camera ID {actual_camera_id}")
                 if actual_frame_number != frame_msg.frame_number:
                     logger.warning(
                         f"RealtimeCameraNode [{camera_id}]: requested frame {frame_msg.frame_number} "
@@ -280,56 +232,44 @@ class CameraNode(SourceNode):
                     )
                 skeleton_observation = None
                 charuco_observation = None
-                t_frame_start = time.perf_counter() if timer is not None else 0.0
-
-                if skeleton_tracker is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
-                    skeleton_observation, skeleton_state = skeleton_tracker.process_image(
-                        image, actual_frame_number, skeleton_state
+                if skeleton_detector is not None:
+                    t0_ns = perf_counter_ns() if timer is not None else 0
+                    skeleton_observation = skeleton_detector.detect(
+                        frame_number=actual_frame_number,
+                        image=image,
                     )
                     if timer is not None:
-                        timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
-
-                    body_stage = skeleton_observation.stages.get("body")
-                    if body_stage is not None and body_stage.keypoints is not None:
-                        # Apply 1€ filter to 2D keypoints before publishing.
-                        if keypoint_filter is not None:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            kpts = body_stage.keypoints
-                            raw_2d = kpts.to_named_dict(dimensions=2)
-                            filtered_2d = keypoint_filter.filter(
-                                t=time.perf_counter(),
-                                raw_keypoints=raw_2d,
-                            )
-                            xyz = kpts.xyz
-                            for name, coords in filtered_2d.positions.items():
-                                try:
-                                    idx = kpts.index_of(name)
-                                    xyz[idx, 0] = coords[0]
-                                    xyz[idx, 1] = coords[1]
-                                except KeyError:
-                                    pass
-                            if timer is not None:
-                                timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
-
-                        # Confidence gating: NaN-out low-confidence 2D keypoints.
-                        kpts = body_stage.keypoints
-                        low_conf = kpts.visibility < config.confidence_threshold
-                        if low_conf.any():
-                            kpts.xyz[low_conf, :2] = np.nan
-                            if timer is not None:
-                                timer.record("confidence_gate_dropped", float(low_conf.sum()))
-
-                if charuco_tracker is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
-                    charuco_observation, charuco_state = charuco_tracker.process_image(
-                        image, actual_frame_number, charuco_state
+                        t1_ns = perf_counter_ns()
+                        timer.record("skeleton_detection", (t1_ns - t0_ns) / 1e6)
+                        timer.record_stage_interval(
+                            event=make_stage_interval_event(
+                                frame_number=actual_frame_number,
+                                stage="skeleton_detection",
+                                node_kind="camera",
+                                camera_id=actual_camera_id,
+                                start_time_ns=t0_ns,
+                                end_time_ns=t1_ns,
+                            ),
+                        )
+                if charuco_detector is not None:
+                    t0_ns = perf_counter_ns() if timer is not None else 0
+                    charuco_observation = charuco_detector.detect(
+                        frame_number=actual_frame_number,
+                        image=image,
                     )
                     if timer is not None:
-                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
-
-                if timer is not None:
-                    timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)
+                        t1_ns = perf_counter_ns()
+                        timer.record("charuco_detection", (t1_ns - t0_ns) / 1e6)
+                        timer.record_stage_interval(
+                            event=make_stage_interval_event(
+                                frame_number=actual_frame_number,
+                                stage="charuco_detection",
+                                node_kind="camera",
+                                camera_id=actual_camera_id,
+                                start_time_ns=t0_ns,
+                                end_time_ns=t1_ns,
+                            ),
+                        )
 
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
@@ -351,8 +291,4 @@ class CameraNode(SourceNode):
             ipc.kill_everything()
             raise
         finally:
-            if charuco_tracker is not None:
-                charuco_tracker.close()
-            if skeleton_tracker is not None:
-                skeleton_tracker.close()
             logger.debug(f"RealtimeCameraNode [{camera_id}] exiting")

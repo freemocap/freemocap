@@ -31,9 +31,14 @@ class ServerUrls {
 
     /**
      * Get WebSocket base URL
+     * @param clientRole When `metrics`, requests a metrics-only relay from the backend.
      */
-    getWebSocketUrl(): string {
-        return `ws://${this.host}:${this.port}${WS_PATH}`;
+    getWebSocketUrl(clientRole?: 'metrics' | 'full'): string {
+        const base = `ws://${this.host}:${this.port}${WS_PATH}`;
+        if (clientRole === 'metrics') {
+            return `${base}?client_role=metrics`;
+        }
+        return base;
     }
 
     get endpoints() {
@@ -74,7 +79,6 @@ class ServerUrls {
             // Realtime pipeline endpoints
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
             realtimeClose: `${baseUrl}/freemocap/realtime/all/close`,
-            resetSkeletonFitter: `${baseUrl}/freemocap/realtime/reset-skeleton-fitter`,
 
             // Calibration endpoints
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
@@ -89,9 +93,6 @@ class ServerUrls {
             // Posthoc pipeline control
             stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,
             stopAllPipelines: `${baseUrl}/freemocap/posthoc/pipeline`,
-
-            // Telemetry
-            trackTelemetry: `${baseUrl}/freemocap/telemetry/track`,
 
             // Blender endpoints
             blenderDetect: `${baseUrl}/freemocap/blender/detect`,

@@ -21,6 +21,7 @@ const RULER_HEIGHT = 28;
 const CHART_PADDING_RIGHT = 8;
 
 function hexToRgba(hex: string, opacity: number): string {
+    if (!hex || !hex.startsWith('#')) return `rgba(128,128,128,${opacity})`;
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
     const b = parseInt(hex.slice(5, 7), 16);
@@ -297,7 +298,7 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
             </div>
 
             <div
-                ref={containerRef as React.RefObject<HTMLDivElement>}
+                ref={containerRef as React.Ref<HTMLDivElement>}
                 onScroll={event => setScrollTop(event.currentTarget.scrollTop)}
                 style={{
                     flex: 1,

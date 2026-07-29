@@ -2,8 +2,9 @@ import React from 'react';
 import {Provider} from 'react-redux';
 import {store} from '@/store';
 import {ServerContextProvider} from "@/services/server/ServerContextProvider";
-import {MetricsServerContextProvider} from "@/services/server/MetricsServerContextProvider";
 import {AppContent} from "@/app/AppContent";
+
+const MetricsServerContextProvider = React.lazy(() => import("@/services/server/MetricsServerContextProvider").then(m => ({default: m.MetricsServerContextProvider})));
 
 function isMetricsRoute(): boolean {
     return typeof window !== 'undefined' && window.location.hash.includes('/pipeline-metrics');
@@ -15,9 +16,11 @@ function App() {
     return (
         <Provider store={store}>
             {metricsOnly ? (
-                <MetricsServerContextProvider>
-                    <AppContent metricsOnly />
-                </MetricsServerContextProvider>
+                <React.Suspense fallback={null}>
+                    <MetricsServerContextProvider>
+                        <AppContent metricsOnly />
+                    </MetricsServerContextProvider>
+                </React.Suspense>
             ) : (
                 <ServerContextProvider>
                     <AppContent />

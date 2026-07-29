@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
+import type { PipelineTimingStore } from './server-helpers/pipeline-timing-store';
 import type { LogStore } from './server-helpers/log-store';
 import type { SkeletonFitStateStore } from './server-helpers/skeleton-fit-state-store';
 import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
@@ -18,6 +19,7 @@ export interface ServerContextValue {
     getFps: (cameraId: string) => number | null;
     getServerFps: () => number | null;
     getFramerateStore: () => FramerateStore;
+    getPipelineTimingStore: () => PipelineTimingStore;
     getLogStore: () => LogStore;
     getSkeletonFitStateStore: () => SkeletonFitStateStore;
     connectedCameraIds: string[];

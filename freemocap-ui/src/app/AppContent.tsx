@@ -13,7 +13,6 @@ import { fetchAllRecordings } from "@/store/slices/recording-status/recording-st
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
 import { TutorialProvider, TourController } from "@/components/tutorial";
-import PipelineMetricsWindowPage from "@/components/pipeline-metrics/PipelineMetricsWindowPage";
 
 type AppContentProps = {
     metricsOnly?: boolean;
@@ -43,16 +42,19 @@ export const AppContent = function ({ metricsOnly = false }: AppContentProps) {
     }, [dispatch]);
 
     if (metricsOnly) {
+        const PipelineMetricsWindowPage = React.lazy(() => import("@/components/pipeline-metrics/PipelineMetricsWindowPage"));
         return (
-            <div style={{
-                height: '100vh',
-                backgroundColor: 'var(--gray-900)',
-                color: 'var(--gray-300)',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '12px',
-            }}>
-                <PipelineMetricsWindowPage />
-            </div>
+            <React.Suspense fallback={<div style={{height:'100vh',backgroundColor:'var(--gray-900)'}} />}>
+                <div style={{
+                    height: '100vh',
+                    backgroundColor: 'var(--gray-900)',
+                    color: 'var(--gray-300)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                }}>
+                    <PipelineMetricsWindowPage />
+                </div>
+            </React.Suspense>
         );
     }
 

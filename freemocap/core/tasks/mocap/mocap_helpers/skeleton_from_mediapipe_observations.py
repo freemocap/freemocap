@@ -95,6 +95,7 @@ def skeleton_from_mediapipe_observation_recorders(
         config=interp_config,
     )
 
+    logger.info(f"Filtering trajectory with config: {filter_config.model_dump_json(indent=2)}")
     filtered_trajectory_3d: Trajectory3d = filter_trajectory(
         trajectory=interpolated_trajectory_3d,
         config=filter_config,

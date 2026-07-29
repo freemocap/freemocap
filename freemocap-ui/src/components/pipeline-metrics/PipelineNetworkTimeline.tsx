@@ -1,6 +1,4 @@
 import React, {memo, useMemo, useState} from 'react';
-import {Box, Tooltip, Typography} from '@mui/material';
-import {alpha, useTheme} from '@mui/material/styles';
 import {useTranslation} from 'react-i18next';
 import {
     barWidthPercentInViewport,
@@ -22,21 +20,11 @@ const LABEL_WIDTH = 280;
 const RULER_HEIGHT = 28;
 const CHART_PADDING_RIGHT = 8;
 
-function TimelineRowTooltipTitle({
-    description,
-    durationLabel,
-}: {
-    description: string;
-    durationLabel: string;
-}): React.ReactElement {
-    return (
-        <Box>
-            <Typography variant="body2">{description}</Typography>
-            <Typography variant="caption" color="text.secondary" sx={{display: 'block', mt: 0.5}}>
-                {durationLabel}
-            </Typography>
-        </Box>
-    );
+function hexToRgba(hex: string, opacity: number): string {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${opacity})`;
 }
 
 type Props = {
@@ -100,7 +88,6 @@ const TimelineRow = memo(function TimelineRow({
     selected: boolean;
     onSelect: () => void;
 }) {
-    const theme = useTheme();
     const {t} = useTranslation();
     const {leftPct, widthPct, visible} = barWidthPercentInViewport(
         row,
@@ -119,125 +106,102 @@ const TimelineRow = memo(function TimelineRow({
     const durationLabel = formatBarDuration(row.durationMs);
     const showDurationOnBar = visible && shouldShowBarDurationLabel(widthPct, durationLabel);
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
-    const tooltipTitle = (
-        <TimelineRowTooltipTitle description={rowTip.long} durationLabel={durationLabel} />
-    );
+    const tooltipText = `${rowTip.long} — ${durationLabel}`;
 
     return (
-        <Box
+        <div
             onClick={onSelect}
-            sx={{
+            style={{
                 display: 'flex',
                 alignItems: 'center',
                 height: ROW_HEIGHT,
                 cursor: 'pointer',
                 minWidth: 0,
                 opacity: row.stale ? 0.4 : 1,
-                bgcolor: selected ? alpha(theme.palette.primary.main, 0.08) : 'transparent',
-                '&:hover': {bgcolor: alpha(theme.palette.action.hover, 0.04)},
+                backgroundColor: selected ? hexToRgba('#16ac13', 0.08) : 'transparent',
             }}
         >
-            <Box
-                sx={{
+            <div
+                style={{
                     width: LABEL_WIDTH,
                     minWidth: LABEL_WIDTH,
                     maxWidth: LABEL_WIDTH,
                     flexShrink: 0,
                     overflow: 'hidden',
-                    px: 1,
-                    '& > span': {
-                        display: 'block',
-                        width: '100%',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                    },
+                    paddingLeft: 8,
+                    paddingRight: 8,
                 }}
             >
-                <Tooltip title={tooltipTitle} placement="top" enterDelay={200}>
-                    <Box
-                        component="span"
-                        sx={{
-                            display: 'block',
-                            width: '100%',
-                            minWidth: 0,
-                            overflow: 'hidden',
-                        }}
-                    >
-                        <Typography
-                            noWrap
-                            variant="caption"
-                            sx={{
-                                display: 'block',
-                                width: '100%',
-                                fontSize: '0.7rem',
-                                color: 'text.secondary',
-                                cursor: 'help',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                            }}
-                        >
-                            {row.label}
-                        </Typography>
-                    </Box>
-                </Tooltip>
-            </Box>
-            <Box sx={{flex: 1, position: 'relative', height: '100%', pr: 1, minWidth: 0, overflow: 'hidden'}}>
+                <span
+                    title={tooltipText}
+                    style={{
+                        display: 'block',
+                        width: '100%',
+                        fontSize: '0.7rem',
+                        color: 'var(--gray-400)',
+                        cursor: 'help',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                    }}
+                >
+                    {row.label}
+                </span>
+            </div>
+            <div style={{flex: 1, position: 'relative', height: '100%', paddingRight: 8, minWidth: 0, overflow: 'hidden'}}>
                 {parentSpan?.visible && (
-                    <Box
-                        sx={{
+                    <div
+                        style={{
                             position: 'absolute',
                             top: 2,
                             bottom: 2,
                             left: `${parentSpan.leftPct}%`,
                             width: `${parentSpan.widthPct}%`,
-                            borderLeft: 1,
-                            borderRight: 1,
-                            borderColor: alpha(color, 0.35),
-                            bgcolor: alpha(color, 0.08),
+                            borderLeft: `1px solid ${hexToRgba(color, 0.35)}`,
+                            borderRight: `1px solid ${hexToRgba(color, 0.35)}`,
+                            backgroundColor: hexToRgba(color, 0.08),
                             pointerEvents: 'none',
                         }}
                     />
                 )}
                 {visible && (
-                    <Tooltip title={tooltipTitle} placement="top" enterDelay={200}>
-                        <Box
-                            sx={{
-                                position: 'absolute',
-                                top: 4,
-                                bottom: 4,
-                                left: `${leftPct}%`,
-                                width: `${widthPct}%`,
-                                minWidth: 2,
-                                borderRadius: 0.5,
-                                bgcolor: color,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                overflow: 'hidden',
-                            }}
-                        >
-                            {showDurationOnBar && (
-                                <Typography
-                                    noWrap
-                                    variant="caption"
-                                    sx={{
-                                        fontSize: '0.6rem',
-                                        fontWeight: 600,
-                                        lineHeight: 1,
-                                        color: theme.palette.common.white,
-                                        textShadow: '0 0 2px rgba(0,0,0,0.75)',
-                                        pointerEvents: 'none',
-                                        px: 0.25,
-                                    }}
-                                >
-                                    {durationLabel}
-                                </Typography>
-                            )}
-                        </Box>
-                    </Tooltip>
+                    <div
+                        title={tooltipText}
+                        style={{
+                            position: 'absolute',
+                            top: 4,
+                            bottom: 4,
+                            left: `${leftPct}%`,
+                            width: `${widthPct}%`,
+                            minWidth: 2,
+                            borderRadius: 4,
+                            backgroundColor: color,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                        }}
+                    >
+                        {showDurationOnBar && (
+                            <span
+                                style={{
+                                    fontSize: '0.6rem',
+                                    fontWeight: 600,
+                                    lineHeight: 1,
+                                    color: '#ffffff',
+                                    textShadow: '0 0 2px rgba(0,0,0,0.75)',
+                                    pointerEvents: 'none',
+                                    paddingLeft: 2,
+                                    paddingRight: 2,
+                                }}
+                            >
+                                {durationLabel}
+                            </span>
+                        )}
+                    </div>
                 )}
-            </Box>
-        </Box>
+            </div>
+        </div>
     );
 });
 
@@ -245,20 +209,19 @@ function SelectedRowDetails({row}: {row: TimelineRowView}): React.ReactElement {
     const {t} = useTranslation();
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
     return (
-        <Typography variant="caption" color="text.secondary" component="div">
-            <Box component="span" sx={{fontWeight: 600}}>{row.label}</Box>
+        <div className="text md" style={{color: 'var(--gray-400)'}}>
+            <span style={{fontWeight: 600}}>{row.label}</span>
             {' · '}
             {row.durationMs.toFixed(2)} ms
             {row.stale ? ' · stale' : ''}
-            <Typography variant="caption" color="text.secondary" display="block" sx={{mt: 0.25}}>
+            <div className="text md" style={{color: 'var(--gray-400)', marginTop: 2}}>
                 {rowTip.long}
-            </Typography>
-        </Typography>
+            </div>
+        </div>
     );
 }
 
 export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: Props): React.ReactElement {
-    const theme = useTheme();
     const {t} = useTranslation();
     const [scrollTop, setScrollTop] = useState(0);
     const {
@@ -287,25 +250,24 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
         ?? null;
 
     return (
-        <Box sx={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
-            <Box
-                sx={{
+        <div style={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
+            <div
+                style={{
                     display: 'flex',
                     height: RULER_HEIGHT,
-                    borderBottom: 1,
-                    borderColor: 'divider',
+                    borderBottom: '1px solid var(--gray-700)',
                     flexShrink: 0,
                 }}
             >
-                <Box
-                    sx={{
+                <div
+                    style={{
                         width: LABEL_WIDTH,
                         flexShrink: 0,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'flex-end',
-                        gap: 0.25,
-                        pr: 0.5,
+                        gap: 2,
+                        paddingRight: 4,
                     }}
                 >
                     <IconButton icon="minus-icon" title={t('zoomOut')} onClick={zoomOut} />
@@ -313,31 +275,31 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                     {isZoomed && (
                         <IconButton icon="back-icon" title={t('resetZoom')} onClick={resetZoom} />
                     )}
-                </Box>
-                <Box sx={{flex: 1, position: 'relative', pr: 1}}>
+                </div>
+                <div style={{flex: 1, position: 'relative', paddingRight: 8}}>
                     {rulerTicks.map(tick => (
-                        <Typography
+                        <span
                             key={tick}
-                            variant="caption"
-                            sx={{
+                            className="text md"
+                            style={{
                                 position: 'absolute',
                                 left: `${(tick / visibleWindow.visibleDurationMs) * 100}%`,
                                 transform: 'translateX(-50%)',
                                 fontSize: '0.65rem',
-                                color: 'text.disabled',
+                                color: 'var(--gray-500)',
                                 top: 4,
                             }}
                         >
                             {formatRulerTick(tick + (visibleWindow.visibleStartMs - model.windowStartMs))}
-                        </Typography>
+                        </span>
                     ))}
-                </Box>
-            </Box>
+                </div>
+            </div>
 
-            <Box
-                ref={containerRef}
+            <div
+                ref={containerRef as React.RefObject<HTMLDivElement>}
                 onScroll={event => setScrollTop(event.currentTarget.scrollTop)}
-                sx={{
+                style={{
                     flex: 1,
                     overflow: 'auto',
                     position: 'relative',
@@ -347,10 +309,10 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
             >
                 <TimelineLinks model={model} scrollTop={scrollTop} />
                 {model.rows.length === 0 ? (
-                    <Typography variant="body2" color="text.secondary" sx={{p: 2}}>
+                    <div className="text md" style={{color: 'var(--gray-400)', padding: 8}}>
                         No pipeline task events in the current {model.frameStart != null ? `${model.frameEnd! - model.frameStart! + 1}-frame` : ''} window.
                         {model.paused ? ' (paused)' : ''}
-                    </Typography>
+                    </div>
                 ) : (
                     model.rows.map(row => (
                         <TimelineRow
@@ -363,10 +325,10 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                     ))
                 )}
                 {model.orphanUiRows.length > 0 && (
-                    <Box sx={{mt: 1, borderTop: 1, borderColor: alpha(theme.palette.divider, 0.5)}}>
-                        <Typography variant="caption" color="text.secondary" sx={{px: 1, py: 0.5, display: 'block'}}>
+                    <div style={{marginTop: 8, borderTop: `1px solid ${hexToRgba('#2e2e2e', 0.5)}`}}>
+                        <span className="text md" style={{color: 'var(--gray-400)', padding: '4px 8px', display: 'block'}}>
                             Events without frame context
-                        </Typography>
+                        </span>
                         {model.orphanUiRows.map(row => (
                             <TimelineRow
                                 key={row.taskId}
@@ -376,15 +338,15 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                                 onSelect={() => onSelectTask(row.taskId === selectedTaskId ? null : row.taskId)}
                             />
                         ))}
-                    </Box>
+                    </div>
                 )}
-            </Box>
+            </div>
 
             {selectedRow && (
-                <Box sx={{p: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0}}>
+                <div style={{padding: 8, borderTop: '1px solid var(--gray-700)', flexShrink: 0}}>
                     <SelectedRowDetails row={selectedRow} />
-                </Box>
+                </div>
             )}
-        </Box>
+        </div>
     );
 }

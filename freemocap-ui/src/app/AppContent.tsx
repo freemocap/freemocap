@@ -1,9 +1,7 @@
 import * as React from 'react';
-import { createTheme, ThemeProvider } from '@mui/material/styles';
-import { CssBaseline } from "@mui/material";
 import { HashRouter, Route, Routes } from 'react-router-dom';
 import { BasePanelLayout } from "@/layout/BasePanelLayout";
-import { useAppDispatch, useAppSelector } from "@/store";
+import { useAppDispatch } from "@/store";
 import { BaseContentRouter } from "@/layout/content/BaseContentRouter";
 import { UpdateBanner } from "@/components/ui-components/UpdateBanner";
 import PipelineProgressSnackbar from "@/components/pipeline-progress/PipelineProgressSnackbar";
@@ -45,16 +43,16 @@ export const AppContent = function ({ metricsOnly = false }: AppContentProps) {
     }, [dispatch]);
 
     if (metricsOnly) {
-        const themeMode = useAppSelector(state => state.theme.mode);
-        const theme = React.useMemo(
-            () => createTheme({ palette: { mode: themeMode }, direction }),
-            [themeMode, direction],
-        );
         return (
-            <ThemeProvider theme={theme}>
-                <CssBaseline />
+            <div style={{
+                height: '100vh',
+                backgroundColor: 'var(--gray-900)',
+                color: 'var(--gray-300)',
+                fontFamily: 'Inter, sans-serif',
+                fontSize: '12px',
+            }}>
                 <PipelineMetricsWindowPage />
-            </ThemeProvider>
+            </div>
         );
     }
 

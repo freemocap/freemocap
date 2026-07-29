@@ -1,18 +1,4 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {
-    Alert,
-    Box,
-    Checkbox,
-    FormControlLabel,
-    FormGroup,
-    IconButton,
-    Switch,
-    Toolbar,
-    Typography,
-} from '@mui/material';
-import PauseIcon from '@mui/icons-material/Pause';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import {useTheme} from '@mui/material/styles';
 import {PipelineNetworkTimeline} from '@/components/pipeline-metrics/PipelineNetworkTimeline';
 import {
     buildTimelineViewModel,
@@ -24,6 +10,9 @@ import type {PipelineTaskCategory} from '@/services/server/server-helpers/pipeli
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
 import {broadcastSetLogPipelineTimes, requestRealtimePipelineState, subscribeRealtimePipelineBroadcast, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
+import IconButton from '@/components/ui-components/IconButton';
+import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import Checkbox from '@/components/ui-components/Checkbox';
 
 const POLL_MS = 200;
 const CATEGORY_LABELS: Record<PipelineTaskCategory, string> = {
@@ -36,7 +25,6 @@ const CATEGORY_LABELS: Record<PipelineTaskCategory, string> = {
 };
 
 export default function PipelineMetricsWindowPage(): React.ReactElement {
-    const theme = useTheme();
     const {isConnected, getPipelineTimingStore} = useMetricsServer();
 
     const [paused, setPaused] = useState(false);
@@ -91,94 +79,113 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         ? timelineData.logPipelineTimesEnabled
         : broadcastPipelineState?.logPipelineTimes !== false;
 
-    const handleToggleTiming = (_: unknown, checked: boolean): void => {
-        broadcastSetLogPipelineTimes(checked);
-    };
-
     const toggleCategory = (cat: PipelineTaskCategory): void => {
         setCategoryFilters(prev => ({...prev, [cat]: !prev[cat]}));
     };
 
+    const alertStyle: React.CSSProperties = {
+        margin: '0 8px',
+        padding: '8px 12px',
+        borderRadius: 4,
+        backgroundColor: 'var(--gray-800)',
+        fontSize: '12px',
+        color: 'var(--gray-300)',
+    };
+
     return (
-        <Box
-            sx={{
+        <div
+            style={{
                 height: '100vh',
                 display: 'flex',
                 flexDirection: 'column',
-                bgcolor: theme.palette.background.default,
+                backgroundColor: 'var(--gray-900)',
             }}
         >
-            <Toolbar variant="dense" sx={{gap: 1, flexWrap: 'wrap', minHeight: 44}}>
-                <Typography variant="subtitle2" sx={{fontWeight: 700, mr: 1}}>
+            {/* Toolbar */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexWrap: 'wrap',
+                minHeight: 44,
+                padding: '0 8px',
+                borderBottom: '1px solid var(--gray-700)',
+            }}>
+                <span className="title" style={{fontWeight: 700, marginRight: 4}}>
                     Pipeline metrics
-                </Typography>
-                <Typography variant="caption" color={isConnected ? 'success.main' : 'text.secondary'}>
+                </span>
+                <span className="text md" style={{color: isConnected ? 'var(--green-300)' : 'var(--gray-400)'}}>
                     {isConnected ? 'Connected' : 'Disconnected'}
-                </Typography>
+                </span>
                 {model.latestFrame != null && (
-                    <Typography variant="caption" color="text.secondary">
+                    <span className="text md" style={{color: 'var(--gray-400)'}}>
                         Frames {model.frameStart}–{model.frameEnd} (latest F{model.latestFrame})
-                    </Typography>
+                    </span>
                 )}
                 {model.droppedTimingEvents > 0 && (
-                    <Typography variant="caption" color="warning.main">
+                    <span className="text md" style={{color: 'var(--warning-400)'}}>
                         Dropped events: {model.droppedTimingEvents}
-                    </Typography>
+                    </span>
                 )}
-                <Box sx={{flex: 1}} />
-                <IconButton size="small" onClick={() => setPaused(p => !p)} aria-label={paused ? 'Resume' : 'Pause'}>
-                    {paused ? <PlayArrowIcon fontSize="small" /> : <PauseIcon fontSize="small" />}
-                </IconButton>
+                <div style={{flex: 1}} />
+                <IconButton
+                    icon={paused ? 'play-icon' : 'pause-icon'}
+                    title={paused ? 'Resume' : 'Pause'}
+                    onClick={() => setPaused(p => !p)}
+                />
                 {pipelineConnected && (
-                    <FormControlLabel
-                        control={<Switch checked={logTimes} onChange={handleToggleTiming} size="small" />}
-                        label={<Typography variant="caption">Timing</Typography>}
+                    <ToggleComponent
+                        text="Timing"
+                        isToggled={logTimes}
+                        onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
                     />
                 )}
-            </Toolbar>
+            </div>
 
+            {/* Alerts */}
             {pipelineStatusKnown && !pipelineConnected && (
-                <Alert severity="info" sx={{mx: 1}}>
+                <div style={{...alertStyle, borderLeft: '3px solid var(--green-500)'}}>
                     Connect the realtime pipeline to collect pipeline stage timings.
-                </Alert>
+                </div>
             )}
             {!pipelineStatusKnown && isConnected && (
-                <Alert severity="info" sx={{mx: 1}}>
+                <div style={{...alertStyle, borderLeft: '3px solid var(--green-500)'}}>
                     Waiting for pipeline status from the server…
-                </Alert>
+                </div>
             )}
             {pipelineConnected && !logTimes && (
-                <Alert severity="warning" sx={{mx: 1}}>
+                <div style={{...alertStyle, borderLeft: '3px solid var(--warning-400)'}}>
                     Pipeline timing is disabled on the server.
-                </Alert>
+                </div>
             )}
 
-            <Box sx={{px: 1, pb: 0.5}}>
-                <FormGroup row sx={{gap: 0.5}}>
-                    {(Object.keys(CATEGORY_LABELS) as PipelineTaskCategory[]).map(cat => (
-                        <FormControlLabel
-                            key={cat}
-                            control={
-                                <Checkbox
-                                    checked={categoryFilters[cat]}
-                                    onChange={() => toggleCategory(cat)}
-                                    size="small"
-                                    sx={{color: CATEGORY_COLORS[cat], '&.Mui-checked': {color: CATEGORY_COLORS[cat]}}}
-                                />
-                            }
-                            label={<Typography variant="caption">{CATEGORY_LABELS[cat]}</Typography>}
-                        />
-                    ))}
-                </FormGroup>
-            </Box>
+            {/* Category filters */}
+            <div style={{display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 8px 4px'}}>
+                {(Object.keys(CATEGORY_LABELS) as PipelineTaskCategory[]).map(cat => (
+                    <Checkbox
+                        key={cat}
+                        label={CATEGORY_LABELS[cat]}
+                        checked={categoryFilters[cat]}
+                        onChange={() => toggleCategory(cat)}
+                    />
+                ))}
+            </div>
 
-            <Box sx={{flex: 1, minHeight: 0, mx: 1, mb: 1, border: 1, borderColor: 'divider', borderRadius: 1}}>
+            {/* Timeline */}
+            <div style={{
+                flex: 1,
+                minHeight: 0,
+                margin: '0 8px 8px',
+                border: '1px solid var(--gray-700)',
+                borderRadius: 4,
+                overflow: 'hidden',
+            }}>
                 <PipelineNetworkTimeline
                     model={model}
                     selectedTaskId={selectedTaskId}
                     onSelectTask={setSelectedTaskId}
                 />
-            </Box>
-        </Box>
+            </div>
+        </div>
     );
 }

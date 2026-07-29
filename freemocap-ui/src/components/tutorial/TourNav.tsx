@@ -13,7 +13,7 @@ export const TourNav: React.FC = () => {
     const docsUrl = currentStep?.docsUrl;
 
     return (
-        <div className="tour-nav flex flex-col gap-1">
+        <div className="tour-nav justify-content-space-between flex flex-row flex-wrap items-center gap-1">
             {docsUrl && (
                 <ButtonSm
                     iconClass="learn-icon"
@@ -24,7 +24,15 @@ export const TourNav: React.FC = () => {
                     onClick={() => window.open(docsUrl, '_blank')}
                 />
             )}
+                <ButtonSm
+                text={t('tour.controls.skip')}
+                buttonType="tertiary"
+                textColor="text-gray"
+                className="tour-skip-link"
+                onClick={skip}
+            />
             <span className="tour-step-counter text sm text-gray">{stepLabel}</span>
+            
             <div className="tour-nav-buttons flex flex-row items-center gap-1">
                 <ButtonSm
                     text={t('tour.controls.back')}
@@ -49,13 +57,7 @@ export const TourNav: React.FC = () => {
                     onClick={next}
                 />
             </div>
-            <ButtonSm
-                text={t('tour.controls.skip')}
-                buttonType="tertiary"
-                textColor="text-gray"
-                className="tour-skip-link"
-                onClick={skip}
-            />
+        
         </div>
     );
 };

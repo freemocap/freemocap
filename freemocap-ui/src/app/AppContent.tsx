@@ -13,38 +13,27 @@ import { useTranslation } from "react-i18next";
 import { getLocaleDirection } from "@/i18n";
 import { fetchAllRecordings } from "@/store/slices/recording-status/recording-status-thunks";
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
+import { SettingsModal } from "@/components/ui-components/SettingsModal";
+import { TutorialProvider, TourController } from "@/components/tutorial";
 import PipelineMetricsWindowPage from "@/components/pipeline-metrics/PipelineMetricsWindowPage";
-import {useRealtimePipelineBroadcastPublisher} from "@/hooks/useRealtimePipelineBroadcastPublisher";
 
 type AppContentProps = {
     metricsOnly?: boolean;
 };
 
-function MetricsAppContent({ direction }: { direction: 'ltr' | 'rtl' }) {
-    const themeMode = useAppSelector(state => state.theme.mode);
-    const theme = React.useMemo(
-        () => createTheme({ palette: { mode: themeMode }, direction }),
-        [themeMode, direction],
-    );
-
-    return (
-        <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <HashRouter>
-                <Routes>
-                    <Route path="/pipeline-metrics" element={<PipelineMetricsWindowPage />} />
-                    <Route path="*" element={<PipelineMetricsWindowPage />} />
-                </Routes>
-            </HashRouter>
-        </ThemeProvider>
-    );
-}
-
-export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
+export const AppContent = function ({ metricsOnly = false }: AppContentProps) {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
+    const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+    // The native menu's "Settings…" fires this event (see useMenuActions).
+    React.useEffect(() => {
+        const openSettings = () => setSettingsOpen(true);
+        window.addEventListener('open-settings', openSettings);
+        return () => window.removeEventListener('open-settings', openSettings);
+    }, []);
 
     React.useEffect(() => {
         document.documentElement.dir = direction;
@@ -52,28 +41,39 @@ export const AppContent = function ({ metricsOnly = false}: AppContentProps) {
     }, [direction, i18n.language]);
 
     React.useEffect(() => {
-        if (metricsOnly) return;
         dispatch(fetchAllRecordings());
-    }, [dispatch, metricsOnly]);
-
-    useRealtimePipelineBroadcastPublisher(!metricsOnly);
+    }, [dispatch]);
 
     if (metricsOnly) {
-        return <MetricsAppContent direction={direction} />;
+        const themeMode = useAppSelector(state => state.theme.mode);
+        const theme = React.useMemo(
+            () => createTheme({ palette: { mode: themeMode }, direction }),
+            [themeMode, direction],
+        );
+        return (
+            <ThemeProvider theme={theme}>
+                <CssBaseline />
+                <PipelineMetricsWindowPage />
+            </ThemeProvider>
+        );
     }
 
     return (
-        <HashRouter>
+        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <AutoUpdateProvider>
-                <PlaybackProvider>
-                    <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
-                        <BaseContentRouter />
-                    </BasePanelLayout>
-                    <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
-                </PlaybackProvider>
+                <TutorialProvider>
+                    <PlaybackProvider>
+                        <BasePanelLayout onOpenWelcome={() => setWelcomeOpen(true)}>
+                            <BaseContentRouter />
+                        </BasePanelLayout>
+                        <WelcomeModal open={welcomeOpen} onClose={() => setWelcomeOpen(false)} />
+                        <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+                        <TourController />
+                    </PlaybackProvider>
+                </TutorialProvider>
                 <UpdateBanner />
                 <PipelineProgressSnackbar />
             </AutoUpdateProvider>
         </HashRouter>
     );
-};
+}

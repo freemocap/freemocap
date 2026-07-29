@@ -45,6 +45,7 @@
   position: absolute;
   left: 0;
   right: 0;
+  color: var(--color-bg-secondary);
 }
 
 /* ---- Empty state ---- */

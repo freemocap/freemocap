@@ -39,6 +39,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({value, onChange, unit = ""
                 disabled={disabled}
                 onChange={e => onChange(Math.max(min, Math.min(max, Number(e.target.value) || min)))}
                 onFocus={e => e.target.select()}
+                onClick={e => e.currentTarget.select()}
                 onKeyDown={handleKeyDown}
                 className="input-field text md w-full text-center"
             />

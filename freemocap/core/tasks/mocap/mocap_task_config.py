@@ -22,6 +22,8 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
     KeypointsWithinBBoxRatioConfig,
 )
 
+from skellyforge.post_processing.filters.filter_config import FilterConfig
+
 
 
 class PosthocMocapPipelineConfig(BaseModel):
@@ -98,6 +100,13 @@ class PosthocMocapPipelineConfig(BaseModel):
         alias="calibrationTomlPath",
         description="Path to calibration TOML. If None, the most-recent successful calibration is used.",
     )
+
+    filter_config:FilterConfig = Field(
+        default=FilterConfig(),
+        alias = "filterConfig",
+        description="Configuration for the post-processing filter applied to the mocap data.",
+    )
+
     export_to_blender: bool = Field(
         default=True,
         alias="exportToBlender",

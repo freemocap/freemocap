@@ -36,10 +36,10 @@ const TriangulationSettings:React.FC = () => {
                 value = {config.minimum_cameras_for_triangulation}
                 min = {2}
                 max = {100}
-                onChange = {(cutoff) =>
+                onChange = {(minimum_cameras_for_triangulation) =>
                     dispatch(
                         triangulationConfigUpdated({
-                            minimum_cameras_for_triangulation: cutoff,
+                            minimum_cameras_for_triangulation: minimum_cameras_for_triangulation,
                         })
                     )
                 }
@@ -52,10 +52,10 @@ const TriangulationSettings:React.FC = () => {
                 value = {config.maximum_cameras_to_drop}
                 min = {0}
                 max = {100}
-                onChange = {(cutoff) =>
+                onChange = {(maximum_cameras_to_drop) =>
                     dispatch(
                         triangulationConfigUpdated({
-                            maximum_cameras_to_drop: cutoff,
+                            maximum_cameras_to_drop: maximum_cameras_to_drop,
                         })
                     )
                 }

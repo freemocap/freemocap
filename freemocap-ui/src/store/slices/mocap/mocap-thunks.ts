@@ -23,6 +23,7 @@ function buildPosthocConfig(state: RootState) {
         mediapipeNumHands: config.mediapipeNumHands,
         mediapipeNumFaces: config.mediapipeNumFaces,
         calibrationTomlPath,
+        filterConfig: config.posthoc_filter,
         exportToBlender: blender.exportToBlenderEnabled,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
         autoOpenBlendFile: blender.autoOpenBlendFile,

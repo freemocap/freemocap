@@ -4,7 +4,7 @@ import SubactionHeader from "@/components/ui-components/SubactionHeader";
 
 import ProcessingDirectorySettings from "@/components/mocap-setup/mocap-processing-directory";
 import CalibrationModule from "@/components/pipeline-progress/calibration-progress/calibration-module";
-import MOCAPthreeDReconstructionSettings from "@/components/mocap-setup/mocap-3dreconstruction-settings";
+import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import { useMocap } from "@/hooks/useMocap";
@@ -137,16 +137,16 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               onClick={() => scrollToPanel(1)}
             />
             <ButtonSm
-              text="3D Reconstruction"
-              buttonType={activeButton === "button3" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(2)}
-            />
-            <ButtonSm
               text="Detector"
               buttonType={activeButton === "button4" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(3)}
+            />
+            <ButtonSm
+              text="3D Reconstruction"
+              buttonType={activeButton === "button3" ? "activated" : "idle"}
+              className="full-width quaternary"
+              onClick={() => scrollToPanel(2)}
             />
             <ButtonSm
               text="Blender"
@@ -182,25 +182,22 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               />
             </div>
 
-            {/* Panel 3 - 3D Reconstruction */}
+            {/* Panel 3 - Detector */}
             <div
               ref={panel3Ref}
               data-panel="panel3"
               className="bg-secondary p-2 br-1"
             >
-              <MOCAPthreeDReconstructionSettings
-                open={true}
-                onClose={() => {}}
-              />
+              <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>
 
-            {/* Panel 4 - Detector */}
+            {/* Panel 4 - 3D Reconstruction */}
             <div
               ref={panel4Ref}
               data-panel="panel4"
               className="bg-secondary p-2 br-1"
             >
-              <MOCAPDetectorSettings open={true} onClose={() => {}} />
+              <PosthocFilterSettings />
             </div>
 
             {/* Panel 5 - Blender */}

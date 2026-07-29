@@ -154,7 +154,7 @@ export const WelcomeModal: React.FC<WelcomeModalProps> = ({ open, onClose }) => 
                             {/* Guided tour launcher — emphasized until the user finishes it once */}
                             <div className="mt-2">
                                 <ButtonSm
-                                    iconClass="learn-icon"
+                                    iconClass=""
                                     text={t('tour.take')}
                                     textColor="text-white"
                                     className="full-width justify-center primary accent tour-nudge-pulse"

@@ -13,6 +13,7 @@ import { fetchAllRecordings } from "@/store/slices/recording-status/recording-st
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
 import { TutorialProvider, TourController } from "@/components/tutorial";
+import { useRealtimePipelineBroadcastPublisher } from "@/hooks/useRealtimePipelineBroadcastPublisher";
 
 type AppContentProps = {
     metricsOnly?: boolean;
@@ -24,6 +25,9 @@ export const AppContent = function ({ metricsOnly = false }: AppContentProps) {
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+    // Broadcast pipeline state from the main window to the metrics window.
+    useRealtimePipelineBroadcastPublisher(!metricsOnly);
 
     // The native menu's "Settings…" fires this event (see useMenuActions).
     React.useEffect(() => {

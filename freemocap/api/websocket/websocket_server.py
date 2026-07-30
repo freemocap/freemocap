@@ -400,6 +400,7 @@ class WebsocketServer:
                 if not self.last_frame_acknowledged():
                     backpressure = self.last_sent_frame_number - self.last_received_frontend_confirmation
                     if backpressure >= BACKPRESSURE_RESET_THRESHOLD:
+                        # FIXME: This reset should be upstreamed as a separate fix.
                         # Frontend is too far behind. Reset rather than stalling the aggregator
                         # indefinitely — a stalled aggregator causes camera-node queues to grow
                         # without bound and eventually OOM the process.

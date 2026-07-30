@@ -33,6 +33,7 @@ export class WindowManager {
         this.loadContent(window);
 
         window.once('ready-to-show', () => {
+            window.maximize();
             window.show();
             LifecycleLogger.logWindowCreation(window);
         });

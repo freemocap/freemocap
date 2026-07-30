@@ -10,8 +10,6 @@ import os
 import time
 from pathlib import Path
 
-from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
-
 import numpy as np
 from numpy.typing import NDArray
 from skellycam.core.types.type_overloads import CameraIdString

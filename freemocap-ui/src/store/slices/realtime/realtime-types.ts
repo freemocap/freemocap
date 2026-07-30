@@ -1,4 +1,4 @@
-export type CalibrationSource = 'most_recent' | 'specified';
+import {DetectorType, MediapipeModelComplexity, RTMPoseModelName} from "@/store/slices/mocap";
 
 export interface CharucoBoardConfigForPipeline {
     squares_x: number;
@@ -9,39 +9,56 @@ export interface CharucoBoardConfigForPipeline {
 export interface CameraNodeConfig {
     charuco_tracking_enabled: boolean;
     skeleton_tracking_enabled: boolean;
-    charuco_detector_config?: { board: CharucoBoardConfigForPipeline } | null;
+    charuco_board?: CharucoBoardConfigForPipeline;
+    detector_type?: DetectorType;
+    rtmpose_model_name?: RTMPoseModelName;
+    rtmpose_confidence_threshold?: number;
+    mediapipe_model_complexity?: MediapipeModelComplexity;
+    mediapipe_detection_confidence?: number;
+    mediapipe_presence_confidence?: number;
+    mediapipe_tracking_confidence?: number;
+    mediapipe_num_hands?: number;
+    mediapipe_num_faces?: number;
 }
 
 export interface RealtimeAggregatorNodeConfig {
-    calibration_toml_source: CalibrationSource;
     calibration_toml_path: string | null;
     triangulation_enabled: boolean;
     filter_enabled: boolean;
     skeleton_enabled: boolean;
+    center_of_mass_enabled: boolean;
+    skeleton_fitting_enabled: boolean;
 }
 
 export interface RealtimePipelineConfig {
     /** When true, backend publishes detailed per-stage timings (websocket `pipeline_timing`). */
     log_pipeline_times?: boolean;
-    /** When true, one shared GPU worker runs skeleton inference for all cameras. */
-    use_centralized_gpu_inference?: boolean;
     camera_node_config: CameraNodeConfig;
     aggregator_config: RealtimeAggregatorNodeConfig;
 }
 
 export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
     log_pipeline_times: true,
-    use_centralized_gpu_inference: true,
     camera_node_config: {
         charuco_tracking_enabled: true,
         skeleton_tracking_enabled: true,
+        detector_type: "rtmpose",
+        rtmpose_model_name: "rtmw-x-l_256x192",
+        rtmpose_confidence_threshold: 0.0025,
+        mediapipe_model_complexity: "lite",
+        mediapipe_detection_confidence: 0.5,
+        mediapipe_presence_confidence: 0.5,
+        mediapipe_tracking_confidence: 0.5,
+        mediapipe_num_hands: 2,
+        mediapipe_num_faces: 1,
     },
     aggregator_config: {
-        calibration_toml_source: 'most_recent',
         calibration_toml_path: null,
         triangulation_enabled: true,
         filter_enabled: false,
         skeleton_enabled: true,
+        center_of_mass_enabled: true,
+        skeleton_fitting_enabled: true,
     },
 };
 

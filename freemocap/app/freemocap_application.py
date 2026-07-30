@@ -23,7 +23,6 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
-from freemocap.pubsub.pubsub_topics import SkeletonInferenceResultMessage, SkeletonInferenceResultTopic
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
@@ -176,20 +175,7 @@ class FreemocapApplication:
         self,
         camera_group_id: CameraGroupIdString,
     ) -> RealtimePipeline | None:
-        return self.realtime_pipeline_manager.get_pipeline_by_camera_group_id(camera_group_id)
-
-    def publish_client_skeleton_inference(
-        self,
-        *,
-        camera_group_id: CameraGroupIdString,
-        message: SkeletonInferenceResultMessage,
-    ) -> bool:
-        """Inject browser MediaPipe landmarks into the realtime pub/sub graph."""
-        pipeline = self.get_realtime_pipeline_for_camera_group(camera_group_id)
-        if pipeline is None or not pipeline.alive:
-            return False
-        pipeline.pubsub.publish(SkeletonInferenceResultTopic, message)
-        return True
+        return self.realtime_pipeline_manager.get_pipeline_by_camera_ids(camera_group_id)
 
     def get_pipeline_timing_subscription(
         self,

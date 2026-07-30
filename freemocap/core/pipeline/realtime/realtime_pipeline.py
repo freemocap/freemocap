@@ -42,6 +42,7 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
     PipelineTimingTopic,
+    SkeletonFitterResetTopic,
 )
 
 logger = logging.getLogger(__name__)
@@ -188,6 +189,9 @@ class RealtimePipeline:
             pubsub=pubsub,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
+            skeleton_fitter_reset_sub=pubsub.get_subscription(
+                SkeletonFitterResetTopic,
+            ),
         )
 
         aggregation_output_subscription = pubsub.get_subscription(
@@ -331,7 +335,11 @@ class RealtimePipeline:
         """
         return await asyncio.to_thread(self.result_ready_event.wait, timeout)
 
-    def get_latest_frontend_payload(self, if_newer_than: FrameNumberInt, ) -> FrontendImagePacket | None:
+    def get_latest_frontend_payload(
+            self,
+            if_newer_than: FrameNumberInt,
+            display_image_sizes: dict[str, dict[str, float]] | None = None,
+    ) -> FrontendImagePacket | None:
         if not self.alive:
             if self.camera_group.alive:
                 result = self.camera_group.get_latest_frontend_payload(if_newer_than=if_newer_than)

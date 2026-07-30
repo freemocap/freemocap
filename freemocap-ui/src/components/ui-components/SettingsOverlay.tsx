@@ -14,6 +14,7 @@ import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 
 import RTPMediaPipeDetectorSettings from "@/components/pipeline-progress/realtime/realtimepipeline-mediapipedetector-settings";
 import RTPthreeDReconstructionSettings from "@/components/pipeline-progress/realtime/realtimepipeline-3dreconstruction-settings";
+import RTPPipelineActionsFlyout from "@/components/pipeline-progress/realtime/realtimepipeline-actions-flyout";
 
 interface SettingsOverlayProps {
   settings: CameraSettings;
@@ -24,6 +25,7 @@ interface SettingsOverlayProps {
 type ActiveState = {
   trackingSettings: boolean;
   filterSettings: boolean;
+  actionsFlyout: boolean;
 };
 
 export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
@@ -43,6 +45,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
   const [active, setActive] = useState<ActiveState>({
     trackingSettings: false,
     filterSettings: false,
+    actionsFlyout: false,
   });
 
   const toggleActive = (key: keyof ActiveState) => {
@@ -231,6 +234,22 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               disabled={!liveClickable || isPipelineLoading}
               className={`icon-size-25 ${isConnected ? "active" : ""} ${!liveClickable ? "" : ""}`}
             />
+
+            <div className="modal-container pos-rel">
+              <IconButton
+                icon={active.actionsFlyout ? "settings-icon" : "settings-icon"}
+                onClick={() => toggleActive("actionsFlyout")}
+                tooltip
+                tooltipText={t("pipelineActions")}
+                tooltipPosition="pos-bottom"
+                disabled={false}
+                className={`is-menu icon-size-25 ${active.actionsFlyout ? "active" : ""}`}
+              />
+              <RTPPipelineActionsFlyout
+                open={active.actionsFlyout}
+                onClose={() => toggleActive("actionsFlyout")}
+              />
+            </div>
           </div>
 
         </div>

@@ -176,7 +176,7 @@ class FreemocapApplication:
         self,
         camera_group_id: CameraGroupIdString,
     ) -> RealtimePipeline | None:
-        return self.realtime_pipeline_manager.get_pipeline_by_camera_ids(camera_group_id)
+        return self.realtime_pipeline_manager.get_pipeline_by_camera_group_id(camera_group_id)
 
     def publish_client_skeleton_inference(
         self,

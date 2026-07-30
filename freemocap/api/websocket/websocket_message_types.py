@@ -8,6 +8,7 @@ class WebsocketMessageType(str, enum.Enum):
     """
     FRONTEND_PAYLOAD = "frontend_payload"
     FRAMERATE_UPDATE = "framerate_update"
+    PIPELINE_TIMING = "pipeline_timing"
     POSTHOC_PROGRESS = "posthoc_progress"
     LOG_RECORD = "log_record"
     TRACKER_SCHEMAS = "tracker_schemas"

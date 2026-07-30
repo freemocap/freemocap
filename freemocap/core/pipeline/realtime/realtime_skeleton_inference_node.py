@@ -67,6 +67,7 @@ from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
+    PipelineTimingEvent,
     ProcessFrameNumberMessage,
     ProcessFrameNumberTopic,
     SkeletonInferenceResultMessage,
@@ -287,7 +288,22 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     timer.record("predict_batch", inf_ms)
                     timer.record("predict_per_camera", inf_ms / max(len(images), 1))
                     if event_collector is not None:
-                        timer.extend_task_events(event_collector.events)
+                        timer.extend_task_events([
+                            PipelineTimingEvent(
+                                task_id=e.task_id,
+                                parent_task_ids=list(e.parent_task_ids),
+                                stage=e.stage,
+                                node_kind=e.node_kind,
+                                camera_id=e.camera_id,
+                                frame_number=e.frame_number,
+                                start_time_ns=e.start_time_ns,
+                                end_time_ns=e.end_time_ns,
+                                duration_ms=e.duration_ms,
+                                batch_index=e.batch_index,
+                                batch_size=e.batch_size,
+                            )
+                            for e in event_collector.events
+                        ])
                         event_collector.events.clear()
 
                 # ---- Apply confidence gating per camera ----

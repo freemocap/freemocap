@@ -185,7 +185,7 @@ export const DEFAULT_TRIANGULATION_CONFIG: TriangulationConfig = {
     use_outlier_rejection: true,
     minimum_cameras_for_triangulation: 2,
     maximum_cameras_to_drop: 1,
-    target_reprojection_error: 0.01,
+    target_reprojection_error: 0.02,
 };
 
 

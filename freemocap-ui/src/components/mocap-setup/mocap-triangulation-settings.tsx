@@ -76,7 +76,7 @@ const TriangulationSettings: React.FC = () => {
                     value={config.target_reprojection_error}
                     min={0.001}
                     max={1.0}
-                    step={0.001}
+                    step={0.01}
                     onChange={(target_reprojection_error) =>
                         dispatch(
                             triangulationConfigUpdated({target_reprojection_error})

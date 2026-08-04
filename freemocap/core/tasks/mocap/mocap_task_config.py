@@ -103,7 +103,7 @@ class PosthocMocapPipelineConfig(BaseModel):
     )
 
     triangulation_config: TriangulationConfig = Field(
-        default=TriangulationConfig(),
+        default_factory=TriangulationConfig,
         alias="triangulationConfig",
         description="Configuration for the triangulation step of the mocap pipeline.",
     )

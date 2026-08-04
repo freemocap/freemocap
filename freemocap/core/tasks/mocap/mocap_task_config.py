@@ -108,9 +108,9 @@ class PosthocMocapPipelineConfig(BaseModel):
         description="Configuration for the triangulation step of the mocap pipeline.",
     )
 
-    filter_config:FilterConfig = Field(
-        default=FilterConfig(),
-        alias = "filterConfig",
+    filter_config: FilterConfig = Field(
+        default_factory=FilterConfig,
+        alias="filterConfig",
         description="Configuration for the post-processing filter applied to the mocap data.",
     )
 

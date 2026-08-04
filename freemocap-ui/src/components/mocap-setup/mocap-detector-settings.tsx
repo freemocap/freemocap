@@ -3,7 +3,7 @@ import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useMocap } from '@/hooks/useMocap';
-import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
+import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RTMPoseModelName } from '@/store/slices/mocap';
 
 interface MOCAPDetectorSettingsProps {
     open: boolean;
@@ -99,7 +99,9 @@ const MOCAPDetectorSettings: React.FC<
                                     className="segmented-control-sm bg-darkgray"
                                     value={rtmPoseModelName ?? "rtmw-x-l_256x192"}
                                     options={RTMPOSE_MODELS}
-                                    onChange={(value) => setRtmPoseModelName(value)}
+                                    onChange={(value) =>
+                                        setRtmPoseModelName(value as RTMPoseModelName)
+                                    }
                                 />
                             </div>
                         </div>

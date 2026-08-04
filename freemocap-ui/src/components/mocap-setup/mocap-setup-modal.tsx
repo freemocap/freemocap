@@ -7,6 +7,7 @@ import CalibrationModule from "@/components/pipeline-progress/calibration-progre
 import PosthocFilterSettings from "@/components/mocap-setup/mocap-postprocess-settings";
 import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-settings";
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
+import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import { useMocap } from "@/hooks/useMocap";
 
 type MocapMode = "recording" | "playback";
@@ -44,7 +45,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
     return "Cannot process recording";
   }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
   const [activeButton, setActiveButton] = useState<
-    "button1" | "button2" | "button3" | "button4" | "button5"
+    "button1" | "button2" | "button3" | "button4" | "button5" | "button6"
   >("button1");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -53,9 +54,10 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
   const panel3Ref = useRef<HTMLDivElement>(null);
   const panel4Ref = useRef<HTMLDivElement>(null);
   const panel5Ref = useRef<HTMLDivElement>(null);
+  const panel6Ref = useRef<HTMLDivElement>(null);
 
   const scrollToPanel = useCallback((panelIndex: number) => {
-    const refs = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref];
+    const refs = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref, panel6Ref];
     const targetRef = refs[panelIndex];
     if (targetRef.current && scrollContainerRef.current) {
       targetRef.current.scrollIntoView({
@@ -64,12 +66,13 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
         inline: "nearest",
       });
       setActiveButton(
-        ["button1", "button2", "button3", "button4", "button5"][panelIndex] as
+        ["button1", "button2", "button3", "button4", "button5", "button6"][panelIndex] as
           | "button1"
           | "button2"
           | "button3"
           | "button4"
-          | "button5",
+          | "button5"
+          | "button6",
       );
     }
   }, []);
@@ -86,6 +89,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             else if (id === "panel3") setActiveButton("button3");
             else if (id === "panel4") setActiveButton("button4");
             else if (id === "panel5") setActiveButton("button5");
+            else if (id === "panel6") setActiveButton("button6");
           }
         });
       },
@@ -96,7 +100,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
       },
     );
 
-    const panels = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref];
+    const panels = [panel1Ref, panel2Ref, panel3Ref, panel4Ref, panel5Ref, panel6Ref];
     panels.forEach((ref) => {
       if (ref.current) observer.observe(ref.current);
     });
@@ -142,17 +146,25 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               className="full-width quaternary"
               onClick={() => scrollToPanel(2)}
             />
+
             <ButtonSm
-              text="3D Reconstruction"
-              buttonType={activeButton === "button4" ? "activated" : "idle"}
-              className="full-width quaternary"
-              onClick={() => scrollToPanel(3)}
+              text = "3D Triangulation"
+              buttonType = {activeButton === "button4" ? "activated" : "idle"}
+              className = "full-width quaternary"
+              onClick = {() => scrollToPanel(3)}
             />
+
             <ButtonSm
-              text="Blender"
+              text="Post Processing"
               buttonType={activeButton === "button5" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(4)}
+            />
+            <ButtonSm
+              text="Blender"
+              buttonType={activeButton === "button6" ? "activated" : "idle"}
+              className="full-width quaternary"
+              onClick={() => scrollToPanel(5)}
             />
           </div>
 
@@ -191,19 +203,28 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
               <MOCAPDetectorSettings open={true} onClose={() => {}} />
             </div>
 
-            {/* Panel 4 - 3D Reconstruction */}
+            {/* Panel 4 - Triangulation */}
             <div
               ref={panel4Ref}
               data-panel="panel4"
               className="bg-secondary p-2 br-1"
             >
-              <PosthocFilterSettings />
+              <TriangulationSettings />
             </div>
 
-            {/* Panel 5 - Blender */}
+            {/* Panel 5 - Post Processing */}
             <div
               ref={panel5Ref}
               data-panel="panel5"
+              className="bg-secondary p-2 br-1"
+            >
+              <PosthocFilterSettings />
+            </div>
+
+            {/* Panel 6 - Blender */}
+            <div
+              ref={panel6Ref}
+              data-panel="panel6"
               className="bg-secondary p-2 br-1"
             >
               <MOCAPBlenderSettings open={true} onClose={() => {}} />

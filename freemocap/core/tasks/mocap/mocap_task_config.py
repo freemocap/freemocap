@@ -23,6 +23,7 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 )
 
 from skellyforge.post_processing.filters.filter_config import FilterConfig
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
 
@@ -99,6 +100,12 @@ class PosthocMocapPipelineConfig(BaseModel):
         default=None,
         alias="calibrationTomlPath",
         description="Path to calibration TOML. If None, the most-recent successful calibration is used.",
+    )
+
+    triangulation_config: TriangulationConfig = Field(
+        default_factory=TriangulationConfig,
+        alias="triangulationConfig",
+        description="Configuration for the triangulation step of the mocap pipeline.",
     )
 
     filter_config:FilterConfig = Field(

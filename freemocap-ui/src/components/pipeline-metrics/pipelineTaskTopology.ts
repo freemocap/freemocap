@@ -16,14 +16,11 @@ export function buildDeterministicTaskId(params: {
     cameraId?: string | null;
     nodeKind: string;
     stage: string;
-    scope?: 'batch' | 'aggregator' | 'ui';
+    scope?: 'batch' | 'ui';
 }): string {
     const {frameNumber, cameraId, nodeKind, stage, scope} = params;
     if (scope === 'batch') {
         return `${frameNumber}:batch:${nodeKind}:${stage}`;
-    }
-    if (scope === 'aggregator') {
-        return `${frameNumber}:aggregator:${stage}`;
     }
     if (scope === 'ui' || nodeKind === 'ui') {
         const cam = cameraId ?? 'unknown';
@@ -38,12 +35,6 @@ export function classifyTaskCategory(event: Pick<StoredPipelineTaskEvent, 'nodeK
     if (nodeKind === 'ui' || sourceKey.startsWith('ui:')) {
         return 'ui_frontend';
     }
-    if (stage === 'capture_to_aggregator_ms') {
-        return 'capture';
-    }
-    if (nodeKind === 'aggregator' || sourceKey.startsWith('aggregator:')) {
-        return 'aggregation';
-    }
     if (nodeKind === 'skeleton_inference' || sourceKey.startsWith('skeleton_inference:')) {
         return 'tracking';
     }
@@ -53,20 +44,10 @@ export function classifyTaskCategory(event: Pick<StoredPipelineTaskEvent, 'nodeK
         }
         return 'capture';
     }
-    if (nodeKind === 'camera' || sourceKey.startsWith('camera:')) {
-        if (stage === 'skeleton_detection' || stage === 'charuco_detection') {
-            return 'tracking';
-        }
-        if (UI_BACKEND_PREVIEW_STAGES.has(stage)) {
-            return 'ui_backend';
-        }
-        return 'capture';
-    }
     return 'other';
 }
 
 const PRETTY_STAGE_LABELS: Record<string, string> = {
-    'multiframe:inter_camera_grab_spread_ms': 'Inter-camera grab spread',
     'multiframe:ws_payload_prepare_ms': 'WS payload prepare',
     'skeleton_inference:frame_read': 'Skeleton GPU: frame read',
     'skeleton_inference:human_detection_letterbox': 'Skeleton GPU: human detection letterbox',
@@ -78,25 +59,6 @@ const PRETTY_STAGE_LABELS: Record<string, string> = {
     'skeleton_inference:pose_estimation': 'Skeleton GPU: pose estimation',
     'skeleton_inference:pose_estimation_postprocess': 'Skeleton GPU: pose estimation postprocess',
     'skeleton_inference:predict_batch': 'Skeleton GPU: predict batch',
-    'aggregator:capture_to_aggregator_ms': 'Capture → aggregator',
-    'aggregator:frame_collection_wait': 'Frame collection wait',
-    'aggregator:skeleton_triangulation': 'Skeleton triangulation',
-    'aggregator:charuco_triangulation': 'Charuco triangulation',
-    'aggregator:keypoint_filter': 'Keypoint filter',
-    'aggregator:velocity_gate': 'Velocity gate',
-    'aggregator:skeleton_filter': 'Skeleton filter',
-    'aggregator:full_frame_processing': 'Full frame processing',
-    'aggregator:loop_time': 'Aggregator loop time',
-    'camera:jpeg_encode': 'JPEG encode (server)',
-    'camera:jpeg_resize': 'JPEG resize (server)',
-    'camera:jpeg_rotate': 'JPEG rotate (server)',
-    'camera:ws_payload_prepare': 'WS payload prepare (server)',
-    'camera:jpeg_encode_ms': 'JPEG encode (server)',
-    'camera:jpeg_resize_ms': 'JPEG resize (server)',
-    'camera:jpeg_rotate_ms': 'JPEG rotate (server)',
-    'camera:ws_payload_prepare_ms': 'WS payload prepare (server)',
-    'camera:grab_request_to_success_ms': 'Grab request → success',
-    'camera:retrieve_request_to_success_ms': 'Retrieve request → success',
     'ui:jpeg_ack_to_receive_ms': 'UI: ACK → JPEG received',
     'ui:jpeg_ws_binary_interval_ms': 'UI: WS binary spacing',
     'ui:jpeg_ws_dispatch_lag_ms': 'UI: WS binary handler lag',
@@ -116,10 +78,6 @@ function humanizeSourceKey(sourceKey: string): string {
     if (PRETTY_STAGE_LABELS[sourceKey]) {
         return PRETTY_STAGE_LABELS[sourceKey];
     }
-    if (sourceKey.startsWith('aggregator:')) {
-        const stage = sourceKey.slice('aggregator:'.length);
-        return PRETTY_STAGE_LABELS[`aggregator:${stage}`] ?? stage;
-    }
     if (sourceKey.startsWith('skeleton_inference:')) {
         const parts = sourceKey.split(':');
         if (parts.length >= 3) {
@@ -130,12 +88,6 @@ function humanizeSourceKey(sourceKey: string): string {
         }
         const stage = sourceKey.slice('skeleton_inference:'.length);
         return PRETTY_STAGE_LABELS[`skeleton_inference:${stage}`] ?? stage;
-    }
-    if (sourceKey.startsWith('camera:')) {
-        const parts = sourceKey.split(':');
-        const cam = parts[1];
-        const stage = parts.slice(2).join(':');
-        return `${cam} · ${PRETTY_STAGE_LABELS[`camera:${stage}`] ?? stage}`;
     }
     if (sourceKey.startsWith('ui:')) {
         const parts = sourceKey.split(':');
@@ -212,9 +164,8 @@ const CATEGORY_PRIORITY: Record<PipelineTaskCategory, number> = {
     capture: 0,
     ui_backend: 1,
     tracking: 2,
-    aggregation: 3,
-    ui_frontend: 4,
-    other: 5,
+    ui_frontend: 3,
+    other: 4,
 };
 
 function skeletonStageOrdinal(sourceKey: string, stage: string): number {
@@ -496,19 +447,11 @@ export function inferParentTaskIds(event: StoredPipelineTaskEvent): string[] {
         return event.parentTaskIds;
     }
 
-    if (event.nodeKind === 'camera' && event.cameraId) {
-        return [buildDeterministicTaskId({
-            frameNumber: frame,
-            nodeKind: 'skeleton_inference',
-            stage: 'predict_batch',
-            scope: 'batch',
-        })];
-    }
     if (event.nodeKind === 'ui' && event.cameraId) {
         return [buildDeterministicTaskId({
             frameNumber: frame,
             cameraId: event.cameraId,
-            nodeKind: 'camera',
+            nodeKind: 'ui',
             stage: 'ws_payload_prepare_ms',
         })];
     }

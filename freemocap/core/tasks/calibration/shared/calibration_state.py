@@ -76,7 +76,6 @@ class CalibrationStateTracker:
         # Rate-limit per-frame diagnostic logs (fire once per root cause category).
         self._logged_no_visible_pts: bool = False
         self._logged_all_reproj_bad: bool = False
-        # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
     def create_and_try_load(cls, calibration_toml_path: Path | None = None) -> "CalibrationStateTracker":
@@ -313,7 +312,6 @@ class CalibrationStateTracker:
                 point_names_seq = tuple(
                     n for n, k in zip(canonical_names, keep_mask.tolist()) if k
                 )
-            # self._timer.record("build_stacked", (time.perf_counter() - _t0) * 1e3)
 
             # Triangulate the single frame
             _t0 = time.perf_counter()
@@ -322,7 +320,7 @@ class CalibrationStateTracker:
                 config=triangulation_config,
             )
             points_3d = triangulation_result.points_3d  # (n_points, 3)
-#             self._timer.record("triangulate", (time.perf_counter() - _t0) * 1e3)
+
 
             # Reprojection error gate (in pixels, mean across valid cameras)
             _t0 = time.perf_counter()
@@ -345,7 +343,7 @@ class CalibrationStateTracker:
                         f"Try re-running calibration or increasing max_reprojection_error_px in filter settings."
                     )
                 points_3d[bad_mask] = np.nan
-#             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
+
 
             # Build result, excluding NaN points. Strip the stage prefix that
             # to_keypoints() adds (e.g. "body.nose" → "nose") so downstream code
@@ -360,8 +358,7 @@ class CalibrationStateTracker:
                     stripped = _strip_stage_prefix(name)
                     points[stripped] = points_3d[i]
                     errors_px[stripped] = float(mean_reproj_error[i])
-#             self._timer.record("result_dict", (time.perf_counter() - _t0) * 1e3)
-#             self._timer.maybe_report()
+
 
             # Triangulation succeeded — reset failure counter
             self._consecutive_failure_count = 0

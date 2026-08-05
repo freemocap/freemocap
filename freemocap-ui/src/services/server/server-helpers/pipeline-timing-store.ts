@@ -95,8 +95,6 @@ export class PipelineTimingStore {
         for (const key of [...this.buffers.keys()]) {
             if (
                 key === "skeleton_inference:predict_per_camera"
-                || (key.startsWith("camera:") && key.endsWith(":total_camera_node"))
-                || (key.startsWith("camera:") && key.endsWith(":total_detection_time"))
             ) {
                 this.buffers.delete(key);
                 this.statsComputers.delete(key);
@@ -111,7 +109,7 @@ export class PipelineTimingStore {
             return;
         }
         for (const key of [...this.buffers.keys()]) {
-            if (key.startsWith("skeleton_inference:") || key.startsWith("aggregator:")) {
+            if (key.startsWith("skeleton_inference:")) {
                 this.buffers.delete(key);
                 this.statsComputers.delete(key);
                 this.recentValues.delete(key);
@@ -191,7 +189,7 @@ export class PipelineTimingStore {
             startMs = endMs - payload.duration_ms;
         }
         const sourceKey = payload.camera_id
-            ? `${payload.node_kind === 'camera' ? 'camera' : payload.node_kind}:${payload.camera_id}:${payload.stage}`
+            ? `${payload.node_kind}:${payload.camera_id}:${payload.stage}`
             : `${payload.node_kind}:${payload.stage}`;
 
         this.upsertTaskEvent({
@@ -301,21 +299,6 @@ export class PipelineTimingStore {
                         buf.push(ingestWallMs, v);
                         this.recentValues.set(rowKey, v);
                         this.ingestLegacySample(rowKey, v, ingestPerfMs, nodeKind, stage, null);
-                    }
-                    this.touch(rowKey);
-                }
-            }
-        }
-
-        if (msg.per_camera) {
-            for (const [camId, stages] of Object.entries(msg.per_camera)) {
-                for (const [stage, samples] of Object.entries(stages)) {
-                    const rowKey = `camera:${camId}:${stage}`;
-                    const buf = this.ensureBuffer(rowKey);
-                    for (const v of samples) {
-                        buf.push(ingestWallMs, v);
-                        this.recentValues.set(rowKey, v);
-                        this.ingestLegacySample(rowKey, v, ingestPerfMs, 'camera', stage, camId);
                     }
                     this.touch(rowKey);
                 }

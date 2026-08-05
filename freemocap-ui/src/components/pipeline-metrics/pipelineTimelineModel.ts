@@ -61,7 +61,6 @@ export type TimelineCategoryFilters = Record<PipelineTaskCategory, boolean>;
 export const DEFAULT_CATEGORY_FILTERS: TimelineCategoryFilters = {
     capture: true,
     tracking: true,
-    aggregation: true,
     ui_backend: true,
     ui_frontend: true,
     other: true,
@@ -81,7 +80,6 @@ const CONTEXTLESS_PREVIEW_STAGES = new Set([
     'jpeg_encode_ms',
     'ws_payload_prepare_ms',
     'preview',
-    'inter_camera_grab_spread_ms',
 ]);
 
 export function formatBarDuration(durationMs: number): string {
@@ -107,9 +105,6 @@ export function shouldShowWithoutFrameContext(event: StoredPipelineTaskEvent): b
         return true;
     }
     if (event.nodeKind === 'multiframe') {
-        return CONTEXTLESS_PREVIEW_STAGES.has(event.stage);
-    }
-    if (event.nodeKind === 'camera') {
         return CONTEXTLESS_PREVIEW_STAGES.has(event.stage);
     }
     return false;

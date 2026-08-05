@@ -4,7 +4,6 @@ import type {TFunction} from 'i18next';
 export function pipelineStagesRowTooltipId(rowKey: string): string {
     const parts = rowKey.split(':');
     const head = parts[0];
-    if (head === 'aggregator') return `agg_${parts.slice(1).join('_')}`;
     if (head === 'skeleton_inference') return `skel_${parts.slice(1).join('_')}`;
     if (head === 'mediapipe_js') {
         if (parts.length >= 3) {
@@ -13,7 +12,6 @@ export function pipelineStagesRowTooltipId(rowKey: string): string {
         return `mpjs_${parts.slice(1).join('_')}`;
     }
     if (head === 'multiframe') return `mf_${parts.slice(1).join('_')}`;
-    if (head === 'camera') return `cam_${parts.slice(2).join('_')}`;
     if (head === 'ui') return `ui_${parts.slice(2).join('_')}`;
     return `misc_${parts.join('_').replace(/:/g, '_')}`;
 }

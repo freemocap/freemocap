@@ -1,14 +1,12 @@
 """Helpers for pipeline task events and skellytracker timing integration."""
 from __future__ import annotations
 
-import inspect
 import time
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 from freemocap.core.pipeline.pipeline_timing_task_ids import (
     batch_task_id,
-    per_camera_task_id,
 )
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent
 
@@ -30,18 +28,6 @@ _SKELLYTRACKER_STAGE_ATTRS: tuple[tuple[str, str], ...] = tuple(
 
 def perf_counter_ns() -> int:
     return time.perf_counter_ns()
-
-
-def call_with_supported_kwargs(
-        fn: Callable[..., Any],
-        /,
-        *args: Any,
-        **kwargs: Any,
-) -> Any:
-    """Invoke ``fn`` passing only keyword arguments it accepts."""
-    supported = inspect.signature(fn).parameters
-    filtered = {key: value for key, value in kwargs.items() if key in supported}
-    return fn(*args, **filtered)
 
 
 def tracker_events_to_pipeline_events(
@@ -223,53 +209,6 @@ def synthesize_rtmpose_batch_events(
     stage_order = {stage: index for index, stage in enumerate(RTMPOSE_BATCH_STAGES)}
     events.sort(key=lambda event: (stage_order.get(event.stage, len(stage_order)), event.start_time_ns))
     return events
-
-
-def make_stage_interval_event(
-        *,
-        frame_number: int,
-        stage: str,
-        node_kind: str,
-        start_time_ns: int,
-        end_time_ns: int,
-        camera_id: str | None = None,
-        parent_task_ids: list[str] | None = None,
-        batch_index: int | None = None,
-        batch_size: int | None = None,
-        task_id: str | None = None,
-) -> PipelineTimingEvent:
-    duration_ms = max(0.0, (end_time_ns - start_time_ns) / 1_000_000)
-    if task_id is None:
-        if node_kind == "aggregator":
-            from freemocap.core.pipeline.pipeline_timing_task_ids import aggregator_task_id
-
-            task_id = aggregator_task_id(frame_number=frame_number, stage=stage)
-        elif camera_id is not None:
-            task_id = per_camera_task_id(
-                frame_number=frame_number,
-                camera_id=camera_id,
-                node_kind=node_kind,
-                stage=stage,
-            )
-        else:
-            task_id = batch_task_id(
-                frame_number=frame_number,
-                node_kind=node_kind,
-                stage=stage,
-            )
-    return PipelineTimingEvent(
-        task_id=task_id,
-        parent_task_ids=list(parent_task_ids or []),
-        stage=stage,
-        node_kind=node_kind,
-        camera_id=camera_id,
-        frame_number=frame_number,
-        start_time_ns=start_time_ns,
-        end_time_ns=end_time_ns,
-        duration_ms=duration_ms,
-        batch_index=batch_index,
-        batch_size=batch_size,
-    )
 
 
 def cap_events_by_frame_window(

@@ -11,7 +11,6 @@ export type PipelineClockDomain = 'backend_perf' | 'renderer_perf' | 'ingest_wal
 export type PipelineTaskCategory =
     | 'capture'
     | 'tracking'
-    | 'aggregation'
     | 'ui_backend'
     | 'ui_frontend'
     | 'other';

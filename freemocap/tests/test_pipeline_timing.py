@@ -24,33 +24,18 @@ from freemocap.core.pipeline.pipeline_timing_events import (
     tracker_events_to_pipeline_events,
 )
 from freemocap.core.pipeline.pipeline_timing_task_ids import (
-    aggregator_task_id,
     batch_task_id,
-    per_camera_task_id,
 )
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent, PipelineTimingMessage
 
 
 class TestDeterministicTaskIds:
-    def test_per_camera_task_id(self) -> None:
-        assert per_camera_task_id(
-            frame_number=42,
-            camera_id="cam_0",
-            node_kind="camera",
-            stage="skeleton_detection",
-        ) == "42:cam_0:camera:skeleton_detection"
-
     def test_batch_task_id(self) -> None:
         assert batch_task_id(
             frame_number=7,
             node_kind="skeleton_inference",
             stage="predict_batch",
         ) == "7:batch:skeleton_inference:predict_batch"
-
-    def test_aggregator_task_id(self) -> None:
-        assert aggregator_task_id(frame_number=9, stage="full_frame_processing") == (
-            "9:aggregator:full_frame_processing"
-        )
 
 
 class TestTrackerEventConversion:
@@ -185,15 +170,13 @@ class TestWebsocketPipelineTimingPayload:
         sub = Queue()
         sub.put_nowait(
             PipelineTimingMessage(
-                node_kind="camera",
-                camera_id="cam_0",
-                samples={"skeleton_detection": [12.5]},
+                node_kind="skeleton_inference",
+                samples={"predict_batch": [12.5]},
                 events=[
                     PipelineTimingEvent(
-                        task_id="4:cam_0:camera:skeleton_detection",
-                        stage="skeleton_detection",
-                        node_kind="camera",
-                        camera_id="cam_0",
+                        task_id="4:batch:skeleton_inference:predict_batch",
+                        stage="predict_batch",
+                        node_kind="skeleton_inference",
                         frame_number=4,
                         start_time_ns=100,
                         end_time_ns=200,
@@ -225,8 +208,8 @@ class TestWebsocketPipelineTimingPayload:
         assert payload["dropped_timing_events"] == 2
         assert payload["configured_camera_fps_hz"] == 20.0
         assert len(payload["events"]) == 1
-        assert payload["events"][0]["task_id"] == "4:cam_0:camera:skeleton_detection"
-        assert payload["per_camera"]["cam_0"]["skeleton_detection"] == [12.5]
+        assert payload["events"][0]["task_id"] == "4:batch:skeleton_inference:predict_batch"
+        assert payload["per_node"]["skeleton_inference"]["predict_batch"] == [12.5]
 
     def test_payload_encoder_handles_numpy_string_scalars(self) -> None:
         payload = {
@@ -234,16 +217,14 @@ class TestWebsocketPipelineTimingPayload:
             "camera_group_id": np.str_("group_a"),
             "events": [
                 {
-                    "task_id": np.str_("4:cam_0:camera:skeleton_detection"),
-                    "camera_id": np.str_("cam_0"),
-                    "stage": np.str_("skeleton_detection"),
+                    "task_id": np.str_("4:batch:skeleton_inference:predict_batch"),
+                    "stage": np.str_("predict_batch"),
                     "duration_ms": np.float64(1.25),
                 },
             ],
         }
         encoded = _ws_json_encoder.encode(payload).decode("utf-8")
         assert '"camera_group_id":"group_a"' in encoded
-        assert '"camera_id":"cam_0"' in encoded
 
     def test_metrics_only_sends_status_when_pipeline_active_without_samples(self) -> None:
         server = self._make_server(metrics_only=True)
@@ -261,20 +242,13 @@ class TestWebsocketPipelineTimingPayload:
         assert payload is not None
         assert payload["realtime_pipeline_active"] is False
 
-    def test_metrics_only_includes_preview_timing_samples(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            "freemocap.api.websocket.websocket_server.get_and_clear_frontend_preview_timing_samples",
-            lambda _group: {"cam_0": {"jpeg_resize": [1.0]}},
-        )
-        monkeypatch.setattr(
-            "freemocap.api.websocket.websocket_server.get_and_clear_frontend_preview_multiframe_samples",
-            lambda _group: {"preview": [2.0]},
-        )
+    def test_metrics_only_sends_inactive_status_without_pipeline(self) -> None:
         server = self._make_server(metrics_only=True)
+        server._app.get_realtime_pipeline_for_camera_group.return_value = None
+        server._app.get_pipeline_timing_subscription.return_value = Queue()
         payload = server._build_pipeline_timing_payload("group_a")
         assert payload is not None
-        assert payload["per_camera"]["cam_0"]["jpeg_resize"] == [1.0]
-        assert payload["per_node"]["multiframe"]["preview"] == [2.0]
+        assert payload["realtime_pipeline_active"] is False
 
     def test_merge_helpers_accumulate_samples_and_events(self) -> None:
         per_node: dict[str, dict[str, list[float]]] = {}

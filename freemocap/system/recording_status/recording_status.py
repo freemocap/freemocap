@@ -29,10 +29,8 @@ REQUIRED_BLENDER_INPUT_FILES: list[str] = [
 
 
 LEGACY_BLENDER_INPUT_FILENAMES: dict[str, str] = {
-    "mediapipe_right_hand_3d_xyz.npy":
-        "mediapipe_right_hand_right_hand.npy",
-    "mediapipe_left_hand_3d_xyz.npy":
-        "mediapipe_left_hand_left_hand.npy",
+    "mediapipe_right_hand_3d_xyz.npy": "mediapipe_right_hand_right_hand.npy",
+    "mediapipe_left_hand_3d_xyz.npy": "mediapipe_left_hand_left_hand.npy",
 }
 
 STAGE_RAW_VIDEOS = "Synchronized videos"

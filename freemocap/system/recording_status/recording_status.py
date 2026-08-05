@@ -20,12 +20,18 @@ VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
 REQUIRED_BLENDER_INPUT_FILES: list[str] = [
     "mediapipe_body_3d_xyz.npy",
-    "mediapipe_right_hand_right_hand.npy",
-    "mediapipe_left_hand_left_hand.npy",
+    "mediapipe_right_hand_3d_xyz.npy",
+    "mediapipe_left_hand_3d_xyz.npy",
     "mediapipe_face_3d_xyz.npy",
     "mediapipe_body_total_body_center_of_mass.npy",
     "mediapipe_body_segment_center_of_mass.npy",
 ]
+
+
+LEGACY_BLENDER_INPUT_FILENAMES: dict[str, str] = {
+    "mediapipe_right_hand_3d_xyz.npy": "mediapipe_right_hand_right_hand.npy",
+    "mediapipe_left_hand_3d_xyz.npy": "mediapipe_left_hand_left_hand.npy",
+}
 
 STAGE_RAW_VIDEOS = "Synchronized videos"
 STAGE_CALIBRATION = "Calibration"
@@ -69,10 +75,16 @@ class RecordingStatus(BaseModel):
     has_calibration_toml: bool = False
 
 
-def missing_blender_input_files(recording_folder_path: str|Path) -> list[str]:
+def missing_blender_input_files(
+    recording_folder_path: str | Path,
+) -> list[str]:
     output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
-    return [name for name in REQUIRED_BLENDER_INPUT_FILES
-            if not (output_data / name).exists()]
+
+    return [
+        name
+        for name in REQUIRED_BLENDER_INPUT_FILES
+        if not _find_blender_input_file(output_data, name).exists()
+    ]
 
 
 def raise_if_not_blender_ready(recording_folder_path: str|Path) -> None:
@@ -173,10 +185,21 @@ def _build_calibration_stage(recording_folder: Path) -> tuple[StageStatus, Path 
     )
 
 
-def _build_blender_inputs_stage(recording_folder: Path) -> StageStatus:
+def _build_blender_inputs_stage(
+    recording_folder: Path,
+) -> StageStatus:
     output_data = recording_folder / OUTPUT_DATA_FOLDER_NAME
-    files = [_file_status(output_data / name, display_name=name) for name in REQUIRED_BLENDER_INPUT_FILES]
-    present = sum(1 for f in files if f.exists)
+
+    files = [
+        _file_status(
+            _find_blender_input_file(output_data, name),
+            display_name=name,
+        )
+        for name in REQUIRED_BLENDER_INPUT_FILES
+    ]
+
+    present = sum(1 for file_status in files if file_status.exists)
+
     return StageStatus(
         name=STAGE_BLENDER_INPUTS,
         complete=present == len(files),
@@ -218,6 +241,24 @@ def _build_blender_scene_stage(recording_folder: Path) -> tuple[StageStatus, Pat
         ),
         blend_file,
     )
+
+
+def _find_blender_input_file(
+    output_data: Path,
+    filename: str,
+) -> Path:
+    expected_path = output_data / filename
+
+    if expected_path.exists():
+        return expected_path
+
+    legacy_filename = LEGACY_BLENDER_INPUT_FILENAMES.get(filename)
+    if legacy_filename is not None:
+        legacy_path = output_data / legacy_filename
+        if legacy_path.exists():
+            return legacy_path
+
+    return expected_path
 
 
 def compute_recording_status(recording_folder_path: Path) -> RecordingStatus:

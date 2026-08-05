@@ -260,6 +260,7 @@ def _find_blender_input_file(
 
     return expected_path
 
+
 def compute_recording_status(recording_folder_path: Path) -> RecordingStatus:
     recording_folder = Path(recording_folder_path)
     if not recording_folder.is_dir():

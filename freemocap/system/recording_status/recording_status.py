@@ -208,6 +208,7 @@ def _build_blender_inputs_stage(
         files=files,
     )
 
+
 def _build_annotated_videos_stage(recording_folder: Path) -> tuple[StageStatus, bool, int]:
     annotated_dir = recording_folder / ANNOTATED_VIDEOS_FOLDER_NAME
     videos = _list_videos(annotated_dir)

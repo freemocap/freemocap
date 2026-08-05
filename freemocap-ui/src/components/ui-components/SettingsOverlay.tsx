@@ -235,12 +235,15 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
         </div>
 
-        <div className="modal-container pos-rel">
+        <div className="modal-container stream-mode pos-rel">
           <IconButton
             icon={isOpen ? "close-icon" : "grid2-icon"}
             className="icon-size-32 br-2"
             onClick={() => setIsOpen(!isOpen)}
             title={isOpen ? t("closeSettings") : t("gridSettings")}
+            tooltip
+            tooltipText="Grid Settings"
+            tooltipPosition="pos-bottom-right"
           />
 
       {/* SETTINGS PANEL */}

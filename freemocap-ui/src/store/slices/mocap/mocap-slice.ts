@@ -45,6 +45,20 @@ export interface EstimatorConfig {
     iqr_confidence_sensitivity: number;
 }
 
+export interface TriangulationConfig {
+    use_outlier_rejection: boolean;
+    minimum_cameras_for_triangulation: number;
+    maximum_cameras_to_drop: number;
+    target_reprojection_error: number;
+}
+
+export interface PosthocFilterConfig {
+    method: "butter_low_pass";
+    cutoff: number;
+    sampling_rate: number;
+    order: number;
+}
+
 /**
  * Mirrors backend RealtimeFilterConfig (skeleton smoothing + gating).
  * Field names use snake_case to match the backend JSON.
@@ -86,6 +100,8 @@ export const RTMPOSE_MODELS: { label: string; value: RTMPoseModelName }[] = [
 export interface MocapConfig {
     detector: MediapipeDetectorConfig;
     skeleton_filter: RealtimeFilterConfig;
+    triangulation: TriangulationConfig;
+    posthoc_filter: PosthocFilterConfig;
     detectorType: DetectorType;
     rtmPoseModelName: RTMPoseModelName;
     rtmPoseConfidenceThreshold: number;
@@ -164,6 +180,15 @@ export function detectPreset(
  *   Range 0.003–0.02 is appropriate for mm-space data.
  *   NOTE: beta = 0.3 (meter-space convention) is ~1000× too high.
  */
+
+export const DEFAULT_TRIANGULATION_CONFIG: TriangulationConfig = {
+    use_outlier_rejection: true,
+    minimum_cameras_for_triangulation: 2,
+    maximum_cameras_to_drop: 1,
+    target_reprojection_error: 0.02,
+};
+
+
 export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
     min_cutoff: 1.0,
     beta: 0.007,
@@ -180,6 +205,15 @@ export const DEFAULT_REALTIME_FILTER_CONFIG: RealtimeFilterConfig = {
     prediction_velocity_decay: 0.75,
 };
 
+export const DEFAULT_POSTHOC_FILTER_CONFIG: PosthocFilterConfig ={
+    method: "butter_low_pass",
+    cutoff: 6.0,
+    sampling_rate: 30.0,
+    order: 4,
+};
+
+
+ 
 export interface MocapDirectoryInfo {
     exists: boolean;
     canRecord: boolean;
@@ -204,24 +238,55 @@ export interface MocapState {
     processingPhase: string;
 }
 
+
+const DEFAULT_MOCAP_CONFIG: MocapConfig = {
+    detector: {...MEDIAPIPE_REALTIME_PRESET},
+    triangulation: {...DEFAULT_TRIANGULATION_CONFIG},
+    skeleton_filter: {...DEFAULT_REALTIME_FILTER_CONFIG},
+    posthoc_filter: {...DEFAULT_POSTHOC_FILTER_CONFIG},
+
+    detectorType: "rtmpose",
+    rtmPoseModelName: "rtmw-x-l_256x192",
+    rtmPoseConfidenceThreshold: 0.004,
+    mediapipeModelComplexity: "heavy",
+    mediapipeDetectionConfidence: 0.5,
+    mediapipePresenceConfidence: 0.5,
+    mediapipeTrackingConfidence: 0.5,
+    mediapipeNumHands: 2,
+    mediapipeNumFaces: 1,
+};
+
 // ==================== Initial State ====================
 
-const _persistedMocapConfig = loadFromStorage<MocapConfig | null>('mocap.config', null);
+const _persistedMocapConfig = loadFromStorage<Partial<MocapConfig> | null>( "mocap.config", null, );
+
+const initialMocapConfig: MocapConfig = {
+    ...DEFAULT_MOCAP_CONFIG,
+    ...(_persistedMocapConfig ?? {}),
+
+    detector: {
+        ...DEFAULT_MOCAP_CONFIG.detector,
+        ...(_persistedMocapConfig?.detector ?? {}),
+    },
+
+    triangulation: {
+        ...DEFAULT_MOCAP_CONFIG.triangulation,
+        ...(_persistedMocapConfig?.triangulation ?? {}),
+    },
+
+    skeleton_filter: {
+        ...DEFAULT_MOCAP_CONFIG.skeleton_filter,
+        ...(_persistedMocapConfig?.skeleton_filter ?? {}),
+    },
+
+    posthoc_filter: {
+        ...DEFAULT_MOCAP_CONFIG.posthoc_filter,
+        ...(_persistedMocapConfig?.posthoc_filter ?? {}),
+    },
+};
 
 const initialState: MocapState = {
-    config: _persistedMocapConfig ?? {
-        detector: { ...MEDIAPIPE_REALTIME_PRESET },
-        skeleton_filter: { ...DEFAULT_REALTIME_FILTER_CONFIG },
-        detectorType: "rtmpose" as DetectorType,
-        rtmPoseModelName: "rtmw-x-l_256x192" as RTMPoseModelName,
-        rtmPoseConfidenceThreshold: 0.004,
-        mediapipeModelComplexity: "heavy" as MediapipeModelComplexity,
-        mediapipeDetectionConfidence: 0.5,
-        mediapipePresenceConfidence: 0.5,
-        mediapipeTrackingConfidence: 0.5,
-        mediapipeNumHands: 2,
-        mediapipeNumFaces: 1,
-    },
+    config: initialMocapConfig,
     isRecording: false,
     recordingProgress: 0,
     isLoading: false,
@@ -229,7 +294,7 @@ const initialState: MocapState = {
     directoryInfo: null,
     calibrationTomlPath: null,
     processingProgress: 0,
-    processingPhase: '',
+    processingPhase: "",
 };
 
 // ==================== Slice ====================
@@ -294,6 +359,14 @@ export const mocapSlice = createSlice({
         /** Partially update individual skeleton filter fields. */
         skeletonFilterConfigUpdated: (state, action: PayloadAction<Partial<RealtimeFilterConfig>>) => {
             state.config.skeleton_filter = { ...state.config.skeleton_filter, ...action.payload };
+        },
+
+        triangulationConfigUpdated: (state, action: PayloadAction<Partial<TriangulationConfig>>) => {
+            state.config.triangulation = { ...state.config.triangulation, ...action.payload };
+        },
+
+        posthocFilterConfigUpdated: (state, action: PayloadAction<Partial<PosthocFilterConfig>>) => {
+            state.config.posthoc_filter = {...state.config.posthoc_filter, ...action.payload};
         },
 
         mocapProgressUpdated: (state, action: PayloadAction<number>) => {
@@ -382,7 +455,9 @@ export const mocapSlice = createSlice({
 export const selectMocap = (state: RootState) => state.mocap;
 export const selectMocapConfig = (state: RootState) => state.mocap.config;
 export const selectMocapDetectorConfig = (state: RootState) => state.mocap.config.detector;
+export const selectMocapTriangulationConfig = (state: RootState) => state.mocap.config.triangulation;
 export const selectSkeletonFilterConfig = (state: RootState) => state.mocap.config.skeleton_filter;
+export const selectPosthocFilterConfig = (state: RootState) => state.mocap.config.posthoc_filter;
 export const selectMocapDetectorType = (state: RootState) => state.mocap.config.detectorType;
 export const selectMocapRtmPoseModelName = (state: RootState) => state.mocap.config.rtmPoseModelName;
 export const selectMocapRtmPoseConfidenceThreshold = (state: RootState) => state.mocap.config.rtmPoseConfidenceThreshold;
@@ -454,6 +529,8 @@ export const {
     mocapDetectorConfigUpdated,
     skeletonFilterConfigReplaced,
     skeletonFilterConfigUpdated,
+    triangulationConfigUpdated,
+    posthocFilterConfigUpdated,
     mocapProgressUpdated,
     mocapErrorCleared,
     mocapDirectoryInfoUpdated,

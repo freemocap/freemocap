@@ -8,6 +8,8 @@ import type {
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import ValueSelector from "@/components/ui-components/ValueSelector";
 import IconButton from "@/components/ui-components/IconButton";
+import SegmentedControl from "@/components/ui-components/SegmentedControl";
+import { Row } from "@/components/ui-components/Row";
 
 interface GridSettingsOverlayProps {
   settings: CameraSettings;
@@ -57,112 +59,109 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
 
   return (
     <>
-      <div className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-3 top-0 right-0">
-        <IconButton
-          icon={isOpen ? "close-icon" : "settings-icon"}
-          className="icon-size-25 br-2 bg-middark"
-          onClick={() => setIsOpen(!isOpen)}
-          title={isOpen ? t("closeSettings") : t("gridSettings")}
-        />
-
-      {/* SETTINGS PANEL */}
-      {isOpen && (
-        <div
-          className="bg-middark br-2 elevated-sharp flex flex-col gap-2 p-2"
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 16,
-            zIndex: 999,
-            minWidth: 260,
-          }}
-        >
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-row items-center gap-1">
-              <span className="icon grid4-icon icon-size-20" />
-              <p className="text bg text-white">{t("gridColumns")}</p>
-            </div>
-
-            <ToggleComponent
-              text={t("auto")}
-              isToggled={isAuto}
-              onToggle={handleAutoChange}
-            />
-
-            <ValueSelector
-              value={isAuto ? autoColumns : manualColumns}
-              min={1}
-              max={12}
-              onChange={handleColumnsChange}
-            />
-
-            <p className="text sm text-gray">
-              {isAuto
-                ? `Auto-detected: ${autoColumns} Columns`
-                : "Enter any positive number"}
-            </p>
-          </div>
-
-          <div
-            style={{
-              height: 1,
-              backgroundColor: "var(--color-border-secondary)",
-            }}
-          />
-
-          <div className="flex flex-col gap-1">
-            <ToggleComponent
-              text="3D Viewport"
-              iconClass="streaming-icon"
-              isToggled={settings.show3dView}
-              onToggle={handle3dViewToggle}
+      <div data-onboarding="realtime:pipeline" className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-0 top-0 right-0">
+        <div className="live-action-buttons-container flex flex-row gap-4">
+          
+        
+          <div className="grid-settings-button-playback-model live-action-buttons-group-2 flex flex-row items-center gap-1">
+            <IconButton
+              
+              icon={isOpen ? "close-icon" : "grid2-icon"}
+              className="icon-size-32 br-2"
+              onClick={() => setIsOpen(!isOpen)}
+              title={isOpen ? t("closeSettings") : t("gridSettings")}
+              tooltip
+              tooltipText="Grid Settings"
+              tooltipPosition="pos-bottom-right"
             />
           </div>
+        </div>
 
-          {settings.show3dView && (
-            <>
-              <div
-                style={{
-                  height: 1,
-                  backgroundColor: "var(--color-border-secondary)",
-                }}
-              />
+        <div className="modal-container stream-mode pos-rel">
+{/* SETTINGS PANEL */}
+          {isOpen && (
+            <div
+              className="bg-dark border-1 border-black elevated-sharp br-2 elevated-sharp flex flex-col gap-1 p-1 min-h-0"
+              style={{
+                position: "absolute",
+                top: "100%",
+                right: 0,
+                marginTop: 8,
+                zIndex: 999,
+                minWidth: 260,
+              }}
+            >
+              <div className="flex flex-col right-0 p-1 gap-1 bg-middark br-1 z-1">
+                <Row label="Layout">
 
-              <div className="flex flex-col gap-1">
-                <p className="text bg text-white">Layout</p>
-
-                <div className="flex flex-row gap-1">
-                  <button
-                    className={`button sm flex-1 ${
-                      settings.layoutDirection === "horizontal"
-                        ? "primary"
-                        : "secondary"
-                    }`}
-                    onClick={() =>
-                      handleLayoutDirectionChange("horizontal")
-                    }
-                  >
-                    <p className="text sm">Side by side</p>
-                  </button>
-
-                  <button
-                    className={`button sm flex-1 ${
-                      settings.layoutDirection === "vertical"
-                        ? "primary"
-                        : "secondary"
-                    }`}
-                    onClick={() =>
-                      handleLayoutDirectionChange("vertical")
-                    }
-                  >
-                    <p className="text sm">Stacked</p>
-                  </button>
+                  <SegmentedControl
+                    size="sm"
+                    className="segmented-control-sm bg-darkgray"
+                    value={settings.layoutDirection}
+                    options={[
+                      { label: "Horizontal", value: "horizontal" },
+                      { label: "Vertical", value: "vertical" },
+                    ]}
+                    onChange={(value) => handleLayoutDirectionChange(value as LayoutDirection)}
+                  />
+                </Row>
+                <div className="flex pt-2 flex-row items-center w-full justify-content-space-between p-1">
+                  {/* <span className="icon grid4-icon icon-size-20" /> */}
+                  <p className="text bg">{t("gridColumns")}</p>
+                  <p className="text sm text-gray">
+                    {isAuto
+                      ? `Auto: ${autoColumns} Columns`
+                      : "Enter any positive number"}
+                  </p>
                 </div>
+                <div className="flex flex-col gap-2 align-end">
+
+                  <ToggleComponent
+                    text={t("auto")}
+                    isToggled={isAuto}
+                    onToggle={handleAutoChange}
+                  />
+
+                  <ValueSelector
+                    value={isAuto ? autoColumns : manualColumns}
+                    min={1}
+                    max={12}
+                    onChange={handleColumnsChange}
+                  />
+
+                </div>
+
+                {/* <div
+                  style={{
+                    height: 1,
+                    backgroundColor: "var(--color-border-secondary)",
+                  }}
+                /> */}
+
+                <div className="pt-3 flex flex-col gap-1">
+                  <ToggleComponent
+                    text="3D Viewport"
+                    iconClass=""
+                    isToggled={settings.show3dView}
+                    onToggle={handle3dViewToggle}
+                  />
+                </div>
+
+                {settings.show3dView && (
+                  <>
+                    {/* <div
+                      style={{
+                        height: 1,
+                        backgroundColor: "var(--color-border-secondary)",
+                      }}
+                    /> */}
+
+                  </>
+                )}
               </div>
-            </>
+            </div>
           )}
         </div>
-      )}
       </div>
     </>
   );

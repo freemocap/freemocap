@@ -30,7 +30,7 @@ def _upright_rtmpose_pose() -> dict[str, np.ndarray]:
 
 
 def _frame(rig: RealtimeSkeletonRigidifier, pose: dict[str, np.ndarray], t: float):
-    return rig.rigidify_frame(pose, measured=pose, t=t, errors=None)
+    return rig.rigidify_frame(pose, measured=pose, t=t)
 
 
 def test_create_seeds_all_bones():
@@ -88,34 +88,31 @@ def test_predicted_points_never_teach_lengths():
     measured = dict(pose)
     del measured["left_elbow"]  # simulated: elbow extrapolated this frame
     for i in range(6):
-        rig.rigidify_frame(pose, measured=measured, t=float(i), errors=None)
+        rig.rigidify_frame(pose, measured=measured, t=float(i))
     assert rig.body_bone_lengths["left_shoulder->left_elbow"] == pytest.approx(seed)
 
 
-def test_request_refit_reruns_capture_before_learning_again():
-    rig = RealtimeSkeletonRigidifier.create(
-        height_mm=1750.0,
-        countdown_s=0.5,
-        capture_min_visible_fraction=0.1,
-        capture_consecutive_good_frames=3,
-    )
+def test_lengths_track_measured_median():
+    # Consistent observations pull each estimate to the observed length (the
+    # rolling-window median), leaving the anthropometric seed behind.
+    rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
+    pose = _upright_rtmpose_pose()
+    seed = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    observed = float(np.linalg.norm(pose["left_elbow"] - pose["left_shoulder"]))
+    for i in range(6):
+        _frame(rig, pose, t=float(i))
+    learned = rig.body_bone_lengths["left_shoulder->left_elbow"]
+    assert learned == pytest.approx(observed)  # median of identical frames
+    assert abs(learned - seed) > 1.0           # actually moved off the seed
+
+
+def test_reset_clears_learned_lengths():
+    rig = RealtimeSkeletonRigidifier.create(height_mm=1750.0)
     pose = _upright_rtmpose_pose()
     seed = rig.body_bone_lengths["left_shoulder->left_elbow"]
     for i in range(6):
         _frame(rig, pose, t=float(i))
-    learned = rig.body_bone_lengths["left_shoulder->left_elbow"]
-    assert abs(learned - seed) > 1.0  # consistent measurements replaced the seed
+    assert abs(rig.body_bone_lengths["left_shoulder->left_elbow"] - seed) > 1.0
 
-    rig.request_refit()
-    _frame(rig, pose, t=10.0)  # countdown begins; buffers cleared
+    rig.reset()  # forget the rolling window -> back to seeds
     assert rig.body_bone_lengths["left_shoulder->left_elbow"] == pytest.approx(seed)
-    assert rig.fit_state.state == "countdown"
-
-    _frame(rig, pose, t=10.6)  # deadline passed -> capture window opens
-    # The required streak is max(3 configured, min_samples=5) = 5 consecutive
-    # good frames — the freeze only captures bones that reached agreement.
-    for i in range(6):
-        _frame(rig, pose, t=10.7 + i * 0.1)
-    assert rig.fit_state.state == "fitted"
-    refit = rig.body_bone_lengths["left_shoulder->left_elbow"]
-    assert refit == pytest.approx(learned, rel=0.05)

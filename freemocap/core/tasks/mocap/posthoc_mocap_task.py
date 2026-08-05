@@ -108,6 +108,8 @@ def run_posthoc_mocap_aggregator_task(
         observation_recorders=observation_recorders,
         path_to_calibration_toml=calibration_toml_path,
         path_to_output_data_folder=output_folder,
+        filter_config=task_config.filter_config,
+        triangulation_config=task_config.triangulation_config
     )
 
     # ---- Save tracker schema alongside outputs ----

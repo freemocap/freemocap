@@ -20,8 +20,8 @@ VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
 REQUIRED_BLENDER_INPUT_FILES: list[str] = [
     "mediapipe_body_3d_xyz.npy",
-    "mediapipe_right_hand_right_hand.npy",
-    "mediapipe_left_hand_left_hand.npy",
+    "mediapipe_right_hand_3d_xyz.npy",
+    "mediapipe_left_hand_3d_xyz.npy",
     "mediapipe_face_3d_xyz.npy",
     "mediapipe_body_total_body_center_of_mass.npy",
     "mediapipe_body_segment_center_of_mass.npy",

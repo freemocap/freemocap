@@ -35,7 +35,6 @@ class FreemocapApplication:
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
     camera_group_manager: CameraGroupManager
-    system_info: dict = field(default_factory=dict)
 
     @classmethod
     def create(cls, fastapi_app: FastAPI) -> "FreemocapApplication":
@@ -53,7 +52,6 @@ class FreemocapApplication:
                 worker_registry=worker_registry,
             ),
             camera_group_manager=get_or_create_camera_group_manager(app=fastapi_app),
-            system_info=getattr(fastapi_app.state, 'system_info', {}),
         )
 
     @property

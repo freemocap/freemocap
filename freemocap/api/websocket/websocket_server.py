@@ -27,6 +27,18 @@ from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_PERF_C
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
+try:
+    from skellycam.core.types.frontend_payload_bytearray import (
+        get_and_clear_frontend_preview_multiframe_samples,
+        get_and_clear_frontend_preview_timing_samples,
+    )
+except ImportError:
+    # Older skellycam builds may not expose preview timing drains yet.
+    def get_and_clear_frontend_preview_timing_samples(_camera_group_id: str) -> dict[str, dict[str, list[float]]]:
+        return {}
+
+    def get_and_clear_frontend_preview_multiframe_samples(_camera_group_id: str) -> dict[str, list[float]]:
+        return {}
 
 logger = logging.getLogger(__name__)
 
@@ -164,7 +176,13 @@ class WebsocketServer:
             self,
             camera_group_id: CameraGroupIdString,
     ) -> dict[str, object] | None:
-        """Drain pubsub pipeline timing stages."""
+        """Drain preview JPEG/resize telemetry and optional pubsub pipeline stages."""
+        if self._metrics_only:
+            preview_by_cam = get_and_clear_frontend_preview_timing_samples(str(camera_group_id))
+            multiframe_preview = get_and_clear_frontend_preview_multiframe_samples(str(camera_group_id))
+        else:
+            preview_by_cam = {}
+            multiframe_preview = {}
         pipeline = self._app.get_realtime_pipeline_for_camera_group(camera_group_id)
         want_pubsub_timing = (
             pipeline is not None and pipeline.config.log_pipeline_times
@@ -185,6 +203,16 @@ class WebsocketServer:
                         break
                     _merge_pipeline_timing_sample(per_node, per_camera, msg)
                     dropped_timing_events += _merge_pipeline_timing_event(events, msg)
+
+        if self._metrics_only:
+            for cam_id, stages in preview_by_cam.items():
+                for stage, samples in stages.items():
+                    per_camera.setdefault(cam_id, {}).setdefault(stage, []).extend(samples)
+
+            if multiframe_preview:
+                mf_bucket = per_node.setdefault("multiframe", {})
+                for stage, samples in multiframe_preview.items():
+                    mf_bucket.setdefault(stage, []).extend(samples)
 
         capped_events, dropped_by_window = cap_events_by_frame_window(
             events,

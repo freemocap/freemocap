@@ -16,7 +16,7 @@ function App() {
     return (
         <Provider store={store}>
             {metricsOnly ? (
-                <React.Suspense fallback={null}>
+                <React.Suspense fallback={<div style={{height:'100vh',backgroundColor:'var(--gray-900)'}} />}>
                     <MetricsServerContextProvider>
                         <AppContent metricsOnly />
                     </MetricsServerContextProvider>

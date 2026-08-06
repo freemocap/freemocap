@@ -7,10 +7,19 @@ import {
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
 import {broadcastSetLogPipelineTimes, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
+import {serverUrls} from '@/constants/server-urls';
 import IconButton from '@/components/ui-components/IconButton';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 const POLL_MS = 200;
+
+interface GpuInfo {
+    gpus: {name: string; vram_gb: string | null}[];
+    onnx_version: string | null;
+    onnx_providers: string[];
+    gpu_acceleration_available: boolean;
+    optimal_provider: string;
+}
 
 export default function PipelineMetricsWindowPage(): React.ReactElement {
     const {isConnected, getPipelineTimingStore} = useMetricsServer();
@@ -20,6 +29,7 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
     const [frozenSnapshot, setFrozenSnapshot] = useState<PipelineTimelineSnapshot | null>(null);
     const [broadcastPipelineState, setBroadcastPipelineState] = useState<RealtimePipelineBroadcastState | null>(null);
+    const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
 
     useEffect(() => {
         const channel = new BroadcastChannel('freemocap-realtime-pipeline');
@@ -64,6 +74,13 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         }
     }, [paused, getPipelineTimingStore]);
 
+    useEffect(() => {
+        fetch(serverUrls.endpoints.gpuInfo)
+            .then(r => r.json())
+            .then(setGpuInfo)
+            .catch(() => {});
+    }, []);
+
     void tick;
     const timelineData = paused && frozenSnapshot
         ? frozenSnapshot
@@ -86,6 +103,14 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         ? timelineData.logPipelineTimesEnabled
         : broadcastPipelineState?.logPipelineTimes !== false;
 
+    const displayedMeanMs = useMemo(() => {
+        const snapshot = getPipelineTimingStore().getSnapshot();
+        const val = snapshot.recentValues.get("skeleton_inference:predict_batch");
+        return val ?? null;
+    }, [timelineData]);
+
+    const trailingMeanMs = timelineData?.trailingMeanFrameMs ?? null;
+
     const alertStyle: React.CSSProperties = {
         margin: '0 8px',
         padding: '8px 12px',
@@ -107,41 +132,57 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
             {/* Toolbar */}
             <div style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                flexWrap: 'wrap',
-                minHeight: 44,
-                padding: '0 8px',
+                flexDirection: 'column',
+                padding: '4px 8px',
                 borderBottom: '1px solid var(--gray-700)',
+                gap: '2px',
             }}>
-                <span className="title" style={{fontWeight: 700, marginRight: 4}}>
-                    Pipeline metrics
-                </span>
-                <span className="text md" style={{color: isConnected ? 'var(--green-300)' : 'var(--gray-400)'}}>
-                    {isConnected ? 'Connected' : 'Disconnected'}
-                </span>
-                {model.latestFrame != null && (
-                    <span className="text md" style={{color: 'var(--gray-400)'}}>
-                        Frames {model.frameStart}–{model.frameEnd} (latest F{model.latestFrame})
+                {/* Row 1: title, status, GPU info, controls */}
+                <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+                    <span className="title" style={{fontWeight: 700, marginRight: 4}}>
+                        Pipeline metrics
                     </span>
-                )}
-                {model.droppedTimingEvents > 0 && (
-                    <span className="text md" style={{color: 'var(--warning-400)'}}>
-                        Dropped events: {model.droppedTimingEvents}
+                    <span className="text md" style={{color: isConnected ? 'var(--green-300)' : 'var(--gray-400)'}}>
+                        {isConnected ? 'Connected' : 'Disconnected'}
                     </span>
-                )}
-                <div style={{flex: 1}} />
-                <IconButton
-                    icon={paused ? 'play-icon' : 'pause-icon'}
-                    title={paused ? 'Resume' : 'Pause'}
-                    onClick={() => setPaused(p => !p)}
-                />
-                {pipelineConnected && (
-                    <ToggleComponent
-                        text="Timing"
-                        isToggled={logTimes}
-                        onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
+                    <div style={{flex: 1}} />
+                    {gpuInfo && (
+                        <span className="text sm" style={{color: 'var(--gray-500)'}}>
+                            {gpuInfo.gpus.length > 0 && gpuInfo.gpus[0].vram_gb
+                                ? `${gpuInfo.gpus[0].name} (${gpuInfo.gpus[0].vram_gb})`
+                                : gpuInfo.gpus.length > 0
+                                    ? gpuInfo.gpus[0].name
+                                    : 'CPU'}
+                            {' · '}
+                            {gpuInfo.optimal_provider
+                                .replace('TensorrtExecutionProvider', 'TensorRT')
+                                .replace('CUDAExecutionProvider', 'CUDA')
+                                .replace('CPUExecutionProvider', 'CPU')}
+                        </span>
+                    )}
+                    <IconButton
+                        icon={paused ? 'play-icon' : 'pause-icon'}
+                        title={paused ? 'Resume' : 'Pause'}
+                        onClick={() => setPaused(p => !p)}
                     />
+                    {pipelineConnected && (
+                        <ToggleComponent
+                            text="Timing"
+                            isToggled={logTimes}
+                            onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
+                        />
+                    )}
+                </div>
+                {/* Row 2: frame timing */}
+                {displayedMeanMs != null && (
+                    <div style={{display: 'flex', gap: '12px'}}>
+                        <span className="text md" style={{color: 'var(--gray-400)'}}>
+                            Average frame processing time: {displayedMeanMs.toFixed(1)} ms
+                            {trailingMeanMs != null && (
+                                <span style={{color: 'var(--gray-500)'}}> · 10s avg: {trailingMeanMs.toFixed(1)} ms</span>
+                            )}
+                        </span>
+                    </div>
                 )}
             </div>
 

@@ -213,3 +213,42 @@ async def skeleton_fitter_state_endpoint() -> dict[str, SkeletonFitStateResponse
             status_code=500,
             detail=f"Error reading skeleton fitter state: {type(e).__name__} - {e}",
         )
+
+
+@realtime_router.get(
+    "/gpu-info",
+    summary="Detected GPUs, available ONNX execution providers, and optimal provider",
+)
+async def gpu_info_endpoint() -> dict:
+    """Return GPU hardware and ONNX Runtime execution provider information.
+
+    Collected on-demand; reflects the host's GPU and ONNX installation state
+    at time of request. The ``optimal_provider`` field is the best available
+    GPU-accelerated EP (Tensorrt > CUDA > CPU).
+    """
+    logger.api("Received `realtime/gpu-info` GET request")
+    try:
+        from freemocap.app.app import _detect_gpus, _get_onnx_info
+
+        gpus = _detect_gpus()
+        onnx_version, onnx_providers = _get_onnx_info()
+        has_cuda = any("CUDA" in p for p in onnx_providers)
+        has_trt = any("Tensorrt" in p for p in onnx_providers)
+
+        return {
+            "gpus": gpus,
+            "onnx_version": onnx_version,
+            "onnx_providers": onnx_providers,
+            "gpu_acceleration_available": has_cuda or has_trt,
+            "optimal_provider": (
+                "TensorrtExecutionProvider" if has_trt
+                else "CUDAExecutionProvider" if has_cuda
+                else "CPUExecutionProvider"
+            ),
+        }
+    except Exception as e:
+        logger.error(f"Error reading GPU info: {type(e).__name__} - {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading GPU info: {type(e).__name__} - {e}",
+        )

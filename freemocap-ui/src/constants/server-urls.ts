@@ -80,6 +80,7 @@ class ServerUrls {
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
             realtimeClose: `${baseUrl}/freemocap/realtime/all/close`,
             resetSkeletonFitter: `${baseUrl}/freemocap/realtime/reset-skeleton-fitter`,
+            gpuInfo: `${baseUrl}/freemocap/realtime/gpu-info`,
 
             // Calibration endpoints
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,

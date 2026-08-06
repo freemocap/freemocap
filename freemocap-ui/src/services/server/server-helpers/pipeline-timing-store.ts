@@ -32,6 +32,8 @@ export type PipelineTimelineSnapshot = {
     logPipelineTimesEnabled: boolean;
     /** null until the first backend status heartbeat is received. */
     realtimePipelineActive: boolean | null;
+    /** Mean frame processing time over the last ~10 seconds of samples, in ms. */
+    trailingMeanFrameMs: number | null;
 };
 
 /** Align backend perf_counter_ns samples to renderer performance.now() at ingest. */
@@ -439,9 +441,27 @@ export class PipelineTimingStore {
             droppedTimingEvents: this.droppedTimingEvents,
             logPipelineTimesEnabled: this.logPipelineTimesEnabled,
             realtimePipelineActive: this.realtimePipelineActive,
+            trailingMeanFrameMs: this._computeTrailingMean("skeleton_inference:predict_batch", 10_000),
         };
         this._timelineVersion = this._writeVersion;
         return this._cachedTimeline;
+    }
+
+    private _computeTrailingMean(rowKey: string, windowMs: number): number | null {
+        const buf = this.buffers.get(rowKey);
+        if (!buf) return null;
+        const samples = buf.toArray();
+        if (samples.length === 0) return null;
+        const now = Date.now();
+        const cutoff = now - windowMs;
+        let sum = 0;
+        let count = 0;
+        for (let i = samples.length - 1; i >= 0; i--) {
+            if (samples[i].timestamp < cutoff) break;
+            sum += samples[i].value;
+            count++;
+        }
+        return count > 0 ? sum / count : null;
     }
 
     clear(): void {

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
@@ -6,6 +6,15 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import { useRealtimePipelineSync } from "@/hooks/useRealtimePipelineSync";
 import { openPipelineMetricsWindow } from "@/services/electron-ipc/open-pipeline-metrics-window";
+import { serverUrls } from "@/constants/server-urls";
+
+interface GpuInfo {
+    gpus: {name: string; vram_gb: string | null}[];
+    onnx_version: string | null;
+    onnx_providers: string[];
+    gpu_acceleration_available: boolean;
+    optimal_provider: string;
+}
 
 interface RTPPipelineActionsFlyoutProps {
     open: boolean;
@@ -23,6 +32,15 @@ const RTPPipelineActionsFlyout: React.FC<RTPPipelineActionsFlyoutProps> = ({
         applyOrUpdatePipelineConfig,
         isLoading,
     } = useRealtimePipelineSync();
+
+    const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null);
+
+    useEffect(() => {
+        fetch(serverUrls.endpoints.gpuInfo)
+            .then(r => r.json())
+            .then(setGpuInfo)
+            .catch(() => {});
+    }, []);
 
     const logPipelineTimes = pipelineConfig.log_pipeline_times !== false;
 
@@ -86,6 +104,21 @@ const RTPPipelineActionsFlyout: React.FC<RTPPipelineActionsFlyoutProps> = ({
                     onToggle={handleLogPipelineTimesToggle}
                     disabled={isLoading}
                 />
+
+                {gpuInfo && (
+                    <div className="text sm" style={{padding: '8px 0', color: 'var(--gray-400)', borderTop: '1px solid var(--gray-700)', marginTop: 4}}>
+                        <div style={{marginBottom: 2}}>
+                            <strong>{gpuInfo.gpus.length > 0 ? gpuInfo.gpus[0].name : 'No GPU detected'}</strong>
+                            {gpuInfo.gpus[0]?.vram_gb && <span> · {gpuInfo.gpus[0].vram_gb}</span>}
+                        </div>
+                        <div style={{marginBottom: 2}}>
+                            Providers: {gpuInfo.onnx_providers.length > 0 ? gpuInfo.onnx_providers.join(', ') : 'None'}
+                        </div>
+                        <div>
+                            Optimal: {gpuInfo.optimal_provider.replace('ExecutionProvider', '')}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

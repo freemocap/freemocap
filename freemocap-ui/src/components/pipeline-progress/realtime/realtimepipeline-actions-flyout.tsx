@@ -107,15 +107,23 @@ const RTPPipelineActionsFlyout: React.FC<RTPPipelineActionsFlyoutProps> = ({
 
                 {gpuInfo && (
                     <div className="text sm" style={{padding: '8px 0', color: 'var(--gray-400)', borderTop: '1px solid var(--gray-700)', marginTop: 4}}>
-                        <div style={{marginBottom: 2}}>
-                            <strong>{gpuInfo.gpus.length > 0 ? gpuInfo.gpus[0].name : 'No GPU detected'}</strong>
-                            {gpuInfo.gpus[0]?.vram_gb && <span> · {gpuInfo.gpus[0].vram_gb}</span>}
+                        <div style={{marginBottom: 4, color: 'var(--gray-200)'}}>
+                            {gpuInfo.gpus.length > 0
+                                ? `${gpuInfo.gpus[0].name}${gpuInfo.gpus[0].vram_gb ? ` (${gpuInfo.gpus[0].vram_gb})` : ''}`
+                                : 'No GPU detected'}
                         </div>
                         <div style={{marginBottom: 2}}>
-                            Providers: {gpuInfo.onnx_providers.length > 0 ? gpuInfo.onnx_providers.join(', ') : 'None'}
+                            Selected Execution Provider:{' '}
+                            {gpuInfo.optimal_provider
+                                .replace('TensorrtExecutionProvider', 'TensorRT')
+                                .replace('CUDAExecutionProvider', 'CUDA')
+                                .replace('CPUExecutionProvider', 'CPU')}
+                            {' (Optimal)'}
                         </div>
-                        <div>
-                            Optimal: {gpuInfo.optimal_provider.replace('ExecutionProvider', '')}
+                        <div style={{marginTop: 4, color: 'var(--gray-500)'}}>
+                            Available: {gpuInfo.onnx_providers
+                                .map(p => p.replace('TensorrtExecutionProvider', 'TensorRT').replace('CUDAExecutionProvider', 'CUDA').replace('CPUExecutionProvider', 'CPU'))
+                                .join(', ') || 'None'}
                         </div>
                     </div>
                 )}

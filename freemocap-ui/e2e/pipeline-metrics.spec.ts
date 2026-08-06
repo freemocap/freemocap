@@ -5,60 +5,39 @@ const DEV_BASE = "http://localhost:5173";
 
 test.use({browserName: "chromium", headless: true});
 
-test("GPU info endpoint returns data", async ({request}) => {
+test("GPU info endpoint returns all required fields", async ({request}) => {
     const response = await request.get(`${API_BASE}/freemocap/realtime/gpu-info`, {timeout: 5000});
     expect(response.ok()).toBeTruthy();
     const body = await response.json();
     expect(body).toHaveProperty("gpus");
     expect(Array.isArray(body.gpus)).toBeTruthy();
+    expect(body).toHaveProperty("onnx_providers");
+    expect(Array.isArray(body.onnx_providers)).toBeTruthy();
+    expect(body).toHaveProperty("optimal_provider");
+    expect(typeof body.optimal_provider).toBe("string");
+    expect(body).toHaveProperty("gpu_acceleration_available");
+    expect(typeof body.gpu_acceleration_available).toBe("boolean");
 });
 
-test("health endpoint is reachable", async ({request}) => {
-    const response = await request.get(`${API_BASE}/health`, {timeout: 5000});
-    expect(response.ok()).toBeTruthy();
-});
+test("metrics page renders title and connection status", async ({page}) => {
+    await page.goto(`${DEV_BASE}/#/pipeline-metrics`, {waitUntil: "networkidle", timeout: 15000});
 
-test("metrics page renders with title and GPU info", async ({page}) => {
-    await page.goto(`${DEV_BASE}/#/pipeline-metrics`, {waitUntil: "domcontentloaded", timeout: 15000});
-    await page.waitForTimeout(3000);
-
-    // Verify title renders
     await expect(page.locator(".title").first()).toHaveText("Pipeline metrics", {timeout: 5000});
 
-    // Verify Connected or Disconnected status is visible
-    const status = page.locator("span.text.md").first();
-    await expect(status).toBeVisible();
-    const statusText = await status.textContent();
-    expect(statusText).toMatch(/Connected|Disconnected/);
+    // Find the span that explicitly shows Connected or Disconnected
+    const status = page.locator("span.text.md").filter({hasText: /^Connected$|^Disconnected$/});
+    await expect(status.first()).toBeVisible({timeout: 10000});
 
-    await page.screenshot({path: "e2e/screenshots/pipeline-metrics.png", fullPage: true});
+    await page.close();
 });
 
-test("Pipeline Actions flyout renders GPU info", async ({page}) => {
-    await page.goto(`${DEV_BASE}/#/`, {waitUntil: "domcontentloaded", timeout: 15000});
-    await page.waitForTimeout(5000);
+test("GPU info display renders GPU name or CPU fallback in toolbar", async ({page}) => {
+    await page.goto(`${DEV_BASE}/#/pipeline-metrics`, {waitUntil: "networkidle", timeout: 15000});
 
-    // Look for the flyout container
-    const flyout = page.locator(".RTP-settings-flyout");
-    const flyoutCount = await flyout.count();
-    console.log(`RTP-settings-flyout elements: ${flyoutCount}`);
+    // Wait for GPU info to load and appear in the toolbar (row 1, after status)
+    const gpuText = page.locator("span.text.sm").filter({hasText: /GeForce|RTX|GPU|CPU ·/});
+    await expect(gpuText.first()).toBeVisible({timeout: 10000});
 
-    if (flyoutCount > 0) {
-        const html = await flyout.first().innerHTML();
-        console.log("=== FLYOUT HTML ===");
-        console.log(html?.substring(0, 2000));
-
-        const text = await flyout.first().textContent();
-        console.log("=== FLYOUT TEXT ===");
-        console.log(text);
-
-        await flyout.first().screenshot({path: "e2e/screenshots/pipeline-actions-flyout.png"});
-    } else {
-        // Flyout might be closed - try to find the trigger
-        console.log("Flyout not found, looking for all clickable elements near 'Pipeline Actions'");
-        const allElements = page.locator("*");
-        const total = await allElements.count();
-        console.log(`Total elements: ${total}`);
-    }
+    await page.close();
 });
 

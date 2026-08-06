@@ -48,17 +48,33 @@ export function classifyTaskCategory(event: Pick<StoredPipelineTaskEvent, 'nodeK
 }
 
 const PRETTY_STAGE_LABELS: Record<string, string> = {
-    'multiframe:ws_payload_prepare_ms': 'WS payload prepare',
-    'skeleton_inference:frame_read': 'Skeleton GPU: frame read',
-    'skeleton_inference:human_detection_letterbox': 'Skeleton GPU: human detection letterbox',
-    'skeleton_inference:human_detection_batch_pack': 'Skeleton GPU: human detection batch pack',
-    'skeleton_inference:human_detection_preprocess': 'Skeleton GPU: human detection preprocess',
-    'skeleton_inference:human_detection': 'Skeleton GPU: human detection',
-    'skeleton_inference:human_detection_postprocess': 'Skeleton GPU: human detection postprocess',
-    'skeleton_inference:pose_estimation_preprocess': 'Skeleton GPU: pose estimation preprocess',
-    'skeleton_inference:pose_estimation': 'Skeleton GPU: pose estimation',
-    'skeleton_inference:pose_estimation_postprocess': 'Skeleton GPU: pose estimation postprocess',
-    'skeleton_inference:predict_batch': 'Skeleton GPU: predict batch',
+    // ── Tracker timer stages (recorded by PipelineStageTimer) ──
+    'skeleton_inference:frame_read': 'Frame read',
+    'skeleton_inference:predict_batch': 'Batch inference',
+    'skeleton_inference:predict_per_camera': 'Per-camera inference',
+    'skeleton_inference:dropped_frames': 'Dropped frames',
+
+    // ── Skellytracker fine-grained stages (TrackerTaskEvent) ──
+    'skeleton_inference:object_detection': 'Object detection',
+    'skeleton_inference:object_detection_infer': 'Object detection infer',
+    'skeleton_inference:keypoint_detection': 'Keypoint postprocess',
+    'skeleton_inference:keypoint_detection_infer': 'Keypoint detection infer',
+    'skeleton_inference:bbox_reuse': 'BBox reuse',
+    'skeleton_inference:bbox_smoothing': 'BBox smoothing',
+    'skeleton_inference:crop': 'Crop',
+    'skeleton_inference:keypoint_smoothing': 'Keypoint smoothing',
+    'skeleton_inference:keypoint_merge': 'Keypoint merge',
+    'skeleton_inference:keypoint_tracked_bbox': 'Tracked BBox',
+
+    // ── Legacy RTMPose stages (synthesize_rtmpose_batch_events fallback) ──
+    'skeleton_inference:human_detection_letterbox': 'Letterbox',
+    'skeleton_inference:human_detection_batch_pack': 'Batch pack',
+    'skeleton_inference:human_detection_preprocess': 'Detection preprocess',
+    'skeleton_inference:human_detection': 'Human detection',
+    'skeleton_inference:human_detection_postprocess': 'Detection postprocess',
+    'skeleton_inference:pose_estimation_preprocess': 'Pose preprocess',
+    'skeleton_inference:pose_estimation': 'Pose estimation',
+    'skeleton_inference:pose_estimation_postprocess': 'Pose postprocess',
     'ui:jpeg_ack_to_receive_ms': 'UI: ACK → JPEG received',
     'ui:jpeg_ws_binary_interval_ms': 'UI: WS binary spacing',
     'ui:jpeg_ws_dispatch_lag_ms': 'UI: WS binary handler lag',
@@ -406,7 +422,6 @@ export function compareTimelineRows(a: StoredPipelineTaskEvent, b: StoredPipelin
 export const CATEGORY_COLORS: Record<PipelineTaskCategory, string> = {
     capture: '#4caf50',
     tracking: '#ff9800',
-    aggregation: '#9c27b0',
     ui_backend: '#00bcd4',
     ui_frontend: '#1976d2',
     other: '#9e9e9e',

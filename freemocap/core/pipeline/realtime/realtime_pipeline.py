@@ -147,7 +147,6 @@ class RealtimePipeline:
                 config=pipeline_config.camera_node_config,
                 ipc=ipc,
                 pubsub=pubsub,
-                log_pipeline_times=pipeline_config.log_pipeline_times,
             )
             for camera_id in pipeline_camera_ids
         }

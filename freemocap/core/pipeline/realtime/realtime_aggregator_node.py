@@ -464,7 +464,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ),
                     )
                     latest_requested_frame = current_multiframe_number
-                    t_frame_requested = time.perf_counter() if timer is not None else 0.0
 
                 # ---- Collect skeleton inference results (GPU mode) ----
                 # Drained on every iteration so they're available whenever the

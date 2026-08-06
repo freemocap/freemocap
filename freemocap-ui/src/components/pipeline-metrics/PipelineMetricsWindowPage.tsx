@@ -3,26 +3,14 @@ import {PipelineNetworkTimeline} from '@/components/pipeline-metrics/PipelineNet
 import {
     buildTimelineViewModel,
     DEFAULT_CATEGORY_FILTERS,
-    type TimelineCategoryFilters,
 } from '@/components/pipeline-metrics/pipelineTimelineModel';
-import {CATEGORY_COLORS} from '@/components/pipeline-metrics/pipelineTaskTopology';
-import type {PipelineTaskCategory} from '@/services/server/server-helpers/pipeline-timing-types';
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
-import {broadcastSetLogPipelineTimes, requestRealtimePipelineState, subscribeRealtimePipelineBroadcast, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
+import {broadcastSetLogPipelineTimes, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
 import IconButton from '@/components/ui-components/IconButton';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
-import Checkbox from '@/components/ui-components/Checkbox';
 
 const POLL_MS = 200;
-const CATEGORY_LABELS: Record<PipelineTaskCategory, string> = {
-    capture: 'Capture',
-    tracking: 'Tracking',
-    aggregation: 'Aggregation',
-    ui_backend: 'Server preview',
-    ui_frontend: 'UI render',
-    other: 'Other',
-};
 
 export default function PipelineMetricsWindowPage(): React.ReactElement {
     const {isConnected, getPipelineTimingStore} = useMetricsServer();
@@ -30,17 +18,36 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
     const [paused, setPaused] = useState(false);
     const [tick, setTick] = useState(0);
     const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-    const [categoryFilters, setCategoryFilters] = useState<TimelineCategoryFilters>(DEFAULT_CATEGORY_FILTERS);
     const [frozenSnapshot, setFrozenSnapshot] = useState<PipelineTimelineSnapshot | null>(null);
     const [broadcastPipelineState, setBroadcastPipelineState] = useState<RealtimePipelineBroadcastState | null>(null);
 
     useEffect(() => {
-        requestRealtimePipelineState();
-        return subscribeRealtimePipelineBroadcast((message) => {
-            if (message.type === 'state') {
+        const channel = new BroadcastChannel('freemocap-realtime-pipeline');
+        let retryHandle: ReturnType<typeof setInterval> | null = null;
+        const handler = (event: MessageEvent) => {
+            const message = event.data;
+            if (message?.type === 'state') {
                 setBroadcastPipelineState(message.state);
+                // Stop retrying once we have a response
+                if (retryHandle !== null) {
+                    clearInterval(retryHandle);
+                    retryHandle = null;
+                }
             }
-        });
+        };
+        channel.addEventListener('message', handler);
+        // Request state immediately, then retry every 500ms until we get a response
+        channel.postMessage({type: 'request-state'});
+        retryHandle = setInterval(() => {
+            channel.postMessage({type: 'request-state'});
+        }, 500);
+        return () => {
+            channel.removeEventListener('message', handler);
+            if (retryHandle !== null) {
+                clearInterval(retryHandle);
+            }
+            channel.close();
+        };
     }, []);
 
     useEffect(() => {
@@ -68,9 +75,9 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         lockedFrameDurationMs: timelineData.lockedFrameDurationMs,
         droppedTimingEvents: timelineData.droppedTimingEvents,
         logPipelineTimesEnabled: timelineData.logPipelineTimesEnabled,
-        categoryFilters,
+        categoryFilters: DEFAULT_CATEGORY_FILTERS,
         paused,
-    }), [timelineData, categoryFilters, paused]);
+    }), [timelineData, paused]);
 
     const pipelineStatusKnown = timelineData.realtimePipelineActive != null || broadcastPipelineState != null;
     const pipelineConnected = timelineData.realtimePipelineActive === true
@@ -78,10 +85,6 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
     const logTimes = timelineData.realtimePipelineActive != null
         ? timelineData.logPipelineTimesEnabled
         : broadcastPipelineState?.logPipelineTimes !== false;
-
-    const toggleCategory = (cat: PipelineTaskCategory): void => {
-        setCategoryFilters(prev => ({...prev, [cat]: !prev[cat]}));
-    };
 
     const alertStyle: React.CSSProperties = {
         margin: '0 8px',
@@ -158,18 +161,6 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
                     Pipeline timing is disabled on the server.
                 </div>
             )}
-
-            {/* Category filters */}
-            <div style={{display: 'flex', flexWrap: 'wrap', gap: 4, padding: '0 8px 4px'}}>
-                {(Object.keys(CATEGORY_LABELS) as PipelineTaskCategory[]).map(cat => (
-                    <Checkbox
-                        key={cat}
-                        label={CATEGORY_LABELS[cat]}
-                        checked={categoryFilters[cat]}
-                        onChange={() => toggleCategory(cat)}
-                    />
-                ))}
-            </div>
 
             {/* Timeline */}
             <div style={{

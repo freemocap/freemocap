@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def skeleton_from_mediapipe_observation_recorders(
     detector:str,
     observation_recorders: dict[CameraIdString, ObservationBuffer],
-    path_to_calibration_toml: Path | str,
+    path_to_calibration_toml: Path | str | None,
     path_to_output_data_folder: Path | str,
     triangulation_config: TriangulationConfig | None = None,
     interp_config: InterpolationConfig | None = None,

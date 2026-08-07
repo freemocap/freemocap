@@ -71,8 +71,12 @@ def run_posthoc_mocap_aggregator_task(
         for cam_id, obs in frame_obs.items():
             observation_recorders[cam_id].add_observation(obs)
 
-    # ---- Get calibration path: explicit path wins; else fall back to most-recent ----
-    if task_config.calibration_toml_path:
+    # ---- Get calibration path: not needed for single-camera (planar projection fallback) ----
+    recording_folder = Path(recording_info.full_recording_path)
+    calibration_toml_path: Path | None = None
+    if len(camera_ids) == 1:
+        logger.info("Single camera recording; skipping calibration requirement (using planar projection fallback).")
+    elif task_config.calibration_toml_path:
         calibration_toml_path = Path(task_config.calibration_toml_path)
         if not calibration_toml_path.exists():
             raise RuntimeError(
@@ -89,13 +93,13 @@ def run_posthoc_mocap_aggregator_task(
         logger.info(f"No calibration path specified; using most-recent calibration: {calibration_toml_path}")
 
     # ---- Copy calibration file into recording folder ----
-    recording_folder = Path(recording_info.full_recording_path)
-    recording_calibration_copy = recording_folder / calibration_toml_path.name
-    if calibration_toml_path.resolve() != recording_calibration_copy.resolve():
-        shutil.copy2(calibration_toml_path, recording_calibration_copy)
-        logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
-    else:
-        logger.info(f"Calibration file already in recording folder, skipping copy: {recording_calibration_copy}")
+    if calibration_toml_path is not None:
+        recording_calibration_copy = recording_folder / calibration_toml_path.name
+        if calibration_toml_path.resolve() != recording_calibration_copy.resolve():
+            shutil.copy2(calibration_toml_path, recording_calibration_copy)
+            logger.info(f"Copied calibration file to recording folder: {recording_calibration_copy}")
+        else:
+            logger.info(f"Calibration file already in recording folder, skipping copy: {recording_calibration_copy}")
 
     # ---- Run skeleton triangulation ----
     _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")

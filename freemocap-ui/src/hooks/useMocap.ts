@@ -57,6 +57,7 @@ function mocapDirectoryInfoEqual(a: MocapDirectoryInfo | null, b: MocapDirectory
         a.canCalibrate === b.canCalibrate &&
         a.hasSynchronizedVideos === b.hasSynchronizedVideos &&
         a.hasVideos === b.hasVideos &&
+        a.cameraCount === b.cameraCount &&
         a.cameraMocapTomlPath === b.cameraMocapTomlPath &&
         a.lastSuccessfulCalibrationTomlPath === b.lastSuccessfulCalibrationTomlPath &&
         a.errorMessage === b.errorMessage

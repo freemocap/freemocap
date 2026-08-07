@@ -17,10 +17,8 @@ import {
     isLogRecord,
     isPipelineTiming,
     isPosthocProgress,
-    isSkeletonFitState,
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
-import {SkeletonFitStateStore} from "@/services/server/server-helpers/skeleton-fit-state-store";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 import {
     BLOCK_KIND,
@@ -78,7 +76,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
     const pipelineTimingStoreRef = useRef<PipelineTimingStore>(new PipelineTimingStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
-    const skeletonFitStateStoreRef = useRef<SkeletonFitStateStore>(new SkeletonFitStateStore());
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
@@ -160,7 +157,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingAckFrameNumberRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
-                skeletonFitStateStoreRef.current.clear();
                 keypointsRef.current = null;
                 skeletonRef.current = null;
                 trackerSchemasRef.current = {};
@@ -466,8 +462,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         }
                     } else if (isAppState(jsonData)) {
                         store.dispatch(serverStateReceived(jsonData));
-                    } else if (isSkeletonFitState(jsonData)) {
-                        skeletonFitStateStoreRef.current.update(jsonData.pipelines);
                     } else {
                         console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
                     }
@@ -525,10 +519,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const getLogStore = useCallback((): LogStore => {
         return logStoreRef.current;
-    }, []);
-
-    const getSkeletonFitStateStore = useCallback((): SkeletonFitStateStore => {
-        return skeletonFitStateStoreRef.current;
     }, []);
 
     const subscribeToKeypoints = useCallback((cb: KeypointsCallback): () => void => {
@@ -604,7 +594,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getFramerateStore,
         getPipelineTimingStore,
         getLogStore,
-        getSkeletonFitStateStore,
         connectedCameraIds,
         updateServerConnection,
         subscribeToKeypoints,
@@ -618,7 +607,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getPipelineTimingStore, getLogStore, getSkeletonFitStateStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getPipelineTimingStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

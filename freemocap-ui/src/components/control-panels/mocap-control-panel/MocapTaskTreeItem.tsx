@@ -190,6 +190,7 @@ export const MocapTaskTreeItem: React.FC = () => {
         if (!mocapRecordingPath) return "Select a recording folder to process";
         if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
         const hasAnyCalibration =
+            directoryInfo?.cameraCount === 1 ||
             !!calibrationTomlPath ||
             !!directoryInfo?.cameraMocapTomlPath ||
             !!directoryInfo?.lastSuccessfulCalibrationTomlPath;

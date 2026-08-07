@@ -222,6 +222,7 @@ export interface MocapDirectoryInfo {
     lastSuccessfulCalibrationTomlPath: string | null;
     hasSynchronizedVideos: boolean;
     hasVideos: boolean;
+    cameraCount: number;
     errorMessage: string | null;
 }
 
@@ -505,11 +506,14 @@ export const selectCanProcessMocapRecording = createSelector(
     ],
     (mocapPath, isLoading, isRecording, directoryInfo, manualCalibrationTomlPath) => {
         const hasVideos = directoryInfo?.hasVideos ?? false;
+        // Single-camera recordings use a planar-projection fallback and never need
+        // a calibration TOML; multi-camera recordings still require one for triangulation.
+        const isSingleCamera = directoryInfo?.cameraCount === 1;
         const hasAnyCalibrationToml =
             !!manualCalibrationTomlPath ||
             !!directoryInfo?.cameraMocapTomlPath ||
             !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
-        return !!mocapPath && !isLoading && !isRecording && hasVideos && hasAnyCalibrationToml;
+        return !!mocapPath && !isLoading && !isRecording && hasVideos && (isSingleCamera || hasAnyCalibrationToml);
     }
 );
 

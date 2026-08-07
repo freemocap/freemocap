@@ -107,7 +107,7 @@ const TimelineRow = memo(function TimelineRow({
     const durationLabel = formatBarDuration(row.durationMs);
     const showDurationOnBar = visible && shouldShowBarDurationLabel(widthPct, durationLabel);
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
-    const tooltipText = `${rowTip.long} — ${durationLabel}`;
+    const tooltipText = `${rowTip.long} (${durationLabel})`;
 
     return (
         <div

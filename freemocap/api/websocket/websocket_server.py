@@ -5,6 +5,7 @@ import asyncio
 import dataclasses
 import json
 import logging
+import os
 import time
 from queue import Empty
 from typing import TYPE_CHECKING
@@ -372,6 +373,36 @@ class WebsocketServer:
         except Exception as e:
             logger.exception(f"Error in metrics relay: {e.__class__}: {e}")
             self._websocket_should_continue = False
+            raise
+
+    async def _app_state_sender(self):
+        """Push the authoritative application-state snapshot to the client.
+
+        Sent immediately on connect (the "hello") and again whenever the state
+        changes. Connectedness and server identity (PID) ride on this message —
+        the client treats it as the single source of truth for observed state.
+        """
+        logger.info("Starting app-state sender task...")
+        previous_state: dict | None = None
+        try:
+            while self.should_continue:
+                state_dict = self._app.to_state_dict()
+                if previous_state is None or state_dict != previous_state:
+                    await self._send_msgspec_json({
+                        "message_type": WebsocketMessageType.APP_STATE,
+                        "server_pid": os.getpid(),
+                        "state": state_dict,
+                    })
+                await asyncio.sleep(1.0)
+                previous_state = state_dict
+        except asyncio.CancelledError:
+            pass
+        except WebSocketDisconnect:
+            logger.info("Client disconnected, ending app-state sender task...")
+        except Exception as e:
+            logger.exception(f"Error in app-state sender: {e.__class__}: {e}")
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             raise
 
     def last_frame_acknowledged(self) -> bool:

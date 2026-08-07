@@ -23,30 +23,36 @@ autoUpdater.allowDowngrade = false;
 const t = initTRPC.create({
     transformer: superjson, // Handles Date/undefined/etc serialization
 });
-// Helper function to check if a directory contains video files
-function hasVideoFiles(dirPath: string): boolean {
+const VIDEO_EXTENSIONS = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
+
+// Helper function to count video files directly inside a directory (one file per camera)
+function countVideoFiles(dirPath: string): number {
     if (!fs.existsSync(dirPath)) {
-        return false;
+        return 0;
     }
 
     try {
         const entries = fs.readdirSync(dirPath);
-        const videoExtensions = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv', '.webm'];
 
-        return entries.some(entry => {
+        return entries.filter(entry => {
             const fullPath = path.join(dirPath, entry);
             const stats = fs.statSync(fullPath);
 
             if (stats.isFile()) {
                 const ext = path.extname(entry).toLowerCase();
-                return videoExtensions.includes(ext);
+                return VIDEO_EXTENSIONS.includes(ext);
             }
             return false;
-        });
+        }).length;
     } catch (error) {
-        console.error('Error checking for video files:', error);
-        return false;
+        console.error('Error counting video files:', error);
+        return 0;
     }
+}
+
+// Helper function to check if a directory contains video files
+function hasVideoFiles(dirPath: string): boolean {
+    return countVideoFiles(dirPath) > 0;
 }
 
 // Helper function to find camera calibration TOML file
@@ -363,6 +369,7 @@ export const api = t.router({
                     lastSuccessfulCalibrationTomlPath: null as string | null,
                     hasSynchronizedVideos: false,
                     hasVideos: false,
+                    cameraCount: 0,
                     errorMessage: null as string | null,
                 };
 
@@ -388,12 +395,14 @@ export const api = t.router({
                         fs.statSync(synchronizedVideosPath).isDirectory();
 
                     if (result.hasSynchronizedVideos) {
-                        result.hasVideos = hasVideoFiles(synchronizedVideosPath);
+                        result.cameraCount = countVideoFiles(synchronizedVideosPath);
                     }
 
-                    if (!result.hasVideos) {
-                        result.hasVideos = hasVideoFiles(input.directoryPath);
+                    if (result.cameraCount === 0) {
+                        result.cameraCount = countVideoFiles(input.directoryPath);
                     }
+
+                    result.hasVideos = result.cameraCount > 0;
 
                     const entries = fs.readdirSync(input.directoryPath);
                     result.canRecord = !result.hasVideos;
@@ -402,7 +411,10 @@ export const api = t.router({
 
                     result.canCalibrate = result.hasVideos && result.cameraMocapTomlPath !== null;
 
-                    result.canProcess = result.hasVideos && result.cameraMocapTomlPath !== null;
+                    // Single-camera recordings use a planar-projection fallback and never need
+                    // a calibration TOML; multi-camera recordings still require one for triangulation.
+                    const hasCalibration = result.cameraMocapTomlPath !== null || result.lastSuccessfulCalibrationTomlPath !== null;
+                    result.canProcess = result.hasVideos && (result.cameraCount === 1 || hasCalibration);
 
                     return result;
 

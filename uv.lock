@@ -371,7 +371,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a18"
+version = "2.0.0a20"
 source = { editable = "." }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -477,7 +477,7 @@ tracker-default = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2026.4.1041"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#7ed776647755722cc38f498b68df2e64248fd679" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#980ae856b5575abfaae51bbfc2fd2158f07ecd12" }
 
 [[package]]
 name = "h11"
@@ -1962,7 +1962,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=main#7d39a24aa04a7a40c591ed7cf79a7e73259c51cf" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=main#ddf24f3aaa4388e5883afada217137223546c24e" }
 dependencies = [
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "pandas", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -1990,7 +1990,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics-rebased#366f48cc1b702254d489726de02a4291ec4e5232" }
+source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics-rebased#2e89e7cd77737c10a34272b26a4aa5ac2f21b0a6" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

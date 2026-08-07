@@ -317,6 +317,10 @@ class WebsocketServer:
                 self._client_message_handler(),
                 name="WebsocketClientMessageHandler",
             ),
+            asyncio.create_task(
+                self._app_state_sender(),
+                name="WebsocketAppStateSender",
+            ),
         ]
 
         try:

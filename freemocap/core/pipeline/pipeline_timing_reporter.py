@@ -38,14 +38,25 @@ class _SectionLayout:
 
 
 SECTION_LAYOUTS: dict[str, _SectionLayout] = {
-    "skeleton_inference": _SectionLayout(
+    "aggregator": _SectionLayout(
         substages=(
-            "frame_read",
-            "predict_batch",
-            "predict_per_camera",
+            "skeleton_triangulation",
+            "charuco_triangulation",
+            "keypoint_filter",
+            "velocity_gate",
+            "skeleton_filter",
         ),
+        wrapper="full_frame_processing",
+        framing=("frame_collection_wait", "loop_time"),
+    ),
+    "skeleton_inference": _SectionLayout(
+        substages=("frame_read", "predict_batch", "predict_per_camera"),
         wrapper=None,
         framing=("dropped_frames",),
+    ),
+    "camera": _SectionLayout(
+        substages=("skeleton_detection", "charuco_detection"),
+        wrapper="total_camera_node",
     ),
 }
 
@@ -57,10 +68,12 @@ class PipelineTimingReporter:
     name: str
     timing_sub: TopicSubscriptionQueue
     stop_event: threading.Event
-    expected_camera_count: int = 0  # accepted for API compatibility, no longer used
+    expected_camera_count: int = 0
     report_interval: float = REPORT_INTERVAL_SECONDS
 
-    # Node buffers: (node_kind, stage) -> deque
+    # Per-camera buffers: (camera_id, stage) -> deque
+    _camera_samples: dict[tuple[str, str], collections.deque] = field(default_factory=dict)
+    # Non-camera node buffers: (node_kind, stage) -> deque
     _node_samples: dict[tuple[str, str], collections.deque] = field(default_factory=dict)
     # Track the most recent label seen per node_kind for nicer section headers
     _node_labels: dict[str, str] = field(default_factory=dict)
@@ -83,7 +96,7 @@ class PipelineTimingReporter:
             self._thread.join(timeout=timeout)
 
     def _run(self) -> None:
-        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
+        from freemocap.pubsub.pubsub_topics import PipelineTimingMessage  # noqa: TC001
 
         last_report = time.perf_counter()
         try:
@@ -108,20 +121,27 @@ class PipelineTimingReporter:
         self._new_data_since_last_report = True
         if msg.node_label:
             self._node_labels[msg.node_kind] = msg.node_label
-        for stage, values in msg.samples.items():
-            key = (msg.node_kind, stage)
-            if key not in self._node_samples:
-                self._node_samples[key] = collections.deque(maxlen=ROLLING_WINDOW_FRAMES)
-            self._node_samples[key].extend(values)
+        if msg.node_kind == "camera" and msg.camera_id is not None:
+            for stage, values in msg.samples.items():
+                key = (msg.camera_id, stage)
+                if key not in self._camera_samples:
+                    self._camera_samples[key] = collections.deque(maxlen=ROLLING_WINDOW_FRAMES)
+                self._camera_samples[key].extend(values)
+        else:
+            for stage, values in msg.samples.items():
+                key = (msg.node_kind, stage)
+                if key not in self._node_samples:
+                    self._node_samples[key] = collections.deque(maxlen=ROLLING_WINDOW_FRAMES)
+                self._node_samples[key].extend(values)
 
     def _print_report(self) -> None:
-        if not self._node_samples:
+        if not self._camera_samples and not self._node_samples:
             return
 
         sep = "─" * SEPARATOR_WIDTH
         sections: list[str] = [sep, f"Pipeline Timing Report — {self.name}", ""]
 
-        for kind in ("skeleton_inference",):
+        for kind in ("aggregator", "skeleton_inference"):
             stage_to_arr = {
                 stage: np.array(self._node_samples[(k, stage)])
                 for (k, stage) in self._node_samples.keys()
@@ -137,6 +157,46 @@ class PipelineTimingReporter:
             sections.append("")
             sections.append(f"[ {label} ]")
             sections.append(table)
+
+        # Camera ensemble: collapse across camera_id for each stage
+        if self._camera_samples:
+            cam_ids = sorted({cam for (cam, _) in self._camera_samples.keys()})
+            stages = sorted({stage for (_, stage) in self._camera_samples.keys()})
+            stage_to_pooled: dict[str, np.ndarray] = {}
+            stage_to_cam_spread: dict[str, float] = {}
+            for stage in stages:
+                samples_per_cam = [
+                    np.array(self._camera_samples[(cam, stage)])
+                    for cam in cam_ids
+                    if (cam, stage) in self._camera_samples
+                       and len(self._camera_samples[(cam, stage)]) > 0
+                ]
+                if not samples_per_cam:
+                    continue
+                stage_to_pooled[stage] = np.concatenate(samples_per_cam)
+                per_cam_means = [float(np.mean(s)) for s in samples_per_cam]
+                stage_to_cam_spread[stage] = (
+                    max(per_cam_means) - min(per_cam_means) if len(per_cam_means) > 1 else 0.0
+                )
+
+            if stage_to_pooled:
+                table = _build_table(
+                    stage_to_samples=stage_to_pooled,
+                    layout=SECTION_LAYOUTS.get("camera"),
+                    cam_spread_by_stage=stage_to_cam_spread,
+                )
+                seen = len(cam_ids)
+                if self.expected_camera_count and self.expected_camera_count != seen:
+                    cam_header = (
+                        f"[ Camera ensemble — {seen}/{self.expected_camera_count} "
+                        f"cameras reporting (pooled samples) ]"
+                    )
+                else:
+                    total = self.expected_camera_count or seen
+                    cam_header = f"[ Camera ensemble — {total} cameras (pooled samples) ]"
+                sections.append("")
+                sections.append(cam_header)
+                sections.append(table)
 
         sections.append(sep)
         logger.info("\n" + "\n".join(sections))

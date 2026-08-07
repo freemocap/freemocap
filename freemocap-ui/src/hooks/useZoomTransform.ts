@@ -68,6 +68,10 @@ export function useZoomTransform(
         if (!container) return;
 
         const onWheel = (e: WheelEvent) => {
+            // Only zoom when Ctrl (Windows/Linux) or Cmd (macOS) is held.
+            // Plain scroll wheel always scrolls the list/parent container.
+            if (!e.ctrlKey && !e.metaKey) return;
+
             e.preventDefault();
 
             const rect = container.getBoundingClientRect();

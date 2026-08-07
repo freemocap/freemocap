@@ -90,6 +90,11 @@ export function useTimelineChartZoom({
         if (!container) return;
 
         const onWheel = (event: WheelEvent) => {
+            // Only zoom when Ctrl (Windows/Linux) or Cmd (macOS) is held.
+            // Plain scroll wheel always scrolls the list.
+            if (!event.ctrlKey && !event.metaKey) {
+                return;
+            }
             const metrics = getChartMetrics(event.clientX);
             if (!metrics || event.clientX < container.getBoundingClientRect().left + labelWidthPx) {
                 return;

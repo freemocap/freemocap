@@ -1,6 +1,7 @@
 """
-FreemocapApplication with SettingsManager integration.
-
+Top-level FreemocapApplication: owns the camera group manager, the realtime and
+posthoc pipeline managers, and the worker registry, and orchestrates recording and
+calibration/mocap pipeline operations.
 """
 import logging
 import multiprocessing
@@ -12,16 +13,16 @@ from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group_manager import CameraGroupManager, get_or_create_camera_group_manager
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
-from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from freemocap.core.types.type_overloads import FrameNumberInt
+from freemocap.core.types.type_overloads import FrameNumberInt, TopicSubscriptionQueue
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
@@ -87,14 +88,20 @@ class FreemocapApplication:
             pipeline_config: RealtimePipelineConfig,
             realtime_camera_ids: list[CameraIdString] | None = None,
     ) -> RealtimePipeline:
+
+        for pipeline in self.realtime_pipeline_manager.pipelines.values():
+            pipeline.update_config(new_config=pipeline_config)
+            return pipeline
+
         camera_group = await self.camera_group_manager.create_or_update_camera_group(
             camera_configs=camera_configs,
         )
-        return self.realtime_pipeline_manager.create_pipeline(
+        pipeline = self.realtime_pipeline_manager.create_pipeline(
             camera_group=camera_group,
             pipeline_config=pipeline_config,
             realtime_camera_ids=realtime_camera_ids,
         )
+        return pipeline
 
     # ------------------------------------------------------------------
     # Posthoc pipeline operations
@@ -142,6 +149,7 @@ class FreemocapApplication:
     def get_latest_frontend_payloads(
             self,
             if_newer_than: FrameNumberInt,
+            display_image_sizes: dict[str, dict[str, float]] | None = None,
     ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
         # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
         posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
@@ -154,7 +162,8 @@ class FreemocapApplication:
             # Camera-only / posthoc-only path
             results: list[FrontendImagePacket] = []
             for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
-                    if_newer_than=if_newer_than
+                    if_newer_than=if_newer_than,
+                    display_image_sizes=display_image_sizes,
             ).items():
                 frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
                 results.append(FrontendImagePacket(
@@ -166,10 +175,34 @@ class FreemocapApplication:
 
         # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
         realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
-            if_newer_than=if_newer_than
+            if_newer_than=if_newer_than,
+            display_image_sizes=display_image_sizes,
         )
 
         return realtime_pipeline_packets, posthoc_progress
+
+    # ------------------------------------------------------------------
+    # State projection (websocket APP_STATE snapshot)
+    # ------------------------------------------------------------------
+
+    def to_state_dict(self) -> dict:
+        """Serializable snapshot of observed server state for the websocket APP_STATE message.
+
+        Superset of skellycam's camera-group state plus the realtime pipelines this app
+        owns. The websocket relay adds `server_pid` to the envelope.
+        """
+        return {
+            **self.camera_group_manager.to_state_dict(),
+            "realtime_pipelines": [
+                {
+                    "id": pipeline.id,
+                    "camera_group_id": pipeline.camera_group_id,
+                    "camera_ids": list(pipeline.camera_ids),
+                    "alive": pipeline.alive,
+                }
+                for pipeline in self.realtime_pipeline_manager.pipelines.values()
+            ],
+        }
 
     def get_realtime_pipeline_for_camera_group(
         self,

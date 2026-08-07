@@ -17,7 +17,6 @@ from skellytracker.core.data_primitives.observation import Observation
 from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
-from freemocap.core.tasks.mocap.rigid_body.segment_fit_ritual import FitStateSnapshot
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -185,9 +184,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # maintains rolling buffers across all nodes, and prints one consolidated
 # report. Camera-node samples for the same stage collapse across camera_id
 # into ensemble statistics so adding cameras doesn't multiply log volume.
-#
-# Task events carry monotonic start/end timestamps, frame/camera context, and
-# parent links for the metrics timeline UI.
+
 
 @dataclass
 class PipelineTimingEvent:
@@ -229,52 +226,12 @@ class CalibrationRecordingStateMessage(TopicMessageABC):
 
 @dataclass
 class SkeletonFitterResetMessage(TopicMessageABC):
-    """Arm the segment-fit calibration ritual on every live pipeline.
+    """Clear the rolling bone-length windows on every live pipeline.
 
     Presence of this message in the subscription queue signals the aggregator to
-    call ``RealtimeSkeletonRigidifier.request_refit()`` — starting the countdown
-    → quality-gated capture → freeze ritual instead of an instant next-frame
-    re-fit.
+    call ``RealtimeSkeletonRigidifier.reset()`` — dropping the learned lengths so
+    the next ~window seconds re-fit from fresh observations.
     """
-
-
-@dataclass
-class SkeletonFitStateMessage(TopicMessageABC):
-    """Per-frame snapshot of the segment-fit calibration ritual.
-
-    Published by the aggregator every frame the rigidifier runs, so the
-    frontend can render the ritual ("hold still — capturing in 3…2…1 —
-    locked") and spot a bonked fit (high ``median_seed_deviation``).
-    """
-
-    state: str = "idle"
-    countdown_remaining_s: float = 0.0
-    capture_good_streak: int = 0
-    capture_required_good_frames: int = 0
-    capture_min_visible_fraction: float = 0.0
-    capture_max_mean_error_px: float = 0.0
-    capture_timeout_remaining_s: float = 0.0
-    visible_fraction: float = 0.0
-    mean_error_px: float | None = None
-    n_fitted_body_bones: int = 0
-    median_seed_deviation: float | None = None
-
-    @classmethod
-    def from_snapshot(cls, snapshot: FitStateSnapshot) -> "SkeletonFitStateMessage":
-        return cls(
-            state=snapshot.state,
-            countdown_remaining_s=snapshot.countdown_remaining_s,
-            capture_good_streak=snapshot.capture_good_streak,
-            capture_required_good_frames=snapshot.capture_required_good_frames,
-            capture_min_visible_fraction=snapshot.capture_min_visible_fraction,
-            capture_max_mean_error_px=snapshot.capture_max_mean_error_px,
-            capture_timeout_remaining_s=snapshot.capture_timeout_remaining_s,
-            visible_fraction=snapshot.visible_fraction,
-            mean_error_px=snapshot.mean_error_px,
-            n_fitted_body_bones=snapshot.n_fitted_body_bones,
-            median_seed_deviation=snapshot.median_seed_deviation,
-        )
-
 
 
 # ---------------------------------------------------------------------------
@@ -290,6 +247,5 @@ AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
 CalibrationRecordingStateTopic = create_topic(CalibrationRecordingStateMessage)
 SkeletonFitterResetTopic = create_topic(SkeletonFitterResetMessage)
-SkeletonFitStateTopic = create_topic(SkeletonFitStateMessage)
 
 

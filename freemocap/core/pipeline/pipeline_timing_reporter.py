@@ -57,6 +57,7 @@ class PipelineTimingReporter:
     name: str
     timing_sub: TopicSubscriptionQueue
     stop_event: threading.Event
+    expected_camera_count: int = 0  # accepted for API compatibility, no longer used
     report_interval: float = REPORT_INTERVAL_SECONDS
 
     # Node buffers: (node_kind, stage) -> deque

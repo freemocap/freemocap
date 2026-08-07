@@ -92,7 +92,16 @@ def collect_tracker_batch_events(
         batch_start_time_ns: int | None = None,
         tracker_events: Iterable[Any] | None = None,
 ) -> list[PipelineTimingEvent]:
-    """Read task events from a tracker session, synthesizing when unavailable."""
+    """Read task events from a tracker session, synthesizing when unavailable.
+
+    Falls back to ``synthesize_rtmpose_batch_events`` only when no events are
+    available through the primary ``event_collector`` or ``TrackerTaskEvent``
+    attributes.  The synthesizer reads ``last_*_ms`` attributes that exist only
+    on ``OnnxSession`` — for ``MediaPipeSession`` (and any other non-ONNX
+    session) those attributes are absent, so the synthesizer produces an empty
+    list.  This is expected: the non-ONNX path always provides events via the
+    ``event_collector`` passed to ``Tracker.process_batch()``.
+    """
     if tracker_events is not None:
         events = tracker_events_to_pipeline_events(
             tracker_events,

@@ -43,11 +43,7 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_d
 )
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
-from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import OnlineBoneLengths
-from freemocap.core.tasks.mocap.rigid_body.segment_fit_ritual import (
-    FitStateSnapshot,
-    SegmentFitRitual,
-)
+from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import RollingBoneLengths
 
 # Direction used for a bone that has never been observed (no carried direction).
 _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
@@ -200,41 +196,6 @@ def _seeds_from_ratios(
     return seeds
 
 
-def _hand_errors(
-    errors: dict[str, float] | None,
-    name_to_tracker: dict[str, str],
-) -> dict[str, float] | None:
-    """Remap reprojection errors from tracker keypoint names to canonical hand names.
-
-    Parameters
-    ----------
-    errors : dict[str, float] | None
-        Per-tracker-keypoint reprojection errors (px), keyed by the configured
-        detector's side-prefixed tracker names (e.g. ``"right_hand_thumb1"``
-        for RTMPose). ``None`` means no errors are available — all samples are
-        treated as equally confident.
-    name_to_tracker : dict[str, str]
-        Reverse map from canonical hand landmark name to side-prefixed
-        tracker name, as built by ``_build_hand_mapping``. For example
-        ``{"wrist": "right_hand_root", "thumb_cmc": "right_hand_thumb1"}``.
-
-    Returns
-    -------
-    dict[str, float] | None
-        Errors remapped to canonical hand landmark names, or ``None`` if
-        ``errors`` was ``None``. Canonical names whose tracker name is not
-        present in ``errors`` are silently omitted (the bone estimator
-        treats missing entries as error 0.0).
-    """
-    if errors is None:
-        return None
-    return {
-        canonical: errors[tracker]
-        for canonical, tracker in name_to_tracker.items()
-        if tracker in errors
-    }
-
-
 # ===========================================================================
 # RealtimeSkeletonRigidifier
 # ===========================================================================
@@ -280,14 +241,12 @@ class RealtimeSkeletonRigidifier:
     _hand_tree_r: TreeRigidifier = field(repr=False)
     _hand_tree_l: TreeRigidifier = field(repr=False)
 
-    _body_lengths: OnlineBoneLengths = field(repr=False)
-    _rhand_lengths: OnlineBoneLengths = field(repr=False)
-    _lhand_lengths: OnlineBoneLengths = field(repr=False)
+    _body_lengths: RollingBoneLengths = field(repr=False)
+    _rhand_lengths: RollingBoneLengths = field(repr=False)
+    _lhand_lengths: RollingBoneLengths = field(repr=False)
 
     _hand_name_to_tracker_r: dict[str, str] = field(repr=False)
     _hand_name_to_tracker_l: dict[str, str] = field(repr=False)
-
-    _ritual: SegmentFitRitual = field(repr=False)
 
     height_mm: float = 1750.0
 
@@ -297,18 +256,7 @@ class RealtimeSkeletonRigidifier:
         *,
         detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose",
         height_mm: float = 1750.0,
-        buffer_capacity: int = 64,
-        decay_tau_s: float = 30.0,
-        fit_ratio: float = 0.2,
-        min_samples: int = 5,
-        agreement_tol: float = 0.05,
-        max_reprojection_error: float | None = None,
-        countdown_s: float = 3.0,
-        capture_min_visible_fraction: float = 0.8,
-        capture_max_mean_error_px: float = 10.0,
-        capture_consecutive_good_frames: int = 30,
-        capture_update_min_visible_fraction: float = 0.25,
-        capture_timeout_s: float = 15.0,
+        window_s: float = 10.0,
     ) -> "RealtimeSkeletonRigidifier":
         """Load canonical models + tracker mappings and build the per-tree state.
 
@@ -321,38 +269,10 @@ class RealtimeSkeletonRigidifier:
             naming conventions.
         height_mm : float
             Subject standing height (mm); scales the anthropometric bone-length
-            seeds used until real observations accumulate.
-        buffer_capacity : int
-            Best-K buffer size per bone.
-        decay_tau_s : float
-            Age-decay time constant (s) for the buffer's eviction score.
-        fit_ratio : float
-            Trust-region half-width (fraction of the seed) for admitting
-            measurements and clamping estimates.
-        min_samples : int
-            Measurements a bone's buffer must retain before it may leave its seed.
-        agreement_tol : float
-            Max relative MAD across a buffer's samples for them to count as
-            agreeing (replacing the seed).
-        max_reprojection_error : float | None
-            Reprojection-error gate for admitting a measurement (None = no
-            error gate, e.g. single-camera mode).
-        countdown_s : float
-            Seconds between arming a refit and the capture window opening.
-        capture_min_visible_fraction : float
-            Fraction of measurable body keypoints that must be really observed
-            (not extrapolated) for a capture frame to count as good.
-        capture_max_mean_error_px : float
-            Max mean reprojection error across measured body keypoints for a
-            capture frame to count as good.
-        capture_consecutive_good_frames : int
-            Consecutive good frames required to freeze the capture.
-        capture_update_min_visible_fraction : float
-            Lower visibility floor for a capture frame to still teach the
-            bones it can see (partial bodies calibrate their visible bones).
-        capture_timeout_s : float
-            Max seconds in the capture window before a best-effort freeze of
-            whatever bones reached agreement (none -> back to live fitting).
+            seeds used until real observations accumulate in the window.
+        window_s : float
+            Rolling-window duration (s) over which each bone's median length is
+            taken.
         """
         body_anatomy = AnatomicalStructure.from_model_info(CanonicalBodyModelInfo(), "body")
         hand_anatomy = AnatomicalStructure.from_model_info(CanonicalHandModelInfo(), "hand")
@@ -378,31 +298,12 @@ class RealtimeSkeletonRigidifier:
             height_mm=height_mm,
         )
 
-        def make_lengths(seeds: dict[str, float]) -> OnlineBoneLengths:
-            return OnlineBoneLengths(
-                bone_seeds=seeds,
-                capacity=buffer_capacity,
-                decay_tau_s=decay_tau_s,
-                fit_ratio=fit_ratio,
-                min_samples=min_samples,
-                agreement_tol=agreement_tol,
-                max_error=max_reprojection_error,
-            )
+        def make_lengths(seeds: dict[str, float]) -> RollingBoneLengths:
+            return RollingBoneLengths(bone_seeds=seeds, window_s=window_s)
 
         body_lengths = make_lengths(body_seeds)
         rhand_lengths = make_lengths(hand_seeds)
         lhand_lengths = make_lengths(hand_seeds)
-        ritual = SegmentFitRitual(
-            body_lengths=body_lengths,
-            rhand_lengths=rhand_lengths,
-            lhand_lengths=lhand_lengths,
-            countdown_s=countdown_s,
-            capture_min_visible_fraction=capture_min_visible_fraction,
-            capture_max_mean_error_px=capture_max_mean_error_px,
-            capture_consecutive_good_frames=capture_consecutive_good_frames,
-            capture_update_min_visible_fraction=capture_update_min_visible_fraction,
-            capture_timeout_s=capture_timeout_s,
-        )
 
         return cls(
             _body_mapping=body_mapping,
@@ -416,7 +317,6 @@ class RealtimeSkeletonRigidifier:
             _lhand_lengths=lhand_lengths,
             _hand_name_to_tracker_r=name_to_tracker_r,
             _hand_name_to_tracker_l=name_to_tracker_l,
-            _ritual=ritual,
             height_mm=height_mm,
         )
 
@@ -426,7 +326,6 @@ class RealtimeSkeletonRigidifier:
         *,
         measured: dict[str, np.ndarray],
         t: float,
-        errors: dict[str, float] | None,
     ) -> RigidifyResult:
         """Rigidify one frame of the configured detector's raw keypoints.
 
@@ -437,21 +336,11 @@ class RealtimeSkeletonRigidifier:
             extrapolations — drives the rigidified output only.
         measured : dict[str, (3,) ndarray]
             The real-only subset of ``tracker_positions`` (extrapolated points
-            removed) — the only positions allowed to teach bone lengths.
-            Synthesized canonical centers degrade to a partial mean of their
-            real sources when some sources are extrapolated; the trust region
-            and agreement gate bound that bias.
+            removed) — the only positions allowed to teach bone lengths, so a
+            gap-filled joint never feeds its own enforced length back in.
         t : float
-            Frame timestamp (s); drives the buffers' age decay and the ritual
-            countdown. The caller owns the clock.
-        errors : dict[str, float] | None
-            Per-tracker-keypoint reprojection error (px); the bone-length
-            estimator uses it to rank/gate samples so high-error frames don't
-            corrupt the lengths. Most body limb landmarks share names with the
-            canonical model directly (both RTMPose and MediaPipe use core COCO
-            limb names); hand errors are remapped from the side-prefixed
-            tracker names. None (single-camera mode) = all samples treated as
-            equally confident.
+            Frame timestamp (s); drives the rolling window's eviction. The
+            caller owns the clock.
         """
         canonical_body = self._body_mapping.apply(tracker_positions)
         canonical_rhand = self._hand_mapping_r.apply(tracker_positions)
@@ -461,15 +350,9 @@ class RealtimeSkeletonRigidifier:
         measured_rhand = self._hand_mapping_r.apply(measured)
         measured_lhand = self._hand_mapping_l.apply(measured)
 
-        self._ritual.on_frame(
-            measured_body=measured_body,
-            measured_rhand=measured_rhand,
-            measured_lhand=measured_lhand,
-            errors_body=errors,
-            errors_rhand=_hand_errors(errors, self._hand_name_to_tracker_r),
-            errors_lhand=_hand_errors(errors, self._hand_name_to_tracker_l),
-            t=t,
-        )
+        self._body_lengths.update(measured_body, t=t)
+        self._rhand_lengths.update(measured_rhand, t=t)
+        self._lhand_lengths.update(measured_lhand, t=t)
 
         body_out = self._body_tree.rigidify(canonical_body, self._body_lengths.lengths)
         rhand_out = self._hand_tree_r.rigidify(canonical_rhand, self._rhand_lengths.lengths)
@@ -492,21 +375,19 @@ class RealtimeSkeletonRigidifier:
             right_hand_positions=rhand_tracker,
         )
 
-    def request_refit(self) -> None:
-        """Arm the refit ritual: countdown → quality-gated capture → freeze.
+    def reset(self) -> None:
+        """Forget learned lengths and gap-fill directions.
 
-        Clears the carried gap-fill directions on all trees immediately; the
-        length buffers clear when the countdown begins on the next frame.
+        Clears the rolling-window length buffers (estimates fall back to the
+        anthropometric seeds) and the carried per-bone gap-fill directions, so
+        the next frames re-derive everything from fresh observations.
         """
         self._body_tree.reset()
         self._hand_tree_r.reset()
         self._hand_tree_l.reset()
-        self._ritual.request_refit()
-
-    @property
-    def fit_state(self) -> FitStateSnapshot:
-        """Current ritual state, for publication to the frontend."""
-        return self._ritual.snapshot()
+        self._body_lengths.reset()
+        self._rhand_lengths.reset()
+        self._lhand_lengths.reset()
 
     @property
     def body_bone_lengths(self) -> dict[str, float]:

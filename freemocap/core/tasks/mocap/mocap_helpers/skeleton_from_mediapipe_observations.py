@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def skeleton_from_mediapipe_observation_recorders(
     detector:str,
     observation_recorders: dict[CameraIdString, ObservationBuffer],
-    path_to_calibration_toml: Path | str,
+    path_to_calibration_toml: Path | str | None,
     path_to_output_data_folder: Path | str,
     triangulation_config: TriangulationConfig | None = None,
     interp_config: InterpolationConfig | None = None,
@@ -95,6 +95,7 @@ def skeleton_from_mediapipe_observation_recorders(
         config=interp_config,
     )
 
+    logger.info(f"Filtering trajectory with config: {filter_config.model_dump_json(indent=2)}")
     filtered_trajectory_3d: Trajectory3d = filter_trajectory(
         trajectory=interpolated_trajectory_3d,
         config=filter_config,

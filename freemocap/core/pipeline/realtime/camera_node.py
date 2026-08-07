@@ -20,6 +20,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
+from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -29,6 +30,7 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     ProcessFrameNumberMessage,
     CameraNodeOutputMessage,
+    PipelineTimingTopic,
 )
 
 import numpy as np
@@ -97,6 +99,7 @@ class CameraNode(SourceNode):
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
             skeleton_inference_centralized: bool = False,
+            log_pipeline_times: bool = False,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -109,6 +112,7 @@ class CameraNode(SourceNode):
                 config=config,
                 camera_shm_dto=camera_shm_dto,
                 skeleton_inference_centralized=skeleton_inference_centralized,
+                log_pipeline_times=log_pipeline_times,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
                 ),
@@ -117,6 +121,9 @@ class CameraNode(SourceNode):
                 ),
                 camera_output_pub=pubsub.get_publication_queue(
                     CameraNodeOutputTopic,
+                ),
+                timing_pub=pubsub.get_publication_queue(
+                    PipelineTimingTopic,
                 ),
             ),
         )
@@ -135,9 +142,11 @@ class CameraNode(SourceNode):
             process_frame_number_sub: TopicSubscriptionQueue,
             pipeline_config_sub: TopicSubscriptionQueue,
             camera_output_pub: TopicPublicationQueue,
+            timing_pub: TopicPublicationQueue,
             shutdown_self_flag: Synchronized,
             camera_shm_dto: SharedMemoryRingBufferDTO,
             skeleton_inference_centralized: bool = False,
+            log_pipeline_times: bool = False,
     ) -> None:
         import cv2
         from skellytracker.core.tracker.tracker_state import TrackerState
@@ -177,6 +186,9 @@ class CameraNode(SourceNode):
             )
 
         frame_recarray: np.recarray | None = None
+        timer = None
+        if log_pipeline_times:
+            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -268,16 +280,21 @@ class CameraNode(SourceNode):
                     )
                 skeleton_observation = None
                 charuco_observation = None
+                t_frame_start = time.perf_counter() if timer is not None else 0.0
 
                 if skeleton_tracker is not None:
+                    t0 = time.perf_counter() if timer is not None else 0.0
                     skeleton_observation, skeleton_state = skeleton_tracker.process_image(
                         image, actual_frame_number, skeleton_state
                     )
+                    if timer is not None:
+                        timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
 
                     body_stage = skeleton_observation.stages.get("body")
                     if body_stage is not None and body_stage.keypoints is not None:
                         # Apply 1€ filter to 2D keypoints before publishing.
                         if keypoint_filter is not None:
+                            t0 = time.perf_counter() if timer is not None else 0.0
                             kpts = body_stage.keypoints
                             raw_2d = kpts.to_named_dict(dimensions=2)
                             filtered_2d = keypoint_filter.filter(
@@ -292,17 +309,27 @@ class CameraNode(SourceNode):
                                     xyz[idx, 1] = coords[1]
                                 except KeyError:
                                     pass
+                            if timer is not None:
+                                timer.record("keypoint_filter_2d", (time.perf_counter() - t0) * 1e3)
 
                         # Confidence gating: NaN-out low-confidence 2D keypoints.
                         kpts = body_stage.keypoints
                         low_conf = kpts.visibility < config.confidence_threshold
                         if low_conf.any():
                             kpts.xyz[low_conf, :2] = np.nan
+                            if timer is not None:
+                                timer.record("confidence_gate_dropped", float(low_conf.sum()))
 
                 if charuco_tracker is not None:
+                    t0 = time.perf_counter() if timer is not None else 0.0
                     charuco_observation, charuco_state = charuco_tracker.process_image(
                         image, actual_frame_number, charuco_state
                     )
+                    if timer is not None:
+                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+
+                if timer is not None:
+                    timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)
 
                 camera_output_pub.put(
                     CameraNodeOutputMessage(
@@ -312,6 +339,12 @@ class CameraNode(SourceNode):
                         skeleton_observation=skeleton_observation,
                     ),
                 )
+                if timer is not None:
+                    timer.maybe_flush(
+                        publication_queue=timing_pub,
+                        node_kind="camera",
+                        camera_id=camera_id,
+                    )
 
         except Exception as e:
             logger.exception(f"Exception in RealtimeCameraNode [{camera_id}]: {e}")

@@ -225,7 +225,7 @@ const LogCollapsedView = ({ getLogStore, selectedLevels }: { getLogStore: Return
     const firstLine = lastEntry.message.split("\n")[0];
 
     return (
-        <div className="log-collapsed-summary flex items-center h-full gap-1 overflow-hidden">
+        <div className="log-collapsed-summary text-disabled flex items-center h-full gap-1 overflow-hidden">
             <p className="text bg text-gray">{t("serverLogs")}</p>
             <span className={clsx("log-activity-dot", logActive && "active")} />
             <span className={clsx("log-level-badge", level)}>{lastEntry.levelname}</span>

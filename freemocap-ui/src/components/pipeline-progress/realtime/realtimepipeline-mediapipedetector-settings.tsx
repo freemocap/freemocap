@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
 import ValueSelector from '@/components/ui-components/ValueSelector';
+import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
 import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
@@ -74,15 +75,16 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                     <span className="text-sm">Detector</span>
                     <div className="flex flex-row gap-1">
-                        {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
-                            <button
-                                key={type}
-                                className={`button sm br-1 ${detectorType === type ? "primary accent" : "quaternary"}`}
-                                onClick={() => handleCameraNodeUpdate({ detector_type: type })}
-                            >
-                                {type === "rtmpose" ? "RTMPose" : "MediaPipe"}
-                            </button>
-                        ))}
+                        <SegmentedControl
+                            size="sm"
+                            className="segmented-control-sm bg-darkgray"
+                            value={detectorType ?? "rtmpose"}
+                            options={[
+                                { label: "RTMPose", value: "rtmpose" },
+                                { label: "MediaPipe", value: "mediapipe" },
+                            ]}
+                            onChange={(value) => handleCameraNodeUpdate({ detector_type: value as DetectorType })}
+                        />
                     </div>
                 </div>
 
@@ -97,15 +99,13 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Model</span>
                             <div className="flex flex-row gap-1">
-                                {RTMPOSE_MODELS.map(({ label, value }) => (
-                                    <button
-                                        key={value}
-                                        className={`button sm br-1 ${(cameraNodeConfig.rtmpose_model_name ?? "rtmw-x-l_256x192") === value ? "primary accent" : "quaternary"}`}
-                                        onClick={() => handleCameraNodeUpdate({ rtmpose_model_name: value })}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                <SegmentedControl
+                                    size="sm"
+                                    className="segmented-control-sm bg-darkgray"
+                                    value={cameraNodeConfig.rtmpose_model_name ?? "rtmw-x-l_256x192"}
+                                    options={RTMPOSE_MODELS}
+                                    onChange={(value) => handleCameraNodeUpdate({ rtmpose_model_name: value as any })}
+                                />
                             </div>
                         </div>
 
@@ -132,15 +132,13 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
                             <span className="text-sm">Model size</span>
                             <div className="flex flex-row gap-1">
-                                {MEDIAPIPE_COMPLEXITIES.map(({ label, value }) => (
-                                    <button
-                                        key={value}
-                                        className={`button sm br-1 ${(cameraNodeConfig.mediapipe_model_complexity ?? "lite") === value ? "primary accent" : "quaternary"}`}
-                                        onClick={() => handleCameraNodeUpdate({ mediapipe_model_complexity: value })}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                <SegmentedControl
+                                    size="sm"
+                                    className="segmented-control-sm bg-darkgray"
+                                    value={cameraNodeConfig.mediapipe_model_complexity ?? "lite"}
+                                    options={MEDIAPIPE_COMPLEXITIES}
+                                    onChange={(value) => handleCameraNodeUpdate({ mediapipe_model_complexity: value as MediapipeModelComplexity })}
+                                />
                             </div>
                         </div>
 

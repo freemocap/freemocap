@@ -113,7 +113,7 @@ const RTPPipelineActionsFlyout: React.FC<RTPPipelineActionsFlyoutProps> = ({
                                 : 'No GPU detected'}
                         </div>
                         <div style={{marginBottom: 2}}>
-                            Selected Execution Provider:{' '}
+                            Execution Provider:{' '}
                             {gpuInfo.optimal_provider
                                 .replace('TensorrtExecutionProvider', 'TensorRT')
                                 .replace('CUDAExecutionProvider', 'CUDA')

@@ -66,6 +66,14 @@ const PRETTY_STAGE_LABELS: Record<string, string> = {
     'skeleton_inference:keypoint_merge': 'Keypoint merge',
     'skeleton_inference:keypoint_tracked_bbox': 'Tracked BBox',
 
+    // ── MediaPipe per-detector stages ──
+    'skeleton_inference:keypoint_detection_infer:pose': 'MP Pose infer',
+    'skeleton_inference:keypoint_detection_infer:hand': 'MP Hand infer',
+    'skeleton_inference:keypoint_detection_infer:face': 'MP Face infer',
+    'skeleton_inference:keypoint_detection:pose': 'MP Pose postprocess',
+    'skeleton_inference:keypoint_detection:hand': 'MP Hand postprocess',
+    'skeleton_inference:keypoint_detection:face': 'MP Face postprocess',
+
     // ── Legacy RTMPose stages (synthesize_rtmpose_batch_events fallback) ──
     'skeleton_inference:human_detection_letterbox': 'Letterbox',
     'skeleton_inference:human_detection_batch_pack': 'Batch pack',
@@ -149,6 +157,17 @@ const UI_TIMING_STAGE_ORDER: string[] = [
 const SKELETON_INFERENCE_STAGE_ORDER: string[] = [
     'frame_read',
     'predict_batch',
+    // ── Fine-grained stages (all detectors) ──
+    'object_detection',
+    'object_detection_infer',
+    'bbox_reuse',
+    'bbox_smoothing',
+    'crop',
+    'keypoint_detection_infer',
+    'keypoint_detection',
+    'keypoint_smoothing',
+    'keypoint_merge',
+    // ── Legacy RTMPose stages (synthesize_rtmpose_batch_events fallback) ──
     'human_detection_preprocess',
     'human_detection_letterbox',
     'human_detection_batch_pack',
@@ -188,7 +207,11 @@ function skeletonStageOrdinal(sourceKey: string, stage: string): number {
     if (!sourceKey.startsWith('skeleton_inference:') && stage !== 'frame_read') {
         return 10_000;
     }
-    const i = SKELETON_INFERENCE_STAGE_ORDER.indexOf(stage);
+    // Strip per-detector suffix so "keypoint_detection_infer:pose" matches the
+    // bare "keypoint_detection_infer" entry in SKELETON_INFERENCE_STAGE_ORDER.
+    const lastColon = stage.lastIndexOf(':');
+    const baseStage = lastColon > 0 ? stage.substring(0, lastColon) : stage;
+    const i = SKELETON_INFERENCE_STAGE_ORDER.indexOf(baseStage);
     return i === -1 ? 5000 : i;
 }
 

@@ -8,11 +8,11 @@ const STAGE_TOOLTIPS: Record<string, {short: string; long: string}> = {
     },
     'skeleton_inference:predict_batch': {
         short: 'Batch inference',
-        long: 'Total wall-clock time for one batched ONNX inference pass across all cameras.',
+        long: 'Total wall-clock time for one full inference pass across all cameras (frame read → detection → postprocess).',
     },
     'skeleton_inference:predict_per_camera': {
         short: 'Per-camera inference',
-        long: 'Average inference time per camera (batch inference time divided by camera count).',
+        long: 'Average inference time per camera (total predict_batch time divided by the number of cameras in the frame).',
     },
     'skeleton_inference:dropped_frames': {
         short: 'Dropped frames',
@@ -54,11 +54,37 @@ const STAGE_TOOLTIPS: Record<string, {short: string; long: string}> = {
     },
     'skeleton_inference:keypoint_merge': {
         short: 'Keypoint merge',
-        long: 'Time to merge keypoint detections from multiple model outputs into a unified result.',
+        long: 'Time to merge keypoint detections from multiple detector outputs (pose + hand + face for MediaPipe; single body for RTMPose) into one unified keypoint array per camera.',
     },
     'skeleton_inference:keypoint_tracked_bbox': {
         short: 'Tracked BBox',
         long: 'Time to compute a tracked bounding box from the detected keypoints for the next frame.',
+    },
+
+    // ── MediaPipe per-detector stages ──
+    'skeleton_inference:keypoint_detection_infer:pose': {
+        short: 'MP Pose infer',
+        long: 'MediaPipe body pose detector inference time per camera — includes the full C++ graph execution (detection + tracking + landmark refinement) inside the detect() call.',
+    },
+    'skeleton_inference:keypoint_detection_infer:hand': {
+        short: 'MP Hand infer',
+        long: 'MediaPipe hand landmark detector inference time per camera — runs separately from body pose, dispatched in parallel via thread pool for multi-camera concurrency.',
+    },
+    'skeleton_inference:keypoint_detection_infer:face': {
+        short: 'MP Face infer',
+        long: 'MediaPipe face mesh detector inference time per camera — 468-landmark mesh, dispatched in parallel with body and hands via thread pool.',
+    },
+    'skeleton_inference:keypoint_detection:pose': {
+        short: 'MP Pose postprocess',
+        long: 'Post-processing time for MediaPipe body pose: translating keypoint coordinates from the crop back to full-image space, updating consecutive-miss counters, and applying the keypoint reset policy.',
+    },
+    'skeleton_inference:keypoint_detection:hand': {
+        short: 'MP Hand postprocess',
+        long: 'Post-processing time for MediaPipe hand landmarks: coordinate translation and miss-count bookkeeping per camera.',
+    },
+    'skeleton_inference:keypoint_detection:face': {
+        short: 'MP Face postprocess',
+        long: 'Post-processing time for MediaPipe face mesh: coordinate translation and miss-count bookkeeping per camera.',
     },
 
     // ── Legacy RTMPose stages (synthesize fallback) ──

@@ -165,23 +165,26 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
                         title={paused ? 'Resume' : 'Pause'}
                         onClick={() => setPaused(p => !p)}
                     />
-                    {pipelineConnected && (
+                </div>
+                {/* Row 2: frame timing — between pipeline header and Timing toggle */}
+                {displayedMeanMs != null && (
+                    <div style={{display: 'flex', gap: '12px'}}>
+                        <span className="text md" style={{color: 'var(--gray-400)'}}>
+                            Average frame processing time: {displayedMeanMs.toFixed(1)} ms (~{(1000 / displayedMeanMs).toFixed(1)} fps)
+                            {trailingMeanMs != null && (
+                                <span style={{color: 'var(--gray-500)'}}> · 10s avg: {trailingMeanMs.toFixed(1)} ms (~{(1000 / trailingMeanMs).toFixed(1)} fps)</span>
+                            )}
+                        </span>
+                    </div>
+                )}
+                {/* Row 3: Timing toggle */}
+                {pipelineConnected && (
+                    <div style={{display: 'flex', gap: '8px'}}>
                         <ToggleComponent
                             text="Timing"
                             isToggled={logTimes}
                             onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
                         />
-                    )}
-                </div>
-                {/* Row 2: frame timing */}
-                {displayedMeanMs != null && (
-                    <div style={{display: 'flex', gap: '12px'}}>
-                        <span className="text md" style={{color: 'var(--gray-400)'}}>
-                            Average frame processing time: {displayedMeanMs.toFixed(1)} ms
-                            {trailingMeanMs != null && (
-                                <span style={{color: 'var(--gray-500)'}}> · 10s avg: {trailingMeanMs.toFixed(1)} ms</span>
-                            )}
-                        </span>
                     </div>
                 )}
             </div>

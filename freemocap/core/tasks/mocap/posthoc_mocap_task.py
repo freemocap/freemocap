@@ -130,9 +130,6 @@ def run_posthoc_mocap_aggregator_task(
 
     output_folder = Path(recording_info.full_recording_path) / "output_data"
 
-    logger.error(f"running filter with config: {task_config.filter_config}")
-    logger.info(f"updated config is {filter_config}")
-
     skeleton = skeleton_from_mediapipe_observation_recorders(
         detector= task_config.detector_type,
         observation_recorders=observation_recorders,

@@ -38,6 +38,7 @@ export const MocapPanel: React.FC = () => {
         setCalibrationTomlPath,
         clearCalibrationTomlPath,
         clearError,
+        detectorType,
     } = useMocap();
 
     const {
@@ -337,6 +338,7 @@ export const MocapPanel: React.FC = () => {
                         recordingFolderPath={mocapRecordingPath}
                         disabled={isLoading}
                         hasBlendFile={recordingStatus?.has_blend_file}
+                        detectorType={detectorType}
                     />
                 </div>
             </div>

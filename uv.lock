@@ -371,7 +371,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a19"
+version = "2.0.0a20"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -442,7 +442,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy-stubs", specifier = "~=1.17.1" },
-    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=main" },
+    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=philip%2Ffix_json_timestamp_stats" },
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=main" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
@@ -475,7 +475,7 @@ tracker-default = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2026.4.1041"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#980ae856b5575abfaae51bbfc2fd2158f07ecd12" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#32f49dd8c91f463f5a9b6335b47469bf091965f0" }
 
 [[package]]
 name = "h11"
@@ -1930,7 +1930,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=main#777b058ceafb578c55092179506cd8a925a38b50" }
+source = { git = "https://github.com/freemocap/skellycam?branch=philip%2Ffix_json_timestamp_stats#14faba3545ad6502a6dca466ff562ee2e1a4c43a" }
 dependencies = [
     { name = "av" },
     { name = "beartype" },

@@ -11,8 +11,14 @@ cameras in a synchronized recording disagree with each other (34.28 / 34.48 / 34
 34.74 in one measured take) while sharing an identical frame count, because those values
 describe each camera's own nominal rate rather than the synchronized multiframe rate.
 The multiframe timestamps are the only record of the rate the frames actually share.
+
+skellycam already computes this median for its `*_stats.json` report, so that's tried
+first - it's a single field read instead of a full CSV re-parse. Older recordings (and,
+until skellycam's `RecordingTimestampsStats.to_json` bug is fixed, current ones too) can
+have an empty stats.json, so the CSV median below remains as a fallback.
 """
 import csv
+import json
 import logging
 import statistics
 from pathlib import Path
@@ -23,6 +29,10 @@ logger = logging.getLogger(__name__)
 _TIMESTAMP_GLOBS = (
     "synchronized_videos/timestamps/*_timestamps.csv",
     "synchronized_videos/timestamps/**/*timestamps.csv",
+)
+_STATS_JSON_GLOBS = (
+    "synchronized_videos/timestamps/*_stats.json",
+    "synchronized_videos/timestamps/**/*stats.json",
 )
 _DURATION_COLUMN_HINT = "frame_duration"
 _MIN_SAMPLES = 10
@@ -36,6 +46,34 @@ def _find_timestamp_csv(recording_path: Path) -> Path | None:
             if candidate.is_file() and candidate.stat().st_size > 0:
                 return candidate
     return None
+
+
+def _find_stats_json(recording_path: Path) -> Path | None:
+    for pattern in _STATS_JSON_GLOBS:
+        for candidate in sorted(recording_path.glob(pattern)):
+            if candidate.is_file() and candidate.stat().st_size > 0:
+                return candidate
+    return None
+
+
+def _framerate_from_stats_json(recording_path: Path) -> tuple[float, Path] | None:
+    json_path = _find_stats_json(recording_path)
+    if json_path is None:
+        return None
+
+    try:
+        stats = json.loads(json_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        logger.warning(f"Could not parse {json_path}; falling back to CSV")
+        return None
+
+    median = stats.get("framerate_stats", {}).get("median")
+    if median is None:
+        # Empty until skellycam's RecordingTimestampsStats.to_json bug is fixed;
+        # not an error, just means this recording needs the CSV fallback.
+        return None
+
+    return float(median), json_path
 
 
 def _median_frame_duration_ms(csv_path: Path) -> float | None:
@@ -70,6 +108,16 @@ def get_recording_framerate(recording_path: str | Path) -> float | None:
     bug this function exists to fix.
     """
     recording_path = Path(recording_path)
+
+    from_json = _framerate_from_stats_json(recording_path)
+    if from_json is not None:
+        framerate, json_path = from_json
+        low, high = _PLAUSIBLE_FPS
+        if low <= framerate <= high:
+            logger.info(f"Derived recording framerate: {framerate:.3f} fps (from {json_path.name})")
+            return framerate
+        logger.warning(f"Derived implausible framerate {framerate:.2f} fps from {json_path}; falling back to CSV")
+
     csv_path = _find_timestamp_csv(recording_path)
     if csv_path is None:
         logger.warning(f"No timestamps CSV found under {recording_path}; cannot determine framerate")

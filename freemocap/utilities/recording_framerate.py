@@ -17,11 +17,11 @@ first - it's a single field read instead of a full CSV re-parse. Older recording
 until skellycam's `RecordingTimestampsStats.to_json` bug is fixed, current ones too) can
 have an empty stats.json, so the CSV median below remains as a fallback.
 """
-import csv
 import json
 import logging
-import statistics
 from pathlib import Path
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +34,9 @@ _STATS_JSON_GLOBS = (
     "synchronized_videos/timestamps/*_stats.json",
     "synchronized_videos/timestamps/**/*stats.json",
 )
-_DURATION_COLUMN_HINT = "frame_duration"
+# Fixed by skellycam's MULTI_FRAME_TIMESTAMP_CSV_ROW dtype - the same column
+# skellycam's own framerate_stats.median in *_stats.json is computed from.
+_FRAMERATE_COLUMN = "from_previous.framerate.hz"
 _MIN_SAMPLES = 10
 # Anything outside this is more likely a parsing error than a real capture rate.
 _PLAUSIBLE_FPS = (1.0, 1000.0)
@@ -76,28 +78,14 @@ def _framerate_from_stats_json(recording_path: Path) -> tuple[float, Path] | Non
     return float(median), json_path
 
 
-def _median_frame_duration_ms(csv_path: Path) -> float | None:
-    with open(csv_path, newline="") as f:
-        reader = csv.DictReader(f)
-        if not reader.fieldnames:
-            return None
-        columns = [c for c in reader.fieldnames if _DURATION_COLUMN_HINT in c]
-        if not columns:
-            return None
-        column = columns[0]
-        durations = []
-        for row in reader:
-            try:
-                value = float(row[column])
-            except (TypeError, ValueError):
-                continue
-            if value > 0:
-                durations.append(value)
-    if len(durations) < _MIN_SAMPLES:
+def _median_framerate_from_csv(csv_path: Path) -> float | None:
+    values = pd.read_csv(csv_path, usecols=[_FRAMERATE_COLUMN])[_FRAMERATE_COLUMN].dropna()
+    values = values[values > 0]
+    if len(values) < _MIN_SAMPLES:
         return None
     # Median, not mean: dropped frames produce double-length intervals that would
     # drag a mean downward and understate the true rate.
-    return statistics.median(durations)
+    return float(values.median())
 
 
 def get_recording_framerate(recording_path: str | Path) -> float | None:
@@ -123,12 +111,11 @@ def get_recording_framerate(recording_path: str | Path) -> float | None:
         logger.warning(f"No timestamps CSV found under {recording_path}; cannot determine framerate")
         return None
 
-    median_ms = _median_frame_duration_ms(csv_path)
-    if median_ms is None or median_ms <= 0:
-        logger.warning(f"Could not read usable frame durations from {csv_path}")
+    framerate = _median_framerate_from_csv(csv_path)
+    if framerate is None:
+        logger.warning(f"Could not read usable framerates from {csv_path}")
         return None
 
-    framerate = 1000.0 / median_ms
     low, high = _PLAUSIBLE_FPS
     if not (low <= framerate <= high):
         logger.warning(f"Derived implausible framerate {framerate:.2f} fps from {csv_path}; ignoring")

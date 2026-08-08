@@ -3,19 +3,25 @@ import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
 import IconButton from '@/components/ui-components/IconButton';
+import type {DetectorType} from '@/store/slices/mocap/mocap-slice';
 
 interface BlenderSectionProps {
     recordingFolderPath: string | null | undefined;
     disabled?: boolean;
     /** When provided, the "Open .blend in Blender" button is disabled unless true. */
     hasBlendFile?: boolean;
+    /** The freemocap_blender_addon only understands MediaPipe output so far. */
+    detectorType?: DetectorType;
 }
 
 export const BlenderSection: React.FC<BlenderSectionProps> = ({
     recordingFolderPath,
     disabled = false,
     hasBlendFile,
+    detectorType,
 }) => {
+    const blenderSupported = detectorType === undefined || detectorType === 'mediapipe';
+
     const {api, isElectron} = useElectronIPC();
     const {
         effectiveBlenderExePath,
@@ -60,6 +66,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
     };
 
     const canExport =
+        blenderSupported &&
         !!recordingFolderPath &&
         !!effectiveBlenderExePath &&
         !isExporting &&
@@ -129,16 +136,25 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     </p>
                 </div>
 
+                {!blenderSupported && (
+                    <p className="text sm text-gray">
+                        Blender export only supports MediaPipe output right now - switch the
+                        detector to MediaPipe to enable it.
+                    </p>
+                )}
+
                 <div className="flex flex-col gap-1">
                     <ToggleComponent
                         text="Export to Blender after mocap processing"
-                        isToggled={exportToBlenderEnabled}
+                        isToggled={exportToBlenderEnabled && blenderSupported}
                         onToggle={setExportToBlenderEnabled}
+                        disabled={!blenderSupported}
                     />
                     <ToggleComponent
                         text="Auto-open .blend file in Blender when done"
-                        isToggled={autoOpenBlendFile}
+                        isToggled={autoOpenBlendFile && blenderSupported}
                         onToggle={setAutoOpenBlendFile}
+                        disabled={!blenderSupported}
                     />
                 </div>
 

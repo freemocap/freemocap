@@ -8,6 +8,7 @@ import CalibrationSettings from "./calibration-settings";
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import ButtonSm from "@/components/ui-components/ButtonSm";
+import charucoBoardImage from "@/assets/images/charuco_board.webp";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -489,7 +490,7 @@ const CalibrationModule = ({
                 title="How to Calibrate your cameras"
                 text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
                 image={true}
-                imageSrc="/images/charuco_board.webp"
+                imageSrc={charucoBoardImage}
                 position="pos-right"
                 variant="default"
                 button={true}

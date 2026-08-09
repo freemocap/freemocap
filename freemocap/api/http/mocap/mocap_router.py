@@ -5,9 +5,11 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
+from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
+from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH, default_recording_name, get_default_freemocap_recordings_path
 
@@ -108,7 +110,75 @@ class ImportVideosResponse(BaseModel):
     video_count: int
 
 
+class CheckVideoSyncRequest(BaseModel):
+    video_paths: list[str] = Field(alias="videoPaths")
+
+
+class VideoSyncInfo(BaseModel):
+    filename: str
+    camera_id: str
+    frame_count: int
+    fps: float
+    duration_seconds: float
+
+
+class CheckVideoSyncResponse(BaseModel):
+    synchronized: bool
+    videos: list[VideoSyncInfo]
+    detail: str | None = None
+
+
 # ==================== Endpoints ====================
+
+
+def _check_video_sync(video_paths: list[str]) -> CheckVideoSyncResponse:
+    """Check whether a group of imported videos share a single frame count.
+
+    Imported videos have no capture-time timestamp CSVs (those only exist for live
+    FreeMoCap/skellycam recordings), so frame count is the only signal available to judge
+    synchronization. This mirrors the check `VideoGroupHelper.validate_videos` enforces for
+    live recordings, but built from `VideoHelper` directly (rather than `VideoGroupHelper.
+    from_video_paths`) so per-video details can be returned even when frame counts mismatch.
+    """
+    paths = sorted(Path(p).expanduser() for p in video_paths)
+    for path in paths:
+        if not path.is_file():
+            raise HTTPException(status_code=400, detail=f"Video file not found: {path}")
+
+    parsed_list = [ParsedVideoFilename.from_path(p) for p in paths]
+    indices = [pv.camera_index for pv in parsed_list]
+    if -1 in indices or len(set(indices)) < len(indices):
+        for i, pv in enumerate(parsed_list):
+            pv.camera_index = i
+
+    helpers = [VideoHelper.from_video_path(path) for path in paths]
+    try:
+        videos = [
+            VideoSyncInfo(
+                filename=path.name,
+                camera_id=pv.camera_id,
+                frame_count=helper.metadata.frame_count,
+                fps=helper.metadata.fps,
+                duration_seconds=helper.metadata.duration_seconds,
+            )
+            for path, pv, helper in zip(paths, parsed_list, helpers)
+        ]
+    finally:
+        for helper in helpers:
+            helper.close()
+
+    frame_counts = {video.frame_count for video in videos}
+    synchronized = len(frame_counts) == 1
+
+    detail = None
+    if not synchronized:
+        lines = [f"    {video.camera_id}: {video.frame_count} frames  ({video.filename})" for video in videos]
+        detail = (
+            "Selected videos must have the same frame count to be synchronized, but they differ:\n"
+            + "\n".join(lines)
+        )
+
+    return CheckVideoSyncResponse(synchronized=synchronized, videos=videos, detail=detail)
 
 
 @mocap_router.post("/recording/start")
@@ -150,11 +220,23 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@mocap_router.post("/recording/check_sync")
+async def check_video_sync(request: CheckVideoSyncRequest) -> CheckVideoSyncResponse:
+    """Check whether a set of externally-recorded videos share a frame count (i.e. are synchronized)."""
+    if not request.video_paths:
+        raise HTTPException(status_code=400, detail="No video files provided")
+    return _check_video_sync(request.video_paths)
+
+
 @mocap_router.post("/recording/import")
 async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
     """Create a new recording folder from externally-recorded, pre-synchronized videos."""
     if not request.video_paths:
         raise HTTPException(status_code=400, detail="No video files provided")
+
+    sync_result = _check_video_sync(request.video_paths)
+    if not sync_result.synchronized:
+        raise HTTPException(status_code=400, detail=sync_result.detail)
 
     base_directory = (
         Path(request.base_directory).expanduser()

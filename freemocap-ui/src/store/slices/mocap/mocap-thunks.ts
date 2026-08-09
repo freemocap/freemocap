@@ -159,6 +159,53 @@ export const importVideos = createAsyncThunk<
     }
 );
 
+export interface VideoSyncInfo {
+    filename: string;
+    cameraId: string;
+    frameCount: number;
+    fps: number;
+    durationSeconds: number;
+}
+
+export const checkVideoSync = createAsyncThunk<
+    { synchronized: boolean; videos: VideoSyncInfo[]; detail: string | null },
+    { videoPaths: string[] },
+    { state: RootState; rejectValue: string }
+>(
+    'mocap/checkVideoSync',
+    async ({ videoPaths }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.checkVideoSync, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoPaths }),
+            });
+
+            if (!response.ok) {
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
+            }
+
+            const result = await response.json();
+            return {
+                synchronized: result.synchronized,
+                videos: (result.videos ?? []).map((video: any) => ({
+                    filename: video.filename,
+                    cameraId: video.camera_id,
+                    frameCount: video.frame_count,
+                    fps: video.fps,
+                    durationSeconds: video.duration_seconds,
+                })),
+                detail: result.detail ?? null,
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to check video sync:', errorMessage);
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
 export const processMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
     void,

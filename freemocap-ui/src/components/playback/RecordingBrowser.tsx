@@ -31,6 +31,7 @@ import { serverUrls } from "@/constants/server-urls";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
+import {ImportVideosModal} from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 
 export type RecordingEntry = RecordingListEntry;
 
@@ -185,6 +186,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
   const [sortField, setSortField] = useState<SortField>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const fetchRecordings = useCallback(
     async (force = false) => {
@@ -366,7 +368,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                 <SubactionHeader text={t("recordings")} />
               </div>
             </div>
-            <div className="folder-directory-tool-bar flex flex-row gap-1 items-center">
+            <div className="folder-directory-tool-bar flex flex-row flex-wrap gap-1 items-center">
               <IconButton
                 title={showFilter ? t("hideFilter") : t("filter")}
                 icon={showFilter ? "filter-active-icon" : "filter-icon"}
@@ -411,7 +413,15 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                   </option>
                 ))}
               </select>
-              
+
+              <ButtonSm
+                text="Import Videos"
+                iconClass="download-icon"
+                onClick={() => setIsImportModalOpen(true)}
+                disabled={!isElectron}
+                title={!isElectron ? "Import is only available in the desktop app" : undefined}
+              />
+              <ImportVideosModal open={isImportModalOpen} onClose={() => setIsImportModalOpen(false)}/>
             </div>
           </div>
           <div className="folder-path-selection-group flex gap-1 flex-row flex-nowrap items-center flex-row justify-content-space-between w-full">

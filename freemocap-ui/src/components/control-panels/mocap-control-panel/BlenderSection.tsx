@@ -154,7 +154,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                         text="Auto-open .blend file in Blender when done"
                         isToggled={autoOpenBlendFile && blenderSupported}
                         onToggle={setAutoOpenBlendFile}
-                        disabled={!blenderSupported}
+                        disabled={!blenderSupported || !exportToBlenderEnabled}
                     />
                 </div>
 

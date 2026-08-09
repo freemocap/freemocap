@@ -171,7 +171,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           text="Auto-open .blend file in Blender when done"
           isToggled={autoOpenBlendFile && blenderSupported}
           onToggle={setAutoOpenBlendFile}
-          disabled={!blenderSupported}
+          disabled={!blenderSupported || !exportToBlenderEnabled}
         />
 
         <ButtonSm

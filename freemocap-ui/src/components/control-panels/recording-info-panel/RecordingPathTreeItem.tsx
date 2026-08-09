@@ -62,7 +62,9 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     const handleSelectDirectory = async (): Promise<void> => {
         if (!isElectron || !api) return;
         try {
-            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            const result: string | null = await api.fileSystem.selectDirectory.mutate({
+                defaultPath: recordingDirectory || undefined,
+            });
             if (result) dispatch(recordingDirectoryChanged(result));
         } catch (error) {
             console.error('Failed to select directory:', error);

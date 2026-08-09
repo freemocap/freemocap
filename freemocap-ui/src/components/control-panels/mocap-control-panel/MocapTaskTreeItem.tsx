@@ -57,7 +57,9 @@ export const MocapTaskTreeItem: React.FC = () => {
             return;
         }
         try {
-            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            const result: string | null = await api.fileSystem.selectDirectory.mutate({
+                defaultPath: mocapRecordingPath || undefined,
+            });
             if (result) {
                 await setManualRecordingPath(result);
             }

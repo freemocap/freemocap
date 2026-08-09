@@ -90,7 +90,9 @@ export const MocapPanel: React.FC = () => {
     const handleSelectDirectory = async (): Promise<void> => {
         if (!isElectron || !api) return;
         try {
-            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            const result: string | null = await api.fileSystem.selectDirectory.mutate({
+                defaultPath: mocapRecordingPath || undefined,
+            });
             if (result) {
                 await setManualRecordingPath(result);
             }

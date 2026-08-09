@@ -78,7 +78,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
 
     const handleChangeFolder = useCallback(async () => {
         if (!api || busy || isRecording) return;
-        const selected = await api.fileSystem.selectDirectory.mutate();
+        const selected = await api.fileSystem.selectDirectory.mutate({
+            defaultPath: baseFolder || undefined,
+        });
         if (!selected) return; // user canceled the picker
         setBusy(true);
         setStatus('Applying data folder…');

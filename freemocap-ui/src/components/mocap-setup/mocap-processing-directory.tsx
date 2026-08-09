@@ -28,7 +28,9 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   const handleSelectDirectory = async (): Promise<void> => {
     if (!isElectron || !api) return;
     try {
-      const result: string | null = await api.fileSystem.selectDirectory.mutate();
+      const result: string | null = await api.fileSystem.selectDirectory.mutate({
+        defaultPath: mocapRecordingPath || undefined,
+      });
       if (result) await setManualRecordingPath(result);
     } catch (error) {
       console.error("Failed to select directory:", error);

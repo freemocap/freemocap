@@ -29,7 +29,14 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
     directoryInfo,
     calibrationTomlPath,
     dispatchProcessMocapRecording,
+    validateDirectory,
   } = useMocap();
+
+  useEffect(() => {
+    if (mocapRecordingPath) {
+      validateDirectory(mocapRecordingPath);
+    }
+  }, [mocapRecordingPath, validateDirectory]);
 
   const processBlockedReason = useMemo((): string | null => {
     if (canProcessMocapRecording) return null;

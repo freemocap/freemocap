@@ -1,12 +1,16 @@
 import React, { useState } from "react";
 import { useAppSelector } from "@/store";
+import { useElectronIPC } from "@/services";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
+import { ImportVideosModal } from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 
 export const RecordingInfoPanel: React.FC = () => {
   const recordingInfo = useAppSelector((state) => state.recording);
+  const { isElectron } = useElectronIPC();
 
   const [mocapSetupModalOpen, setMocapSetupModalOpen] = useState(false);
+  const [importVideosModalOpen, setImportVideosModalOpen] = useState(false);
 
   return (
     <>
@@ -21,6 +25,16 @@ export const RecordingInfoPanel: React.FC = () => {
               onClick={() => setMocapSetupModalOpen(true)}
             />
           </div>
+          <div className="flex flex-row flex-1 items-center gap-1 w-full">
+            <ButtonSm
+              text="Import Videos"
+              iconClass="download-icon"
+              className="text-nowrap flex flex-row flex-1 gap-1 br-1 button sm flex-inline text-left items-center full-width quaternary justify-center"
+              onClick={() => setImportVideosModalOpen(true)}
+              disabled={!isElectron}
+              title={!isElectron ? "Import is only available in the desktop app" : undefined}
+            />
+          </div>
         </div>
       </div>
 
@@ -28,6 +42,9 @@ export const RecordingInfoPanel: React.FC = () => {
       {mocapSetupModalOpen && (
         <MocapSetupModal onClose={() => setMocapSetupModalOpen(false)} />
       )}
+
+      {/* Import Videos Modal */}
+      <ImportVideosModal open={importVideosModalOpen} onClose={() => setImportVideosModalOpen(false)} />
     </>
   );
 };

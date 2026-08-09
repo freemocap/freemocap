@@ -124,6 +124,41 @@ export const stopMocapRecording = createAsyncThunk<
     }
 );
 
+export const importVideos = createAsyncThunk<
+    { success: boolean; recordingName: string; recordingPath: string; videoCount: number },
+    { videoPaths: string[]; recordingName?: string; baseDirectory?: string },
+    { state: RootState; rejectValue: string }
+>(
+    'mocap/importVideos',
+    async ({ videoPaths, recordingName, baseDirectory }, { rejectWithValue }) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.importVideos, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ videoPaths, recordingName, baseDirectory }),
+            });
+
+            if (!response.ok) {
+                const errorMessage = await getDetailedErrorMessage(response);
+                return rejectWithValue(errorMessage);
+            }
+
+            const result = await response.json();
+            console.log('✅ Imported videos:', result);
+            return {
+                success: result.success,
+                recordingName: result.recording_name,
+                recordingPath: result.recording_path,
+                videoCount: result.video_count,
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error('❌ Failed to import videos:', errorMessage);
+            return rejectWithValue(errorMessage);
+        }
+    }
+);
+
 export const processMocapRecording = createAsyncThunk<
     { success: boolean; message?: string; results?: unknown; pipeline_id?: string },
     void,

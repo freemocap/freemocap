@@ -1,4 +1,5 @@
 import logging
+import shutil
 from copy import deepcopy
 from pathlib import Path
 
@@ -8,7 +9,7 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
+from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH, default_recording_name, get_default_freemocap_recordings_path
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +95,19 @@ class MocapRecordingResponse(BaseModel):
     pipeline_id: str | None = None
 
 
+class ImportVideosRequest(BaseModel):
+    video_paths: list[str] = Field(alias="videoPaths")
+    recording_name: str | None = Field(default=None, alias="recordingName")
+    base_directory: str | None = Field(default=None, alias="baseDirectory")
+
+
+class ImportVideosResponse(BaseModel):
+    success: bool
+    recording_name: str
+    recording_path: str
+    video_count: int
+
+
 # ==================== Endpoints ====================
 
 
@@ -134,6 +148,47 @@ async def stop_mocap_recording(request: StopMocapRecordingRequest) -> dict[str, 
     except Exception as e:
         logger.exception(f"Error stopping mocap recording: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@mocap_router.post("/recording/import")
+async def import_videos(request: ImportVideosRequest) -> ImportVideosResponse:
+    """Create a new recording folder from externally-recorded, pre-synchronized videos."""
+    if not request.video_paths:
+        raise HTTPException(status_code=400, detail="No video files provided")
+
+    base_directory = (
+        Path(request.base_directory).expanduser()
+        if request.base_directory
+        else Path(get_default_freemocap_recordings_path())
+    )
+    recording_name = request.recording_name or default_recording_name(string_tag="imported")
+
+    # Legacy layout only — a single `synchronized_videos` folder at the recording root.
+    # Not `RecordingStructure.create_on_disk()`: that also creates `videos/annotated`,
+    # `output`, and `logs`, which an imported recording (nothing but videos) doesn't need yet.
+    recording_path = base_directory / recording_name
+    synchronized_videos_dir = recording_path / "synchronized_videos"
+    synchronized_videos_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        for video_path in request.video_paths:
+            src = Path(video_path).expanduser()
+            if not src.is_file():
+                raise HTTPException(status_code=400, detail=f"Video file not found: {video_path}")
+            shutil.copy2(src, synchronized_videos_dir / src.name)
+    except Exception as e:
+        logger.exception(f"Error importing videos into {recording_path}: {e}")
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail=str(e))
+
+    logger.info(f"Imported {len(request.video_paths)} video(s) into {recording_path}")
+    return ImportVideosResponse(
+        success=True,
+        recording_name=recording_name,
+        recording_path=str(recording_path),
+        video_count=len(request.video_paths),
+    )
 
 
 @mocap_router.post("/recording/process")

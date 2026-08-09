@@ -13,10 +13,12 @@ import {useRecordingStatus} from "@/hooks/useRecordingStatus";
 import {selectEffectiveRecordingPath} from "@/store/slices/active-recording/active-recording-slice";
 import {useAppSelector} from "@/store";
 import IconButton from "@/components/ui-components/IconButton";
+import {ImportVideosModal} from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
 
 export const MocapPanel: React.FC = () => {
     const {setOverlayVisibility} = useServer();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const {api, isElectron} = useElectronIPC();
 
     const {
@@ -214,6 +216,16 @@ export const MocapPanel: React.FC = () => {
                     {processBlockedReason && (
                         <p className="text sm text-gray">{processBlockedReason}</p>
                     )}
+
+                    <button
+                        className="button sm secondary w-full"
+                        onClick={() => setIsImportModalOpen(true)}
+                        disabled={!isElectron}
+                        title={!isElectron ? "Import is only available in the desktop app" : undefined}
+                    >
+                        Import Videos
+                    </button>
+                    <ImportVideosModal open={isImportModalOpen} onClose={() => setIsImportModalOpen(false)}/>
 
                     {displayError && (
                         <div className="toast-notification error">

@@ -12,6 +12,10 @@ function buildPosthocConfig(state: RootState) {
     // Explicit override wins; fall back to the calibration loaded in the calibration panel
     const calibrationTomlPath =
         state.mocap.calibrationTomlPath ?? selectLoadedCalibration(state)?.path ?? null;
+    // The freemocap_blender_addon only understands MediaPipe output so far - gate the
+    // request payload here rather than clobbering the user's toggle preference in the
+    // UI, so switching the detector away and back doesn't lose their selection.
+    const blenderSupported = config.detectorType === "mediapipe";
     return {
         detectorType: config.detectorType,
         rtmPoseModelName: config.rtmPoseModelName,
@@ -25,9 +29,9 @@ function buildPosthocConfig(state: RootState) {
         calibrationTomlPath,
         triangulationConfig: config.triangulation,
         filterConfig: config.posthoc_filter,
-        exportToBlender: blender.exportToBlenderEnabled,
+        exportToBlender: blenderSupported && blender.exportToBlenderEnabled,
         blenderExePath: blender.blenderExePath ?? blender.detectedBlenderExePath,
-        autoOpenBlendFile: blender.autoOpenBlendFile,
+        autoOpenBlendFile: blenderSupported && blender.autoOpenBlendFile,
     };
 }
 

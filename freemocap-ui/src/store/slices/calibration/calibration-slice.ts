@@ -3,6 +3,7 @@ import {RootState} from '../../types';
 import {loadFromStorage} from '@/store/persistence';
 import {
     calibrateRecording,
+    checkPyceresAvailability,
     loadCalibrationForRecording,
     loadCalibrationToml,
     startCalibrationRecording,
@@ -43,6 +44,8 @@ export interface CalibrationState {
     directoryInfo: CalibrationDirectoryInfo | null;
     loadedCalibration: LoadedCalibration | null;
     dismissedCalibrationPath: string | null;
+    pyceresAvailable: boolean | null;
+    isCheckingPyceresAvailability: boolean;
 }
 
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
@@ -64,6 +67,8 @@ const initialState: CalibrationState = {
     directoryInfo: null,
     loadedCalibration: null,
     dismissedCalibrationPath: null,
+    pyceresAvailable: null,
+    isCheckingPyceresAvailability: false,
 };
 
 export const calibrationSlice = createSlice({
@@ -158,6 +163,22 @@ export const calibrationSlice = createSlice({
                 state.isLoading = false;
                 state.error = action.payload || 'Failed to calibrate recording';
             });
+
+        builder
+            .addCase(checkPyceresAvailability.pending, (state) => {
+                state.isCheckingPyceresAvailability = true;
+            })
+            .addCase(checkPyceresAvailability.fulfilled, (state, action) => {
+                state.isCheckingPyceresAvailability = false;
+                state.pyceresAvailable = action.payload.available;
+                if (!action.payload.available && state.config.solverMethod === 'pyceres') {
+                    state.config.solverMethod = 'anipose';
+                }
+            })
+            .addCase(checkPyceresAvailability.rejected, (state) => {
+                state.isCheckingPyceresAvailability = false;
+                state.pyceresAvailable = false;
+            });
     },
 });
 
@@ -170,6 +191,7 @@ export const selectCalibrationError = (state: RootState) => state.calibration.er
 export const selectCalibrationDirectoryInfo = (state: RootState) => state.calibration.directoryInfo;
 export const selectLoadedCalibration = (state: RootState) => state.calibration.loadedCalibration;
 export const selectDismissedCalibrationPath = (state: RootState) => state.calibration.dismissedCalibrationPath;
+export const selectPyceresAvailable = (state: RootState) => state.calibration.pyceresAvailable;
 
 export const selectCalibrationRecordingPath = selectActiveRecordingFullPath;
 

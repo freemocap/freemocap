@@ -80,6 +80,7 @@ class ServerUrls {
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
             calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
             calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
+            calibrationPyceresAvailability: `${baseUrl}/freemocap/calibration/solver-methods/pyceres-availability`,
 
             // Mocap endpoints
             mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,

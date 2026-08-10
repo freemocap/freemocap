@@ -333,12 +333,14 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
 
   const handleBrowseDirectory = useCallback(async () => {
     if (!isElectron || !api) return;
-    const result: string | null = await api.fileSystem.selectDirectory.mutate();
+    const result: string | null = await api.fileSystem.selectDirectory.mutate({
+      defaultPath: manualPath || undefined,
+    });
     if (!result) return;
     const trimmed = result.trim().replace(/[\\/]+$/, "");
     setManualPath(trimmed);
     loadRecording(trimmed);
-  }, [api, isElectron, loadRecording]);
+  }, [api, isElectron, loadRecording, manualPath]);
 
   const toggleSortDir = () => {
     setSortDir((d) => (d === "desc" ? "asc" : "desc"));

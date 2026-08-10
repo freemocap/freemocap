@@ -167,9 +167,18 @@ export const api = t.router({
     // File System Operations
     fileSystem: t.router({
         selectDirectory: t.procedure
-            .mutation(async () => {
+            .input(z.object({ defaultPath: z.string().optional() }).optional())
+            .mutation(async ({ input }) => {
+                // Without an explicit defaultPath, macOS's NSOpenPanel falls back to
+                // whatever directory it last remembered for this app's bundle identity
+                // (e.g. Documents for a freshly-signed packaged build) instead of the
+                // directory the user is currently browsing.
+                const defaultPath = input?.defaultPath && fs.existsSync(input.defaultPath)
+                    ? input.defaultPath
+                    : undefined;
                 const result = await dialog.showOpenDialog({
                     properties: ['openDirectory'],
+                    ...(defaultPath ? { defaultPath } : {}),
                 });
                 return result.canceled ? null : result.filePaths[0];
             }),
@@ -177,7 +186,10 @@ export const api = t.router({
         openFolder: t.procedure
             .input(z.object({ path: z.string() }))
             .mutation(async ({ input }) => {
-                await shell.openPath(input.path);
+                const errorMessage = await shell.openPath(input.path);
+                if (errorMessage) {
+                    throw new Error(errorMessage);
+                }
                 return true;
             }),
 

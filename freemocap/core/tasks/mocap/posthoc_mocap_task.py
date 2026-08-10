@@ -29,11 +29,11 @@ from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
+from freemocap.core.tasks.mocap.mocap_helpers.recording_framerate import get_recording_framerate
 from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
     skeleton_from_mediapipe_observation_recorders
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
-from freemocap.utilities.recording_framerate import get_recording_framerate
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001

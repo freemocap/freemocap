@@ -12,6 +12,7 @@ import NameDropdownSelector from "@/components/ui-components/NameDropdownSelecto
 import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
+import charucoSettingsImage from "@/assets/images/charuco_settings.webp";
 
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 
@@ -173,7 +174,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
                   "Solver method: There are two options. Select the appropriate one depending on the use case."
                 }
                 image={true}
-                imageSrc="/images/charuco_settings.webp"
+                imageSrc={charucoSettingsImage}
                 position="pos-right"
                 variant="default"
                 onClose={closeTooltip}

@@ -421,7 +421,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
                 disabled={!isElectron}
                 title={!isElectron ? "Import is only available in the desktop app" : undefined}
               />
-              <ImportVideosModal open={isImportModalOpen} onClose={() => setIsImportModalOpen(false)}/>
+              <ImportVideosModal
+                open={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                onImported={() => fetchRecordings(true)}
+              />
             </div>
           </div>
           <div className="folder-path-selection-group flex gap-1 flex-row flex-nowrap items-center flex-row justify-content-space-between w-full">

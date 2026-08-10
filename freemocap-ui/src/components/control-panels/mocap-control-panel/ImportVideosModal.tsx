@@ -9,6 +9,7 @@ import SubactionHeader from '@/components/ui-components/SubactionHeader';
 interface ImportVideosModalProps {
     open: boolean;
     onClose: () => void;
+    onImported?: () => void;
 }
 
 // Mirrors the backend's `default_recording_name` (freemocap/system/default_paths.py) —
@@ -25,7 +26,7 @@ function generateDefaultRecordingName(): string {
     return `${isoTimestamp}_gmt${gmtOffset}`.replace(/:/g, '_') + '_imported';
 }
 
-export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose}) => {
+export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose, onImported}) => {
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
 
@@ -120,13 +121,14 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                 baseDirectory: parsed?.baseDirectory,
                 origin: 'browsed',
             }));
+            onImported?.();
             onClose();
         } catch (err) {
             setError(typeof err === 'string' ? err : 'Failed to import videos');
         } finally {
             setBusy(false);
         }
-    }, [videoPaths, recordingName, busy, dispatch, onClose]);
+    }, [videoPaths, recordingName, busy, dispatch, onClose, onImported]);
 
     const importDisabledReason = busy
         ? 'Importing…'

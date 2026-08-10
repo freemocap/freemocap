@@ -45,8 +45,16 @@ interface CalibrationSettingsProps {
 
 const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { config, updateCalibrationConfig } = useCalibration();
+  const { config, updateCalibrationConfig, pyceresAvailable } = useCalibration();
   const board = config.charucoBoard;
+
+  const solverOptions = useMemo(
+    () =>
+      pyceresAvailable === false
+        ? PRESET_OPTIONS_SOLVER.filter((label) => label !== "Accurate")
+        : PRESET_OPTIONS_SOLVER,
+    [pyceresAvailable],
+  );
 
   const handleClose = useCallback(() => {
     if (onClose) onClose();
@@ -243,17 +251,24 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         <SubactionHeader text="Solver settings" />
 
-        {/* Method dropdown */}
-        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Method</span>
-          <NameDropdownSelector
-            key={config.solverMethod}
-            options={PRESET_OPTIONS_SOLVER}
-            initialValue={solverMethodToLabel[config.solverMethod]}
-            onChange={handleSolverChange}
-            className="flex flex-row"
-          />
-        </div>
+        {/* Method dropdown (only shown when there's a choice to make) */}
+        {solverOptions.length > 1 ? (
+          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+            <span className="text-sm">Method</span>
+            <NameDropdownSelector
+              key={config.solverMethod}
+              options={solverOptions}
+              initialValue={solverMethodToLabel[config.solverMethod]}
+              onChange={handleSolverChange}
+              className="flex flex-row"
+            />
+          </div>
+        ) : (
+          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+            <span className="text-sm">Method</span>
+            <span className="text-sm">{solverMethodToLabel[config.solverMethod]}</span>
+          </div>
+        )}
       </div>
     </div>
   );

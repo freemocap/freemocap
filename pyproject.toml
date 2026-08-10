@@ -39,7 +39,7 @@ cuda = ["skellytracker[all-cuda]"]
 cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
-skellycam = { git = "https://github.com/freemocap/skellycam", branch = "philip/fix_json_timestamp_stats" }
+skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }

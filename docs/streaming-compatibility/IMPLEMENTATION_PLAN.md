@@ -51,7 +51,9 @@
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| **Incoming SkellyModels quaternion code** (lives outside this repo; user supplies) | Segment-rotation internals; BVH-overlap assessment | User brings the code in when ready |
+| **Segment-rotation / kinematics engine** — appears to be `clients/bs/python_code/kinematics_core` (`RigidBodyKinematics` + `Quaternion`); *confirm* | Segment-rotation internals; BVH-overlap assessment; kinematics fold-in ([11](11-kinematics-fold-in.md)) | User confirms source; then fold in |
+| **Serialization format decision** (adopt bs/ tidy long format? — [10](10-serialization-and-tidy-format.md)) | On-disk schema; SkellyForge-parquet retirement | This review |
+| **Standard-human shape** (rig-first vs markers-first — still "talk it through") | Schema channels; VMC adapter | User decision |
 | Rest-pose / T-pose reference representation | Rotation correctness (identity == T-pose) | SkellyModels extension design |
 | Forward-axis confirmation of FMC canonical convention | Coordinate converter | Confirm against ground-plane calibration basis |
 | Multi-subject keying detail | Subject addressing on the frame | Multi-person tracking design |
@@ -110,6 +112,25 @@ Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is i
 
 ## Progress log
 
+- **2026-08-10 (standard-human)** — Confirmed: `bs/kinematics_core` **is** the rotation/kinematics engine
+  (copy/adapt, **not** import — reference only); adopt the tidy-long serialization; **VMC/VRM humanoid as
+  the standard human**, rigid-body-per-bone; SkellyForge owns the model+engine, FreeMoCap holds the realtime
+  variant. Agreed the **twist policy** (full-frame → chain/hinge-resolved twist → damped minimal-twist
+  fallback) and the **derived-joint-center** approach (the clavicle *should* root at an anterior SC joint, not the shoulder
+  midpoint / C7-T1 — but the anterior fix needs a richer mapping form and is **deferred**; v1 keeps a convex
+  mapping). Wrote
+  [12 — Standard Human Model](12-standard-human-model.md). **Open:** face blendshapes; offset magnitudes;
+  VRM bone subset for v1; scapula modeling.
+- **2026-08-10 (investigation)** — Investigated the overlap between SkellyModels' `Human` actor,
+  FreeMoCap `core/kinematics`, and `clients/bs/python_code/kinematics_core`. Findings: the canonical
+  human *model* is already SkellyModels-SSOT; the biomechanics *math* is duplicated (batch vs realtime)
+  with a few misaligned hardcoded segment lists; and **`bs/kinematics_core` is a mature per-segment
+  rigid-body engine (quaternion orientation + angular kinematics + tidy serialization) that appears to be
+  the "segment-rotation code that lives elsewhere."** Its on-disk serialization (reference-geometry JSON +
+  tidy long CSV) is the disk twin of the standard stream's schema+samples, and a cleaner format than the
+  SkellyForge parquet. Wrote [09](09-standard-stream-protocol.md) (wire contract), [10](10-serialization-and-tidy-format.md)
+  (serialization), [11](11-kinematics-fold-in.md) (kinematics fold-in). **Open:** confirm bs/ is the rotation
+  source; adopt tidy format?; resolve the standard-human shape.
 - **2026-08-10 (revised)** — Architecture **inverted** after a review pass over the first draft. New
   keystone: reshape FreeMoCap's own streaming into an **LSL-shaped standard stream** (schema once +
   timestamped samples), make it the central representation, and derive everything from it — the LSL

@@ -8,6 +8,30 @@ import type {LoadedCalibration} from "./calibration-slice";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 
+export const checkPyceresAvailability = createAsyncThunk<
+    { available: boolean; message?: string | null },
+    void,
+    { state: RootState; rejectValue: string }
+>(
+    'calibration/checkPyceresAvailability',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await fetch(serverUrls.endpoints.calibrationPyceresAvailability);
+            if (!response.ok) {
+                return rejectWithValue(await getDetailedErrorMessage(response));
+            }
+            const data = await response.json();
+            return {
+                available: !!data.available,
+                message: data.message ?? null,
+            };
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Unknown error';
+            return rejectWithValue(msg);
+        }
+    }
+);
+
 export const loadCalibrationForRecording = createAsyncThunk<
     LoadedCalibration | null,
     { recordingId: string; recordingParentDirectory?: string | null },

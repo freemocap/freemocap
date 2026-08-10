@@ -86,6 +86,8 @@ class ServerUrls {
             mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
+            importVideos: `${baseUrl}/freemocap/mocap/recording/import`,
+            checkVideoSync: `${baseUrl}/freemocap/mocap/recording/check_sync`,
 
             // Posthoc pipeline control
             stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,

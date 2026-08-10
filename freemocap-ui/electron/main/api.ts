@@ -307,6 +307,18 @@ export const api = t.router({
                 return result.canceled ? null : result.filePaths[0];
             }),
 
+        selectVideoFiles: t.procedure
+            .mutation(async () => {
+                const result = await dialog.showOpenDialog({
+                    properties: ['openFile', 'multiSelections'],
+                    filters: [
+                        { name: 'Video Files', extensions: ['mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv'] },
+                        { name: 'All Files', extensions: ['*'] },
+                    ],
+                });
+                return result.canceled ? [] : result.filePaths;
+            }),
+
 
         validateCalibrationDirectory: t.procedure
             .input(z.object({ directoryPath: z.string() }))

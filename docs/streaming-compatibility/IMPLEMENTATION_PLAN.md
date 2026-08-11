@@ -25,7 +25,7 @@
 - **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; **align** (don't
   delete) the existing `core/kinematics` ([11](11-kinematics-fold-in.md)).
 - **Tracker→canonical mapping migration**: finish removing the "virtual marker" concept; add the
-  `frame_offset` mapping form for off-surface joint centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
+  `anatomical_offset` mapping form for off-surface joint centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
 - **On-disk serialization**: migrate the **parquet** schema to tidy-long ([10](10-serialization-and-tidy-format.md)).
 - Streaming hub: frame tap, latest-frame mailbox, derived views, `StreamingManager`, supervision.
 - `/streaming/*` HTTP control plane (list / start / streams / stop); scoped fail-loud; **start idle**;
@@ -43,7 +43,7 @@
 - VRChat OSC adapter; Rokoko JSON adapter.
 - **Align** the disabled kinematics code to the new engine/models; keep it out of hot loops until validated
   ([06](06-backend-refactor-and-cleanup.md), [11](11-kinematics-fold-in.md)).
-- Scapula (scapulothoracic detail) via the `frame_offset` mechanism ([12](12-standard-human-model.md)).
+- Scapula (scapulothoracic detail) via the `anatomical_offset` mechanism ([12](12-standard-human-model.md)).
 - Face blendshapes driven from tracked face landmarks (null until wired).
 - Dedicated high-frequency `streaming_status` WS message (if `app_state` cadence proves insufficient).
 - One-way-WS decision + authoritative-reconnect fix for the stale-UI-after-crash issue.
@@ -74,8 +74,10 @@ This spec folder. Agree architecture, scope, and open questions before code.
 - [x] This implementation plan revised.
 - [ ] Final review pass with the team.
 
-### Phase 1 — The LSL-shaped standard stream (the foundation) `[not started]`
-Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is its first consumer.
+### Phase 1 — The LSL-shaped standard stream (the foundation) `[planning]`
+Detailed workstream plans live in [`phase-1/`](phase-1/README.md) (WS-1…WS-5; **positions-first**, rotations
+via WS-5 parallel). Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is its first
+consumer.
 - [ ] Backend **standard-stream encoder**: schema once (channels, joint hierarchy, T-pose, convention,
       units) + timestamped sample per frame; fused with the `websocket_server.py` send-path reshape.
 - [ ] Canonical frame carries subject dimension, convention (in schema), confidence/reprojection error.
@@ -120,7 +122,7 @@ Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is i
 ## Progress log
 
 - **2026-08-10 (consistency-pass)** — Full start-to-finish pass reconciling evolved decisions from review
-  notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`frame_offset` mapping
+  notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`anatomical_offset` mapping
   form** (deterministic, anthropometric, no runtime fit) that produces the anterior clavicle SC/GH centers
   ([13](13-tracker-to-canonical-mapping.md), [12](12-standard-human-model.md)); **keep the parquet file**,
   migrate its schema to tidy-long ([10](10-serialization-and-tidy-format.md)); **align, don't delete** the
@@ -135,7 +137,7 @@ Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is i
   variant. Agreed the **twist policy** (full-frame → chain/hinge-resolved twist → damped minimal-twist
   fallback) and the **derived-joint-center** approach (the clavicle *should* root at an anterior SC joint, not the shoulder
   midpoint / C7-T1). *(Superseded by the consistency-pass above — the anterior fix is **not** deferred; it
-  uses the `frame_offset` mapping form.)* Wrote
+  uses the `anatomical_offset` mapping form.)* Wrote
   [12 — Standard Human Model](12-standard-human-model.md). **Open:** face blendshapes; offset magnitudes;
   VRM bone subset for v1; scapula modeling.
 - **2026-08-10 (investigation)** — Investigated the overlap between SkellyModels' `Human` actor,

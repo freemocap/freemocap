@@ -54,7 +54,7 @@ pre-discards. The **Where** column shows whether a fact is static (schema) or pe
 | **Segment rotations** | `segment_rotations: dict[segment, quaternion]` | sample (channels in schema) | **`[IN]` new** | Per-segment quaternion vs. rest pose. Owned by SkellyModels — see below. |
 | **Subjects** | subject dimension / keying | sample + schema | **`[IN]` new** | Multi-subject from day one — see below. |
 | **Convention / hierarchy / rest pose** | units, handedness, axes, joint hierarchy, T-pose | **schema** | **`[IN]` new** | Static — sent once, not per sample. See [07](07-coordinate-conventions.md). |
-| Quality | confidence / reprojection error per point | sample (channels in schema) | **`[IN]` new** | The aggregator already computes per-point reprojection error (px); surfacing it lets LSL carry it. |
+| Quality | `reprojection_error` (3D) / `visibility` (2D) per point | sample (channels in schema) | **`[IN]` new** | Named by what it is — 3D trajectories carry reprojection error (px, already computed); 2D overlays carry visibility. |
 
 > The disabled `body_kinematics` field (inertia ellipsoid / ground references) is **not** part
 > of this contract. See [Live substrate only](#live-substrate-only).
@@ -78,8 +78,8 @@ computation path, live and post-hoc.
   rigidified skeleton + per-bone directions each frame against the canonical `joint_hierarchy`.
 - `AnatomicalStructure` (SkellyForge) — `segment_connections`, `joint_hierarchy`, `bone_length_ratios`, and
   the T-pose rest pose ([12](12-standard-human-model.md)).
-- The post-hoc BVH rotation calculator (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`) — converge on
-  **one** rotation implementation with the folded-in engine.
+- The **vestigial** post-hoc BVH exporter (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`) —
+  **replaced / augmented** by the folded-in engine, not converged-with.
 
 The contract downstream is a per-segment quaternion channel with **identity == rest pose**.
 

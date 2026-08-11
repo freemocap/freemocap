@@ -51,14 +51,16 @@ per active stream.
 An ordered list of channel groups; the sample body is these groups concatenated in this order (so the
 decoder needs no per-frame names). Groups:
 
-- **`points`** — named 3D keypoints/landmarks. Columns: `x, y, z, confidence` (generalizes today's
-  4th "visibility" column). Names come from here, not per-frame.
+- **`points`** — named 3D landmarks. Columns: `x, y, z, reprojection_error` (3D quality — named, never a naked
+  "confidence"). Names come from the schema, not per-frame.
 - **`rotations`** — named per-segment quaternions. Columns: `w, x, y, z` (w-first, matching the `bs/`
   engine's convention; adapters reorder as their target needs). Produced by the folded-in kinematics engine
   ([11](11-kinematics-fold-in.md)) — **no external code to wait on**. Always declared in the schema so the
   wire shape is stable; NaN per the [missing-data rule](#missing-data) for any segment unresolved this frame.
 - **`scalars`** — low-density per-frame values that live on the frame today in `FrontendPayload`:
   `center_of_mass`, `xcom` (and future kinematics). Migrated off JSON into the sample.
+- **`overlays_2d`** — the per-camera 2D projection of the tracked landmarks (`x, y, visibility`), **one block
+  per camera** (keyed by `camera_id`). Matches the 3D data, 2D-only. Camera *images* stay a separate stream.
 
 ## `stream_sample` (the per-frame binary)
 
@@ -76,9 +78,10 @@ SAMPLE_HEADER
 For each block (in schema `sample_layout` order):
   BLOCK_HEADER
     message_type      u1
-    block_kind        u1    ← POINTS | ROTATIONS | SCALARS (replaces KEYPOINTS_3D/SKELETON_3D split)
+    block_kind        u1    ← POINTS | ROTATIONS | SCALARS | OVERLAY_2D
     dtype_code        u1    = FLOAT32
-    cols              u1    ← columns per element (4 for points [x,y,z,conf]; 4 for rotations [w,x,y,z])
+    cols              u1    ← cols/element (points [x,y,z,reprojection_error]; rotations [w,x,y,z]; overlay_2d [x,y,visibility])
+    camera_id         S16    ← empty unless OVERLAY_2D
     num_elements      u4
     data_byte_length  u4
   BLOCK_DATA          row-major [num_elements × cols] float32   ← NO embedded names (schema-backed)
@@ -111,14 +114,13 @@ No translation step — the LSL route reads the same schema + samples the UI doe
 | `TrackerSchemasMessage` | `stream_schema` message | still schema-first; richer payload |
 | binary keypoints blocks (`KEYPOINTS_3D`/`SKELETON_3D`, `embed_names`) | `stream_sample` blocks (`POINTS`/`ROTATIONS`/`SCALARS`) | + timestamp + subject; **drop `embed_names`** (names in schema); + rotation/confidence channels |
 | `FrontendPayload` (CoM, xcom in JSON) | `SCALARS` block in the sample | per-frame numbers move off JSON into the binary sample |
-| `FrontendPayload` 2D overlays | *(unchanged, separate)* | image-overlay render aids stay out of the core standard stream — see Open questions |
+| `FrontendPayload` 2D overlays (per camera) | `OVERLAY_2D` blocks **in the stream** | per-camera 2D projection matching the 3D data (camera *images* stay separate) |
 | `body_kinematics` (always `None`) | *(dropped)* | disabled/dead — [01 live-substrate-only](01-canonical-data-model.md#live-substrate-only) |
 
 ## Open questions
 
-- **2D overlays** (`charuco_overlays` / `skeleton_overlays`): keep them as a separate render-aid message,
-  or fold into the schema/sample model? `TBD` (trigger: contract review). Leaning separate — they're a
-  UI render concern, not stream data.
+- **2D overlays (resolved):** **in the stream** as per-camera `OVERLAY_2D` blocks (`x, y, visibility`),
+  matching the 3D data. Camera *images* stay a separate stream (linked by frame number).
 - **Subject keying**: `subject_id` = stable id where the tracker gives identity, else slot index
   (per [01](01-canonical-data-model.md#multi-subject-from-day-one)); count is dynamic, not in the schema.
 - **Rotation channels are always declared** in the schema (NaN until resolved) so the wire shape is stable —

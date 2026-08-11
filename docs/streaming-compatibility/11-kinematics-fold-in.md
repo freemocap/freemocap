@@ -54,8 +54,9 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
    quaternions" is actually implemented.
 3. **Add a realtime (per-frame) variant** of the orientation solve for the live pipeline, mirroring the
    rigidifier pattern; the batch version stays for posthoc. Both share the definitions (no re-hardcoding).
-4. **Assess overlap with the post-hoc BVH rotation code** (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`)
-   and converge on one rotation implementation.
+4. **Replace/augment the vestigial BVH exporter.** The current skellyforge BVH rotation code
+   (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`) is largely vestigial — the new engine **replaces**
+   (or augments) it, rather than converging with it.
 5. **Feed the standard model**: the per-segment quaternions become the `rotations` channels of the
    standard stream ([09](09-standard-stream-protocol.md)) and the `orientation` trajectories of the tidy
    serialization ([10](10-serialization-and-tidy-format.md)).
@@ -69,7 +70,9 @@ engine is what animates it.
 ## Decisions
 
 - **Source (confirmed):** `bs/kinematics_core` is the rotation/kinematics engine — **copy/adapt, not import**.
-- **Home (confirmed):** the engine lives in **SkellyForge** (SkellyModels owns the anatomy *and* the engine).
+- **Home (confirmed):** the engine lives in **SkellyForge**. Kinematics **consolidates** there — likely
+  *moving* `freemocap/core/kinematics` into SkellyForge rather than keeping two kinematics folders (decide the
+  move when we reach it). **Hard rule: SkellyForge never imports from FreeMoCap** (FreeMoCap imports SkellyForge).
 - **Realtime variant:** a per-frame orientation solve for the live pipeline, sharing definitions with the
   batch engine (no re-hardcoding).
 - **Existing `core/kinematics` — align, don't discard.** Do **not** delete the on-disk kinematics (there's

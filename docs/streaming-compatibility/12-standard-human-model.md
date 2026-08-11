@@ -30,25 +30,25 @@ Each bone's endpoints are **joint centers**, produced from tracker keypoints via
 [tracker→canonical mapping](13-tracker-to-canonical-mapping.md) (string / list-mean / weighted-sum) — the
 one abstraction; there are **no "virtual markers."** Some endpoints are direct keypoints; some are **derived**
 landmarks (`neck_center`, `hips_center`, …). Joint centers that sit *off* the marked surface (the anterior
-clavicle base) can't be a convex mapping — they use the **`frame_offset`** mapping form (below).
+clavicle base) can't be a convex mapping — they use the **`anatomical_offset`** mapping form (below).
 
 Arm chain (worked example): `thorax → SC joint (clavicle base) → clavicle → GH joint (shoulder) → upperArm
 → elbow → lowerArm → wrist → hand`.
 
 ### Derived joint centers and the clavicle
 
-Solved **now** with the `frame_offset` mapping form ([13](13-tracker-to-canonical-mapping.md)) — a
+Solved **now** with the `anatomical_offset` mapping form ([13](13-tracker-to-canonical-mapping.md)) — a
 deterministic, subject-scaled offset in a landmark-defined frame, **no runtime fitting**.
 
 - **Sternoclavicular (SC) joint = the clavicle base.** The clavicle attaches at the **front-center of the
   upper chest** (manubrium), **not** the shoulder midpoint (≈ **C7/T1**, the neck-bone base) — the true SC
-  joint is **anterior + slightly inferior**. Produce it via `frame_offset`: origin = shoulder midpoint; trunk
+  joint is **anterior + slightly inferior**. Produce it via `anatomical_offset`: origin = shoulder midpoint; trunk
   frame (up = `hips_center→neck_center`, lateral = shoulder→shoulder, **anterior = up × lateral**); offset ≈
   15% shoulder-width anterior + a small inferior term (anthropometric ratios). Keep `neck_center` for the
   **neck** bone; the SC joint is a *separate* anterior landmark for the **clavicle** base — this replaces the
   "clavicle → neck_center" error.
 - **Glenohumeral (GH) joint = upper-arm base.** Slightly inferomedial to the acromion "shoulder" keypoint —
-  the same `frame_offset`, smaller magnitude.
+  the same `anatomical_offset`, smaller magnitude.
 - **Hip joint centers / pelvis / thorax origins** — same mechanism wherever an off-surface center is needed.
 
 Offsets are **anthropometry-table ratios of segment lengths**, subject-scaled — **never runtime-fit**. The
@@ -91,7 +91,7 @@ lower confidence than directly-observed markers — surfaced on the stream's con
   start as `null`** until we can derive them from the SkellyTracker face-tracking we already run.
 - **Offset magnitudes (resolved):** from **anthropometry tables + reasonable ratios of segment lengths** —
   **do not runtime-fit** them.
-- **Scapula (resolved → later):** built on the **same `frame_offset` mechanism** as the clavicle; add the
+- **Scapula (resolved → later):** built on the **same `anatomical_offset` mechanism** as the clavicle; add the
   scapulothoracic detail **`[LATER]`**, after the SC/GH offsets land.
 - **Face blendshapes (open):** how tracked face landmarks drive VRM expression weights — `null` until wired.
   `TBD`.

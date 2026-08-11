@@ -43,12 +43,11 @@ def run_subprocess(command_list: List[str]):
 
 def export_to_blender(
         recording_folder_path: str|Path,
+        detector:str,
         blend_file_path: str|Path|None=None,
         blender_exe_path: str|Path|None=None,
         open_file_on_completion:bool=True,
 ):
-    output_data = Path(recording_folder_path) / "output_data"
-    detector = detect_blender_input_detector(output_data)
     if detector != "mediapipe":
         message = (
             f"Blender export skipped: recording was processed with '{detector}', but the "
@@ -56,9 +55,10 @@ def export_to_blender(
             "MediaPipe to export to Blender."
         )
         logger.warning(message)
-        raise FileNotFoundError(message)
+        raise ValueError(message)
 
-    raise_if_not_blender_ready(recording_folder_path)
+    raise_if_not_blender_ready(recording_folder_path, 
+                               detector = detector)
 
     if blender_exe_path is None:
         blender_exe_path:Path = Path(get_best_guess_of_blender_path())

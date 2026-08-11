@@ -120,17 +120,32 @@ consumer.
 
 ## Todo (current focus)
 
-1. **SH-1 — Standard-human model** (current priority): create `skellyforge/skellymodels/standard_human/`
-   with VRM 1.0 bones + alias table + blendshape declarations + T-pose reference geometry. See
-   [phase-1/standard-human-model/](phase-1/standard-human-model/README.md).
-2. **SH-3 — Kinematics engine fold-in** (parallel with SH-1): copy/adapt `bs/kinematics_core` into
-   `skellyforge/kinematics/`.
-3. **SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint centers.
+1. ✅ **SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
+   (human_bones, aliases, blendshapes, model + validators).
+2. **SH-3 — Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into
+   `skellyforge/kinematics/`. Coordinate frame math, quaternion utilities, rigid-body kinematics
+   model, orientation solver (batch + realtime variants).
+3. **SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
+   centers. Produce full canonical landmark set for the standard human.
 4. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
 5. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
 
 ## Progress log
 
+- **2026-08-11 (SH-1 implemented)** — Standard-human model built in
+  `skellyforge/skellymodels/standard_human/`. Four modules, zero single-word names:
+  `human_bones.py` (`HumanBone`, `BoneReferenceGeometry`, `CoordinateFrameDefinition`,
+  `TwistPolicy` — dataclasses, identity-quaternion==T-pose contract, twist tiers: full_frame /
+  chain_resolved / damped_minimal, singularity-gate-aware); `human_bone_aliases.py` (55-bone
+  `BONE_ALIASES` table with `vrm` + `unreal` targets, `resolve_alias()` with safe-fallback
+  for missing entries); `human_blendshapes.py` (52 ARKit `BlendShapeChannel` enum +
+  `VRM_EXPRESSION_ARKIT_MAPPING` for the Phase-3 adapter); `standard_human_model.py`
+  (`StandardHuman` Pydantic model with validators: duplicate-name rejection, single-root
+  enforcement, bad-parent/cycle/twist-source detection, hierarchy + chain + children
+  accessors, `from_bone_definitions()` factory, anthropometric ratio table). Validated:
+  smoke-test green (construction, hierarchy, validators). `pydantic` added as skellyforge
+  dependency. **Next: SH-3 (kinematics engine fold-in) in parallel with SH-2 (tracker→canonical
+  mappings + anatomical_offset).**
 - **2026-08-11 (standard-human decisions locked)** — Strategic review of the canonical human model
   against VRM/VMC/Unreal ecosystem realities. **Decisions locked (do not re-litigate):**
   - Bone set = VRM 1.0 humanoid (full body + hands + face); VMC adapter maps down to VRM 0.x names.

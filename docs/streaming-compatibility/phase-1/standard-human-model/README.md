@@ -5,7 +5,7 @@
 > [01](../../01-canonical-data-model.md), [11](../../11-kinematics-fold-in.md),
 > [12](../../12-standard-human-model.md), [13](../../13-tracker-to-canonical-mapping.md).
 >
-> Status: **plan — IMPLEMENT (SH-1 first). All design decisions LOCKED 2026-08-11.**
+> Status: **implementing — SH-1 DONE 2026-08-11. Next: SH-3 (kinematics engine) || SH-2 (mappings).**
 
 ## The goal (one sentence)
 

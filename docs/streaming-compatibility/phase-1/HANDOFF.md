@@ -1,4 +1,4 @@
-# Phase 1 Handoff — 2026-08-11 (updated: standard-human model decisions locked)
+# Phase 1 Handoff — 2026-08-11 (updated: SH-1 complete)
 
 ## Start here (do this before touching code)
 
@@ -18,9 +18,9 @@
 - freemocap venv is **synced** (`uv sync` in `freemocap/`; heavy — mediapipe/onnx).
 - Contract tests (baseline, 12 green):
   `cd freemocap && uv run pytest freemocap/tests/test_standard_stream_contract.py freemocap/tests/test_stream_schema_builder.py -q`
-- skellyforge changes don't run in the freemocap venv (git-pinned). Verify in skellyforge's own env
-  (no `.venv` yet — `cd skellyforge && uv sync`). Quick model-load smoke test (local source shadowed):
-  `PYTHONPATH=skellyforge freemocap/.venv/Scripts/python.exe -c "from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure as A; from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo as B; print(len(A.from_model_info(B(),'body').landmark_names))"`
+- skellyforge venv is **now synced** (`cd skellyforge && uv sync` — pydantic added as a new dependency).
+  Smoke-test the standard human model:
+  `cd skellyforge && uv run python -c "from skellyforge.skellymodels.standard_human import StandardHuman, HumanBone, get_blendshape_count; print(f'OK — {get_blendshape_count()} blendshape channels')"`
 
 ## Where we are (all threads)
 
@@ -29,19 +29,26 @@
 | WS-1 — standard-stream contract (schema+sample+codecs) | **done**, 8 tests | [phase-1/01](01-standard-stream-contract.md) |
 | WS-3 — schema **builder** (pure) | **done**, 4 tests | [phase-1/03](03-canonical-frame-extensions.md) |
 | SkellyModels model layer → pure first-class landmarks | **done (skellyforge local — awaiting user commit)** | [13](../13-tracker-to-canonical-mapping.md) |
-| Route **posthoc** through the mapping + retire legacy tracker model-infos | **remaining** | [13 — Remaining work](../13-tracker-to-canonical-mapping.md) |
-| **Standard-human model (SH-1…SH-5) — DECISIONS LOCKED** | **current focus** | [standard-human-model/](standard-human-model/README.md) |
-| WS-3 — SkellyForge **adapter** + aggregator wiring | pending (gated on SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
+| Route **posthoc** through the mapping + retire legacy tracker model-infos | **remainder** | [13 — Remaining work](../13-tracker-to-canonical-mapping.md) |
+| **SH-1 — Standard-human model** | **DONE** | [standard-human-model/](standard-human-model/README.md) |
+| **SH-3 — Kinematics engine fold-in** | **NEXT (parallel track)** | [11](../11-kinematics-fold-in.md) |
+| **SH-2 — Tracker-to-canonical mappings + anatomical_offset** | **NEXT (parallel with SH-3)** | [13](../13-tracker-to-canonical-mapping.md) |
+| SH-4 — Orientation solve | gated on SH-1 + SH-3 | [standard-human-model/](standard-human-model/README.md) |
+| SH-5 — Wire it up | gated on SH-1..4 | [standard-human-model/](standard-human-model/README.md) |
+| WS-3 — SkellyForge adapter + aggregator wiring | pending (gated on SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
 | WS-2 / WS-4 / WS-5 | not started | [02](02-backend-encoder-and-ws-reshape.md), [04](04-ui-wedge.md), [05](05-kinematics-foldin-rotations.md) |
 
-**User's current priority:** Standard-human model (SH-1 → SH-3 → SH-2 → SH-4 → SH-5). The streaming work
-needs the canonical human defined first.
+**User's current priority:** SH-3 (kinematics engine) in parallel with SH-2 (tracker-to-canonical mappings).
 
 ## Where the last person stopped
 
-The strategic design for the standard human model was finalized (2026-08-11 conversation). The decisions
-below are **locked** — do not re-litigate. The next step is **SH-1 implementation**: create the standard
-human model in `skellyforge/skellymodels/standard_human/`.
+**SH-1 is complete.** `skellyforge/skellymodels/standard_human/` contains the full standard human model:
+`human_bones.py` (dataclasses), `human_bone_aliases.py` (55 bones, vrm+unreal targets),
+`human_blendshapes.py` (52 ARKit + VRM expression mapping), `standard_human_model.py`
+(Pydantic model with tree/hierarchy validators). Pydantic added as skellyforge dependency.
+All smoke-tested green in the skellyforge venv.
+
+**Next in priority order: SH-3 then SH-2, running in parallel.**
 
 ## Load-bearing decisions (all LOCKED — 2026-08-11)
 

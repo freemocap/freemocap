@@ -61,7 +61,10 @@ rotations on the Phase-1 critical path — was rejected.)*
 - [x] Sequencing decision made — **(A) positions-first**; rotations via WS-5 (parallel).
 - [x] All Phase-1 super-specific plans drafted (WS-1…WS-5).
 - [x] **WS-1 implemented** — `core/streaming/standard_stream/` (contract + codecs), 8 tests green.
-- [ ] WS-3 → WS-2 → WS-4 (WS-5 parallel).
+- [x] **SH-1 (standard-human model) implemented** — `skellyforge/skellymodels/standard_human/`
+      (human_bones, aliases, blendshapes, model + validators). VRM 1.0 bones, 52 ARKit channels,
+      55-bone alias table with vrm+unreal targets.
+- [ ] SH-3 → SH-2 → SH-4 → SH-5 (WS-5 feed-in) → WS-3 → WS-2 → WS-4
 
 Plans: [WS-1 contract](01-standard-stream-contract.md) · [WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [WS-4 UI wedge](04-ui-wedge.md) ·

@@ -2,7 +2,7 @@
 
 > The linchpin: the wire contract as code, **unit-testable in isolation, with no pipeline or WebSocket wiring**
 > (that is WS-2). Realizes [09 — Standard Stream Protocol](../09-standard-stream-protocol.md).
-> **Status: plan for agreement — no code until agreed.**
+> **Status: ✅ implemented — `freemocap/core/streaming/standard_stream/`; 8 contract tests green.**
 
 ## Goal
 
@@ -13,9 +13,10 @@ build against these types.
 ## Where it lives (decided)
         
 A new module `freemocap/core/streaming/standard_stream/`:
-- `schema.py` — the schema (StreamInfo) types + JSON codec.
-- `sample.py` — the sample wire format (numpy dtypes) + binary encode/decode.
-- `conventions.py` — the `CoordinateConvention` value type ([07](../07-coordinate-conventions.md)).
+- `stream_schema.py` — the schema (StreamInfo) types + JSON codec.
+- `stream_sample.py` — the sample wire format (numpy dtypes) + binary encode/decode.
+- `coordinate_convention.py` — the `CoordinateConvention` value type ([07](../07-coordinate-conventions.md)).
+- `lsl_bridge.py` — schema→StreamInfo channels + sample→flat-vector (pass-through parity).
 - `__init__.py` — public API.
 
 Transport-agnostic (the WS relay *and* the LSL route consume it). **Schema uses `msgspec`.** SkellyForge can
@@ -29,7 +30,7 @@ sense — we can shuffle later.
 | `api/websocket/tracker_schema_message.py` — `TrackerSchemasMessage` / `TrackerDefinition` `{name, tracked_points, connections}` | the richer `stream_schema` |
 | `api/websocket/binary_keypoints_protocol.py` — numpy-dtype header/block/footer framing | the `stream_sample` framing |
 | `core/viz/frontend_keypoints_serializer.py::build_keypoints_payload` | the sample **encoder** |
-| `core/viz/frontend_payload.py::FrontendPayload` (CoM/xcom numeric bits) | a `SCALARS` block |
+| `core/viz/frontend_payload.py::FrontendPayload` (CoM/xcom) | a `POINTS` block (derived points) |
 | `FrontendPayload` 2D overlays (`skeleton_overlays`, per camera) | `OVERLAY_2D` blocks (per camera, **in** the stream) |
 
 ## The schema — `schema.py`
@@ -37,7 +38,7 @@ sense — we can shuffle later.
 `msgspec.Struct` (matches today's `TrackerSchemasMessage`). Fields:
 - `stream_id: str` (unique), `stream_name: str` (label — not unique)
 - `coordinate_convention: CoordinateConvention` (units, handedness, up/forward axis, rotation frame+form)
-- `channels: list[ChannelGroup]` — **ordered**; each `{kind: POINTS|ROTATIONS|SCALARS, names: [...], columns: [...], units: str}`
+- `channels: list[ChannelGroup]` — **ordered**; each `{kind: POINTS|ROTATIONS|OVERLAY_2D, names: [...], columns: [...], units: str}`
 - `connections: list[tuple[str,str]]`, `joint_hierarchy: dict[str, list[str]]`
 - `rest_pose` — T-pose landmark positions + per-segment reference orientations (identity == rest)
 - `sample_layout` — derived from `channels` (block order, dtype, cols) so the decoder needs no per-frame names
@@ -50,7 +51,7 @@ Names are **landmarks** (canonical); convention/hierarchy/rest-pose sourced from
 Evolve the aligned-numpy-dtype framing from `binary_keypoints_protocol.py`:
 ```
 SAMPLE_HEADER   message_type u1 · timestamp f8 (primary) · frame_number i8 · subject_id · num_blocks u4
-per block:      BLOCK_HEADER (message_type u1 · block_kind u1 [POINTS|ROTATIONS|SCALARS|OVERLAY_2D] ·
+per block:      BLOCK_HEADER (message_type u1 · block_kind u1 [POINTS|ROTATIONS|OVERLAY_2D] ·
                 dtype u1=FLOAT32 · cols u1 · camera_id S16 (empty unless OVERLAY_2D) · num_elements u4 ·
                 data_byte_length u4) + BLOCK_DATA (row-major float32, NO names)
 SAMPLE_FOOTER   mirrors header
@@ -69,13 +70,13 @@ SAMPLE_FOOTER   mirrors header
 
 ## Task checklist
 
-1. [ ] `CoordinateConvention` type + the canonical default (mm / right / +Z; forward-axis `TBD`).
-2. [ ] Schema types + JSON codec.
-3. [ ] Sample dtypes + `encode_sample` (port `build_keypoints_payload`; drop `embed_names`; add timestamp /
-       subject / rotations / scalars).
-4. [ ] `decode_sample` + `decode_schema`.
-5. [ ] Golden fixtures: one schema JSON, one sample byte-string.
-6. [ ] Module docstring as the SSOT for the wire contract (link [09](../09-standard-stream-protocol.md)).
+1. [x] `CoordinateConvention` type + canonical default (mm / right / +Z; forward-axis `TBD`) — `coordinate_convention.py`.
+2. [x] Schema types + JSON codec — `stream_schema.py` (`StreamSchema`, `ChannelGroup`, `RestPose`, `encode/decode_schema`).
+3. [x] Sample dtypes + `encode_sample` (dropped `embed_names`; added timestamp / subject / rotations / `OVERLAY_2D`) — `stream_sample.py`.
+4. [x] `decode_sample` + `decode_schema`.
+5. [x] Contract guards: header-size lock (32/28), encode determinism, full round-trip. *(A frozen byte-golden
+       fixture can be captured later for cross-repo/TS parity — WS-4.)*
+6. [x] Module docstrings as the SSOT for the wire contract (link [09](../09-standard-stream-protocol.md)).
 
 ## Tests (the WS-6 slice for WS-1)
 

@@ -107,9 +107,10 @@ VMC's one-implicit-avatar flaw one layer up.
   **one subject per stream**; two subjects means two streams. See [03 — Emitters](03-emitters.md)
   and [04 — Control Plane](04-http-control-plane.md).
 
-The subject key is a **stable id** where the tracker provides multi-person identity, else a per-frame slot
-index; the subject **count is dynamic** (discovered from samples), not fixed in the schema — the schema
-describes *one* subject's layout. See the schema/sample split in [09](09-standard-stream-protocol.md).
+The subject key is a **stable id** where the tracker provides multi-person identity, else a slot index.
+Subject **and camera counts are fixed at stream creation** (max persons = 1 for now; cameras = # connected);
+a topology change **rebuilds** the stream with a new schema (schema-on-change). See the schema/sample split in
+[09](09-standard-stream-protocol.md).
 
 ## Units and coordinate frame
 

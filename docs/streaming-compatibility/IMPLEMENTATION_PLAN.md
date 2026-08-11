@@ -121,6 +121,11 @@ consumer.
 
 ## Progress log
 
+- **2026-08-10 (WS-1 coded)** — Phase 1 started. **WS-1 (standard-stream contract) implemented** in
+  `freemocap/core/streaming/standard_stream/` (`conventions.py`; `schema.py` — msgspec StreamInfo + JSON codec;
+  `sample.py` — binary encode/decode; `lsl_bridge.py`) + `tests/test_standard_stream_contract.py` — **8 tests
+  green**. Pure contract + codecs, no wiring. (freemocap's uv env isn't synced locally; ran via the skellycam
+  venv, since WS-1 only needs numpy/msgspec/beartype/skellylogs.) **Next:** WS-3 (canonical-frame extensions).
 - **2026-08-10 (consistency-pass)** — Full start-to-finish pass reconciling evolved decisions from review
   notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`anatomical_offset` mapping
   form** (deterministic, anthropometric, no runtime fit) that produces the anterior clavicle SC/GH centers

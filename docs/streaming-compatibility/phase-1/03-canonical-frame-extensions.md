@@ -16,7 +16,8 @@ until WS-5, per the positions-first decision).
 - `freemocap/core/pipeline/realtime/realtime_aggregator_node.py` — surface `raw_errors_px` (already computed
   in the aggregator) onto the frame as a **named** channel: **`reprojection_error`** (never a naked "errors").
 - The **schema builder** (new, from WS-1) — build `stream_schema` from `AnatomicalStructure`: convention,
-  `joint_hierarchy`, rest pose, and the ordered channel groups (POINTS + **declared** ROTATIONS + SCALARS).
+  `joint_hierarchy`, rest pose, and the ordered channel groups (POINTS — skeleton + derived CoM/xcom —
+  **declared** ROTATIONS + per-camera OVERLAY_2D).
 - SkellyForge canonical model — confirm convention + rest pose are exposed to the schema builder.
 
 ## The work

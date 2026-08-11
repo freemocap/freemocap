@@ -42,9 +42,12 @@ per active stream.
 | `rest_pose` | **new** | per-segment T-pose rest positions **+ reference orientations**; identity == this pose |
 | `sample_layout` | **new** | how to parse `stream_sample`: block order, per-block dtype + column count |
 
-> **Subjects are not a schema field.** The schema describes **one** subject's layout; each `stream_sample` is
-> tagged with a `subject_id` and the subject count is **dynamic** (discovered from samples) — so multi-person
-> needs no schema change. See [01 — multi-subject](01-canonical-data-model.md#multi-subject-from-day-one).
+> **Stream dimensions are fixed at creation; rebuild on change.** Subject count (**max persons = 1** for now)
+> and camera count (# connected cameras, for `OVERLAY_2D`) are set when the stream/schema is created. A topology
+> change (camera add/remove, subject count) **tears down and rebuilds** the stream with a new schema — the
+> schema-on-change rule. Samples still carry `subject_id` / `camera_id`; the vector *width* is constant for a
+> stream's life. Nothing is padded or excluded. See
+> [01 — multi-subject](01-canonical-data-model.md#multi-subject-from-day-one).
 
 ### `channels`
 
@@ -57,8 +60,9 @@ decoder needs no per-frame names). Groups:
   engine's convention; adapters reorder as their target needs). Produced by the folded-in kinematics engine
   ([11](11-kinematics-fold-in.md)) — **no external code to wait on**. Always declared in the schema so the
   wire shape is stable; NaN per the [missing-data rule](#missing-data) for any segment unresolved this frame.
-- **`scalars`** — low-density per-frame values that live on the frame today in `FrontendPayload`:
-  `center_of_mass`, `xcom` (and future kinematics). Migrated off JSON into the sample.
+- **derived points** — a `POINTS` group for whole-body 3D points: `center_of_mass`, `xcom` (and future
+  kinematics). Columns `x, y, z` (no per-point reprojection error). Migrated off JSON into the sample. (They're
+  *points*, not "scalars" — there is no separate SCALARS kind.)
 - **`overlays_2d`** — the per-camera 2D projection of the tracked landmarks (`x, y, visibility`), **one block
   per camera** (keyed by `camera_id`). Matches the 3D data, 2D-only. Camera *images* stay a separate stream.
 
@@ -78,7 +82,7 @@ SAMPLE_HEADER
 For each block (in schema `sample_layout` order):
   BLOCK_HEADER
     message_type      u1
-    block_kind        u1    ← POINTS | ROTATIONS | SCALARS | OVERLAY_2D
+    block_kind        u1    ← POINTS | ROTATIONS | OVERLAY_2D
     dtype_code        u1    = FLOAT32
     cols              u1    ← cols/element (points [x,y,z,reprojection_error]; rotations [w,x,y,z]; overlay_2d [x,y,visibility])
     camera_id         S16    ← empty unless OVERLAY_2D
@@ -112,8 +116,8 @@ No translation step — the LSL route reads the same schema + samples the UI doe
 |---|---|---|
 | `TrackerDefinition` | `stream_schema` entry | + convention, hierarchy, rest pose, channel layout, rotation channels, subjects |
 | `TrackerSchemasMessage` | `stream_schema` message | still schema-first; richer payload |
-| binary keypoints blocks (`KEYPOINTS_3D`/`SKELETON_3D`, `embed_names`) | `stream_sample` blocks (`POINTS`/`ROTATIONS`/`SCALARS`) | + timestamp + subject; **drop `embed_names`** (names in schema); + rotation/confidence channels |
-| `FrontendPayload` (CoM, xcom in JSON) | `SCALARS` block in the sample | per-frame numbers move off JSON into the binary sample |
+| binary keypoints blocks (`KEYPOINTS_3D`/`SKELETON_3D`, `embed_names`) | `stream_sample` blocks (`POINTS`/`ROTATIONS`/`OVERLAY_2D`) | + timestamp + subject; **drop `embed_names`** (names in schema); + rotation + `reprojection_error` channels |
+| `FrontendPayload` (CoM, xcom in JSON) | a `POINTS` block (derived points) | per-frame 3D points move off JSON into the binary sample |
 | `FrontendPayload` 2D overlays (per camera) | `OVERLAY_2D` blocks **in the stream** | per-camera 2D projection matching the 3D data (camera *images* stay separate) |
 | `body_kinematics` (always `None`) | *(dropped)* | disabled/dead — [01 live-substrate-only](01-canonical-data-model.md#live-substrate-only) |
 

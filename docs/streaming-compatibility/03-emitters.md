@@ -64,6 +64,9 @@ standard stream on LSL's transport.
   translation.
 - **Carries everything:** positions, rotations, per-point confidence, reprojection error,
   per-camera timestamps — the full standard stream, since there's no lossy retarget.
+- **Fixed dimensions:** an LSL `StreamInfo` has a fixed channel count. Subject/camera counts are fixed at
+  outlet creation (max persons = 1 for now; cameras = # connected); a topology change tears down and rebuilds
+  the outlet. Nothing is padded or excluded.
 - **Consumers:** LabRecorder and any LSL inlet; clock-synced across machines by LSL itself.
 
 ## The VMC adapter

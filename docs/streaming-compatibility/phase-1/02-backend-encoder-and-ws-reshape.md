@@ -15,8 +15,8 @@ wire it into the WebSocket send path — decomposing today's monolithic send pat
 - `freemocap/api/websocket/websocket_server.py` — the per-connection `WebsocketServer` send path.
 - `freemocap/core/viz/frontend_keypoints_serializer.py` — `build_keypoints_payload` → **replaced** by WS-1's
   `encode_sample`.
-- `freemocap/core/viz/frontend_payload.py` — `FrontendPayload` numeric bits → a `SCALARS` block; **per-camera
-  2D overlays → `OVERLAY_2D` blocks in the stream**.
+- `freemocap/core/viz/frontend_payload.py` — `FrontendPayload` CoM/xcom → a `POINTS` block (derived points);
+  **per-camera 2D overlays → `OVERLAY_2D` blocks in the stream**.
 - `freemocap/api/websocket/tracker_schema_message.py` — `_send_tracker_schemas` → send `stream_schema`.
 - `freemocap/core/pipeline/realtime/realtime_pipeline.py` / `realtime_pipeline_manager.py` —
   `get_latest_frontend_payload`.

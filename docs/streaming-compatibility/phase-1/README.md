@@ -60,7 +60,8 @@ rotations on the Phase-1 critical path — was rejected.)*
 
 - [x] Sequencing decision made — **(A) positions-first**; rotations via WS-5 (parallel).
 - [x] All Phase-1 super-specific plans drafted (WS-1…WS-5).
-- [ ] Decomposition + plan set **agreed** → **then** code begins (WS-1 first, since it's pure + isolated).
+- [x] **WS-1 implemented** — `core/streaming/standard_stream/` (contract + codecs), 8 tests green.
+- [ ] WS-3 → WS-2 → WS-4 (WS-5 parallel).
 
 Plans: [WS-1 contract](01-standard-stream-contract.md) · [WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [WS-4 UI wedge](04-ui-wedge.md) ·

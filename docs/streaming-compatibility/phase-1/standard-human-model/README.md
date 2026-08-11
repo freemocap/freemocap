@@ -5,7 +5,7 @@
 > [01](../../01-canonical-data-model.md), [11](../../11-kinematics-fold-in.md),
 > [12](../../12-standard-human-model.md), [13](../../13-tracker-to-canonical-mapping.md).
 >
-> Status: **implementing — SF-SH-1 DONE 2026-08-11. Next: SF-SH-3 (kinematics engine) || ST-SH-2 (mappings).**
+> Status: **DONE — SF-SH-1,3,4,5 and ST-SH-2 complete 2026-08-11. Next: FMC-WS-3 (adapter).**
 
 ## The goal (one sentence)
 

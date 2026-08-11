@@ -67,8 +67,8 @@ rotations on the Phase-1 critical path — was rejected.)*
       (quaternion_math, coordinate_frame_ops, rigid_body_kinematics).
 - [x] **SF-SH-4 (orientation solver) implemented** — `skellyforge/kinematics/orientation_solver.py`
 - [x] **ST-SH-2 (tracker→canonical mappings) implemented** — `skellytracker/core/io/tracker_mapping.py`
-      (anatomical_offset form, 4-form system).
-- [ ] SF-SH-5 (wire-up) → FMC-WS-3 (adapter) → FMC-WS-2 (encoder) → FMC-WS-4 (UI wedge)
+- [x] **SF-SH-5 (wire-up) implemented** — solver wired into freemocap aggregator, rotation fields on frame
+- [ ] FMC-WS-3 (adapter) → FMC-WS-2 (encoder) → FMC-WS-4 (UI wedge)
 
 Plans: [FMC-WS-1 contract](01-standard-stream-contract.md) · [FMC-WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [FMC-WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [FMC-WS-4 UI wedge](04-ui-wedge.md) ·

@@ -41,7 +41,7 @@ from pydantic import BaseModel, ConfigDict
 
 from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
 from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo
-from skellyforge.skellymodels.utils.types import (
+from skellyforge.skellymodels.types import (
     SegmentCenterOfMassDefinition,
     SegmentConnection,
     SegmentName,

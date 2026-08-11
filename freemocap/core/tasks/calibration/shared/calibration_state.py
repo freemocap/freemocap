@@ -76,8 +76,7 @@ class CalibrationStateTracker:
         # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
         self._last_incoming_cam_ids: frozenset | None = None
         # Rate-limit per-frame diagnostic logs (fire once per root cause category).
-        self._logged_no_visible_pts: bool = False
-        self._logged_all_reproj_bad: bool = False
+
         # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
     @classmethod
@@ -198,8 +197,7 @@ class CalibrationStateTracker:
             self._subset_triangulator_cache.clear()
             self._cam_id_name_cache.clear()
             self._last_incoming_cam_ids = None
-            self._logged_no_visible_pts = False
-            self._logged_all_reproj_bad = False
+
             return True
         except Exception as e:
             logger.warning(f"Failed to load calibration from {path}: {e}", exc_info=True)
@@ -302,13 +300,6 @@ class CalibrationStateTracker:
             visible_per_point = (~np.isnan(stacked[..., 0])).sum(axis=0)
             keep_mask = visible_per_point >= 2
             if not bool(keep_mask.any()):
-                if not self._logged_no_visible_pts:
-                    self._logged_no_visible_pts = True
-                    logger.warning(
-                        f"Triangulation frame {frame_number}: no keypoints visible in ≥2 cameras "
-                        f"(all {len(canonical_names)} keypoints are NaN in at least {n_cameras - 1} cameras). "
-                        f"Check that the person is visible to multiple cameras and confidence gating is not too aggressive."
-                    )
                 return AngulationResult(points={}, errors_px={})
             if not bool(keep_mask.all()):
                 stacked = stacked[:, keep_mask, :]
@@ -336,16 +327,6 @@ class CalibrationStateTracker:
             if np.any(bad_mask):
                 n_bad = int(np.sum(bad_mask))
                 n_total = len(point_names_seq)
-                if n_bad == n_total and not self._logged_all_reproj_bad:
-                    self._logged_all_reproj_bad = True
-                    logger.warning(
-                        f"Triangulation frame {frame_number}: ALL {n_total} keypoints rejected by "
-                        f"reprojection error gate (threshold={max_reprojection_error_px}px, "
-                        f"min_error={float(mean_reproj_error.min()):.1f}px, "
-                        f"max_error={float(mean_reproj_error.max()):.1f}px). "
-                        f"Calibration may be stale or cameras may have moved. "
-                        f"Try re-running calibration or increasing max_reprojection_error_px in filter settings."
-                    )
                 points_3d[bad_mask] = np.nan
 #             self._timer.record("mean_reproj_error", (time.perf_counter() - _t0) * 1e3)
 

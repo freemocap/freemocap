@@ -120,17 +120,29 @@ consumer.
 
 ## Todo (current focus)
 
-1. ✅ **SF-SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
-2. ✅ **SF-SH-3 — Kinematics engine** — DONE. `skellyforge/kinematics/`
-3. ✅ **SF-SH-4 — Orientation solver** — DONE. `skellyforge/kinematics/orientation_solver.py`
-4. ✅ **ST-SH-2 — Tracker→canonical mappings + anatomical_offset** — DONE. `skellytracker/core/io/tracker_mapping.py`
-5. **SF-SH-5 — Wire-up** (CURRENT): aggregator invokes solver, fills standard-stream rotation
-   channels, rebuilds posthoc `Human` on standard model, retires legacy tracker model-infos.
-6. **FMC-WS-3 — SkellyForge adapter**: wire `StandardHuman` model into schema builder.
-7. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
+1. ✅ **SF-SH-1 — Standard-human model** — DONE.
+2. ✅ **SF-SH-3 — Kinematics engine** — DONE.
+3. ✅ **SF-SH-4 — Orientation solver** — DONE.
+4. ✅ **ST-SH-2 — Tracker→canonical mappings** — DONE.
+5. ✅ **SF-SH-5 — Wire-up** — DONE.
+6. **FMC-WS-3 — SkellyForge adapter** (NEXT): wire `StandardHuman` model into schema builder. Pipe rotation channels through to the standard stream.
+7. **FMC-WS-2 — Backend encoder**: reshape websocket send path to produce schema+samples.
+8. **FMC-WS-4 — UI wedge**: extract connection service, decode standard stream.
+9. Confirm the FMC canonical forward-axis and lock the convention value.
+10. Legacy cleanup: retire `rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`, align old managers to `StandardHuman`, fix skellyforge skellytracker imports in `data_models/observation.py` and `pipelines/dlc_pipeline.py`.
 
 ## Progress log
 
+- **2026-08-11 (SF-SH-5 integration complete)** — Orientation solver wired into freemocap
+  realtime pipeline. ``AggregationNodeOutputMessage`` extended with ``segment_rotations_world``
+  + ``segment_rotations_local`` fields. Aggregator calls ``solve_frame_orientations()`` per frame
+  after rigidification, bootstraps a ``StandardHuman`` model via ``_get_standard_human()``, maps
+  rigidifier landmark names to bone names via ``_BONE_TO_LANDMARK`` bridge. Rotation data flows
+  through the canonical frame — ready for the standard stream encoder (FMC-WS-2) to serialize
+  into ``ROTATIONS_WORLD`` and ``ROTATIONS_LOCAL`` channel blocks. ``center_of_mass.py`` import
+  path fixed (``utils.types`` → ``types``). Freemocap ``core/kinematics/`` folder fully removed;
+  math moved to skellyforge, I/O wrappers moved to ``core/tasks/mocap/``.
+  **Milestone: all SF-SH and ST-SH workstreams complete. Next: FMC-WS-3 adapter → FMC-WS-2 encoder → FMC-WS-4 UI wedge.**
 - **2026-08-11 (ST-SH-2 implemented)** — Tracker-to-canonical mapping extended with
   ``anatomical_offset`` form in skellytracker. ``TrackerMapping`` now supports 4 forms: string
   (1:1), list (mean), dict (weighted sum), and dict with ``form: anatomical_offset`` for

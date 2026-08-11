@@ -241,7 +241,6 @@ class Triangulator(BaseModel):
             )  # (n_batch, 3)
 
             if config.use_outlier_rejection:
-                logger.info("Using outlier rejection with target reprojection error %.4f", config.target_reprojection_error)
                 # Batch-project to check normalized reprojection error
                 n_batch = batch_idx.size
                 hom = np.concatenate(

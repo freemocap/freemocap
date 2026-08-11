@@ -14,7 +14,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.core.data_primitives.observation import Observation
 
-from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
+from freemocap.core.tasks.mocap.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
 from freemocap.core.types.type_overloads import (

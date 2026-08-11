@@ -13,7 +13,7 @@ from pathlib import Path  # noqa: TC003
 
 import numpy as np
 
-from freemocap.core.kinematics.segment_lengths import find_body_csv, load_body_positions_from_csv
+from freemocap.core.tasks.mocap.segment_length_io import find_body_csv, load_body_positions_from_csv
 
 
 def load_posthoc_body_positions(output_dir: Path) -> dict[str, np.ndarray]:

@@ -11,7 +11,7 @@ from collections import deque
 import numpy as np
 from skellyforge.data_models.trajectory_3d import Point3d
 
-from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
+from freemocap.core.tasks.mocap.body_kinematics_state import BodyKinematicsState
 from skellyforge.kinematics.inertial.composite_inertia import (
     composite_centroidal_inertia,
     principal_axes_and_moments,

@@ -1,5 +1,5 @@
 import numpy as np
-from freemocap.core.kinematics.inertial.composite_inertia import (
+from skellyforge.kinematics.inertial.composite_inertia import (
     composite_centroidal_inertia,
     principal_axes_and_moments,
     equimomental_semi_axes,

@@ -7,7 +7,7 @@ from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString, MultiframeTimestampFloat
 from skellyforge.data_models.trajectory_3d import Point3d
 
-from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
+from freemocap.core.tasks.mocap.body_kinematics_state import BodyKinematicsState
 from freemocap.core.types.type_overloads import TrackedPointNameString, PipelineIdString, FrameNumberInt
 from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage

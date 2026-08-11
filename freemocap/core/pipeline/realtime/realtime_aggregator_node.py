@@ -36,8 +36,8 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     calculate_center_of_mass_from_canonical,
     calculate_xcom,
 )
-from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
-from freemocap.core.kinematics.segment_lengths import (
+from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
+from freemocap.core.tasks.mocap.segment_length_io import (
     DEFAULT_DIAGNOSTIC_INTERVAL,
     StreamingSegmentLengthMonitor,
 )

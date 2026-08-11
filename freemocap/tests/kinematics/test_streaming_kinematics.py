@@ -1,5 +1,5 @@
 import numpy as np
-from freemocap.core.kinematics.online.streaming_kinematics import StreamingKinematics
+from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
 
 
 def _masses():

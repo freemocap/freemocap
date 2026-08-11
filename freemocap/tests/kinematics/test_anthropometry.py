@@ -1,4 +1,4 @@
-from freemocap.core.kinematics.inertial.anthropometry import (
+from skellyforge.kinematics.inertial.anthropometric_parameters import (
     SegmentInertialParameters,
     DE_LEVA_FEMALE,
     DE_LEVA_MALE,

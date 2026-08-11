@@ -5,7 +5,7 @@ no pipeline or test data needed.
 """
 import numpy as np
 
-from freemocap.core.kinematics.segment_lengths import (
+from freemocap.core.tasks.mocap.segment_length_io import (
     StreamingSegmentLengthMonitor,
     build_segment_length_report,
     canonical_bone_length_ratios,

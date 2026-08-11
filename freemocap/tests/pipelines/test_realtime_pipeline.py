@@ -16,7 +16,7 @@ from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 
-from freemocap.core.kinematics.segment_lengths import (
+from freemocap.core.tasks.mocap.segment_length_io import (
     build_segment_length_report,
     equivalence_violations,
 )

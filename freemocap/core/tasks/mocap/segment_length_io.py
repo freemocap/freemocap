@@ -190,7 +190,7 @@ def format_report_block(
 def _main(argv=None) -> int:
     """CLI: report body-segment proportions / human-shape.
 
-    Usage:  python -m freemocap.core.kinematics.segment_lengths [path]
+    Usage:  python -m freemocap.core.tasks.mocap.segment_length_io [path]
     Defaults to FREEMOCAP_TEST_DATA_PATH.
     Exit code 0 = human-shaped, 1 = not, 2 = no data found.
     """

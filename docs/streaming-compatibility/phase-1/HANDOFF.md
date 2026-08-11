@@ -32,13 +32,13 @@
 | Route **posthoc** through the mapping + retire legacy tracker model-infos | **remainder** | [13 — Remaining work](../13-tracker-to-canonical-mapping.md) |
 | **SF-SH-1 — Standard-human model** | **DONE** | [standard-human-model/](standard-human-model/README.md) |
 | **SF-SH-3 — Kinematics engine fold-in** | **NEXT (parallel track)** | [11](../11-kinematics-fold-in.md) |
-| **SF-SH-2 — Tracker-to-canonical mappings + anatomical_offset** | **NEXT (parallel with SF-SH-3)** | [13](../13-tracker-to-canonical-mapping.md) |
+| **ST-SH-2 — Tracker-to-canonical mappings + anatomical_offset** | **NEXT (parallel with SF-SH-3)** | [13](../13-tracker-to-canonical-mapping.md) |
 | SF-SH-4 — Orientation solve | gated on SF-SH-1 + SF-SH-3 | [standard-human-model/](standard-human-model/README.md) |
 | SF-SH-5 — Wire it up | gated on SF-SH-1..4 | [standard-human-model/](standard-human-model/README.md) |
 | FMC-WS-3 — SkellyForge adapter + aggregator wiring | pending (gated on SF-SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
 | FMC-WS-2 / FMC-WS-4 / FMC-WS-5 | not started | [02](02-backend-encoder-and-ws-reshape.md), [04](04-ui-wedge.md), [05](05-kinematics-foldin-rotations.md) |
 
-**User's current priority:** SF-SH-3 (kinematics engine) in parallel with SF-SH-2 (tracker-to-canonical mappings).
+**User's current priority:** SF-SH-3 (kinematics engine) in parallel with ST-SH-2 (tracker-to-canonical mappings).
 
 ## Where the last person stopped
 
@@ -48,7 +48,7 @@
 (Pydantic model with tree/hierarchy validators). Pydantic added as skellyforge dependency.
 All smoke-tested green in the skellyforge venv.
 
-**Next in priority order: SF-SH-3 then SF-SH-2, running in parallel.**
+**Next in priority order: SF-SH-3 then ST-SH-2, running in parallel.**
 
 ## Load-bearing decisions (all LOCKED — 2026-08-11)
 

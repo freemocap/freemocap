@@ -64,7 +64,7 @@ rotations on the Phase-1 critical path — was rejected.)*
 - [x] **SF-SH-1 (standard-human model) implemented** — `skellyforge/skellymodels/standard_human/`
       (human_bones, aliases, blendshapes, model + validators). VRM 1.0 bones, 52 ARKit channels,
       55-bone alias table with vrm+unreal targets.
-- [ ] SF-SH-3 → SF-SH-2 → SF-SH-4 → SF-SH-5 (FMC-WS-5 feed-in) → FMC-WS-3 → FMC-WS-2 → FMC-WS-4
+- [ ] SF-SH-3 → ST-SH-2 → SF-SH-4 → SF-SH-5 (FMC-WS-5 feed-in) → FMC-WS-3 → FMC-WS-2 → FMC-WS-4
 
 Plans: [FMC-WS-1 contract](01-standard-stream-contract.md) · [FMC-WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [FMC-WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [FMC-WS-4 UI wedge](04-ui-wedge.md) ·

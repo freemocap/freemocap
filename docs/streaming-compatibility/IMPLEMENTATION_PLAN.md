@@ -122,16 +122,31 @@ consumer.
 
 1. ✅ **SF-SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
    (human_bones, aliases, blendshapes, model + validators).
-2. **SF-SH-3 — Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into
-   `skellyforge/kinematics/`. Coordinate frame math, quaternion utilities, rigid-body kinematics
-   model, orientation solver (batch + realtime variants).
-3. **SF-SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
-   centers. Produce full canonical landmark set for the standard human.
-4. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
-5. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
+2. ✅ **SF-SH-3 — Kinematics engine fold-in** — DONE. `skellyforge/kinematics/`
+   (quaternion_math, coordinate_frame_ops, rigid_body_kinematics). 23 exported symbols.
+3. **ST-SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
+   centers in skellytracker. Produce full canonical landmark set for the standard human.
+4. **SF-SH-4 — Orientation solve**: wire the solver that dispatches `TwistPolicy` from
+   `StandardHuman`, calls kinematics engine, produces per-bone world+local quaternions.
+5. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
+6. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
 
 ## Progress log
 
+- **2026-08-11 (SF-SH-3 implemented)** — Kinematics engine built in `skellyforge/kinematics/`.
+  Three modules, zero Pydantic, all hot-path safe (dataclasses + numpy): `quaternion_math.py`
+  (``Quaternion`` with ``__slots__`` + 12 vectorized numpy fns — single home for Hamilton product,
+  SLERP, rotation matrix, Euler, angular velocity, composition, collapsing 3–5 duplicate copies from
+  bs/); `coordinate_frame_ops.py` (``build_orthonormal_basis``, ``rotation_between_vectors`` for
+  swing-only, ``align_point_sets_kabsch`` for full-frame bones, ``compute_rotation_from_live_basis``
+  for twist resolution, ``compute_live_bone_basis``); `rigid_body_kinematics.py`
+  (``RigidBodyKinematics`` dataclass with lazy ``cached_property`` for all derived kinematics +
+  module-level ``compute_linear_velocity``/``compute_linear_acceleration``/
+  ``compute_angular_acceleration``/``compute_keypoint_world_positions`` for hot-loop use).
+  23 exported symbols. Smoke-tested: quaternion algebra, SLERP, angular velocity from identity,
+  basis round-trip, Kabsch exact/noisy, circular motion kinematics. **Next: ST-SH-2**
+  (tracker-to-canonical mappings) in skellytracker, then SF-SH-4 (orientation solver) in
+  skellyforge.
 - **2026-08-11 (SF-SH-1 implemented)** — Standard-human model built in
   `skellyforge/skellymodels/standard_human/`. Four modules, zero single-word names:
   `human_bones.py` (`HumanBone`, `BoneReferenceGeometry`, `CoordinateFrameDefinition`,
@@ -144,7 +159,7 @@ consumer.
   enforcement, bad-parent/cycle/twist-source detection, hierarchy + chain + children
   accessors, `from_bone_definitions()` factory, anthropometric ratio table). Validated:
   smoke-test green (construction, hierarchy, validators). `pydantic` added as skellyforge
-  dependency. **Next: SF-SH-3 (kinematics engine fold-in) in parallel with SF-SH-2 (tracker→canonical
+  dependency. **Next: SF-SH-3 (kinematics engine fold-in) in parallel with ST-SH-2 (tracker→canonical
   mappings + anatomical_offset).**
 - **2026-08-11 (standard-human decisions locked)** — Strategic review of the canonical human model
   against VRM/VMC/Unreal ecosystem realities. **Decisions locked (do not re-litigate):**

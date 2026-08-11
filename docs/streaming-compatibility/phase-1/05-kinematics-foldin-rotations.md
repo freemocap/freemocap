@@ -19,8 +19,8 @@ live, and populate the declared rotation channels — the same engine serving re
   `freemocap/core/kinematics` there rather than keep two kinematics folders (decide the move together when we
   reach it). Hard rule: **SkellyForge never imports from FreeMoCap** (FreeMoCap imports SkellyForge).
 - **5b — Standard-human model.** VRM rig (bones), landmark→bone retarget, T-pose rest pose, and the
-  **`anatomical_offset`** mapping form (SC / GH / hip centers) in the skellytracker mappings + canonical model.
-  Also **finish removing the "virtual marker" concept** ([13](../13-tracker-to-canonical-mapping.md)).
+  **`anatomical_offset`** mapping form (SC / GH / hip centers) in the skellytracker mappings + canonical model
+  ([13](../13-tracker-to-canonical-mapping.md)).
 - **5c — Twist policy.** Per-bone axis-source policy (full-frame → chain/hinge-resolved → damped-minimal
   fallback) — [12](../12-standard-human-model.md).
 - **5d — Realtime per-frame solve.** A streaming variant of the orientation solve (mirrors
@@ -35,7 +35,7 @@ live, and populate the declared rotation channels — the same engine serving re
 ## Task checklist (high level — each sub-WS gets its own detail when we reach it)
 
 1. [ ] 5a engine copy-in + unit tests (quaternion math, reference geometry).
-2. [ ] 5b standard-human rig + retarget + `anatomical_offset` mappings + virtual-marker removal.
+2. [ ] 5b standard-human rig + retarget + `anatomical_offset` mappings.
 3. [ ] 5c twist policy.
 4. [ ] 5d realtime solve.
 5. [ ] 5e wire rotations into the frame / declared channels.

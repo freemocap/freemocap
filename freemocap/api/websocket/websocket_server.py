@@ -128,7 +128,7 @@ class WebsocketServer:
 
         Called once on connect, before the image/payload relay starts. The
         frontend uses this to drive all skeleton rendering — connection lines,
-        point styling, virtual-point resolution — without hardcoding tracker
+        point styling, landmark resolution — without hardcoding tracker
         schemas.
         """
         try:

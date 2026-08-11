@@ -1,63 +1,212 @@
-# Phase 1 Handoff (terse)
+# Phase 1 Handoff — 2026-08-11 (updated: standard-human model decisions locked)
 
-## Env / running
-- **Use the freemocap venv for everything.** Not synced yet → `cd project/freemocap && uv sync` (heavy:
-  mediapipe/onnx). Then run tests with `uv run pytest`.
-- Current tests (run them): `uv run pytest freemocap/tests/test_standard_stream_contract.py freemocap/tests/test_stream_schema_builder.py -q`
-- Stopgap used so far (drop it once venv works): `PYTHONPATH=. ../skellycam/.venv/Scripts/python.exe -m pytest ...`
-- **beartype is on package-wide** (`freemocap/__init__.py`) → keep annotations clean.
-- **Never commit** (user owns git).
+## Start here (do this before touching code)
 
-## Where we are
-Phase 1 = reshape freemocap's own realtime stream into an **LSL-shaped standard stream** (schema once +
-timestamped samples). Plans in `docs/streaming-compatibility/phase-1/`. Sequence **WS-1→WS-3→WS-2→WS-4**;
-WS-5 parallel. **Done: WS-1 (contract) + WS-3 pure core (schema builder). 12 tests green.**
+- **Read the spec in order first:** `docs/streaming-compatibility/` → `README` → `00`–`13` →
+  `IMPLEMENTATION_PLAN.md` → `phase-1/README.md` → `phase-1/NN-*.md` → this file. It is the **source of
+  truth for the plan**. Do **not** re-derive the design by reading the source tree.
+- **Workspace layout + cross-repo dev model:** `project/CLAUDE.md`. Key fact: freemocap installs the skelly
+  packages **from git, not from the local checkouts** — a local skellyforge edit is invisible to the
+  freemocap venv until the **user** commits it upstream. Verify skellyforge changes in **skellyforge's own**
+  env.
+- Paths here are workspace-relative. The freemocap **package** is double-nested: `freemocap/freemocap/…`.
+- **Never commit** (user owns git). beartype is on package-wide → keep annotations clean.
+- If scope/sequence is unclear after reading the spec, **ask — don't guess.**
 
-## Built — `freemocap/core/streaming/standard_stream/`
-- `coordinate_convention.py` — `CoordinateConvention` + `FREEMOCAP_CANONICAL_CONVENTION` (mm / right / +Z;
-  `forward_axis=+Y` is a **TODO/unconfirmed**).
-- `stream_schema.py` — `StreamSchema` (msgspec→JSON): stream_id, stream_name, convention, `channels`
-  (`ChannelGroup`: kind/names/columns/units), connections, joint_hierarchy, rest_pose, **camera_ids**.
-  `ChannelKind = POINTS | ROTATIONS | OVERLAY_2D` (**no SCALARS** — CoM/xcom are POINTS). `encode/decode_schema`.
-- `stream_sample.py` — binary: `SAMPLE_HEADER`(32B) + blocks(`BLOCK_HEADER` 28B + f32 rows) + footer;
-  MessageType 10/11/12; POINTS cols `x,y,z,reprojection_error`; ROTATIONS `w,x,y,z`; OVERLAY_2D `x,y,visibility`
-  (+ `camera_id` per block). `encode/decode_sample`. **Sizes 32/28 locked by test — the WS-4 TS decoder must match.**
-- `stream_schema_builder.py` — `build_stream_schema(...)` (pure): skeleton POINTS + derived POINTS(CoM,xcom) +
-  ROTATIONS(NaN until WS-5) + per-camera OVERLAY_2D.
-- `lsl_bridge.py` — `schema_to_streaminfo_channels` (overlays expand × camera_ids), `sample_to_flat_vector`
-  (ALL blocks — nothing excluded).
-- Tests: `freemocap/tests/test_standard_stream_contract.py`, `.../test_stream_schema_builder.py`.
+## Env
 
-## Next: finish WS-3 (needs freemocap env)
-1. **SkellyForge adapter** `stream_schema_from_canonical_model(...)`: pull `landmark_names`,
-   `segment_connections`→(connections + segment_names), `joint_hierarchy` from
-   `AnatomicalStructure.from_model_info(CanonicalBodyModelInfo()/CanonicalHandModelInfo(), "body"/"hand")`
-   (`skellyforge.skellymodels.models.{anatomical_structure,tracking_model_info}`) → feed `build_stream_schema`.
-   rest_pose stays empty (no rest orientations in the model yet — WS-5).
-2. **Aggregator wiring**: `raw_errors_px` (already computed in
-   `freemocap/core/pipeline/realtime/realtime_aggregator_node.py`) → onto `AggregationNodeOutputMessage`
-   (`freemocap/pubsub/pubsub_topics.py`) as **`reprojection_error`**; add `subject_id` (=0). Positions-first:
-   rotation channels stay NaN.
+- freemocap venv is **synced** (`uv sync` in `freemocap/`; heavy — mediapipe/onnx).
+- Contract tests (baseline, 12 green):
+  `cd freemocap && uv run pytest freemocap/tests/test_standard_stream_contract.py freemocap/tests/test_stream_schema_builder.py -q`
+- skellyforge changes don't run in the freemocap venv (git-pinned). Verify in skellyforge's own env
+  (no `.venv` yet — `cd skellyforge && uv sync`). Quick model-load smoke test (local source shadowed):
+  `PYTHONPATH=skellyforge freemocap/.venv/Scripts/python.exe -c "from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure as A; from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo as B; print(len(A.from_model_info(B(),'body').landmark_names))"`
 
-## Then WS-2 / WS-4 / WS-5 (see phase-1/02, 04, 05)
-- WS-2: standard-stream encoder from the canonical frame + reshape `websocket_server.py` send path.
-- WS-4: extract connection/transport service out of `ServerContextProvider` (TS) + decode schema/samples.
-- WS-5 (parallel): copy/adapt `clients/bs/python_code/kinematics_core` INTO SkellyForge; standard-human rig;
-  `anatomical_offset` mappings; twist policy; live quaternions → fill ROTATIONS.
+## Where we are (all threads)
 
-## Load-bearing rules (do not violate)
-- **LSL**: fixed channel count set at stream creation; a topology change (cameras/subjects) → **teardown+rebuild**
-  (new schema). `max_persons=1` now; overlays = # connected cameras. Nothing padded/excluded.
-- **Camera images = separate stream** (link by frame#). **2D overlay coordinates = in** the standard stream.
-- **Timestamp is the primary key**; frame# secondary.
-- **Quality naming**: 3D→`reprojection_error`, 2D→`visibility`. Never naked "confidence"/"errors".
-- Rotations owned by SkellyForge — **copy `bs/kinematics_core`, do NOT import bs**. **SkellyForge NEVER imports
-  FreeMoCap.** Consolidate `freemocap/core/kinematics` INTO skellyforge (align, don't delete; keep unvalidated
-  code out of hot loops). skellyforge BVH exporter is **vestigial → replace/augment**.
-- **Mapping** = tracker *keypoints* → canonical *landmarks* (skellytracker `*_to_canonical_mapping.yaml`; forms:
-  string / list-mean / dict-weighted + new **`anatomical_offset`** for off-surface joint centers, e.g. the
-  clavicle SC — anthropometric, deterministic, no runtime fit). **No "virtual markers."**
-- `msgspec` for schema; **two-word file names**; docstrings use explicit markdown doc-links.
+| Thread | Status | Plan |
+|---|---|---|
+| WS-1 — standard-stream contract (schema+sample+codecs) | **done**, 8 tests | [phase-1/01](01-standard-stream-contract.md) |
+| WS-3 — schema **builder** (pure) | **done**, 4 tests | [phase-1/03](03-canonical-frame-extensions.md) |
+| SkellyModels model layer → pure first-class landmarks | **done (skellyforge local — awaiting user commit)** | [13](../13-tracker-to-canonical-mapping.md) |
+| Route **posthoc** through the mapping + retire legacy tracker model-infos | **remaining** | [13 — Remaining work](../13-tracker-to-canonical-mapping.md) |
+| **Standard-human model (SH-1…SH-5) — DECISIONS LOCKED** | **current focus** | [standard-human-model/](standard-human-model/README.md) |
+| WS-3 — SkellyForge **adapter** + aggregator wiring | pending (gated on SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
+| WS-2 / WS-4 / WS-5 | not started | [02](02-backend-encoder-and-ws-reshape.md), [04](04-ui-wedge.md), [05](05-kinematics-foldin-rotations.md) |
 
-## Spec index
-`docs/streaming-compatibility/README.md` → 00–13 + `IMPLEMENTATION_PLAN.md` + `phase-1/`.
+**User's current priority:** Standard-human model (SH-1 → SH-3 → SH-2 → SH-4 → SH-5). The streaming work
+needs the canonical human defined first.
+
+## Where the last person stopped
+
+The strategic design for the standard human model was finalized (2026-08-11 conversation). The decisions
+below are **locked** — do not re-litigate. The next step is **SH-1 implementation**: create the standard
+human model in `skellyforge/skellymodels/standard_human/`.
+
+## Load-bearing decisions (all LOCKED — 2026-08-11)
+
+These decisions were finalized in a strategic review of the streaming compatibility plan against
+VRM/VMC/Unreal ecosystem realities. Each is stated with its rationale so subsequent work doesn't drift.
+
+### 1. Canonical bone set: VRM 1.0 humanoid (full body + hands + face)
+- Bones/hierarchy/finger model per VRM 1.0 spec.
+- `upperChest` is included (optional in VRM 1.0, but required for full mocap fidelity).
+- Thumb bones use VRM 1.0 naming: `metacarpal/proximal/distal`.
+- **Rationale:** VRM 1.0 is a superset of VMC's HumanBodyBones; maps cleanly to Unreal Mannequin via
+  a mechanical name swap; has a path to Khronos/ISO standardization.
+- **VMC wire compatibility:** the Phase-3 VMC adapter maps VRM 1.0 thumb names → VRM 0.x names
+  (`metacarpal` → `Proximal`, etc.) and expression names downward. The canonical model stays VRM 1.0.
+
+### 2. Naming convention: snake_case Python + separate alias table
+- Every bone is keyed `snake_case` in Python and the model (`left_upper_arm`).
+- Aliases live in a **separate table** (`human_bone_aliases.py`), NOT as attributes on the Bone object.
+- A bone does not know it has alternate names for different wire protocols — that's a serialization concern.
+- The alias table maps `canonical_name → {target: alias}` — adding a new target adds a column to the
+  table, no bone definitions change.
+- `resolve_alias(bone_name, target) → str` is the single helper. Missing aliases fall back to the
+  canonical name + log a warning.
+- **Rationale:** a bone shouldn't know it's called `upperarm_l` in Unreal. The alias table is a single
+  source of truth, testable independently, and cheap to extend.
+
+### 3. Bones subsume segments — full rewrite, no backwards compatibility
+- The old `segment_connections` in `canonical_body.yaml` / `canonical_hand.yaml` is replaced by a bone
+  list where each bone carries its proximal/distal joint centers as part of `ReferenceGeometry`.
+- `AnatomicalStructure`, `ModelInfo`, `AspectInfo`, `Actor`, `Human`, `Animal`, `Board` are **rewritten**
+  onto the standard human model — not extended, not shimmed.
+- The legacy tracker model-info YAMLs (`rtmpose_model_info.yaml`, `mediapipe_model_info.yaml`) are
+  **retired**.
+- **Rationale:** the old model mixes COCO-WholeBody landmarks, tracker-specific segment connections, and
+  biomechanics CoM definitions. The new model is a single VRM-1.0-aligned humanoid with per-bone reference
+  geometry. Two parallel structures that can disagree violates "fail loudly."
+
+### 4. Face: 52 ARKit blendshape channels, declared now, wired later
+- The model declares 52 ARKit blendshape channels in the schema.
+- Values are `null`/`NaN` on the stream until SkellyTracker's face tracking populates them.
+- The VMC adapter will carry an ARKit→VRM expression mapping (well-documented, ~1:1 for most shapes).
+- **Rationale:** declaring the maximal channel set now avoids changing the wire format later. Consumers
+  that only want body bones ignore the face channels. Same pattern as LSL's fixed-channel-count
+  `StreamInfo`.
+
+### 5. Rotation channels: stream BOTH world AND local quaternions
+- The canonical frame carries two rotation channel groups:
+  - `ROTATIONS_WORLD` — per-bone quaternion relative to world frame
+  - `ROTATIONS_LOCAL` — per-bone quaternion relative to parent bone
+- Both share the identity == T-pose contract.
+- The orientation solve computes both (local is one quaternion multiply from world).
+- Wire cost: ~53 KB/s extra for 55 bones at 60fps — negligible.
+- **Rationale:** research users (LSL) want world; avatar adapters (VMC, Unreal) want local. Neither
+  is derivable from the other without walking the bone chain. Streaming both means adapters don't need
+  to know the hierarchy.
+
+### 6. File naming: no single-word names
+- `bones.py` → `human_bones.py`; `aliases.py` → `human_bone_aliases.py`
+- `blendshapes.py` → `human_blendshapes.py`
+- The kinematics engine follows the same rule: `rigid_body_kinematics.py`, `coordinate_frame.py`,
+  `quaternion_trajectory.py`, `orientation_solver.py`
+- **Rationale:** single-word filenames collide across packages. `bones.py` could mean anything;
+  `human_bones.py` is unambiguous.
+
+### 7. Alias mechanism: external table, NOT bone attribute
+- **Rejected:** `Bone.vrm_alias: str` as a field on the bone dataclass.
+- **Adopted:** `BONE_ALIASES: dict[str, dict[str, str]]` in `human_bone_aliases.py`.
+- Adding a target adds a column; missing aliases fail safely (fallback to canonical name + warning).
+- **Rationale:** keeps the bone model clean; one lookup point; testable without constructing bone objects.
+
+### 8. Reference geometry per bone (the engine foundation)
+- Each bone carries a `ReferenceGeometry` with:
+  - `proximal_joint_center`, `distal_joint_center` (T-pose positions)
+  - `CoordinateFrameDefinition` (exact axis = bone long axis, approximate axis = twist source)
+- Identity quaternion == bone in T-pose reference orientation.
+- Twist policy encoded **declaratively** per bone (tier + twist source), not procedurally in the engine.
+- The engine reads the policy and applies the corresponding math.
+
+## Standard-human model file structure (SH-1 deliverable)
+
+```
+skellyforge/skellymodels/standard_human/
+├── human_bones.py              # Bone, ReferenceGeometry, CoordinateFrameDefinition, TwistPolicy
+├── human_bone_aliases.py       # BONE_ALIASES table + resolve_alias()
+├── human_blendshapes.py        # 52 ARKit blendshape channel declarations (VRM expression mapping noted)
+├── standard_human_model.py     # StandardHuman model: bones + blendshapes + hierarchy + T-pose
+└── (standard_human.yaml        # TBD — or defined purely in Python/Pydantic)
+```
+
+No single-word file names. The alias mechanism lives alongside the model, not inside it.
+
+## Built so far — `freemocap/freemocap/core/streaming/standard_stream/`
+
+`coordinate_convention.py` (`FREEMOCAP_CANONICAL_CONVENTION`; forward_axis=+Y is an unconfirmed TODO) ·
+`stream_schema.py` (msgspec `StreamSchema`; `ChannelKind = POINTS | ROTATIONS | OVERLAY_2D`) ·
+`stream_sample.py` (binary; header/block sizes **32/28 locked by test**) · `stream_schema_builder.py`
+(`build_stream_schema`, pure) · `lsl_bridge.py`. Tests:
+`freemocap/freemocap/tests/test_standard_stream_contract.py`, `test_stream_schema_builder.py`.
+
+## Load-bearing invariants (with status)
+
+- **Computed landmarks come only from the tracker→canonical mapping** (string / list-mean / weighted-sum);
+  the canonical model is a pure landmark list + anatomy. — *established (realtime); posthoc to follow.*
+  [13](../13-tracker-to-canonical-mapping.md)
+- **`anatomical_offset`** mapping form for off-surface centers (SC / GH / hip). — *active.*
+- **SkellyForge never imports FreeMoCap**; kinematics consolidates INTO skellyforge. — *rule.*
+- **Rotations owned by SkellyModels**, streamed as world+local quaternions; identity == T-pose. — *locked.*
+- LSL: fixed channel count per stream; topology change → teardown+rebuild. Timestamp is the primary key;
+  images = separate stream (linked by frame#). Quality naming: 3D→`reprojection_error`, 2D→`visibility`.
+  `msgspec` schema. — *decided.*
+- **Bone aliases live in a separate table**, not as bone object attributes. — *locked.*
+- **No single-word file names** anywhere in skellyforge or the streaming module. — *active.*
+- **Bones subsume segments** — full rewrite of `AnatomicalStructure`/`ModelInfo`/managers onto the
+  standard human. No backwards compatibility. — *locked.*
+- **VRM 1.0 is the canonical bone set**; VMC adapter maps down to VRM 0.x names on the wire. — *locked.*
+
+## Open decisions
+
+- Batched `TrackerMapping.apply` for posthoc (per-frame loop vs. vectorized).
+- Forward-axis of the canonical convention (`TBD` — confirm against the ground-plane calibration basis).
+- T-pose joint positions: defined explicitly in YAML vs derived from anthropometric ratios + hierarchy.
+- Whether the standard human model is a Python/Pydantic definition or a YAML file (or both — YAML for
+  readability, Pydantic for validation). Current canonical model uses YAML; Pydantic `BaseModel` is
+  already used for `AnatomicalStructure`.
+
+## Next actions (ordered, for SH-1)
+
+1. [ ] Create `skellyforge/skellymodels/standard_human/` package — mechanical
+2. [ ] Define `human_bones.py`: `Bone`, `ReferenceGeometry`, `CoordinateFrameDefinition`, `TwistPolicy`
+       — needs decision on dataclass vs Pydantic vs msgspec
+3. [ ] Define `human_bone_aliases.py`: `BONE_ALIASES` table + `resolve_alias()` — mechanical
+4. [ ] Define `human_blendshapes.py`: 52 ARKit channel declarations — mechanical (standard list)
+5. [ ] Define `standard_human_model.py`: `StandardHuman` model assembling bones + blendshapes + hierarchy
+       + T-pose — the core SH-1 deliverable
+6. [ ] Define T-pose reference positions (either explicit coordinates or derived from anthropometric
+       ratios from `canonical_body.yaml` / `canonical_hand.yaml`)
+7. [ ] Verify: model loads, validates, hierarchy is a tree, all bones have reference geometry, aliases
+       resolve for `vrm` and `unreal` targets
+
+## Per-target bone alias map (reference — not exhaustive)
+
+This is the shape of `human_bone_aliases.py`. Documented here for clarity; the file is the SSOT.
+
+```
+canonical (snake_case)     VRM/VMC wire (camelCase)     Unreal Mannequin
+─────────────────────────  ─────────────────────────    ────────────────
+hips                        hips                        pelvis
+spine                       spine                       spine_01
+chest                       chest                       spine_03
+upper_chest                 upperChest                  spine_05
+neck                        neck                        neck_01
+head                        head                        head
+left_eye                    leftEye                     —
+right_eye                   rightEye                    —
+jaw                         jaw                         —
+left_shoulder               leftShoulder                clavicle_l
+left_upper_arm              leftUpperArm                upperarm_l
+left_lower_arm              leftLowerArm                lowerarm_l
+left_hand                   leftHand                    hand_l
+left_upper_leg              leftUpperLeg                thigh_l
+left_lower_leg              leftLowerLeg                calf_l
+left_foot                   leftFoot                    foot_l
+left_toes                   leftToes                    ball_l
+(right side mirrors left)
+```
+
+Note: `left_eye`/`right_eye`/`jaw` have no standard Unreal Mannequin equivalent — they're VRM/MetaHuman
+only. The Unreal adapter handles these via morph targets or omits them.

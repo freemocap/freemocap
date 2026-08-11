@@ -2,10 +2,9 @@
 
 > The boundary between **SkellyTracker** (which produces *keypoints*) and the **canonical human model**
 > in **SkellyForge** (which is defined in *landmarks*). This mapping is the **single** abstraction for
-> "how does a tracker's output become the standard human" — and it **replaces the concept of a virtual
-> marker entirely.**
+> "how does a tracker's output become the standard human."
 >
-> Status: **mostly implemented; migration to finish.**
+> Status: **implemented (realtime); posthoc consumer to follow.**
 
 ## The abstraction
 
@@ -17,7 +16,7 @@
 
 - **Keypoints** — a tracker's raw named outputs (`Keypoints`: `.xyz`, `.names`, `.visibility`). Tracker-specific.
 - **Landmarks** — the canonical human model's points (the `tracked_points` in `canonical_body.yaml`).
-  Tracker-agnostic. **Every landmark is first-class** — there are no "virtual" ones.
+  Tracker-agnostic. **Every landmark is first-class.**
 - **Mapping** — `TrackerMapping` (`skellytracker/core/io/tracker_mapping.py`): for each canonical landmark,
   how to produce it from tracker keypoints.
 
@@ -32,39 +31,34 @@ From `TrackerMapping` and the `*_to_canonical_mapping.yaml` files:
 | **dict** | `head_center: {left_ear: 0.5, right_ear: 0.5}` | weighted sum (normalized by present weights) |
 
 Missing keypoints are silently skipped; list/dict use only present keypoints. That's the entire contract.
-A landmark that used to be a "virtual marker" (e.g. `neck_center`) is now just a landmark whose mapping is a
-list or dict.
+A computed landmark (e.g. `neck_center`) is simply a landmark whose mapping is a list or dict.
 
 ## Ownership (the boundary)
 
 - **SkellyTracker owns the mappings** — one `{tracker}_to_canonical_mapping.yaml` per tracker (rtmpose body,
   mediapipe body, hands, …). It also defines each tracker's keypoint names + connections.
 - **SkellyForge owns the canonical model** — the landmark names + `segment_connections` + `joint_hierarchy` +
-  `bone_length_ratios` + rest pose ([12](12-standard-human-model.md)). **No virtual markers.**
+  `bone_length_ratios` + rest pose ([12](12-standard-human-model.md)).
 - The mapping references canonical landmark names (SkellyForge) on the left, tracker keypoint names
   (SkellyTracker) on the right. New tracker → add one mapping YAML; the canonical model is untouched.
 
 ## Current state
 
-- ✅ **Body migrated.** `canonical_body.yaml` has `virtual_marker_definitions: null`; its 4 computed landmarks
-  (`head_center`, `neck_center`, `trunk_center`, `hips_center`) are first-class `tracked_points`, produced by
-  list-mean mappings in `rtmpose_body_to_canonical_mapping.yaml` / `mediapipe_body_to_canonical_mapping.yaml`.
-- ✅ `TrackerMapping` implements the three forms and is what the realtime rigidifier + CoM already use.
-- ⚠️ **Concept still lingers** in the SkellyModels Pydantic layer and some YAMLs — see the plan.
+- **Body + hands.** `canonical_body.yaml` / `canonical_hand.yaml` list every landmark as a first-class
+  `tracked_point`; the 4 computed body landmarks (`head_center`, `neck_center`, `trunk_center`,
+  `hips_center`) are produced by list-mean mappings in `rtmpose_body_to_canonical_mapping.yaml` /
+  `mediapipe_body_to_canonical_mapping.yaml`.
+- `TrackerMapping` implements the three forms and is what the realtime rigidifier + CoM use.
+- The SkellyModels model layer (`AnatomicalStructure` / `AspectInfo` / `Trajectory`) carries only
+  first-class landmarks.
+- **One canonical model per actor part** (body, hand, face) = a pure landmark list + anatomy; **one mapping
+  per (tracker, part)** in SkellyTracker. That is the whole system.
 
-## Migration plan (finish killing "virtual marker") `[IN]`
+## Remaining work `[IN]`
 
-1. **Remove the `virtual_markers` concept from the SkellyModels model layer**: drop
-   `virtual_markers_definitions` from `AnatomicalStructure` and `AspectInfo`, the `VirtualMarkerDefinition`
-   type (`skellymodels/utils/types.py`), its cross-field validation, and all usage (`aspect.py`,
-   `trajectory.py`, `managers/actor.py`, `biomechanics/anatomical_calculations.py`). Delete outright (no
-   shims), per the zero-vestigial-code rule.
-2. **Migrate remaining YAMLs** that still declare virtual markers (candidates from the grep:
-   `canonical_hand.yaml`, `rtmpose_model_info.yaml`, `mediapipe_model_info.yaml`) to the mapping form:
-   computed landmarks become first-class in the canonical model; how each tracker produces them moves into
-   that tracker's `*_to_canonical_mapping.yaml`.
-3. **One canonical model per actor part** (body, hand, face) = a pure landmark list + anatomy; **one mapping
-   per (tracker, part)** in SkellyTracker. That's the whole system.
+The realtime path is fully on this mapping. The **posthoc** `Human` pipeline still builds from the legacy
+tracker model-infos (`rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`); route it through the same
+`*_to_canonical_mapping.yaml` + the canonical model, and retire those tracker model-infos.
 
 ## Richer mapping form: `anatomical_offset` (local-basis offset) `[IN]`
 
@@ -103,8 +97,7 @@ sternoclavicular:                    # canonical landmark
 One form covers the SC joint, the GH joint, hip joint centers, and later the scapula
 ([12](12-standard-human-model.md)). Exact YAML schema is finalized in implementation; the contract is
 *origin + a landmark-defined frame + an anthropometric offset*, deterministic and subject-scaled. These are
-still **landmarks** produced from **keypoints** — `anatomical_offset` is a richer mapping form, **not** a revived
-"virtual marker."
+still **landmarks** produced from **keypoints** — `anatomical_offset` is simply a richer mapping form.
 
 ## Why this matters for the stream
 

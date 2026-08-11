@@ -26,7 +26,7 @@ surfaced in the UI.
 | 10 | [Serialization & Tidy Format](10-serialization-and-tidy-format.md) | On-disk form: tidy long CSV/parquet vs SkellyForge parquet |
 | 11 | [Kinematics Fold-In](11-kinematics-fold-in.md) | SkellyModels ↔ FreeMoCap `core/kinematics` ↔ `bs/kinematics_core` overlap + plan |
 | 12 | [Standard Human Model](12-standard-human-model.md) | VRM rig, marker→bone retarget, derived joint centers (clavicle), twist policy |
-| 13 | [Tracker → Canonical Mapping](13-tracker-to-canonical-mapping.md) | The keypoint→landmark mapping system that replaces "virtual markers" |
+| 13 | [Tracker → Canonical Mapping](13-tracker-to-canonical-mapping.md) | The keypoint→landmark mapping system (string / list-mean / weighted-sum) |
 | — | [Implementation Plan](IMPLEMENTATION_PLAN.md) | Scope table, phased build order, dependencies, progress log |
 
 ## Conventions used in these docs

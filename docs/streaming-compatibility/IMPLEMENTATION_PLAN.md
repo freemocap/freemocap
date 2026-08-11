@@ -17,21 +17,28 @@
 ## Scope table (authoritative)
 
 ### `[IN]` — near-term build
+- **Standard-human model** (SH-1…SH-6): VRM 1.0 bones + hierarchy + alias table + 52 ARKit blendshape
+  declarations + per-bone reference geometry (T-pose + `CoordinateFrameDefinition`) — see
+  [phase-1/standard-human-model/](phase-1/standard-human-model/README.md).
+- **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; rewrite
+  `AnatomicalStructure`/`ModelInfo`/managers onto the standard human; produce per-bone world+local
+  quaternions (identity == T-pose). ([11](11-kinematics-fold-in.md)).
+- **Tracker→canonical mapping**: every canonical landmark produced from tracker keypoints via the
+  `*_to_canonical_mapping.yaml` forms; add the `anatomical_offset` mapping form for off-surface joint
+  centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
 - **The LSL-shaped standard stream**: a schema (channels, joint hierarchy, T-pose, convention, units)
-  sent once + timestamped samples per frame, mirroring LSL's data model, over the existing WebSocket.
-  Backend standard-stream encoder + frontend consumption.
-- Canonical-frame extensions: **segment-rotation channels** (via the folded-in `bs/` engine), **subject
-  dimension**, **convention/rest-pose in the schema**, **per-point confidence / reprojection error**.
-- **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; **align** (don't
-  delete) the existing `core/kinematics` ([11](11-kinematics-fold-in.md)).
-- **Tracker→canonical mapping migration**: finish removing the "virtual marker" concept; add the
-  `anatomical_offset` mapping form for off-surface joint centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
+  sent once + timestamped samples per frame (with both `ROTATIONS_WORLD` + `ROTATIONS_LOCAL` channel
+  groups), mirroring LSL's data model, over the existing WebSocket. Backend standard-stream encoder +
+  frontend consumption.
+- Canonical-frame extensions: **segment-rotation channels** (world + local, via the folded-in engine),
+  **subject dimension**, **convention/rest-pose in the schema**, **per-point confidence / reprojection
+  error**.
 - **On-disk serialization**: migrate the **parquet** schema to tidy-long ([10](10-serialization-and-tidy-format.md)).
 - Streaming hub: frame tap, latest-frame mailbox, derived views, `StreamingManager`, supervision.
 - `/streaming/*` HTTP control plane (list / start / streams / stop); scoped fail-loud; **start idle**;
   **ephemeral server-side** config.
 - **LSL transport route** (near-free pass-through of the standard stream; `pylsl` is a **core** dep).
-- **VMC protocol adapter** (derived from the standard stream).
+- **VMC protocol adapter** (derived from the standard stream; maps VRM 1.0→0.x names + expressions).
 - Adapter registry (extracted after VMC).
 - **UI:** streaming controls in the **Realtime UI** (dropdown of toggles + per-option modal); the
   `ServerContextProvider` **wedge** (message-routing + connection-lifecycle extraction) → full
@@ -113,14 +120,38 @@ consumer.
 
 ## Todo (current focus)
 
-1. Team review of this spec folder; resolve open spec-level questions.
-2. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
-3. Fold `bs/kinematics_core` into SkellyForge (copy/adapt); align existing `core/kinematics`; converge on one
-   rotation implementation (assess BVH overlap).
-4. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
+1. **SH-1 — Standard-human model** (current priority): create `skellyforge/skellymodels/standard_human/`
+   with VRM 1.0 bones + alias table + blendshape declarations + T-pose reference geometry. See
+   [phase-1/standard-human-model/](phase-1/standard-human-model/README.md).
+2. **SH-3 — Kinematics engine fold-in** (parallel with SH-1): copy/adapt `bs/kinematics_core` into
+   `skellyforge/kinematics/`.
+3. **SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint centers.
+4. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
+5. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
 
 ## Progress log
 
+- **2026-08-11 (standard-human decisions locked)** — Strategic review of the canonical human model
+  against VRM/VMC/Unreal ecosystem realities. **Decisions locked (do not re-litigate):**
+  - Bone set = VRM 1.0 humanoid (full body + hands + face); VMC adapter maps down to VRM 0.x names.
+  - Naming = `snake_case` Python + separate alias table (`human_bone_aliases.py`), NOT bone attributes.
+  - Bones subsume segments — full rewrite of `AnatomicalStructure`/`ModelInfo`/managers; no backwards compat.
+  - Face = 52 ARKit blendshapes declared now, `null` until wired from skellytracker.
+  - Rotation channels = **both** `ROTATIONS_WORLD` and `ROTATIONS_LOCAL` in the standard stream.
+  - File naming = no single-word file names (`human_bones.py`, not `bones.py`).
+  - Alias mechanism = external table (`canonical → {target: alias}`), one `resolve_alias()` helper.
+  - Reference geometry per bone (T-pose + `CoordinateFrameDefinition`); twist policy declarative per bone.
+  Updated `phase-1/HANDOFF.md` and `phase-1/standard-human-model/README.md`.
+- **2026-08-11** — Consolidated the SkellyModels model layer onto first-class canonical landmarks:
+  `AnatomicalStructure` / `AspectInfo` / `Trajectory` (skellyforge) now carry only tracked landmarks;
+  computed landmarks (`head_center`/`neck_center`/`trunk_center`/`hips_center`) are produced solely by the
+  skellytracker `*_to_canonical_mapping.yaml` (list-mean). Canonical body/hand models verified (27/21
+  landmarks). Env `uv sync`'d (green baseline, 12 tests). Documented the **cross-repo dev model** (freemocap
+  installs skellies from **git, not local** — local edits need a commit to reach freemocap): new
+  `project/CLAUDE.md`, `docs/streaming-compatibility/HANDOFF_GUIDE.md`, restructured `phase-1/HANDOFF.md`.
+  **Remaining:** the **posthoc** `Human` pipeline still builds from the legacy tracker model-infos
+  (`rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`) — route it through the mapping + canonical model
+  and retire those files; plus the UI midpoint helper (`freemocap-ui`) and the legacy blender addon.
 - **2026-08-10 (WS-3 builder)** — WS-3 schema builder coded: `standard_stream/stream_schema_builder.py`
   (`build_stream_schema` — pure, canonical data → `StreamSchema`; declares skeleton+derived POINTS,
   ROTATIONS, per-camera OVERLAY_2D; added `camera_ids` to the schema). `SCALARS` kind dropped — CoM/xcom are

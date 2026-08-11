@@ -28,7 +28,7 @@ Face: VRM **blendshapes** (expressions), not bones — `TBD` how driven (see Ope
 
 Each bone's endpoints are **joint centers**, produced from tracker keypoints via a
 [tracker→canonical mapping](13-tracker-to-canonical-mapping.md) (string / list-mean / weighted-sum) — the
-one abstraction; there are **no "virtual markers."** Some endpoints are direct keypoints; some are **derived**
+one abstraction. Some endpoints are direct keypoints; some are **derived**
 landmarks (`neck_center`, `hips_center`, …). Joint centers that sit *off* the marked surface (the anterior
 clavicle base) can't be a convex mapping — they use the **`anatomical_offset`** mapping form (below).
 

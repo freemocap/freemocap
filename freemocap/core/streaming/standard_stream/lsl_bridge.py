@@ -14,21 +14,27 @@ from __future__ import annotations
 import numpy as np
 
 from freemocap.core.streaming.standard_stream.stream_sample import StreamSample
-from freemocap.core.streaming.standard_stream.stream_schema import StreamSchema
+from freemocap.core.streaming.standard_stream.stream_schema import ChannelKind, StreamSchema
 
 
 def schema_to_streaminfo_channels(schema: StreamSchema) -> list[tuple[str, str]]:
     """Flatten channel groups → per-column ``(label, unit)`` for an LSL StreamInfo.
 
     One channel per (entity name × column), in schema order, across **all** groups.
-    (The OVERLAY_2D group's per-camera expansion is applied when the camera set is
-    fixed at stream build — WS-3 / WS-5.)
+    OVERLAY_2D is expanded per camera (``schema.camera_ids``) — the camera set is
+    fixed at stream creation.
     """
     channels: list[tuple[str, str]] = []
     for group in schema.channels:
-        for name in group.names:
-            for column in group.columns:
-                channels.append((f"{name}.{column}", group.units))
+        if group.kind == ChannelKind.OVERLAY_2D:
+            for camera_id in schema.camera_ids:
+                for name in group.names:
+                    for column in group.columns:
+                        channels.append((f"{camera_id}.{name}.{column}", group.units))
+        else:
+            for name in group.names:
+                for column in group.columns:
+                    channels.append((f"{name}.{column}", group.units))
     return channels
 
 

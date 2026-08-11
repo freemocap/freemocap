@@ -1,7 +1,9 @@
 # WS-3 — Canonical-Frame Extensions
 
 > Build order: right after WS-1, before WS-2. Realizes [01](../01-canonical-data-model.md).
-> **Status: plan for agreement — no code until agreed.**
+> **Status: schema builder ✅** (`stream_schema_builder.py`, 4 tests green — declares convention, hierarchy,
+> rotation + per-camera 2D-overlay channels, cameras). **SkellyForge adapter + aggregator wiring
+> (`reprojection_error` / `subject_id` onto the frame) pending the freemocap env.**
 
 ## Goal
 

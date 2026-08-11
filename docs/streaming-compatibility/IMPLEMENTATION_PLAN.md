@@ -121,6 +121,12 @@ consumer.
 
 ## Progress log
 
+- **2026-08-10 (WS-3 builder)** — WS-3 schema builder coded: `standard_stream/stream_schema_builder.py`
+  (`build_stream_schema` — pure, canonical data → `StreamSchema`; declares skeleton+derived POINTS,
+  ROTATIONS, per-camera OVERLAY_2D; added `camera_ids` to the schema). `SCALARS` kind dropped — CoM/xcom are
+  POINTS. **12 tests green** (8 contract + 4 builder). **Boundary hit:** the SkellyForge adapter (feed the
+  canonical body/hand model) + aggregator wiring (`reprojection_error`/`subject_id`) need the **freemocap env**
+  (skellyforge + pipeline), which isn't synced locally.
 - **2026-08-10 (WS-1 coded)** — Phase 1 started. **WS-1 (standard-stream contract) implemented** in
   `freemocap/core/streaming/standard_stream/` (`conventions.py`; `schema.py` — msgspec StreamInfo + JSON codec;
   `sample.py` — binary encode/decode; `lsl_bridge.py`) + `tests/test_standard_stream_contract.py` — **8 tests

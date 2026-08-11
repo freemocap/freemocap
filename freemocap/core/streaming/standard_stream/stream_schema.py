@@ -59,6 +59,7 @@ class StreamSchema(msgspec.Struct):
     connections: tuple[tuple[str, str], ...] = ()
     joint_hierarchy: dict[str, tuple[str, ...]] = msgspec.field(default_factory=dict)
     rest_pose: RestPose | None = None
+    camera_ids: tuple[str, ...] = ()  # cameras for OVERLAY_2D — fixed at stream creation
     message_type: str = "stream_schema"
 
 

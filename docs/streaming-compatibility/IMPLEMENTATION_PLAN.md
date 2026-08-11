@@ -121,18 +121,39 @@ consumer.
 ## Todo (current focus)
 
 1. ✅ **SF-SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
-   (human_bones, aliases, blendshapes, model + validators).
-2. ✅ **SF-SH-3 — Kinematics engine fold-in** — DONE. `skellyforge/kinematics/`
-   (quaternion_math, coordinate_frame_ops, rigid_body_kinematics). 23 exported symbols.
-3. **ST-SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
-   centers in skellytracker. Produce full canonical landmark set for the standard human.
-4. **SF-SH-4 — Orientation solve**: wire the solver that dispatches `TwistPolicy` from
-   `StandardHuman`, calls kinematics engine, produces per-bone world+local quaternions.
-5. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
-6. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
+2. ✅ **SF-SH-3 — Kinematics engine** — DONE. `skellyforge/kinematics/`
+3. ✅ **SF-SH-4 — Orientation solver** — DONE. `skellyforge/kinematics/orientation_solver.py`
+4. ✅ **ST-SH-2 — Tracker→canonical mappings + anatomical_offset** — DONE. `skellytracker/core/io/tracker_mapping.py`
+5. **SF-SH-5 — Wire-up** (CURRENT): aggregator invokes solver, fills standard-stream rotation
+   channels, rebuilds posthoc `Human` on standard model, retires legacy tracker model-infos.
+6. **FMC-WS-3 — SkellyForge adapter**: wire `StandardHuman` model into schema builder.
+7. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
 
 ## Progress log
 
+- **2026-08-11 (ST-SH-2 implemented)** — Tracker-to-canonical mapping extended with
+  ``anatomical_offset`` form in skellytracker. ``TrackerMapping`` now supports 4 forms: string
+  (1:1), list (mean), dict (weighted sum), and dict with ``form: anatomical_offset`` for
+  off-surface joint centers. ``_AnatomicalOffsetDef`` / ``_FrameAxisDef`` frozen dataclasses
+  hold parsed definitions; ``_apply_anatomical_offset`` builds a right-handed anatomical frame
+  from keypoint-defined axes (Gram-Schmidt + cross product), scales anthropometric offsets by a
+  subject-derived reference length, and places the landmark. Two-pass ``apply()`` resolves basic
+  mappings first, then anatomical_offsets (which may reference computed landmarks like
+  ``hips_center``). ``sternoclavicular`` landmark added to RTMPose body mapping (anterior offset
+  from shoulder midpoint via ``shoulder_width`` reference). End-to-end verified: SC joint placed
+  ~49mm anterior, ~28mm inferior to shoulder midpoint — biologically correct.
+  **Next: SF-SH-5 (wire-up — aggregator + canonical frame + retire legacy model-infos).**
+- **2026-08-11 (SF-SH-4 implemented)** — Orientation solver built in `skellyforge/kinematics/`.
+  ``orientation_solver.py`` ties SF-SH-1 (bone model) + SF-SH-3 (kinematics math) + live skeleton
+  positions together. ``solve_frame_orientations()`` walks the bone hierarchy root-first, dispatches
+  ``TwistPolicy`` per bone (full-frame / chain-resolved with singularity gate at ~5 deg /
+  damped-minimal with temporal SLERP), produces both world + local quaternions in
+  ``FrameOrientationResult`` — output maps directly to ``ROTATIONS_WORLD`` and ``ROTATIONS_LOCAL``
+  standard-stream channel groups. ``solve_bone_world_orientation()`` for per-bone use;
+  ``solve_bone_full_frame()`` for Kabsch alignment when >=3 markers per segment. Tested: T-pose
+  identity, 90 deg bend (correct world quats + identity local for uniform bend), per-bone swing
+  (Z->Y), singularity gate (chain-resolved degrades to damped-minimal when parallel).
+  **Next: ST-SH-2 (tracker->canonical mappings + anatomical_offset) in skellytracker.**
 - **2026-08-11 (SF-SH-3 implemented)** — Kinematics engine built in `skellyforge/kinematics/`.
   Three modules, zero Pydantic, all hot-path safe (dataclasses + numpy): `quaternion_math.py`
   (``Quaternion`` with ``__slots__`` + 12 vectorized numpy fns — single home for Hamilton product,

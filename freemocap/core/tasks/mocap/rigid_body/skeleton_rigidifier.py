@@ -16,8 +16,6 @@ collapsing onto its parent.
 """
 from __future__ import annotations
 
-import math
-from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -43,7 +41,8 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_d
 )
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
-from freemocap.core.tasks.mocap.rigid_body.online_segment_lengths import RollingBoneLengths
+from skellyforge.kinematics.online_segment_lengths import RollingBoneLengths
+from skellyforge.kinematics.skeleton_rigidifier import TreeRigidifier
 
 # Direction used for a bone that has never been observed (no carried direction).
 _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
@@ -59,88 +58,6 @@ _HAND_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
     "rtmpose": RTMPoseHandDetector.canonical_mapping_path(),
     "mediapipe": MediapipeHandKeypointDetector.canonical_mapping_path(),
 }
-
-
-class TreeRigidifier:
-    """Forward-pass rigidify over a fixed joint hierarchy.
-
-    The tree topology (roots + BFS edge order) is computed once at construction;
-    ``rigidify`` is the per-frame hot path. Stateful across calls: it remembers
-    each bone's last-good direction.
-    """
-
-    def __init__(self, *, joint_hierarchy: dict[str, list[str]]) -> None:
-        children_of: dict[str, list[str]] = {
-            parent: list(children) for parent, children in joint_hierarchy.items()
-        }
-        all_children = {c for children in children_of.values() for c in children}
-        roots = [parent for parent in children_of if parent not in all_children]
-
-        # BFS edge order: a parent is always emitted before its children, so the
-        # forward pass can rely on the corrected parent already being placed.
-        edges: list[tuple[str, str]] = []
-        visited: set[str] = set(roots)
-        queue: deque[str] = deque(roots)
-        while queue:
-            parent = queue.popleft()
-            for child in children_of.get(parent, []):
-                edges.append((parent, child))
-                if child not in visited:
-                    visited.add(child)
-                    queue.append(child)
-
-        self._roots: tuple[str, ...] = tuple(roots)
-        self._edges: tuple[tuple[str, str], ...] = tuple(edges)
-        self._last_direction: dict[str, np.ndarray] = {}
-
-    def rigidify(
-        self,
-        positions: dict[str, np.ndarray],
-        bone_lengths: dict[str, float],
-    ) -> dict[str, np.ndarray]:
-        """Return rigidified positions for every joint reachable from a present root.
-
-        Parameters
-        ----------
-        positions : dict[str, (3,) ndarray]
-            Observed joint positions this frame (missing joints simply absent).
-        bone_lengths : dict[str, float]
-            ``"parent->child" -> length (mm)`` to enforce. Bones without a
-            positive length are skipped (their subtree is not placed).
-        """
-        corrected: dict[str, np.ndarray] = {}
-        for root in self._roots:
-            obs = positions.get(root)
-            if obs is not None:
-                corrected[root] = np.asarray(obs, dtype=float).copy()
-
-        for parent, child in self._edges:
-            parent_pos = corrected.get(parent)
-            if parent_pos is None:
-                continue  # subtree not anchored (root or ancestor missing)
-            length = bone_lengths.get(f"{parent}->{child}")
-            if length is None or length <= 0.0:
-                continue
-
-            bone_key = f"{parent}->{child}"
-            direction: np.ndarray | None = None
-            child_obs = positions.get(child)
-            if child_obs is not None:
-                vector = np.asarray(child_obs, dtype=float) - parent_pos
-                norm = float(np.linalg.norm(vector))
-                if math.isfinite(norm) and norm > 1e-6:
-                    direction = vector / norm
-                    self._last_direction[bone_key] = direction
-            if direction is None:
-                direction = self._last_direction.get(bone_key, _FALLBACK_DIRECTION)
-
-            corrected[child] = parent_pos + direction * length
-
-        return corrected
-
-    def reset(self) -> None:
-        """Forget all carried directions (e.g. on calibration reload)."""
-        self._last_direction.clear()
 
 
 # ===========================================================================

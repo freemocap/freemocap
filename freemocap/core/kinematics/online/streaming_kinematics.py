@@ -12,12 +12,12 @@ import numpy as np
 from skellyforge.data_models.trajectory_3d import Point3d
 
 from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
-from freemocap.core.kinematics.inertial.composite_inertia import (
+from skellyforge.kinematics.inertial.composite_inertia import (
     composite_centroidal_inertia,
     principal_axes_and_moments,
     equimomental_semi_axes,
 )
-from freemocap.core.kinematics.inertial.ground_reference import (
+from skellyforge.kinematics.inertial.ground_reference import (
     GRAVITY_MM_S2,
     center_of_pressure_ground_projection,
     extrapolated_center_of_mass,

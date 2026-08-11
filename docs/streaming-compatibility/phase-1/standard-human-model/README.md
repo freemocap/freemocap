@@ -1,11 +1,11 @@
 # Standard Human Model — VRM-aligned canonical human + kinematics engine
 
-> A **sub-plan of Phase 1**. Front-loaded from WS-5 because the streaming work (WS-2/3/4) can't be done
+> A **sub-plan of Phase 1**. Front-loaded from FMC-WS-5 because the streaming work (FMC-WS-2/3/4) can't be done
 > cleanly until the canonical human is defined against a real avatar standard. Parent design:
 > [01](../../01-canonical-data-model.md), [11](../../11-kinematics-fold-in.md),
 > [12](../../12-standard-human-model.md), [13](../../13-tracker-to-canonical-mapping.md).
 >
-> Status: **implementing — SH-1 DONE 2026-08-11. Next: SH-3 (kinematics engine) || SH-2 (mappings).**
+> Status: **implementing — SF-SH-1 DONE 2026-08-11. Next: SF-SH-3 (kinematics engine) || SF-SH-2 (mappings).**
 
 ## The goal (one sentence)
 
@@ -44,7 +44,7 @@ that streams (schema + samples, with both world AND local quaternions) and expor
 8. **Replace, don't parallel (zero-backwards-compat).** The standard-human model becomes the **one** model
    layer; old code is rewritten, not shimmed.
 
-## File structure (SH-1 deliverable)
+## File structure (SF-SH-1 deliverable)
 
 ```
 skellyforge/skellymodels/standard_human/
@@ -81,26 +81,26 @@ skellyforge/skellymodels/standard_human/
 
 | WS | Scope | Where | Depends |
 |---|---|---|---|
-| **SH-1 — Standard-human model** | VRM 1.0 bones + hierarchy + alias table + connections + per-bone **reference geometry (T-pose + coordinate frame)** + 52 blendshape channel declarations. The canonical landmark set = bone joint-centers. | `skellyforge/skellymodels/standard_human/` (new) | — |
-| **SH-2 — Tracker→canonical mappings** | Produce the model's landmarks (joint centers) from tracker keypoints; add `anatomical_offset` form for off-surface centers (SC/GH/hip). | skellytracker `*_to_canonical_mapping.yaml` + `TrackerMapping` | SH-1 |
-| **SH-3 — Kinematics engine fold-in** | Copy/adapt `bs/kinematics_core` → `skellyforge/kinematics/`; align `freemocap/core/kinematics`; retire `advanced_bvh_rotation`. | `skellyforge/kinematics/` (new) | — (parallel with SH-1) |
-| **SH-4 — Orientation solve** | Per-bone orientation from observed landmarks vs reference geometry (basis-alignment); **twist policy** encoded declaratively per bone (full-frame → chain/hinge → damped-minimal, with singularity gate at ~5° parallel). Batch + realtime variants. Produces BOTH world + local quaternions. Identity == T-pose. | `skellyforge/kinematics/` + a realtime solve mirroring the rigidifier | SH-1, SH-3 |
-| **SH-5 — Wire it up** | Aggregator invokes the solve → fills BOTH `ROTATIONS_WORLD` + `ROTATIONS_LOCAL` channels. Rebuild posthoc `Human` on the standard human + mapping; retire `rtmpose_model_info.yaml`/`mediapipe_model_info.yaml`; BVH via the new engine. | `freemocap` aggregator + posthoc; skellyforge managers | SH-1..4 |
-| **SH-6 — Spec docs** | Update `01/11/12/13` + `IMPLEMENTATION_PLAN` to describe the standard human as built (model + engine = SSOT). | `docs/streaming-compatibility/` | continuous |
+| **SF-SH-1 — Standard-human model** | VRM 1.0 bones + hierarchy + alias table + connections + per-bone **reference geometry (T-pose + coordinate frame)** + 52 blendshape channel declarations. The canonical landmark set = bone joint-centers. | `skellyforge/skellymodels/standard_human/` (new) | — |
+| **SF-SH-2 — Tracker→canonical mappings** | Produce the model's landmarks (joint centers) from tracker keypoints; add `anatomical_offset` form for off-surface centers (SC/GH/hip). | skellytracker `*_to_canonical_mapping.yaml` + `TrackerMapping` | SF-SH-1 |
+| **SF-SH-3 — Kinematics engine fold-in** | Copy/adapt `bs/kinematics_core` → `skellyforge/kinematics/`; align `freemocap/core/kinematics`; retire `advanced_bvh_rotation`. | `skellyforge/kinematics/` (new) | — (parallel with SF-SH-1) |
+| **SF-SH-4 — Orientation solve** | Per-bone orientation from observed landmarks vs reference geometry (basis-alignment); **twist policy** encoded declaratively per bone (full-frame → chain/hinge → damped-minimal, with singularity gate at ~5° parallel). Batch + realtime variants. Produces BOTH world + local quaternions. Identity == T-pose. | `skellyforge/kinematics/` + a realtime solve mirroring the rigidifier | SF-SH-1, SF-SH-3 |
+| **SF-SH-5 — Wire it up** | Aggregator invokes the solve → fills BOTH `ROTATIONS_WORLD` + `ROTATIONS_LOCAL` channels. Rebuild posthoc `Human` on the standard human + mapping; retire `rtmpose_model_info.yaml`/`mediapipe_model_info.yaml`; BVH via the new engine. | `freemocap` aggregator + posthoc; skellyforge managers | SF-SH-1..4 |
+| **SF-SH-6 — Spec docs** | Update `01/11/12/13` + `IMPLEMENTATION_PLAN` to describe the standard human as built (model + engine = SSOT). | `docs/streaming-compatibility/` | continuous |
 
 ## Sequence
 
 ```
-SH-1 (model) ─┬─▶ SH-2 (mappings) ─┐
-              │                     ├─▶ SH-4 (solve) ─▶ SH-5 (wire)
-SH-3 (engine) ┴─────────────────────┘
-SH-6 (docs) — continuous
+SF-SH-1 (model) ─┬─▶ SF-SH-2 (mappings) ─┐
+              │                     ├─▶ SF-SH-4 (solve) ─▶ SF-SH-5 (wire)
+SF-SH-3 (engine) ┴─────────────────────┘
+SF-SH-6 (docs) — continuous
 ```
 
-Recommended order: **SH-1 → SH-3 → SH-2 → SH-4 → SH-5**. SH-1 unblocks the streaming WS-3 adapter
+Recommended order: **SF-SH-1 → SF-SH-3 → SF-SH-2 → SF-SH-4 → SF-SH-5**. SF-SH-1 unblocks the streaming FMC-WS-3 adapter
 immediately (the schema builds from the model even before rotations are live).
 
-## Model shape (SH-1 concretely)
+## Model shape (SF-SH-1 concretely)
 
 The standard human is **data**, validated once:
 
@@ -111,7 +111,7 @@ The standard human is **data**, validated once:
   `reference_geometry` (T-pose joint centers + `CoordinateFrameDefinition`), and `twist_policy`.
   **No `vrm_alias` field** — aliases live in `human_bone_aliases.py`.
 - **Landmarks** — the canonical joint-centers the bones connect (e.g. `hips_center`, `neck_center`,
-  shoulder/elbow/wrist, SC/GH via `anatomical_offset`). This is the set SH-2 mappings must produce and
+  shoulder/elbow/wrist, SC/GH via `anatomical_offset`). This is the set SF-SH-2 mappings must produce and
   the standard stream `POINTS` channels enumerate.
 - **Reference geometry per bone** — T-pose local keypoint positions + a `CoordinateFrameDefinition` (exact
   axis = bone long axis; approximate axis = twist source per twist policy). Identity quaternion == T-pose.
@@ -148,5 +148,5 @@ of parallel (arm straight), Priority 2 degrades to Priority 3 to avoid the cross
 ## Verify (per the cross-repo model)
 
 skellyforge + skellytracker changes verify in **their own** envs; the **user commits** them; freemocap
-`uv sync`s to pick them up, then the freemocap-side wiring (SH-5) + streaming golden tests verify end-to-end.
+`uv sync`s to pick them up, then the freemocap-side wiring (SF-SH-5) + streaming golden tests verify end-to-end.
 Never `import` from `bs/` (reference only).

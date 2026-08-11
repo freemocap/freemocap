@@ -1,6 +1,6 @@
-# WS-5 — Kinematics Engine Fold-In → Rotations (parallel track)
+# FMC-WS-5 — Kinematics Engine Fold-In → Rotations (parallel track)
 
-> The largest workstream. Runs **parallel** to WS-1…4 and **fills the rotation channels they declare** (per the
+> The largest workstream. Runs **parallel** to FMC-WS-1…4 and **fills the rotation channels they declare** (per the
 > positions-first decision — it does *not* block the Phase-1 stream reshape). Realizes
 > [11](../11-kinematics-fold-in.md), [12](../12-standard-human-model.md), [13](../13-tracker-to-canonical-mapping.md).
 > **Status: plan for agreement (decomposition) — no code until agreed; likely spawns its own sub-folder.**
@@ -25,7 +25,7 @@ live, and populate the declared rotation channels — the same engine serving re
   fallback) — [12](../12-standard-human-model.md).
 - **5d — Realtime per-frame solve.** A streaming variant of the orientation solve (mirrors
   `skeleton_rigidifier.py`), producing per-segment quaternions each frame.
-- **5e — Wire into the frame.** The aggregator calls the solve; rotations fill the WS-3-declared channels. The
+- **5e — Wire into the frame.** The aggregator calls the solve; rotations fill the FMC-WS-3-declared channels. The
   same engine feeds posthoc; the **vestigial** skellyforge BVH exporter is **replaced/augmented** by the new
   engine (not converged-with).
 - **5f — Consolidate + align into SkellyForge.** Move most/all of `freemocap/core/kinematics` into SkellyForge
@@ -54,6 +54,6 @@ VMC adapter (Phase 3); full scapula (later); face blendshapes (later — null).
 
 ## Note on depth
 
-WS-5 is large enough that, once we start it, it should get its own `phase-1/ws5/` sub-folder of
+FMC-WS-5 is large enough that, once we start it, it should get its own `phase-1/ws5/` sub-folder of
 increasingly-specific plans (engine → rig → solve → wire). Planned at decomposition depth here so the
-positions-first slice (WS-1…4) isn't blocked.
+positions-first slice (FMC-WS-1…4) isn't blocked.

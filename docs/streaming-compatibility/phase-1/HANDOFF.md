@@ -1,4 +1,4 @@
-# Phase 1 Handoff — 2026-08-11 (updated: SH-1 complete)
+# Phase 1 Handoff — 2026-08-11 (updated: SF-SH-1 complete)
 
 ## Start here (do this before touching code)
 
@@ -26,29 +26,29 @@
 
 | Thread | Status | Plan |
 |---|---|---|
-| WS-1 — standard-stream contract (schema+sample+codecs) | **done**, 8 tests | [phase-1/01](01-standard-stream-contract.md) |
-| WS-3 — schema **builder** (pure) | **done**, 4 tests | [phase-1/03](03-canonical-frame-extensions.md) |
+| FMC-WS-1 — standard-stream contract (schema+sample+codecs) | **done**, 8 tests | [phase-1/01](01-standard-stream-contract.md) |
+| FMC-WS-3 — schema **builder** (pure) | **done**, 4 tests | [phase-1/03](03-canonical-frame-extensions.md) |
 | SkellyModels model layer → pure first-class landmarks | **done (skellyforge local — awaiting user commit)** | [13](../13-tracker-to-canonical-mapping.md) |
 | Route **posthoc** through the mapping + retire legacy tracker model-infos | **remainder** | [13 — Remaining work](../13-tracker-to-canonical-mapping.md) |
-| **SH-1 — Standard-human model** | **DONE** | [standard-human-model/](standard-human-model/README.md) |
-| **SH-3 — Kinematics engine fold-in** | **NEXT (parallel track)** | [11](../11-kinematics-fold-in.md) |
-| **SH-2 — Tracker-to-canonical mappings + anatomical_offset** | **NEXT (parallel with SH-3)** | [13](../13-tracker-to-canonical-mapping.md) |
-| SH-4 — Orientation solve | gated on SH-1 + SH-3 | [standard-human-model/](standard-human-model/README.md) |
-| SH-5 — Wire it up | gated on SH-1..4 | [standard-human-model/](standard-human-model/README.md) |
-| WS-3 — SkellyForge adapter + aggregator wiring | pending (gated on SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
-| WS-2 / WS-4 / WS-5 | not started | [02](02-backend-encoder-and-ws-reshape.md), [04](04-ui-wedge.md), [05](05-kinematics-foldin-rotations.md) |
+| **SF-SH-1 — Standard-human model** | **DONE** | [standard-human-model/](standard-human-model/README.md) |
+| **SF-SH-3 — Kinematics engine fold-in** | **NEXT (parallel track)** | [11](../11-kinematics-fold-in.md) |
+| **SF-SH-2 — Tracker-to-canonical mappings + anatomical_offset** | **NEXT (parallel with SF-SH-3)** | [13](../13-tracker-to-canonical-mapping.md) |
+| SF-SH-4 — Orientation solve | gated on SF-SH-1 + SF-SH-3 | [standard-human-model/](standard-human-model/README.md) |
+| SF-SH-5 — Wire it up | gated on SF-SH-1..4 | [standard-human-model/](standard-human-model/README.md) |
+| FMC-WS-3 — SkellyForge adapter + aggregator wiring | pending (gated on SF-SH-1) | [phase-1/03](03-canonical-frame-extensions.md) |
+| FMC-WS-2 / FMC-WS-4 / FMC-WS-5 | not started | [02](02-backend-encoder-and-ws-reshape.md), [04](04-ui-wedge.md), [05](05-kinematics-foldin-rotations.md) |
 
-**User's current priority:** SH-3 (kinematics engine) in parallel with SH-2 (tracker-to-canonical mappings).
+**User's current priority:** SF-SH-3 (kinematics engine) in parallel with SF-SH-2 (tracker-to-canonical mappings).
 
 ## Where the last person stopped
 
-**SH-1 is complete.** `skellyforge/skellymodels/standard_human/` contains the full standard human model:
+**SF-SH-1 is complete.** `skellyforge/skellymodels/standard_human/` contains the full standard human model:
 `human_bones.py` (dataclasses), `human_bone_aliases.py` (55 bones, vrm+unreal targets),
 `human_blendshapes.py` (52 ARKit + VRM expression mapping), `standard_human_model.py`
 (Pydantic model with tree/hierarchy validators). Pydantic added as skellyforge dependency.
 All smoke-tested green in the skellyforge venv.
 
-**Next in priority order: SH-3 then SH-2, running in parallel.**
+**Next in priority order: SF-SH-3 then SF-SH-2, running in parallel.**
 
 ## Load-bearing decisions (all LOCKED — 2026-08-11)
 
@@ -127,7 +127,7 @@ VRM/VMC/Unreal ecosystem realities. Each is stated with its rationale so subsequ
 - Twist policy encoded **declaratively** per bone (tier + twist source), not procedurally in the engine.
 - The engine reads the policy and applies the corresponding math.
 
-## Standard-human model file structure (SH-1 deliverable)
+## Standard-human model file structure (SF-SH-1 deliverable)
 
 ```
 skellyforge/skellymodels/standard_human/
@@ -174,7 +174,7 @@ No single-word file names. The alias mechanism lives alongside the model, not in
   readability, Pydantic for validation). Current canonical model uses YAML; Pydantic `BaseModel` is
   already used for `AnatomicalStructure`.
 
-## Next actions (ordered, for SH-1)
+## Next actions (ordered, for SF-SH-1)
 
 1. [ ] Create `skellyforge/skellymodels/standard_human/` package — mechanical
 2. [ ] Define `human_bones.py`: `Bone`, `ReferenceGeometry`, `CoordinateFrameDefinition`, `TwistPolicy`
@@ -182,7 +182,7 @@ No single-word file names. The alias mechanism lives alongside the model, not in
 3. [ ] Define `human_bone_aliases.py`: `BONE_ALIASES` table + `resolve_alias()` — mechanical
 4. [ ] Define `human_blendshapes.py`: 52 ARKit channel declarations — mechanical (standard list)
 5. [ ] Define `standard_human_model.py`: `StandardHuman` model assembling bones + blendshapes + hierarchy
-       + T-pose — the core SH-1 deliverable
+       + T-pose — the core SF-SH-1 deliverable
 6. [ ] Define T-pose reference positions (either explicit coordinates or derived from anthropometric
        ratios from `canonical_body.yaml` / `canonical_hand.yaml`)
 7. [ ] Verify: model loads, validates, hierarchy is a tree, all bones have reference geometry, aliases

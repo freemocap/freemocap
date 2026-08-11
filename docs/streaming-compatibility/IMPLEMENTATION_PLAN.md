@@ -17,7 +17,7 @@
 ## Scope table (authoritative)
 
 ### `[IN]` — near-term build
-- **Standard-human model** (SH-1…SH-6): VRM 1.0 bones + hierarchy + alias table + 52 ARKit blendshape
+- **Standard-human model** (SF-SH-1…SF-SH-6): VRM 1.0 bones + hierarchy + alias table + 52 ARKit blendshape
   declarations + per-bone reference geometry (T-pose + `CoordinateFrameDefinition`) — see
   [phase-1/standard-human-model/](phase-1/standard-human-model/README.md).
 - **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; rewrite
@@ -82,8 +82,8 @@ This spec folder. Agree architecture, scope, and open questions before code.
 - [ ] Final review pass with the team.
 
 ### Phase 1 — The LSL-shaped standard stream (the foundation) `[planning]`
-Detailed workstream plans live in [`phase-1/`](phase-1/README.md) (WS-1…WS-5; **positions-first**, rotations
-via WS-5 parallel). Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is its first
+Detailed workstream plans live in [`phase-1/`](phase-1/README.md) (FMC-WS-1…FMC-WS-5; **positions-first**, rotations
+via FMC-WS-5 parallel). Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is its first
 consumer.
 - [ ] Backend **standard-stream encoder**: schema once (channels, joint hierarchy, T-pose, convention,
       units) + timestamped sample per frame; fused with the `websocket_server.py` send-path reshape.
@@ -120,19 +120,19 @@ consumer.
 
 ## Todo (current focus)
 
-1. ✅ **SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
+1. ✅ **SF-SH-1 — Standard-human model** — DONE. `skellyforge/skellymodels/standard_human/`
    (human_bones, aliases, blendshapes, model + validators).
-2. **SH-3 — Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into
+2. **SF-SH-3 — Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into
    `skellyforge/kinematics/`. Coordinate frame math, quaternion utilities, rigid-body kinematics
    model, orientation solver (batch + realtime variants).
-3. **SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
+3. **SF-SH-2 — Tracker→canonical mappings**: wire `anatomical_offset` form for SC/GH/hip joint
    centers. Produce full canonical landmark set for the standard human.
 4. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
 5. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
 
 ## Progress log
 
-- **2026-08-11 (SH-1 implemented)** — Standard-human model built in
+- **2026-08-11 (SF-SH-1 implemented)** — Standard-human model built in
   `skellyforge/skellymodels/standard_human/`. Four modules, zero single-word names:
   `human_bones.py` (`HumanBone`, `BoneReferenceGeometry`, `CoordinateFrameDefinition`,
   `TwistPolicy` — dataclasses, identity-quaternion==T-pose contract, twist tiers: full_frame /
@@ -144,7 +144,7 @@ consumer.
   enforcement, bad-parent/cycle/twist-source detection, hierarchy + chain + children
   accessors, `from_bone_definitions()` factory, anthropometric ratio table). Validated:
   smoke-test green (construction, hierarchy, validators). `pydantic` added as skellyforge
-  dependency. **Next: SH-3 (kinematics engine fold-in) in parallel with SH-2 (tracker→canonical
+  dependency. **Next: SF-SH-3 (kinematics engine fold-in) in parallel with SF-SH-2 (tracker→canonical
   mappings + anatomical_offset).**
 - **2026-08-11 (standard-human decisions locked)** — Strategic review of the canonical human model
   against VRM/VMC/Unreal ecosystem realities. **Decisions locked (do not re-litigate):**
@@ -167,17 +167,17 @@ consumer.
   **Remaining:** the **posthoc** `Human` pipeline still builds from the legacy tracker model-infos
   (`rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`) — route it through the mapping + canonical model
   and retire those files; plus the UI midpoint helper (`freemocap-ui`) and the legacy blender addon.
-- **2026-08-10 (WS-3 builder)** — WS-3 schema builder coded: `standard_stream/stream_schema_builder.py`
+- **2026-08-10 (FMC-WS-3 builder)** — FMC-WS-3 schema builder coded: `standard_stream/stream_schema_builder.py`
   (`build_stream_schema` — pure, canonical data → `StreamSchema`; declares skeleton+derived POINTS,
   ROTATIONS, per-camera OVERLAY_2D; added `camera_ids` to the schema). `SCALARS` kind dropped — CoM/xcom are
   POINTS. **12 tests green** (8 contract + 4 builder). **Boundary hit:** the SkellyForge adapter (feed the
   canonical body/hand model) + aggregator wiring (`reprojection_error`/`subject_id`) need the **freemocap env**
   (skellyforge + pipeline), which isn't synced locally.
-- **2026-08-10 (WS-1 coded)** — Phase 1 started. **WS-1 (standard-stream contract) implemented** in
+- **2026-08-10 (FMC-WS-1 coded)** — Phase 1 started. **FMC-WS-1 (standard-stream contract) implemented** in
   `freemocap/core/streaming/standard_stream/` (`conventions.py`; `schema.py` — msgspec StreamInfo + JSON codec;
   `sample.py` — binary encode/decode; `lsl_bridge.py`) + `tests/test_standard_stream_contract.py` — **8 tests
   green**. Pure contract + codecs, no wiring. (freemocap's uv env isn't synced locally; ran via the skellycam
-  venv, since WS-1 only needs numpy/msgspec/beartype/skellylogs.) **Next:** WS-3 (canonical-frame extensions).
+  venv, since FMC-WS-1 only needs numpy/msgspec/beartype/skellylogs.) **Next:** FMC-WS-3 (canonical-frame extensions).
 - **2026-08-10 (consistency-pass)** — Full start-to-finish pass reconciling evolved decisions from review
   notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`anatomical_offset` mapping
   form** (deterministic, anthropometric, no runtime fit) that produces the anterior clavicle SC/GH centers

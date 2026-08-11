@@ -1,19 +1,19 @@
-# WS-2 — Backend Encoder + WebSocket Send-Path Reshape
+# FMC-WS-2 — Backend Encoder + WebSocket Send-Path Reshape
 
-> Build order: after WS-1 (contract) + WS-3 (frame extensions). Realizes
+> Build order: after FMC-WS-1 (contract) + FMC-WS-3 (frame extensions). Realizes
 > [06](../06-backend-refactor-and-cleanup.md), [09](../09-standard-stream-protocol.md).
 > **Status: plan for agreement — no code until agreed.**
 
 ## Goal
 
-Produce the standard stream (schema once + samples per frame) from the canonical frame using WS-1's codecs, and
+Produce the standard stream (schema once + samples per frame) from the canonical frame using FMC-WS-1's codecs, and
 wire it into the WebSocket send path — decomposing today's monolithic send path into focused components
 ([06](../06-backend-refactor-and-cleanup.md)). **Image data stays a separate stream** (linked by frame number).
 
 ## Files (evolve)
 
 - `freemocap/api/websocket/websocket_server.py` — the per-connection `WebsocketServer` send path.
-- `freemocap/core/viz/frontend_keypoints_serializer.py` — `build_keypoints_payload` → **replaced** by WS-1's
+- `freemocap/core/viz/frontend_keypoints_serializer.py` — `build_keypoints_payload` → **replaced** by FMC-WS-1's
   `encode_sample`.
 - `freemocap/core/viz/frontend_payload.py` — `FrontendPayload` CoM/xcom → a `POINTS` block (derived points);
   **per-camera 2D overlays → `OVERLAY_2D` blocks in the stream**.
@@ -25,7 +25,7 @@ wire it into the WebSocket send path — decomposing today's monolithic send pat
 ## The work
 
 1. **Standard-stream encoder** — canonical frame → `stream_schema` (on connect/change) + `stream_sample` (per
-   frame), via WS-1 codecs. The **shared** component the LSL route reuses later.
+   frame), via FMC-WS-1 codecs. The **shared** component the LSL route reuses later.
 2. **Send-path decomposition** ([06](../06-backend-refactor-and-cleanup.md)): send-serializer (the `_send_lock`
    one-writer), frame-relay (samples), backpressure/ack controller (policy object, no I/O), framerate reporter,
    log relay, app-state sender, client-message handler. `WebsocketServer` → thin supervisor.
@@ -37,7 +37,7 @@ wire it into the WebSocket send path — decomposing today's monolithic send pat
 
 ## Task checklist
 
-1. [ ] Standard-stream encoder (frame → schema/sample) on WS-1.
+1. [ ] Standard-stream encoder (frame → schema/sample) on FMC-WS-1.
 2. [ ] Extract send-serializer + backpressure controller (policy) + framerate reporter.
 3. [ ] Frame-relay sends samples; schema on connect/change.
 4. [ ] Keep the image relay separate; link by frame number.
@@ -46,13 +46,13 @@ wire it into the WebSocket send path — decomposing today's monolithic send pat
 
 ## Tests
 
-- Encoder: a canonical frame → schema+sample matching the WS-1 golden.
+- Encoder: a canonical frame → schema+sample matching the FMC-WS-1 golden.
 - Backpressure controller unit tests (synthetic ack-lag).
 - Integration: connect → schema → samples flow; the image path is unaffected.
 
 ## Not in scope
 
-UI decode (WS-4); rotation *values* (WS-5); LSL transport (Phase 2).
+UI decode (FMC-WS-4); rotation *values* (FMC-WS-5); LSL transport (Phase 2).
 
 ## Micro-decisions to confirm
 

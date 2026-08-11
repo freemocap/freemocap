@@ -24,29 +24,29 @@ Phase 1 is done when:
 
 | WS | Scope | Realizes | Depends on |
 |---|---|---|---|
-| **WS-1 — Standard-stream contract** | schema + sample **types + wire codecs**, no wiring yet | [09](../09-standard-stream-protocol.md) | — (linchpin) |
-| **WS-2 — Backend encoder + WS reshape** | produce schema/samples from the canonical frame; reshape `websocket_server.py` send path | [06](../06-backend-refactor-and-cleanup.md) | WS-1, WS-3 |
-| **WS-3 — Canonical-frame extensions** | convention-in-schema, subject dimension, confidence/error, rotation-channel declaration | [01](../01-canonical-data-model.md) | WS-1 |
-| **WS-4 — UI wedge + consumption** | extract connection/transport service; decode schema+samples → 3D viewport | [05](../05-ui-integration-and-refactor.md) | WS-1 |
-| **WS-5 — Kinematics engine fold-in → rotations** | copy/adapt `bs/kinematics_core` into SkellyForge; standard-human rig; live per-segment quaternions → fill rotation channels | [11](../11-kinematics-fold-in.md), [12](../12-standard-human-model.md), [13](../13-tracker-to-canonical-mapping.md) | WS-1 (channel) |
-| **WS-6 — Tests & verification** | golden bytes, round-trip, LSL-model parity, UI decode parity | [08](../08-testing-strategy.md) | threads all |
+| **FMC-WS-1 — Standard-stream contract** | schema + sample **types + wire codecs**, no wiring yet | [09](../09-standard-stream-protocol.md) | — (linchpin) |
+| **FMC-WS-2 — Backend encoder + WS reshape** | produce schema/samples from the canonical frame; reshape `websocket_server.py` send path | [06](../06-backend-refactor-and-cleanup.md) | FMC-WS-1, FMC-WS-3 |
+| **FMC-WS-3 — Canonical-frame extensions** | convention-in-schema, subject dimension, confidence/error, rotation-channel declaration | [01](../01-canonical-data-model.md) | FMC-WS-1 |
+| **FMC-WS-4 — UI wedge + consumption** | extract connection/transport service; decode schema+samples → 3D viewport | [05](../05-ui-integration-and-refactor.md) | FMC-WS-1 |
+| **FMC-WS-5 — Kinematics engine fold-in → rotations** | copy/adapt `bs/kinematics_core` into SkellyForge; standard-human rig; live per-segment quaternions → fill rotation channels | [11](../11-kinematics-fold-in.md), [12](../12-standard-human-model.md), [13](../13-tracker-to-canonical-mapping.md) | FMC-WS-1 (channel) |
+| **FMC-WS-6 — Tests & verification** | golden bytes, round-trip, LSL-model parity, UI decode parity | [08](../08-testing-strategy.md) | threads all |
 
 ## Dependency graph & sequence
 
 ```
-WS-1 (contract) ──┬──▶ WS-3 (frame ext) ──▶ WS-2 (encoder + WS reshape) ──▶ WS-4 (UI consume)
-                  └──▶ WS-4 can build against the fixed contract in parallel
-WS-5 (kinematics fold-in) ── parallel track ──▶ fills the rotation channels WS-3 declared
-WS-6 (tests) ── throughout
+FMC-WS-1 (contract) ──┬──▶ FMC-WS-3 (frame ext) ──▶ FMC-WS-2 (encoder + WS reshape) ──▶ FMC-WS-4 (UI consume)
+                  └──▶ FMC-WS-4 can build against the fixed contract in parallel
+FMC-WS-5 (kinematics fold-in) ── parallel track ──▶ fills the rotation channels FMC-WS-3 declared
+FMC-WS-6 (tests) ── throughout
 ```
 
-Recommended order: **WS-1 → WS-3 → WS-2 → WS-4**, with **WS-5** parallel and **WS-6** continuous.
+Recommended order: **FMC-WS-1 → FMC-WS-3 → FMC-WS-2 → FMC-WS-4**, with **FMC-WS-5** parallel and **FMC-WS-6** continuous.
 
 ## Key sequencing decision — DECIDED: (A) positions-first
 
-Phase 1 ships the stream reshape with rotation channels **declared but NaN**; **WS-5** (the large kinematics
+Phase 1 ships the stream reshape with rotation channels **declared but NaN**; **FMC-WS-5** (the large kinematics
 fold-in + standard-human rig) lands live rotations into those channels as a **parallel track**. This keeps the
-slice unblocked and proves the whole pipeline fast; VMC (which needs rotations) waits for WS-5. *(Option B —
+slice unblocked and proves the whole pipeline fast; VMC (which needs rotations) waits for FMC-WS-5. *(Option B —
 rotations on the Phase-1 critical path — was rejected.)*
 
 ## Plan hierarchy convention
@@ -58,14 +58,14 @@ rotations on the Phase-1 critical path — was rejected.)*
 
 ## Status
 
-- [x] Sequencing decision made — **(A) positions-first**; rotations via WS-5 (parallel).
-- [x] All Phase-1 super-specific plans drafted (WS-1…WS-5).
-- [x] **WS-1 implemented** — `core/streaming/standard_stream/` (contract + codecs), 8 tests green.
-- [x] **SH-1 (standard-human model) implemented** — `skellyforge/skellymodels/standard_human/`
+- [x] Sequencing decision made — **(A) positions-first**; rotations via FMC-WS-5 (parallel).
+- [x] All Phase-1 super-specific plans drafted (FMC-WS-1…FMC-WS-5).
+- [x] **FMC-WS-1 implemented** — `core/streaming/standard_stream/` (contract + codecs), 8 tests green.
+- [x] **SF-SH-1 (standard-human model) implemented** — `skellyforge/skellymodels/standard_human/`
       (human_bones, aliases, blendshapes, model + validators). VRM 1.0 bones, 52 ARKit channels,
       55-bone alias table with vrm+unreal targets.
-- [ ] SH-3 → SH-2 → SH-4 → SH-5 (WS-5 feed-in) → WS-3 → WS-2 → WS-4
+- [ ] SF-SH-3 → SF-SH-2 → SF-SH-4 → SF-SH-5 (FMC-WS-5 feed-in) → FMC-WS-3 → FMC-WS-2 → FMC-WS-4
 
-Plans: [WS-1 contract](01-standard-stream-contract.md) · [WS-3 frame extensions](03-canonical-frame-extensions.md)
-· [WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [WS-4 UI wedge](04-ui-wedge.md) ·
-[WS-5 kinematics fold-in](05-kinematics-foldin-rotations.md).
+Plans: [FMC-WS-1 contract](01-standard-stream-contract.md) · [FMC-WS-3 frame extensions](03-canonical-frame-extensions.md)
+· [FMC-WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [FMC-WS-4 UI wedge](04-ui-wedge.md) ·
+[FMC-WS-5 kinematics fold-in](05-kinematics-foldin-rotations.md).

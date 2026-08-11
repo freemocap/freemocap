@@ -1,6 +1,6 @@
-# WS-3 — Canonical-Frame Extensions
+# FMC-WS-3 — Canonical-Frame Extensions
 
-> Build order: right after WS-1, before WS-2. Realizes [01](../01-canonical-data-model.md).
+> Build order: right after FMC-WS-1, before FMC-WS-2. Realizes [01](../01-canonical-data-model.md).
 > **Status: schema builder ✅** (`stream_schema_builder.py`, 4 tests green — declares convention, hierarchy,
 > rotation + per-camera 2D-overlay channels, cameras). **SkellyForge adapter + aggregator wiring
 > (`reprojection_error` / `subject_id` onto the frame) pending the freemocap env.**
@@ -9,7 +9,7 @@
 
 Extend the canonical frame + schema so the standard stream carries: coordinate **convention** (schema), a
 **subject dimension**, per-point **confidence / reprojection error**, and **declared rotation channels** (NaN
-until WS-5, per the positions-first decision).
+until FMC-WS-5, per the positions-first decision).
 
 ## Files (evolve)
 
@@ -17,7 +17,7 @@ until WS-5, per the positions-first decision).
   dim reserved).
 - `freemocap/core/pipeline/realtime/realtime_aggregator_node.py` — surface `raw_errors_px` (already computed
   in the aggregator) onto the frame as a **named** channel: **`reprojection_error`** (never a naked "errors").
-- The **schema builder** (new, from WS-1) — build `stream_schema` from `AnatomicalStructure`: convention,
+- The **schema builder** (new, from FMC-WS-1) — build `stream_schema` from `AnatomicalStructure`: convention,
   `joint_hierarchy`, rest pose, and the ordered channel groups (POINTS — skeleton + derived CoM/xcom —
   **declared** ROTATIONS + per-camera OVERLAY_2D).
 - SkellyForge canonical model — confirm convention + rest pose are exposed to the schema builder.
@@ -32,7 +32,7 @@ until WS-5, per the positions-first decision).
 3. **Subject dimension.** Single-subject today; add `subject_id` to the sample (0 for now). The frame stays
    single-subject; the *contract* reserves the dimension so multi-subject needs no reshape.
 4. **Rotation channels declared.** The schema declares per-segment rotation channels (names from
-   `segment_connections` / hierarchy); samples carry **NaN** until WS-5 fills them.
+   `segment_connections` / hierarchy); samples carry **NaN** until FMC-WS-5 fills them.
 5. **2D overlays declared.** The schema declares a per-camera 2D-overlay channel group (same landmark names as
    the 3D skeleton, 2D-only); samples carry one `OVERLAY_2D` block per active camera. (The data already exists
    as `skeleton_overlays`; camera *images* stay a separate stream.)
@@ -52,7 +52,7 @@ until WS-5, per the positions-first decision).
 
 ## Not in scope
 
-Rotation *values* (WS-5); multi-subject *tracking* (contract dimension only).
+Rotation *values* (FMC-WS-5); multi-subject *tracking* (contract dimension only).
 
 ## Micro-decisions to confirm
 

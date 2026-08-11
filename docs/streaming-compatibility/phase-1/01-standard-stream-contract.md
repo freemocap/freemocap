@@ -1,13 +1,13 @@
-# WS-1 — Standard-Stream Contract (types + codecs)
+# FMC-WS-1 — Standard-Stream Contract (types + codecs)
 
 > The linchpin: the wire contract as code, **unit-testable in isolation, with no pipeline or WebSocket wiring**
-> (that is WS-2). Realizes [09 — Standard Stream Protocol](../09-standard-stream-protocol.md).
+> (that is FMC-WS-2). Realizes [09 — Standard Stream Protocol](../09-standard-stream-protocol.md).
 > **Status: ✅ implemented — `freemocap/core/streaming/standard_stream/`; 8 contract tests green.**
 
 ## Goal
 
 Define `stream_schema` (StreamInfo) + `stream_sample` (binary) as Python types with encode/decode codecs, plus
-golden-byte + round-trip tests. Nothing behavioral changes; existing paths keep working untouched. WS-2/3/4/5
+golden-byte + round-trip tests. Nothing behavioral changes; existing paths keep working untouched. FMC-WS-2/3/4/5
 build against these types.
 
 ## Where it lives (decided)
@@ -58,14 +58,14 @@ SAMPLE_FOOTER   mirrors header
 ```
 - POINTS cols = `x, y, z, reprojection_error`; ROTATIONS cols = `w, x, y, z` (matches bs/); missing → `NaN`.
 - **OVERLAY_2D** — the per-camera 2D projection of the tracked landmarks (`x, y, visibility`), **one block per
-  camera** (keyed by `camera_id`), matching the 3D data but 2D-only. Camera *images* stay a separate stream (WS-2).
+  camera** (keyed by `camera_id`), matching the 3D data but 2D-only. Camera *images* stay a separate stream (FMC-WS-2).
 - **Drop `embed_names`** — names live in the schema.
 
 ## Codecs
 
 - `encode_schema(schema) -> bytes` (JSON) / `decode_schema(bytes) -> schema`
 - `encode_sample(values, layout) -> bytes` / `decode_sample(bytes, schema) -> dict[block, ndarray]`
-- LSL helpers (thin, for WS-5 / the LSL route): `schema_to_streaminfo_channels(schema)`,
+- LSL helpers (thin, for FMC-WS-5 / the LSL route): `schema_to_streaminfo_channels(schema)`,
   `sample_to_flat_vector(sample)` — verify the pass-through parity.
 
 ## Task checklist
@@ -75,20 +75,20 @@ SAMPLE_FOOTER   mirrors header
 3. [x] Sample dtypes + `encode_sample` (dropped `embed_names`; added timestamp / subject / rotations / `OVERLAY_2D`) — `stream_sample.py`.
 4. [x] `decode_sample` + `decode_schema`.
 5. [x] Contract guards: header-size lock (32/28), encode determinism, full round-trip. *(A frozen byte-golden
-       fixture can be captured later for cross-repo/TS parity — WS-4.)*
+       fixture can be captured later for cross-repo/TS parity — FMC-WS-4.)*
 6. [x] Module docstrings as the SSOT for the wire contract (link [09](../09-standard-stream-protocol.md)).
 
-## Tests (the WS-6 slice for WS-1)
+## Tests (the FMC-WS-6 slice for FMC-WS-1)
 
 - `test_schema_roundtrip` — encode→decode reconstructs channels / hierarchy / rest-pose / convention.
 - `test_sample_golden_bytes` — a fixed frame → exact expected bytes.
 - `test_sample_roundtrip` — reconstruct values incl. `w,x,y,z` order + NaN-missing.
 - `test_lsl_flatten_parity` — sample blocks flatten to the StreamInfo channel order.
 
-## Explicitly NOT in WS-1
+## Explicitly NOT in FMC-WS-1
 
-No `AggregationNodeOutputMessage` changes (WS-3), no WebSocket wiring (WS-2), no UI (WS-4), no rotation
-*values* (WS-5). Pure contract + codecs.
+No `AggregationNodeOutputMessage` changes (FMC-WS-3), no WebSocket wiring (FMC-WS-2), no UI (FMC-WS-4), no rotation
+*values* (FMC-WS-5). Pure contract + codecs.
 
 ## Decisions (resolved)
 

@@ -1,6 +1,6 @@
-# WS-4 — UI Wedge + Standard-Stream Consumption
+# FMC-WS-4 — UI Wedge + Standard-Stream Consumption
 
-> Build order: parallel with WS-2 once WS-1 is fixed. Realizes [05](../05-ui-integration-and-refactor.md).
+> Build order: parallel with FMC-WS-2 once FMC-WS-1 is fixed. Realizes [05](../05-ui-integration-and-refactor.md).
 > **Status: plan for agreement — no code until agreed.**
 
 ## Goal
@@ -26,7 +26,7 @@ This is **the wedge** ([05](../05-ui-integration-and-refactor.md)).
    (features register routes instead of editing one giant `handleMessage` switch). `ServerContextProvider`
    becomes a thin consumer.
 2. **Standard-stream decoder (TS)** — parse `stream_schema` (register channels / convention / hierarchy) then
-   `stream_sample`s (mirror WS-1's binary format; `w,x,y,z` rotations; NaN missing).
+   `stream_sample`s (mirror FMC-WS-1's binary format; `w,x,y,z` rotations; NaN missing).
 3. **Feed the viewport** — schema-defined channels → the existing keypoints/skeleton subscriber sets (unchanged
    for now; the rolling-window stores are [05](../05-ui-integration-and-refactor.md) Step 2, a later WS).
 4. **Image path unchanged** — camera images still decode via the existing image path.
@@ -35,12 +35,12 @@ This is **the wedge** ([05](../05-ui-integration-and-refactor.md)).
 
 1. [ ] Connection/transport service (socket + state + routing table).
 2. [ ] `ServerContextProvider` consumes the service (no giant switch / no socket ownership).
-3. [ ] TS standard-stream decoder (schema + sample), parity with WS-1.
+3. [ ] TS standard-stream decoder (schema + sample), parity with FMC-WS-1.
 4. [ ] Viewport fed from decoded channels.
 
 ## Tests
 
-- **Cross-language golden:** WS-1's golden sample bytes → correct TS-decoded values.
+- **Cross-language golden:** FMC-WS-1's golden sample bytes → correct TS-decoded values.
 - Schema registration drives channel names / convention.
 - Reconnect re-requests the schema.
 
@@ -52,4 +52,4 @@ Full God-object decomposition (3D fan-out → rolling-window stores, frame/canva
 ## Micro-decisions to confirm
 
 - Service shape (class vs module) + how features register routes.
-- Cross-language golden-fixture format (share WS-1's exact bytes).
+- Cross-language golden-fixture format (share FMC-WS-1's exact bytes).

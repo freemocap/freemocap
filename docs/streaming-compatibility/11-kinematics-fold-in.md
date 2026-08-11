@@ -28,9 +28,9 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
 - **`bs/kinematics_core` is the mature implementation of what FreeMoCap `core/kinematics` only stubbed.**
   The disabled `StreamingKinematics` / `BodyKinematicsState` gesture at orientation + angular kinematics;
   `bs/` actually implements them (per rigid body, with derivatives and body/world frames).
-- **`bs/kinematics_core` appears to be the "segment-rotation code that lives elsewhere"** referenced in
-  [01](01-canonical-data-model.md) as a pending dependency. Its `Quaternion` + `RigidBodyKinematics` are
-  the engine that produces per-segment quaternions. `TBD` — confirm this is the intended source.
+- **`bs/kinematics_core` is the rotation/kinematics engine** (confirmed) — the "segment-rotation code that
+  lives elsewhere" referenced early on. Its `Quaternion` + `RigidBodyKinematics` produce the per-segment
+  quaternions. There is **no separate pending dependency** — we have everything we need.
 - **It is a *per-rigid-body* engine, not a human.** A human = **one rigid body per segment** (each a
   `ReferenceGeometry` + an orientation trajectory) **+** the anatomical marker set. SkellyModels supplies
   the *anatomy* (which markers, which segments, rest pose); `bs/` supplies the *rigid-body kinematics*
@@ -38,16 +38,16 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
 - **It is batch/posthoc-oriented** (whole-trajectory arrays, lazy derivatives). Realtime needs a
   per-frame streaming variant — exactly as `skeleton_rigidifier.py` is the streaming counterpart of the
   posthoc rigid-bones step.
-- **Duplication to retire on the FreeMoCap side**: the disabled `core/kinematics` path, and the
+- **Duplication to align on the FreeMoCap side**: the disabled `core/kinematics` path, and the
   hardcoded/misaligned segment lists (`LIMB_SEGMENTS` / `_SEGMENT_CHAINS`, already flagged by a
   `# TODO - Why tf is this not aligned with our skellyforge canonical skeleton defs??`).
 
 ## The fold-in plan (direction)
 
 1. **Copy/adapt `bs/kinematics_core` — do NOT import it.** `bs/` is our code from a *different project*;
-   it is **reference**, not a dependency. Re-implement its approach as a new engine in freemocap/SkellyForge
-   (do not `import python_code.kinematics_core`), aligned with SkellyModels, replacing FreeMoCap's disabled
-   `core/kinematics` stubs (deleted outright, per the zero-vestigial-code rule).
+   it is **reference**, not a dependency. Re-implement its approach as a new engine in **SkellyForge**
+   (do not `import python_code.kinematics_core`), aligned with SkellyModels. **Align, don't discard** the
+   existing FreeMoCap `core/kinematics` (see Decisions).
 2. **SkellyModels owns the anatomy; the engine owns the kinematics.** The canonical model provides each
    segment's definition + rest pose (→ a `ReferenceGeometry` per segment); the engine computes the
    per-segment orientation quaternions + derivatives. This is how "SkellyModels outputs segment
@@ -62,17 +62,17 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
 
 ## Connection to the standard human
 
-This is the engine half of the [standard-human decision](00-overview.md) (still open — "talk it through
-more"): if the standard human is a VRM/VMC-aligned **rig**, each humanoid bone is a `bs/`-style rigid body
-(reference geometry + orientation), and `bs/kinematics_core` is what animates it. Either way — rig-first or
-markers-first — the fold-in of one aligned kinematics engine is required.
+This is the engine half of the **standard human** ([12](12-standard-human-model.md), decided: a VRM/VMC rig):
+each humanoid bone is a `bs/`-style rigid body (reference geometry + orientation), and the copied-in kinematics
+engine is what animates it.
 
-## Open decisions
+## Decisions
 
-- **Confirm `bs/kinematics_core` is the intended rotation/kinematics source** (vs. a separate incoming
-  SkellyModels extension). `TBD` (trigger: user confirmation). #TODO NOTE - YES CONFIRMED!!!
-- **Where the folded-in engine lives** — inside SkellyForge (so SkellyModels genuinely "owns" it) vs.
-  FreeMoCap core. Leaning SkellyForge, since SkellyModels is the anatomy SSOT. #TODO NOTE - Yes - it shoulod live in skellyforge
-- **Realtime variant** scope + how it shares definitions with the batch engine.
-- **Retire** the disabled FreeMoCap `core/kinematics` and the misaligned segment lists — sequence with
-  the fold-in. - #TODO NOTE - Align existing code on disk with new code as much as possible- dont throw away anything just yet (e.g. centroidal COM stuff - i think theres good stuff in there, but needs testing - try to align to the new models as much as possible, but keep away from hot loops bc its not validated)
+- **Source (confirmed):** `bs/kinematics_core` is the rotation/kinematics engine — **copy/adapt, not import**.
+- **Home (confirmed):** the engine lives in **SkellyForge** (SkellyModels owns the anatomy *and* the engine).
+- **Realtime variant:** a per-frame orientation solve for the live pipeline, sharing definitions with the
+  batch engine (no re-hardcoding).
+- **Existing `core/kinematics` — align, don't discard.** Do **not** delete the on-disk kinematics (there's
+  good material there — e.g. the centroidal-CoM work — but it needs testing). Align it to the new models as
+  much as possible, and keep **unvalidated paths out of the hot loop** until tested. Point the misaligned
+  hardcoded segment lists (`LIMB_SEGMENTS` / `_SEGMENT_CHAINS`) at the canonical model.

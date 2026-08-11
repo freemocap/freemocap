@@ -23,11 +23,13 @@ near-mechanical pass-through — see [02](02-streaming-hub.md)):
 
 - **Schema (StreamInfo)** — the **static** facts, sent **once** on connect and again only when
   they change. This is the "schema" the pipeline needs regardless: it defines the channel /
-  keypoint names, the **joint hierarchy**, the **T-pose rest pose** (positions + reference
-  orientations), the **coordinate convention** and **units**, the segment-rotation channels,
-  and the sample layout (dtype / column order).
+  **landmark** names (canonical; *keypoints* are the tracker-side inputs — see
+  [13](13-tracker-to-canonical-mapping.md)), the **joint hierarchy**, the **T-pose rest pose**
+  (positions + reference orientations), the **coordinate convention** and **units**, the
+  segment-rotation channels, and the sample layout (dtype / column order).
 - **Sample** — the **dynamic** facts, one per frame: the numeric values **+ a timestamp**.
-  Nothing static is repeated per frame.
+  Nothing static is repeated per frame. **The timestamp is the primary time key** — every sample carries one;
+  the frame number is secondary (and won't exist for every sensor as we move toward mixed frame-rate sources).
 
 > This is why coordinate convention, names, hierarchy, and rest pose live in the **schema**,
 > not on every frame. A sample is just numbers and a timestamp. See
@@ -69,19 +71,17 @@ SkellyModels per-frame** and places the result on the canonical frame (a rotatio
 the schema); the streaming hub, the 3D viewport, and BVH export all consume it. One
 computation path, live and post-hoc.
 
-**What already exists to build on (live substrate):**
-- `RealtimeSkeletonRigidifier` (`freemocap/core/tasks/mocap/rigid_body/skeleton_rigidifier.py`)
-  produces the rigidified skeleton and internally computes each bone's unit direction each
-  frame against a canonical `joint_hierarchy`.
-- `AnatomicalStructure` (SkellyForge `skellymodels/models/anatomical_structure.py`) defines
-  `segment_connections` (proximal/distal), `joint_hierarchy`, and `bone_length_ratios`.
-- A post-hoc rotation calculator exists in SkellyForge's BVH exporter
-  (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`).
+**What we build on:**
+- The **rigid-body / quaternion engine** copied+adapted from `bs/kinematics_core` into SkellyForge
+  ([11](11-kinematics-fold-in.md)) — this *is* the segment-rotation engine; no external dependency to wait on.
+- `RealtimeSkeletonRigidifier` (`freemocap/core/tasks/mocap/rigid_body/skeleton_rigidifier.py`) — the
+  rigidified skeleton + per-bone directions each frame against the canonical `joint_hierarchy`.
+- `AnatomicalStructure` (SkellyForge) — `segment_connections`, `joint_hierarchy`, `bone_length_ratios`, and
+  the T-pose rest pose ([12](12-standard-human-model.md)).
+- The post-hoc BVH rotation calculator (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`) — converge on
+  **one** rotation implementation with the folded-in engine.
 
-**`TBD` (trigger: user supplies the existing quaternion code, which lives outside this
-repo):** the internal method for producing segment quaternions, and the assessment of its
-overlap with the post-hoc BVH rotation code. Until then these docs specify only the *contract*
-(a per-segment quaternion channel, identity == rest pose), not the internals.
+The contract downstream is a per-segment quaternion channel with **identity == rest pose**.
 
 ### The rest-pose / T-pose reference
 
@@ -91,9 +91,8 @@ adapter that consumes rotations assumes a bone reading `(0,0,0,1)` is in the res
 is the single most common source of "my character is in a horrifying pose" bugs downstream, so
 the rest pose is a *declared* schema artifact, not an implicit one.
 
-**`TBD` (trigger: SkellyModels extension design):** whether the rest orientation per segment is
-a declared table on the anatomical model or derived from its geometry. Either way it is part of
-the SkellyModels SSOT (surfaced in the schema), not re-derived per adapter.
+The rest orientation per segment lives in the canonical human model in SkellyForge — the T-pose reference
+geometry ([12](12-standard-human-model.md)) — surfaced in the schema, not re-derived per adapter.
 
 ## Multi-subject from day one
 
@@ -108,9 +107,9 @@ VMC's one-implicit-avatar flaw one layer up.
   **one subject per stream**; two subjects means two streams. See [03 — Emitters](03-emitters.md)
   and [04 — Control Plane](04-http-control-plane.md).
 
-**`TBD` (trigger: multi-subject tracking design):** exact subject key (stable id vs. slot
-index) and how re-identification across frames is represented. The contract reserves the
-dimension; the keying detail is deferred.
+The subject key is a **stable id** where the tracker provides multi-person identity, else a per-frame slot
+index; the subject **count is dynamic** (discovered from samples), not fixed in the schema — the schema
+describes *one* subject's layout. See the schema/sample split in [09](09-standard-stream-protocol.md).
 
 ## Units and coordinate frame
 
@@ -125,11 +124,11 @@ fact**, declared once; adapters convert. Full treatment and the per-target table
 The layer builds exclusively on the **live** data path:
 - **Live (build on this):** the pub/sub `AggregationNodeOutputTopic`, `keypoints_arrays`, the
   rigidified `skeleton`, `center_of_mass_result`, `xcom`.
-- **Disabled (reference only, do not build on):** `StreamingKinematics`, `BodyKinematicsState`,
-  and the inertia-ellipsoid / ground-reference code. This path is wired but switched off (its
-  per-frame update is commented out in the aggregator), so `body_kinematics` ships as `None`.
-  Treat it as an out-of-date reference; its eventual retirement is tracked as `[FUTURE]`
-  cleanup in [06 — Backend Refactor & Cleanup](06-backend-refactor-and-cleanup.md).
+- **Disabled today (don't wire into the stream yet):** `StreamingKinematics`, `BodyKinematicsState`, and the
+  inertia-ellipsoid / ground-reference code — switched off (per-frame update commented out), so
+  `body_kinematics` ships as `None`. This code is **aligned, not deleted**
+  ([06](06-backend-refactor-and-cleanup.md), [11](11-kinematics-fold-in.md)): it holds good material, but
+  stays out of the hot loop and off the stream until validated.
 
-The one genuinely new capability — segment rotations — is built fresh via the SkellyModels
-extension, not by reviving disabled code.
+Segment rotations — the one genuinely new stream capability — are produced by the kinematics engine folded in
+from `bs/kinematics_core` ([11](11-kinematics-fold-in.md)).

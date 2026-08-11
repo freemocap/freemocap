@@ -30,30 +30,29 @@ Each bone's endpoints are **joint centers**, produced from tracker keypoints via
 [tracker→canonical mapping](13-tracker-to-canonical-mapping.md) (string / list-mean / weighted-sum) — the
 one abstraction; there are **no "virtual markers."** Some endpoints are direct keypoints; some are **derived**
 landmarks (`neck_center`, `hips_center`, …). Joint centers that sit *off* the marked surface (the anterior
-clavicle base) can't be a convex mapping — that needs a **deferred** richer form (below).
+clavicle base) can't be a convex mapping — they use the **`frame_offset`** mapping form (below).
 
 Arm chain (worked example): `thorax → SC joint (clavicle base) → clavicle → GH joint (shoulder) → upperArm
 → elbow → lowerArm → wrist → hand`.
 
 ### Derived joint centers and the clavicle
 
-# TODO NOTE - DO NOT DEFERR  A CORRECT FIX FOR THE STERNUM/SHOULDER offset!!! FIX IT CORRECTLY!!! WE NEED TO DO THIS CORRECTLY NOW DO NOT DEFER
+Solved **now** with the `frame_offset` mapping form ([13](13-tracker-to-canonical-mapping.md)) — a
+deterministic, subject-scaled offset in a landmark-defined frame, **no runtime fitting**.
 
-- **Sternoclavicular (SC) joint = the clavicle base.** Anatomically the clavicle attaches at the
-  **front-center of the upper chest** (manubrium), **not** the shoulder midpoint. The shoulder midpoint ≈
-  **C7/T1** (the neck-bone base); the true SC joint is **anterior + slightly inferior** to it.
-  **The honest anterior fix is deferred** — it can't be a convex mapping (string/list/dict all stay within
-  the keypoints' hull, never anterior), so it needs a
-  [richer mapping form that is explicitly deferred](13-tracker-to-canonical-mapping.md#deferred-richer-mapping-forms-later).
-  **For v1**, the clavicle base uses the best convex mapping available (≈ `neck_center`) — a known
-  approximation; the anterior correction lands when richer mappings do, **or** as a fixed anterior rest-offset
-  baked into the clavicle bone's T-pose geometry (a rig-level offset, not a per-frame landmark).
+- **Sternoclavicular (SC) joint = the clavicle base.** The clavicle attaches at the **front-center of the
+  upper chest** (manubrium), **not** the shoulder midpoint (≈ **C7/T1**, the neck-bone base) — the true SC
+  joint is **anterior + slightly inferior**. Produce it via `frame_offset`: origin = shoulder midpoint; trunk
+  frame (up = `hips_center→neck_center`, lateral = shoulder→shoulder, **anterior = up × lateral**); offset ≈
+  15% shoulder-width anterior + a small inferior term (anthropometric ratios). Keep `neck_center` for the
+  **neck** bone; the SC joint is a *separate* anterior landmark for the **clavicle** base — this replaces the
+  "clavicle → neck_center" error.
 - **Glenohumeral (GH) joint = upper-arm base.** Slightly inferomedial to the acromion "shoulder" keypoint —
-  same story, a small offset, deferred with the SC fix.
+  the same `frame_offset`, smaller magnitude.
+- **Hip joint centers / pelvis / thorax origins** — same mechanism wherever an off-surface center is needed.
 
-**Scope:** `[IN]` for v1 — keep clavicle/shoulder on convex mappings, accept + note the approximation.
-`[LATER]` — the anterior SC/GH correction, via richer mappings ([13](13-tracker-to-canonical-mapping.md)) or a
-rig rest-offset.
+Offsets are **anthropometry-table ratios of segment lengths**, subject-scaled — **never runtime-fit**. The
+identical definition places both the T-pose rest position and the live per-frame landmark.
 
 ## Per-bone twist policy (the underdetermined-roll plan)
 
@@ -86,11 +85,13 @@ Each bone's rotation declares which DOF were **observed / inferred / free**, and
 lower confidence than directly-observed markers — surfaced on the stream's confidence channels
 ([09](09-standard-stream-protocol.md)). Positive-definition style: we say what we measured, not what we didn't.
 
-## Open questions
+## Resolved / open
 
-- **Face blendshapes**: how driven from tracked face landmarks → VRM expression weights. `TBD`.
-- **Anthropometric offset magnitudes** (SC/GH/hip) — starting values + whether the fit ritual refines them.
-  `TBD`. # TODO NOTE - USE ANTHROPOMETRY TABLES AND REASONABLE GUESSES BASED ON SEGMENT LEENGTHS AND ANTHROPMETRY _ DO NOT TRY TO FIT 
-- **Exact VRM bone subset** we target first (full humanoid vs. body+hands, face later). `TBD`. #TODO NOTE - FULL BODY, HANDS, and FACE - leave blendshapes as null values to start if we cant get them out of the SkellyTracker face tracker stuff we already do 
-- **Scapula**: modeled (scapulothoracic rhythm) or folded into the clavicle/shoulder approximation? Leaning
-  folded-in for v1. `TBD`. #TODO NOTE - Base on the clavbicale offset solution - we can add hte scaula stuff leter 
+- **VRM bone subset (resolved):** target the **full body + hands + face** from the start. Face **blendshapes
+  start as `null`** until we can derive them from the SkellyTracker face-tracking we already run.
+- **Offset magnitudes (resolved):** from **anthropometry tables + reasonable ratios of segment lengths** —
+  **do not runtime-fit** them.
+- **Scapula (resolved → later):** built on the **same `frame_offset` mechanism** as the clavicle; add the
+  scapulothoracic detail **`[LATER]`**, after the SC/GH offsets land.
+- **Face blendshapes (open):** how tracked face landmarks drive VRM expression weights — `null` until wired.
+  `TBD`.

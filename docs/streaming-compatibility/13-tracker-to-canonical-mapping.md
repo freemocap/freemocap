@@ -66,15 +66,45 @@ list or dict.
 3. **One canonical model per actor part** (body, hand, face) = a pure landmark list + anatomy; **one mapping
    per (tracker, part)** in SkellyTracker. That's the whole system.
 
-## Deferred: richer mapping forms `[LATER]`
+## Richer mapping form: `frame_offset` (frame-relative / geometric) `[IN]`
 
-#TODO NOTE - NO! DO NOT DEFER! LETS MAKE A PLAN AND FIX AND DO THIS CORRECTLY!! 
+The three convex forms above can only produce points *inside* the keypoints' hull, so they cannot place a
+joint center that sits **off** the marked surface — the anterior sternoclavicular joint (clavicle base), the
+glenohumeral joint, hip joint centers. Those are **real and required**
+([12 — derived joint centers](12-standard-human-model.md#derived-joint-centers-and-the-clavicle)), so we add a
+fourth form **now** rather than deferring it.
 
-The three forms are all **convex combinations** — they can only produce points *within* the input keypoints'
-hull, so they **cannot produce a point offset off the body surface** (e.g. an anterior sternoclavicular joint;
-see [12 — derived joint centers](12-standard-human-model.md#derived-joint-centers-and-the-clavicle)). A future
-mapping form (frame-relative offset / cross-keypoint geometry) would cover that. **Deferred by decision** — do
-not build it now; landmarks that need it use a best-available convex mapping in v1, with the limitation noted.
+**`frame_offset` — a derived landmark placed by an anthropometric offset in a local anatomical frame.** Still a
+**deterministic geometric function of tracker keypoints** — no optimization, no runtime fitting:
+
+1. **Origin** — a landmark or convex-combo (e.g. `mean(left_shoulder, right_shoulder)`).
+2. **Frame** — a right-handed local frame from reference landmarks, exactly as `bs/`'s
+   `CoordinateFrameDefinition` builds one (one *exact* axis, one *approximate*, third via cross-product). For
+   the trunk: up = `hips_center → neck_center` (exact), lateral = `left_shoulder → right_shoulder`
+   (approximate) → **anterior = up × lateral**.
+3. **Offset** — a vector in that frame whose magnitude is an **anthropometric ratio × a reference length**
+   (e.g. a fraction of biacromial/shoulder width), so it **scales with the subject** — same anthropometry that
+   seeds `bone_length_ratios`. **Never runtime-fit** (per the standard-human decision).
+
+The one definition is evaluated per-frame (the live landmark) *and* on the rest skeleton (the T-pose position)
+— one function, both uses. Illustrative:
+
+```yaml
+sternoclavicular:                    # canonical landmark
+  form: frame_offset
+  origin: ["left_shoulder", "right_shoulder"]     # mean → frame origin
+  frame:                                          # bs/ CoordinateFrameDefinition style
+    up:      { from: hips_center, to: neck_center,        kind: exact }
+    lateral: { from: left_shoulder, to: right_shoulder,   kind: approximate }
+  offset:  { anterior: 0.15, up: -0.05 }          # ratios of reference_length
+  reference_length: shoulder_width
+```
+
+One form covers the SC joint, the GH joint, hip joint centers, and later the scapula
+([12](12-standard-human-model.md)). Exact YAML schema is finalized in implementation; the contract is
+*origin + a landmark-defined frame + an anthropometric offset*, deterministic and subject-scaled. These are
+still **landmarks** produced from **keypoints** — `frame_offset` is a richer mapping form, **not** a revived
+"virtual marker."
 
 ## Why this matters for the stream
 

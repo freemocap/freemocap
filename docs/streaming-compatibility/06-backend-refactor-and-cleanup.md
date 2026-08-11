@@ -1,8 +1,8 @@
 # 06 — Backend Refactor & Cleanup
 
 Two backend concerns ride along with this effort: breaking up the WebSocket server God object and
-reshaping its send path into the standard stream `[IN]`, and retiring the disabled kinematics code
-`[FUTURE]`.
+reshaping its send path into the standard stream `[IN]`, and **aligning** the disabled kinematics code with
+the new models (not deleting it) `[LATER]`.
 
 ## `websocket_server.py` breakup + standard-stream reshape `[IN]`
 
@@ -57,23 +57,22 @@ consume the *same* encoder output. So this breakup is not merely parallel cleanu
 path into the standard stream is Phase 1 of the streaming work itself. Foreign-protocol adapters (VMC)
 still have their own transports and never touch this WebSocket; only the *shape* is shared.
 
-## Dead-code retirement `[FUTURE]`
+## Disabled kinematics — align, don't delete `[LATER]`
 
-The disabled centroidal-kinematics path is **not** part of the streaming contract and is slated for
-eventual removal (not near-term):
+The disabled centroidal-kinematics path is switched off today, but it holds **good material worth keeping**
+(the centroidal-CoM work in particular) — so it is **aligned to the new models, not deleted**:
 
-- `StreamingKinematics` (`core/kinematics/online/streaming_kinematics.py`) — instantiated in the
-  aggregator but its per-frame `update()` is commented out.
-- `BodyKinematicsState` (`core/kinematics/body_kinematics_state.py`) — only produced by that disabled
-  path, so it ships as `None`; the field is plumbed through the frame and into the UI but always empty.
-- The inertia-ellipsoid / ground-reference modules (`core/kinematics/inertial/`) reachable only
-  through the disabled path.
+- `StreamingKinematics` (`core/kinematics/online/streaming_kinematics.py`) — instantiated in the aggregator
+  but its per-frame `update()` is commented out.
+- `BodyKinematicsState` (`core/kinematics/body_kinematics_state.py`) — only produced by that disabled path,
+  so it ships as `None` today.
+- The inertia-ellipsoid / ground-reference modules (`core/kinematics/inertial/`).
 
-**Why `[FUTURE]`, not now:** it's orthogonal to streaming, and keeping it as a reference for a future
-ontology port was a deliberate choice. When retired, it should be **deleted outright** (no shims, no
-"kept just in case") per the codebase's zero-vestigial-code rule — but that is a separate, later
-change. Documented here so the dead path is never mistaken for live substrate (see
-[01 — live substrate only](01-canonical-data-model.md#live-substrate-only)).
+**Plan:** align these to the folded-in kinematics engine + canonical model ([11](11-kinematics-fold-in.md))
+rather than deleting them. **Keep unvalidated paths out of the realtime hot loop** until tested — a
+disabled-but-aligned module is fine; an unvalidated one in the hot loop is not. Don't wire the always-`None`
+`body_kinematics` field into the standard stream until its producer is validated
+([01 — live substrate only](01-canonical-data-model.md#live-substrate-only)).
 
 > Related cleanup surfaced by this work: any stale `app_state` / "settings" fields found not to be
 > wired end-to-end during the reshape are flagged for removal (see

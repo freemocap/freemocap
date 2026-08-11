@@ -36,7 +36,6 @@ first-class `units`; static + dynamic are mixed in one file (model_info rides in
   positions). This is a rest pose + body frame. (`ReferenceGeometry`, JSON via Pydantic.)
 - `{name}_kinematics.csv` — **dynamic**, fully tidy, one row per `(frame, trajectory, component)`:
 
-#TODO NOTE - Need consideration - we should drop or downgrade the 'frame' aspect of this thing, in service of a future where we will need to handle info from different frameratede sensors - we dont needt o support ALLL of that, but should gnereally be moving towards a system of a timestamp based something cs a frame number based thing 
   | Column | Notes |
   |---|---|
   | `frame` | int |
@@ -54,42 +53,55 @@ first-class `units`; static + dynamic are mixed in one file (model_info rides in
 - **Self-describing units** per row (Categorical → cheap).
 - **Static/dynamic split** (JSON geometry + tidy CSV) — the same schema-vs-samples split as
   [09](09-standard-stream-protocol.md). The reference-geometry JSON *is* an on-disk schema.
-- **No dotted-string parsing** to recover structure (the one mild exception: the `keypoint__{name}` #TODO NOTE - we need to check in abou tthis part... we want to be consistent with eth keypoint (tracker related) and landmark (cannonical skeleton related) - *think* this wants to be 'landmark___' in this context, right? Also - can you think of a cleaner way to handle this? it might be a vestigial hold over  from the bs code, which was entirely about tracking a single rigid body... we should think about it in this context and discuss to make sure we are getting it clear and right 
-  prefix in `trajectory`).
+- **No dotted-string parsing** to recover structure. (bs/'s one wart — the `keypoint__{name}` prefix inside
+  `trajectory` — we fix below with an explicit **`entity`** column; and it's a **landmark** (canonical), not a
+  tracker keypoint.)
 - Categorical dtypes keep the long format compact under parquet compression.
 
-## The gap to close before adopting
+## Extending bs/ (single-body) to the whole human
 
-`bs/kinematics_core`'s serialization is **single-rigid-body** — one file per body, no subject/segment
-dimension. A full human is *many* rigid bodies (one per segment) + the marker set. To serialize the
-standard human, the tidy schema needs one more dimension:
+`bs/kinematics_core`'s serialization is **single-rigid-body** — one file per body. A full human is *many*
+rigid bodies (one per segment) + the landmark set, possibly multiple people. Extend the tidy schema with
+explicit columns (and make the timestamp primary):
 
-- add a **`body` / `segment`** column (and, for multi-person, a **`subject`** column), OR namespace it
-  in `trajectory`. Recommendation: explicit columns, not more prefix-parsing.
-- carry the **superset** ([01](01-canonical-data-model.md)): marker positions **+** per-segment
-  orientations **+** quality (confidence / reprojection error), not just one rigid body's pose. #TODO NOTE - lets discuss this - per above - ngood to talk through and get clear about
+- **`timestamp_s`** primary; **`frame`** secondary/nullable (mixed frame-rate sensors).
+- **`subject`** (multi-person) and **`entity`** (the **landmark** or **segment** name, e.g. `left_elbow`,
+  `upperArm`) — explicit columns, replacing bs/'s `keypoint__{name}` prefix. `trajectory` becomes the
+  **quantity** (position / orientation / velocity …).
+- carry the **superset** ([01](01-canonical-data-model.md)): landmark positions **+** per-segment
+  orientations **+** quality (confidence / reprojection error) — the same superset the stream carries, as rows
+  rather than channels. *(Discussion: all of it on disk by default, or selectable?)*
 
 ## Recommendation
 
-Adopt the **tidy long format + reference-geometry JSON** as the canonical on-disk serialization,
-extended with `subject` / `segment` columns, **replacing** the SkellyForge parquet schema (zero
-backwards-compat per the repo rule — one format). It is the disk twin of the standard stream:
+**Keep the parquet *file*; migrate its *schema* to the tidy-long format** (extended with `subject` / `entity`
+columns), retiring the current SkellyForge parquet layout (zero backwards-compat — one format). bs/ used CSV;
+we keep **parquet** for compression of the long format, with a **JSON static sidecar** carrying the schema
+(names, hierarchy, rest pose, convention).
 
-```
-                          SCHEMA (static)                 SAMPLES (dynamic)
-   wire (realtime)   →    stream_schema (JSON)            stream_sample (binary)     — doc 09
-   disk (posthoc)    →    reference_geometry (JSON)       tidy CSV / parquet         — this doc
-```
+**On the wire↔disk relationship (corrected):** there is **one canonical model**; its *static* description and
+its *per-frame* data are **two axes**, and each can be serialized for the wire or for disk — the wire/disk
+split is **not** the same as the static/dynamic split:
 
-One canonical model, one schema, two serializations (wire + disk) that share it.
+| | Static (schema) | Per-frame (data) |
+|---|---|---|
+| **Wire** (realtime) | `stream_schema` (JSON) | `stream_sample` (binary) — doc 09 |
+| **Disk** (posthoc) | JSON static sidecar | tidy-long **parquet** — this doc |
 
-#TODO NOTE - im not 100% sure youve got it right that the stream_schema and reference gemoetyr are matched and differnetiated by the realtime vs posthoc split - again, we should discuss and get clear. Kinda depends how we wantto extend the reference geometry concept from the bs code to the freemocap context maybe? 
+bs/'s `reference_geometry` is a **per-rigid-body** precursor (rest pose + body frame for one body); the
+freemocap static description **generalizes** it to the whole-human canonical model, so the disk sidecar is
+"the canonical model serialized," of which per-segment reference geometry is a part. *(How far to carry bs/'s
+`reference_geometry` shape into that is a discussion item.)*
 
-## Open decisions
+## Decisions / open
 
-- **Adopt tidy-long as the canonical disk format** (retire the SkellyForge parquet schema)? `TBD`
-  (trigger: this review). - #TODO NOTE - yes - adopt tidy-long and retire existing schema - note there's a lot of discussion will need to do to get it apprpriate for the current projct vs bs's needs
-- **Subject/segment dimension**: explicit columns vs. trajectory-namespacing. Leaning explicit columns.
-- **CSV vs parquet** for the dynamic file (bs/ uses CSV; parquet compresses the long format better).
-- **Units taxonomy** (`mm`, `mm_s`, `rad_s`, `quaternion`, …) — pin the canonical set.
+- **Adopt tidy-long (decided):** migrate the parquet **schema** to tidy-long; retire the current SkellyForge
+  parquet layout. (Much of the bs/→freemocap adaptation is still to work through.)
+- **File format (decided):** **parquet** for the dynamic data + a JSON static sidecar (bs/ used CSV; parquet
+  compresses the long format better).
+- **Subject/entity dimension (decided):** explicit columns, not string-prefix namespacing.
+- **Superset on disk (discuss):** positions + orientations + quality by default, or selectable?
+- **`reference_geometry` generalization (discuss):** how far bs/'s single-body reference-geometry shape
+  extends to the whole-human static sidecar.
+- **Units taxonomy** — pin the canonical set (`mm`, `mm_s`, `rad_s`, `quaternion`, …).
 - Relationship to `Trajectory`/`Aspect` in SkellyModels — see [11 — Kinematics Fold-In](11-kinematics-fold-in.md).

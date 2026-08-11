@@ -28,7 +28,7 @@ transports and adapters around it.
 
 The standard stream borrows Lab Streaming Layer's (LSL) data model: **send a schema once,
 then stream timestamped samples.** The schema (a StreamInfo-like descriptor) declares the
-static facts — channel/keypoint names, joint hierarchy, T-pose rest pose, coordinate
+static facts — channel/landmark names, joint hierarchy, T-pose rest pose, coordinate
 convention, units. Each per-frame sample carries only **`data + timestamp`**. This is
 implemented over the existing WebSocket for the UI — and because it mirrors LSL's model,
 pushing it out through a real LSL outlet is a near-mechanical pass-through.
@@ -106,7 +106,7 @@ Three properties make the bet pay off:
 |---|---|
 | **Canonical frame** | The one authoritative in-process per-frame structure (positions, rotations, subjects, quality). Built by extending the pipeline's existing aggregation output. |
 | **Standard stream** | The serialized, LSL-shaped form of the canonical frame: a **schema** sent once + **timestamped samples** per frame. The central representation everything derives from. |
-| **Schema (StreamInfo)** | The static descriptor sent once: channel/keypoint names, joint hierarchy, T-pose rest pose, coordinate convention, units, sample layout. |
+| **Schema (StreamInfo)** | The static descriptor sent once: channel/landmark names, joint hierarchy, T-pose rest pose, coordinate convention, units, sample layout. |
 | **Sample** | One frame on the wire: `data + timestamp`, no static metadata. |
 | **Hub** | The streaming subsystem's core: taps the canonical frame, produces the standard stream, routes it to transports/adapters. |
 | **Transport route** | Pushing the standard stream over a wire *without changing its shape* (WebSocket for the UI; real LSL TCP/UDP for the LSL route). |

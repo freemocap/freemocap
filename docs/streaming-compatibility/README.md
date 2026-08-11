@@ -35,7 +35,7 @@ surfaced in the UI.
   **`[FUTURE]`** so aspiration is never confused with commitment. The authoritative scope table lives
   in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
 - **`TBD` markers** — open questions are written as explicit `TBD` with the *trigger* that resolves
-  them (e.g. "pending incoming SkellyModels code"). They are never silently assumed away.
+  them (e.g. "pending the forward-axis confirmation"). They are never silently assumed away.
 - **Positive definitions only** — a schema or adapter declares what it *is* / what it *emits*, never
   the infinite set of what it isn't or doesn't.
 - **Single Source of Truth** — each decision is stated authoritatively in exactly one doc and

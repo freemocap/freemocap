@@ -16,10 +16,15 @@ The standard stream is two message types over the existing WebSocket, mirroring 
 | Message | Cadence | Encoding | Evolves from |
 |---|---|---|---|
 | `stream_schema` | once on connect, + on change | JSON | `TrackerSchemasMessage` / `TrackerDefinition` |
-| `stream_sample` | one per frame | binary | the binary keypoints protocol + the per-frame bits of `FrontendPayload` | #TODO NOTE - Lets keep the image data (frames and frame metadata) separate from teh non-image data - they link through frame number - ALSO - NOTE MUST ALWAYS INCLUDE A TIMESTAMP, LSL-like protocol 
+| `stream_sample` | one per frame | binary | the binary keypoints protocol + the per-frame *numeric* bits of `FrontendPayload` |
 
 Rule that defines the split: **static facts go in `stream_schema`; only numbers + a timestamp go in
 `stream_sample`.** Nothing static is repeated per frame (this removes today's per-frame `embed_names`).
+
+**Two hard rules:**
+- **Every sample carries a timestamp** (LSL-like; the primary time key — [01](01-canonical-data-model.md)).
+- **Image data stays separate.** Camera frames + frame metadata are a *different* stream (the existing image
+  path); the standard stream is the **non-image** skeleton/kinematics data. The two **link by frame number**.
 
 ## `stream_schema` (the StreamInfo)
 
@@ -28,14 +33,18 @@ per active stream.
 
 | Field | Source | Notes |
 |---|---|---|
-| `stream_name` / `stream_id` | new / `name` | identifies the stream | #TODO NOTE - need clarify - are id/name the same thing? maybe id can be a uuid derived unique id and name could be something isnt necessarilty unique? need discussed
+| `stream_id` | new | **unique** id (uuid-derived) — the key everything is addressed by |
+| `stream_name` | `name` | human-facing label; **not** required to be unique |
 | `coordinate_convention` | **new** | `{units, handedness, up_axis, forward_axis, rotation_frame, rotation_form}` — see [07](07-coordinate-conventions.md). Canonical = mm / right / +Z. |
 | `channels` | evolves `tracked_points` | the **ordered** channel layout — the heart of the schema (see below) |
 | `connections` | `connections` | `(proximal, distal)` pairs for rendering |
 | `joint_hierarchy` | **new** | parent → children, from `AnatomicalStructure` — drives retarget |
 | `rest_pose` | **new** | per-segment T-pose rest positions **+ reference orientations**; identity == this pose |
-| `subjects` | **new** | subject-dimension declaration (count / keying) — see [01](01-canonical-data-model.md#multi-subject-from-day-one) | #TODO NOTE - I dont get this... what would this look like in practice for the static schema? i dont know wtf you mean by count/keying?) 
 | `sample_layout` | **new** | how to parse `stream_sample`: block order, per-block dtype + column count |
+
+> **Subjects are not a schema field.** The schema describes **one** subject's layout; each `stream_sample` is
+> tagged with a `subject_id` and the subject count is **dynamic** (discovered from samples) — so multi-person
+> needs no schema change. See [01 — multi-subject](01-canonical-data-model.md#multi-subject-from-day-one).
 
 ### `channels`
 
@@ -44,9 +53,10 @@ decoder needs no per-frame names). Groups:
 
 - **`points`** — named 3D keypoints/landmarks. Columns: `x, y, z, confidence` (generalizes today's
   4th "visibility" column). Names come from here, not per-frame.
-- **`rotations`** — named per-segment quaternions. Columns: `x, y, z, w`. **Declared even before the
-  SkellyModels code lands** (`TBD` — trigger: incoming code #TODO NOTE - what do you mean? what skellymodels code are you waiting to land?? we have all the info we need now, now that we've seen the bs/ kinematics data an dproperly checked the skellytracker mapping implementation etc stuff#); until populated, samples carry NaN for
-  these channels per the [missing-data rule](#missing-data).
+- **`rotations`** — named per-segment quaternions. Columns: `w, x, y, z` (w-first, matching the `bs/`
+  engine's convention; adapters reorder as their target needs). Produced by the folded-in kinematics engine
+  ([11](11-kinematics-fold-in.md)) — **no external code to wait on**. Always declared in the schema so the
+  wire shape is stable; NaN per the [missing-data rule](#missing-data) for any segment unresolved this frame.
 - **`scalars`** — low-density per-frame values that live on the frame today in `FrontendPayload`:
   `center_of_mass`, `xcom` (and future kinematics). Migrated off JSON into the sample.
 
@@ -68,7 +78,7 @@ For each block (in schema `sample_layout` order):
     message_type      u1
     block_kind        u1    ← POINTS | ROTATIONS | SCALARS (replaces KEYPOINTS_3D/SKELETON_3D split)
     dtype_code        u1    = FLOAT32
-    cols              u1    ← columns per element (4 for points [x,y,z,conf]; 4 for rotations [x,y,z,w])
+    cols              u1    ← columns per element (4 for points [x,y,z,conf]; 4 for rotations [w,x,y,z])
     num_elements      u4
     data_byte_length  u4
   BLOCK_DATA          row-major [num_elements × cols] float32   ← NO embedded names (schema-backed)
@@ -109,9 +119,8 @@ No translation step — the LSL route reads the same schema + samples the UI doe
 - **2D overlays** (`charuco_overlays` / `skeleton_overlays`): keep them as a separate render-aid message,
   or fold into the schema/sample model? `TBD` (trigger: contract review). Leaning separate — they're a
   UI render concern, not stream data.
-- **Subject keying**: `subject_id` type — stable id vs. slot index — `TBD` (trigger: multi-subject
-  tracking design), per [01](01-canonical-data-model.md#multi-subject-from-day-one).
-- **Rotation channel presence**: are rotation channels always declared (NaN until populated), or omitted
-  from the schema until the SkellyModels code lands? Leaning always-declared so the wire shape is stable.
-  `TBD` (trigger: incoming SkellyModels code).
+- **Subject keying**: `subject_id` = stable id where the tracker gives identity, else slot index
+  (per [01](01-canonical-data-model.md#multi-subject-from-day-one)); count is dynamic, not in the schema.
+- **Rotation channels are always declared** in the schema (NaN until resolved) so the wire shape is stable —
+  produced by the folded-in engine ([11](11-kinematics-fold-in.md)); nothing to wait on.
 - **`nominal_srate`**: regular vs. irregular for the LSL `StreamInfo`. `TBD`.

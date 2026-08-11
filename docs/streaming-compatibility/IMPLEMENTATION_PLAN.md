@@ -20,8 +20,13 @@
 - **The LSL-shaped standard stream**: a schema (channels, joint hierarchy, T-pose, convention, units)
   sent once + timestamped samples per frame, mirroring LSL's data model, over the existing WebSocket.
   Backend standard-stream encoder + frontend consumption.
-- Canonical-frame extensions: **segment-rotation channels** (via SkellyModels), **subject dimension**,
-  **convention/rest-pose in the schema**, **per-point confidence / reprojection error**.
+- Canonical-frame extensions: **segment-rotation channels** (via the folded-in `bs/` engine), **subject
+  dimension**, **convention/rest-pose in the schema**, **per-point confidence / reprojection error**.
+- **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; **align** (don't
+  delete) the existing `core/kinematics` ([11](11-kinematics-fold-in.md)).
+- **Tracker→canonical mapping migration**: finish removing the "virtual marker" concept; add the
+  `frame_offset` mapping form for off-surface joint centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
+- **On-disk serialization**: migrate the **parquet** schema to tidy-long ([10](10-serialization-and-tidy-format.md)).
 - Streaming hub: frame tap, latest-frame mailbox, derived views, `StreamingManager`, supervision.
 - `/streaming/*` HTTP control plane (list / start / streams / stop); scoped fail-loud; **start idle**;
   **ephemeral server-side** config.
@@ -36,6 +41,10 @@
 
 ### `[LATER]`
 - VRChat OSC adapter; Rokoko JSON adapter.
+- **Align** the disabled kinematics code to the new engine/models; keep it out of hot loops until validated
+  ([06](06-backend-refactor-and-cleanup.md), [11](11-kinematics-fold-in.md)).
+- Scapula (scapulothoracic detail) via the `frame_offset` mechanism ([12](12-standard-human-model.md)).
+- Face blendshapes driven from tracked face landmarks (null until wired).
 - Dedicated high-frequency `streaming_status` WS message (if `app_state` cadence proves insufficient).
 - One-way-WS decision + authoritative-reconnect fix for the stale-UI-after-crash issue.
 - UI-side persistence of stream configs.
@@ -43,18 +52,14 @@
 ### `[FUTURE]` / out
 - Xsens MVN, Qualisys RT, native Unreal Live Link route (Unreal reachable via VMC today).
 - **Not doing:** NatNet, Vicon.
-- Retirement of the disabled kinematics code (`StreamingKinematics` / `BodyKinematicsState` /
-  inertia ellipsoid) and any confirmed-dead `app_state` / "settings" fields —
-  [06](06-backend-refactor-and-cleanup.md#dead-code-retirement-future).
+- Retirement of any **confirmed-dead** `app_state` / "settings" fields found during the wedge. (The disabled
+  kinematics code is **aligned, not retired** — see `[LATER]`.)
 
 ## Dependencies & blockers
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| **Segment-rotation / kinematics engine** — appears to be `clients/bs/python_code/kinematics_core` (`RigidBodyKinematics` + `Quaternion`); *confirm* | Segment-rotation internals; BVH-overlap assessment; kinematics fold-in ([11](11-kinematics-fold-in.md)) | User confirms source; then fold in |
-| **Serialization format decision** (adopt bs/ tidy long format? — [10](10-serialization-and-tidy-format.md)) | On-disk schema; SkellyForge-parquet retirement | This review |
-| **Standard-human shape** (rig-first vs markers-first — still "talk it through") | Schema channels; VMC adapter | User decision |
-| Rest-pose / T-pose reference representation | Rotation correctness (identity == T-pose) | SkellyModels extension design |
+| *(Resolved — see progress log: kinematics engine → `bs/` copy-in; serialization → parquet tidy-long; standard-human → VRM rig; rest pose → canonical T-pose; incoming-code dependency gone.)* | — | — |
 | Forward-axis confirmation of FMC canonical convention | Coordinate converter | Confirm against ground-plane calibration basis |
 | Multi-subject keying detail | Subject addressing on the frame | Multi-person tracking design |
 | `app_state` / inbound "settings" audit | Status feed; one-way-WS decision; dead-path removal | Audit during the wedge |
@@ -74,8 +79,8 @@ Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is i
 - [ ] Backend **standard-stream encoder**: schema once (channels, joint hierarchy, T-pose, convention,
       units) + timestamped sample per frame; fused with the `websocket_server.py` send-path reshape.
 - [ ] Canonical frame carries subject dimension, convention (in schema), confidence/reprojection error.
-- [ ] Segment-rotation channel defined in the schema; SkellyModels produces rotations live.
-      *(blocked on incoming code — see Dependencies)*
+- [ ] Segment-rotation channel defined in the schema; the folded-in `bs/` engine produces rotations live
+      (copy/adapt into SkellyForge — [11](11-kinematics-fold-in.md)). *(not blocked — we have the code)*
 - [ ] UI wedge: extract message-routing + connection lifecycle from `ServerContextProvider` into a
       connection/transport service that consumes the standard stream (schema then samples).
 - [ ] Tests: schema round-trip, standard-stream golden bytes, sample reconstruction.
@@ -101,24 +106,36 @@ Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is i
 ### Phase 4+ — Later adapters & future cleanup `[not started]`
 - [ ] VRChat OSC; Rokoko JSON (pending licensing check).
 - [ ] One-way-WS decision + stale-UI-after-crash reconcile.
-- [ ] `[FUTURE]` retire disabled kinematics code and any confirmed-dead `app_state`/settings fields.
+- [ ] `[LATER]` align disabled kinematics to the new engine/models (out of hot loops until validated); retire
+      only confirmed-dead `app_state`/settings fields.
 
 ## Todo (current focus)
 
 1. Team review of this spec folder; resolve open spec-level questions.
 2. Confirm the FMC canonical forward-axis and lock the convention value (goes in the schema).
-3. Await the incoming SkellyModels quaternion code; assess BVH overlap when it arrives.
+3. Fold `bs/kinematics_core` into SkellyForge (copy/adapt); align existing `core/kinematics`; converge on one
+   rotation implementation (assess BVH overlap).
 4. During the wedge: audit `app_state` / inbound "settings" for end-to-end use; list dead paths.
 
 ## Progress log
 
+- **2026-08-10 (consistency-pass)** — Full start-to-finish pass reconciling evolved decisions from review
+  notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`frame_offset` mapping
+  form** (deterministic, anthropometric, no runtime fit) that produces the anterior clavicle SC/GH centers
+  ([13](13-tracker-to-canonical-mapping.md), [12](12-standard-human-model.md)); **keep the parquet file**,
+  migrate its schema to tidy-long ([10](10-serialization-and-tidy-format.md)); **align, don't delete** the
+  disabled `core/kinematics` (out of hot loops until validated — [06](06-backend-refactor-and-cleanup.md));
+  **timestamp is the primary time key** (frame # secondary; image data is a separate stream linked by frame #);
+  `stream_id` unique vs `stream_name` label; subjects are a **sample** dimension (not a schema field);
+  quaternion order **`wxyz`**; keypoint(tracker)/landmark(canonical) terminology. The "incoming SkellyModels
+  code" dependency is **resolved** — it's `bs/kinematics_core`.
 - **2026-08-10 (standard-human)** — Confirmed: `bs/kinematics_core` **is** the rotation/kinematics engine
   (copy/adapt, **not** import — reference only); adopt the tidy-long serialization; **VMC/VRM humanoid as
   the standard human**, rigid-body-per-bone; SkellyForge owns the model+engine, FreeMoCap holds the realtime
   variant. Agreed the **twist policy** (full-frame → chain/hinge-resolved twist → damped minimal-twist
   fallback) and the **derived-joint-center** approach (the clavicle *should* root at an anterior SC joint, not the shoulder
-  midpoint / C7-T1 — but the anterior fix needs a richer mapping form and is **deferred**; v1 keeps a convex
-  mapping). Wrote
+  midpoint / C7-T1). *(Superseded by the consistency-pass above — the anterior fix is **not** deferred; it
+  uses the `frame_offset` mapping form.)* Wrote
   [12 — Standard Human Model](12-standard-human-model.md). **Open:** face blendshapes; offset magnitudes;
   VRM bone subset for v1; scapula modeling.
 - **2026-08-10 (investigation)** — Investigated the overlap between SkellyModels' `Human` actor,

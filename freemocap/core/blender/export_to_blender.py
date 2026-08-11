@@ -9,7 +9,10 @@ import freemocap_blender_addon
 from freemocap.core.blender.helpers import run_blender_export as run_blender_export_module
 from freemocap.core.blender.helpers.run_blender_export import run_blender_export
 from freemocap.core.blender.helpers.get_best_guess_of_blender_path import get_best_guess_of_blender_path
-from freemocap.system.recording_status.recording_status import raise_if_not_blender_ready, REQUIRED_BLENDER_INPUT_FILES
+from freemocap.system.recording_status.recording_status import (
+    raise_if_not_blender_ready,
+    detect_blender_input_detector,
+)
 from freemocap.utilities.open_file import open_file
 
 logger = logging.getLogger(__name__)
@@ -40,26 +43,22 @@ def run_subprocess(command_list: List[str]):
 
 def export_to_blender(
         recording_folder_path: str|Path,
+        detector:str,
         blend_file_path: str|Path|None=None,
         blender_exe_path: str|Path|None=None,
         open_file_on_completion:bool=True,
 ):
-    try:
-        raise_if_not_blender_ready(recording_folder_path)
-    except FileNotFoundError:
-        output_data = Path(recording_folder_path) / "output_data"
-        non_mediapipe_equivalents_present = all(
-            any(output_data.glob(f.replace("mediapipe_", "*")))
-            for f in REQUIRED_BLENDER_INPUT_FILES
+    if detector != "mediapipe":
+        message = (
+            f"Blender export skipped: recording was processed with '{detector}', but the "
+            "freemocap_blender_addon only supports MediaPipe output so far. Re-process with "
+            "MediaPipe to export to Blender."
         )
-        if non_mediapipe_equivalents_present:
-            logger.warning(
-                "Blender export skipped: the freemocap_blender_addon only supports recordings "
-                "processed with MediaPipe. Re-process with MediaPipe to export to Blender."
-            )
-        else:
-            logger.error("Missing required files to run AJC addon, did something go wrong during processing?")
-        raise
+        logger.warning(message)
+        raise ValueError(message)
+
+    raise_if_not_blender_ready(recording_folder_path, 
+                               detector = detector)
 
     if blender_exe_path is None:
         blender_exe_path:Path = Path(get_best_guess_of_blender_path())

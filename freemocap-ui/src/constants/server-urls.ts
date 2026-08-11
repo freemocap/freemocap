@@ -80,11 +80,14 @@ class ServerUrls {
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,
             calibrationStopRecording: `${baseUrl}/freemocap/calibration/recording/stop`,
             calibrateRecording: `${baseUrl}/freemocap/calibration/recording/calibrate`,
+            calibrationPyceresAvailability: `${baseUrl}/freemocap/calibration/solver-methods/pyceres-availability`,
 
             // Mocap endpoints
             mocapStartRecording: `${baseUrl}/freemocap/mocap/recording/start`,
             mocapStopRecording: `${baseUrl}/freemocap/mocap/recording/stop`,
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
+            importVideos: `${baseUrl}/freemocap/mocap/recording/import`,
+            checkVideoSync: `${baseUrl}/freemocap/mocap/recording/check_sync`,
 
             // Posthoc pipeline control
             stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,

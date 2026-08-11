@@ -1,0 +1,249 @@
+import React, {useCallback, useEffect, useState} from 'react';
+import {useElectronIPC} from '@/services';
+import {useAppDispatch} from '@/store';
+import {checkVideoSync, importVideos, VideoSyncInfo} from '@/store/slices/mocap';
+import {activeRecordingSet, splitParentAndName} from '@/store/slices/active-recording/active-recording-slice';
+import ButtonSm from '@/components/ui-components/ButtonSm';
+import SubactionHeader from '@/components/ui-components/SubactionHeader';
+
+interface ImportVideosModalProps {
+    open: boolean;
+    onClose: () => void;
+    onImported?: () => void;
+}
+
+// Mirrors the backend's `default_recording_name` (freemocap/system/default_paths.py) —
+// a filename-friendly ISO-8601 timestamp with GMT offset, tagged "imported".
+function generateDefaultRecordingName(): string {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const isoTimestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
+        `T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    const offsetHours = -now.getTimezoneOffset() / 60;
+    const gmtOffset = `${offsetHours >= 0 ? '+' : '-'}${Math.abs(offsetHours)}`;
+
+    return `${isoTimestamp}_gmt${gmtOffset}`.replace(/:/g, '_') + '_imported';
+}
+
+export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose, onImported}) => {
+    const {isElectron, api} = useElectronIPC();
+    const dispatch = useAppDispatch();
+
+    const [videoPaths, setVideoPaths] = useState<string[]>([]);
+    const [recordingName, setRecordingName] = useState('');
+    const [defaultRecordingName, setDefaultRecordingName] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [checkingSync, setCheckingSync] = useState(false);
+    const [syncCheck, setSyncCheck] = useState<{ synchronized: boolean; videos: VideoSyncInfo[]; detail: string | null } | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        setVideoPaths([]);
+        setRecordingName('');
+        setDefaultRecordingName(generateDefaultRecordingName());
+        setBusy(false);
+        setError(null);
+        setCheckingSync(false);
+        setSyncCheck(null);
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (videoPaths.length === 0) {
+            setSyncCheck(null);
+            return;
+        }
+        let cancelled = false;
+        setCheckingSync(true);
+        dispatch(checkVideoSync({videoPaths}))
+            .unwrap()
+            .then((result) => {
+                if (!cancelled) setSyncCheck(result);
+            })
+            .catch((err) => {
+                if (!cancelled) {
+                    setSyncCheck(null);
+                    setError(typeof err === 'string' ? err : 'Failed to check video synchronization');
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setCheckingSync(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [open, videoPaths, dispatch]);
+
+    useEffect(() => {
+        if (!open) return;
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [open, onClose]);
+
+    const handleChooseFiles = useCallback(async () => {
+        if (!isElectron || !api) return;
+        try {
+            const result: string[] = await api.fileSystem.selectVideoFiles.mutate();
+            if (result.length > 0) {
+                setVideoPaths(result);
+                setError(null);
+            }
+        } catch (err) {
+            console.error('Failed to select video files:', err);
+            setError('Failed to select video files');
+        }
+    }, [isElectron, api]);
+
+    const handleClearSelection = useCallback(() => {
+        setVideoPaths([]);
+        setSyncCheck(null);
+        setError(null);
+    }, []);
+
+    const handleImport = useCallback(async () => {
+        if (videoPaths.length === 0 || busy) return;
+        setBusy(true);
+        setError(null);
+        try {
+            const result = await dispatch(importVideos({
+                videoPaths,
+                recordingName: recordingName.trim() || undefined,
+            })).unwrap();
+
+            const parsed = splitParentAndName(result.recordingPath);
+            dispatch(activeRecordingSet({
+                recordingName: result.recordingName,
+                baseDirectory: parsed?.baseDirectory,
+                origin: 'browsed',
+            }));
+            onImported?.();
+            onClose();
+        } catch (err) {
+            setError(typeof err === 'string' ? err : 'Failed to import videos');
+        } finally {
+            setBusy(false);
+        }
+    }, [videoPaths, recordingName, busy, dispatch, onClose, onImported]);
+
+    const importDisabledReason = busy
+        ? 'Importing…'
+        : videoPaths.length === 0
+            ? 'Select video files to import'
+            : checkingSync
+                ? 'Checking synchronization…'
+                : (!syncCheck || !syncCheck.synchronized)
+                    ? 'Selected videos are not synchronized'
+                    : null;
+
+    if (!open) return null;
+
+    return (
+        <>
+            {/* Backdrop */}
+            <div className="pos-fixed inset-0 bg-surface-overlay z-10" onClick={onClose}/>
+
+            {/* Modal */}
+            <div className="settings-modal bg-primary border-1 border-black pos-fixed elevated-sharp p-1 flex flex-col br-2">
+                <div className="flex flex-col p-2 gap-2 bg-middark br-1">
+                    <div className="flex justify-content-space-between items-center">
+                        <SubactionHeader text="Import Videos"/>
+                    </div>
+
+                    <p className="text sm text-gray">
+                        Select pre-synchronized video files recorded outside FreeMoCap. A new recording
+                        folder will be created and the videos copied into it.
+                    </p>
+
+                    <div className="flex flex-col gap-2 bg-secondary p-2 br-1">
+                        <SubactionHeader text="Video files" className="text-gray"/>
+                        <div className="flex flex-row gap-2">
+                            <ButtonSm
+                                text="Choose Video Files..."
+                                buttonType="quaternary"
+                                onClick={handleChooseFiles}
+                                disabled={!isElectron || busy}
+                            />
+                            <ButtonSm
+                                text="Clear Selection"
+                                buttonType="quaternary"
+                                onClick={handleClearSelection}
+                                disabled={videoPaths.length === 0 || busy}
+                                tooltip={videoPaths.length === 0}
+                                tooltipText="No video files selected"
+                                tooltipPosition="pos-top"
+                            />
+                        </div>
+                        {videoPaths.length > 0 ? (
+                            <div className="flex flex-col gap-1">
+                                {videoPaths.map((path) => (
+                                    <p key={path} className="text sm text-white"
+                                       style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                        {path.replace(/\\/g, '/').split('/').pop()}
+                                    </p>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text sm text-darkgray">No video files selected</p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-1 bg-secondary p-2 br-1">
+                        <SubactionHeader text="Recording name" className="text-gray"/>
+                        <input
+                            className="input-field text md"
+                            value={recordingName}
+                            onChange={(e) => setRecordingName(e.target.value)}
+                            placeholder={defaultRecordingName}
+                            disabled={busy}
+                        />
+                    </div>
+
+                    {checkingSync && (
+                        <p className="text sm text-gray">Checking synchronization…</p>
+                    )}
+
+                    {syncCheck && !syncCheck.synchronized && (
+                        <div className="toast-notification error">
+                            <p className="text sm">Selected videos are not synchronized — they have different frame counts.</p>
+                            <div className="flex flex-col gap-1">
+                                {syncCheck.videos.map((video) => (
+                                    <p key={video.filename} className="text sm"
+                                       style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                        {video.filename}: {video.frameCount} frames ({video.fps.toFixed(2)} fps, {video.durationSeconds.toFixed(2)}s)
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="toast-notification error">
+                            <p className="text sm">{error}</p>
+                        </div>
+                    )}
+
+                    <div className="flex flex-row gap-2" style={{justifyContent: 'flex-end'}}>
+                        <ButtonSm text="Cancel" buttonType="quaternary" onClick={onClose} disabled={busy}/>
+                        <ButtonSm
+                            text={busy ? 'Importing…' : 'Import'}
+                            textColor="text-white"
+                            className="primary accent"
+                            onClick={handleImport}
+                            disabled={importDisabledReason !== null}
+                            tooltip={importDisabledReason !== null}
+                            tooltipText={importDisabledReason ?? undefined}
+                            tooltipPosition="pos-top"
+                        />
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+};
+
+export default ImportVideosModal;

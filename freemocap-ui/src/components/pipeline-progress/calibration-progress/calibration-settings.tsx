@@ -12,6 +12,7 @@ import NameDropdownSelector from "@/components/ui-components/NameDropdownSelecto
 import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
+import charucoSettingsImage from "@/assets/images/charuco_settings.webp";
 
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 
@@ -45,8 +46,16 @@ interface CalibrationSettingsProps {
 
 const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
   const modalRef = useRef<HTMLDivElement>(null);
-  const { config, updateCalibrationConfig } = useCalibration();
+  const { config, updateCalibrationConfig, pyceresAvailable } = useCalibration();
   const board = config.charucoBoard;
+
+  const solverOptions = useMemo(
+    () =>
+      pyceresAvailable === false
+        ? PRESET_OPTIONS_SOLVER.filter((label) => label !== "Accurate")
+        : PRESET_OPTIONS_SOLVER,
+    [pyceresAvailable],
+  );
 
   const handleClose = useCallback(() => {
     if (onClose) onClose();
@@ -165,7 +174,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
                   "Solver method: There are two options. Select the appropriate one depending on the use case."
                 }
                 image={true}
-                imageSrc="/images/charuco_settings.webp"
+                imageSrc={charucoSettingsImage}
                 position="pos-right"
                 variant="default"
                 onClose={closeTooltip}
@@ -243,17 +252,24 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         <SubactionHeader text="Solver settings" />
 
-        {/* Method dropdown */}
-        <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Method</span>
-          <NameDropdownSelector
-            key={config.solverMethod}
-            options={PRESET_OPTIONS_SOLVER}
-            initialValue={solverMethodToLabel[config.solverMethod]}
-            onChange={handleSolverChange}
-            className="flex flex-row"
-          />
-        </div>
+        {/* Method dropdown (only shown when there's a choice to make) */}
+        {solverOptions.length > 1 ? (
+          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+            <span className="text-sm">Method</span>
+            <NameDropdownSelector
+              key={config.solverMethod}
+              options={solverOptions}
+              initialValue={solverMethodToLabel[config.solverMethod]}
+              onChange={handleSolverChange}
+              className="flex flex-row"
+            />
+          </div>
+        ) : (
+          <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
+            <span className="text-sm">Method</span>
+            <span className="text-sm">{solverMethodToLabel[config.solverMethod]}</span>
+          </div>
+        )}
       </div>
     </div>
   );

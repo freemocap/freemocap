@@ -1,5 +1,5 @@
 // hooks/useCalibration.ts
-import {useCallback} from 'react';
+import {useCallback, useEffect} from 'react';
 import {useAppDispatch, useAppSelector} from '@/store/hooks';
 import {store} from '@/store';
 import {useElectronIPC} from '@/services';
@@ -10,6 +10,7 @@ import {
     CalibrationDirectoryInfo,
     calibrationDirectoryInfoUpdated,
     calibrationErrorCleared,
+    checkPyceresAvailability,
     selectCalibration,
     selectCalibrationDirectoryInfo,
     selectCalibrationRecordingPath,
@@ -49,6 +50,12 @@ export function useCalibration() {
     const calibrationRecordingPath = useAppSelector(selectCalibrationRecordingPath);
     const directoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualCalibrationPath);
+
+    useEffect(() => {
+        if (calibrationState.pyceresAvailable === null && !calibrationState.isCheckingPyceresAvailability) {
+            void dispatch(checkPyceresAvailability());
+        }
+    }, [dispatch, calibrationState.pyceresAvailable, calibrationState.isCheckingPyceresAvailability]);
 
     const updateCalibrationConfig = useCallback(
         (updates: Partial<CalibrationConfig>) => {
@@ -127,6 +134,7 @@ export function useCalibration() {
         isUsingManualPath,
         canStartRecording,
         canCalibrate,
+        pyceresAvailable: calibrationState.pyceresAvailable,
         // Actions
         updateCalibrationConfig,
         setManualRecordingPath,

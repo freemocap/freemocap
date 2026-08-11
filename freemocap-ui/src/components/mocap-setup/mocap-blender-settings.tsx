@@ -17,7 +17,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
-  const { mocapRecordingPath } = useMocap();
+  const { mocapRecordingPath, detectorType } = useMocap();
   const { api, isElectron } = useElectronIPC();
   const {
     effectiveBlenderExePath,
@@ -56,8 +56,15 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
     void triggerOpenInBlender(mocapRecordingPath);
   };
 
+  // The freemocap_blender_addon only understands MediaPipe output so far -
+  // an rtmpose recording's Blender export is turned off client-side to match.
+  const blenderSupported = detectorType === "mediapipe";
+
   const canExport =
-    !!mocapRecordingPath && !!effectiveBlenderExePath && !isExporting;
+    blenderSupported &&
+    !!mocapRecordingPath &&
+    !!effectiveBlenderExePath &&
+    !isExporting;
 
   const canOpen =
     !!mocapRecordingPath && !!effectiveBlenderExePath && !isOpening;
@@ -145,17 +152,26 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
               : "Click to browse for blender.exe"}
         </p>
 
+        {!blenderSupported && (
+          <p className="text sm text-gray p-1">
+            Blender export only supports MediaPipe output right now - switch the detector
+            to MediaPipe to enable it.
+          </p>
+        )}
+
         {/* Toggles */}
         <ToggleComponent
           text="Export to Blender after mocap processing"
-          isToggled={exportToBlenderEnabled}
+          isToggled={exportToBlenderEnabled && blenderSupported}
           onToggle={setExportToBlenderEnabled}
+          disabled={!blenderSupported}
         />
 
         <ToggleComponent
           text="Auto-open .blend file in Blender when done"
-          isToggled={autoOpenBlendFile}
+          isToggled={autoOpenBlendFile && blenderSupported}
           onToggle={setAutoOpenBlendFile}
+          disabled={!blenderSupported || !exportToBlenderEnabled}
         />
 
         <ButtonSm
@@ -165,7 +181,11 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           className="full-width quaternary mt-3"
           tooltip={true}
           tooltipPosition="pos-bottom-left"
-          tooltipText="Send your motion capture recording to Blender for further processing"
+          tooltipText={
+            blenderSupported
+              ? "Send your motion capture recording to Blender for further processing"
+              : "Blender export only supports MediaPipe output right now"
+          }
         />
 
         <ButtonSm

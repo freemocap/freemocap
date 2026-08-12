@@ -1990,7 +1990,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics-rebased#2e89e7cd77737c10a34272b26a4aa5ac2f21b0a6" }
+source = { git = "https://github.com/domisjustanumber/skellytracker?branch=dom%2Fpipeline-metrics-rebased#5081c3a51df157ab7540d76405c703394299e032" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

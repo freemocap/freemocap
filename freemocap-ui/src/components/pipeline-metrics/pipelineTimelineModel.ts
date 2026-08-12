@@ -54,6 +54,12 @@ export interface PipelineTimelineViewModel {
     droppedTimingEvents: number;
     logPipelineTimesEnabled: boolean;
     paused: boolean;
+    /** Frame numbers missing one or more node kinds. */
+    incompleteFrames: number[];
+    /** Per-node-kind lag: frames each node kind is behind the leader. */
+    nodeLag: Record<string, number>;
+    /** Node kinds excluded due to staleness timeout. */
+    staleNodes: string[];
 }
 
 export type TimelineCategoryFilters = Record<PipelineTaskCategory, boolean>;
@@ -68,8 +74,6 @@ export const DEFAULT_CATEGORY_FILTERS: TimelineCategoryFilters = {
 
 const STALE_THRESHOLD_MS = 5000;
 export const MIN_STARTUP_SCALE_FRAME_ANCHORS = 3;
-/** Minimum bar width (percent of timeline) before showing inline duration text. */
-export const BAR_DURATION_LABEL_MIN_WIDTH_PCT = 5;
 const CONTEXTLESS_PREVIEW_STAGES = new Set([
     'jpeg_rotate',
     'jpeg_resize',
@@ -83,6 +87,13 @@ const CONTEXTLESS_PREVIEW_STAGES = new Set([
 ]);
 
 export function formatBarDuration(durationMs: number): string {
+    if (durationMs < 1) {
+        return '<1 ms';
+    }
+    return `${Math.round(durationMs)} ms`;
+}
+
+export function formatDurationPrecise(durationMs: number): string {
     if (durationMs >= 100) {
         return `${Math.round(durationMs)} ms`;
     }
@@ -90,11 +101,6 @@ export function formatBarDuration(durationMs: number): string {
         return `${durationMs.toFixed(1)} ms`;
     }
     return `${durationMs.toFixed(2)} ms`;
-}
-
-export function shouldShowBarDurationLabel(widthPct: number, durationLabel: string): boolean {
-    const minPct = Math.max(BAR_DURATION_LABEL_MIN_WIDTH_PCT, durationLabel.length * 0.75);
-    return widthPct >= minPct;
 }
 
 export function shouldShowWithoutFrameContext(event: StoredPipelineTaskEvent): boolean {
@@ -234,6 +240,9 @@ export function buildTimelineViewModel(params: {
     categoryFilters: TimelineCategoryFilters;
     paused: boolean;
     nowMs?: number;
+    incompleteFrames?: number[];
+    nodeLag?: Record<string, number>;
+    staleNodes?: string[];
 }): PipelineTimelineViewModel {
     const nowMs = params.nowMs ?? performance.now();
     const framedEvents = params.events.filter(e => e.frameNumber != null);
@@ -356,6 +365,9 @@ export function buildTimelineViewModel(params: {
         droppedTimingEvents: params.droppedTimingEvents,
         logPipelineTimesEnabled: params.logPipelineTimesEnabled,
         paused: params.paused,
+        incompleteFrames: params.incompleteFrames ?? [],
+        nodeLag: params.nodeLag ?? {},
+        staleNodes: params.staleNodes ?? [],
     };
 }
 

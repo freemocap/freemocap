@@ -7,10 +7,9 @@ import {
 import {PIPELINE_TIMELINE_FRAME_WINDOW} from '@/services/server/server-helpers/pipeline-timing-types';
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
-import {broadcastSetLogPipelineTimes, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
+import type {RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
 import {serverUrls} from '@/constants/server-urls';
 import IconButton from '@/components/ui-components/IconButton';
-import ToggleComponent from '@/components/ui-components/ToggleComponent';
 
 const POLL_MS = 200;
 
@@ -95,6 +94,9 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
         logPipelineTimesEnabled: timelineData.logPipelineTimesEnabled,
         categoryFilters: DEFAULT_CATEGORY_FILTERS,
         paused,
+        incompleteFrames: timelineData.incompleteFrames,
+        nodeLag: timelineData.nodeLag,
+        staleNodes: timelineData.staleNodes,
     }), [timelineData, paused]);
 
     const pipelineStatusKnown = timelineData.realtimePipelineActive != null || broadcastPipelineState != null;
@@ -185,14 +187,34 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
                         </span>
                     </div>
                 )}
-                {/* Row 3: Timing toggle */}
+                {/* Row 2b: completeness badge */}
+                {model.incompleteFrames.length > 0 && (
+                    <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                        <span className="text sm" style={{color: 'var(--warning-400)'}}>
+                            {model.incompleteFrames.length} frame{model.incompleteFrames.length !== 1 ? 's' : ''} incomplete
+                        </span>
+                        {Object.entries(model.nodeLag).map(([kind, lag]) => (
+                            <span key={kind} className="text sm" style={{
+                                color: lag === 0 ? 'var(--green-300)' : lag <= 3 ? 'var(--warning-300)' : 'var(--red-300)',
+                            }}>
+                                {kind}: +{lag}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                {model.staleNodes.length > 0 && (
+                    <div style={{display: 'flex', gap: '8px'}}>
+                        <span className="text sm" style={{color: 'var(--red-400)'}}>
+                            ⚠ Stalled: {model.staleNodes.join(', ')}
+                        </span>
+                    </div>
+                )}
+                {/* Row 3: frame window label */}
                 {pipelineConnected && (
                     <div style={{display: 'flex', gap: '8px'}}>
-                        <ToggleComponent
-                            text={`Timing for the last ${PIPELINE_TIMELINE_FRAME_WINDOW} frames`}
-                            isToggled={logTimes}
-                            onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
-                        />
+                        <span className="title" style={{color: 'var(--gray-500)'}}>
+                            Timing for the last {PIPELINE_TIMELINE_FRAME_WINDOW} frames
+                        </span>
                     </div>
                 )}
             </div>

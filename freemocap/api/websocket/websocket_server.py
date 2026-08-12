@@ -23,8 +23,8 @@ from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent, PipelineTimingMessage
-from freemocap.core.pipeline.pipeline_timing_events import cap_events_by_frame_window
-from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_MONOTONIC
+from freemocap.core.pipeline.pipeline_timing_events import PipelineTimingEventStore, cap_events_by_frame_window, compute_timing_lag_info
+from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_PERF_COUNTER
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
@@ -46,24 +46,16 @@ logger = logging.getLogger(__name__)
 BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
 BACKPRESSURE_RESET_THRESHOLD: int = 300
-PIPELINE_TIMING_FRAME_WINDOW: int = 10
+PIPELINE_TIMING_FRAME_WINDOW: int = 5
 PIPELINE_TIMING_FRAME_BUFFER: int = 2
+PIPELINE_TIMING_RETAIN_FRAMES: int = 20
+PIPELINE_TIMING_MAX_CONTEXTLESS: int = 64
 METRICS_CLIENT_ROLE = "metrics"
 
 
 def _parse_client_role(websocket: WebSocket) -> str:
     role = websocket.query_params.get("client_role", "full")
     return role.strip().lower() or "full"
-
-
-def _merge_pipeline_timing_event(
-        events: list[PipelineTimingEvent],
-        msg: PipelineTimingMessage,
-) -> int:
-    dropped = int(msg.dropped_timing_events)
-    if msg.events:
-        events.extend(msg.events)
-    return dropped
 
 
 def _merge_pipeline_timing_sample(
@@ -155,6 +147,15 @@ class WebsocketServer:
         self._last_framerate_send_time: float = 0.0
         self._last_pipeline_timing_send_time: float = 0.0
 
+        # Track when each node kind last published timing events, keyed by
+        # camera group then node_kind (e.g. "camera", "skeleton_inference",
+        # "aggregator"). Used by compute_timing_lag_info to detect stalled nodes.
+        self._node_kind_last_seen: dict[CameraGroupIdString, dict[str, float]] = {}
+
+        # Rolling per-group event buffers so late flushes from slower nodes are
+        # retained across drain cycles instead of being dropped as snapshots.
+        self._timing_event_stores: dict[CameraGroupIdString, PipelineTimingEventStore] = {}
+
         # Serialize all websocket sends — the `websockets` library does not
         # support concurrent writes on the same connection. Without this lock,
         # two tasks calling send_json/send_bytes at the same time hit an
@@ -191,8 +192,17 @@ class WebsocketServer:
 
         per_node: dict[str, dict[str, list[float]]] = {}
         per_camera: dict[str, dict[str, list[float]]] = {}
-        events: list[PipelineTimingEvent] = []
         dropped_timing_events = 0
+
+        # Prune stores for destroyed camera groups before touching this one.
+        active_groups = self._camera_group_ids_for_timing()
+        for group_id in list(self._timing_event_stores):
+            if group_id not in active_groups:
+                del self._timing_event_stores[group_id]
+                self._node_kind_last_seen.pop(group_id, None)
+
+        store = self._timing_event_stores.setdefault(camera_group_id, PipelineTimingEventStore())
+        group_last_seen = self._node_kind_last_seen.setdefault(camera_group_id, {})
 
         if want_pubsub_timing:
             sub = self._app.get_pipeline_timing_subscription(camera_group_id)
@@ -203,7 +213,16 @@ class WebsocketServer:
                     except Empty:
                         break
                     _merge_pipeline_timing_sample(per_node, per_camera, msg)
-                    dropped_timing_events += _merge_pipeline_timing_event(events, msg)
+                    dropped_timing_events += int(msg.dropped_timing_events)
+                    store.ingest(msg.events)
+                    group_last_seen[msg.node_kind] = time.perf_counter()
+        else:
+            store.clear()
+
+        store.prune(
+            retain_frames=PIPELINE_TIMING_RETAIN_FRAMES,
+            max_contextless=PIPELINE_TIMING_MAX_CONTEXTLESS,
+        )
 
         if self._metrics_only:
             for cam_id, stages in preview_by_cam.items():
@@ -215,12 +234,29 @@ class WebsocketServer:
                 for stage, samples in multiframe_preview.items():
                     mf_bucket.setdefault(stage, []).extend(samples)
 
-        capped_events, dropped_by_window = cap_events_by_frame_window(
-            events,
+        # Annotate lag/staleness (never drop events here) and anchor the send
+        # window on the slowest active node kind.
+        lag_info = compute_timing_lag_info(
+            store.snapshot(),
+            configured_fps_hz=_configured_camera_fps_hz(pipeline),
+            last_seen=group_last_seen,
+        )
+        safe_latest_frame = lag_info.get("safe_latest_frame")
+        stale_nodes = lag_info.get("stale_nodes", [])
+
+        complete: list[PipelineTimingEvent] = []
+        if safe_latest_frame is not None:
+            for event in store.snapshot():
+                if event.node_kind in stale_nodes:
+                    continue
+                if event.frame_number is None or event.frame_number <= safe_latest_frame:
+                    complete.append(event)
+
+        capped_events, _ = cap_events_by_frame_window(
+            complete,
             frame_window=PIPELINE_TIMING_FRAME_WINDOW,
             frame_buffer=PIPELINE_TIMING_FRAME_BUFFER,
         )
-        dropped_timing_events += dropped_by_window
 
         pipeline_active = pipeline is not None
         if not per_node and not per_camera and not capped_events:
@@ -235,9 +271,12 @@ class WebsocketServer:
                 "per_node": {},
                 "per_camera": {},
                 "events": [],
-                "clock_domain": CLOCK_DOMAIN_MONOTONIC,
-                "relay_perf_counter_ns": time.monotonic_ns(),
-                "dropped_timing_events": 0,
+                "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
+                "relay_perf_counter_ns": time.perf_counter_ns(),
+                "dropped_timing_events": dropped_timing_events,
+                "node_lag": {},
+                "incomplete_frames": [],
+                "stale_nodes": [],
             }
         return {
             "message_type": WebsocketMessageType.PIPELINE_TIMING.value,
@@ -248,9 +287,12 @@ class WebsocketServer:
             "per_node": per_node,
             "per_camera": per_camera,
             "events": [dataclasses.asdict(event) for event in capped_events],
-            "clock_domain": CLOCK_DOMAIN_MONOTONIC,
-            "relay_perf_counter_ns": time.monotonic_ns(),
+            "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
+            "relay_perf_counter_ns": time.perf_counter_ns(),
             "dropped_timing_events": dropped_timing_events,
+            "node_lag": lag_info.get("node_lag", {}),
+            "incomplete_frames": lag_info.get("incomplete_frames", []),
+            "stale_nodes": lag_info.get("stale_nodes", []),
         }
 
     async def __aenter__(self):
@@ -358,7 +400,7 @@ class WebsocketServer:
         logger.info("Starting metrics-only websocket relay...")
         try:
             while self.should_continue:
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - self._last_pipeline_timing_send_time >= 0.25:
                     for camera_group_id in self._camera_group_ids_for_timing():
                         timing_payload = self._build_pipeline_timing_payload(camera_group_id)
@@ -424,7 +466,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Pipeline timing is small JSON — never gate behind frame ack backpressure.
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - self._last_pipeline_timing_send_time >= 0.25:
                     for camera_group_id in self._camera_group_ids_for_timing():
                         timing_payload = self._build_pipeline_timing_payload(camera_group_id)
@@ -501,7 +543,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
-                now = time.monotonic()
+                now = time.perf_counter()
                 if now - self._last_framerate_send_time >= 0.25:
                     for camera_group_id, server_calc in self._server_framerate_calculators.items():
                         if camera_group_id not in self._display_framerate_trackers:

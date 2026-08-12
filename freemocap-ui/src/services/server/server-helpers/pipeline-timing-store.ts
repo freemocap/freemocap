@@ -34,6 +34,12 @@ export type PipelineTimelineSnapshot = {
     realtimePipelineActive: boolean | null;
     /** Mean frame processing time over the last ~10 seconds of samples, in ms. */
     trailingMeanFrameMs: number | null;
+    /** Frame numbers missing one or more node kinds. */
+    incompleteFrames: number[];
+    /** Per-node-kind lag: frames each node kind is behind the leader. */
+    nodeLag: Record<string, number>;
+    /** Node kinds excluded due to staleness timeout. */
+    staleNodes: string[];
 };
 
 /** Align backend perf_counter_ns samples to renderer performance.now() at ingest. */
@@ -66,6 +72,9 @@ export class PipelineTimingStore {
     private backendFrameDurationMs: number | null = null;
     private configuredFrameDurationMs: number | null = null;
     private lockedFrameDurationMs: number | null = null;
+    private incompleteFrames: number[] = [];
+    private nodeLag: Record<string, number> = {};
+    private staleNodes: string[] = [];
 
     private _writeVersion = 0;
     private _snapshotVersion = -1;
@@ -283,6 +292,16 @@ export class PipelineTimingStore {
             this.droppedTimingEvents += msg.dropped_timing_events;
         }
 
+        if (Array.isArray(msg.incomplete_frames)) {
+            this.incompleteFrames = msg.incomplete_frames;
+        }
+        if (msg.node_lag && typeof msg.node_lag === 'object') {
+            this.nodeLag = msg.node_lag as Record<string, number>;
+        }
+        if (Array.isArray(msg.stale_nodes)) {
+            this.staleNodes = msg.stale_nodes;
+        }
+
         if (msg.events) {
             for (const event of msg.events) {
                 this.ingestExplicitEvent(event, ingestPerfMs, relayPerfCounterNs);
@@ -457,6 +476,9 @@ export class PipelineTimingStore {
             logPipelineTimesEnabled: this.logPipelineTimesEnabled,
             realtimePipelineActive: this.realtimePipelineActive,
             trailingMeanFrameMs: this._computeTrailingMeanCombined(10_000),
+            incompleteFrames: this.incompleteFrames,
+            nodeLag: this.nodeLag,
+            staleNodes: this.staleNodes,
         };
         this._timelineVersion = this._writeVersion;
         return this._cachedTimeline;
@@ -520,6 +542,9 @@ export class PipelineTimingStore {
         this.backendFrameDurationMs = null;
         this.configuredFrameDurationMs = null;
         this.lockedFrameDurationMs = null;
+        this.incompleteFrames = [];
+        this.nodeLag = {};
+        this.staleNodes = [];
         this._writeVersion++;
         this._cachedSnapshot = null;
         this._cachedTimeline = null;

@@ -1,11 +1,11 @@
-import React, {memo, useMemo, useState} from 'react';
+import React, {memo, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 import {
     barWidthPercentInViewport,
     buildRulerTicks,
     formatBarDuration,
+    formatDurationPrecise,
     formatRulerTick,
-    shouldShowBarDurationLabel,
     type PipelineTimelineViewModel,
     type TimelineRowView,
     type VisibleTimelineWindow,
@@ -83,11 +83,13 @@ const TimelineRow = memo(function TimelineRow({
     visibleWindow,
     selected,
     onSelect,
+    isIncomplete = false,
 }: {
     row: TimelineRowView;
     visibleWindow: VisibleTimelineWindow;
     selected: boolean;
     onSelect: () => void;
+    isIncomplete?: boolean;
 }) {
     const {t} = useTranslation();
     const {leftPct, widthPct, visible} = barWidthPercentInViewport(
@@ -105,9 +107,30 @@ const TimelineRow = memo(function TimelineRow({
             : null;
     const color = CATEGORY_COLORS[row.category];
     const durationLabel = formatBarDuration(row.durationMs);
-    const showDurationOnBar = visible && shouldShowBarDurationLabel(widthPct, durationLabel);
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
-    const tooltipText = `${rowTip.long} (${durationLabel})`;
+    const tooltipText = `${rowTip.long} (${formatDurationPrecise(row.durationMs)})`;
+
+    const barRef = useRef<HTMLDivElement>(null);
+    const labelRef = useRef<HTMLSpanElement>(null);
+    const [labelFits, setLabelFits] = useState(false);
+
+    useLayoutEffect(() => {
+        const bar = barRef.current;
+        const label = labelRef.current;
+        if (!bar || !label || !visible) {
+            setLabelFits(false);
+            return;
+        }
+        const measure = () => {
+            setLabelFits(
+                label.getBoundingClientRect().width <= bar.getBoundingClientRect().width,
+            );
+        };
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(bar);
+        return () => observer.disconnect();
+    }, [visible, widthPct, visibleWindow.visibleDurationMs, durationLabel]);
 
     const frameBg = (() => {
         const fn = row.frameNumber;
@@ -115,6 +138,17 @@ const TimelineRow = memo(function TimelineRow({
         return fn % 2 === 1 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.10)';
     })();
     const rowBg = selected ? hexToRgba('#16ac13', 0.08) : frameBg;
+
+    const incompleteStyle: React.CSSProperties = isIncomplete ? {
+        backgroundImage: `repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 4px,
+            rgba(255, 200, 50, 0.08) 4px,
+            rgba(255, 200, 50, 0.08) 8px
+        )`,
+        backgroundColor: rowBg,
+    } : {};
 
     return (
         <div
@@ -127,6 +161,7 @@ const TimelineRow = memo(function TimelineRow({
                 minWidth: 0,
                 opacity: row.stale ? 0.4 : 1,
                 backgroundColor: rowBg,
+                ...incompleteStyle,
             }}
         >
             <div
@@ -174,6 +209,7 @@ const TimelineRow = memo(function TimelineRow({
                 )}
                 {visible && (
                     <div
+                        ref={barRef}
                         title={tooltipText}
                         style={{
                             position: 'absolute',
@@ -190,22 +226,23 @@ const TimelineRow = memo(function TimelineRow({
                             overflow: 'hidden',
                         }}
                     >
-                        {showDurationOnBar && (
-                            <span
-                                style={{
-                                    fontSize: '0.6rem',
-                                    fontWeight: 600,
-                                    lineHeight: 1,
-                                    color: '#ffffff',
-                                    textShadow: '0 0 2px rgba(0,0,0,0.75)',
-                                    pointerEvents: 'none',
-                                    paddingLeft: 2,
-                                    paddingRight: 2,
-                                }}
-                            >
-                                {durationLabel}
-                            </span>
-                        )}
+                        <span
+                            ref={labelRef}
+                            style={{
+                                fontSize: '0.6rem',
+                                fontWeight: 600,
+                                lineHeight: 1,
+                                color: '#ffffff',
+                                textShadow: '0 0 2px rgba(0,0,0,0.75)',
+                                pointerEvents: 'none',
+                                paddingLeft: 1,
+                                paddingRight: 1,
+                                whiteSpace: 'nowrap',
+                                visibility: labelFits ? 'visible' : 'hidden',
+                            }}
+                        >
+                            {durationLabel}
+                        </span>
                     </div>
                 )}
             </div>
@@ -256,6 +293,11 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
     const selectedRow = model.rows.find(r => r.taskId === selectedTaskId)
         ?? model.orphanUiRows.find(r => r.taskId === selectedTaskId)
         ?? null;
+
+    const incompleteFrameSet = useMemo(
+        () => new Set(model.incompleteFrames),
+        [model.incompleteFrames],
+    );
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0}}>
@@ -329,6 +371,7 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                             visibleWindow={visibleWindow}
                             selected={row.taskId === selectedTaskId}
                             onSelect={() => onSelectTask(row.taskId === selectedTaskId ? null : row.taskId)}
+                            isIncomplete={row.frameNumber != null && incompleteFrameSet.has(row.frameNumber)}
                         />
                     ))
                 )}
@@ -344,6 +387,7 @@ export function PipelineNetworkTimeline({model, selectedTaskId, onSelectTask}: P
                                 visibleWindow={visibleWindow}
                                 selected={row.taskId === selectedTaskId}
                                 onSelect={() => onSelectTask(row.taskId === selectedTaskId ? null : row.taskId)}
+                                isIncomplete={row.frameNumber != null && incompleteFrameSet.has(row.frameNumber)}
                             />
                         ))}
                     </div>

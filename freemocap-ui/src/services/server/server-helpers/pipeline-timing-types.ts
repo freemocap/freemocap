@@ -1,5 +1,5 @@
 /** Rolling UI policy: show this many frame numbers in the network timeline. */
-export const PIPELINE_TIMELINE_FRAME_WINDOW = 10;
+export const PIPELINE_TIMELINE_FRAME_WINDOW = 5;
 
 /** Max stored task events per source row when there is no frame context (prevents unbounded growth). */
 export const MAX_CONTEXTLESS_EVENTS_PER_SOURCE = 10;

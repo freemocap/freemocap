@@ -13,14 +13,15 @@ from starlette.websockets import WebSocket, WebSocketState
 from freemocap.api.websocket.websocket_server import (
     METRICS_CLIENT_ROLE,
     WebsocketServer,
-    _merge_pipeline_timing_event,
     _merge_pipeline_timing_sample,
     _ws_json_encoder,
 )
 from freemocap.core.pipeline.pipeline_stage_timer import MAX_EVENTS_PER_FLUSH, PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_events import (
+    PipelineTimingEventStore,
     cap_events_by_frame_window,
     collect_tracker_batch_events,
+    compute_timing_lag_info,
     synthesize_rtmpose_batch_events,
     tracker_events_to_pipeline_events,
 )
@@ -346,6 +347,93 @@ class TestCapEventsByFrameWindow:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PipelineTimingEventStore
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestPipelineTimingEventStore:
+    @staticmethod
+    def _event(task_id: str, frame_number: int | None) -> PipelineTimingEvent:
+        return PipelineTimingEvent(task_id=task_id, stage="x", node_kind="camera", frame_number=frame_number)
+
+    def test_upsert_dedupes_by_task_id(self) -> None:
+        store = PipelineTimingEventStore()
+        store.ingest([self._event("a", 1)])
+        store.ingest([self._event("a", 1)])
+        assert len(store.snapshot()) == 1
+
+    def test_prune_keeps_latest_retain_frames(self) -> None:
+        store = PipelineTimingEventStore()
+        store.ingest([self._event(f"{frame}", frame) for frame in range(20)])
+        store.prune(retain_frames=5, max_contextless=4)
+        frames = {event.frame_number for event in store.snapshot()}
+        # keep the newest frame plus `retain_frames` of history behind it.
+        assert frames == {14, 15, 16, 17, 18, 19}
+
+    def test_contextless_bounded_and_update_moves_to_newest(self) -> None:
+        store = PipelineTimingEventStore()
+        for frame in range(5):
+            store.ingest([self._event(f"c{frame}", None)])
+        store.ingest([self._event("c0", None)])  # update oldest -> now newest
+        store.prune(retain_frames=5, max_contextless=3)
+        remaining = {event.task_id for event in store.snapshot()}
+        assert len(remaining) == 3
+        assert "c0" in remaining
+        assert "c1" not in remaining
+
+    def test_clear_empties_store(self) -> None:
+        store = PipelineTimingEventStore()
+        store.ingest([self._event("a", 1)])
+        store.clear()
+        assert store.snapshot() == []
+        assert store.latest_frame is None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# compute_timing_lag_info
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TestComputeTimingLagInfo:
+    @staticmethod
+    def _event(task_id: str, node_kind: str, frame_number: int) -> PipelineTimingEvent:
+        return PipelineTimingEvent(task_id=task_id, stage="x", node_kind=node_kind, frame_number=frame_number)
+
+    def test_never_drops_events_and_reports_lag(self) -> None:
+        events = [
+            self._event("c1", "camera", 10),
+            self._event("s1", "skeleton_inference", 8),
+        ]
+        lag_info = compute_timing_lag_info(
+            events,
+            last_seen={"camera": 0.0, "skeleton_inference": 0.0},
+            now=0.0,
+        )
+        assert lag_info["safe_latest_frame"] == 8
+        assert lag_info["node_lag"] == {"skeleton_inference": 2}
+        assert lag_info["incomplete_frames"] == [10]
+        assert lag_info["stale_nodes"] == []
+
+    def test_stale_node_excluded_from_safe(self) -> None:
+        events = [
+            self._event("c1", "camera", 10),
+            self._event("s1", "skeleton_inference", 8),
+        ]
+        lag_info = compute_timing_lag_info(
+            events,
+            last_seen={"camera": 0.0, "skeleton_inference": -10.0},
+            now=0.0,
+        )
+        assert lag_info["safe_latest_frame"] == 10
+        assert lag_info["stale_nodes"] == ["skeleton_inference"]
+
+    def test_empty_input_returns_none_safe(self) -> None:
+        lag_info = compute_timing_lag_info([], now=0.0)
+        assert lag_info["safe_latest_frame"] is None
+        assert lag_info["node_lag"] == {}
+        assert lag_info["incomplete_frames"] == []
+        assert lag_info["stale_nodes"] == []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # WebSocket pipeline timing payload
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -394,6 +482,9 @@ class TestWebsocketPipelineTimingPayload:
         server._websocket_should_continue = True
         server.ws_tasks = []
         server._last_pipeline_timing_send_time = 0.0
+        server._server_framerate_calculators = {}
+        server._node_kind_last_seen = {}
+        server._timing_event_stores = {}
         return server
 
     def test_build_payload_includes_task_events_and_clock_metadata(self) -> None:
@@ -434,6 +525,17 @@ class TestWebsocketPipelineTimingPayload:
         assert payload["dropped_timing_events"] == 3  # 2 + 1
         assert payload["per_node"]["skeleton_inference"]["predict_batch"] == [12.5, 8.0]
 
+    def test_retained_events_survive_second_drain(self) -> None:
+        server = self._make_server()
+        payload = server._build_pipeline_timing_payload("group_a")
+        assert payload is not None
+        assert len(payload["events"]) == 1
+        # Drain 2 sees an empty queue but must still emit the retained window.
+        payload2 = server._build_pipeline_timing_payload("group_a")
+        assert payload2 is not None
+        assert len(payload2["events"]) == 1
+        assert payload2["events"][0]["task_id"] == "4:batch:skeleton_inference:predict_batch"
+
     def test_payload_encoder_handles_numpy_string_scalars(self) -> None:
         payload = {
             "message_type": "pipeline_timing",
@@ -465,23 +567,16 @@ class TestWebsocketPipelineTimingPayload:
         assert payload is not None
         assert payload["realtime_pipeline_active"] is False
 
-    def test_merge_helpers_accumulate_samples_and_events(self) -> None:
+    def test_merge_sample_accumulates_samples(self) -> None:
         per_node: dict[str, dict[str, list[float]]] = {}
         per_camera: dict[str, dict[str, list[float]]] = {}
-        events: list[PipelineTimingEvent] = []
         msg = PipelineTimingMessage(
             node_kind="skeleton_inference",
             samples={"predict_batch": [3.0]},
-            events=[
-                PipelineTimingEvent(task_id="1:batch:skeleton_inference:predict_batch", stage="predict_batch"),
-            ],
             dropped_timing_events=1,
         )
         _merge_pipeline_timing_sample(per_node, per_camera, msg)
-        dropped = _merge_pipeline_timing_event(events, msg)
         assert per_node["skeleton_inference"]["predict_batch"] == [3.0]
-        assert len(events) == 1
-        assert dropped == 1
 
     def test_merge_sample_routes_camera_node_kind_to_per_camera(self) -> None:
         per_node: dict[str, dict[str, list[float]]] = {}

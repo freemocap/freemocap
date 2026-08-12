@@ -7,12 +7,12 @@ import {
     DEFAULT_CATEGORY_FILTERS,
     estimateFrameDurationFromFrameAnchors,
     formatBarDuration,
+    formatDurationPrecise,
     resolveFrameDurationMs,
     resolveTimelineWindowBounds,
     resolveTimelineFrameDurationMs,
     resolveVisibleTimelineWindow,
     shouldShowWithoutFrameContext,
-    shouldShowBarDurationLabel,
     zoomTimelineAtPointer,
 } from '@/components/pipeline-metrics/pipelineTimelineModel';
 import {PIPELINE_TIMELINE_FRAME_WINDOW, FALLBACK_FRAME_DURATION_MS} from '@/services/server/server-helpers/pipeline-timing-types';
@@ -272,19 +272,22 @@ describe('barWidthPercent', () => {
 });
 
 describe('formatBarDuration', () => {
-    it('formats durations for bar labels', () => {
+    it('formats durations for bar labels without decimals', () => {
         expect(formatBarDuration(123.4)).toBe('123 ms');
-        expect(formatBarDuration(12.34)).toBe('12.3 ms');
-        expect(formatBarDuration(1.234)).toBe('1.23 ms');
+        expect(formatBarDuration(12.34)).toBe('12 ms');
+        expect(formatBarDuration(1.234)).toBe('1 ms');
+        expect(formatBarDuration(0.05)).toBe('<1 ms');
     });
 });
 
-describe('shouldShowBarDurationLabel', () => {
-    it('shows label when bar is wide enough for the text', () => {
-        expect(shouldShowBarDurationLabel(10, '12.3 ms')).toBe(true);
-        expect(shouldShowBarDurationLabel(2, '12.3 ms')).toBe(false);
+describe('formatDurationPrecise', () => {
+    it('keeps decimals for tooltips', () => {
+        expect(formatDurationPrecise(123.4)).toBe('123 ms');
+        expect(formatDurationPrecise(12.34)).toBe('12.3 ms');
+        expect(formatDurationPrecise(1.234)).toBe('1.23 ms');
     });
 });
+
 
 describe('timeline chart zoom', () => {
     it('resolves visible window from zoom and pan', () => {

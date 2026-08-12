@@ -25,6 +25,7 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.types.type_overloads import CameraIdString, CameraGroupIdString
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
+from freemocap.core.pipeline.pipeline_stage_timer import flush_interval_for_fps
 from freemocap.core.pipeline.realtime.camera_node import CameraNode
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimeAggregatorNode
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -46,6 +47,26 @@ from freemocap.pubsub.pubsub_topics import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _min_camera_framerate(
+        camera_group: CameraGroup,
+        camera_ids: list[CameraIdString],
+) -> float | None:
+    """Return the slowest configured framerate across the given cameras.
+
+    Returns ``None`` if any camera lacks a positive framerate.
+    """
+    fps_values: list[float] = []
+    for camera_id in camera_ids:
+        config = camera_group.configs.get(camera_id)
+        fps = getattr(config, "framerate", None)
+        if fps is None or fps <= 0:
+            return None
+        fps_values.append(float(fps))
+    if not fps_values:
+        return None
+    return min(fps_values)
 
 
 class RealtimePipelineState(BaseModel):
@@ -142,7 +163,12 @@ class RealtimePipeline:
         # Capture a common flush-cycle start time so all nodes
         # drain their PipelineTimingTopic buffers in sync.
         import time as _time
-        timing_start_time = _time.monotonic() if pipeline_config.log_pipeline_times else None
+        timing_start_time = _time.perf_counter() if pipeline_config.log_pipeline_times else None
+
+        # Derive the flush interval from the capture frame rate so each node
+        # flushes its timing buffers every FRAMES_PER_FLUSH frames.
+        capture_fps = _min_camera_framerate(camera_group, pipeline_camera_ids)
+        flush_interval = flush_interval_for_fps(capture_fps)
 
         camera_nodes = {
             camera_id: CameraNode.create(
@@ -157,6 +183,7 @@ class RealtimePipeline:
                 ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
                 timing_start_time=timing_start_time,
+                flush_interval=flush_interval,
             )
             for camera_id in pipeline_camera_ids
         }
@@ -173,6 +200,7 @@ class RealtimePipeline:
                 ipc=ipc,
                 pubsub=pubsub,
                 timing_start_time=timing_start_time,
+                flush_interval=flush_interval,
             )
 
         # Create CharucoRecorderNode if charuco tracking is enabled.
@@ -215,6 +243,7 @@ class RealtimePipeline:
             result_consumed_event=result_consumed_event,
             skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
             timing_start_time=timing_start_time,
+            flush_interval=flush_interval,
         )
 
         aggregation_output_subscription = pubsub.get_subscription(

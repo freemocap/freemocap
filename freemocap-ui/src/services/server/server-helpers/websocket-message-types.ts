@@ -126,6 +126,12 @@ export interface PipelineTimingWsMessage {
     clock_domain?: string;
     relay_perf_counter_ns?: number;
     dropped_timing_events?: number;
+    /** Per-node-kind lag: frames behind the leader ({camera: 0, skeleton_inference: 3}) */
+    node_lag?: Record<string, number>;
+    /** Frame numbers missing one or more node kinds */
+    incomplete_frames?: number[];
+    /** Node kinds excluded due to staleness timeout */
+    stale_nodes?: string[];
 }
 
 export function isPipelineTiming(data: unknown): data is PipelineTimingWsMessage {

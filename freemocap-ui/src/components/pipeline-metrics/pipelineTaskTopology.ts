@@ -38,6 +38,9 @@ export function classifyTaskCategory(event: Pick<StoredPipelineTaskEvent, 'nodeK
     if (nodeKind === 'skeleton_inference' || sourceKey.startsWith('skeleton_inference:')) {
         return 'tracking';
     }
+    if (nodeKind === 'camera' || sourceKey.startsWith('camera:')) {
+        return 'capture';
+    }
     if (nodeKind === 'multiframe' || sourceKey.startsWith('multiframe:')) {
         if (UI_BACKEND_PREVIEW_STAGES.has(stage)) {
             return 'ui_backend';

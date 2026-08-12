@@ -21,6 +21,18 @@ streaming the live skeleton in one or more third-party protocols simultaneously,
 The organizing move is to give FreeMoCap's *own* real-time stream a clean, self-describing
 shape and make **that** the thing every other protocol derives from.
 
+### Backbone first, endpoints later
+
+Concretely, the near-term deliverable is an **LSL-shaped streaming backbone carrying VMC-compatible
+segment data** — the right data, in the right shape, over the transport we already have. The actual LSL
+outlet and the VMC socket come **after** that, and are near-mechanical once the backbone and the data
+shape are correct.
+
+This ordering is the whole strategy. The hard problems — what a segment is, how its orientation is
+resolved, which coordinate convention it lives in — are solved once in the middle. Opening a UDP socket is
+not a hard problem. Building the socket first would mean solving the hard problems inside the socket, once
+per protocol, which is the combinatorial trap this layer exists to avoid.
+
 ## The bet: one standard stream, many transports
 
 The central architectural bet is a **single standard stream** in the middle, with thin
@@ -102,15 +114,33 @@ Three properties make the bet pay off:
 
 ## Glossary
 
+### The four load-bearing terms
+
+Defined authoritatively in
+[13 — Two kinds of trajectory](13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory). Repeated here
+as quick reference only — **if this table and doc 13 disagree, doc 13 wins.**
+
+| Term | Meaning |
+|---|---|
+| **Keypoint trajectory** | A point **tracked in 2D by a detector and triangulated to 3D**. Tracker-specific names. A raw *measurement*. Produced by **SkellyTracker**. |
+| **Landmark trajectory** | The 3D trajectory of a feature **on a segment** of the model fitted to the keypoints. A landmark *is a point on a segment* — the attachment is intrinsic. A *fitted* quantity, not a measured one. Produced by **SkellyForge**. |
+| **Segment** | A 3D-oriented rigid body of the fitted model: its landmarks, a reference geometry, an orientation. VRM-1.0-aligned — **not** an anatomical bone ([13](13-tracker-to-canonical-mapping.md#segments-not-anatomical-bones)). Owned by **SkellyForge**. |
+| **Keypoint → landmark mapping** | The `{tracker}_to_canonical_mapping.yaml` files in SkellyTracker. **The entire interface between the two repos.** |
+
+> `left_elbow` the *keypoint* is a detector's estimate. `left_elbow` the *landmark* is a point on the fitted
+> forearm segment. Same name, different things — one measured, one fitted. Both ship on the stream.
+
+### Streaming terms
+
 | Term | Meaning |
 |---|---|
 | **Canonical frame** | The one authoritative in-process per-frame structure (positions, rotations, subjects, quality). Built by extending the pipeline's existing aggregation output. |
 | **Standard stream** | The serialized, LSL-shaped form of the canonical frame: a **schema** sent once + **timestamped samples** per frame. The central representation everything derives from. |
-| **Schema (StreamInfo)** | The static descriptor sent once: channel/landmark names, joint hierarchy, T-pose rest pose, coordinate convention, units, sample layout. |
+| **Schema (StreamInfo)** | The static descriptor sent once: channel names (keypoints, landmarks, segments), landmark→segment attachment, segment hierarchy, T-pose rest pose, coordinate convention, units, sample layout. |
 | **Sample** | One frame on the wire: `data + timestamp`, no static metadata. |
 | **Hub** | The streaming subsystem's core: taps the canonical frame, produces the standard stream, routes it to transports/adapters. |
 | **Transport route** | Pushing the standard stream over a wire *without changing its shape* (WebSocket for the UI; real LSL TCP/UDP for the LSL route). |
 | **Protocol adapter (emitter)** | Derives a *foreign* protocol from the standard stream (e.g. VMC): retarget + re-serialize. A pure consumer. |
-| **Segment quaternion** | A per-bone rotation relative to the declared rest pose. Owned by SkellyModels (a module within SkellyForge); see [01](01-canonical-data-model.md). |
+| **Segment quaternion** | A per-segment rotation relative to the declared rest pose (identity == T-pose). Shipped in both world and parent-relative frames. Owned by SkellyModels (a module within SkellyForge); see [01](01-canonical-data-model.md). |
 | **Stream** | One running transport/adapter instance, addressed by a `stream_id`. Multiple run concurrently. |
 | **Convention** | The tuple (units, handedness, up-axis, forward-axis, rotation form) describing a coordinate space — a **schema** fact, not a per-sample one. |

@@ -1,24 +1,61 @@
-# 13 — Tracker → Canonical Landmark Mapping
+# 13 — Keypoint → Landmark Mapping (the SkellyTracker ↔ SkellyForge boundary)
 
-> The boundary between **SkellyTracker** (which produces *keypoints*) and the **canonical human model**
-> in **SkellyForge** (which is defined in *landmarks*). This mapping is the **single** abstraction for
-> "how does a tracker's output become the standard human."
+> **This doc is the Single Source of Truth for the keypoint / landmark / segment distinction.** Every other
+> doc uses these terms as defined here and links back rather than redefining them.
+>
+> It describes the boundary between **SkellyTracker** (which produces *keypoint trajectories*) and
+> **SkellyForge** (which produces *landmark trajectories* on *segments*). The mapping is the **single**
+> abstraction for "how does a tracker's output become the standard human."
 >
 > Status: **implemented (realtime); posthoc consumer to follow.**
 
-## The abstraction
+## Two kinds of trajectory
+
+This is the organizing fact of the whole system. There are **two kinds of 3D trajectory**, they are
+produced by different repos, and confusing them is the source of most of the ambiguity this spec folder
+has had to correct.
+
+| Term | What it is | Produced by | Owned by |
+|---|---|---|---|
+| **Keypoint trajectory** | A point **tracked in 2D by a detector and triangulated to 3D**. Named by the tracker that produced it. A raw observation of the world. | detectors → triangulation | **SkellyTracker** |
+| **Landmark trajectory** | The 3D trajectory of a specific feature **on a segment** of the model we fit to the keypoints. A landmark *is a point on a segment* — its segment attachment is intrinsic, not incidental. | model fitting | **SkellyForge** |
+| **Segment** | A 3D-oriented rigid body of the fitted model. Carries its landmarks, a reference geometry, and an orientation. | model fitting | **SkellyForge** |
+
+> A keypoint is **measured**. A landmark is **fitted** — it is where the model says that anatomical feature
+> is, given the keypoints. They are different things even when they share a name: `left_elbow` the keypoint
+> is a detector's estimate; `left_elbow` the landmark is a point on the fitted forearm segment.
+
+**The mapping files are the entire interface between the two repos.** Keypoints in, landmarks out:
 
 ```
- SkellyTracker keypoints  ──[ tracker→canonical mapping ]──▶  canonical landmarks  ──▶  standard human model
- (COCO-WholeBody, MediaPipe,                                  (neck_center, hips_center,     (segments, hierarchy,
-  per-detector names)                                          left_elbow, …)                 rest pose — doc 12)
+ SkellyTracker                    │  the boundary  │              SkellyForge
+                                  │                │
+ keypoint trajectories  ──[ {tracker}_to_canonical_mapping.yaml ]──▶  landmark trajectories
+ (COCO-WholeBody, MediaPipe,      │                │              (points on segments)
+  per-detector names)             │                │                        │
+                                  │                │                        ▼
+                                  │                │              segments: hierarchy,
+                                  │                │              reference geometry,
+                                  │                │              orientation — doc 12
 ```
 
-- **Keypoints** — a tracker's raw named outputs (`Keypoints`: `.xyz`, `.names`, `.visibility`). Tracker-specific.
-- **Landmarks** — the canonical human model's points (the `tracked_points` in `canonical_body.yaml`).
-  Tracker-agnostic. **Every landmark is first-class.**
+- **Keypoints** — a tracker's raw named outputs (`Keypoints`: `.xyz`, `.names`, `.visibility`).
+  Tracker-specific. SkellyTracker names them.
+- **Landmarks** — the canonical model's points (the `tracked_points` in `canonical_body.yaml`).
+  Tracker-agnostic, segment-attached. **Every landmark is first-class.**
 - **Mapping** — `TrackerMapping` (`skellytracker/core/io/tracker_mapping.py`): for each canonical landmark,
   how to produce it from tracker keypoints.
+
+Both kinds of trajectory travel on the standard stream as separate channel groups — the stream carries
+everything and lets consumers subset ([09](09-standard-stream-protocol.md)).
+
+### Segments, not anatomical bones (current scope)
+
+We are **not** currently working at the level of anatomical bones. We fit **3D-oriented segments** matched
+to the **VRM 1.0** schema — the level of abstraction that avatar/streaming formats like VMC operate at.
+Anatomically-aligned bone models come **`[LATER]`**. Where the code says `HumanBone` / `human_bones.py` /
+`BONE_ALIASES`, that is VRM's vocabulary, not a claim about skeletal anatomy. See
+[12 — scope](12-standard-human-model.md#segments-not-anatomical-bones).
 
 ## The three mapping forms (the whole system, for now)
 

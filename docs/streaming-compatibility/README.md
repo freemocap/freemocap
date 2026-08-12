@@ -28,6 +28,7 @@ surfaced in the UI.
 | 12 | [Standard Human Model](12-standard-human-model.md) | VRM rig, marker→bone retarget, derived joint centers (clavicle), twist policy |
 | 13 | [Tracker → Canonical Mapping](13-tracker-to-canonical-mapping.md) | The keypoint→landmark mapping system (string / list-mean / weighted-sum) |
 | — | [Implementation Plan](IMPLEMENTATION_PLAN.md) | Scope table, phased build order, dependencies, progress log |
+| — | [Audit — 2026-08-12](AUDIT_2026-08-12.md) | Latest checkpoint audit: plans vs. implementation, drift, open decisions |
 
 ## Conventions used in these docs
 
@@ -40,3 +41,9 @@ surfaced in the UI.
   the infinite set of what it isn't or doesn't.
 - **Single Source of Truth** — each decision is stated authoritatively in exactly one doc and
   cross-linked from the others. If you find the same decision explained twice, that's a bug in the docs.
+- **Audits** — `AUDIT_<YYYY-MM-DD>.md`, one per checkpoint audit of plans-vs-implementation. An audit
+  records **findings**, never decisions: anything it surfaces that needs resolving moves into the doc that
+  owns it ([`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) § Dependencies & blockers for open questions,
+  the numbered docs for design) and the audit links there. Audits are **not edited after their follow-up
+  actions land** — supersession is recorded by the next audit, so the file stays a true record of what was
+  found when.

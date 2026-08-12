@@ -1,6 +1,6 @@
 [project]
 name = "freemocap"
-version = "2.0.0a20"  # bumpver
+version = "2.0.0a20"
 description = "A free and open source markerless motion capture system for everyone 💀✨"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -66,8 +66,8 @@ packages = ["freemocap"]
   # bypass the default and pick a group explicitly:
   #   uv sync --no-default-groups --group cuda
   #   uv sync --no-default-groups --group cpu
-  # (--no-default-groups is required — cuda and cpu both ship skellytracker with a
-  # different onnxruntime backend and can't coexist on disk, see the rtmlib note below.)
+  # (--no-default-groups is required — cuda and cpu pull different onnxruntime
+  # builds, which share the `onnxruntime` import name and cannot coexist on disk.)
   default-groups = ["tracker-default"]
   override-dependencies = [
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
@@ -82,24 +82,6 @@ packages = ["freemocap"]
   [[tool.uv.index]]
   name = "nvidia"
   url = "https://pypi.nvidia.com"
-
-# rtmlib==0.0.14 hard-depends on the CPU `onnxruntime` package. skellytracker[all-cuda]
-# pulls in `onnxruntime-gpu`. Both share the same top-level `onnxruntime` import and
-# cannot coexist on disk — whichever installs last clobbers the other's
-# `onnxruntime_pybind11_state.pyd`, so the CPU build wins and CUDA/TensorRT execution
-# providers disappear from `onnxruntime.get_available_providers()`.
-#
-# `[[tool.uv.dependency-metadata]]` is only honored for the root project, so
-# skellytracker's own copy of this override does not apply when freemocap resolves —
-# it must be repeated here to strip rtmlib's onnxruntime dep from the resolution graph.
-# rtmlib still imports fine at runtime because onnxruntime-gpu satisfies the import.
-#
-# [[tool.uv.dependency-metadata]] must come after all plain [tool.uv] keys because
-# TOML array tables absorb subsequent sibling keys into their scope.
-[[tool.uv.dependency-metadata]]
-name = "rtmlib"
-version = "0.0.14"
-requires-dist = ["numpy", "opencv-contrib-python", "opencv-python", "tqdm"]
 
 # ---- Version Bumping (bumpver) ----
 # Run with: uv run poe bump-alpha   (see [tool.poe.tasks] in poe_tasks.toml)
@@ -131,10 +113,9 @@ push = true
 # version, producing an empty diff ("nothing to commit") and a duplicate tag.
 "pyproject.toml" = [
     'current_version = "{version}"',
-    # The `# bumpver` marker pins this to the [project] version line ONLY — a bare
-    # `version = "..."` pattern also matches the rtmlib [[tool.uv.dependency-metadata]]
-    # pin above and clobbers it. (Both the marker and that pin go away when rtmlib does.)
-    'version = "{pep440_version}"  # bumpver',
+    # Matches the [project] version line only. bumpver anchors on the full key, so
+    # this does not also match `current_version` on the line above.
+    'version = "{pep440_version}"',
 ]
 "freemocap/__init__.py" = ['__version__ = "{version}"']
 "freemocap-ui/package.json" = ['"version": "MAJOR.MINOR.PATCH[-TAG.NUM]"']

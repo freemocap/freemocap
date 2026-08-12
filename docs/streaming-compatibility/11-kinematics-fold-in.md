@@ -10,7 +10,7 @@
 
 | Codebase | Role today | Maturity |
 |---|---|---|
-| **SkellyModels** (in SkellyForge) | Canonical anatomy (markers, `segment_connections`, `joint_hierarchy`, `bone_length_ratios`, CoM defs) + the posthoc `Human` actor + batch biomechanics | Model = mature & SSOT; batch-only |
+| **SkellyModels** (in SkellyForge) | The canonical model (landmarks, `segment_connections`, `joint_hierarchy`, `bone_length_ratios`, CoM defs) + the posthoc `Human` actor + batch biomechanics | Model = mature & SSOT; batch-only |
 | **FreeMoCap `core/kinematics`** | An early, **mostly-disabled** alignment attempt (`BodyKinematicsState`, `StreamingKinematics`, `inertial/`) + live `segment_lengths.py` | Thin / stubbed / disabled |
 | **`bs/kinematics_core`** | A **mature rigid-body kinematics engine**: per-segment pose + quaternion orientation + linear/angular velocity & acceleration + `ReferenceGeometry` + tidy serialization | Complete; **not integrated** |
 
@@ -32,12 +32,12 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
   lives elsewhere" referenced early on. Its `Quaternion` + `RigidBodyKinematics` produce the per-segment
   quaternions. There is **no separate pending dependency** — we have everything we need.
 - **It is a *per-rigid-body* engine, not a human.** A human = **one rigid body per segment** (each a
-  `ReferenceGeometry` + an orientation trajectory) **+** the anatomical marker set. SkellyModels supplies
-  the *anatomy* (which markers, which segments, rest pose); `bs/` supplies the *rigid-body kinematics*
-  (orientation + derivatives per segment). They compose; they don't compete.
+  `ReferenceGeometry` + an orientation trajectory) **+** the landmark set attached to those segments.
+  SkellyModels supplies the *model* (which landmarks, on which segments, rest pose); `bs/` supplies the
+  *rigid-body kinematics* (orientation + derivatives per segment). They compose; they don't compete.
 - **It is batch/posthoc-oriented** (whole-trajectory arrays, lazy derivatives). Realtime needs a
   per-frame streaming variant — exactly as `skeleton_rigidifier.py` is the streaming counterpart of the
-  posthoc rigid-bones step.
+  posthoc rigid-segment step.
 - **Duplication to align on the FreeMoCap side**: the disabled `core/kinematics` path, and the
   hardcoded/misaligned segment lists (`LIMB_SEGMENTS` / `_SEGMENT_CHAINS`, already flagged by a
   `# TODO - Why tf is this not aligned with our skellyforge canonical skeleton defs??`).
@@ -64,7 +64,7 @@ quaternions + cached `velocity`/`acceleration`/`angular_velocity_[global|local]`
 ## Connection to the standard human
 
 This is the engine half of the **standard human** ([12](12-standard-human-model.md), decided: a VRM/VMC rig):
-each humanoid bone is a `bs/`-style rigid body (reference geometry + orientation), and the copied-in kinematics
+each humanoid segment is a `bs/`-style rigid body (reference geometry + orientation), and the copied-in kinematics
 engine is what animates it.
 
 ## Decisions

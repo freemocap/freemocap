@@ -75,7 +75,7 @@ computation path, live and post-hoc.
 - The **rigid-body / quaternion engine** copied+adapted from `bs/kinematics_core` into SkellyForge
   ([11](11-kinematics-fold-in.md)) — this *is* the segment-rotation engine; no external dependency to wait on.
 - `RealtimeSkeletonRigidifier` (`freemocap/core/tasks/mocap/rigid_body/skeleton_rigidifier.py`) — the
-  rigidified skeleton + per-bone directions each frame against the canonical `joint_hierarchy`.
+  rigidified landmark positions + per-segment directions each frame against the canonical `joint_hierarchy`.
 - `AnatomicalStructure` (SkellyForge) — `segment_connections`, `joint_hierarchy`, `bone_length_ratios`, and
   the T-pose rest pose ([12](12-standard-human-model.md)).
 - The **vestigial** post-hoc BVH exporter (`skellymodels/bvh_exporter/advanced_bvh_rotation.py`) —
@@ -87,7 +87,8 @@ The contract downstream is a per-segment quaternion channel with **identity == r
 
 A rotation is meaningless without a reference orientation, so the **rest pose lives in the
 schema**. The contract: **identity rotation == the declared rest pose (T-pose)**. Every
-adapter that consumes rotations assumes a bone reading `(0,0,0,1)` is in the rest pose. This
+adapter that consumes rotations assumes a segment reading `(1, 0, 0, 0)` — **`wxyz`**, the canonical
+quaternion order — is in the rest pose. This
 is the single most common source of "my character is in a horrifying pose" bugs downstream, so
 the rest pose is a *declared* schema artifact, not an implicit one.
 

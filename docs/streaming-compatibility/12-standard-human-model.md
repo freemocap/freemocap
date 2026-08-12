@@ -1,18 +1,41 @@
 # 12 — Standard Human Model
 
-> The canonical "standard human": a **VMC/VRM-aligned humanoid rig** carried alongside the anatomical
-> markers (the LSL + VMC blend). It defines what the schema describes and what every avatar adapter
+> The canonical "standard human": a **VMC/VRM-aligned humanoid rig** carried alongside the measured
+> keypoints (the LSL + VMC blend). It defines what the schema describes and what every avatar adapter
 > retargets from. Owned by **SkellyModels** (in SkellyForge); the FreeMoCap realtime pipeline consumes it
 > via a per-frame variant.
 >
+> Terminology used throughout — *keypoint* / *landmark* / *segment* — is defined in
+> [13](13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory).
+>
 > Status: **design, partly confirmed.** Decisions marked; open items are `TBD`.
+
+## Segments, not anatomical bones
+
+**Scope note, and it governs everything below.** We are **not** currently modelling anatomical bones. We
+fit **3D-oriented segments** matched to the **VRM 1.0** schema — the level of abstraction that avatar and
+streaming formats (VMC, Unreal Live Link) operate at, and the level the 3JS mesh renderer
+([phase-1/06](phase-1/06-rigid-body-bone-renderer.md)) draws.
+
+A segment is a rigid body with a reference geometry, a set of attached landmarks, and an orientation. That
+is all it claims to be. It does **not** claim to be a femur.
+
+- Where the code says `HumanBone`, `human_bones.py`, `BONE_ALIASES`, `bone_names` — that is **VRM's
+  vocabulary**, adopted so the alias table maps cleanly onto VRM and Unreal targets. It is not an
+  anatomical assertion, and a reader should not infer anatomical precision from it.
+- **Anatomically-aligned bone models are `[LATER]`.** When they arrive, segments become the layer anatomy
+  attaches *to* — not the layer that gets replaced.
+- This qualifies locked decision 3 in
+  [phase-1/standard-human-model](phase-1/standard-human-model/README.md) ("bones subsume segments"). The
+  *structural* claim stands — one rigid body per segment, each carrying its own reference geometry, no
+  parallel `segment_connections` concept. The entities are VRM-aligned segments.
 
 ## Decisions (confirmed)
 
 - **Human shape = the VMC/VRM humanoid**: full body + hands + face (blendshapes). One standard.
 - **Rigid-body-per-bone**: each VRM bone is a rigid body (a rest-pose reference geometry + an orientation),
   animated by the copied-in kinematics engine ([11](11-kinematics-fold-in.md)).
-- **Superset (LSL + VMC)**: the model carries **both** the measured anatomical markers (points +
+- **Superset (LSL + VMC)**: the model carries **both** the measured keypoints and fitted landmarks (points +
   confidence/error, for research/LSL) **and** the rig (bones + rotations + blendshapes, for avatars).
 - **SSOT in SkellyModels**; realtime pipeline uses a per-frame variant.
 
@@ -59,7 +82,7 @@ identical definition places both the T-pose rest position and the live per-frame
 A 2-joint bone gives position + long-axis **swing** (determined) but leaves **twist/roll** free. Resolve per
 bone, best-available first:
 
-1. **Full frame** — ≥3 non-collinear markers → full orientation directly (Kabsch): head, pelvis, thorax,
+1. **Full frame** — ≥3 non-collinear landmarks on the segment → full orientation directly (Kabsch): head, pelvis, thorax,
    hands, feet.
 2. **Swing + chain-resolved twist** — the child/hinge direction supplies the roll reference, because elbows
    and knees are 1-DOF hinges: `upperArm` twist ← elbow-hinge (forearm dir); `lowerArm` twist ← hand frame;
@@ -69,7 +92,7 @@ bone, best-available first:
    default.)
 
 Fits the engine's frame model directly: the `CoordinateFrameDefinition`'s **exact axis** = the bone long axis;
-its **approximate axis** = the twist source (on-bone markers → child/hinge → none/minimal). Per bone we
+its **approximate axis** = the twist source (on-segment landmarks → child/hinge → none/minimal). Per segment we
 declare the **axis-source policy**; the math is unchanged.
 
 ## Rest pose (T-pose)
@@ -82,7 +105,7 @@ reference ([01](01-canonical-data-model.md#the-rest-pose--t-pose-reference)) and
 ## Honesty / confidence
 
 Each bone's rotation declares which DOF were **observed / inferred / free**, and derived joint centers carry
-lower confidence than directly-observed markers — surfaced on the stream's confidence channels
+lower confidence than landmarks derived directly from observed keypoints — surfaced on the stream's confidence channels
 ([09](09-standard-stream-protocol.md)). Positive-definition style: we say what we measured, not what we didn't.
 
 ## Resolved / open

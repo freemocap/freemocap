@@ -23,7 +23,7 @@ foreign-protocol adapter (VMC) gets its own golden fixture over several message 
 ## 2. Loopback conformance
 
 Emit → receive → reconstruct → compare against a direct computation. Send over real UDP loopback and
-reproduce all bones' world positions against direct forward kinematics.
+reproduce all segments' world positions against direct forward kinematics.
 
 - Validates the *round trip*, not just the encoder.
 - **Cross-machine variant for VMC:** loopback's 64 KB datagram limit hides the MTU-splitting

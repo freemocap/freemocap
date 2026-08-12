@@ -70,7 +70,11 @@ SAMPLE_FOOTER   mirrors header
 
 ## Task checklist
 
-1. [x] `CoordinateConvention` type + canonical default (mm / right / +Z; forward-axis `TBD`) — `coordinate_convention.py`.
+1. [x] `CoordinateConvention` type + canonical default — `coordinate_convention.py`.
+   **Corrected 2026-08-12:** the forward-axis was never a research question, it was an undeclared standard.
+   The canonical convention is `mm · right-handed · +Z up · **+X forward**`
+   ([07](../07-coordinate-conventions.md#the-freemocap-canonical-convention)). The code's `+Y` value and its
+   `TODO(convention)` are **defect D34** — every adapter conversion derived from it is rotated 90° about Z.
 2. [x] Schema types + JSON codec — `stream_schema.py` (`StreamSchema`, `ChannelGroup`, `RestPose`, `encode/decode_schema`).
 3. [x] Sample dtypes + `encode_sample` (dropped `embed_names`; added timestamp / subject / rotations / `OVERLAY_2D`) — `stream_sample.py`.
 4. [x] `decode_sample` + `decode_schema`.

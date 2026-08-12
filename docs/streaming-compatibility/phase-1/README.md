@@ -70,6 +70,15 @@ rotations on the Phase-1 critical path — was rejected.)*
 - [x] **SF-SH-5 (wire-up) implemented** — solver wired into freemocap aggregator, rotation fields on frame
 - [ ] FMC-WS-3 (adapter) → FMC-WS-2 (encoder) → FMC-WS-4 (UI wedge)
 
+- [ ] **FMC-SR (spec reconciliation)** — in progress; see below.
+
 Plans: [FMC-WS-1 contract](01-standard-stream-contract.md) · [FMC-WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [FMC-WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [FMC-WS-4 UI wedge](04-ui-wedge.md) ·
-[FMC-WS-5 kinematics fold-in](05-kinematics-foldin-rotations.md).
+[FMC-WS-5 kinematics fold-in](05-kinematics-foldin-rotations.md) · [FMC-RB rigid-body renderer](06-rigid-body-bone-renderer.md) ·
+[FMC-SR spec reconciliation](07-spec-reconciliation.md).
+
+> **Current workstream: [FMC-SR — Spec Reconciliation](07-spec-reconciliation.md)** — documentation only,
+> no code. It executes the follow-up actions from [`AUDIT_2026-08-12`](../AUDIT_2026-08-12.md) and fixes the
+> keypoint / landmark / segment vocabulary the remaining workstreams are written against. **Several
+> statements in *this* file are among the things it corrects** — including the sequencing decision recorded
+> above, which was superseded on 2026-08-11. Read FMC-SR before acting on anything here.

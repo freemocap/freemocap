@@ -144,12 +144,6 @@ else:
 binaries.extend(collect_dynamic_libs('onnxruntime'))
 hiddenimports.extend(['onnxruntime', 'onnxruntime.capi'])
 
-# ── rtmlib (model registry + configs) ──
-rtm_datas, rtm_binaries, rtm_hidden = collect_all('rtmlib')
-datas.extend(rtm_datas)
-binaries.extend(rtm_binaries)
-hiddenimports.extend(rtm_hidden)
-
 # ── onnx (used by rtmpose_session for model loading; separate from onnxruntime) ──
 hiddenimports.append('onnx')
 

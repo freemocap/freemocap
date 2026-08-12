@@ -67,10 +67,16 @@
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
 | *(Resolved — see progress log: kinematics engine → `bs/` copy-in; serialization → parquet tidy-long; standard-human → VRM rig; rest pose → canonical T-pose; incoming-code dependency gone.)* | — | — |
-| Forward-axis confirmation of FMC canonical convention | Coordinate converter | Confirm against ground-plane calibration basis |
+| ~~Forward-axis confirmation of FMC canonical convention~~ | — | **Resolved 2026-08-12 — `+X` forward.** Canonical convention is `mm · right-handed · +Z up · +X forward` (robotics/biomechanics standards): a **declared internal standard**, not derived from calibration output. Conversion happens at adapter edges on request; re-orientation is an explicit user action via the HTTP control plane. Code currently says `+Y` (defect D34). See [07](07-coordinate-conventions.md#the-freemocap-canonical-convention). |
+| ~~World-quaternion direction convention~~ | — | **Resolved 2026-08-12** — `q_world` maps segment-frame → world; `q_local = conj(q_parent) · q_child`. Stated in [07 § Segment rotation conventions](07-coordinate-conventions.md#segment-rotation-conventions). Confirmed empirically by the round-trip test specified in doc 14 before the fix lands. |
 | Multi-subject keying detail | Subject addressing on the frame | Multi-person tracking design |
 | `app_state` / inbound "settings" audit | Status feed; one-way-WS decision; dead-path removal | Audit during the wedge |
 | Rokoko plugin licensing/source acceptance | Rokoko adapter `[LATER]` | Read Rokoko's open-source plugins |
+| **Landmark-vs-bone: what do `POINTS` / `OVERLAY_2D` enumerate?** ([09](09-standard-stream-protocol.md) says landmarks; [phase-1/03](phase-1/03-canonical-frame-extensions.md) + code say bone names) | FMC-WS-2 encoder; FMC-WS-4 UI decoder — both hardcode a block layout against it | Decide, then state it once in [09](09-standard-stream-protocol.md) and have `phase-1/03` defer to it — see [AUDIT_2026-08-12 §2.1](AUDIT_2026-08-12.md#21-landmark-vs-bone-the-specs-contradict-each-other) |
+| **Where the canonical bone definition lives** — `standard_human.yaml` vs. pure Python (the `TBD` in [phase-1/standard-human-model](phase-1/standard-human-model/README.md) § File structure) | SF-SH-1 definition-of-done; moving the model out of the freemocap aggregator bootstrap into SkellyForge | Decide the format — see [AUDIT_2026-08-12 §2.2](AUDIT_2026-08-12.md#22-where-the-canonical-bone-definition-lives--an-unresolved-tbd-answered-by-default) |
+| ~~Does `ROTATIONS_WORLD` have a committed consumer?~~ | — | **Resolved 2026-08-12** — yes, and it stays. The stream carries **everything** (small data); [FMC-RB](phase-1/06-rigid-body-bone-renderer.md) drives the viewport from it directly. |
+| ~~Camera parameters for 2D landmark reprojection~~ | — | **Resolved 2026-08-12** — the **existing camera calibration infrastructure**. If we reconstruct 3D, we know the cameras by definition. See [FMC-SR §3](phase-1/07-spec-reconciliation.md#3-2d-overlays-carry-both-detections-and-reprojections-new). |
+| **Testing home for the SkellyForge engine** — [08](08-testing-strategy.md) covers the wire only; nothing owns quaternion / reference-geometry / mapping tests | The `bs/`-parity suite that both `standard-human-model` DoD and FMC-WS-5 item 1 already require | Add a section to [08](08-testing-strategy.md) or a sibling doc — see [AUDIT_2026-08-12 §2.3](AUDIT_2026-08-12.md#23-the-plans-have-no-testing-strategy-for-the-skellyforge-engine) |
 
 ## Phased build order
 
@@ -128,11 +134,24 @@ consumer.
 6. **FMC-WS-3 — SkellyForge adapter** (NEXT): wire `StandardHuman` model into schema builder. Pipe rotation channels through to the standard stream.
 7. **FMC-WS-2 — Backend encoder**: reshape websocket send path to produce schema+samples.
 8. **FMC-WS-4 — UI wedge**: extract connection service, decode standard stream.
-9. Confirm the FMC canonical forward-axis and lock the convention value.
+9. ✅ **Canonical convention — locked 2026-08-12:** `mm · right-handed · +Z up · +X forward`, quaternions `wxyz` ([07](07-coordinate-conventions.md#the-freemocap-canonical-convention)). Code says `+Y` — defect D34.
 10. Legacy cleanup: retire `rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`, align old managers to `StandardHuman`, fix skellyforge skellytracker imports in `data_models/observation.py` and `pipelines/dlc_pipeline.py`.
 
 ## Progress log
 
+- **2026-08-12 (checkpoint audit)** — Plans read against the code landed on `development-streaming`;
+  findings in [`AUDIT_2026-08-12.md`](AUDIT_2026-08-12.md). Headline: the strategy holds and the
+  **sequencing reversal was the right call**, but it was recorded only in
+  [`phase-1/standard-human-model/README.md`](phase-1/standard-human-model/README.md) and never propagated —
+  [`phase-1/README.md`](phase-1/README.md) still asserts "DECIDED: (A) positions-first (Option B rejected)"
+  and FMC-WS-5 still reads "no code until agreed" with 0/6 checked for work that's done. **SF-SH-6 (spec
+  updates, marked *continuous*) is the workstream that hasn't run, and it's the root cause of nearly every
+  drift item.** Also found: FMC-WS-5 and the `standard-human-model` sub-plan are two live plans for the same
+  work (SSOT violation); the **landmark-vs-bone** channel question is unresolved and will be baked in by
+  FMC-WS-2; no plan owns testing for the SkellyForge engine; one real bug in committed SF-SH-4 math
+  (parent-relative quaternion operand order) whose passing test is structurally unable to catch it. Five new
+  entries added to [Dependencies & blockers](#dependencies--blockers). Verified along the way: contract +
+  schema tests are **23 green** (not the 12 recorded in `HANDOFF.md`).
 - **2026-08-11 (SF-SH-5 integration complete)** — Orientation solver wired into freemocap
   realtime pipeline. ``AggregationNodeOutputMessage`` extended with ``segment_rotations_world``
   + ``segment_rotations_local`` fields. Aggregator calls ``solve_frame_orientations()`` per frame

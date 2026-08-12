@@ -8,12 +8,14 @@ import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/f
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
+import {PipelineTimingStore} from "@/services/server/server-helpers/pipeline-timing-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
 import {
     FrontendPayloadMessage,
     isFramerateUpdate,
     isFrontendPayload,
     isLogRecord,
+    isPipelineTiming,
     isPosthocProgress,
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
@@ -72,6 +74,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
+    const pipelineTimingStoreRef = useRef<PipelineTimingStore>(new PipelineTimingStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
 
     // Latest server-side (backend) FPS stored in a ref for non-reactive access
@@ -390,6 +393,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                         serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
                         framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
                     }
+                    else if (isPipelineTiming(jsonData)) {
+                        pipelineTimingStoreRef.current.ingestBackendMessage(jsonData);
+                    }
                     else if (isFrontendPayload(jsonData)) {
                         pendingJsonPayloadRef.current = jsonData;
                     } else if (isPosthocProgress(jsonData)) {
@@ -507,6 +513,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return framerateStoreRef.current;
     }, []);
 
+    const getPipelineTimingStore = useCallback((): PipelineTimingStore => {
+        return pipelineTimingStoreRef.current;
+    }, []);
+
     const getLogStore = useCallback((): LogStore => {
         return logStoreRef.current;
     }, []);
@@ -582,6 +592,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getFps,
         getServerFps,
         getFramerateStore,
+        getPipelineTimingStore,
         getLogStore,
         connectedCameraIds,
         updateServerConnection,
@@ -596,7 +607,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getPipelineTimingStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

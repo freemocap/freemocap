@@ -109,3 +109,33 @@ export function isPosthocProgress(data: unknown): data is PosthocProgressMessage
     }
     return result.success;
 }
+
+// ── Pipeline timing (metrics window relay) ──
+
+import type {PipelineTimingEventPayload} from '@/services/server/server-helpers/pipeline-timing-types';
+
+export interface PipelineTimingWsMessage {
+    message_type: 'pipeline_timing';
+    camera_group_id: string;
+    realtime_pipeline_active?: boolean;
+    log_pipeline_times_enabled?: boolean;
+    configured_camera_fps_hz?: number | null;
+    per_node?: Record<string, Record<string, number[]>>;
+    per_camera?: Record<string, Record<string, number[]>>;
+    events?: PipelineTimingEventPayload[];
+    clock_domain?: string;
+    relay_perf_counter_ns?: number;
+    dropped_timing_events?: number;
+    /** Per-node-kind lag: frames behind the leader ({camera: 0, skeleton_inference: 3}) */
+    node_lag?: Record<string, number>;
+    /** Frame numbers missing one or more node kinds */
+    incomplete_frames?: number[];
+    /** Node kinds excluded due to staleness timeout */
+    stale_nodes?: string[];
+}
+
+export function isPipelineTiming(data: unknown): data is PipelineTimingWsMessage {
+    if (!data || typeof data !== 'object') return false;
+    const o = data as Record<string, unknown>;
+    return o.message_type === 'pipeline_timing';
+}

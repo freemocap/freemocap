@@ -5,6 +5,7 @@ description = "A free and open source markerless motion capture system for every
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "tabulate>=0.9.0",
     #    "aniposelib>=0.7.0",
     "numba>=0.65.1",
     "libsass>=0.23.0",
@@ -40,7 +41,7 @@ cpu = ["skellytracker[all-cpu]"]
 
 [tool.uv.sources]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
-skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
+skellytracker = { git = "https://github.com/domisjustanumber/skellytracker", branch = "dom/pipeline-metrics-rebased"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }
 
@@ -78,7 +79,8 @@ packages = ["freemocap"]
 
   # This project uses opencv-contrib-python (a superset of opencv-python); having
   # both installed causes a file-collision error.
-  exclude-dependencies = ["opencv-python"]
+  exclude-dependencies = [
+    "opencv-python"]
 
   [[tool.uv.index]]
   name = "nvidia"
@@ -232,3 +234,4 @@ runtime-evaluated-decorators = [
     "dataclasses.dataclass",
 ]
 exempt-modules = ["typing", "typing_extensions"]
+

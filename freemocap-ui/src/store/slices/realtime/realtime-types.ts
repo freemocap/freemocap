@@ -31,11 +31,14 @@ export interface RealtimeAggregatorNodeConfig {
 }
 
 export interface RealtimePipelineConfig {
+    /** When true, backend publishes detailed per-stage timings (websocket `pipeline_timing`). */
+    log_pipeline_times?: boolean;
     camera_node_config: CameraNodeConfig;
     aggregator_config: RealtimeAggregatorNodeConfig;
 }
 
 export const defaultRealtimePipelineConfig: RealtimePipelineConfig = {
+    log_pipeline_times: true,
     camera_node_config: {
         charuco_tracking_enabled: true,
         skeleton_tracking_enabled: true,

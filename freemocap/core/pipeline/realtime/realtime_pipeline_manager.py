@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString
 
 from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
@@ -108,6 +108,16 @@ class RealtimePipelineManager(PipelineManagerABC):
         with self.lock:
             for pipeline in self.pipelines.values():
                 if set(pipeline.camera_ids) == set(camera_ids):
+                    return pipeline
+        return None
+
+    def get_pipeline_by_camera_group_id(
+        self,
+        camera_group_id: CameraGroupIdString,
+    ) -> RealtimePipeline | None:
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                if pipeline.camera_group_id == camera_group_id:
                     return pipeline
         return None
 

@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { HashRouter } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 import { BasePanelLayout } from "@/layout/BasePanelLayout";
 import { useAppDispatch } from "@/store";
 import { BaseContentRouter } from "@/layout/content/BaseContentRouter";
@@ -13,13 +13,21 @@ import { fetchAllRecordings } from "@/store/slices/recording-status/recording-st
 import { WelcomeModal } from "@/components/ui-components/WelcomeModal";
 import { SettingsModal } from "@/components/ui-components/SettingsModal";
 import { TutorialProvider, TourController } from "@/components/tutorial";
+import { useRealtimePipelineBroadcastPublisher } from "@/hooks/useRealtimePipelineBroadcastPublisher";
 
-export const AppContent = function () {
+type AppContentProps = {
+    metricsOnly?: boolean;
+};
+
+export const AppContent = function ({ metricsOnly = false }: AppContentProps) {
     const { i18n } = useTranslation();
     const dispatch = useAppDispatch();
     const direction = getLocaleDirection(i18n.language);
     const [welcomeOpen, setWelcomeOpen] = React.useState(true);
     const [settingsOpen, setSettingsOpen] = React.useState(false);
+
+    // Broadcast pipeline state from the main window to the metrics window.
+    useRealtimePipelineBroadcastPublisher(!metricsOnly);
 
     // The native menu's "Settings…" fires this event (see useMenuActions).
     React.useEffect(() => {
@@ -36,6 +44,23 @@ export const AppContent = function () {
     React.useEffect(() => {
         dispatch(fetchAllRecordings());
     }, [dispatch]);
+
+    if (metricsOnly) {
+        const PipelineMetricsWindowPage = React.lazy(() => import("@/components/pipeline-metrics/PipelineMetricsWindowPage"));
+        return (
+            <React.Suspense fallback={<div style={{height:'100vh',backgroundColor:'var(--gray-900)'}} />}>
+                <div style={{
+                    height: '100vh',
+                    backgroundColor: 'var(--gray-900)',
+                    color: 'var(--gray-300)',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '12px',
+                }}>
+                    <PipelineMetricsWindowPage />
+                </div>
+            </React.Suspense>
+        );
+    }
 
     return (
         <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>

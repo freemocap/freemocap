@@ -50,9 +50,9 @@ SECTION_LAYOUTS: dict[str, _SectionLayout] = {
         framing=("frame_collection_wait", "loop_time"),
     ),
     "skeleton_inference": _SectionLayout(
-        substages=("frame_read", "predict_batch"),
+        substages=("frame_read", "predict_batch", "predict_per_camera"),
         wrapper=None,
-        framing=("predict_per_camera", "dropped_frames"),
+        framing=("dropped_frames",),
     ),
     "camera": _SectionLayout(
         substages=("skeleton_detection", "charuco_detection"),

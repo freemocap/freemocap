@@ -101,6 +101,7 @@
   "syncInfoBody": "Browser video playback does not guarantee sample-accurate synchronization across multiple streams. The player uses a leader-follower strategy and corrects drift when it exceeds a small tolerance, but minor desynchronization (1–2 frames) can occur",
   "previousFrame": "Previous frame (← / Shift+← for 10)",
   "pause": "Pause (Space)",
+  "pipelineActions": "Realtime Pipeline Info",
   "play": "Play (Space)",
   "nextFrame": "Next frame (→ / Shift+→ for 10)",
   "zoomIn": "Zoom In",
@@ -166,6 +167,7 @@
   "disconnect": "Disconnect",
   "connect": "Connect",
   "off": "Off",
+  "openPipelineMetricsWindow": "Open Pipeline Metrics Window",
   "running": "Running",
   "stopped": "Stopped",
   "working": "Working…",
@@ -194,6 +196,7 @@
   "descending": "descending",
   "waitingForCameraStreams": "Waiting for camera streams...",
   "loggingPaused": "Logging paused",
+  "logPipelineTimes": "Log pipeline times",
   "noLogsToDisplay": "No logs to display",
   "closeSettings": "Close settings",
   "gridSettings": "Grid settings",
@@ -344,6 +347,139 @@
       "skip": "Skip tour",
       "docs": "Read the calibration guide",
       "targetHidden": "Can't highlight this right now — it may be in a collapsed panel. Click Next to continue."
+    }
+  },
+  "pipelineMetrics": {
+    "stages": {
+      "skeleton_inference_frame_read": {
+        "short": "Frame read",
+        "long": "Time to read camera images from the shared memory ring buffer before inference."
+      },
+      "skeleton_inference_predict_batch": {
+        "short": "Batch inference",
+        "long": "Total wall-clock time for one full inference pass across all cameras (frame read → detection → postprocess)."
+      },
+      "skeleton_inference_predict_per_camera": {
+        "short": "Per-camera inference",
+        "long": "Average inference time per camera (total predict_batch time divided by the number of cameras in the frame)."
+      },
+      "skeleton_inference_dropped_frames": {
+        "short": "Dropped frames",
+        "long": "Number of frames skipped because the inference node fell behind the camera frame rate."
+      },
+      "skeleton_inference_object_detection": {
+        "short": "Object detection",
+        "long": "Batched human-detection inference that locates people in the camera frames."
+      },
+      "skeleton_inference_object_detection_infer": {
+        "short": "Object detection infer",
+        "long": "Raw ONNX inference time for the human-detection model across all batched camera images."
+      },
+      "skeleton_inference_keypoint_detection": {
+        "short": "Keypoint postprocess",
+        "long": "Postprocess raw heatmaps into keypoint coordinates, translate keypoints back to full-image coordinates."
+      },
+      "skeleton_inference_keypoint_detection_infer": {
+        "short": "Keypoint detection infer",
+        "long": "Raw ONNX inference time for the pose-estimation model across all batched camera images."
+      },
+      "skeleton_inference_bbox_reuse": {
+        "short": "BBox reuse",
+        "long": "Time saved by reusing the previous frame bounding box instead of running full detection."
+      },
+      "skeleton_inference_bbox_smoothing": {
+        "short": "BBox smoothing",
+        "long": "Temporal smoothing applied to bounding boxes to reduce jitter between frames."
+      },
+      "skeleton_inference_crop": {
+        "short": "Crop",
+        "long": "Time to crop detected human regions from the raw camera image before keypoint detection."
+      },
+      "skeleton_inference_keypoint_smoothing": {
+        "short": "Keypoint smoothing",
+        "long": "Temporal smoothing applied to 2D keypoints to reduce jitter between frames."
+      },
+      "skeleton_inference_keypoint_merge": {
+        "short": "Keypoint merge",
+        "long": "Time to merge keypoint detections from multiple detector outputs (pose + hand + face for MediaPipe; single body for RTMPose) into one unified keypoint array per camera."
+      },
+      "skeleton_inference_keypoint_tracked_bbox": {
+        "short": "Tracked BBox",
+        "long": "Time to compute a tracked bounding box from the detected keypoints for the next frame."
+      },
+      "skeleton_inference_keypoint_detection_infer_pose": {
+        "short": "MP Pose infer",
+        "long": "MediaPipe body pose detector inference time per camera — includes the full C++ graph execution (detection + tracking + landmark refinement) inside the detect() call."
+      },
+      "skeleton_inference_keypoint_detection_infer_hand": {
+        "short": "MP Hand infer",
+        "long": "MediaPipe hand landmark detector inference time per camera — runs separately from body pose, dispatched in parallel via thread pool for multi-camera concurrency."
+      },
+      "skeleton_inference_keypoint_detection_infer_face": {
+        "short": "MP Face infer",
+        "long": "MediaPipe face mesh detector inference time per camera — 468-landmark mesh, dispatched in parallel with body and hands via thread pool."
+      },
+      "skeleton_inference_keypoint_detection_pose": {
+        "short": "MP Pose postprocess",
+        "long": "Post-processing time for MediaPipe body pose: translating keypoint coordinates from the crop back to full-image space, updating consecutive-miss counters, and applying the keypoint reset policy."
+      },
+      "skeleton_inference_keypoint_detection_hand": {
+        "short": "MP Hand postprocess",
+        "long": "Post-processing time for MediaPipe hand landmarks: coordinate translation and miss-count bookkeeping per camera."
+      },
+      "skeleton_inference_keypoint_detection_face": {
+        "short": "MP Face postprocess",
+        "long": "Post-processing time for MediaPipe face mesh: coordinate translation and miss-count bookkeeping per camera."
+      },
+      "skeleton_inference_human_detection_letterbox": {
+        "short": "Letterbox",
+        "long": "Resizing the camera image to fit the model input dimensions while preserving aspect ratio."
+      },
+      "skeleton_inference_human_detection_batch_pack": {
+        "short": "Batch pack",
+        "long": "Packing multiple camera images into a single tensor batch for the detection model."
+      },
+      "skeleton_inference_human_detection_preprocess": {
+        "short": "Detection preprocess",
+        "long": "Combined preprocessing steps (letterbox and batch packing) before the human detection model runs."
+      },
+      "skeleton_inference_human_detection": {
+        "short": "Human detection",
+        "long": "Running the ONNX human-detection model to locate people in the camera frames."
+      },
+      "skeleton_inference_human_detection_postprocess": {
+        "short": "Detection postprocess",
+        "long": "Postprocessing the detection model raw output into usable bounding boxes."
+      },
+      "skeleton_inference_pose_estimation_preprocess": {
+        "short": "Pose preprocess",
+        "long": "Preparing detected human regions for the pose estimation model input."
+      },
+      "skeleton_inference_pose_estimation": {
+        "short": "Pose estimation",
+        "long": "Running the ONNX pose-estimation model to predict body keypoint coordinates."
+      },
+      "skeleton_inference_pose_estimation_postprocess": {
+        "short": "Pose postprocess",
+        "long": "Postprocessing the pose model raw heatmaps into 2D keypoint coordinates."
+      },
+      "multiframe_ws_payload_prepare_ms": {
+        "short": "WS payload prepare",
+        "long": "Time to serialize and prepare the WebSocket payload for one multiframe."
+      },
+      "camera_charuco_detection": {
+        "short": "Charuco detection",
+        "long": "Time to detect ChArUco board markers in the camera frame for calibration and triangulation."
+      },
+      "camera_skeleton_detection": {
+        "short": "Skeleton detection",
+        "long": "Time to run the skeleton keypoint detector on this camera's frame."
+      },
+      "camera_total_camera_node": {
+        "short": "Total camera",
+        "long": "Total wall-clock time spent processing one frame on this camera (detection + filtering)."
+      },
+      "no_description": "No description available for this metric."
     }
   }
 }

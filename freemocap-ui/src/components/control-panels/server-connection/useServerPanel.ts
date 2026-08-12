@@ -63,7 +63,8 @@ export function useServerPanel(): ServerPanelState {
     // Persisted UI state
     const [expanded, setExpanded] = useState(() => loadFromStorage(STORAGE_KEYS.PANEL_EXPANDED, false));
     const [selectedExePath, setSelectedExePath] = useState(() => loadFromStorage(STORAGE_KEYS.SELECTED_EXE_PATH, ''));
-    const [autoLaunchServer, setAutoLaunchServer] = useState(() => import.meta.env.DEV ? false : loadFromStorage(STORAGE_KEYS.AUTO_LAUNCH_SERVER, true));    const [autoConnectWs, setAutoConnectWs] = useState(() => loadFromStorage(STORAGE_KEYS.AUTO_CONNECT_WS, true));
+    const [autoLaunchServer, setAutoLaunchServer] = useState(() => import.meta.env.DEV ? false : loadFromStorage(STORAGE_KEYS.AUTO_LAUNCH_SERVER, true));
+    const [autoConnectWs, setAutoConnectWs] = useState(() => loadFromStorage(STORAGE_KEYS.AUTO_CONNECT_WS, true));
     const [serverHost, setServerHost] = useState(() => loadFromStorage(STORAGE_KEYS.SERVER_HOST, DEFAULT_HOST));
     const [serverPort, setServerPort] = useState(() => loadFromStorage(STORAGE_KEYS.SERVER_PORT, DEFAULT_PORT));
 

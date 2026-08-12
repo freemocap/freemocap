@@ -11,6 +11,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import {APP_PATHS} from './app-paths';
 import {getBaseDataFolder, setBaseDataFolder, resetBaseDataFolder} from './base-folder';
+import {WindowManager} from './services/window-manager';
 
 const { autoUpdater } = pkg;
 
@@ -501,6 +502,15 @@ export const api = t.router({
         installUpdate: t.procedure
             .mutation(() => {
                 autoUpdater.quitAndInstall(false, true);
+            }),
+    }),
+
+    // Window management
+    windows: t.router({
+        openPipelineMetrics: t.procedure
+            .mutation(() => {
+                WindowManager.openMetricsWindow();
+                return true;
             }),
     }),
 

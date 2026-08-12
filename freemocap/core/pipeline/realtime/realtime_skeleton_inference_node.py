@@ -55,6 +55,7 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState  # noqa: TC002
+from skellytracker.core.tracker.task_events import TrackerTaskEventCollector
 from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -66,6 +67,7 @@ from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     PipelineConfigUpdateTopic,
+    PipelineTimingEvent,
     ProcessFrameNumberMessage,
     ProcessFrameNumberTopic,
     SkeletonInferenceResultMessage,
@@ -91,6 +93,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             config: RealtimePipelineConfig,
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
+            timing_start_time: float | None = None,
+            flush_interval: float | None = None,
     ) -> "RealtimeSkeletonInferenceNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -107,6 +111,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 pipeline_config_sub=pubsub.get_subscription(PipelineConfigUpdateTopic),
                 skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
                 timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
+                timing_start_time=timing_start_time,
+                flush_interval=flush_interval,
             ),
         )
         return cls(
@@ -127,6 +133,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             pipeline_config_sub: TopicSubscriptionQueue,
             skeleton_result_pub: TopicPublicationQueue,
             timing_pub: TopicPublicationQueue,
+            timing_start_time: float | None = None,
+            flush_interval: float | None = None,
     ) -> None:
         logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] initializing")
 
@@ -153,7 +161,11 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = (
-            PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+            PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}", start_time=timing_start_time, flush_interval=flush_interval)
+            if log_pipeline_times else None
+        )
+        event_collector = (
+            TrackerTaskEventCollector()
             if log_pipeline_times else None
         )
         _MAX_SESSION_RESTARTS = 3
@@ -237,7 +249,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 }
                 try:
                     observations, tracker_states = tracker.process_batch(
-                        images_dict, requested_frame_number, tracker_states
+                        images_dict, requested_frame_number, tracker_states,
+                        event_collector=event_collector,
                     )
                 except Exception as mem_err:
                     if not (
@@ -280,6 +293,24 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     inf_ms = (time.perf_counter() - t_inf) * 1e3
                     timer.record("predict_batch", inf_ms)
                     timer.record("predict_per_camera", inf_ms / max(len(images), 1))
+                    if event_collector is not None:
+                        timer.extend_task_events([
+                            PipelineTimingEvent(
+                                task_id=e.task_id,
+                                parent_task_ids=list(e.parent_task_ids),
+                                stage=e.stage,
+                                node_kind=e.node_kind,
+                                camera_id=e.camera_id,
+                                frame_number=e.frame_number,
+                                start_time_ns=e.start_time_ns,
+                                end_time_ns=e.end_time_ns,
+                                duration_ms=e.duration_ms,
+                                batch_index=e.batch_index,
+                                batch_size=e.batch_size,
+                            )
+                            for e in event_collector.events
+                        ])
+                        event_collector.events.clear()
 
                 # ---- Apply confidence gating per camera ----
                 conf_threshold = pipeline_config.camera_node_config.confidence_threshold

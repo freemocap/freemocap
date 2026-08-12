@@ -31,9 +31,14 @@ class ServerUrls {
 
     /**
      * Get WebSocket base URL
+     * @param clientRole When `metrics`, requests a metrics-only relay from the backend.
      */
-    getWebSocketUrl(): string {
-        return `ws://${this.host}:${this.port}${WS_PATH}`;
+    getWebSocketUrl(clientRole?: 'metrics' | 'full'): string {
+        const base = `ws://${this.host}:${this.port}${WS_PATH}`;
+        if (clientRole === 'metrics') {
+            return `${base}?client_role=metrics`;
+        }
+        return base;
     }
 
     get endpoints() {
@@ -75,6 +80,7 @@ class ServerUrls {
             realtimeConnectOrUpdate: `${baseUrl}/freemocap/realtime/apply`,
             realtimeClose: `${baseUrl}/freemocap/realtime/all/close`,
             resetSkeletonFitter: `${baseUrl}/freemocap/realtime/reset-skeleton-fitter`,
+            gpuInfo: `${baseUrl}/freemocap/realtime/gpu-info`,
 
             // Calibration endpoints
             calibrationStartRecording: `${baseUrl}/freemocap/calibration/recording/start`,

@@ -19,7 +19,14 @@ has had to correct.
 |---|---|---|---|
 | **Keypoint trajectory** | A point **tracked in 2D by a detector and triangulated to 3D**. Named by the tracker that produced it. A raw observation of the world. | detectors → triangulation | **SkellyTracker** |
 | **Landmark trajectory** | The 3D trajectory of a specific feature **on a segment** of the model we fit to the keypoints. A landmark *is a point on a segment* — its segment attachment is intrinsic, not incidental. | model fitting | **SkellyForge** |
-| **Segment** | A 3D-oriented rigid body of the fitted model. Carries its landmarks, a reference geometry, and an orientation. | model fitting | **SkellyForge** |
+| **Segment** | A 3D-oriented rigid body of the fitted model. Carries its landmarks, a reference geometry, a **transform origin** (its proximal joint) and an orientation. | model fitting | **SkellyForge** |
+
+> **What the stream carries today: keypoints and *segments*, not landmarks.** The standard stream ships
+> `KEYPOINTS_3D` (the measurement) plus `SEGMENT_ORIGINS` and the rotation groups (the reconstruction) —
+> see [09 § channels](09-standard-stream-protocol.md#channels). Landmarks are a model-layer concept that is
+> **`[LATER]`, possibly never on the wire**; the current work is the segment layer. The distinction below
+> still matters because it defines the repo boundary — the mapping files turn keypoints into the canonical
+> points the segment model is fitted from.
 
 > A keypoint is **measured**. A landmark is **fitted** — it is where the model says that anatomical feature
 > is, given the keypoints. They are different things even when they share a name: `left_elbow` the keypoint

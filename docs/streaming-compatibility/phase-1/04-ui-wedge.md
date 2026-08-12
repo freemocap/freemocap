@@ -4,6 +4,10 @@
 > Depends on: FMC-WS-1 (contract — for cross-language golden-byte parity).
 > **Status: plan — executable detail below.**
 >
+> Channel content is defined in [09 § channels](../09-standard-stream-protocol.md#channels); the TypeScript
+> types here **mirror** it and must never diverge from it. Terms — *keypoint* / *landmark* / *segment* —
+> per [13](../13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory).
+>
 > The `ServerContextProvider` (~600 lines) is a God object: connection lifecycle, message routing
 > (one giant switch), frame decode/ack loop, 3D data fan-out via hand-rolled subscriber sets,
 > framerate/log stores, tracker schemas, and Redux glue. This workstream extracts connection
@@ -96,12 +100,19 @@ ServerContextProvider  (thin — consumes TransportService, exposes subscriber h
 ```typescript
 // transport/types.ts
 
+// Mirrors 09 § channels. That doc is the authority; this never redefines it.
 enum ChannelKind {
-  POINTS = 0,
-  ROTATIONS = 1,         // LEGACY — removed after transition
-  OVERLAY_2D = 2,
-  ROTATIONS_WORLD = 3,
-  ROTATIONS_LOCAL = 4,
+  KEYPOINTS_3D = 0,     // tracker keypoint names — triangulated detections
+  SEGMENT_ORIGINS = 1,  // segment names — transform origin (proximal joint)
+  ROTATIONS_LOCAL = 2,  // segment names, wxyz — parent-relative (the VMC contract)
+  ROTATIONS_WORLD = 3,  // segment names, wxyz — world frame
+  DERIVED_POINTS = 4,   // center_of_mass, xcom
+  OVERLAY_2D = 5,       // per camera x layer
+}
+
+enum OverlayLayer {
+  DETECTIONS = 0,     // what the detector saw — keypoint names
+  REPROJECTIONS = 1,  // fitted segment model projected into this camera — segment names
 }
 
 interface ChannelGroup {

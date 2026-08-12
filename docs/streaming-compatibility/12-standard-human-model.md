@@ -77,23 +77,52 @@ deterministic, subject-scaled offset in a landmark-defined frame, **no runtime f
 Offsets are **anthropometry-table ratios of segment lengths**, subject-scaled — **never runtime-fit**. The
 identical definition places both the T-pose rest position and the live per-frame landmark.
 
-## Per-bone twist policy (the underdetermined-roll plan)
+## Per-segment twist policy (the underdetermined-roll plan)
 
-A 2-joint bone gives position + long-axis **swing** (determined) but leaves **twist/roll** free. Resolve per
-bone, best-available first:
+A 2-joint segment gives position + long-axis **swing** (determined) but leaves **twist/roll** free. Resolve
+per segment, best-available first:
 
 1. **Full frame** — ≥3 non-collinear landmarks on the segment → full orientation directly (Kabsch): head, pelvis, thorax,
    hands, feet.
 2. **Swing + chain-resolved twist** — the child/hinge direction supplies the roll reference, because elbows
    and knees are 1-DOF hinges: `upperArm` twist ← elbow-hinge (forearm dir); `lowerArm` twist ← hand frame;
    `upperLeg` twist ← knee (shank dir); `lowerLeg` twist ← foot frame.
-3. **Swing + damped minimal twist (fallback)** — when the twist source is occluded, hold zero/rest twist and
-   **temporally damp** it (critically-damped) to avoid jitter/pop. (This is the "damped-track roll-minimizing"
-   default.)
+3. **Swing + critically-damped minimal twist (fallback)** — when the twist source is occluded, hold
+   zero/rest twist and damp it over time to avoid jitter and pop. Specified below.
 
-Fits the engine's frame model directly: the `CoordinateFrameDefinition`'s **exact axis** = the bone long axis;
-its **approximate axis** = the twist source (on-segment landmarks → child/hinge → none/minimal). Per segment we
-declare the **axis-source policy**; the math is unchanged.
+Fits the engine's frame model directly: the `CoordinateFrameDefinition`'s **exact axis** = the segment long
+axis; its **approximate axis** = the twist source (on-segment landmarks → child/hinge → none/minimal). Per
+segment we declare the **axis-source policy**; the math is unchanged.
+
+### Critical damping — specification
+
+"Critically damped" is meant literally, and it is what tier 3 must implement. Written out because the term
+was previously used loosely: the code is a **first-order exponential lag** (a per-frame blend weighting the
+previous frame at 0.95), which is a different filter with different behaviour, and it is documented here as
+critical damping. Tests in [14 § critical damping](14-engine-testing-strategy.md#5-critical-damping).
+
+**The filter.** Second-order, critically damped — the fastest response that does not overshoot. Per segment,
+carry an **angular-velocity state** across frames alongside the orientation, and integrate toward the target
+with the damping ratio fixed at 1. A first-order lag cannot express this: it never overshoots, but it also
+cannot settle quickly, so it trades pop for lag rather than removing both.
+
+**The parameter is a time constant in seconds**, not a per-frame blend factor. This is the load-bearing
+change. A blend factor silently means different things at 30, 60 and 120 fps — the same nominal "0.95"
+gives a settling time that varies with framerate, so a rig tuned on one machine misbehaves on another. A
+time constant is framerate-independent by construction; the per-frame coefficient is derived from it and
+`dt`. `TwistPolicy.damping_factor` becomes a time constant field accordingly.
+
+**Required behaviours:**
+
+- **Damping applies on every fallback path.** When the twist source is occluded *or* the singularity gate
+  trips, the damped-minimal solve must receive the previous frame's state. This is the case damping exists
+  for; skipping it there produces exactly the pop the tier is meant to prevent. (The current code passes no
+  previous state on both fallback paths — defect D3.)
+- **First frame:** no previous state → return the current value undamped, and seed velocity at zero.
+- **After a gap:** do not integrate stale velocity across it. Treat a discontinuity in time like a first
+  frame rather than accelerating through the gap.
+- **Reset clears the state.** Damping never carries across recordings or sessions.
+- **State is owned by the solver instance**, not module scope — see defect D16.
 
 ## Rest pose (T-pose)
 

@@ -3,6 +3,14 @@
 > **Build order: 2nd** (after FMC-WS-3). Depends on: FMC-WS-1 (contract), FMC-WS-3 (schema).
 > **Status: plan — executable detail below.**
 >
+> Channel content is defined in [09 § channels](../09-standard-stream-protocol.md#channels) — the encoder
+> implements against it and this plan never redefines it. Terms — *keypoint* / *landmark* / *segment* — per
+> [13](../13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory).
+>
+> **Landmark reprojection is new scope for this workstream** ([09 § 2D
+> overlays](../09-standard-stream-protocol.md#2d-overlays-detections-and-reprojections)): the encoder needs
+> the fitted landmarks projected into each camera, read from the existing calibration.
+>
 > This is the most invasive backend change in Phase 1. It replaces the current dual-path send
 > (`FrontendPayload` JSON + legacy binary keypoints) with the standard stream (schema once +
 > timestamped samples) and breaks up the monolithic `WebsocketServer` send path into focused,
@@ -98,50 +106,65 @@ class StreamSample:
     ) -> "StreamSample":
         """Build a standard-stream sample from one aggregator frame.
 
-        Reads skeleton positions, reprojection errors, rotation quaternions,
-        derived points, and 2D overlays from the message. Densifies each to
-        the schema's canonical name order. Missing points → NaN row.
+        Reads keypoint trajectories, segment origins, rotation quaternions,
+        derived points, and both 2D overlay layers from the message. Densifies
+        each to the schema's declared name order. Missing points → NaN row.
+
+        Block order and content: 09 section "channels" (the authority).
 
         This is the single place that maps the aggregator's output dicts
         into the ordered sample blocks. No intermediate FrontendPayload.
         """
         blocks: list[SampleBlock] = []
 
-        # Block 0: skeleton POINTS (bone proximal joints)
+        # Block 0: KEYPOINTS_3D — triangulated detections, tracker-named
         blocks.append(_build_points_block(
-            kind=ChannelKind.POINTS,
+            kind=ChannelKind.KEYPOINTS_3D,
             names=schema.channels[0].names,
-            positions=msg.keypoints_arrays,   # or however the solver's joint positions are named
+            positions=msg.keypoints_arrays,
             errors=msg.raw_errors_px,
         ))
 
-        # Block 1: derived POINTS (CoM, xcom)
+        # Block 1: SEGMENT_ORIGINS — transform origin (proximal joint) per segment
+        blocks.append(_build_origins_block(
+            names=schema.channels[1].names,
+            positions=msg.skeleton,
+        ))
+
+        # Block 2: ROTATIONS_LOCAL — parent-relative; the VMC contract
+        blocks.append(_build_rotation_block(
+            kind=ChannelKind.ROTATIONS_LOCAL,
+            names=schema.channels[2].names,
+            quaternions=msg.segment_rotations_local,
+        ))
+
+        # Block 3: ROTATIONS_WORLD
+        blocks.append(_build_rotation_block(
+            kind=ChannelKind.ROTATIONS_WORLD,
+            names=schema.channels[3].names,
+            quaternions=msg.segment_rotations_world,
+        ))
+
+        # Block 4: DERIVED_POINTS (CoM, xcom)
         blocks.append(_build_derived_points_block(
             schema=schema,
             com=msg.center_of_mass_result,
             xcom=msg.xcom,
         ))
 
-        # Block 2: ROTATIONS_WORLD
-        blocks.append(_build_rotation_block(
-            kind=ChannelKind.ROTATIONS_WORLD,
-            names=schema.channels[2].names,
-            quaternions=msg.segment_rotations_world,
-        ))
-
-        # Block 3: ROTATIONS_LOCAL
-        blocks.append(_build_rotation_block(
-            kind=ChannelKind.ROTATIONS_LOCAL,
-            names=schema.channels[3].names,
-            quaternions=msg.segment_rotations_local,
-        ))
-
-        # Blocks 4..4+C-1: OVERLAY_2D (one per camera)
+        # Blocks 5..5+2C-1: OVERLAY_2D — one per (camera, layer)
         for camera_id in schema.camera_ids:
             blocks.append(_build_overlay_block(
                 schema=schema,
                 camera_id=camera_id,
-                overlays=msg.skeleton_overlay_data,
+                layer=OverlayLayer.DETECTIONS,
+                overlays=msg.keypoint_overlay_data,
+            ))
+            blocks.append(_build_overlay_block(
+                schema=schema,
+                camera_id=camera_id,
+                layer=OverlayLayer.REPROJECTIONS,
+                overlays=msg.segment_reprojection_data,
             ))
 
         return cls(
@@ -220,11 +243,20 @@ class BackpressureController:
 pausing. This is the key change from the current system which effectively has `window_size=1`
 (waits for every ack before sending the next frame).
 
-## Transition strategy (unchanged)
+## Transition strategy — **under revision (defect D36)**
 
-Legacy keypoints bytes 3/4/5. New standard stream bytes 10/11/12. No collision.
-Feature flag `FREEMOCAP_STANDARD_STREAM=1`. Dual-protocol coexistence during transition.
-No flag-day.
+> This section currently reads: *"Feature flag `FREEMOCAP_STANDARD_STREAM=1`. Dual-protocol coexistence
+> during transition. No flag-day."*
+>
+> That contradicts [00](../00-overview.md)'s **"Zero backwards-compatibility cruft — there is one version of
+> the system: the current one"** and locked decision 8 (*"Replace, don't parallel"*). Nothing has shipped
+> this wire format, so there is no external consumer to stay compatible with; the only thing dual-protocol
+> buys is the ability to keep the legacy path alive, which is the cruft the rule exists to prevent.
+>
+> **Proposed: delete the flag and the legacy path in one change.** The distinct first-byte tags (legacy
+> 3/4/5, standard stream 10/11/12) already prevent collision, so the swap is safe without a flag; the UI
+> wedge (FMC-WS-4) lands the decoder in the same cycle. Tracked as **D36** — see
+> [FMC-SR §10b](07-spec-reconciliation.md#10b-structure-hygiene-and-contradictions).
 
 ## Task checklist
 
@@ -235,7 +267,12 @@ No flag-day.
       SEND when under window; WAIT when window full; RESET when >= reset_threshold.
 5. [ ] **Write `FrameRelay`** — compose serializer + backpressure. Calls
       `StreamSample.from_aggregator_output()` → `.to_bytes()` → serializer.
-6. [ ] **Update `FrontendPayload`** — strip to image-only; delete `from_aggregation_output()`.
+6. [ ] **Segment reprojection** — project the fitted segment model into each camera using the existing
+      calibration, and carry the result on the frame so the encoder can emit the `REPROJECTIONS` overlay
+      layer ([09](../09-standard-stream-protocol.md#2d-overlays-detections-and-reprojections)). New scope
+      from FMC-SR §3.
+7. [ ] **Emit both overlay layers** — `2C` blocks per sample, keyed by `(camera_id, overlay_layer)`.
+8. [ ] **Update `FrontendPayload`** — strip to image-only; delete `from_aggregation_output()`.
 7. [ ] **Refactor `WebsocketServer`** — thin supervisor composing the new components.
 8. [ ] **Wire `StreamSchema.from_standard_human()`** — called at startup (FMC-WS-3), result
       fed to the encoder / FrameRelay.

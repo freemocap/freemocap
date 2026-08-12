@@ -4,7 +4,12 @@
 > fold them into one aligned engine — which is where the standard human's **segment rotations** come
 > from ([01](01-canonical-data-model.md#segment-rotations--owned-by-skellymodels-a-module-within-skellyforge)).
 >
-> Status: **analysis + fold-in plan for review.**
+> Testing for the folded-in engine is specified in
+> [14 — Engine Testing Strategy](14-engine-testing-strategy.md).
+>
+> Status: **executed** — the engine lives in `skellyforge/kinematics/` and the orientation solve runs in the
+> realtime aggregator. Remaining: the `[LATER]` alignment of the disabled centroidal-kinematics code, and
+> the test suite ([14](14-engine-testing-strategy.md)), which does not yet exist.
 
 ## The three codebases
 

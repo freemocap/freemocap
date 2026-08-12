@@ -88,32 +88,52 @@ data shape are right. [`00`](../00-overview.md) implies this; it should say it.
 [`01`](../01-canonical-data-model.md)'s superset principle, and settles the audit's
 [§2.1](../AUDIT_2026-08-12.md#21-landmark-vs-bone-the-specs-contradict-each-other).
 
-Target channel groups:
+Target channel groups — **the measured half and the reconstructed half**:
 
 | # | Group | Names are | Columns |
 |---|---|---|---|
 | 0 | `KEYPOINTS_3D` | tracker keypoint names | `x, y, z, reprojection_error` |
-| 1 | `LANDMARKS_3D` | landmark names (each attached to a segment — attachment declared in the schema) | `x, y, z, reprojection_error` |
-| 2 | `DERIVED_POINTS` | `center_of_mass`, `xcom` | `x, y, z` |
+| 1 | `SEGMENT_ORIGINS` | segment names — **transform origin (proximal joint)**, not midpoint | `x, y, z` |
+| 2 | `ROTATIONS_LOCAL` | segment names | `w, x, y, z` |
 | 3 | `ROTATIONS_WORLD` | segment names | `w, x, y, z` |
-| 4 | `ROTATIONS_LOCAL` | segment names | `w, x, y, z` |
-| 5… | `OVERLAY_2D` | per camera — see §3 | `x, y, visibility` |
+| 4 | `DERIVED_POINTS` | `center_of_mass`, `xcom` | `x, y, z` |
+| 5… | `OVERLAY_2D` | per camera × layer — see §3 | `x, y, visibility` |
+
+**Landmarks are not on the stream.** The current work is the **segment** layer of the data model; a landmark
+(a named anatomical feature riding on a segment) is `[LATER]`, possibly never on the wire. Adding a third
+point set before it is needed would be speculative wire surface.
+
+**Shape chosen for VMC.** VMC's model is a root transform plus per-bone **local** rotations, with child
+placement coming from the rest pose composed through the rotation chain. `SEGMENT_ORIGINS` carries transform
+origins (which is what a VRM/VMC bone position *is*), `ROTATIONS_LOCAL` is the rotation contract, and
+`rest_pose` + `segment_parents` are in the schema — so the VMC adapter is a name map plus a convention
+conversion, with nothing to reconstruct. Both rotation frames stay first-class per locked decision 5; the
+3JS renderer and world-space analysis consumers take `ROTATIONS_WORLD`.
 
 ### Tasks
 
-1. [ ] **[`09`](../09-standard-stream-protocol.md) § channels** — rewrite against the table. `09` becomes
-       the single authority for channel content.
-2. [ ] **[`03`](03-canonical-frame-extensions.md)** — replace its inline channel enumeration with a
-       deferral to `09`. It is an *implementation* plan; it must not carry a competing definition of the
-       wire. (This is the SSOT bug that produced the conflict.)
-3. [ ] **[`01`](../01-canonical-data-model.md) § what the frame carries** — align the table's Group column
-       with the six groups.
-4. [ ] **[`09`](../09-standard-stream-protocol.md)** — declare the **landmark→segment attachment** as a
-       schema fact (it is what lets a consumer draw a segment from its landmarks without guessing).
-5. [ ] **[`09`](../09-standard-stream-protocol.md) § open questions** — delete the stale "subject count is
-       dynamic, not in the schema" bullet; it contradicts the doc's own callout box and `max_persons`.
-6. [ ] **[`07`](../07-coordinate-conventions.md)** — `rotation_frame` can no longer be a single value now
-       that both frames ship. Make it per-channel-group or drop it from the tuple; state which.
+1. [x] **[`09`](../09-standard-stream-protocol.md) § channels** — rewritten against the six-group table and
+       declared **the single authority** on channel content. Added the keypoint-vs-landmark distinction as
+       first-class (both carried, both named honestly), one `block_kind` per group, and `overlay_layer` in
+       the block header. Status header corrected to "partly implemented".
+2. [x] **[`03`](03-canonical-frame-extensions.md)** — inline enumeration replaced by a deferral to `09`,
+       with an explicit note that this file *became* the de-facto authority by accident and that is what
+       produced the conflict. Checklist re-opened for the items that landed against the old layout.
+       **The same SSOT bug was found in two more plans** and fixed identically:
+       [`02`](02-backend-encoder-and-ws-reshape.md) (sample-builder block order) and
+       [`04`](04-ui-wedge.md) (TypeScript `ChannelKind`) both carried competing definitions.
+3. [x] **[`01`](../01-canonical-data-model.md) § what the frame carries** — table rewritten with a
+       **Channel group** column mapping each frame field to its `09` group; keypoint and landmark
+       trajectories now separate rows with measured-vs-fitted stated.
+4. [x] **[`09`](../09-standard-stream-protocol.md)** — `segment_parents` declared as a schema field; with
+       `rest_pose` it is what lets a consumer compose the local-rotation chain into world placement, which
+       is the VMC/VRM model. Added a **"Why this shape maps onto VMC"** table showing the adapter reduces to
+       a name map + convention conversion.
+5. [x] **[`09`](../09-standard-stream-protocol.md) § open questions** — stale subject-count bullet deleted;
+       resolved items moved into the body with a pointer left behind. Only `nominal_srate` remains open,
+       now with a trigger.
+6. [x] **[`07`](../07-coordinate-conventions.md)** — `rotation_frame` dropped from the convention tuple in
+       `09`'s schema table; both frames ship as distinct channel groups, so the field described nothing.
 
 ---
 
@@ -134,15 +154,19 @@ No new source, no new dependency; wire it up when we reach the implementation pa
 
 ### Tasks
 
-1. [ ] **[`09`](../09-standard-stream-protocol.md)** — spec the two overlay layers: either two block kinds
-       (`OVERLAY_2D_KEYPOINTS`, `OVERLAY_2D_LANDMARKS`) or one kind with a layer discriminator in the block
-       header. Decide and state it.
-2. [ ] **[`01`](../01-canonical-data-model.md)** — add reprojected landmarks to the canonical frame table.
-3. [ ] **[`09`](../09-standard-stream-protocol.md) + [`01`](../01-canonical-data-model.md)** — record that
-       reprojection reads the existing calibration infrastructure, and that a calibration change invalidates
-       the overlay layer the same way it invalidates triangulation.
+1. [x] **[`09`](../09-standard-stream-protocol.md)** — **decided: one `OVERLAY_2D` kind with an
+       `overlay_layer` discriminator** (`DETECTIONS` | `REPROJECTIONS`) in the block header, alongside
+       `camera_id`. Two kinds would have duplicated the per-camera keying logic for no gain. A `C`-camera
+       rig sends `2C` overlay blocks per sample.
+2. [x] **[`01`](../01-canonical-data-model.md)** — reprojected landmarks added to the frame table as an
+       `OVERLAY_2D` row, with the residual-vs-fit rationale.
+3. [x] **[`09`](../09-standard-stream-protocol.md)** — records that reprojection reads the existing
+       calibration, and that a calibration change rebuilds the stream with a new schema exactly as it
+       invalidates triangulation.
 4. [ ] **[`05`](../05-ui-integration-and-refactor.md)** — the UI needs a per-layer visibility toggle;
        note it.
+5. [ ] **[`02`](02-backend-encoder-and-ws-reshape.md)** — landmark reprojection is **new encoder scope**;
+       flagged in its header, needs its task checklist updated.
 
 ---
 
@@ -198,10 +222,15 @@ Content to specify (not write):
 
 ### Tasks
 
-1. [ ] Write `14-engine-testing-strategy.md`.
-2. [ ] Cross-link from [`08`](../08-testing-strategy.md), [`11`](../11-kinematics-fold-in.md),
-       [`README`](../README.md) table.
-3. [ ] Add the suite to [`IMPLEMENTATION_PLAN`](../IMPLEMENTATION_PLAN.md) `[IN]` scope.
+1. [x] Wrote [`14-engine-testing-strategy.md`](../14-engine-testing-strategy.md), covering §1–7 plus the
+       missing test infrastructure. Its organizing rule: **a test must be able to fail for the reason it
+       exists** — with the uniform-bend case named as the cautionary example, and a closing requirement that
+       no test may pass under both operand orders, both handedness conventions, or both component orders.
+2. [x] Cross-linked: [`08`](../08-testing-strategy.md) retitled "(the wire)" with an explicit scope boundary,
+       [`11`](../11-kinematics-fold-in.md) points at 14 and its status corrected to "executed",
+       [`README`](../README.md) table gains row 14 and marks 08 as the wire's doc.
+3. [x] Suite added to [`IMPLEMENTATION_PLAN`](../IMPLEMENTATION_PLAN.md) `[IN]` scope, with the ordering
+       constraint that §2's tests land **before** the composition fix.
 
 ---
 
@@ -213,15 +242,15 @@ must define it precisely enough to implement.
 
 ### Tasks
 
-1. [ ] **[`12`](../12-standard-human-model.md) § twist policy** — specify second-order critically-damped
-       smoothing: per-segment angular-velocity state carried across frames, the damping parameter as a
-       **time constant in seconds** (framerate-independent) rather than a per-frame blend factor, and the
-       behaviour required at first frame / after a gap / on reset.
-2. [ ] Specify the **fallback-path requirement**: when the twist source is occluded or the singularity gate
-       trips, damping must still apply. (Audit
-       [§3.2](../AUDIT_2026-08-12.md#32-the-damping-fallback-disables-damping) — the current fallback
-       passes no previous state, so damping is skipped in exactly the case it exists for.)
-3. [ ] Note the `damping_factor` → time-constant field change so the implementation pass has a target.
+1. [x] **[`12`](../12-standard-human-model.md) § Critical damping — specification** added: second-order,
+       damping ratio 1, per-segment angular-velocity state carried across frames. Records why a first-order
+       lag cannot substitute (it never overshoots but cannot settle quickly, trading pop for lag).
+2. [x] **Fallback-path requirement specified** — damping must apply when the twist source is occluded *and*
+       when the singularity gate trips, which is the case it exists for (defect D3).
+3. [x] **`damping_factor` → time constant in seconds.** The load-bearing part: a per-frame blend factor
+       silently means different things at 30/60/120 fps, so a rig tuned on one machine misbehaves on
+       another. Framerate independence is asserted by [14 § critical damping](../14-engine-testing-strategy.md#5-critical-damping).
+4. [x] First-frame, after-gap, and reset behaviours specified; state ownership pointed at defect D16.
 
 ---
 
@@ -347,6 +376,7 @@ written by an SR row above it).
 | D30 | `stream_schema.py` imports `StandardHuman` at module scope, coupling the wire contract to the model — FMC-WS-1 specified it as a standalone contract. | Decide: either the coupling is intended (and [`01`](01-standard-stream-contract.md) is corrected to say so) or `from_standard_human` moves to a boundary module. Not left ambiguous. | SR |
 | D31 | SkellyForge has **no test infrastructure at all** — `pytest` collects nothing across ~3,200 lines of new math. | §5 — doc `14` specifies the suite and the `skellyforge/tests/` scaffold. | SR → CODE |
 | D34 | `FREEMOCAP_CANONICAL_CONVENTION` in `coordinate_convention.py` sets `forward_axis=Axis.PLUS_Y` with a `# TODO(convention): confirm`. **The canonical standard is `+X` forward** — the value is simply wrong, and every adapter conversion derived from it would be rotated 90° about Z. | Set `forward_axis=Axis.PLUS_X`; delete the `TODO`. Per Q1. | SR → CODE |
+| D36 | [`02`](02-backend-encoder-and-ws-reshape.md) § Transition strategy specifies a `FREEMOCAP_STANDARD_STREAM=1` feature flag and **dual-protocol coexistence** during the send-path swap — contradicting [`00`](../00-overview.md)'s "zero backwards-compatibility cruft" and locked decision 8 ("Replace, don't parallel"). Nothing has shipped this wire format, so there is no consumer to stay compatible with; the flag's only effect is keeping the legacy path alive. | **Delete the flag and the legacy path in one change.** The distinct first-byte tags (legacy 3/4/5 vs. standard stream 10/11/12) already prevent collision, and FMC-WS-4 lands the decoder in the same cycle. *(Judgment call rather than dead code — a flag during a risky send-path swap is defensible engineering; it loses to the stated rule, but say so if you want it kept.)* | SR → CODE |
 | D35 | The canonical convention is a **standard the data must satisfy** (`+Z` up, `+X` forward). The charuco ground-plane path establishes it. The **camera-0-pinned** path (used when ground-plane alignment is skipped or fails — anipose logs a warning and continues) leaves the world in camera 0's optical frame, which is not Z-up. Data would then violate the invariant while the schema declares it holds. | Verify what the camera-0 path actually produces. Either it re-orients into the canonical convention before data flows, or the gap is closed explicitly. **Not** a reason to weaken the schema — the standard stands; a path that doesn't meet it is the defect. | SR → CODE |
 | D33 | [`01`](../01-canonical-data-model.md) stated the rest-pose contract as *"a bone reading `(0,0,0,1)` is in the rest pose"* — that is **xyzw**. This codebase's canonical order is **wxyz**, where identity is `(1,0,0,0)`. The doc asserting the identity convention had it backwards, inside the section warning about horrifying-pose bugs. | **Fixed in the §1 sweep.** Corrected to `(1, 0, 0, 0)` with the order named explicitly. Every doc that prints a literal quaternion must name its component order — added to §5's test spec as an assertion. | SR ✅ |
 | D32 | The `standard-human-model` sub-plan is marked **DONE** while four of its own definition-of-done bullets are unmet (mediapipe landmarks, `bs/`-parity tests, posthoc `Human` rebuild, face channels present-and-null). | Correct the status to reflect what is actually done, and move the unmet bullets into explicit open tasks. Status ambiguity is the failure [`HANDOFF_GUIDE`](../HANDOFF_GUIDE.md) exists to prevent. | SR |

@@ -1,4 +1,9 @@
-# 08 — Testing Strategy
+# 08 — Testing Strategy (the wire)
+
+> **Scope: serialization and transport.** The kinematics engine — quaternion algebra, coordinate frames,
+> the orientation solver, `anatomical_offset` — is owned by
+> [14 — Engine Testing Strategy](14-engine-testing-strategy.md). The boundary is serialization: once a
+> quaternion is correct and in the canonical convention, this doc owns getting it onto the wire intact.
 
 The wire is unforgiving and the failure modes are silent: a coordinate flip produces a
 plausible-looking stream that a real consumer renders as a horror. The strategy is layered so each

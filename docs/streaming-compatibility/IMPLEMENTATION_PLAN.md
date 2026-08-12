@@ -45,6 +45,11 @@
   decomposition; **3D data → rolling-window time-series stores** (default ~100 frames, settable).
 - **`websocket_server.py` breakup** (fused with the standard-stream reshape).
 - **Audit `app_state` / inbound "settings"** end-to-end; flag dead paths for removal.
+- **Engine test suite** ([14](14-engine-testing-strategy.md)): stand up `skellyforge/tests/` +
+  `skellytracker/tests/` (neither exists) and cover quaternion algebra, the parent-relative composition
+  convention, basis/Kabsch, the orientation solver, critical damping, and `anatomical_offset`. The
+  differential-bend + round-trip cases land **before** the composition-order fix, so the test decides the
+  convention rather than confirming it.
 
 ### `[LATER]`
 - VRChat OSC adapter; Rokoko JSON adapter.
@@ -76,7 +81,7 @@
 | **Where the canonical bone definition lives** — `standard_human.yaml` vs. pure Python (the `TBD` in [phase-1/standard-human-model](phase-1/standard-human-model/README.md) § File structure) | SF-SH-1 definition-of-done; moving the model out of the freemocap aggregator bootstrap into SkellyForge | Decide the format — see [AUDIT_2026-08-12 §2.2](AUDIT_2026-08-12.md#22-where-the-canonical-bone-definition-lives--an-unresolved-tbd-answered-by-default) |
 | ~~Does `ROTATIONS_WORLD` have a committed consumer?~~ | — | **Resolved 2026-08-12** — yes, and it stays. The stream carries **everything** (small data); [FMC-RB](phase-1/06-rigid-body-bone-renderer.md) drives the viewport from it directly. |
 | ~~Camera parameters for 2D landmark reprojection~~ | — | **Resolved 2026-08-12** — the **existing camera calibration infrastructure**. If we reconstruct 3D, we know the cameras by definition. See [FMC-SR §3](phase-1/07-spec-reconciliation.md#3-2d-overlays-carry-both-detections-and-reprojections-new). |
-| **Testing home for the SkellyForge engine** — [08](08-testing-strategy.md) covers the wire only; nothing owns quaternion / reference-geometry / mapping tests | The `bs/`-parity suite that both `standard-human-model` DoD and FMC-WS-5 item 1 already require | Add a section to [08](08-testing-strategy.md) or a sibling doc — see [AUDIT_2026-08-12 §2.3](AUDIT_2026-08-12.md#23-the-plans-have-no-testing-strategy-for-the-skellyforge-engine) |
+| ~~Testing home for the SkellyForge engine~~ | — | **Resolved 2026-08-12** — new sibling doc [14 — Engine Testing Strategy](14-engine-testing-strategy.md). [08](08-testing-strategy.md) keeps the wire; 14 owns the math. Suite added to `[IN]` scope. |
 
 ## Phased build order
 

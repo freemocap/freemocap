@@ -21,12 +21,13 @@ surfaced in the UI.
 | 05 | [UI Integration & Refactor](05-ui-integration-and-refactor.md) | Realtime-UI controls, `ServerContextProvider` decomposition, rolling-window stores, status feed |
 | 06 | [Backend Refactor & Cleanup](06-backend-refactor-and-cleanup.md) | `websocket_server.py` breakup + standard-stream reshape, dead-code retirement |
 | 07 | [Coordinate Conventions](07-coordinate-conventions.md) | Convention-as-schema-fact, per-target table |
-| 08 | [Testing Strategy](08-testing-strategy.md) | Golden bytes, loopback, LSL pass-through, positive-capability, third-party conformance |
+| 08 | [Testing Strategy](08-testing-strategy.md) | **The wire:** golden bytes, loopback, LSL pass-through, positive-capability, third-party conformance |
 | 09 | [Standard Stream Protocol](09-standard-stream-protocol.md) | The precise wire contract: `stream_schema` + `stream_sample` |
 | 10 | [Serialization & Tidy Format](10-serialization-and-tidy-format.md) | On-disk form: tidy long CSV/parquet vs SkellyForge parquet |
 | 11 | [Kinematics Fold-In](11-kinematics-fold-in.md) | SkellyModels ↔ FreeMoCap `core/kinematics` ↔ `bs/kinematics_core` overlap + plan |
 | 12 | [Standard Human Model](12-standard-human-model.md) | VRM rig, marker→bone retarget, derived joint centers (clavicle), twist policy |
-| 13 | [Tracker → Canonical Mapping](13-tracker-to-canonical-mapping.md) | The keypoint→landmark mapping system (string / list-mean / weighted-sum) |
+| 13 | [Keypoint → Landmark Mapping](13-tracker-to-canonical-mapping.md) | **SSOT for the keypoint / landmark / segment distinction**; the mapping forms and the SkellyTracker↔SkellyForge boundary |
+| 14 | [Engine Testing Strategy](14-engine-testing-strategy.md) | The math: quaternion algebra, composition convention, Kabsch, orientation solver, damping, `anatomical_offset` |
 | — | [Implementation Plan](IMPLEMENTATION_PLAN.md) | Scope table, phased build order, dependencies, progress log |
 | — | [Audit — 2026-08-12](AUDIT_2026-08-12.md) | Latest checkpoint audit: plans vs. implementation, drift, open decisions |
 

@@ -45,16 +45,30 @@ common denominator of what consumers want. Adapters use the subset they need; th
 pre-discards. The **Where** column shows whether a fact is static (schema) or per-frame
 (sample).
 
-| Group | Field(s) | Where | Status | Notes |
-|---|---|---|---|---|
-| Identity | `frame_number`, `pipeline_id`, `camera_group_id` | sample/schema | exists | frame_number per sample; ids in schema. |
-| Keypoints | `keypoints_arrays: dict[name, xyz]` | sample (names in schema) | exists | Filtered triangulated landmarks, **millimeters**. |
-| Skeleton (positions) | `skeleton: dict[name, xyz]` | sample (names in schema) | exists | Rigidified canonical body+hand joints (mm), from `RealtimeSkeletonRigidifier`. |
-| Center of mass | `center_of_mass_result`, `xcom` | sample | exists | Whole-body + segment CoM; extrapolated CoM. |
-| **Segment rotations** | `segment_rotations: dict[segment, quaternion]` | sample (channels in schema) | **`[IN]` new** | Per-segment quaternion vs. rest pose. Owned by SkellyModels — see below. |
-| **Subjects** | subject dimension / keying | sample + schema | **`[IN]` new** | Multi-subject from day one — see below. |
-| **Convention / hierarchy / rest pose** | units, handedness, axes, joint hierarchy, T-pose | **schema** | **`[IN]` new** | Static — sent once, not per sample. See [07](07-coordinate-conventions.md). |
-| Quality | `reprojection_error` (3D) / `visibility` (2D) per point | sample (channels in schema) | **`[IN]` new** | Named by what it is — 3D trajectories carry reprojection error (px, already computed); 2D overlays carry visibility. |
+Terms — *keypoint* / *landmark* / *segment* — per
+[13](13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory). The **Channel group** column names the
+[09](09-standard-stream-protocol.md#channels) group each fact serializes into.
+
+| Group | Field(s) | Channel group | Where | Status | Notes |
+|---|---|---|---|---|---|
+| Identity | `frame_number`, `pipeline_id`, `camera_group_id` | — | sample/schema | exists | frame_number per sample; ids in schema. |
+| **Keypoint trajectories** | `keypoints_arrays: dict[name, xyz]` | `KEYPOINTS_3D` | sample (names in schema) | exists | Filtered **triangulated detections** — measured, tracker-named, **millimeters**. |
+| **Segment origins** | `skeleton: dict[name, xyz]` | `SEGMENT_ORIGINS` | sample (names in schema) | exists | Each segment's **transform origin (proximal joint)**, mm, from `RealtimeSkeletonRigidifier` — the fitted model, not a measurement. |
+| **Segment rotations** | `segment_rotations_local` / `segment_rotations_world` | `ROTATIONS_LOCAL` / `ROTATIONS_WORLD` | sample (channels in schema) | **`[IN]` computed, not yet serialized** | Per-segment `wxyz` quaternion vs. rest pose. Both frames first-class. |
+| Center of mass | `center_of_mass_result`, `xcom` | `DERIVED_POINTS` | sample | exists | Whole-body + segment CoM; extrapolated CoM. |
+| **2D overlays** | per-camera detections + reprojected segment model | `OVERLAY_2D` | sample (2 layers × camera) | **`[IN]` new** | Detections show what each camera saw; reprojections show the fitted model projected back into that camera using the existing calibration. The residual between them is fit quality, per camera. |
+| **Subjects** | subject dimension / keying | — | sample + schema | **`[IN]` new** | Multi-subject from day one — see below. |
+| **Convention / hierarchy / rest pose** | units, handedness, axes, `segment_parents`, T-pose | — | **schema** | **`[IN]` new** | Static — sent once, not per sample. See [07](07-coordinate-conventions.md). |
+| Quality | `reprojection_error` (3D) / `visibility` (2D) per point | on the keypoint + overlay groups | sample (channels in schema) | **`[IN]` new** | Named by what it is. Keypoints carry reprojection error (px, already computed); 2D overlays carry visibility. Segment origins are *fitted*, so they carry neither — fit quality is visible through the reprojection overlay. |
+
+> **The frame carries the measurement and the reconstruction, side by side.** `KEYPOINTS_3D` is what the
+> cameras saw; `SEGMENT_ORIGINS` + the rotation groups are the segment model fitted to it. Comparing them
+> is the diagnostic — in 3D directly, and in 2D through the two overlay layers.
+>
+> **Landmarks are not on the stream.** A landmark (a named anatomical feature riding on a segment) is
+> `[LATER]`, possibly never on the wire. The current work is the **segment** layer of the data model; adding
+> a third point set before it is needed would be speculative wire surface. Terms per
+> [13](13-tracker-to-canonical-mapping.md#two-kinds-of-trajectory).
 
 > The disabled `body_kinematics` field (inertia ellipsoid / ground references) is **not** part
 > of this contract. See [Live substrate only](#live-substrate-only).

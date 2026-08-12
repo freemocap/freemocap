@@ -123,8 +123,8 @@ as quick reference only — **if this table and doc 13 disagree, doc 13 wins.**
 | Term | Meaning |
 |---|---|
 | **Keypoint trajectory** | A point **tracked in 2D by a detector and triangulated to 3D**. Tracker-specific names. A raw *measurement*. Produced by **SkellyTracker**. |
-| **Landmark trajectory** | The 3D trajectory of a feature **on a segment** of the model fitted to the keypoints. A landmark *is a point on a segment* — the attachment is intrinsic. A *fitted* quantity, not a measured one. Produced by **SkellyForge**. |
-| **Segment** | A 3D-oriented rigid body of the fitted model: its landmarks, a reference geometry, an orientation. VRM-1.0-aligned — **not** an anatomical bone ([13](13-tracker-to-canonical-mapping.md#segments-not-anatomical-bones)). Owned by **SkellyForge**. |
+| **Landmark trajectory** | The 3D trajectory of a feature **on a segment** of the model fitted to the keypoints. A *fitted* quantity, not a measured one. Produced by **SkellyForge**. **Not on the stream today** — `[LATER]`, possibly never. |
+| **Segment** | A 3D-oriented rigid body of the fitted model: a **transform origin** (its proximal joint), a reference geometry, an orientation. VRM-1.0-aligned — **not** an anatomical bone ([13](13-tracker-to-canonical-mapping.md#segments-not-anatomical-bones)). Owned by **SkellyForge**. This is what the stream carries alongside the keypoints. |
 | **Keypoint → landmark mapping** | The `{tracker}_to_canonical_mapping.yaml` files in SkellyTracker. **The entire interface between the two repos.** |
 
 > `left_elbow` the *keypoint* is a detector's estimate. `left_elbow` the *landmark* is a point on the fitted

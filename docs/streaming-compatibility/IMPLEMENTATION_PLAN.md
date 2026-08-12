@@ -144,6 +144,17 @@ consumer.
 
 ## Progress log
 
+- **2026-08-12 (SF-AL architecture agreed)** — Worked the design through before writing code. Decisions
+  recorded in [`phase-1/08`](phase-1/08-skellyforge-alignment.md#agreed-architecture): **compose what we
+  author, generate the flat skeleton at load** (the 55-segment table is 15+15 duplicated fingers — the
+  forbidden shape); **parts join by name agreement**, so a hand's local `wrist` becomes `left_wrist` under
+  its prefix and unifies with the body's — no attachment mechanism, one joint hierarchy; **mirroring
+  reflects rest positions and rebuilds frames right-handed**, never reflects a basis, because reflection
+  has determinant −1 and a left-handed frame is still orthonormal so nothing else would catch it; **the
+  face is a different kind of thing** — expressions, not segments, composed alongside the skeleton;
+  **one human per `StandardHuman`**, multi-subject is a list; **the model layer knows nothing about
+  trackers** (the `Aspect` array-slicing job is deleted); **composition replaces the Actor/Human/Animal/
+  Board inheritance**. Two guard tests added to [14 §7](14-engine-testing-strategy.md#7-standard-human-model).
 - **2026-08-12 (SF-AL — SkellyForge is not aligned to the standard human)** — Surfaced while implementing
   D7/D8. The trigger was cosmetic (arrow-delimited dict keys in `canonical_body.yaml`); the survey found
   the arrow is a symptom. **`canonical_body.yaml` and its consumers predate the standard-human redesign

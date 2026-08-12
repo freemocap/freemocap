@@ -219,6 +219,15 @@ Specified in [12 § twist policy](12-standard-human-model.md#per-segment-twist-p
 - **Every segment resolves a usable direction.** No segment may have its origin and its first child's origin
   at the same point; that yields a zero-length vector and a permanently-identity rotation. The realtime
   bootstrap has three such segments today, which is a silent hole rather than a failure.
+- **Handedness survives mirroring.** After composition, assert `det(basis) == +1` for **every** segment on
+  **both** sides. Mirroring reflects rest positions (negating Y, the sagittal normal) and then *rebuilds*
+  each frame right-handed; reflecting a basis directly would give `det == -1` and silently invert every
+  construction that assumes right-handedness — including `anterior = up × lateral`. A left-handed frame is
+  still orthonormal, so nothing else would catch it. See
+  [SF-AL A3](phase-1/08-skellyforge-alignment.md#a3--mirroring-reflect-positions-rebuild-frames).
+- **Composition expands to the authored structure.** A part instantiated twice must produce two
+  structurally identical segment sets under different prefixes, joined to the host tree by name agreement —
+  and the generated flat list must contain no segment absent from the composed definition.
 - **Blendshape channels are the declared 52** ([12](12-standard-human-model.md), locked decision 4).
 - **Alias round-trip:** every canonical name resolves for every declared target, and `resolve_alias` falls
   back to the canonical name for missing entries rather than raising.

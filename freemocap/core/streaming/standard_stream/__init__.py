@@ -33,16 +33,17 @@ from freemocap.core.streaming.standard_stream.stream_sample import (
     encode_sample,
 )
 from freemocap.core.streaming.standard_stream.stream_schema import (
+    DEFAULT_DERIVED_POINTS,
+    DERIVED_POINT_COLUMNS,
+    OVERLAY_2D_COLUMNS,
+    ROTATION_COLUMNS,
+    SKELETON_POINT_COLUMNS,
     ChannelGroup,
     ChannelKind,
     RestPose,
     StreamSchema,
     decode_schema,
     encode_schema,
-)
-from freemocap.core.streaming.standard_stream.stream_schema_builder import (
-    DEFAULT_DERIVED_POINTS,
-    build_stream_schema,
 )
 
 __all__ = [
@@ -52,7 +53,9 @@ __all__ = [
     # schema
     "ChannelKind", "ChannelGroup", "RestPose", "StreamSchema",
     "encode_schema", "decode_schema",
-    "build_stream_schema", "DEFAULT_DERIVED_POINTS",
+    "SKELETON_POINT_COLUMNS", "DERIVED_POINT_COLUMNS",
+    "ROTATION_COLUMNS", "OVERLAY_2D_COLUMNS",
+    "DEFAULT_DERIVED_POINTS",
     # sample
     "MessageType", "DtypeCode", "SampleBlock", "StreamSample",
     "encode_sample", "decode_sample",

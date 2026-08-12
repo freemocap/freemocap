@@ -1,6 +1,6 @@
 """Deterministic task IDs for pipeline timing events."""
 
-CLOCK_DOMAIN_PERF_COUNTER = "perf_counter"
+CLOCK_DOMAIN_MONOTONIC = "monotonic"
 
 
 def batch_task_id(

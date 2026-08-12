@@ -101,7 +101,7 @@
   "syncInfoBody": "Browser video playback does not guarantee sample-accurate synchronization across multiple streams. The player uses a leader-follower strategy and corrects drift when it exceeds a small tolerance, but minor desynchronization (1–2 frames) can occur",
   "previousFrame": "Previous frame (← / Shift+← for 10)",
   "pause": "Pause (Space)",
-  "pipelineActions": "Pipeline Actions",
+  "pipelineActions": "Realtime Pipeline Info",
   "play": "Play (Space)",
   "nextFrame": "Next frame (→ / Shift+→ for 10)",
   "zoomIn": "Zoom In",
@@ -466,6 +466,18 @@
       "multiframe_ws_payload_prepare_ms": {
         "short": "WS payload prepare",
         "long": "Time to serialize and prepare the WebSocket payload for one multiframe."
+      },
+      "camera_charuco_detection": {
+        "short": "Charuco detection",
+        "long": "Time to detect ChArUco board markers in the camera frame for calibration and triangulation."
+      },
+      "camera_skeleton_detection": {
+        "short": "Skeleton detection",
+        "long": "Time to run the skeleton keypoint detector on this camera's frame."
+      },
+      "camera_total_camera_node": {
+        "short": "Total camera",
+        "long": "Total wall-clock time spent processing one frame on this camera (detection + filtering)."
       },
       "no_description": "No description available for this metric."
     }

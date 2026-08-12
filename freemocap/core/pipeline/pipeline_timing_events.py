@@ -26,8 +26,9 @@ _SKELLYTRACKER_STAGE_ATTRS: tuple[tuple[str, str], ...] = tuple(
 )
 
 
-def perf_counter_ns() -> int:
-    return time.perf_counter_ns()
+def monotonic_ns() -> int:
+    """Cross-process comparable monotonic clock in nanoseconds."""
+    return time.monotonic_ns()
 
 
 def tracker_events_to_pipeline_events(
@@ -142,7 +143,7 @@ def synthesize_rtmpose_batch_events(
         batch_start_time_ns: int | None = None,
 ) -> list[PipelineTimingEvent]:
     """Build ordered batch task events from legacy ``last_*_ms`` attrs."""
-    cursor = batch_start_time_ns if batch_start_time_ns is not None else perf_counter_ns()
+    cursor = batch_start_time_ns if batch_start_time_ns is not None else monotonic_ns()
     batch_size = len(camera_ids) if camera_ids else None
     events: list[PipelineTimingEvent] = []
 

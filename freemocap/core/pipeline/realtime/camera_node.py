@@ -21,6 +21,7 @@ from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
+from freemocap.core.pipeline.pipeline_timing_events import monotonic_ns
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -30,6 +31,7 @@ from freemocap.pubsub.pubsub_topics import (
     PipelineConfigUpdateMessage,
     ProcessFrameNumberMessage,
     CameraNodeOutputMessage,
+    PipelineTimingEvent,
     PipelineTimingTopic,
 )
 
@@ -100,6 +102,7 @@ class CameraNode(SourceNode):
             pubsub: PubSubTopicManager,
             skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
+            timing_start_time: float | None = None,
     ) -> "CameraNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -113,6 +116,7 @@ class CameraNode(SourceNode):
                 camera_shm_dto=camera_shm_dto,
                 skeleton_inference_centralized=skeleton_inference_centralized,
                 log_pipeline_times=log_pipeline_times,
+                timing_start_time=timing_start_time,
                 process_frame_number_sub=pubsub.get_subscription(
                     ProcessFrameNumberTopic,
                 ),
@@ -147,6 +151,7 @@ class CameraNode(SourceNode):
             camera_shm_dto: SharedMemoryRingBufferDTO,
             skeleton_inference_centralized: bool = False,
             log_pipeline_times: bool = False,
+            timing_start_time: float | None = None,
     ) -> None:
         import cv2
         from skellytracker.core.tracker.tracker_state import TrackerState
@@ -188,7 +193,7 @@ class CameraNode(SourceNode):
         frame_recarray: np.recarray | None = None
         timer = None
         if log_pipeline_times:
-            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}")
+            timer = PipelineStageTimer(name=f"CameraNode-{camera_id}", start_time=timing_start_time or time.monotonic())
 
         try:
             logger.debug(f"RealtimeCameraNode [{camera_id}] entering main loop")
@@ -283,12 +288,23 @@ class CameraNode(SourceNode):
                 t_frame_start = time.perf_counter() if timer is not None else 0.0
 
                 if skeleton_tracker is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
+                    t0_ns = monotonic_ns() if timer is not None else 0
                     skeleton_observation, skeleton_state = skeleton_tracker.process_image(
                         image, actual_frame_number, skeleton_state
                     )
                     if timer is not None:
-                        timer.record("skeleton_detection", (time.perf_counter() - t0) * 1e3)
+                        dt_ns = monotonic_ns() - t0_ns
+                        timer.record("skeleton_detection", dt_ns * 1e-6)
+                        timer.record_task_event(PipelineTimingEvent(
+                            task_id=f"{actual_frame_number}:camera:{camera_id}:skeleton_detection",
+                            stage="skeleton_detection",
+                            node_kind="camera",
+                            camera_id=str(camera_id),
+                            frame_number=actual_frame_number,
+                            start_time_ns=t0_ns,
+                            end_time_ns=t0_ns + dt_ns,
+                            duration_ms=dt_ns * 1e-6,
+                        ))
 
                     body_stage = skeleton_observation.stages.get("body")
                     if body_stage is not None and body_stage.keypoints is not None:
@@ -321,12 +337,23 @@ class CameraNode(SourceNode):
                                 timer.record("confidence_gate_dropped", float(low_conf.sum()))
 
                 if charuco_tracker is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
+                    t0_ns = monotonic_ns() if timer is not None else 0
                     charuco_observation, charuco_state = charuco_tracker.process_image(
                         image, actual_frame_number, charuco_state
                     )
                     if timer is not None:
-                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+                        dt_ns = monotonic_ns() - t0_ns
+                        timer.record("charuco_detection", dt_ns * 1e-6)
+                        timer.record_task_event(PipelineTimingEvent(
+                            task_id=f"{actual_frame_number}:camera:{camera_id}:charuco_detection",
+                            stage="charuco_detection",
+                            node_kind="camera",
+                            camera_id=str(camera_id),
+                            frame_number=actual_frame_number,
+                            start_time_ns=t0_ns,
+                            end_time_ns=t0_ns + dt_ns,
+                            duration_ms=dt_ns * 1e-6,
+                        ))
 
                 if timer is not None:
                     timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)

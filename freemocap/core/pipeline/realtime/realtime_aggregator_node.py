@@ -140,6 +140,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
             skeleton_fitter_reset_sub: TopicSubscriptionQueue,
+            timing_start_time: float | None = None,
     ) -> "RealtimeAggregatorNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -176,6 +177,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 result_ready_event=result_ready_event,
                 result_consumed_event=result_consumed_event,
                 skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
+                timing_start_time=timing_start_time,
             ),
         )
         return cls(
@@ -202,6 +204,7 @@ class RealtimeAggregatorNode(AggregatorNode):
             result_ready_event: multiprocessing.synchronize.Event,
             result_consumed_event: multiprocessing.synchronize.Event,
             skeleton_fitter_reset_sub: TopicSubscriptionQueue,
+            timing_start_time: float | None = None,
     ) -> None:
         logger.debug(f"RealtimeAggregationNode [{camera_group_id}] initializing")
         aggregator_config = pipeline_config.aggregator_config
@@ -285,7 +288,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         last_calibration_poll: float = time.perf_counter()
         _empty_3d_logged: bool = False  # Rate-limit the "no 3D keypoints" warning
         log_pipeline_times = pipeline_config.log_pipeline_times
-        timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}") if log_pipeline_times else None
+        timer = PipelineStageTimer(name=f"AggregatorNode-{camera_group_id}", start_time=timing_start_time) if log_pipeline_times else None
         t_frame_requested: float = time.perf_counter() if timer is not None else 0.0
         # Skip the first frame_collection_wait / loop_time samples — those
         # measure aggregator-startup → first-frame-arrival, which is dominated

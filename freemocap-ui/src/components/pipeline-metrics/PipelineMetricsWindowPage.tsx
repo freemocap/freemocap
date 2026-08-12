@@ -4,6 +4,7 @@ import {
     buildTimelineViewModel,
     DEFAULT_CATEGORY_FILTERS,
 } from '@/components/pipeline-metrics/pipelineTimelineModel';
+import {PIPELINE_TIMELINE_FRAME_WINDOW} from '@/services/server/server-helpers/pipeline-timing-types';
 import type {PipelineTimelineSnapshot} from '@/services/server/server-helpers/pipeline-timing-store';
 import {useMetricsServer} from '@/services/server/MetricsServerContextProvider';
 import {broadcastSetLogPipelineTimes, type RealtimePipelineBroadcastState} from '@/services/realtime-pipeline-broadcast';
@@ -105,8 +106,15 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
 
     const displayedMeanMs = useMemo(() => {
         const snapshot = getPipelineTimingStore().getSnapshot();
-        const val = snapshot.recentValues.get("skeleton_inference:predict_batch");
-        return val ?? null;
+        const predictBatch = snapshot.recentValues.get("skeleton_inference:predict_batch") ?? 0;
+        let maxCameraTotal = 0;
+        for (const [key, val] of snapshot.recentValues) {
+            if (key.startsWith('camera:') && key.endsWith(':total_camera_node')) {
+                if (val > maxCameraTotal) maxCameraTotal = val;
+            }
+        }
+        const total = predictBatch + maxCameraTotal;
+        return total > 0 ? total : null;
     }, [timelineData]);
 
     const trailingMeanMs = timelineData?.trailingMeanFrameMs ?? null;
@@ -181,7 +189,7 @@ export default function PipelineMetricsWindowPage(): React.ReactElement {
                 {pipelineConnected && (
                     <div style={{display: 'flex', gap: '8px'}}>
                         <ToggleComponent
-                            text="Timing"
+                            text={`Timing for the last ${PIPELINE_TIMELINE_FRAME_WINDOW} frames`}
                             isToggled={logTimes}
                             onToggle={(checked) => broadcastSetLogPipelineTimes(checked)}
                         />

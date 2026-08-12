@@ -109,6 +109,13 @@ const TimelineRow = memo(function TimelineRow({
     const rowTip = getPipelineStageRowTooltip(row.sourceKey, t);
     const tooltipText = `${rowTip.long} (${durationLabel})`;
 
+    const frameBg = (() => {
+        const fn = row.frameNumber;
+        if (fn == null) return 'transparent';
+        return fn % 2 === 1 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.10)';
+    })();
+    const rowBg = selected ? hexToRgba('#16ac13', 0.08) : frameBg;
+
     return (
         <div
             onClick={onSelect}
@@ -119,7 +126,7 @@ const TimelineRow = memo(function TimelineRow({
                 cursor: 'pointer',
                 minWidth: 0,
                 opacity: row.stale ? 0.4 : 1,
-                backgroundColor: selected ? hexToRgba('#16ac13', 0.08) : 'transparent',
+                backgroundColor: rowBg,
             }}
         >
             <div

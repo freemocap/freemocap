@@ -15,8 +15,8 @@ import time
 from dataclasses import dataclass, field
 from queue import Full
 
-from freemocap.core.pipeline.pipeline_timing_events import perf_counter_ns
-from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_PERF_COUNTER
+from freemocap.core.pipeline.pipeline_timing_events import monotonic_ns
+from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_MONOTONIC
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent
 
@@ -34,10 +34,15 @@ class PipelineStageTimer:
 
     name: str
     flush_interval: float = field(default=FLUSH_INTERVAL_SECONDS)
-    last_flush: float = field(default_factory=time.perf_counter)
+    last_flush: float = field(default_factory=time.monotonic)
+    start_time: float | None = None
     samples: dict[str, list[float]] = field(default_factory=dict)
     events: list[PipelineTimingEvent] = field(default_factory=list)
     dropped_events: int = 0
+
+    def __post_init__(self) -> None:
+        if self.start_time is not None:
+            self.last_flush = self.start_time
 
     def record(self, stage: str, elapsed_ms: float) -> None:
         if stage not in self.samples:
@@ -71,10 +76,15 @@ class PipelineStageTimer:
     ) -> None:
         from freemocap.pubsub.pubsub_topics import PipelineTimingMessage
 
-        now = time.perf_counter()
+        now = time.monotonic()
         if now - self.last_flush < self.flush_interval:
             return
-        self.last_flush = now
+        # Snap last_flush to the next aligned interval boundary so all nodes
+        # that share the same start_time flush at identical absolute times.
+        anchor = self.start_time if self.start_time is not None else self.last_flush
+        elapsed_since_anchor = now - anchor
+        completed_intervals = int(elapsed_since_anchor // self.flush_interval)
+        self.last_flush = anchor + (completed_intervals + 1) * self.flush_interval
         if not self.samples and not self.events:
             return
 
@@ -96,8 +106,8 @@ class PipelineStageTimer:
             camera_id=camera_id,
             samples=batch,
             events=events_batch,
-            clock_domain=CLOCK_DOMAIN_PERF_COUNTER,
-            relay_perf_counter_ns=perf_counter_ns(),
+            clock_domain=CLOCK_DOMAIN_MONOTONIC,
+            relay_perf_counter_ns=monotonic_ns(),
             dropped_timing_events=dropped,
         )
         try:

@@ -24,7 +24,7 @@ from freemocap.app.freemocap_application import FreemocapApplication, get_freemo
 
 from freemocap.pubsub.pubsub_topics import PipelineTimingEvent, PipelineTimingMessage
 from freemocap.core.pipeline.pipeline_timing_events import cap_events_by_frame_window
-from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_PERF_COUNTER
+from freemocap.core.pipeline.pipeline_timing_task_ids import CLOCK_DOMAIN_MONOTONIC
 from freemocap.utilities.wait_functions import await_10ms
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 BACKPRESSURE_WARNING_THRESHOLD: int = 300
 # When outstanding acks exceed this, reset rather than stalling the pipeline indefinitely.
 BACKPRESSURE_RESET_THRESHOLD: int = 300
-PIPELINE_TIMING_FRAME_WINDOW: int = 5
+PIPELINE_TIMING_FRAME_WINDOW: int = 10
 PIPELINE_TIMING_FRAME_BUFFER: int = 2
 METRICS_CLIENT_ROLE = "metrics"
 
@@ -235,8 +235,8 @@ class WebsocketServer:
                 "per_node": {},
                 "per_camera": {},
                 "events": [],
-                "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
-                "relay_perf_counter_ns": time.perf_counter_ns(),
+                "clock_domain": CLOCK_DOMAIN_MONOTONIC,
+                "relay_perf_counter_ns": time.monotonic_ns(),
                 "dropped_timing_events": 0,
             }
         return {
@@ -248,8 +248,8 @@ class WebsocketServer:
             "per_node": per_node,
             "per_camera": per_camera,
             "events": [dataclasses.asdict(event) for event in capped_events],
-            "clock_domain": CLOCK_DOMAIN_PERF_COUNTER,
-            "relay_perf_counter_ns": time.perf_counter_ns(),
+            "clock_domain": CLOCK_DOMAIN_MONOTONIC,
+            "relay_perf_counter_ns": time.monotonic_ns(),
             "dropped_timing_events": dropped_timing_events,
         }
 
@@ -358,7 +358,7 @@ class WebsocketServer:
         logger.info("Starting metrics-only websocket relay...")
         try:
             while self.should_continue:
-                now = time.perf_counter()
+                now = time.monotonic()
                 if now - self._last_pipeline_timing_send_time >= 0.25:
                     for camera_group_id in self._camera_group_ids_for_timing():
                         timing_payload = self._build_pipeline_timing_payload(camera_group_id)
@@ -424,7 +424,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Pipeline timing is small JSON — never gate behind frame ack backpressure.
-                now = time.perf_counter()
+                now = time.monotonic()
                 if now - self._last_pipeline_timing_send_time >= 0.25:
                     for camera_group_id in self._camera_group_ids_for_timing():
                         timing_payload = self._build_pipeline_timing_payload(camera_group_id)
@@ -501,7 +501,7 @@ class WebsocketServer:
                     await self._send_msgspec_json(update_message)
 
                 # Send framerate updates from our local trackers (throttled to ~4Hz)
-                now = time.perf_counter()
+                now = time.monotonic()
                 if now - self._last_framerate_send_time >= 0.25:
                     for camera_group_id, server_calc in self._server_framerate_calculators.items():
                         if camera_group_id not in self._display_framerate_trackers:

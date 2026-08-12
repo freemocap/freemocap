@@ -307,6 +307,21 @@ export class PipelineTimingStore {
             }
         }
 
+        if (msg.per_camera) {
+            for (const [cameraId, stages] of Object.entries(msg.per_camera)) {
+                for (const [stage, samples] of Object.entries(stages)) {
+                    const rowKey = `camera:${cameraId}:${stage}`;
+                    const buf = this.ensureBuffer(rowKey);
+                    for (const v of samples) {
+                        buf.push(ingestWallMs, v);
+                        this.recentValues.set(rowKey, v);
+                        this.ingestLegacySample(rowKey, v, ingestPerfMs, 'camera', stage, cameraId ?? null);
+                    }
+                    this.touch(rowKey);
+                }
+            }
+        }
+
         this.bump();
     }
 
@@ -441,7 +456,7 @@ export class PipelineTimingStore {
             droppedTimingEvents: this.droppedTimingEvents,
             logPipelineTimesEnabled: this.logPipelineTimesEnabled,
             realtimePipelineActive: this.realtimePipelineActive,
-            trailingMeanFrameMs: this._computeTrailingMean("skeleton_inference:predict_batch", 10_000),
+            trailingMeanFrameMs: this._computeTrailingMeanCombined(10_000),
         };
         this._timelineVersion = this._writeVersion;
         return this._cachedTimeline;
@@ -462,6 +477,35 @@ export class PipelineTimingStore {
             count++;
         }
         return count > 0 ? sum / count : null;
+    }
+
+    private _computeTrailingMeanCameraTotal(windowMs: number): number | null {
+        const now = Date.now();
+        const cutoff = now - windowMs;
+        let bestMean = null as number | null;
+        for (const [key, buf] of this.buffers) {
+            if (!key.startsWith('camera:') || !key.endsWith(':total_camera_node')) continue;
+            const samples = buf.toArray();
+            let sum = 0;
+            let count = 0;
+            for (let i = samples.length - 1; i >= 0; i--) {
+                if (samples[i].timestamp < cutoff) break;
+                sum += samples[i].value;
+                count++;
+            }
+            if (count > 0) {
+                const mean = sum / count;
+                if (bestMean === null || mean > bestMean) bestMean = mean;
+            }
+        }
+        return bestMean;
+    }
+
+    private _computeTrailingMeanCombined(windowMs: number): number | null {
+        const predictBatchMean = this._computeTrailingMean("skeleton_inference:predict_batch", windowMs);
+        const cameraTotalMax = this._computeTrailingMeanCameraTotal(windowMs);
+        if (predictBatchMean === null && cameraTotalMax === null) return null;
+        return (predictBatchMean ?? 0) + (cameraTotalMax ?? 0);
     }
 
     clear(): void {

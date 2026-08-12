@@ -96,6 +96,10 @@ const PRETTY_STAGE_LABELS: Record<string, string> = {
     'ui:canvas_bitmap_transfer_ms': 'UI: bitmap transfer (worker)',
     'ui:render_ack_delivery_ms': 'UI: render ack delivery',
     'ui:raf_to_rendered_ms': 'UI: rAF tick → rendered',
+
+    // ── Camera node stages ──
+    'camera:charuco_detection': 'Charuco detection',
+    'camera:skeleton_detection': 'Skeleton detection',
 };
 
 function humanizeSourceKey(sourceKey: string): string {
@@ -118,6 +122,15 @@ function humanizeSourceKey(sourceKey: string): string {
         const cam = parts[1];
         const stage = parts.slice(2).join(':');
         return `${cam} · ${PRETTY_STAGE_LABELS[`ui:${stage}`] ?? stage}`;
+    }
+    if (sourceKey.startsWith('camera:')) {
+        const parts = sourceKey.split(':');
+        if (parts.length >= 3) {
+            const cam = parts[1];
+            const stage = parts.slice(2).join(':');
+            const label = PRETTY_STAGE_LABELS[`camera:${stage}`] ?? stage;
+            return `${cam} · ${label}`;
+        }
     }
     if (sourceKey.startsWith('multiframe:')) {
         const stage = sourceKey.slice('multiframe:'.length);
@@ -425,18 +438,9 @@ export function orderTasksParentsBeforeChildren(events: StoredPipelineTaskEvent[
 }
 
 export function compareTimelineRows(a: StoredPipelineTaskEvent, b: StoredPipelineTaskEvent): number {
-    const frameA = a.frameNumber ?? -1;
-    const frameB = b.frameNumber ?? -1;
+    const frameA = a.frameNumber ?? 999999;
+    const frameB = b.frameNumber ?? 999999;
     if (frameA !== frameB) return frameA - frameB;
-
-    const catCmp = CATEGORY_PRIORITY[classifyTaskCategory(a)] - CATEGORY_PRIORITY[classifyTaskCategory(b)];
-    if (catCmp !== 0) return catCmp;
-
-    const skelCmp = skeletonStageOrdinal(a.sourceKey, a.stage) - skeletonStageOrdinal(b.sourceKey, b.stage);
-    if (skelCmp !== 0) return skelCmp;
-
-    const uiCmp = uiStageOrdinal(a.sourceKey) - uiStageOrdinal(b.sourceKey);
-    if (uiCmp !== 0) return uiCmp;
 
     if (a.startMs !== b.startMs) return a.startMs - b.startMs;
     return a.taskId.localeCompare(b.taskId);

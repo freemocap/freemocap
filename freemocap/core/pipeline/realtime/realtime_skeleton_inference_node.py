@@ -93,6 +93,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             config: RealtimePipelineConfig,
             ipc: PipelineIPC,
             pubsub: PubSubTopicManager,
+            timing_start_time: float | None = None,
     ) -> "RealtimeSkeletonInferenceNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -109,6 +110,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 pipeline_config_sub=pubsub.get_subscription(PipelineConfigUpdateTopic),
                 skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
                 timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
+                timing_start_time=timing_start_time,
             ),
         )
         return cls(
@@ -129,6 +131,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             pipeline_config_sub: TopicSubscriptionQueue,
             skeleton_result_pub: TopicPublicationQueue,
             timing_pub: TopicPublicationQueue,
+            timing_start_time: float | None = None,
     ) -> None:
         logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] initializing")
 
@@ -155,7 +158,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = (
-            PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
+            PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}", start_time=timing_start_time)
             if log_pipeline_times else None
         )
         event_collector = (

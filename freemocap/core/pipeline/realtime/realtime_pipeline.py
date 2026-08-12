@@ -139,6 +139,11 @@ class RealtimePipeline:
             else list(camera_group.configs.keys())
         )
 
+        # Capture a common flush-cycle start time so all nodes
+        # drain their PipelineTimingTopic buffers in sync.
+        import time as _time
+        timing_start_time = _time.monotonic() if pipeline_config.log_pipeline_times else None
+
         camera_nodes = {
             camera_id: CameraNode.create(
                 camera_id=camera_id,
@@ -151,6 +156,7 @@ class RealtimePipeline:
                     pipeline_config.use_centralized_inference
                 ),
                 log_pipeline_times=pipeline_config.log_pipeline_times,
+                timing_start_time=timing_start_time,
             )
             for camera_id in pipeline_camera_ids
         }
@@ -166,6 +172,7 @@ class RealtimePipeline:
                 config=pipeline_config,
                 ipc=ipc,
                 pubsub=pubsub,
+                timing_start_time=timing_start_time,
             )
 
         # Create CharucoRecorderNode if charuco tracking is enabled.
@@ -207,6 +214,7 @@ class RealtimePipeline:
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
             skeleton_fitter_reset_sub=skeleton_fitter_reset_sub,
+            timing_start_time=timing_start_time,
         )
 
         aggregation_output_subscription = pubsub.get_subscription(

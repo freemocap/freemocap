@@ -144,6 +144,74 @@ consumer.
 
 ## Progress log
 
+- **2026-08-12 (SF-AL — SkellyForge is not aligned to the standard human)** — Surfaced while implementing
+  D7/D8. The trigger was cosmetic (arrow-delimited dict keys in `canonical_body.yaml`); the survey found
+  the arrow is a symptom. **`canonical_body.yaml` and its consumers predate the standard-human redesign
+  and were never brought forward**, and the "all skeleton building in SkellyForge" consolidation is
+  partially done. Measured: the same skeleton graph is encoded **three times** (`segment_connections` 25,
+  `bone_length_ratios` 28, `joint_hierarchy` 26) with 20 edges stated twice, 16 three times, and 23 edges
+  disagreeing across the three. `skellyforge/biomechanics/` is a **byte-identical unreachable duplicate**
+  of `skellymodels/biomechanics/`. The old model layer (`models/` + `managers/`, ~1,500 lines) has **zero
+  references** to `standard_human/` — two parallel human models. Six skeleton-building files remain in
+  FreeMoCap, including a second CoM implementation. **Proof the redundancy already costs:** the clavicle
+  reroot updated two of the three encodings and the model silently went inconsistent — nothing could have
+  caught it. Plan: [`phase-1/08-skellyforge-alignment.md`](phase-1/08-skellyforge-alignment.md).
+  **D7/D8 is paused mid-flight** and must be finished or reverted before the restructure.
+
+- **2026-08-12 (aggregator wired — damping live end-to-end)** — `realtime_aggregator_node.py` now passes
+  `timestamp_seconds=frame_time`, the monotonic per-frame clock it already threads to the rigidifier and
+  CoM, so damping shares one time base with the rest of the pipeline. `_prev_orientation_result` deleted
+  from module scope; the orientation history is a `_run`-scoped local, matching the existing idiom for
+  per-run state (`prev_com`, `streaming_kinematics`) — **D16** closed. `_standard_human_cache` stays: it
+  holds an immutable model, and D11 supersedes it. Verified end-to-end on the realtime bootstrap model —
+  5 frames solved, 16 world + 16 local quaternions, **12 of 21 segments damped** (every segment that falls
+  back to the minimal-twist tier). freemocap contract tests **23/23**, skellyforge **51/51**.
+  **Next: D7/D8 sternoclavicular**, or the remaining FMC-SR doc items (§4 sequencing record, §8 stale sweep,
+  §9 FMC-RB defects). *Uncommitted in freemocap.*
+- **2026-08-12 (D3/D4 — real critical damping)** — `skellyforge/kinematics/critically_damped_orientation.py`
+  implements the filter [12 § Critical damping](12-standard-human-model.md) specifies: second-order,
+  damping ratio 1, per-segment angular-velocity state, **solved analytically** rather than with the
+  polynomial `exp` approximation game engines use. Runs in the tangent space (log/exp map) because SO(3)
+  is not a vector space — `RotationQuaternion.from_rotation_vector` / `.to_rotation_vector` added, with
+  shortest-arc resolution so the filter cannot smooth the long way round.
+  `TwistPolicy.damping_factor` → **`twist_time_constant_seconds`**, so behaviour is framerate independent.
+  Both `_solve_chain_resolved` fallbacks now damp (**D3**). Damping state moved onto `FrameOrientationResult`
+  rather than module scope (**D16**, skellyforge side), and `solve_frame_orientations` now requires
+  `timestamp_seconds` with **no default** — a default would let a caller silently disable damping (**D38**).
+  Long gaps need no special case: the exponential decay lands them on target with zero velocity.
+  **51/51 green**, including a framerate-independence test at 30/60/120/240 fps and residuals asserted
+  against the closed-form envelope `(1 + t/tau)·exp(-t/tau)` rather than hand-picked thresholds.
+  Also cleared **D18** (local import) and **D19** (dead `_check_strictly_increasing` import).
+  **Next: wire the freemocap aggregator** — pass a real frame timestamp, hold `previous_result` on the
+  pipeline instance instead of a module global (**D16**, freemocap side).
+  *Uncommitted in skellyforge.*
+- **2026-08-12 (D1 fixed — `ROTATIONS_LOCAL` is now correct)** — `orientation_solver.py` now composes
+  parent-relative rotation as `conj(q_parent_world) * q_child_world`, per
+  [07 § Segment rotation conventions](07-coordinate-conventions.md#segment-rotation-conventions).
+  **22/22 green** in skellyforge (was 18/22). The `FrameOrientationResult` docstring stated the reversed
+  form and was corrected with it. Swept the engine for the same pattern: the only other `conj` composition
+  is the angular-velocity finite difference in `quaternion_math.py` (`q_next * conj(q_curr)`), which is the
+  **spatial** angular velocity of one body between frames — not a hierarchy composition — and is correct.
+  This is the bug doc [07 § the local-rotation trap](07-coordinate-conventions.md#the-local-rotation-trap-vmc-and-unreal)
+  warned about; it is now closed before any VMC work begins.
+  **Next: D3/D4 critical damping** ([12 § Critical damping](12-standard-human-model.md), [14 §5](14-engine-testing-strategy.md#5-critical-damping)).
+  *Uncommitted in skellyforge.*
+- **2026-08-12 (engine test suite stood up; D1 confirmed)** — First code of the FMC-SR follow-up.
+  `skellyforge/tests/` now exists (it did not before — `pytest` collected nothing across ~3,200 lines of
+  math) with pytest config in `pyproject.toml`. Two modules per
+  [14 §2](14-engine-testing-strategy.md#2-composition-convention--the-decisive-one):
+  `test_quaternion_composition.py` pins the convention in isolation (Hamilton semantics,
+  non-commutativity, differential bend, round-trip, 3-deep chain) — **12 green**;
+  `test_orientation_solver_composition.py` runs a real skeleton through `solve_frame_orientations()` and
+  asserts `recompose(parent_world, local) == child_world` — **4 failing**, confirming **D1** (parent-relative
+  quaternion composed with reversed operands) empirically rather than by reading docstrings.
+  **Also found — D37:** order-blindness has **three** independent causes, not the one known uniform-bend
+  case. A segment at its *rest orientation* is identity and blind on either side of a pair; and parent/child
+  rotated about the *same axis* commute, so distinct segment directions are not the invariant — distinct
+  *rotation axes* are. Three successive fixtures each hit one hole and each passed roughly half their
+  assertions for the wrong reason. Both new causes are now guard tests. **Next: fix D1** (one line, with a
+  failing test in front of it), then D3/D4 critical damping.
+  *Uncommitted in skellyforge — the user must commit before freemocap sees any of it.*
 - **2026-08-12 (checkpoint audit)** — Plans read against the code landed on `development-streaming`;
   findings in [`AUDIT_2026-08-12.md`](AUDIT_2026-08-12.md). Headline: the strategy holds and the
   **sequencing reversal was the right call**, but it was recorded only in

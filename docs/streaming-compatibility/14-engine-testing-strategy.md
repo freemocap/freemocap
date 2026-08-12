@@ -37,6 +37,10 @@ Concretely, this means:
 
 - **Asymmetric fixtures.** Different rotations about different axes for parent and child. Never a uniform
   transform, never a single-axis rotation, when the property under test is order- or axis-sensitive.
+- **Guard the guard.** Where a fixture has to have a property for the test to mean anything, assert that
+  property as its own test. Building the composition suite turned up **three independent ways** a
+  parent/child pair goes order-blind (see §2); each was found only because the previous fixture silently
+  passed half its assertions. A fixture invariant that is only in a comment will be edited away.
 - **Round-trips over spot values.** `recompose(parent, local) == child` pins the convention; a hand-computed
   expected quaternion pins one sample of it.
 - **Named component order, always.** Every literal quaternion in a test states `wxyz`. Identity is
@@ -85,6 +89,29 @@ This is the suite's reason for existing. Convention per
 q_child_world = q_parent_world · q_child_local
 q_child_local = conj(q_parent_world) · q_child_world
 ```
+
+> **Status: implemented — 22/22 green.** `skellyforge/tests/test_quaternion_composition.py` (convention in
+> isolation, 12 tests) and `test_orientation_solver_composition.py` (the solver's actual output, 10 tests).
+> The suite went red first — 4/4 composition assertions failing — which confirmed
+> [D1](phase-1/07-spec-reconciliation.md#10a-correctness) empirically rather than by reading docstrings, and
+> only then was the solver corrected. That order matters: the test decided the convention, it did not
+> ratify a change already made.
+
+### The three ways a pair goes order-blind
+
+A parent/child pair proves nothing about operand order if **any** of these hold. All three were found while
+building this suite, each by a fixture that silently passed half its assertions:
+
+1. **Uniform bend** — `q_child == q_parent`, so both orders reduce to identity. The known case; it is what
+   let D1 ship.
+2. **Either segment at its rest orientation** — its world quaternion is identity, and
+   `conj(I) · q == q · conj(I)`. An identity *parent* or an identity *child* is equally fatal.
+3. **Coaxial rotations** — parent and child rotated about the same axis **commute**. Distinct segment
+   *directions* are not the invariant; distinct **rotation axes** are. This is the subtle one: a fixture can
+   look thoroughly asymmetric in world space and still be coaxial from rest.
+
+Each is a **guard test** in the suite, so a future fixture edit that reintroduces one fails loudly instead
+of quietly reducing coverage.
 
 - **Differential-bend test.** Parent rotated about one axis, child about a different axis by a different
   magnitude. Assert the returned local quaternion matches the hand-derived value **including axis**. The

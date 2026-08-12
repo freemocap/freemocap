@@ -308,6 +308,11 @@ class RealtimeAggregatorNode(AggregatorNode):
         # XCoM velocity tracking: previous CoM position + timestamp for dt.
         prev_com: np.ndarray | None = None
         prev_com_time: float | None = None
+        # Per-segment orientation history: carries the critically damped twist
+        # state and the timestamp the next frame's dt is measured against. Scoped
+        # to this run — at module scope, concurrent pipelines would share
+        # smoothing state and damping would persist across recordings.
+        previous_orientation_result: FrameOrientationResult | None = None
         # Centroidal kinematics (inertia ellipsoid + ground references) per frame.
         streaming_kinematics = StreamingKinematics()
 
@@ -709,15 +714,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                             _BONE_TO_LANDMARK,
                         )
                         if bone_positions:
-                            global _prev_orientation_result
                             orientation_result = solve_frame_orientations(
                                 standard_human=_get_standard_human(),
                                 live_joint_positions=bone_positions,
-                                previous_result=_prev_orientation_result,
+                                timestamp_seconds=frame_time,
+                                previous_result=previous_orientation_result,
                             )
                             segment_rotations_world = orientation_result.world_quaternions
                             segment_rotations_local = orientation_result.local_quaternions
-                            _prev_orientation_result = orientation_result
+                            previous_orientation_result = orientation_result
                         if timer is not None:
                             timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
 
@@ -901,10 +906,9 @@ _BONE_TO_LANDMARK: dict[str, str] = {
     "right_toes":        "right_big_toe",
 }
 
-# Module-level state for temporal damping across frames.
-_prev_orientation_result: FrameOrientationResult | None = None
-
-# Cached StandardHuman model — built once, reused every frame.
+# Cached StandardHuman model — built once, reused every frame. Immutable once
+# built, so sharing it across runs is safe; the per-run *mutable* orientation
+# history lives in ``_run`` as ``previous_orientation_result``.
 _standard_human_cache: StandardHuman | None = None
 
 

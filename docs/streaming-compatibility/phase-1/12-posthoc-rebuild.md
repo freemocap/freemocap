@@ -29,7 +29,7 @@ deleted, not ported.
 |---|---|---|
 | `Human` actor (`skellymodels/managers/human.py`, `Actor → Human/Animal/Board`) | legacy tracker model-infos (`rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`) + `ModelInfo`/`AnatomicalStructure` | the composed `StandardHuman` + the renamed mappings; the inheritance dies (SF-AL A7) |
 | `AnatomicalStructure` / `ModelInfo` / `Aspect` / `Trajectory` (~1,500 lines) | `canonical_body.yaml` / `canonical_hand.yaml` | deleted — segments are the model now |
-| `enforce_rigid_bodies` (the addon-derived median-length enforcement) | `bone_length_ratios` + per-bone medians | the shared `SegmentLengthEstimator` (unbounded window = the batch median) + the model's declarations |
+| `enforce_rigid_bodies` (the addon-derived median-length enforcement) | `bone_length_ratios` + per-bone medians | the shared `SegmentLengthEstimator` (unbounded window = the batch median) + the model's declarations — **the realtime rigidifier is already re-keyed by F0; posthoc converges on the same shape** |
 | batch CoM (`skellymodels/biomechanics/calculations/…`) | Winter tables from the YAML | the SAME de Leva spans as realtime (Phase D's rewrite is the single computation — posthoc imports it, no second implementation) |
 | `skeleton_from_mediapipe_observations.py` (144 lines) | pre-mapping skeleton construction | deleted — the mapping + model replace it |
 | batch diagnostics (`kinematics/segment_lengths.py` + the freemocap CLI wrapper `segment_length_io.py`) | `bone_length_ratios` | re-keyed onto the model's segment `length_ratio`s (labels become segment names) |
@@ -44,11 +44,9 @@ deleted, not ported.
    Options: (a) delete the shims and import skellytracker for real (rule 3 says "don't let it block"),
    (b) delete the module's skellytracker coupling entirely if its only consumer (posthoc observation
    loading) dies with the rebuild. Decide with the actual consumer map in hand.
-2. **The realtime rigidifier's re-key** — its seeds + `joint_hierarchy` come from the old
-   `AnatomicalStructure` (the last live consumer). Its tree is landmark-pair-based, not
-   segment-based. Scope it here (with the realtime loop's outcome in hand), or keep the wrapper
-   shape and only swap its data source. The realtime loop (F5) may already have exercised it enough
-   to decide.
+2. ~~The realtime rigidifier's re-key~~ — **resolved 2026-08-13: moved to F0 of the realtime
+   loop** ([`11`](11-realtime-loop-completion.md)) — the user's call. Phase E inherits the re-keyed
+   rigidifier; the live path carries no old-layer dependency by the time this doc executes.
 3. **`skeleton_from_mediapipe_observations.py`** — verify zero realtime importers, then delete
    (posthoc rebuilds from the mappings).
 4. **Two-CoM collapse** — posthoc switches to the shared de Leva computation (Phase D); the old batch
@@ -63,8 +61,8 @@ deleted, not ported.
       model-infos are retired.
 - [ ] **E2 — the old layer dies:** `models/` + `managers/` deleted per A7 (composition replaces the
       `Actor → Human/Animal/Board` inheritance); `canonical_body.yaml` / `canonical_hand.yaml`
-      deleted wholesale (the revised Task-9 Step-4 decision — no interim strip); the rigidifier re-key
-      (decision 2) lands here; `pipelines/test_pipeline.py` rewritten or deleted.
+      deleted wholesale (the revised Task-9 Step-4 decision — no interim strip); `pipelines/test_pipeline.py`
+      rewritten or deleted. (The rigidifier re-key already landed in F0 — nothing to do here.)
 - [ ] **E3 — shared computations wired:** `enforce_rigid_bodies` → the shared
       `SegmentLengthEstimator` (unbounded = batch median); batch CoM → the shared de Leva path;
       batch diagnostics re-keyed onto segment names.
@@ -105,7 +103,7 @@ deleted, not ported.
 
 - [ ] What the manual full-loop run changed about the model/solver/stream contracts
 - [ ] The schema's final shape (F1's outcomes) — anything posthoc must mirror
-- [ ] The rigidifier re-key decision (§2.2) with the realtime loop's evidence
+- [x] The rigidifier re-key — resolved: landed in F0 (before the loop's manual run)
 - [ ] The encoder's keypoint handling (F2) — posthoc's serialization parity target
 - [ ] `observation.py`'s actual consumer map (who still imports it after E1–E3)
 - [ ] New defects the loop surfaced (→ the defect register in

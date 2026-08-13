@@ -259,13 +259,20 @@ class RealtimeAggregatorNode(AggregatorNode):
             else None
         )
 
-        # Create the skeleton rigidifier (canonical models + per-bone online
+        # Composed standard human — shared by the skeleton rigidifier (segment
+        # trees) and the orientation solver (reference geometry). Built once per
+        # run (D16): the model is cheap to build, and every recording gets a
+        # fresh instance — no module globals.
+        standard_human = compose_standard_human()
+
+        # Create the skeleton rigidifier (segment trees + per-segment online
         # length estimators + forward-pass tree rigidifiers). Loaded once at
         # init; the per-frame hot path is pure numpy.
         skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
         rigidifier_filter_config: RealtimeFilterConfig | None = None
         if aggregator_config.skeleton_fitting_enabled:
             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                standard_human=standard_human,
                 detector_type=detector_type,
                 height_mm=filter_config.height_mm,
                 window_s=filter_config.segment_length_window_s,
@@ -273,8 +280,8 @@ class RealtimeAggregatorNode(AggregatorNode):
             rigidifier_filter_config = filter_config
             logger.debug(
                 f"RealtimeAggregationNode [{camera_group_id}] skeleton rigidifier created "
-                f"(body bones: {len(skeleton_rigidifier.body_bone_lengths)}, "
-                f"hand bones: {len(skeleton_rigidifier.right_hand_bone_lengths)})"
+                f"(body segments: {len(skeleton_rigidifier.body_segment_lengths)}, "
+                f"hand segments: {len(skeleton_rigidifier.right_hand_segment_lengths)})"
             )
 
         # One Euro filter: smooths raw keypoints and gap-fills brief occlusions
@@ -314,10 +321,12 @@ class RealtimeAggregatorNode(AggregatorNode):
         # to this run — at module scope, concurrent pipelines would share
         # smoothing state and damping would persist across recordings.
         previous_orientation_result: FrameOrientationResult | None = None
-        # Composed standard human + nominal reference geometry for the
-        # orientation solver. Scoped to this run (D16): the model is cheap to
-        # build and every recording gets a fresh instance — no module globals.
-        standard_human = compose_standard_human()
+        # Nominal per-run reference geometry (anthropometric seeds, including
+        # the face's nominal spans) — the fallback BEFORE the first rigidify
+        # result lands. Once the estimator has live measured lengths, the
+        # per-frame build (below) replaces this. The solver's reference
+        # DIRECTIONS are unchanged by live lengths — the lengths only refine the
+        # rest-pose map and schema values; quaternions never depend on them.
         reference_geometry = build_reference_geometry(
             list(standard_human.segments),
             {
@@ -407,6 +416,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             or filter_config_changed
                         ):
                             skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
+                                standard_human=standard_human,
                                 detector_type=detector_type,
                                 height_mm=filter_config.height_mm,
                                 window_s=filter_config.segment_length_window_s,
@@ -713,7 +723,32 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
-                    # ---- Segment orientation (composed standard human) ----
+                    # ---- Per-frame reference geometry ----
+                    # Lengths are now live: rebuild the solver's rest-pose map
+                    # from the rigidifier's measured segment lengths instead of
+                    # the once-per-run nominal seeds. The face's three segments
+                    # are excluded from the rigidifier's trees, so keep their
+                    # nominal ``length_ratio × height`` spans to leave the
+                    # geometry map complete. The reference DIRECTIONS are
+                    # unchanged — only the rest-pose map and schema values follow
+                    # the measurements (quaternions never depend on length).
+                    if (
+                        skeleton_rigidifier is not None
+                        and rigid_result is not None
+                    ):
+                        measured_lengths = {
+                            **skeleton_rigidifier.body_segment_lengths,
+                            **skeleton_rigidifier.left_hand_segment_lengths,
+                            **skeleton_rigidifier.right_hand_segment_lengths,
+                        }
+                        for seg in standard_human.segments:
+                            if seg.name not in measured_lengths:
+                                measured_lengths[seg.name] = (
+                                    seg.length_ratio * _NOMINAL_SUBJECT_HEIGHT_MM
+                                )
+                        reference_geometry = build_reference_geometry(
+                            list(standard_human.segments), measured_lengths
+                        ).segments
                     # The rigidifier hands back canonical body keypoints plus the
                     # standard-human-keyed hand points; the solver consumes the
                     # tracker's named keypoints STRAIGHT THROUGH (no bone-keyed

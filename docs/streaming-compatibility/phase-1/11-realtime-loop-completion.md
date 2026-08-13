@@ -30,17 +30,62 @@ rigidified body/hand keypoints. The wire and the viewport are the old protocol s
 
 ```
 cameras → skellytracker detections → triangulation → mapping (renamed, contract-green)
-       → rigidifier (old tree still — Phase E re-keys it) → orientation solver (NEW ✅)
+       → rigidifier (re-keyed onto the segment model — F0, the user's call: the fix belongs HERE, not Phase E) → orientation solver (NEW ✅) 
        → AggregationNodeOutputMessage (rotations wired ✅)
        → websocket_server (OLD binary keypoints protocol ❌) → frontend (OLD decoders ❌)
        → Three.js viewport (OLD keypoint/connection renderers; no rigid-body meshes ❌)
 ```
 
-The three ❌ are this doc's work, in dependency order: schema (F1) → encoder + WS reshape (F2) →
-frontend decoder + wedge (F3) → the renderer (F4) → the full-loop test (F5).
+The ❌ pieces are this doc's work, in dependency order: the rigidifier re-key (F0) → schema (F1) →
+encoder + WS reshape (F2) → frontend decoder + wedge (F3) → the renderer (F4) → the full-loop
+test (F5).
 
 ---
 
+## 2. F0 — re-key the realtime rigidifier onto the segment model
+
+**Why here and not Phase E (2026-08-13, the user's call):** the rigidifier is the loop's quality
+layer — it must enforce lengths on the actual VRM segments, not on the old 26-edge landmark-pair
+graph — and it is the last live consumer of the old `AnatomicalStructure` / `canonical_body.yaml`.
+Re-keying it in the loop (a) closes the nominal-seeds gap (measured segment lengths feed the
+reference geometry per frame), and (b) lets Phase E delete the old layer without touching the live
+path. How it works today: the rigidifier's INPUTS/OUTPUTS are already standard-human keypoint names;
+only its internal tree + length keys are the old arrow labels, and they are internally consistent —
+that's why nothing broke. This pass ends the parallel-skeleton duplication.
+
+**Two user corrections (2026-08-13, binding):**
+
+1. **NO arrow-string keys, anywhere in this path.** The `"parent->child"` string convention (F2's
+   original sin) is removed from the rigidifier entirely: the hierarchy (parent → children) IS the
+   topology, and `TreeRigidifier`'s `bone_lengths` / carried directions are keyed by the **child
+   node's name** (a tree has one parent per node — unambiguous, zero string parsing). Length is a
+   property of a segment, not of a packed string.
+2. **F0 splits at a commit round** (the cross-repo rule): **F0a** — skellyforge only: `TreeRigidifier`
+   re-keyed (child-name keys + `return_directions=True` option), verified in skellyforge's own env →
+   **the user commits + pushes skellyforge, then freemocap `uv lock --upgrade-package skellyforge` +
+   `uv sync`** → **F0b** — freemocap only: the wrapper re-key + aggregator per-frame reference
+   geometry + tests, against the pushed API. freemocap's env runs the pinned commit, never the local
+   checkout — cross-repo work ends at the round.
+
+- [ ] **Step 1:** The freemocap wrapper (`skeleton_rigidifier.py`) builds its three
+      `SegmentLengthEstimator`s from the **model**: seeds `{segment.name: segment.length_ratio ×
+      height}`; endpoints `{segment.name: (segment.origin_keypoint, segment.long_axis_keypoint)}` —
+      the arrow-key labels die. The `AnatomicalStructure` / `canonical_body.yaml` dependency in the
+      live path dies with them.
+- [ ] **Step 2:** The `TreeRigidifier` (skellyforge `kinematics/skeleton_rigidifier.py`) consumes
+      the **segment tree** (`segment_parents`) + segment-keyed lengths — read it, re-key its
+      hierarchy input, keep its enforcement algorithm. The hand trees re-key onto the hand segment
+      names the same way.
+- [ ] **Step 3:** The aggregator passes the model to the rigidifier construction (it already has it
+      per-run), and the rigidifier's per-frame measured lengths feed `build_reference_geometry`
+      **per frame** (replacing the once-per-run nominal seeds from Task 9 Step 1 — lengths now live,
+      the solver's reference directions are unchanged, the schema's rest pose follows).
+- [ ] **Step 4:** Tests — the rigidifier's enforced lengths equal the measured segment medians;
+      rigidification preserves the tree's root and segment endpoints; the old-name grep across the
+      freemocap live path is clean (`joint_hierarchy`, `bone_length_ratios`,
+      `AnatomicalStructure` — zero hits in the realtime path).
+
+## 3. F1 — `StreamSchema.from_standard_human()` against the six-group layout
 ## 2. F1 — `StreamSchema.from_standard_human()` against the six-group layout
 
 Realizes [`03-canonical-frame-extensions.md`](03-canonical-frame-extensions.md) against
@@ -66,7 +111,7 @@ new model API) is superseded by this full pass.
       both rotation kinds distinct; keypoints vs segments split; overlay layers; `segment_parents`
       agrees with the model; `RestPose` positions == reference keypoints; frozen schema rejects mutation.
 
-## 3. F2 — the backend encoder + WebSocket send-path reshape
+## 4. F2 — the backend encoder + WebSocket send-path reshape
 
 Realizes [`02-backend-encoder-and-ws-reshape.md`](02-backend-encoder-and-ws-reshape.md). The frame
 source is the aggregator's output message (rotations already on it ✅); this pass serializes it.
@@ -88,7 +133,7 @@ source is the aggregator's output message (rotations already on it ✅); this pa
       values; sample round-trip; missing → NaN row; overlay blocks per camera; golden bytes for the
       schema and one sample (the F3 parity fixtures).
 
-## 4. F3 — the frontend: transport service, decoder, rolling-window stores
+## 5. F3 — the frontend: transport service, decoder, rolling-window stores
 
 Realizes [`04-ui-wedge.md`](04-ui-wedge.md) — with the legacy-compat items **deleted** (D36: there is
 no legacy to coexist with; the decoder lands in the same cycle as F2).
@@ -103,7 +148,7 @@ no legacy to coexist with; the decoder lands in the same cycle as F2).
 - [ ] **Step 4:** Tests — schema round-trip, sample golden decode, rolling-window eviction,
       subscriber fire, overlay blocks per camera.
 
-## 5. F4 — the rigid-body segment renderer (the meshes we built)
+## 6. F4 — the rigid-body segment renderer (the meshes we built)
 
 Realizes [`06-rigid-body-bone-renderer.md`](06-rigid-body-bone-renderer.md) with its four defects
 fixed up front (FMC-SR §9): index segments by their schema-declared names, never by hierarchy edges
@@ -120,7 +165,7 @@ what the solver tests catch — cross-link to [`../14`](../14-engine-testing-str
 - [ ] **Step 4:** Visibility toggle `rigidBodyBones` (default on) + the overlay-layer toggles
       (FMC-SR §3); the existing keypoint/connection layers stay unchanged.
 
-## 6. F5 — the full-loop test, then the manual run
+## 7. F5 — the full-loop test, then the manual run
 
 - [ ] **Step 1:** The backend E2E slice that runs today (`test_e2e_pipeline` + the realtime pipeline
       test) extended to assert: aggregator output → `StreamSample.from_aggregator_output` → bytes →
@@ -134,7 +179,7 @@ what the solver tests catch — cross-link to [`../14`](../14-engine-testing-str
       humerus mesh without pop; a hidden hand degrades gracefully; the WS frames decode without
       schema drift. **This run is the gate before Phase E opens.**
 
-## 7. F6 — realtime-loop leftovers (note, do not do now)
+## 8. F6 — realtime-loop leftovers (note, do not do now)
 
 - `streaming_status` in `app_state` (audit when the wedge lands — `05-ui-integration-and-refactor.md`
   has the known-concern note); `body_kinematics` stays dropped (live-substrate-only);

@@ -132,7 +132,32 @@ Ends: skellyforge suite green — **94 tests as of 2026-08-13**.
 Ends: freemocap realtime runs the composed model end-to-end → `(user)` **Commit Round 2** (freemocap +
 skellyforge).
 
-### Phase E — the posthoc rebuild · NEW WORK, no plan owns it yet
+### Phase F — the realtime loop (NOW the next workstream — the user's 2026-08-13 decision) ·
+
+detail plan: [`11-realtime-loop-completion.md`](11-realtime-loop-completion.md) — schema (FMC-WS-3
+six-group rework + D34/D35) → encoder + WS reshape (FMC-WS-2 + D36) → frontend decoder/wedge
+(FMC-WS-4) → the rigid-body renderer (FMC-RB + D5/D6/D14/D15) → the manual full-loop run, which is
+the gate before Phase E. The realtime loop completes BEFORE the posthoc rebuild so posthoc converges
+on proven contracts (locked decision 8).
+
+18. [ ] **FMC-WS-3** — `StreamSchema.from_standard_human()` against the six-group layout
+        ([`09-standard-stream-protocol`](../09-standard-stream-protocol.md#channels)): ChannelKind rewrite
+        (delete legacy `ROTATIONS`, D10), `segment_parents`, frozen (D22), keypoint/segment channel split,
+        `SegmentNameString` alias (D29), the schema↔model coupling decision (D30).
+19. [ ] Convention fixes — `forward_axis=+X` (D34), verify the camera-0-pinned path meets the +Z/+X
+        invariant (D35).
+20. [ ] **FMC-WS-2** — encoder + `websocket_server.py` send-path reshape; delete the legacy path and the
+        `FREEMOCAP_STANDARD_STREAM` flag in one change (D36).
+21. [ ] **FMC-WS-4** — UI wedge: transport service + standard-stream decoder + rolling-window stores.
+22. [ ] **FMC-RB** — the rigid-body renderer, with its four defects fixed (index by segment name, not
+        parentName D5; cross-section independent of length D6; schema-time index D14; setColorAt once D15).
+
+
+### Phase E — the posthoc rebuild · **spec written as REVISIT notes; executes AFTER the realtime loop**
+
+detail spec: [`12-posthoc-rebuild.md`](12-posthoc-rebuild.md) — written 2026-08-13, gated on the
+manual full-loop run; its §2 decisions (observation.py, the rigidifier re-key) are the user's at the
+revisit.
 
 The one piece the re-derivation surfaced as unowned. Locked decision 8 ("realtime and posthoc use the
 same computation") makes it mandatory; [`13`](../13-tracker-to-canonical-mapping.md) § Remaining work and
@@ -151,20 +176,6 @@ SF-AL's open F4 both named it and no task claimed it.
         - The two-CoM collapse, per Phase D step 15.
 
 Gated on: Round 1 (composed model + renamed mappings reach freemocap's env).
-
-### Phase F — the stream side · after the model is in freemocap
-
-18. [ ] **FMC-WS-3** — `StreamSchema.from_standard_human()` against the six-group layout
-        ([`09-standard-stream-protocol`](../09-standard-stream-protocol.md#channels)): ChannelKind rewrite
-        (delete legacy `ROTATIONS`, D10), `segment_parents`, frozen (D22), keypoint/segment channel split,
-        `SegmentNameString` alias (D29), the schema↔model coupling decision (D30).
-19. [ ] Convention fixes — `forward_axis=+X` (D34), verify the camera-0-pinned path meets the +Z/+X
-        invariant (D35).
-20. [ ] **FMC-WS-2** — encoder + `websocket_server.py` send-path reshape; delete the legacy path and the
-        `FREEMOCAP_STANDARD_STREAM` flag in one change (D36).
-21. [ ] **FMC-WS-4** — UI wedge: transport service + standard-stream decoder + rolling-window stores.
-22. [ ] **FMC-RB** — the rigid-body renderer, with its four defects fixed (index by segment name, not
-        parentName D5; cross-section independent of length D6; schema-time index D14; setColorAt once D15).
 
 ### Phase G — rewrite the docs the old framing infected (SF-SM Task 10)
 

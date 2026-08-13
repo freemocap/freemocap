@@ -130,7 +130,11 @@ consumer.
 
 ## Todo (current focus)
 
-**Current phase: D — retire the old models + rewire the aggregator (SF-SM Task 9)** —
+**Current phase: F — the realtime loop** ([`phase-1/11`](phase-1/11-realtime-loop-completion.md):
+ six-group schema → encoder + WS reshape → TS decoder/wedge → rigid-body renderer → the manual
+ full-loop run) — **Phase D (Task 9) is DONE** and awaits Commit Round 2; the posthoc rebuild
+ (Phase E, [`phase-1/12`](phase-1/12-posthoc-rebuild.md)) is spec'd as revisit notes and executes
+ AFTER the loop. *(previous text, superseded 2026-08-13: D — retire the old models)* —
 Round 1 is pushed + synced (freemocap's env runs the new skellies); Task 9 Step 1 fixes the
 now-broken freemocap call sites and deletes the bootstrap. Phase B is DONE (the completeness
 contract is green, 226 skellytracker tests). *(previous text, superseded 2026-08-13: B — the keypoint
@@ -152,6 +156,15 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-13 (sequencing set: realtime loop first, then posthoc; both planned)** — Per the user:
+  the full realtime loop (reconstruct → stream over the LSL-compatible WS → 3JS rigid-body meshes)
+  completes before the posthoc route is touched, because posthoc must converge on the contracts the
+  loop proves (locked decision 8). New detail plans: [`phase-1/11`](phase-1/11-realtime-loop-completion.md)
+  (the loop: six-group schema incl. D10/D22/D29/D30/D34/D35 → encoder + WS reshape incl. D36 →
+  TS decoder/wedge → FMC-RB renderer incl. D5/D6/D14/D15 → the manual full-loop run as the gate) and
+  [`phase-1/12`](phase-1/12-posthoc-rebuild.md) (the posthoc rebuild spec as REVISIT notes: the old
+  layer's consumer map, the four decisions to make at the revisit, E1–E5 outline, the revisit
+  checklist). Doc 10 reordered accordingly (F before E).
 - **2026-08-13 (TASK 9 COMPLETE — Phase D done)** — Steps 2–4: deleted
   `skellyforge/biomechanics/` (verified byte-identical dead duplicate) + `pipelines/dlc_pipeline.py`
   (verified zero importers); re-expressed the realtime CoM on **de Leva (1996)** — default

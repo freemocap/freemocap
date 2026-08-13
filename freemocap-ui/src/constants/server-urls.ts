@@ -88,6 +88,9 @@ class ServerUrls {
             processMocapRecording: `${baseUrl}/freemocap/mocap/recording/process`,
             importVideos: `${baseUrl}/freemocap/mocap/recording/import`,
             checkVideoSync: `${baseUrl}/freemocap/mocap/recording/check_sync`,
+            synchronizeVideos: `${baseUrl}/freemocap/mocap/recording/synchronize`,
+            synchronizeVideosResult: (jobId: string) =>
+                `${baseUrl}/freemocap/mocap/recording/synchronize/${encodeURIComponent(jobId)}`,
 
             // Posthoc pipeline control
             stopPipeline: (pipelineId: string) => `${baseUrl}/freemocap/posthoc/pipeline/${encodeURIComponent(pipelineId)}`,

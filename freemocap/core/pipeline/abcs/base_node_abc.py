@@ -91,6 +91,7 @@ class BaseNode:
         worker_registry: WorkerRegistry,
         log_queue: multiprocessing.queues.Queue | None,
         kwargs: dict,
+        daemon: bool = True,
     ) -> tuple[Synchronized, ManagedWorker]:
         """
         Convenience helper for subclass `create()` methods.
@@ -98,6 +99,11 @@ class BaseNode:
         Creates a shutdown_self_flag + ManagedWorker pair with consistent
         setup. The shutdown_self_flag is automatically injected into kwargs
         so the child _run() receives it.
+
+        Args:
+            daemon: Pass False if the child needs to spawn its own child
+                processes (e.g. a ProcessPoolExecutor) — Python disallows
+                daemonic processes from having children.
 
         Returns:
             (shutdown_self_flag, worker) tuple for passing to the dataclass constructor.
@@ -108,6 +114,7 @@ class BaseNode:
             target=target,
             name=name,
             log_queue=log_queue,
+            daemon=daemon,
             kwargs=kwargs,
         )
         return shutdown_self_flag, worker

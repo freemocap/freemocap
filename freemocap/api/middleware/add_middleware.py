@@ -41,17 +41,24 @@ def add_middleware(app: FastAPI) -> None:
                 async for chunk in response.body_iterator:
                     response_body += chunk
 
+                # 425 is used by polling endpoints (e.g. sync-job status) as a deliberate
+                # "not ready yet" signal, not a failure — log it quietly so it doesn't
+                # drown out real errors when the frontend polls every few hundred ms.
+                is_expected_pending = response.status_code == 425
+                log = logger.debug if is_expected_pending else logger.error
+                label = "Request pending" if is_expected_pending else "Request FAILED"
+
                 # Try to decode and log the error
                 try:
                     error_content = response_body.decode("utf-8")
-                    logger.error(
-                        f"Request FAILED: {request.method} {request.url} "
+                    log(
+                        f"{label}: {request.method} {request.url} "
                         f"[{response.status_code}] in {process_time:.6f}s - "
                         f"Error: {error_content}"
                     )
                 except UnicodeDecodeError:
-                    logger.error(
-                        f"Request FAILED: {request.method} {request.url} "
+                    log(
+                        f"{label}: {request.method} {request.url} "
                         f"[{response.status_code}] in {process_time:.6f}s - "
                         f"Error body could not be decoded (length: {len(response_body)} bytes)"
                     )

@@ -1,10 +1,20 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {useElectronIPC} from '@/services';
-import {useAppDispatch} from '@/store';
-import {checkVideoSync, importVideos, VideoSyncInfo} from '@/store/slices/mocap';
+import {useAppDispatch, useAppSelector} from '@/store';
+import {
+    checkVideoSync,
+    getSyncResult,
+    importVideos,
+    startVideoSync,
+    SyncMethod,
+    SyncResult,
+    VideoSyncInfo,
+} from '@/store/slices/mocap';
+import {selectActivePipelines} from '@/store/slices/pipelines';
 import {activeRecordingSet, splitParentAndName} from '@/store/slices/active-recording/active-recording-slice';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
+import Checkbox from '@/components/ui-components/Checkbox';
 
 interface ImportVideosModalProps {
     open: boolean;
@@ -38,6 +48,15 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
     const [checkingSync, setCheckingSync] = useState(false);
     const [syncCheck, setSyncCheck] = useState<{ synchronized: boolean; videos: VideoSyncInfo[]; detail: string | null } | null>(null);
 
+    const [syncEnabled, setSyncEnabled] = useState(false);
+    const [syncMethod, setSyncMethod] = useState<SyncMethod>(SyncMethod.AUDIO);
+    const [syncing, setSyncing] = useState(false);
+    const [syncJobId, setSyncJobId] = useState<string | null>(null);
+    const [syncError, setSyncError] = useState<string | null>(null);
+
+    const activePipelines = useAppSelector(selectActivePipelines);
+    const syncProgress = syncJobId ? activePipelines[syncJobId] : undefined;
+
     useEffect(() => {
         if (!open) return;
         setVideoPaths([]);
@@ -60,7 +79,10 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         dispatch(checkVideoSync({videoPaths}))
             .unwrap()
             .then((result) => {
-                if (!cancelled) setSyncCheck(result);
+                if (!cancelled) {
+                    setSyncCheck(result);
+                    if (!result.synchronized) setSyncEnabled(true);
+                }
             })
             .catch((err) => {
                 if (!cancelled) {
@@ -75,6 +97,14 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             cancelled = true;
         };
     }, [open, videoPaths, dispatch]);
+
+    // A new file selection invalidates any previous synchronize run.
+    useEffect(() => {
+        setSyncEnabled(false);
+        setSyncJobId(null);
+        setSyncError(null);
+        setSyncing(false);
+    }, [videoPaths]);
 
     useEffect(() => {
         if (!open) return;
@@ -105,14 +135,39 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         setError(null);
     }, []);
 
+    // Poll the sync job until it finishes (HTTP 425 while running, 200 once done).
+    const pollSyncResult = useCallback(async (jobId: string): Promise<SyncResult> => {
+        for (;;) {
+            const action = await dispatch(getSyncResult({jobId}));
+            if (getSyncResult.fulfilled.match(action)) {
+                if (action.payload.status === 'done') return action.payload.result;
+            } else {
+                throw new Error(typeof action.payload === 'string' ? action.payload : 'Synchronization failed');
+            }
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+    }, [dispatch]);
+
     const handleImport = useCallback(async () => {
         if (videoPaths.length === 0 || busy) return;
         setBusy(true);
         setError(null);
+        setSyncError(null);
         try {
+            let jobId: string | undefined;
+            if (syncEnabled) {
+                setSyncing(true);
+                const started = await dispatch(startVideoSync({videoPaths, method: syncMethod})).unwrap();
+                setSyncJobId(started.jobId);
+                await pollSyncResult(started.jobId);
+                jobId = started.jobId;
+                setSyncing(false);
+            }
+
             const result = await dispatch(importVideos({
                 videoPaths,
                 recordingName: recordingName.trim() || undefined,
+                syncJobId: jobId,
             })).unwrap();
 
             const parsed = splitParentAndName(result.recordingPath);
@@ -124,19 +179,20 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             onImported?.();
             onClose();
         } catch (err) {
-            setError(typeof err === 'string' ? err : 'Failed to import videos');
+            setError(err instanceof Error ? err.message : typeof err === 'string' ? err : 'Failed to import videos');
+            setSyncing(false);
         } finally {
             setBusy(false);
         }
-    }, [videoPaths, recordingName, busy, dispatch, onClose, onImported]);
+    }, [videoPaths, recordingName, busy, syncEnabled, syncMethod, pollSyncResult, dispatch, onClose, onImported]);
 
     const importDisabledReason = busy
-        ? 'Importing…'
+        ? (syncing ? 'Synchronizing…' : 'Importing…')
         : videoPaths.length === 0
             ? 'Select video files to import'
             : checkingSync
                 ? 'Checking synchronization…'
-                : (!syncCheck || !syncCheck.synchronized)
+                : (syncCheck && !syncCheck.synchronized && !syncEnabled)
                     ? 'Selected videos are not synchronized'
                     : null;
 
@@ -207,17 +263,66 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                         <p className="text sm text-gray">Checking synchronization…</p>
                     )}
 
-                    {syncCheck && !syncCheck.synchronized && (
-                        <div className="toast-notification error">
-                            <p className="text sm">Selected videos are not synchronized — they have different frame counts.</p>
-                            <div className="flex flex-col gap-1">
-                                {syncCheck.videos.map((video) => (
-                                    <p key={video.filename} className="text sm"
-                                       style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
-                                        {video.filename}: {video.frameCount} frames ({video.fps.toFixed(2)} fps, {video.durationSeconds.toFixed(2)}s)
-                                    </p>
-                                ))}
+                    {videoPaths.length > 0 && (
+                        <div className="flex flex-col gap-2 p-2 br-1 bg-secondary">
+                            <div className="flex flex-row gap-2 items-center">
+                                <SubactionHeader text="Synchronization" className="text-gray"/>
+                                {syncCheck && !syncCheck.synchronized && (
+                                    <div className="flex flex-row gap-1 items-center">
+                                        <span className="icon warning-icon icon-size-20"/>
+                                        <p className="text sm text-gray">frame counts differ — synchronization required</p>
+                                    </div>
+                                )}
                             </div>
+
+                            {syncCheck && !syncCheck.synchronized && (
+                                <div className="flex flex-col gap-1">
+                                    {syncCheck.videos.map((video) => (
+                                        <p key={video.filename} className="text sm"
+                                           style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
+                                            {video.filename}: {video.frameCount} frames ({video.fps.toFixed(2)} fps, {video.durationSeconds.toFixed(2)}s)
+                                        </p>
+                                    ))}
+                                </div>
+                            )}
+
+                            <Checkbox
+                                label="Synchronize videos on import"
+                                checked={syncEnabled}
+                                onChange={(e) => setSyncEnabled(e.target.checked)}
+                                disabled={busy || (syncCheck ? !syncCheck.synchronized : false)}
+                            />
+
+                            {syncEnabled && (
+                                <div className="flex flex-row gap-2 items-center">
+                                    <ButtonSm
+                                        text="Audio"
+                                        buttonType={syncMethod === SyncMethod.AUDIO ? 'activated' : 'idle'}
+                                        className="quaternary"
+                                        onClick={() => setSyncMethod(SyncMethod.AUDIO)}
+                                        disabled={busy}
+                                    />
+                                    <ButtonSm
+                                        text="Brightness flash"
+                                        buttonType={syncMethod === SyncMethod.BRIGHTNESS ? 'activated' : 'idle'}
+                                        className="quaternary"
+                                        onClick={() => setSyncMethod(SyncMethod.BRIGHTNESS)}
+                                        disabled={busy}
+                                    />
+                                </div>
+                            )}
+
+                            {syncing && (
+                                <p className="text sm text-gray">
+                                    {syncProgress?.detail || 'Synchronizing…'}
+                                    {syncProgress ? ` (${syncProgress.progress}%)` : ''}
+                                </p>
+                            )}
+                            {syncError && (
+                                <div className="toast-notification error">
+                                    <p className="text sm">{syncError}</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -230,7 +335,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                     <div className="flex flex-row gap-2" style={{justifyContent: 'flex-end'}}>
                         <ButtonSm text="Cancel" buttonType="quaternary" onClick={onClose} disabled={busy}/>
                         <ButtonSm
-                            text={busy ? 'Importing…' : 'Import'}
+                            text={busy ? (syncing ? 'Synchronizing…' : 'Importing…') : 'Import'}
                             textColor="text-white"
                             className="primary accent"
                             onClick={handleImport}

@@ -22,6 +22,7 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
+    "skelly_synchronize",
     #skelly utils
     "skellylogs",
     "skellypings",
@@ -42,6 +43,7 @@ cpu = ["skellytracker[all-cpu]"]
 skellycam = { git = "https://github.com/freemocap/skellycam", branch = "main" }
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "main"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "main" }
+skelly_synchronize = { git = "https://github.com/freemocap/skellysync", branch = "philip/rewrite" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "main" }
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }

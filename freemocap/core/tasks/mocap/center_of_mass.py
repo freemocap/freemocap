@@ -60,8 +60,8 @@ from skellytracker.core.io.tracker_mapping import TrackerMapping
 # Keyed by CameraNodeConfig.detector_type so the loader can pick the mapping
 # that actually matches the keypoint names the configured detector produces.
 _BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseBodyDetector.canonical_mapping_path(),
-    "mediapipe": MediapipePoseKeypointDetector.canonical_mapping_path(),
+    "rtmpose": RTMPoseBodyDetector.standard_human_mapping_path(),
+    "mediapipe": MediapipePoseKeypointDetector.standard_human_mapping_path(),
 }
 
 # ---------------------------------------------------------------------------

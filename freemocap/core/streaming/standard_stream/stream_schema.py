@@ -22,9 +22,17 @@ from freemocap.core.streaming.standard_stream.coordinate_convention import (
     FREEMOCAP_CANONICAL_CONVENTION,
     CoordinateConvention,
 )
+from skellyforge.skellymodels.standard_human.reference_geometry import (
+    build_reference_geometry,
+)
 from skellyforge.skellymodels.standard_human.standard_human_model import (
     StandardHuman,
 )
+
+# Nominal subject height (mm) used to convert each segment's ``length_ratio``
+# (a fraction of standing height) into an absolute rest length. Mirrors the
+# aggregator's ``_NOMINAL_SUBJECT_HEIGHT_MM`` — the reference pose is schematic.
+_NOMINAL_SUBJECT_HEIGHT_MM = 1700.0
 
 # ── Column layouts — SSOT alongside the wire contract ─────────────────────
 SKELETON_POINT_COLUMNS = ("x", "y", "z", "reprojection_error")
@@ -69,16 +77,22 @@ class RestPose(msgspec.Struct, frozen=True):
     def from_standard_human(cls, standard_human: StandardHuman) -> RestPose:
         """Build the rest pose from the canonical model's T-pose.
 
-        Joint center positions come from the model's T-pose markers (proximal
-        joint centers, keyed by bone name). Orientations are identity
+        Joint center positions come from the model's reference geometry (rest
+        keypoint positions, keyed by keypoint name). Orientations are identity
         quaternions — by contract, identity quaternion == T-pose.
         """
+        nominal_lengths = {
+            segment.name: segment.length_ratio * _NOMINAL_SUBJECT_HEIGHT_MM
+            for segment in standard_human.segments
+        }
+        geometry = build_reference_geometry(list(standard_human.segments), nominal_lengths)
+
         positions: dict[str, tuple[float, float, float]] = {}
-        for name, pos in standard_human.t_pose_markers.items():
+        for name, pos in geometry.keypoints.items():
             positions[name] = (float(pos[0]), float(pos[1]), float(pos[2]))
 
         identity = (1.0, 0.0, 0.0, 0.0)
-        reference_orientations = {name: identity for name in standard_human.bone_names}
+        reference_orientations = {name: identity for name in standard_human.segment_names}
 
         return cls(positions=positions, reference_orientations=reference_orientations)
 
@@ -128,14 +142,14 @@ class StreamSchema(msgspec.Struct):
         hierarchy. ``rest_pose`` carries T-pose positions + identity
         orientations.
         """
-        bone_names = tuple(standard_human.bone_names)
+        segment_names = tuple(standard_human.segment_names)
         units = convention.units.value
 
         # ── Channel groups (fixed order) ──────────────────────────────
         channels: tuple[ChannelGroup, ...] = (
             ChannelGroup(
                 kind=ChannelKind.POINTS,
-                names=bone_names,
+                names=segment_names,
                 columns=SKELETON_POINT_COLUMNS,
                 units=units,
             ),
@@ -147,29 +161,29 @@ class StreamSchema(msgspec.Struct):
             ),
             ChannelGroup(
                 kind=ChannelKind.ROTATIONS_WORLD,
-                names=bone_names,
+                names=segment_names,
                 columns=ROTATION_COLUMNS,
                 units="quaternion",
             ),
             ChannelGroup(
                 kind=ChannelKind.ROTATIONS_LOCAL,
-                names=bone_names,
+                names=segment_names,
                 columns=ROTATION_COLUMNS,
                 units="quaternion",
             ),
             ChannelGroup(
                 kind=ChannelKind.OVERLAY_2D,
-                names=bone_names,
+                names=segment_names,
                 columns=OVERLAY_2D_COLUMNS,
                 units="px",
             ),
         )
 
-        # ── Connections: parent→child bone edges ──────────────────────
+        # ── Connections: parent→child segment edges ──────────────────
         connections: list[tuple[str, str]] = []
-        for bone in standard_human.bones:
-            for child in standard_human.get_children(bone.name):
-                connections.append((bone.name, child.name))
+        for segment in standard_human.segments:
+            for child in standard_human.get_children(segment.name):
+                connections.append((segment.name, child.name))
 
         # ── Joint hierarchy ───────────────────────────────────────────
         hierarchy: dict[str, tuple[str, ...]] = {}

@@ -130,7 +130,11 @@ consumer.
 
 ## Todo (current focus)
 
-**Current phase: B — the keypoint contract, per tracker (SF-SM Task 6)** —
+**Current phase: D — retire the old models + rewire the aggregator (SF-SM Task 9)** —
+Round 1 is pushed + synced (freemocap's env runs the new skellies); Task 9 Step 1 fixes the
+now-broken freemocap call sites and deletes the bootstrap. Phase B is DONE (the completeness
+contract is green, 226 skellytracker tests). *(previous text, superseded 2026-08-13: B — the keypoint
+contract)* —
 [`phase-1/10`](phase-1/10-whole-project-alignment.md) step order; detail in
 [`phase-1/09` Task 6](phase-1/09-segment-model.md#task-6-the-required-keypoint-contract-per-tracker).
 **Phase A is COMPLETE** (2026-08-13): Tasks 1–8 + the 4B+5+7 model-rewrite unit + the mapping rename,
@@ -148,6 +152,20 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-13 (Task 9 Step 1 done — the aggregator runs the composed model)** — The bootstrap is
+  deleted (`_BONE_TO_LANDMARK`, `_get_standard_human`, `_build_solver_positions`, `_standard_human_cache`,
+  the deleted-symbol imports) and the realtime aggregator now loads `compose_standard_human()` once per
+  run, builds the reference geometry from nominal seeds (`length_ratio × 1700` — the solver needs only
+  directions), merges body + standard-human-keyed hand positions, and calls the new
+  `solve_frame_orientations` signature per frame. **The live `neck`/`head` crash class is structurally
+  gone.** Round-1 leftovers fixed in the same pass: the six `canonical_mapping_path()` call sites, the
+  rigidifier's three `SegmentLengthEstimator` adaptations (arrow-key labels preserved so the
+  `TreeRigidifier` contract is untouched; `RigidifyResult` gained standard-human-keyed hand fields), and
+  `stream_schema.py` + its 15 tests minimally adapted to the new model API (the six-group channel rework
+  stays Phase F). Verified: imports smoke OK, 31 freemocap tests green, 94 skellyforge, 226
+  skellytracker; end-to-end solve 46+46 quaternions; review approved with two trivial fixes applied.
+  Next: Task 9 Steps 2–4 (delete `biomechanics/` + `dlc_pipeline.py`; CoM on segments via de Leva with
+  the mass-redistribution decision; strip the canonical YAMLs + repoint render connections).
 - **2026-08-13 (PHASE B CODE DONE — the completeness contract is green)** — `test_mapping_completeness.py`
   in skellytracker: the required 72-name set travels as a golden fixture (generated from the model;
   regeneration command in its header — skellytracker's tests can't import skellyforge), the family

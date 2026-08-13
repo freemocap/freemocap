@@ -1,9 +1,9 @@
 """FMC-WS-3 — StreamSchema.from_standard_human() classmethod tests.
 
-Builds a minimal StandardHuman model and verifies the schema enumerates the
-correct channel groups (SKELETON_POINTS, DERIVED_POINTS, ROTATIONS_WORLD,
-ROTATIONS_LOCAL, OVERLAY_2D), carries topology, round-trips through JSON,
-and expands OVERLAY_2D per camera in the LSL channel list.
+Builds the canonical StandardHuman model (55 segments) and verifies the schema
+enumerates the correct channel groups (SKELETON_POINTS, DERIVED_POINTS,
+ROTATIONS_WORLD, ROTATIONS_LOCAL, OVERLAY_2D), carries topology, round-trips
+through JSON, and expands OVERLAY_2D per camera in the LSL channel list.
 """
 from freemocap.core.streaming.standard_stream import (
     FREEMOCAP_CANONICAL_CONVENTION,
@@ -13,47 +13,15 @@ from freemocap.core.streaming.standard_stream import (
     encode_schema,
     schema_to_streaminfo_channels,
 )
-from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman
+from skellyforge.skellymodels.standard_human.standard_human_model import (
+    StandardHuman,
+    compose_standard_human,
+)
 
 
 def _minimal_model() -> StandardHuman:
-    """A 3-bone skeleton: hips → spine → head. Enough to exercise every channel group."""
-    return StandardHuman.from_bone_definitions(
-        name="test_human",
-        bone_defs=[
-            {
-                "name": "hips",
-                "parent": None,
-                "required": True,
-                "proximal_joint": [0.0, 0.0, 900.0],
-                "distal_joint": [0.0, 0.0, 1050.0],
-                "exact_axis": [0.0, 0.0, 1.0],
-                "approximate_axis": [0.0, 1.0, 0.0],
-                "twist_tier": "full_frame",
-            },
-            {
-                "name": "spine",
-                "parent": "hips",
-                "required": True,
-                "proximal_joint": [0.0, 0.0, 1050.0],
-                "distal_joint": [0.0, 0.0, 1350.0],
-                "exact_axis": [0.0, 0.0, 1.0],
-                "approximate_axis": [0.0, 1.0, 0.0],
-                "twist_tier": "chain_resolved",
-                "twist_source_bone": "head",
-            },
-            {
-                "name": "head",
-                "parent": "spine",
-                "required": True,
-                "proximal_joint": [0.0, 0.0, 1350.0],
-                "distal_joint": [0.0, 0.0, 1500.0],
-                "exact_axis": [0.0, 0.0, 1.0],
-                "approximate_axis": [0.0, 1.0, 0.0],
-                "twist_tier": "full_frame",
-            },
-        ],
-    )
+    """The canonical 55-segment standard human."""
+    return compose_standard_human()
 
 
 def _schema():
@@ -86,7 +54,7 @@ def test_schema_enumerates_five_channel_groups():
 def test_skeleton_points_group():
     skeleton = _schema().channels[0]
     assert skeleton.kind == ChannelKind.POINTS
-    assert skeleton.names == ("hips", "spine", "head")
+    assert skeleton.names == tuple(_minimal_model().segment_names)
     assert skeleton.columns == ("x", "y", "z", "reprojection_error")
     assert skeleton.units == "mm"
 
@@ -101,7 +69,7 @@ def test_derived_points_group():
 def test_rotations_world_group():
     rworld = _schema().channels[2]
     assert rworld.kind == ChannelKind.ROTATIONS_WORLD
-    assert rworld.names == ("hips", "spine", "head")
+    assert rworld.names == tuple(_minimal_model().segment_names)
     assert rworld.columns == ("w", "x", "y", "z")
     assert rworld.units == "quaternion"
 
@@ -109,14 +77,14 @@ def test_rotations_world_group():
 def test_rotations_local_group():
     rlocal = _schema().channels[3]
     assert rlocal.kind == ChannelKind.ROTATIONS_LOCAL
-    assert rlocal.names == ("hips", "spine", "head")
+    assert rlocal.names == tuple(_minimal_model().segment_names)
     assert rlocal.columns == ("w", "x", "y", "z")
 
 
 def test_overlay_2d_group():
     overlay = _schema().channels[4]
     assert overlay.kind == ChannelKind.OVERLAY_2D
-    assert overlay.names == ("hips", "spine", "head")
+    assert overlay.names == tuple(_minimal_model().segment_names)
     assert overlay.columns == ("x", "y", "visibility")
     assert overlay.units == "px"
 
@@ -132,20 +100,24 @@ def test_schema_carries_topology():
 
 
 def test_connections_from_hierarchy():
-    """Parent→child bone edges match the model's hierarchy."""
+    """Parent→child segment edges match the model's hierarchy."""
     connections = _schema().connections
-    # hips→spine, spine→head
+    # hips→spine, spine→head (and the 55-segment model's full edge set)
     assert ("hips", "spine") in connections
-    assert ("spine", "head") in connections
-    assert len(connections) == 2
+    assert ("spine", "chest") in connections
+    assert ("hips", "left_upper_leg") in connections
+    # 55 segments, 1 root — so 54 parent→child edges
+    assert len(connections) == 54
 
 
 def test_joint_hierarchy_from_model():
     hierarchy = _schema().joint_hierarchy
-    # model.joint_hierarchy uses __root__ key for the root bone's children
-    assert "hips" in hierarchy["__root__"]
+    # model.joint_hierarchy is {parent: [child names]}; the root ('hips') is a
+    # key (its children), there is no '__root__' sentinel.
     assert "spine" in hierarchy["hips"]
-    assert "head" in hierarchy["spine"]
+    assert "left_upper_leg" in hierarchy["hips"]
+    assert "chest" in hierarchy["spine"]
+    assert "head" in hierarchy["neck"]
 
 
 # ── Rest pose tests ─────────────────────────────────────────────────────
@@ -154,17 +126,19 @@ def test_joint_hierarchy_from_model():
 def test_rest_pose_positions():
     rest = _schema().rest_pose
     assert rest is not None
-    assert len(rest.positions) == 3  # hips, spine, head
-    # hips proximal joint center should be at (0, 0, 900)
-    assert rest.positions["hips"] == (0.0, 0.0, 900.0)
-    assert rest.positions["spine"] == (0.0, 0.0, 1050.0)
-    assert rest.positions["head"] == (0.0, 0.0, 1350.0)
+    # the reference geometry emits one rest position per declared keypoint (67
+    # for the 55-segment human), not per segment.
+    assert len(rest.positions) == 67
+    # the root segment's origin keypoint sits at the model origin.
+    assert rest.positions["hips_center"] == (0.0, 0.0, 0.0)
 
 
 def test_rest_pose_orientations_are_identity():
     rest = _schema().rest_pose
     identity = (1.0, 0.0, 0.0, 0.0)
     assert rest is not None
+    # one identity orientation per segment name
+    assert len(rest.reference_orientations) == len(_minimal_model().segments)
     for name in ("hips", "spine", "head"):
         assert rest.reference_orientations[name] == identity
 
@@ -184,13 +158,13 @@ def test_schema_json_roundtrip():
 def test_lsl_channels_count():
     """LSL channel count covers all groups including per-camera overlays."""
     channels = schema_to_streaminfo_channels(_schema())
-    # skeleton:  3 bones × 4 cols = 12
+    # skeleton: 55 segments × 4 cols = 220
     # derived:   2 points × 3 cols = 6
-    # rworld:    3 bones × 4 cols = 12
-    # rlocal:    3 bones × 4 cols = 12
-    # overlay:   2 cams × 3 bones × 3 cols = 18
-    # total: 60
-    assert len(channels) == 60
+    # rworld:   55 segments × 4 cols = 220
+    # rlocal:   55 segments × 4 cols = 220
+    # overlay:   2 cams × 55 segments × 3 cols = 330
+    # total: 996
+    assert len(channels) == 996
 
 
 def test_lsl_channels_have_rotation_labels():

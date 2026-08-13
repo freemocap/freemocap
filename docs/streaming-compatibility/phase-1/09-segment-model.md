@@ -1097,9 +1097,18 @@ arrow key and both `split("->")` sites (F2) disappear because length is a proper
 - Delete: `skellyforge/biomechanics/`, `skellyforge/pipelines/dlc_pipeline.py`
 - Modify: `skellyforge/skellymodels/tracker_info/canonical_body.yaml`, `canonical_hand.yaml`
 
-- [ ] **Step 1:** Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
-      `_build_solver_positions()`; the aggregator loads the composed `StandardHuman` from SkellyForge and
-      passes keypoints straight through. Closes D11, D12, D16's remainder.
+- [x] **Step 1:** Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
+      `_build_solver_positions()`; the aggregator loads the composed `StandardHuman` once per run and
+      passes keypoints straight through. Closes D11, D12, D16's remainder. **Delivered design
+      (2026-08-13, Round-1 leftovers ride along):** the solver's reference geometry needs only correct
+      **directions** (lengths do not affect solved quaternions), so it is built once per run from
+      nominal seeds (`length_ratio × 1700 mm`); the solver input is the merged rigidified positions —
+      body + hands under the model's standard-human names (`RigidifyResult` gains standard-human-keyed
+      hand positions; the rigidifier already computes them internally); the rigidifier's three
+      `RollingBoneLengths` estimators adapt to `SegmentLengthEstimator` (labels keep the rigidifier's
+      internal arrow conventions; `window_seconds=window_s`); and the six `canonical_mapping_path()`
+      call sites (4 in `skeleton_rigidifier.py`, 2 in `center_of_mass.py`) become
+      `standard_human_mapping_path()`.
 - [ ] **Step 2:** Delete `skellyforge/biomechanics/` (F5) and `dlc_pipeline.py`.
 - [ ] **Step 3:** Re-express CoM against segments using **de Leva (1996)** — mass fraction and
       CoM-as-fraction-of-segment-length, referenced to **joint centres**, which is what our origins are.

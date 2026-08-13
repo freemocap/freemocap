@@ -57,14 +57,10 @@ from skellyforge.kinematics.orientation_solver import (
     solve_frame_orientations,
 )
 from skellyforge.skellymodels.standard_human.standard_human_model import (
-    StandardHuman,
+    compose_standard_human,
 )
-from skellyforge.skellymodels.standard_human.human_bones import (
-    HumanBone,
-    BoneReferenceGeometry,
-    CoordinateFrameDefinition,
-    TwistPolicy,
-    TwistTier,
+from skellyforge.skellymodels.standard_human.reference_geometry import (
+    build_reference_geometry,
 )
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
@@ -112,6 +108,11 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
+
+# The solver's reference geometry needs only correct DIRECTIONS (lengths do not
+# affect solved quaternions), so nominal anthropometric seeds are the honest
+# v1; live measured lengths refine the geometry when the estimator feeds it.
+_NOMINAL_SUBJECT_HEIGHT_MM = 1700.0
 
 def _merge_angulation(
         *,
@@ -313,6 +314,17 @@ class RealtimeAggregatorNode(AggregatorNode):
         # to this run — at module scope, concurrent pipelines would share
         # smoothing state and damping would persist across recordings.
         previous_orientation_result: FrameOrientationResult | None = None
+        # Composed standard human + nominal reference geometry for the
+        # orientation solver. Scoped to this run (D16): the model is cheap to
+        # build and every recording gets a fresh instance — no module globals.
+        standard_human = compose_standard_human()
+        reference_geometry = build_reference_geometry(
+            list(standard_human.segments),
+            {
+                s.name: s.length_ratio * _NOMINAL_SUBJECT_HEIGHT_MM
+                for s in standard_human.segments
+            },
+        ).segments
         # Centroidal kinematics (inertia ellipsoid + ground references) per frame.
         streaming_kinematics = StreamingKinematics()
 
@@ -701,7 +713,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
-                    # ---- Per-bone orientation (SF-SH-5) ----
+                    # ---- Segment orientation (composed standard human) ----
+                    # The rigidifier hands back canonical body keypoints plus the
+                    # standard-human-keyed hand points; the solver consumes the
+                    # tracker's named keypoints STRAIGHT THROUGH (no bone-keyed
+                    # map — the standard human already names every keypoint it
+                    # needs).
                     segment_rotations_world: dict[str, np.ndarray] | None = None
                     segment_rotations_local: dict[str, np.ndarray] | None = None
                     if (
@@ -709,20 +726,21 @@ class RealtimeAggregatorNode(AggregatorNode):
                         and rigid_result.body_positions
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        bone_positions = _build_solver_positions(
-                            rigid_result.body_positions,
-                            _BONE_TO_LANDMARK,
+                        solver_keypoints = {
+                            **rigid_result.body_positions,
+                            **rigid_result.left_hand_standard_positions,
+                            **rigid_result.right_hand_standard_positions,
+                        }
+                        orientation_result = solve_frame_orientations(
+                            standard_human=standard_human,
+                            reference_geometry=reference_geometry,
+                            keypoints=solver_keypoints,
+                            timestamp_seconds=frame_time,
+                            previous_result=previous_orientation_result,
                         )
-                        if bone_positions:
-                            orientation_result = solve_frame_orientations(
-                                standard_human=_get_standard_human(),
-                                live_joint_positions=bone_positions,
-                                timestamp_seconds=frame_time,
-                                previous_result=previous_orientation_result,
-                            )
-                            segment_rotations_world = orientation_result.world_quaternions
-                            segment_rotations_local = orientation_result.local_quaternions
-                            previous_orientation_result = orientation_result
+                        segment_rotations_world = orientation_result.world_quaternions
+                        segment_rotations_local = orientation_result.local_quaternions
+                        previous_orientation_result = orientation_result
                         if timer is not None:
                             timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
 
@@ -871,160 +889,4 @@ class RealtimeAggregatorNode(AggregatorNode):
             if timing_reporter is not None:
                 timing_reporter.join(timeout=2.0)
             logger.debug(f"RealtimeAggregationNode [{camera_group_id}] exiting")
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# SF-SH-5: orientation solver integration helpers
-# ═══════════════════════════════════════════════════════════════════════
-
-# Bone → canonical landmark mapping for the solver bridge.
-# Maps VRM bone names to the rigidifier's canonical COCO-WholeBody
-# landmark names.  This is a temporary hardcoded bridge — when the
-# rigidifier is updated to use StandardHuman directly (SF-SH-5 follow-on),
-# this table moves into HumanBone.proximal_landmark.
-_BONE_TO_LANDMARK: dict[str, str] = {
-    "hips":              "hips_center",
-    "spine":             "trunk_center",
-    "chest":             "neck_center",
-    "neck":              "head_center",
-    "head":              "head_center",
-    "left_shoulder":     "left_shoulder",
-    "left_upper_arm":    "left_shoulder",
-    "left_lower_arm":    "left_elbow",
-    "left_hand":         "left_wrist",
-    "right_shoulder":    "right_shoulder",
-    "right_upper_arm":   "right_shoulder",
-    "right_lower_arm":   "right_elbow",
-    "right_hand":        "right_wrist",
-    "left_upper_leg":    "left_hip",
-    "left_lower_leg":    "left_knee",
-    "left_foot":         "left_ankle",
-    "left_toes":         "left_big_toe",
-    "right_upper_leg":   "right_hip",
-    "right_lower_leg":   "right_knee",
-    "right_foot":        "right_ankle",
-    "right_toes":        "right_big_toe",
-}
-
-# Cached StandardHuman model — built once, reused every frame. Immutable once
-# built, so sharing it across runs is safe; the per-run *mutable* orientation
-# history lives in ``_run`` as ``previous_orientation_result``.
-_standard_human_cache: StandardHuman | None = None
-
-
-def _build_solver_positions(
-    body_positions: dict[str, np.ndarray],
-    bone_to_landmark: dict[str, str],
-) -> dict[str, np.ndarray]:
-    """Map rigidifier landmark positions to solver bone-keyed positions.
-
-    Only bones whose proximal landmark is present in *body_positions*
-    are included.
-    """
-    result: dict[str, np.ndarray] = {}
-    for bone_name, landmark_name in bone_to_landmark.items():
-        pos = body_positions.get(landmark_name)
-        if pos is not None:
-            result[bone_name] = np.asarray(pos, dtype=np.float64)
-    return result
-
-
-def _get_standard_human() -> StandardHuman:
-    """Return a cached StandardHuman model for the solver.
-
-    Builds a minimal skeleton with the bones listed in
-    ``_BONE_TO_LANDMARK``.  This is a bootstrap — when the rigidifier is
-    updated to use ``StandardHuman`` directly, the model comes from
-    ``RealtimeSkeletonRigidifier`` instead.
-    """
-    global _standard_human_cache
-    if _standard_human_cache is not None:
-        return _standard_human_cache
-
-    bones: list[HumanBone] = []
-    # Simplified T-pose reference: bone vectors point along +Z (up).
-    # The orientation solver only needs the bone vector direction and
-    # approximate axis for twist — exact positions aren't critical for
-    # the rotation computation (they set scale, which is normalized out).
-    for bone_name, landmark in _BONE_TO_LANDMARK.items():
-        # Determine parent from hierarchy
-        parent: str | None = None
-        if bone_name == "hips":
-            parent = None
-        elif bone_name in ("spine", "left_upper_leg", "right_upper_leg"):
-            parent = "hips"
-        elif bone_name in ("chest",):
-            parent = "spine"
-        elif bone_name in ("neck",):
-            parent = "chest"
-        elif bone_name in ("head", "left_shoulder", "right_shoulder"):
-            parent = "neck"
-        elif bone_name.startswith("left_"):
-            if "upper_arm" in bone_name:
-                parent = "left_shoulder"
-            elif "lower_arm" in bone_name:
-                parent = "left_upper_arm"
-            elif "hand" in bone_name:
-                parent = "left_lower_arm"
-            elif "lower_leg" in bone_name:
-                parent = "left_upper_leg"
-            elif "foot" in bone_name:
-                parent = "left_lower_leg"
-            elif "toes" in bone_name:
-                parent = "left_foot"
-        elif bone_name.startswith("right_"):
-            if "upper_arm" in bone_name:
-                parent = "right_shoulder"
-            elif "lower_arm" in bone_name:
-                parent = "right_upper_arm"
-            elif "hand" in bone_name:
-                parent = "right_lower_arm"
-            elif "lower_leg" in bone_name:
-                parent = "right_upper_leg"
-            elif "foot" in bone_name:
-                parent = "right_lower_leg"
-            elif "toes" in bone_name:
-                parent = "right_foot"
-
-        # Minimal reference geometry — bone vector along +Z
-        ref_geom = BoneReferenceGeometry(
-            proximal_joint_center=np.zeros(3, dtype=np.float64),
-            distal_joint_center=np.array(
-                [0.0, 0.0, 100.0], dtype=np.float64
-            ),
-            coordinate_frame=CoordinateFrameDefinition(
-                exact_axis=np.array([0.0, 0.0, 1.0], dtype=np.float64),
-                approximate_axis=np.array(
-                    [0.0, 1.0, 0.0], dtype=np.float64
-                ),
-            ),
-        )
-
-        # Twist policy: chain-resolved for limbs, damped-minimal for torso
-        tier = TwistTier.DAMPED_MINIMAL
-        twist_source = None
-        if bone_name in (
-            "left_upper_arm", "right_upper_arm",
-            "left_upper_leg", "right_upper_leg",
-        ):
-            tier = TwistTier.CHAIN_RESOLVED
-            twist_source = bone_name.replace("upper", "lower")
-
-        twist = TwistPolicy(tier=tier, twist_source_bone=twist_source)
-
-        bones.append(HumanBone(
-            name=bone_name,
-            parent=parent,
-            proximal_landmark=landmark,
-            required=True,
-            reference_geometry=ref_geom,
-            twist_policy=twist,
-        ))
-
-    _standard_human_cache = StandardHuman(
-        name="realtime_bootstrap",
-        bones=bones,
-        blendshape_channels=[],
-    )
-    return _standard_human_cache
 

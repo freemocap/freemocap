@@ -114,7 +114,7 @@ composed model and the renamed YAMLs.
 
 Ends: skellyforge suite green — **94 tests as of 2026-08-13**.
 
-### Phase D — retire the old models + rewire the aggregator (SF-SM Task 9) · gated on Round 1
+### Phase D — retire the old models + rewire the aggregator (SF-SM Task 9) · **CURRENT** (Round 1 done)
 
 13. [ ] Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
         `_build_solver_positions()` from `realtime_aggregator_node.py:876-1029`; the aggregator loads the
@@ -181,7 +181,7 @@ Gated on: Round 1 (composed model + renamed mappings reach freemocap's env).
 | Round | After | Pushes | Then |
 |---|---|---|---|
 | 0 | §1 disposition | skellyforge revert + kept skellytracker files (or revert-vs-commit as the user prefers) | — |
-| 1 | Phase B | skellyforge + skellytracker | freemocap: `uv lock --upgrade-package skellyforge skellytracker` + `uv sync`; **in the same pass, on disk:** update the two mapping-path dicts to `standard_human_mapping_path()` (`skeleton_rigidifier.py:53`, `center_of_mass.py:62`) and the `RollingBoneLengths` → `SegmentLengthEstimator` import (`skeleton_rigidifier.py:44`) — they resolve against the installed packages, so they change with the sync, not before |
+| 1 | Phase B | skellyforge + skellytracker — **pushed + synced 2026-08-13** ✅ | freemocap: `uv lock --upgrade-package skellyforge skellytracker` + `uv sync` done. **Leftover (rides with Task 9 Step 1):** the two mapping-path dicts → `standard_human_mapping_path()`, the `RollingBoneLengths` → `SegmentLengthEstimator` import, and the aggregator's deleted-symbol imports — the env is new, the code is old |
 | 2 | Phase D | freemocap + skellyforge | unblocks E/F on the real model |
 | … | each phase end | as the user decides | — |
 

@@ -41,7 +41,7 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_d
 )
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
-from skellyforge.kinematics.online_segment_lengths import RollingBoneLengths
+from skellyforge.kinematics.online_segment_lengths import SegmentLengthEstimator
 from skellyforge.kinematics.skeleton_rigidifier import TreeRigidifier
 
 # Direction used for a bone that has never been observed (no carried direction).
@@ -51,12 +51,12 @@ _FALLBACK_DIRECTION: np.ndarray = np.array([0.0, 1.0, 0.0])
 # CameraNodeConfig.detector_type so RealtimeSkeletonRigidifier.create() can
 # pick the mapping that matches the configured detector's keypoint names.
 _BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseBodyDetector.canonical_mapping_path(),
-    "mediapipe": MediapipePoseKeypointDetector.canonical_mapping_path(),
+    "rtmpose": RTMPoseBodyDetector.standard_human_mapping_path(),
+    "mediapipe": MediapipePoseKeypointDetector.standard_human_mapping_path(),
 }
 _HAND_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseHandDetector.canonical_mapping_path(),
-    "mediapipe": MediapipeHandKeypointDetector.canonical_mapping_path(),
+    "rtmpose": RTMPoseHandDetector.standard_human_mapping_path(),
+    "mediapipe": MediapipeHandKeypointDetector.standard_human_mapping_path(),
 }
 
 
@@ -125,13 +125,17 @@ class RigidifyResult:
     Body positions use canonical landmark names; hand positions use the
     configured detector's side-prefixed tracker names (``right_hand_thumb1``
     for RTMPose, ``right_hand_thumb_cmc`` for MediaPipe) so they key into the
-    frontend's hand schema. Trees with insufficient data (missing root) come
-    back empty.
+    frontend's hand schema. The ``*_standard_positions`` fields carry the same
+    hand points keyed by the standard-human hand names (``left_wrist``,
+    ``left_index_finger_tip``, ...) for the composed standard-human orientation
+    solver. Trees with insufficient data (missing root) come back empty.
     """
 
     body_positions: dict[str, np.ndarray]
     left_hand_positions: dict[str, np.ndarray]
     right_hand_positions: dict[str, np.ndarray]
+    left_hand_standard_positions: dict[str, np.ndarray]
+    right_hand_standard_positions: dict[str, np.ndarray]
 
 
 @dataclass
@@ -158,9 +162,9 @@ class RealtimeSkeletonRigidifier:
     _hand_tree_r: TreeRigidifier = field(repr=False)
     _hand_tree_l: TreeRigidifier = field(repr=False)
 
-    _body_lengths: RollingBoneLengths = field(repr=False)
-    _rhand_lengths: RollingBoneLengths = field(repr=False)
-    _lhand_lengths: RollingBoneLengths = field(repr=False)
+    _body_lengths: SegmentLengthEstimator = field(repr=False)
+    _rhand_lengths: SegmentLengthEstimator = field(repr=False)
+    _lhand_lengths: SegmentLengthEstimator = field(repr=False)
 
     _hand_name_to_tracker_r: dict[str, str] = field(repr=False)
     _hand_name_to_tracker_l: dict[str, str] = field(repr=False)
@@ -215,8 +219,14 @@ class RealtimeSkeletonRigidifier:
             height_mm=height_mm,
         )
 
-        def make_lengths(seeds: dict[str, float]) -> RollingBoneLengths:
-            return RollingBoneLengths(bone_seeds=seeds, window_s=window_s)
+        def make_lengths(seeds: dict[str, float]) -> SegmentLengthEstimator:
+            return SegmentLengthEstimator(
+                segment_endpoints={
+                    key: tuple(key.split("->", 1)) for key in seeds
+                },
+                segment_seeds=seeds,
+                window_seconds=window_s,
+            )
 
         body_lengths = make_lengths(body_seeds)
         rhand_lengths = make_lengths(hand_seeds)
@@ -285,11 +295,21 @@ class RealtimeSkeletonRigidifier:
             for name, pos in lhand_out.items()
             if name in self._hand_name_to_tracker_l
         }
+        rhand_standard = {
+            f"right_{name}": pos
+            for name, pos in rhand_out.items()
+        }
+        lhand_standard = {
+            f"left_{name}": pos
+            for name, pos in lhand_out.items()
+        }
 
         return RigidifyResult(
             body_positions=body_out,
             left_hand_positions=lhand_tracker,
             right_hand_positions=rhand_tracker,
+            left_hand_standard_positions=lhand_standard,
+            right_hand_standard_positions=rhand_standard,
         )
 
     def reset(self) -> None:

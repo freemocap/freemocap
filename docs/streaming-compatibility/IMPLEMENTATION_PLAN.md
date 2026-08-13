@@ -17,15 +17,16 @@
 ## Scope table (authoritative)
 
 ### `[IN]` — near-term build
-- **Standard-human model** (SF-SH-1…SF-SH-6): VRM 1.0 bones + hierarchy + alias table + 52 ARKit blendshape
-  declarations + per-bone reference geometry (T-pose + `CoordinateFrameDefinition`) — see
-  [phase-1/standard-human-model/](phase-1/standard-human-model/README.md).
+- ✅ **Standard-human model** — DONE 2026-08-13: the composed 55-segment VRM 1.0 human (body + hands + face
+  bones), dict-backed `StandardHuman`, T-pose reference geometry, keypoint-declared solver, one length
+  estimator. See [phase-1/09](phase-1/09-segment-model.md).
 - **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; rewrite
   `AnatomicalStructure`/`ModelInfo`/managers onto the standard human; produce per-bone world+local
   quaternions (identity == T-pose). ([11](11-kinematics-fold-in.md)).
-- **Tracker→canonical mapping**: every canonical landmark produced from tracker keypoints via the
-  `*_to_canonical_mapping.yaml` forms; add the `anatomical_offset` mapping form for off-surface joint
-  centers (clavicle SC/GH) ([13](13-tracker-to-canonical-mapping.md)).
+- **Tracker→standard-human mapping**: every keypoint the model declares produced from tracker keypoints
+  via the `*_to_standard_human_mapping.yaml` forms (string/list/dict/`anatomical_offset` — SC bilateral
+  landed; `mid_sternum`/`head_vertex`/`foot_ball`/`jaw` are Phase B). The completeness contract
+  (`required_keypoints()` = 72) is the interface ([13](13-tracker-to-canonical-mapping.md), [09 Task 6](phase-1/09-segment-model.md)).
 - **The LSL-shaped standard stream**: a schema (channels, joint hierarchy, T-pose, convention, units)
   sent once + timestamped samples per frame (with both `ROTATIONS_WORLD` + `ROTATIONS_LOCAL` channel
   groups), mirroring LSL's data model, over the existing WebSocket. Backend standard-stream encoder +
@@ -45,11 +46,9 @@
   decomposition; **3D data → rolling-window time-series stores** (default ~100 frames, settable).
 - **`websocket_server.py` breakup** (fused with the standard-stream reshape).
 - **Audit `app_state` / inbound "settings"** end-to-end; flag dead paths for removal.
-- **Engine test suite** ([14](14-engine-testing-strategy.md)): stand up `skellyforge/tests/` +
-  `skellytracker/tests/` (neither exists) and cover quaternion algebra, the parent-relative composition
-  convention, basis/Kabsch, the orientation solver, critical damping, and `anatomical_offset`. The
-  differential-bend + round-trip cases land **before** the composition-order fix, so the test decides the
-  convention rather than confirming it.
+- ✅ **Engine test suite** — DONE: `skellyforge/tests/` (94 green: composition convention, solver, damping,
+  reference geometry, model, estimator) + `skellytracker/tests/` (222 passing non-video; the mapping
+  completeness tests are Phase B). The differential-bend + round-trip cases landed before the D1 fix.
 
 ### `[LATER]`
 - VRChat OSC adapter; Rokoko JSON adapter.
@@ -77,8 +76,8 @@
 | Multi-subject keying detail | Subject addressing on the frame | Multi-person tracking design |
 | `app_state` / inbound "settings" audit | Status feed; one-way-WS decision; dead-path removal | Audit during the wedge |
 | Rokoko plugin licensing/source acceptance | Rokoko adapter `[LATER]` | Read Rokoko's open-source plugins |
-| **Landmark-vs-bone: what do `POINTS` / `OVERLAY_2D` enumerate?** ([09](09-standard-stream-protocol.md) says landmarks; [phase-1/03](phase-1/03-canonical-frame-extensions.md) + code say bone names) | FMC-WS-2 encoder; FMC-WS-4 UI decoder — both hardcode a block layout against it | Decide, then state it once in [09](09-standard-stream-protocol.md) and have `phase-1/03` defer to it — see [AUDIT_2026-08-12 §2.1](AUDIT_2026-08-12.md#21-landmark-vs-bone-the-specs-contradict-each-other) |
-| **Where the canonical bone definition lives** — `standard_human.yaml` vs. pure Python (the `TBD` in [phase-1/standard-human-model](phase-1/standard-human-model/README.md) § File structure) | SF-SH-1 definition-of-done; moving the model out of the freemocap aggregator bootstrap into SkellyForge | Decide the format — see [AUDIT_2026-08-12 §2.2](AUDIT_2026-08-12.md#22-where-the-canonical-bone-definition-lives--an-unresolved-tbd-answered-by-default) |
+| ~~Landmark-vs-bone: what do `POINTS` / `OVERLAY_2D` enumerate?~~ | — | **Resolved 2026-08-13 by the reframe** — the landmark layer is retired entirely; the channel groups enumerate tracker **keypoints** (`KEYPOINTS_3D`) and **segments** (`SEGMENT_ORIGINS` + rotations), per [09-standard-stream-protocol § channels](09-standard-stream-protocol.md#channels). FMC-WS-3 implements against it (Phase F). |
+| ~~Where the canonical bone definition lives~~ | — | **Resolved 2026-08-13** — **pure Python, composed**: parts authored in `body_part.py`/`hand_part.py`/`face_part.py`, expanded by `compose_parts()`, validated by the frozen `StandardHuman` dataclass. No YAML model; the old aggregator bootstrap is deleted in Phase D (Task 9). |
 | ~~Does `ROTATIONS_WORLD` have a committed consumer?~~ | — | **Resolved 2026-08-12** — yes, and it stays. The stream carries **everything** (small data); [FMC-RB](phase-1/06-rigid-body-bone-renderer.md) drives the viewport from it directly. |
 | ~~Camera parameters for 2D landmark reprojection~~ | — | **Resolved 2026-08-12** — the **existing camera calibration infrastructure**. If we reconstruct 3D, we know the cameras by definition. See [FMC-SR §3](phase-1/07-spec-reconciliation.md#3-2d-overlays-carry-both-detections-and-reprojections-new). |
 | ~~Testing home for the SkellyForge engine~~ | — | **Resolved 2026-08-12** — new sibling doc [14 — Engine Testing Strategy](14-engine-testing-strategy.md). [08](08-testing-strategy.md) keeps the wire; 14 owns the math. Suite added to `[IN]` scope. |
@@ -131,13 +130,16 @@ consumer.
 
 ## Todo (current focus)
 
-**Current path: [`phase-1/10-whole-project-alignment.md`](phase-1/10-whole-project-alignment.md)** — the
-whole-project re-derivation under the keypoint → segment reference geometry framing. The paused D7/D8 work
-is answered by **disposition, not fix**: the keypoint-level half (bilateral SC in both tracker mappings +
-D39 raise) is kept, the graph-level half (`canonical_body.yaml` reroot) reverts to HEAD. Ordered phases:
-A segment model (SF-SM T1–5) → B keypoint contract (SF-SM T6 + YAML rename) → C solver + estimator (T7–8)
-→ D retire old models + rewire aggregator (T9) → E **posthoc rebuild (new — needs its own detail plan)** →
-F stream side (FMC-WS-2/3/4 + FMC-RB) → G docs rewrite (T10).
+**Current phase: B — the keypoint contract, per tracker (SF-SM Task 6)** —
+[`phase-1/10`](phase-1/10-whole-project-alignment.md) step order; detail in
+[`phase-1/09` Task 6](phase-1/09-segment-model.md#task-6-the-required-keypoint-contract-per-tracker).
+**Phase A is COMPLETE** (2026-08-13): Tasks 1–8 + the 4B+5+7 model-rewrite unit + the mapping rename,
+skellyforge suite 94/94, skellytracker 222 passed (non-video). Phase B remaining: the completeness
+contract test (parametrized over all four mappings against `required_keypoints()` = 72 — it will fail
+RED on `mid_sternum`, `head_vertex`, `foot_ball` ×2, `jaw`), the load-time raise test, the five
+`anatomical_offset` definitions in both body mappings (+ the `eye_width` named length), then **Commit
+Round 1** (the user pushes skellyforge + skellytracker; freemocap's two mapping-path dicts + the
+`SegmentLengthEstimator` import update on disk in the same pass).
 
 Standing done: SF-SH-1/3/4/5, ST-SH-2, FMC-WS-1; canonical convention locked 2026-08-12
 (`mm · right-handed · +Z up · +X forward`, quaternions `wxyz` — code still says `+Y`, defect D34);
@@ -146,6 +148,87 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-13 (PHASE B CODE DONE — the completeness contract is green)** — `test_mapping_completeness.py`
+  in skellytracker: the required 72-name set travels as a golden fixture (generated from the model;
+  regeneration command in its header — skellytracker's tests can't import skellyforge), the family
+  union covers both tracker families (rtmpose + mediapipe: body names + each hand name under BOTH side
+  prefixes — the hand mapping is authored side-agnostically, mirroring the segment parts), and
+  `TrackerMapping` gained `known_tracker_keypoints` — the D24 load-time raise (occlusion stays a silent
+  per-frame skip). Went RED on exactly `mid_sternum`, `head_vertex`, `foot_ball` ×2, `jaw`, then green
+  via five `anatomical_offset` definitions in BOTH body mappings (+ the `eye_width` named length):
+  mid_sternum (SC basis, midline), head_vertex (Winter's 0.040 H as 0.17 × shoulder width),
+  foot_ball (0.67 of ankle→big_toe; the shin as the approximate axis — the heel/toe-fan axes are
+  degenerate for MediaPipe's foot_index), jaw (0.9 down / 0.2 posterior of eye width). Suites:
+  skellytracker **226 passed** (non-video), skellyforge **94**. **NEXT: Commit Round 1 — the user**
+  (push skellyforge + skellytracker; freemocap's two path dicts + `SegmentLengthEstimator` import
+  update on disk in the same pass; uv lock/sync) → then Phase D.
+- **2026-08-13 (tracker mappings renamed to the standard-human vocabulary)** — Per the user: the four
+  `*_to_canonical_mapping.yaml` files are now `*_to_standard_human_mapping.yaml`; the four detector
+  `canonical_mapping_path()` methods are `standard_human_mapping_path()`; `tracker_mapping.py`'s language
+  swept ("canonical landmark" → "standard-human keypoint", `canonical_names` → `keypoint_names`
+  property) with the D20 typing modernization applied; the YAML comment headers swept (MediaPipe's own
+  `PoseLandmarker`/`HandLandmarker` product names stay — they're Google's API identifiers). Verified:
+  zero canonical/landmark hits in the mapping layer, all four mappings load and `apply` works (SC
+  bilateral produced with real input). **Deferred to the commit round:** freemocap's two mapping-path
+  dicts (`skeleton_rigidifier.py:53`, `center_of_mass.py:62`) call the renamed method — they resolve
+  against the installed skellytracker, so they update in the same round as the push. Uncommitted — user
+  owns git.
+- **2026-08-13 (SF-SM Task 8 done — PHASE A COMPLETE)** — The one length estimator, two windows:
+  `SegmentLengthEstimator` (renamed from `RollingBoneLengths` — the bone vocabulary retired with it) in
+  `skellyforge/kinematics/online_segment_lengths.py`: keyed by **segment name** with
+  `segment_endpoints: {segment → (origin_kp, long_kp)}` + `segment_seeds` + `window_seconds: float | None`
+  (None = unbounded posthoc; nothing evicted), endpoints/seeds validated to match, 11 tests incl. the
+  unbounded-window-equals-batch-median proof (posthoc is not degraded). The freemocap duplicate AND its
+  test are deleted (the estimator's one test home is skellyforge; nothing else imported the copy).
+  freemocap's `skeleton_rigidifier.py` import updates at the commit round (Phase D) — the pinned
+  skellyforge still exports the old name until then. **Phase A (Tasks 1–8) is complete: 94/94 skellyforge
+  tests green.** Next per `phase-1/10`: the final review sweep over the whole Phase-A unit, then Phase B
+  (Task 6 — the keypoint contract per tracker, where the derived keypoints incl. jaw land). All
+  uncommitted — user owns git.
+- **2026-08-13 (face bones driven — VRM 1.0 confirmed against the spec)** — Verified against the official
+  `vrm-c/vrm-specification` (`VRMC_vrm-1.0/humanoid.md` + `expressions.md`): VRM 1.0 defines `leftEye`/
+  `rightEye`/`jaw` as humanoid bones parented to `head` ("the model's eye movement controlled by bones")
+  AND an 18-preset expression system (the 52 ARKit names are our face-tracking input vocabulary; the
+  ARKit→VRM mapping stays in the adapter per locked decision 4). Per the user's decision, the three face
+  bones are now **driven** segments: ORIGIN-attached to the head (head-center line), eyes rest +X, jaw
+  rest ≈12.5° off +Z (derived from the Task 6 jaw-offset design: 0.9·eye-width down / 0.2 posterior of
+  `nose`, `reference_length: eye_width` — added to Task 6's derived-keypoint list in both body
+  mappings). The `undriven_segments` machinery is deleted; `required_keypoints()` = 72 over all 55
+  segments; the shared `nose` keypoint is off-chain (not emitted in the rest-keypoint map — no
+  authoritative rest position). Suite **83/83 green**. Uncommitted — user owns git.
+- **2026-08-13 (SF-SM Tasks 4–7 done — the model-rewrite unit)** — The hand part (16 segments, fan
+  angles from the addon's magnitudes + canonical signs, Buryanov & Kotiuk ratios), the face part (3
+  declared-undriven segments + the 52 blendshape channels), the `StandardHuman` rewrite (composed frozen
+  dataclass, dict-backed indices — D13's O(n²) is gone — 55 segments matching `BONE_ALIASES`, 69 driven
+  required keypoints), `reference_geometry.py` (T-pose build: extrinsic-XYZ `rest_rotation`, right-side
+  mirroring with frames rebuilt right-handed, twist-override table for rest-collinear/off-chain twist
+  references, name-agreement ORIGIN attachment), and the solver rewrite (keypoint-declared two-tier
+  twist, singularity gate, D3/D4 damping kept, `_get_distal_position`/`TwistPolicy`/`HumanBone` deleted —
+  `human_bones.py` retired with its last importers). The unit's own bug found and fixed in-pass: the
+  ORIGIN-attachment keypoint inconsistency (finger mcps vs. the hand's distal) broke identity-at-T-pose
+  by 180° on the middle proximal phalanges — caught by the new `test_identity_at_t_pose` (doc 14 §4's
+  contract) and fixed by the name-agreement rule. Suite **82/82 green**. Uncommitted — user owns git.
+  Next: SF-SM Task 8 (the one length estimator) — Phase A's last task; then the review sweep and Task 6.
+- **2026-08-12 (SF-SM Task 3 done — the body part)** — `skellyforge/.../standard_human/body_part.py`:
+  `BODY_MIDLINE_PART` (6 segments) + `BODY_LIMB_PART` (7, authored left-side, instantiated ×2) +
+  `compose_body_parts()` → the 20-segment body. Authoring decisions recorded in the plan (plan == code):
+  `rest_rotation` derived from canonical T-pose geometry (single-axis Euler triples — the addon's
+  `freemocap_tpose` eulers are bone-space, not portable, so it cross-checks only); `rest_roll` = 0 and
+  `rotation_limits` = None until Task 5 pins the segment local-frame convention; `shoulder` 0.103 and
+  `foot`/`toes` 0.026/0.013 are stated estimates. **Task 3's authoring exposed a Task 2 gap, fixed first:**
+  unconditional prefixing broke midline references (`left_shoulder`→`left_upper_chest`), so
+  `compose_parts` now resolves parents AND keypoints by name agreement (prefixed → unprefixed fallback,
+  kept-as-authored otherwise). Review findings fixed in-pass: exact 20-entry parent map asserted in the
+  test; twist-collinearity-at-rest recorded as design intent (the rest pose IS the degenerate case;
+  Task 5's rest approximate axis uses the hinge direction, not the twist keypoint). Suite **76/76
+  green**. Uncommitted — user owns git. Next: SF-SM Task 4 (hand/face parts + StandardHuman rewrite).
+- **2026-08-12 (SF-SM Task 2 done — part composition)** — `skellyforge/skellymodels/standard_human/segment_parts.py`
+  (`SegmentPart`, `instantiate_part`, `compose_parts` — parts authored once, instantiated per side via
+  `dataclasses.replace` prefixing, duplicate-name detection) + `test_part_composition.py` (9 tests). TDD,
+  two-stage review; the quality review's three unpinned seams (empty-prefix midline parts, root
+  `parent=None` survival, fully-prefixed `required_keypoints()` — the seams Task 3's body part stands on)
+  pinned in the same pass. Plan synced (plan == code). Suite **73/73 green**. Uncommitted — user owns git.
+  Next: SF-SM Task 3 (the 13-segment body part).
 - **2026-08-12 (SF-SM Task 1 done — `SegmentDefinition`)** — First code of Phase A, in skellyforge:
   `segment_definition.py` (frozen dataclass: origin/long-axis/twist keypoints + rest pose; fail-loud
   validators) + `test_segment_definition.py` (13 tests). TDD per the plan (failing first), two-stage

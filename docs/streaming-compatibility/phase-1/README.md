@@ -42,12 +42,13 @@ FMC-WS-6 (tests) ── throughout
 
 Recommended order: **FMC-WS-1 → FMC-WS-3 → FMC-WS-2 → FMC-WS-4**, with **FMC-WS-5** parallel and **FMC-WS-6** continuous.
 
-## Key sequencing decision — DECIDED: (A) positions-first
+## Key sequencing decision — **superseded 2026-08-11, recorded here 2026-08-13**
 
-Phase 1 ships the stream reshape with rotation channels **declared but NaN**; **FMC-WS-5** (the large kinematics
-fold-in + standard-human rig) lands live rotations into those channels as a **parallel track**. This keeps the
-slice unblocked and proves the whole pipeline fast; VMC (which needs rotations) waits for FMC-WS-5. *(Option B —
-rotations on the Phase-1 critical path — was rejected.)*
+The canonical human was **front-loaded**: the stream shape cannot be designed without knowing what flows
+through it. Rotations are populated live (not declared-NaN); the open half is the encoder (FMC-WS-2).
+The detailed path is [`10-whole-project-alignment.md`](10-whole-project-alignment.md) — phases A–G —
+and the current handoff is [`HANDOFF_2026-08-13.md`](HANDOFF_2026-08-13.md). (FMC-WS-5 was absorbed
+into the standard-human sub-plan; the original positions-first text above is the record.)
 
 ## Plan hierarchy convention
 
@@ -68,9 +69,9 @@ rotations on the Phase-1 critical path — was rejected.)*
 - [x] **SF-SH-4 (orientation solver) implemented** — `skellyforge/kinematics/orientation_solver.py`
 - [x] **ST-SH-2 (tracker→canonical mappings) implemented** — `skellytracker/core/io/tracker_mapping.py`
 - [x] **SF-SH-5 (wire-up) implemented** — solver wired into freemocap aggregator, rotation fields on frame
-- [ ] FMC-WS-3 (adapter) → FMC-WS-2 (encoder) → FMC-WS-4 (UI wedge)
-
-- [ ] **FMC-SR (spec reconciliation)** — in progress; see below.
+- [x] **SF-SM Phase A complete (2026-08-13)** — segment model, solver, estimator; 94/94 skellyforge.
+- [ ] **Phase B — the tracker-mapping completeness contract** (SF-SM Task 6) — current.
+- [ ] FMC-WS-3 (adapter) → FMC-WS-2 (encoder) → FMC-WS-4 (UI wedge) — after the commit round.
 
 Plans: [FMC-WS-1 contract](01-standard-stream-contract.md) · [FMC-WS-3 frame extensions](03-canonical-frame-extensions.md)
 · [FMC-WS-2 backend encoder + WS reshape](02-backend-encoder-and-ws-reshape.md) · [FMC-WS-4 UI wedge](04-ui-wedge.md) ·

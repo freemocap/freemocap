@@ -5,9 +5,14 @@ subsystem that gives FreeMoCap's own real-time stream a clean, self-describing (
 fans **that** out to third-party motion-capture protocols (LSL, VMC, and more), driven over HTTP and
 surfaced in the UI.
 
-> **Status:** specification. This folder describes the *target* system and the work to build it.
-> Nothing here is implemented yet. Scope (what we build soon vs. later) is tracked in
-> [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md).
+> **Status: in build.** The canonical human (the composed 55-segment VRM 1.0 model, keypoint-driven
+> solver, reference geometry, length estimator) is **done**; the tracker-mapping completeness contract
+> is the current phase. Scope + progress: [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md); the
+> current-path plan: [`phase-1/10`](phase-1/10-whole-project-alignment.md); **start at**
+> [`phase-1/HANDOFF_2026-08-13.md`](phase-1/HANDOFF_2026-08-13.md). Note: the *vocabulary* reframed
+> in 2026-08 — "canonical keypoints" and "landmarks" are retired; the boundary is keypoint → segment
+> reference geometry (see [phase-1/09](phase-1/09-segment-model.md)); several of the numbered docs
+> below still carry the old words until Task 10 rewrites them.
 
 ## Read in this order
 

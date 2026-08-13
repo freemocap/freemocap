@@ -44,13 +44,13 @@ So the disposition is per-file, not per-defect:
 
 | Repo | File (uncommitted) | Disposition | Why |
 |---|---|---|---|
-| skellytracker | `rtmpose_body_to_canonical_mapping.yaml` | **KEEP** | Bilateral SC via `anatomical_offset` is exactly the new framing's derived-keypoint mechanism; folds into Phase B untouched |
-| skellytracker | `mediapipe_body_to_canonical_mapping.yaml` | **KEEP** | same |
+| skellytracker | `rtmpose_body_to_standard_human_mapping.yaml` (renamed 2026-08-13) | **KEEP** | Bilateral SC via `anatomical_offset` is exactly the new framing's derived-keypoint mechanism; folds into Phase B untouched |
+| skellytracker | `mediapipe_body_to_standard_human_mapping.yaml` (renamed 2026-08-13) | **KEEP** | same |
 | skellytracker | `core/io/tracker_mapping.py` (D39: unknown offset axis now raises) | **KEEP** | fail-loud is the house rule; new-framing-neutral |
 | skellyforge | `skellymodels/tracker_info/canonical_body.yaml` | **REVERT** (user git action — see §2) | The SC-landmark additions + `segment_connections` reroot + symbolic `bone_length_ratios` are edits to a graph stack that dies in Phase D. The file is currently **internally inconsistent** (`joint_hierarchy` still routes `neck_center → left_shoulder`); the committed HEAD state is at least consistent, and nothing durable is lost — SC survives in the mappings, and Phase D re-derives the keypoint list from the model |
 | freemocap | docs + 4 test-import fixes (this session) | **KEEP** | working-tree; user commits at convenience |
 
-- [ ] **Step 1 (user):** revert `canonical_body.yaml` — `git restore skellyforge/skellymodels/tracker_info/canonical_body.yaml` in the skellyforge repo (the working rule: the user owns git; never touch it from the agent side).
+- [x] **Step 1 (user):** revert `canonical_body.yaml` (done 2026-08-12/13) — `git restore skellyforge/skellymodels/tracker_info/canonical_body.yaml` in the skellyforge repo (the working rule: the user owns git; never touch it from the agent side).
 
 ---
 
@@ -62,52 +62,57 @@ Phases are ordered; each ends at a verification point or a commit round. `(user)
 
 Foundation; no cross-repo friction. Detail in [`09`](09-segment-model.md).
 
-1. [ ] **Task 1** — `SegmentDefinition` (fully specified: tests + implementation written out in the doc).
-2. [ ] **Task 2** — part composition (`SegmentPart`, `compose_parts`; fully specified).
-3. [ ] **Task 3** — the body part: 13 segments from the VRM table, rest rotations/rolls ported from the
+1. [x] **Task 1** — `SegmentDefinition` (fully specified: tests + implementation written out in the doc).
+2. [x] **Task 2** — part composition (`SegmentPart`, `compose_parts`; fully specified).
+3. [x] **Task 3** — the body part: 13 segments from the VRM table, rest rotations/rolls ported from the
        addon's `freemocap_tpose` **with the name translation** (addon `pelvis`→`hips`, `thigh`→`upper_leg`,
        `face`→`head`, `spine.001`→`chest`, …; `upper_chest`/`toes` authored, provenance stated); ROM
        `None` where the addon has no limit.
-4. [ ] **Task 4** — hand + face parts; `StandardHuman` rewrite onto composition (55 segments, `dict`-backed
+4. [x] **Task 4** — hand + face parts; `StandardHuman` rewrite onto composition (55 segments, `dict`-backed
        indices — kills D13's O(n²)).
-5. [ ] **Task 5** — reference geometry from the T-pose (`origin + basis + length`, no distal point).
+5. [x] **Task 5** — reference geometry from the T-pose (`origin + basis + length`, no distal point).
 
-Ends: skellyforge suite green. `(user)` commit skellyforge when convenient — not required for Phase B.
+Ends: skellyforge suite green (94 tests as of 2026-08-13). **Done** — plus the 4B+5+7 model-rewrite
+unit and Task 8 landed in the same sweep, so Phase C below is already complete except the
+literature check. `(user)` commit skellyforge when convenient.
 
 ### Phase B — the keypoint contract, per tracker (SF-SM Task 6, revised) · skellytracker + skellyforge
 
 Detail in [`09` Task 6](09-segment-model.md#task-6-the-required-keypoint-contract-per-tracker).
 
-6. [ ] Absorb the **kept** D7/D8 artifacts (already on disk — bilateral SC in both body mappings, D39 raise).
-7. [ ] `test_mapping_completeness.py` — parametrized over all four mappings, asserting each produces every
+6. [x] Absorb the **kept** D7/D8 artifacts (on disk since 2026-08-12) (already on disk — bilateral SC in both body mappings, D39 raise).
+7. [x] `test_mapping_completeness.py` — DONE 2026-08-13 (golden fixture + family union with hand side-instantiation; 226 green) — parametrized over all four mappings, asserting each produces every
        name in the model's `required_keypoints()`; plus the load-time raise test (D24's fail-loud half).
        *(Note: `skellytracker/tests/` **exists** — detector tests + conftest; `09` was corrected.)*
-8. [ ] Add `anatomical_offset` definitions for `mid_sternum`, `head_vertex`, `foot_ball` to **both** body
+8. [x] Add `anatomical_offset` definitions — DONE 2026-08-13 (all five, both mappings, incl. the `eye_width` named length) for `mid_sternum`, `head_vertex`, `foot_ball` — **and `jaw`**
+      (the face bones joined the driven contract 2026-08-13) — to **both** body
        mappings, identically (D7's real lesson: every tracker produces the full set, or the model means
        different things per detector).
-9. [ ] Rename the four YAMLs → `{tracker}_keypoint_mapping.yaml`; update the four detector
-       `mapping_yaml_path()` references, the `tracker_mapping.py` docstring, **and freemocap's two
-       path-constant dicts** (`skeleton_rigidifier.py:53` `_BODY_MAPPING_YAML_BY_DETECTOR` /
-       `_HAND_MAPPING_YAML_BY_DETECTOR`, `center_of_mass.py:62` — freemocap working tree, since freemocap
-       reads the YAMLs from the *installed* skellytracker package).
+9. [x] Rename the four YAMLs → `{tracker}_to_standard_human_mapping.yaml` — **done 2026-08-13**:
+       the YAMLs, the four detector `standard_human_mapping_path()` methods, `tracker_mapping.py`'s
+       vocabulary (incl. D20 typing modernization), and the YAML comment language. **Remaining at the
+       commit round:** freemocap's two path-constant dicts call the renamed method
+       (`skeleton_rigidifier.py:53`, `center_of_mass.py:62` — they resolve against the *installed*
+       skellytracker package, so they update in the same round as the push).
 
-Ends: skellytracker + skellyforge suites green → **Commit Round 1** `(user)`: push skellyforge +
+Ends: skellytracker (226 non-video) + skellyforge (94) suites green — **Phase B code done 2026-08-13** →
+**Commit Round 1** `(user)`: push skellyforge +
 skellytracker, then in freemocap `uv lock --upgrade-package skellyforge` &&
 `uv lock --upgrade-package skellytracker` && `uv sync`. Only after this does freemocap's env see the
 composed model and the renamed YAMLs.
 
-### Phase C — solver + estimator (SF-SM Tasks 7–8) · skellyforge (+ one freemocap disk edit)
+### Phase C — solver + estimator (SF-SM Tasks 7–8) · **done 2026-08-13** ✅
 
-10. [ ] **Twist-research check** ([`09` §7](09-segment-model.md#7-open-items)) — confirm the two-tier
-        twist design (declared twist keypoint, else damped minimal roll) against reconstruction-kinematics
-        best practice. Short literature pass; do not hold A/B on it.
-11. [ ] **Task 7** — solver reads declared keypoints (55 orientations; no first-child inference; the
-        `neck`/`head` crash becomes load-time validation).
-12. [ ] **Task 8** — one median length estimator, window-parameterized, keyed by segment name; delete the
-        freemocap duplicate + repoint its test (freemocap working-tree change; takes effect locally
-        immediately).
+10. [x] **Task 7** — solver reads declared keypoints (all 55 orientations; no first-child inference; the
+        `neck`/`head` crash is load-time validation). Landed as the 4B+5+7 model-rewrite unit.
+11. [x] **Task 8** — one median length estimator (`SegmentLengthEstimator`), window-parameterized, keyed
+        by segment name; the freemocap duplicate and its test deleted.
+12. [ ] **Twist-research check** ([`09` §7](09-segment-model.md#7-open-items)) — confirm the two-tier
+        twist design (declared twist keypoint, else damped minimal roll) against
+        reconstruction-kinematics best practice. **Re-triggered:** the solver landed without it;
+        it now fires before Phase F (VMC consumes `ROTATIONS_LOCAL`), not before Task 7.
 
-Ends: skellyforge suite green (51 existing + new).
+Ends: skellyforge suite green — **94 tests as of 2026-08-13**.
 
 ### Phase D — retire the old models + rewire the aggregator (SF-SM Task 9) · gated on Round 1
 
@@ -176,7 +181,7 @@ Gated on: Round 1 (composed model + renamed mappings reach freemocap's env).
 | Round | After | Pushes | Then |
 |---|---|---|---|
 | 0 | §1 disposition | skellyforge revert + kept skellytracker files (or revert-vs-commit as the user prefers) | — |
-| 1 | Phase B | skellyforge + skellytracker | freemocap: `uv lock --upgrade-package skellyforge skellytracker` + `uv sync` |
+| 1 | Phase B | skellyforge + skellytracker | freemocap: `uv lock --upgrade-package skellyforge skellytracker` + `uv sync`; **in the same pass, on disk:** update the two mapping-path dicts to `standard_human_mapping_path()` (`skeleton_rigidifier.py:53`, `center_of_mass.py:62`) and the `RollingBoneLengths` → `SegmentLengthEstimator` import (`skeleton_rigidifier.py:44`) — they resolve against the installed packages, so they change with the sync, not before |
 | 2 | Phase D | freemocap + skellyforge | unblocks E/F on the real model |
 | … | each phase end | as the user decides | — |
 
@@ -184,7 +189,7 @@ Gated on: Round 1 (composed model + renamed mappings reach freemocap's env).
 
 | Question | Trigger |
 |---|---|
-| Twist-resolution best-practices check (Phase C step 10) | before SF-SM Task 7 |
+| Twist-resolution best-practices check (Phase C step 12) | before Phase F — VMC consumes `ROTATIONS_LOCAL` |
 | CoM mass-redistribution capability — survives or is dropped? | Phase D step 15 |
 | `observation.py` silent-fallback imports — keep or fail loudly? | Phase E detail plan |
 | ROM enforcement design (closed-form clamp ≠ constraint iteration) | after the model lands |

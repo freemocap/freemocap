@@ -7,14 +7,19 @@
 >
 > **This supersedes the keypoint→landmark framing.** [`13`](../13-tracker-to-canonical-mapping.md) declared
 > itself SSOT for a *keypoint / landmark / segment* distinction in which landmarks were an intermediate
-> layer that a model got fitted to. That layer is obsolete. Task 10 rewrites `13` and the docs that
-> inherited it.
+> layer that a model got fitted to. That layer is obsolete — as is the "canonical keypoint" set that
+> inherited its role. **The boundary is keypoint → segment reference geometry:** segment definitions
+> reference keypoints **directly by name** to define their origin / long-axis / twist axes; there is no
+> intermediate canonical-keypoint or landmark layer. Task 10 rewrites `13` and the docs that inherited
+> the old framing.
+>
+> **Whole-project ordering + the D7/D8 disposition:** [`10-whole-project-alignment.md`](10-whole-project-alignment.md).
 
 **Goal:** One segment model in SkellyForge — VRM-1.0-aligned rigid bodies whose reference geometry is
 defined directly from tracker keypoints — replacing the three partial human models that exist today.
 
 **Architecture:** A segment is a rigid body with an **origin**, an **orientation**, and a **length**. All
-three are declared per segment as *named canonical keypoints* plus a rest pose; one declaration is
+three are declared per segment as *named keypoints* plus a rest pose; one declaration is
 evaluated twice — against the T-pose to build the reference geometry, and against each frame to read the
 live pose. Parts (body, hand, face) are authored once and instantiated per side. The solver walks the tree
 once and emits origins **and** quaternions.
@@ -38,13 +43,14 @@ not two encodings of one model — B is VRM rigid bodies, A is a landmark graph 
 includes `head` = `left_ear → right_ear` (a width chord, not an orientable body).
 
 The newest code already speaks the right language: across `skellyforge/kinematics/` and
-`standard_human/`, "landmark" appears only in prose and in **one** field — `HumanBone.proximal_landmark`,
-the vestigial bridge. Its FreeMoCap counterpart `_BONE_TO_LANDMARK` maps `neck` and `head` to the same
-point, so the solver raises `ValueError: Bone 'neck' has coincident live proximal and distal joints` on
-any frame containing `head_center`, and there is no `try`/`except` in the aggregator frame loop.
-
-# JSM NOTE - ❯ the _BONE_TO_LANDMARK stuff is hella deprecated - deeply obviated by a LOT of the recent work - needs aligne diwth latest plans which revolve around the keypoint -> bone reference gemeory approach
-
+`standard_human/`, "landmark" survives only in prose and in **one** field — `HumanBone.proximal_landmark`.
+Both remaining bridges (`proximal_landmark`, and its FreeMoCap counterpart `_BONE_TO_LANDMARK`) are
+artifacts of the retired landmark layer, already obviated by the keypoint → reference-geometry design —
+they are **deleted, not ported** (decision 10). The live defect they currently cause is the proof the
+bridge must not survive: `_BONE_TO_LANDMARK` maps `neck` and `head` to the same point (`head_center`), so
+the solver raises `ValueError: Bone 'neck' has coincident live proximal and distal joints` on any frame
+containing `head_center`, and there is no `try`/`except` in the aggregator frame loop. Tasks 1 + 9 close
+it: validation at model load, then deletion.
 
 **Reference implementation.** The FreeMoCap Blender addon's armature pipeline solves this problem and its
 output is known-good. Its vocabulary is obsolete (MediaPipe names, `spine.001`, `f_index.01.R`) and is
@@ -65,8 +71,13 @@ Today's `TwistPolicy.twist_source_bone` can only borrow a child's long axis, whi
 hands and both toes produce no orientation at all (no children) and why `neck` crashes. Declaring a twist
 keypoint makes every segment solvable.
 
-
-#JSM NOTE - this 'twist keyopint' thing might be ok... but also we should use dampled track methods that just minimize roll when its not specified - we should follow best practices for best reconstruction of kinematics - if we nee dto look up research and documentation aroun dtheis question we can do so - we want to do the best possible calculation based on best pracices 
+**Twist resolution is two-tier, and both tiers are already proven in code.** Where a segment declares a
+twist keypoint, roll resolves from that keypoint (the addon's `LockedTrack` analogue). Where it does
+**not**, the solver falls back to the **damped minimal-twist** tier — hold rest roll and critically damp,
+i.e. *minimize roll drift* rather than invent one. That fallback is the existing `DAMPED_MINIMAL` tier
+with the critically damped filter (D3/D4, 51 green tests); SF-SM keeps it, it does not re-derive it.
+Before Task 7, the two-tier design is checked against reconstruction-kinematics best practice — see
+[§7](#7-open-items).
 
 ## 2. Decisions (locked 2026-08-12 — do not re-litigate)
 
@@ -96,26 +107,35 @@ keypoint makes every segment solvable.
     ported.
 
 ## 3. The boundary contract
-#JSM NOTE  - This is a  out of date!!! the tracker to cannonical stuff is a bit old - we DO NOT mapt keypoints to cannonical keypoins or landmarks - we use keypoints to define the relevant axes of the bone segment reference gemorty (skellyforges' kinematics/ code)
+
 ```
 SkellyTracker                      │  the boundary  │            SkellyForge
                                    │                │
- tracker keypoints ──[ {tracker}_to_canonical_mapping.yaml ]──▶ canonical keypoints
- (COCO-WholeBody, MediaPipe)       │                │                    │
+ tracker keypoints ──[ {tracker}_keypoint_mapping.yaml ]──▶ named keypoints
+ (COCO-WholeBody, MediaPipe;       │                │   (direct, mean-derived, offset)
+  per-detector names)              │                │                    │
                                    │                │                    ▼
                                    │                │        segments declare which
                                    │                │        keypoints define their
                                    │                │        origin / long axis / twist
 ```
 
-**The model publishes the canonical keypoints it requires; every tracker mapping must produce all of
+**There is no intermediate canonical-keypoint or landmark set.** Keypoints are keypoints: some come
+straight from the detector, some are derived per tracker (a mean like `hips_center`, an
+`anatomical_offset` like `sternoclavicular`) — and the segment model references them **directly by name**
+to define its reference-geometry axes. SkellyForge owns the declaration ("which keypoints does each
+segment need"); SkellyTracker owns the guarantee that every named keypoint is actually produced, however
+the detector has to produce it.
+
+**The model publishes the keypoint names it requires; every tracker mapping must produce all of
 them.** A mapping that cannot is an error **at load**, not a silent omission. (A keypoint missing *this
 frame* is occlusion — still data, still skipped. Both halves per
 [`13`](../13-tracker-to-canonical-mapping.md) / defect D24.)
 
-Canonical keypoint names are tracker-agnostic and side-agnostic within a part — the hand mappings already
-emit `wrist`, `thumb_cmc`, … with no side prefix, so a hand instantiated with prefix `left_` yields
-`left_wrist`, which is already the body's wrist. Parts join by name agreement (SF-AL A2).
+Keypoint names are side-agnostic within a part — the hand mappings already emit `wrist`, `thumb_cmc`, …
+with no side prefix, so a hand instantiated with prefix `left_` yields `left_wrist`, which is already the
+body's wrist. Parts join by name agreement (SF-AL A2). The mapping files themselves are renamed to drop
+the retired "canonical" vocabulary — `{tracker}_keypoint_mapping.yaml` (Task 6).
 
 ## 4. File structure
 
@@ -156,7 +176,7 @@ emit `wrist`, `thumb_cmc`, … with no side prefix, so a hand instantiated with 
 - Create: `skellyforge/skellymodels/standard_human/segment_definition.py`
 - Test: `skellyforge/tests/test_segment_definition.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # skellyforge/tests/test_segment_definition.py
@@ -165,7 +185,6 @@ import pytest
 from skellyforge.skellymodels.standard_human.segment_definition import (
     ParentAttachment, RotationLimits, SegmentDefinition,
 )
-
 
 def _upper_arm(**overrides) -> SegmentDefinition:
     kwargs = dict(
@@ -183,19 +202,15 @@ def _upper_arm(**overrides) -> SegmentDefinition:
     kwargs.update(overrides)
     return SegmentDefinition(**kwargs)
 
-
 def test_required_keypoints_lists_all_three_roles():
     assert _upper_arm().required_keypoints() == {"shoulder", "elbow", "wrist"}
-
 
 def test_required_keypoints_omits_absent_twist_source():
     assert _upper_arm(twist_keypoint=None).required_keypoints() == {"shoulder", "elbow"}
 
-
 def test_resolves_twist_is_true_only_when_a_twist_keypoint_is_declared():
     assert _upper_arm().resolves_twist is True
     assert _upper_arm(twist_keypoint=None).resolves_twist is False
-
 
 def test_origin_and_long_axis_keypoints_must_differ():
     # This is the `neck`/`head` bug: two roles naming one point yields a zero-length
@@ -203,35 +218,56 @@ def test_origin_and_long_axis_keypoints_must_differ():
     with pytest.raises(ValueError, match="origin_keypoint and long_axis_keypoint"):
         _upper_arm(long_axis_keypoint="shoulder")
 
-
 def test_twist_keypoint_must_differ_from_the_long_axis_keypoint():
     with pytest.raises(ValueError, match="twist_keypoint"):
         _upper_arm(twist_keypoint="elbow")
-
 
 def test_name_must_be_snake_case():
     with pytest.raises(ValueError, match="snake_case"):
         _upper_arm(name="upperArm")
 
-
 def test_length_ratio_must_be_positive():
     with pytest.raises(ValueError, match="length_ratio"):
         _upper_arm(length_ratio=0.0)
+
+def test_length_ratio_must_be_finite():
+    with pytest.raises(ValueError, match="length_ratio"):
+        _upper_arm(length_ratio=float("nan"))
+
+def test_rotation_limits_reject_inverted_bounds():
+    with pytest.raises(ValueError, match="rotation_limits.x"):
+        RotationLimits(x=(90.0, -90.0), y=(-98.0, 180.0), z=(-97.0, 91.0))
+
+def test_rotation_limits_reject_nan_bounds():
+    with pytest.raises(ValueError, match="rotation_limits.x"):
+        RotationLimits(x=(float("nan"), 90.0), y=(-98.0, 180.0), z=(-97.0, 91.0))
+
+def test_rotation_limits_accept_valid_bounds():
+    limits = RotationLimits(x=(-135.0, 90.0), y=(-98.0, 180.0), z=(-97.0, 91.0))
+    assert limits.x == (-135.0, 90.0)
+
+def test_name_with_space_is_rejected():
+    with pytest.raises(ValueError, match="snake_case"):
+        _upper_arm(name="upper arm")
+
+def test_parent_attachment_values_round_trip():
+    assert ParentAttachment("origin") is ParentAttachment.ORIGIN
+    assert ParentAttachment("distal") is ParentAttachment.DISTAL
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `uv run --with pytest pytest skellyforge/tests/test_segment_definition.py -v`
 Expected: FAIL — `ModuleNotFoundError: No module named 'skellyforge.skellymodels.standard_human.segment_definition'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # skellyforge/skellymodels/standard_human/segment_definition.py
 """The authored unit of the standard human: one rigid-body segment.
 
 A segment is an **origin**, an **orientation**, and a **length**. All three are
-declared here as named canonical keypoints plus a rest pose, and this one
+declared here as named keypoints plus a rest pose, and this one
 declaration is evaluated twice — against the T-pose to build the reference
 geometry, and against each frame to read the live pose.
 
@@ -240,9 +276,10 @@ Keypoint names are side-agnostic within a part; composition prefixes them.
 
 from __future__ import annotations
 
+import math
+
 from dataclasses import dataclass
 from enum import Enum
-
 
 class ParentAttachment(str, Enum):
     """Which end of the parent this segment's origin sits at."""
@@ -253,7 +290,6 @@ class ParentAttachment(str, Enum):
 
     DISTAL = "distal"
     """Continue from the parent's distal end — the common case."""
-
 
 @dataclass(frozen=True)
 class RotationLimits:
@@ -271,11 +307,14 @@ class RotationLimits:
     def __post_init__(self) -> None:
         for axis in ("x", "y", "z"):
             low, high = getattr(self, axis)
+            if not math.isfinite(low) or not math.isfinite(high):
+                raise ValueError(
+                    f"rotation_limits.{axis} bounds must be finite, got ({low}, {high})"
+                )
             if low > high:
                 raise ValueError(
                     f"rotation_limits.{axis} lower bound {low} exceeds upper bound {high}"
                 )
-
 
 @dataclass(frozen=True)
 class SegmentDefinition:
@@ -310,9 +349,9 @@ class SegmentDefinition:
                 f"nothing."
             )
 
-        if self.length_ratio <= 0.0:
+        if not math.isfinite(self.length_ratio) or self.length_ratio <= 0.0:
             raise ValueError(
-                f"segment {self.name!r}: length_ratio must be > 0, got {self.length_ratio}"
+                f"segment {self.name!r}: length_ratio must be finite and > 0, got {self.length_ratio}"
             )
 
     @property
@@ -325,17 +364,17 @@ class SegmentDefinition:
         return self.twist_keypoint is not None
 
     def required_keypoints(self) -> set[str]:
-        """Every canonical keypoint this segment needs to be solvable."""
+        """Every keypoint this segment needs to be solvable."""
         names = {self.origin_keypoint, self.long_axis_keypoint}
         if self.twist_keypoint is not None:
             names.add(self.twist_keypoint)
         return names
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `uv run --with pytest pytest skellyforge/tests/test_segment_definition.py -v`
-Expected: PASS — 7 passed
+Expected: PASS — 13 passed (code review added NaN guards + 6 pinning tests; the full suite is 64 green)
 
 - [ ] **Step 5: Commit** *(the user owns git — report the stopping point and stop)*
 
@@ -358,7 +397,6 @@ from skellyforge.skellymodels.standard_human.segment_definition import (
 )
 from skellyforge.skellymodels.standard_human.segment_parts import SegmentPart, compose_parts
 
-
 def _hand_part() -> SegmentPart:
     return SegmentPart(
         name="hand",
@@ -379,11 +417,9 @@ def _hand_part() -> SegmentPart:
         ),
     )
 
-
 def test_instantiating_a_part_prefixes_segment_names():
     composed = compose_parts([(_hand_part(), "left_")])
     assert {s.name for s in composed} == {"left_hand", "left_thumb_metacarpal"}
-
 
 def test_instantiating_a_part_prefixes_keypoint_names():
     composed = compose_parts([(_hand_part(), "left_")])
@@ -392,12 +428,10 @@ def test_instantiating_a_part_prefixes_keypoint_names():
     assert hand.long_axis_keypoint == "left_middle_finger_mcp"
     assert hand.twist_keypoint == "left_thumb_cmc"
 
-
 def test_instantiating_a_part_prefixes_parent_references_within_the_part():
     composed = compose_parts([(_hand_part(), "left_")])
     thumb = next(s for s in composed if s.name == "left_thumb_metacarpal")
     assert thumb.parent == "left_hand"
-
 
 def test_a_parent_outside_the_part_is_still_prefixed_and_joins_by_name_agreement():
     # `lower_arm` lives in the body part; under prefix `left_` it becomes
@@ -407,14 +441,12 @@ def test_a_parent_outside_the_part_is_still_prefixed_and_joins_by_name_agreement
     hand = next(s for s in composed if s.name == "left_hand")
     assert hand.parent == "left_lower_arm"
 
-
 def test_the_same_part_instantiated_twice_yields_structurally_identical_sets():
     composed = compose_parts([(_hand_part(), "left_"), (_hand_part(), "right_")])
     left = sorted(s.name.removeprefix("left_") for s in composed if s.name.startswith("left_"))
     right = sorted(s.name.removeprefix("right_") for s in composed if s.name.startswith("right_"))
     assert left == right
     assert len(composed) == 4
-
 
 def test_duplicate_segment_names_after_composition_raise():
     with pytest.raises(ValueError, match="duplicate segment name"):
@@ -451,7 +483,6 @@ from dataclasses import dataclass
 
 from skellyforge.skellymodels.standard_human.segment_definition import SegmentDefinition
 
-
 @dataclass(frozen=True)
 class SegmentPart:
     """A named group of segments, authored without a side."""
@@ -459,10 +490,8 @@ class SegmentPart:
     name: str
     segments: tuple[SegmentDefinition, ...]
 
-
 def _prefixed(value: str | None, prefix: str) -> str | None:
     return None if value is None else f"{prefix}{value}"
-
 
 def instantiate_part(part: SegmentPart, prefix: str) -> list[SegmentDefinition]:
     """Expand one part under *prefix*, prefixing names, keypoints and parents."""
@@ -477,7 +506,6 @@ def instantiate_part(part: SegmentPart, prefix: str) -> list[SegmentDefinition]:
         )
         for segment in part.segments
     ]
-
 
 def compose_parts(
     parts: Iterable[tuple[SegmentPart, str]],
@@ -540,13 +568,19 @@ Segment table — VRM 1.0 names, keypoint roles derived from the Blender rig's c
 | `toes` | `foot` | distal | `foot_ball` | `big_toe` | `small_toe` |
 
 Three keypoints are **derived** and are new work in the tracker mappings (Task 6): `mid_sternum`,
-`head_vertex`, `foot_ball`. Rest rotations and rolls port from the addon's `freemocap_tpose`; ROM limits
-port from its `LimitRotationConstraint` values.
+`head_vertex`, `foot_ball`. Rest rotations and rolls port from the addon's `freemocap_tpose` — **with a
+name translation, not a copy**: the addon keys are MediaPipe-style (`pelvis` → `hips`, `thigh` →
+`upper_leg`, `shin` → `lower_leg`, `forearm` → `lower_arm`, `face` → `head`, `spine.001` → `chest`);
+`upper_chest` and `toes` have no addon counterpart and are authored from the VRM hierarchy with the
+nearest addon rotation or rest-identity, stating provenance per §7. ROM limits port from the addon's
+`LimitRotationConstraint` values; segments the addon gives no limit (`hips`, `head`, `upper_chest`,
+`shoulder`, `toes`) get `rotation_limits=None` — an unbacked number violates the provenance rule, and
+limits are declared-not-enforced this workstream anyway.
 
 - [ ] **Step 1:** Write `test_body_part_every_segment_reaches_the_root` — walk `parent` from each segment
       and assert termination at `hips` with no cycle.
 - [ ] **Step 2:** Write `test_body_part_declares_no_unreachable_keypoint` — assert
-      `required_keypoints()` over the composed body equals the documented canonical body set.
+      `required_keypoints()` over the composed body equals the documented body keypoint set.
 - [ ] **Step 3:** Run both; expected FAIL (`body_part` does not exist).
 - [ ] **Step 4:** Author `body_part.py` per the table above.
 - [ ] **Step 5:** Run; expected PASS.
@@ -561,7 +595,7 @@ port from its `LimitRotationConstraint` values.
 - Modify: `skellyforge/skellymodels/standard_human/standard_human_model.py` **[rewrite]**
 - Test: extend `skellyforge/tests/test_part_composition.py`
 
-The hand is 16 segments over the 21 canonical hand keypoints, authored once:
+The hand is 16 segments over the 21 named hand keypoints, authored once:
 
 ```
 wrist → thumb_cmc → thumb_mcp → thumb_ip → thumb_tip
@@ -630,7 +664,9 @@ from `rest_roll`.
 **Files:**
 - Modify: `skellytracker/core/io/tracker_mapping.py`
 - Modify: the four `*_to_canonical_mapping.yaml` files
-- Test: `skellytracker/tests/test_mapping_completeness.py` (new — `skellytracker/tests/` does not exist)
+- Rename: the four mapping YAMLs + the four detector `mapping_yaml_path()` references to
+  `{tracker}_keypoint_mapping.yaml` — the `to_canonical` filename asserts the retired layer (§3)
+- Test: `skellytracker/tests/test_mapping_completeness.py` (new file — `skellytracker/tests/` exists with detector tests + conftest)
 
 - [ ] **Step 1:** Write `test_every_tracker_mapping_produces_the_full_required_keypoint_set` —
       parametrized over all four mapping YAMLs, asserting each produces every name in the model's
@@ -639,10 +675,12 @@ from `rest_roll`.
       fail-loud half of D24. A keypoint missing *this frame* is occlusion and is still skipped silently.
 - [ ] **Step 3:** Run; expected FAIL — `mid_sternum`, `head_vertex`, `foot_ball` are produced by no mapping.
 - [ ] **Step 4:** Add `anatomical_offset` definitions for the three derived keypoints to **both** body
-      mappings, identically (D7: every tracker produces the full set, or the canonical model means
+      mappings, identically (D7: every tracker produces the full set, or the segment model means
       different things depending on which detector ran).
-- [ ] **Step 5:** Run; expected PASS.
-- [ ] **Step 6:** Report the stopping point — **this ends in skellytracker and skellyforge, so nothing
+- [ ] **Step 5:** Rename the four mapping YAMLs to `{tracker}_keypoint_mapping.yaml`; update the four
+      detector `mapping_yaml_path()` references and the `tracker_mapping.py` docstring.
+- [ ] **Step 6:** Run; expected PASS.
+- [ ] **Step 7:** Report the stopping point — **this ends in skellytracker and skellyforge, so nothing
       reaches FreeMoCap until the user commits + pushes, then `uv lock --upgrade-package` + `uv sync`.**
 
 ---
@@ -695,7 +733,10 @@ already imports the SkellyForge one — only the FreeMoCap test still imports th
 - [ ] **Step 5:** Parameterize the window (`window_seconds: float | None`, `None` = unbounded); key by
       **segment name**, not `"parent->child"` — the arrow key and both `split("->")` sites (F2) disappear
       because length is a property of a segment.
-- [ ] **Step 6:** Run; expected PASS. Delete the FreeMoCap copy and repoint its test.
+- [ ] **Step 6:** Run; expected PASS. Delete the FreeMoCap copy and repoint its test. The deletion is a
+      **freemocap working-tree** change — freemocap's env reads its own tree, so it takes effect locally
+      immediately; it does not need a push. The skellyforge estimator itself still reaches freemocap only
+      at the commit round, like every skellyforge change.
 - [ ] **Step 7:** Report the stopping point.
 
 ---
@@ -709,7 +750,7 @@ already imports the SkellyForge one — only the FreeMoCap test still imports th
 
 - [ ] **Step 1:** Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
       `_build_solver_positions()`; the aggregator loads the composed `StandardHuman` from SkellyForge and
-      passes canonical keypoints straight through. Closes D11, D12, D16's remainder.
+      passes keypoints straight through. Closes D11, D12, D16's remainder.
 - [ ] **Step 2:** Delete `skellyforge/biomechanics/` (F5) and `dlc_pipeline.py`.
 - [ ] **Step 3:** Re-express CoM against segments using **de Leva (1996)** — mass fraction and
       CoM-as-fraction-of-segment-length, referenced to **joint centres**, which is what our origins are.
@@ -717,7 +758,7 @@ already imports the SkellyForge one — only the FreeMoCap test still imports th
       spanning ear-to-ear. Citation:
       de Leva, P. (1996). *Adjustments to Zatsiorsky-Seluyanov's segment inertia parameters.*
       Journal of Biomechanics, 29(9), 1223–1230.
-- [ ] **Step 4:** Strip `canonical_body.yaml` / `canonical_hand.yaml` to the canonical **keypoint list**
+- [ ] **Step 4:** Strip `canonical_body.yaml` / `canonical_hand.yaml` to the **keypoint list**
       only; `segment_connections`, `joint_hierarchy` and `bone_length_ratios` are superseded by the segment
       model. Repoint `tracker_schema_message.py`'s render connections at the composed segments.
 - [ ] **Step 5:** Run every suite in both repos; report.
@@ -776,6 +817,13 @@ already imports the SkellyForge one — only the FreeMoCap test still imports th
 
   A best estimate that says it is one is a known quantity. An unlabelled number is indistinguishable from a
   measured one, and that is the failure mode — not the estimate itself.
+- **Twist-resolution best practices.** The two-tier design (§1) — declared twist keypoint where one
+  exists, damped minimal roll where it does not — follows the Blender addon's constraint model and the
+  proven D3/D4 damping code, but "minimize roll when unspecified" deserves a check against
+  reconstruction-kinematics best practice before Task 7 locks the solver in. Trigger: before Task 7's
+  solver rewrite; do not hold Tasks 1–6 on it. Sources: humanoid-IK / marker-set-reconstruction literature
+  on twist (roll) resolution for under-constrained segments; the addon's own behaviour (DampedTrack leaves
+  roll free unless a LockedTrack removes it) is the working reference.
 - **ROM enforcement.** Blender resolves limits by iterating constraints; a closed-form clamp on a
   quaternion solve is not equivalent. Needs its own design once the model lands.
 - **`.VRM` export.** Needs the skeleton (this plan), the alias table (exists), and a **skinned mesh** —

@@ -131,19 +131,47 @@ consumer.
 
 ## Todo (current focus)
 
-1. ✅ **SF-SH-1 — Standard-human model** — DONE.
-2. ✅ **SF-SH-3 — Kinematics engine** — DONE.
-3. ✅ **SF-SH-4 — Orientation solver** — DONE.
-4. ✅ **ST-SH-2 — Tracker→canonical mappings** — DONE.
-5. ✅ **SF-SH-5 — Wire-up** — DONE.
-6. **FMC-WS-3 — SkellyForge adapter** (NEXT): wire `StandardHuman` model into schema builder. Pipe rotation channels through to the standard stream.
-7. **FMC-WS-2 — Backend encoder**: reshape websocket send path to produce schema+samples.
-8. **FMC-WS-4 — UI wedge**: extract connection service, decode standard stream.
-9. ✅ **Canonical convention — locked 2026-08-12:** `mm · right-handed · +Z up · +X forward`, quaternions `wxyz` ([07](07-coordinate-conventions.md#the-freemocap-canonical-convention)). Code says `+Y` — defect D34.
-10. Legacy cleanup: retire `rtmpose_model_info.yaml` / `mediapipe_model_info.yaml`, align old managers to `StandardHuman`, fix skellyforge skellytracker imports in `data_models/observation.py` and `pipelines/dlc_pipeline.py`.
+**Current path: [`phase-1/10-whole-project-alignment.md`](phase-1/10-whole-project-alignment.md)** — the
+whole-project re-derivation under the keypoint → segment reference geometry framing. The paused D7/D8 work
+is answered by **disposition, not fix**: the keypoint-level half (bilateral SC in both tracker mappings +
+D39 raise) is kept, the graph-level half (`canonical_body.yaml` reroot) reverts to HEAD. Ordered phases:
+A segment model (SF-SM T1–5) → B keypoint contract (SF-SM T6 + YAML rename) → C solver + estimator (T7–8)
+→ D retire old models + rewire aggregator (T9) → E **posthoc rebuild (new — needs its own detail plan)** →
+F stream side (FMC-WS-2/3/4 + FMC-RB) → G docs rewrite (T10).
+
+Standing done: SF-SH-1/3/4/5, ST-SH-2, FMC-WS-1; canonical convention locked 2026-08-12
+(`mm · right-handed · +Z up · +X forward`, quaternions `wxyz` — code still says `+Y`, defect D34);
+freemocap test **collection** repaired this session (4 files repointed to
+`skellyforge.kinematics.segment_lengths`; full-suite runtime failures deferred by the user).
 
 ## Progress log
 
+- **2026-08-12 (SF-SM Task 1 done — `SegmentDefinition`)** — First code of Phase A, in skellyforge:
+  `segment_definition.py` (frozen dataclass: origin/long-axis/twist keypoints + rest pose; fail-loud
+  validators) + `test_segment_definition.py` (13 tests). TDD per the plan (failing first), two-stage
+  subagent review, and the code review's NaN findings fixed in the same pass — `length_ratio` and
+  `RotationLimits` bounds now reject non-finite values (NaN slipped both validators, which contradicted
+  the fail-loud purpose), with 6 pinning tests added. Plan doc synced (plan == code). Suite **64/64
+  green**. Uncommitted in skellyforge — the user owns git. Next: SF-SM Task 2 (part composition).
+- **2026-08-12 (whole-project alignment re-derived; D7/D8 disposed)** — The paused D7/D8 work was built
+  on the retired tracker→canonical framing and cannot be *finished*: disposition is keep-the-keypoint-half
+  (bilateral SC mappings + D39), revert-the-graph-half (`canonical_body.yaml` reroot → HEAD). New
+  [`phase-1/10`](phase-1/10-whole-project-alignment.md) re-derives the ordered whole-project path (A–G),
+  surfaces the **posthoc rebuild as unowned-but-mandatory** (locked decision 8; SF-AL F4 open; `13` §
+  Remaining work; blast radius incl. `pipelines/test_pipeline.py`), and records the mapping-YAML rename
+  blast radius (4 detector paths + freemocap's 2 path-constant dicts). Also this session: freemocap test
+  collection repaired (the kinematics-move commit left 4 test modules importing math names from the I/O
+  wrapper; repointed to `skellyforge.kinematics.segment_lengths` — collection clean, 130 tests).
+- **2026-08-12 (SF-SM aligned to keypoint → segment reference geometry)** — Per the user's notes on
+  [`phase-1/09`](phase-1/09-segment-model.md): the "canonical keypoint" vocabulary is retired — segment
+  definitions reference keypoints **directly by name** (origin / long-axis / twist), with no intermediate
+  canonical-keypoint or landmark set. Absorbed: the `_BONE_TO_LANDMARK`/`proximal_landmark` bridges are
+  framed as already-obviated artifacts (deleted, not ported); twist resolution is stated as two-tier
+  (declared twist keypoint, else damped minimal roll — the proven D3/D4 fallback) with a best-practices
+  research item added to §7; §3 rewritten; the mapping YAMLs are renamed
+  `{tracker}_keypoint_mapping.yaml` (Task 6); Task 8's freemocap deletion is clarified as a working-tree
+  change; Task 3 records the `freemocap_tpose` name translation and `None` ROM limits for segments the
+  addon gives none. Documentation pass only — no code.
 - **2026-08-12 (SF-AL architecture agreed)** — Worked the design through before writing code. Decisions
   recorded in [`phase-1/08`](phase-1/08-skellyforge-alignment.md#agreed-architecture): **compose what we
   author, generate the flat skeleton at load** (the 55-segment table is 15+15 duplicated fingers — the

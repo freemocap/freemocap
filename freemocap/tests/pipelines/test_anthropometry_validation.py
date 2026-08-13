@@ -3,7 +3,7 @@ import logging
 
 import pytest
 
-from freemocap.core.tasks.mocap.segment_length_io import LIMB_SEGMENTS
+from skellyforge.kinematics.segment_lengths import LIMB_SEGMENTS
 
 logger = logging.getLogger(__name__)
 

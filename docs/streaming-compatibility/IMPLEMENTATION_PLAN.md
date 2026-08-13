@@ -152,6 +152,20 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-13 (TASK 9 COMPLETE — Phase D done)** — Steps 2–4: deleted
+  `skellyforge/biomechanics/` (verified byte-identical dead duplicate) + `pipelines/dlc_pipeline.py`
+  (verified zero importers); re-expressed the realtime CoM on **de Leva (1996)** — default
+  `DE_LEVA_MEAN`, per-sex tables available via `segment_inertial_parameters(sex)`, the 8→14 span mapping
+  documented in code (head(+neck)→`neck_center→head_vertex`, trunk→`mid_sternum→hips_center`, foot→
+  `ankle→foot_ball` with toes mass 0, unmapped VRM segments mass 0 inside mapped spans), **the
+  mass-redistribution policy kept** with `directly_observed_mass` intact (the user's decision);
+  repointed the WebSocket handshake at the composed model (`standard_human` schema: 72 keypoints, 54
+  segment connections — the old `canonical_body`/`canonical_hand` AnatomicalStructure schemas + their
+  silent try/except fallbacks deleted). Remaining old-model-layer consumers (the rigidifier's
+  seed/`joint_hierarchy` dependency + the batch diagnostics + `models/`+`managers/`) die in Phase E, per
+  the revised Step 4 (no interim YAML strip). Verified: freemocap 33 green (contract+schema+protocol+CoM),
+  skellyforge 94, skellytracker 226; imports smoke OK. **NEXT: Commit Round 2 (the user) → Phase E**
+  (the posthoc rebuild — write its own detail plan first, per the folder's rule).
 - **2026-08-13 (Task 9 Step 1 done — the aggregator runs the composed model)** — The bootstrap is
   deleted (`_BONE_TO_LANDMARK`, `_get_standard_human`, `_build_solver_positions`, `_standard_human_cache`,
   the deleted-symbol imports) and the realtime aggregator now loads `compose_standard_human()` once per

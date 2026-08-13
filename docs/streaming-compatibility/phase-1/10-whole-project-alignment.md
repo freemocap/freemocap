@@ -114,20 +114,20 @@ composed model and the renamed YAMLs.
 
 Ends: skellyforge suite green — **94 tests as of 2026-08-13**.
 
-### Phase D — retire the old models + rewire the aggregator (SF-SM Task 9) · **CURRENT** (Round 1 done)
+### Phase D — retire the old models + rewire the aggregator (SF-SM Task 9) · **DONE 2026-08-13** ✅ (Steps 1–4; → Commit Round 2)
 
-13. [ ] Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
+13. [x] Delete `_BONE_TO_LANDMARK`, `_standard_human_cache`, `_get_standard_human()`,
         `_build_solver_positions()` from `realtime_aggregator_node.py:876-1029`; the aggregator loads the
         composed `StandardHuman` and passes keypoints straight through. **This kills the live defect**
         (`ValueError: Bone 'neck' has coincident live proximal and distal joints`).
-14. [ ] Delete `skellyforge/biomechanics/` (byte-identical duplicate) and `pipelines/dlc_pipeline.py`
+14. [x] Delete `skellyforge/biomechanics/` (byte-identical duplicate) and `pipelines/dlc_pipeline.py`
         (dead; imports a module that does not exist).
-15. [ ] Re-express CoM against segments with **de Leva (1996)**, joint-centre-referenced (citation in
-        [`09` Task 9](09-segment-model.md#task-9-retire-the-old-models)). Decide here what survives of
-        freemocap's per-frame **mass redistribution for occluded segments** — the capability the handoff
-        warns is lost if one CoM simply "wins".
-16. [ ] Strip `canonical_body.yaml` / `canonical_hand.yaml` to the keypoint list; repoint
-        `tracker_schema_message.py` render connections at the composed segments.
+15. [x] Re-express CoM against segments with **de Leva (1996)** — **decided 2026-08-13**: default
+        `DE_LEVA_MEAN` (per-sex tables remain available via `segment_inertial_parameters(sex)`); the
+        **mass-redistribution policy is kept**; the 8→55 segment mapping is in 09 Task 9 Step 3.
+16. [x] **Revised 2026-08-13:** repoint `tracker_schema_message.py` render connections at the composed
+        segments now; **delete both YAMLs wholesale in Phase E** (no interim strip — their remaining
+        readers die with the posthoc rebuild; the rigidifier re-key is Phase E).
 
 Ends: freemocap realtime runs the composed model end-to-end → `(user)` **Commit Round 2** (freemocap +
 skellyforge).

@@ -1,50 +1,64 @@
 """
 Per-frame center of mass calculation for the real-time pipeline.
 
-Loads body biomechanics from the existing skellyforge YAML (validated once
-at init via AnatomicalStructure, using the tracker→canonical mapping for
-whichever detector — RTMPose or MediaPipe — is configured), then computes
-whole-body and per-segment center of mass from a dict[str, np.ndarray]
-of named 3D keypoint positions — the exact format the real-time
-aggregator node already produces.
+Computes whole-body and per-segment center of mass from a ``dict[str, np.ndarray]``
+of named 3D keypoint positions — the exact canonical format the real-time
+aggregator node produces after rigidification — using the de Leva (1996)
+body-segment inertial parameters (BSIP) rather than the retired Winter table.
 
-The anthropometric calculation follows the same Winter-table math as
-``skellyforge.skellymodels.biomechanics.calculations.calculate_center_of_mass``,
-adapted to operate on per-frame (3,) arrays instead of batch (F, 3) arrays.
+Reference
+---------
+de Leva, P. (1996). *Adjustments to Zatsiorsky-Seluyanov's segment inertia
+parameters.* Journal of Biomechanics, 29(9), 1223–1230, Table 4. Values are
+provided by ``skellyforge.kinematics.inertial.anthropometric_parameters``,
+referenced to **joint centres** (which is what the canonical keypoints are),
+unlike Winter's bony-landmark table (which is why the old model needed a ``head``
+segment spanning ear-to-ear).
+
+Segment mapping (de Leva → FreeMoCap, documented with provenance)
+-----------------------------------------------------------------
+de Leva's 8 segments are mapped onto the canonical keypoint spans below; the
+canonical skeleton has 55 segments, so **every unmapped VRM segment carries zero
+mass** — its anatomy lives inside a mapped span:
+
+* ``hips`` / ``spine`` / ``chest`` / ``upper_chest`` individually, and ``shoulder``
+  (the sternoclavicular→shoulder clavicle piece): zero mass, inside ``trunk``.
+* ``neck`` (a VRM segment, not a de Leva segment): de Leva's head **includes the
+  neck**, so ``neck`` is part of the mapped ``head`` span (below).
+* ``eyes`` / ``jaw`` (the driven face bones): zero mass, inside ``head``.
+* the four finger segments and ``toes``: zero mass — fingers are inside de Leva's
+  ``hand`` mass; ``toes`` is inside de Leva's ``foot``.
 
 Mass redistribution
 -------------------
-Missing distal segments have their mass percentage rolled up to the
-nearest visible proximal segment along anatomical chains::
+Missing distal segments have their mass fraction rolled up to the nearest
+visible proximal segment along anatomical chains::
 
-    foot → shank → thigh          (leg chain)
-    forearm → upper_arm           (arm chain)
+    foot → shank → thigh          (leg chains, ×2 sides)
+    hand → forearm → upper_arm    (arm chains, ×2 sides)
 
-If an entire chain is invisible, its accumulated mass lands on the
-*spine* (trunk). Spine and head mass is never redistributed.
+If an entire chain is invisible, its accumulated mass lands on the **trunk**.
+Trunk and head mass is never redistributed.
 
 Confidence tiers
 ----------------
-A ``CoMConfidence`` enum and ``directly_observed_mass`` float are
-included in every result so consumers can make their own validity
-decisions. The CoM is always computed — never NaN-gated.
+A ``CoMConfidence`` enum and ``directly_observed_mass`` float are included in
+every result so consumers can make their own validity decisions. The CoM is
+always computed — never NaN-gated.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from pathlib import Path
+from pathlib import Path  # noqa: TC003  (module-level var annotation is evaluated at runtime)
 from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
-from skellyforge.skellymodels.models.tracking_model_info import CanonicalBodyModelInfo
-from skellyforge.skellymodels.types import (
-    SegmentCenterOfMassDefinition,
-    SegmentConnection,
-    SegmentName,
+from skellyforge.kinematics.inertial.anthropometric_parameters import (
+    SegmentInertialParameters,
+    segment_inertial_parameters,
 )
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
     MediapipePoseKeypointDetector,
@@ -55,24 +69,81 @@ from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_d
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 # Tracker→canonical body mapping (shipped with skellytracker). This is the
-# single derivation of the computed centers (head/neck/trunk/hips_center) from
-# raw tracker keypoints — the same mapping the realtime skeleton fitter uses.
-# Keyed by CameraNodeConfig.detector_type so the loader can pick the mapping
-# that actually matches the keypoint names the configured detector produces.
+# single derivation of the computed span endpoints (mid_sternum, head_vertex,
+# foot_ball, …) from raw tracker keypoints — the same mapping the realtime
+# skeleton fitter uses. Keyed by CameraNodeConfig.detector_type so the loader
+# can pick the mapping that actually matches the keypoint names the configured
+# detector produces.
 _BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
     "rtmpose": RTMPoseBodyDetector.standard_human_mapping_path(),
     "mediapipe": MediapipePoseKeypointDetector.standard_human_mapping_path(),
 }
 
+
 # ---------------------------------------------------------------------------
-# Anatomical limb chains, distal → proximal.
+# The de Leva → FreeMoCap span table (module constant, single source of truth).
+#
+# Each de Leva segment maps to (proximal_keypoint, distal_keypoint) for a single
+# side; limb segments are expanded to ``f"{side}_{segment}"`` for ``left_`` /
+# ``right_``, and the midline segments (``head``, ``trunk``) are side-less.
+# ``com_fraction`` is measured from the **proximal** (or cranial) endpoint, so
+#   com = proximal + com_fraction × (distal − proximal)
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class _Span:
+    """A de Leva segment's two endpoint keypoint names (side-agnostic)."""
+
+    proximal: str
+    distal: str
+    # Whether the segment is a paired limb (expanded to left_/right_) or a
+    # midline segment (head/trunk).
+    sided: bool
+
+
+# de Leva head includes the neck → the span is neck_center → head_vertex.
+# de Leva trunk: suprasternale ≈ mid_sternum (cranial), mid-hip ≈ hips_center
+#   (caudal); com_fraction is from the CRANIAL end, i.e. mid_sternum first.
+# upper_arm span is shoulder → elbow (the GH joint is origin — reported clean).
+# forearm span is elbow → wrist.
+# hand span is wrist → middle_finger_tip (dactylion III; the fingers carry no
+#   separate de Leva mass — they are inside the hand).
+# thigh span is hip → knee.
+# shank span is knee → ankle.
+# foot span is ankle → foot_ball (metatarsale II); toes carry zero mass (inside
+#   de Leva's foot).
+_DE_LEVA_SPANS: dict[str, _Span] = {
+    "head": _Span("neck_center", "head_vertex", sided=False),
+    "trunk": _Span("mid_sternum", "hips_center", sided=False),
+    "upper_arm": _Span("shoulder", "elbow", sided=True),
+    "forearm": _Span("elbow", "wrist", sided=True),
+    "hand": _Span("wrist", "middle_finger_tip", sided=True),
+    "thigh": _Span("hip", "knee", sided=True),
+    "shank": _Span("knee", "ankle", sided=True),
+    "foot": _Span("ankle", "foot_ball", sided=True),
+}
+
+_SIDES: tuple[str, str] = ("left", "right")
+
+
+def _segment_key(de_leva_name: str, side: str) -> str:
+    """Return the side-prefixed segment name used in ``segment_coms``."""
+    return f"{side}_{de_leva_name}"
+
+
+# ---------------------------------------------------------------------------
+# Anatomical limb chains, distal → proximal, as side-prefixed segment keys.
+# ---------------------------------------------------------------------------
+
 _SEGMENT_CHAINS: list[list[str]] = [
-    ["right_foot", "right_shank", "right_thigh"],
-    ["left_foot", "left_shank", "left_thigh"],
-    ["right_forearm", "right_upper_arm"],
-    ["left_forearm", "left_upper_arm"],
+    [ _segment_key("foot", side), _segment_key("shank", side), _segment_key("thigh", side) ]
+    for side in _SIDES
+] + [
+    [ _segment_key("hand", side), _segment_key("forearm", side), _segment_key("upper_arm", side) ]
+    for side in _SIDES
 ]
+
 
 # ---------------------------------------------------------------------------
 # Confidence tiers
@@ -111,33 +182,24 @@ def _confidence_from_mass(directly_observed: float) -> CoMConfidence:
 # ---------------------------------------------------------------------------
 
 
-def _build_mass_lookup(
-    com_defs: dict[SegmentName, SegmentCenterOfMassDefinition],
-) -> dict[str, float]:
-    """Pre-extract per-segment mass percentages for fast hot-loop access."""
-    return {seg: info["segment_com_percentage"] for seg, info in com_defs.items()}
-
-
 class BodyBiomechanics(BaseModel):
     """Validated body biomechanics for the realtime pipeline, loaded once at
     aggregator init.
 
-    Mirrors the relevant fields of skellyforge's canonical ``AnatomicalStructure``
-    so the hot loop never touches Pydantic validation. ``tracker_mapping`` is the
-    one tracker→canonical mapping used to derive the computed centers
-    (head/neck/trunk/hips_center) from the configured detector's raw keypoints
-    each frame — selected by detector type at load time, see
-    ``load_body_biomechanics``.
+    Carries the de Leva (1996) inertial-parameter table (mass fractions and
+    segment-CoM fractions, keyed by de Leva segment name), plus the
+    tracker→canonical mapping used to derive the span endpoint keypoints each
+    frame. The span table is a module constant (``_DE_LEVA_SPANS``), not a
+    field — it is static data and never varies per subject.
+
+    No Pydantic validation touches the hot loop: ``tracker_mapping`` is applied
+    once per frame to produce canonical names, and the span/table lookups are
+    plain dicts.
     """
 
-    tracked_point_names: list[str]
     tracker_mapping: TrackerMapping
-    segment_connections: dict[SegmentName, SegmentConnection] | None = None
-    center_of_mass_definitions: dict[SegmentName, SegmentCenterOfMassDefinition] | None = None
-
-    # Pre-computed for the hot loop
-    segment_chains: list[list[str]] = _SEGMENT_CHAINS
-    mass_percentages: dict[str, float] = {}
+    de_leva: dict[str, SegmentInertialParameters]
+    sex: Literal["mean", "female", "male"] = "mean"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -152,11 +214,13 @@ class CenterOfMassResult:
         Whole-body center of mass in 3D world coordinates. Always
         populated — never NaN.
     segment_coms : dict[str, np.ndarray]
-        Per-segment center of mass positions (only computed segments).
+        Per-segment center of mass positions, keyed by side-prefixed de Leva
+        name (``left_thigh``, ``trunk``, ``head``, …) for the segments whose
+        span endpoints were present this frame.
     directly_observed_mass : float
         Fraction of total body mass from segments whose endpoints were
         directly observed (0.0–1.0). Mass from invisible chains placed
-        on spine counts as 0.0.
+        on trunk counts as 0.0.
     confidence : CoMConfidence
         Tiered confidence based on directly_observed_mass.
     """
@@ -174,26 +238,19 @@ class CenterOfMassResult:
 
 def load_body_biomechanics(
     detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose",
+    sex: Literal["mean", "female", "male"] = "mean",
 ) -> BodyBiomechanics:
-    """Load body biomechanics from the single canonical skellyforge model.
+    """Load body biomechanics from the de Leva (1996) BSIP table.
 
-    Segment connections + Winter COM table come from the canonical body model;
-    the computed centers are derived each frame via the skellytracker
-    tracker→canonical mapping for the given ``detector_type`` (the same one
-    the skeleton fitter uses).
+    The de Leva table comes from skellyforge's ``segment_inertial_parameters``
+    (default: the mean of the female/male tables); span endpoints are derived
+    each frame via the skellytracker tracker→canonical mapping for the given
+    ``detector_type`` (the same one the skeleton fitter uses).
     """
-    body_structure: AnatomicalStructure = AnatomicalStructure.from_model_info(
-        model_info=CanonicalBodyModelInfo(), aspect_name="body"
-    )
-
-    com_defs = body_structure.center_of_mass_definitions or {}
-
     return BodyBiomechanics(
-        tracked_point_names=body_structure.tracked_point_names,
         tracker_mapping=TrackerMapping.from_yaml(_BODY_MAPPING_YAML_BY_DETECTOR[detector_type]),
-        segment_connections=body_structure.segment_connections,
-        center_of_mass_definitions=com_defs,
-        mass_percentages=_build_mass_lookup(com_defs),
+        de_leva=segment_inertial_parameters(sex),
+        sex=sex,
     )
 
 
@@ -202,57 +259,87 @@ def load_body_biomechanics(
 # ---------------------------------------------------------------------------
 
 
-def build_segment_positions(
+def _build_span_endpoints(
     keypoints: dict[str, np.ndarray],
-    connections: dict[SegmentName, SegmentConnection],
 ) -> dict[str, dict[str, np.ndarray]]:
-    """Build proximal/distal segment endpoint dict from named keypoints."""
-    positions: dict[str, dict[str, np.ndarray]] = {}
-    for seg_name, conn in connections.items():
-        proximal = keypoints.get(conn["proximal"])
-        distal = keypoints.get(conn["distal"])
-        if proximal is None or distal is None:
-            continue
-        positions[seg_name] = {"proximal": proximal, "distal": distal}
-    return positions
+    """Resolve the proximal/distal endpoint of every de Leva span for this frame.
+
+    Returns a dict keyed by *final segment key* (``trunk``, ``head``,
+    ``left_thigh``, …) → ``{"proximal": ... , "distal": ...}``. A span whose
+    endpoint is absent this frame is omitted — the redistribution handles it.
+    """
+    endpoints: dict[str, dict[str, np.ndarray]] = {}
+    for de_leva_name, span in _DE_LEVA_SPANS.items():
+        if span.sided:
+            for side in _SIDES:
+                proximal = keypoints.get(f"{side}_{span.proximal}")
+                distal = keypoints.get(f"{side}_{span.distal}")
+                if proximal is None or distal is None:
+                    continue
+                endpoints[_segment_key(de_leva_name, side)] = {
+                    "proximal": proximal,
+                    "distal": distal,
+                }
+        else:
+            proximal = keypoints.get(span.proximal)
+            distal = keypoints.get(span.distal)
+            if proximal is None or distal is None:
+                continue
+            endpoints[de_leva_name] = {"proximal": proximal, "distal": distal}
+    return endpoints
 
 
 def _calculate_all_segments_com_per_frame(
-    segment_positions: dict[str, dict[str, np.ndarray]],
-    com_defs: dict[SegmentName, SegmentCenterOfMassDefinition],
+    span_endpoints: dict[str, dict[str, np.ndarray]],
+    de_leva: dict[str, SegmentInertialParameters],
 ) -> dict[str, np.ndarray]:
-    """Per-frame segment center of mass (same math as skellyforge)."""
+    """Per-frame segment center of mass, de Leva (1996) math.
+
+    For every present span, ``com = proximal + com_fraction × (distal − proximal)``.
+    The trunk's ``com_fraction`` is measured from the CRANIAL end (suprasternale
+    ≈ mid_sternum), so ``trunk`` follows the same formula with ``mid_sternum`` as
+    ``proximal``.
+    """
     result: dict[str, np.ndarray] = {}
-    for seg_name, seg_info in com_defs.items():
-        pos = segment_positions.get(seg_name)
-        if pos is None:
+    for seg_key, endpoints in span_endpoints.items():
+        de_leva_name = (
+            "trunk" if seg_key in ("trunk", "head") else seg_key.split("_", 1)[1]
+        )
+        seg_info = de_leva.get(de_leva_name)
+        if seg_info is None:
             continue
-        result[seg_name] = pos["proximal"] + (pos["distal"] - pos["proximal"]) * seg_info["segment_com_length"]
+        proximal = endpoints["proximal"]
+        distal = endpoints["distal"]
+        result[seg_key] = proximal + (distal - proximal) * seg_info.com_fraction
     return result
 
 
 def _calculate_total_body_com_with_redistribution(
     segment_com_data: dict[str, np.ndarray],
-    biomechanics: BodyBiomechanics,
+    de_leva: dict[str, SegmentInertialParameters],
 ) -> tuple[np.ndarray, float]:
     """Weighted total body CoM with mass redistribution along limb chains.
 
     Only a segment's *own* base mass counts as directly observed.
     Redistributed mass from missing distal segments and orphan mass
-    placed on spine do NOT contribute to the directly-observed total.
+    placed on trunk do NOT contribute to the directly-observed total.
+
+    Chains are de Leva limbs (foot/shank/thigh and hand/forearm/upper_arm)
+    ×2 sides, distal → proximal. Trunk and head mass are never redistributed;
+    an entirely invisible chain's accumulated mass lands on trunk.
     """
-    base_mass = biomechanics.mass_percentages
     total = np.zeros(3)
     directly_observed = 0.0
 
-    # Mass from entirely invisible chains → placed on spine, not directly observed.
+    # Mass from entirely invisible chains → placed on trunk, not directly observed.
     orphan_mass = 0.0
 
-    for chain in biomechanics.segment_chains:
+    for chain in _SEGMENT_CHAINS:
         accumulated = 0.0  # redistributed mass from missing distal segments
-        for seg_name in chain:  # distal → proximal
-            seg_com = segment_com_data.get(seg_name)
-            seg_mass = base_mass.get(seg_name, 0.0)
+        for seg_key in chain:  # distal → proximal
+            seg_com = segment_com_data.get(seg_key)
+            de_leva_name = seg_key.split("_", 1)[1]
+            seg_mass = de_leva[de_leva_name].mass_fraction
             if seg_com is not None:
                 # Visible — own mass is directly observed, accumulated is not.
                 total += seg_com * (seg_mass + accumulated)
@@ -264,17 +351,17 @@ def _calculate_total_body_com_with_redistribution(
         if accumulated > 0.0:
             orphan_mass += accumulated
 
-    # Spine: own mass directly observed; orphan mass is not.
-    spine_com = segment_com_data.get("spine")
-    if spine_com is not None:
-        spine_own = base_mass.get("spine", 0.0)
-        total += spine_com * (spine_own + orphan_mass)
-        directly_observed += spine_own
+    # Trunk: own mass directly observed; orphan mass is not.
+    trunk_com = segment_com_data.get("trunk")
+    if trunk_com is not None:
+        trunk_mass = de_leva["trunk"].mass_fraction
+        total += trunk_com * (trunk_mass + orphan_mass)
+        directly_observed += trunk_mass
 
     # Head: always directly observed when visible.
     head_com = segment_com_data.get("head")
     if head_com is not None:
-        head_mass = base_mass.get("head", 0.0)
+        head_mass = de_leva["head"].mass_fraction
         total += head_com * head_mass
         directly_observed += head_mass
 
@@ -343,12 +430,12 @@ def calculate_center_of_mass_per_frame(
 ) -> CenterOfMassResult:
     """Compute center of mass from raw RTMPose **tracker** keypoints for one frame.
 
-    Maps tracker keypoints → canonical landmarks (adding the computed centers
-    head/neck/trunk/hips_center), then delegates to
+    Maps tracker keypoints → canonical names (adding the derived span endpoints
+    mid_sternum / head_vertex / foot_ball, etc.), then delegates to
     ``calculate_center_of_mass_from_canonical``.
     """
-    augmented = biomechanics.tracker_mapping.apply(keypoints)
-    return calculate_center_of_mass_from_canonical(augmented, biomechanics)
+    canonical = biomechanics.tracker_mapping.apply(keypoints)
+    return calculate_center_of_mass_from_canonical(canonical, biomechanics)
 
 
 def calculate_center_of_mass_from_canonical(
@@ -358,31 +445,26 @@ def calculate_center_of_mass_from_canonical(
     """Compute center of mass from already-canonical-named positions for one frame.
 
     Use this with the rigidified skeleton (``RealtimeSkeletonRigidifier`` output),
-    whose positions are already canonical and include the computed centers — no
-    tracker→canonical remap is needed. This matches the posthoc pipeline, which
-    computes CoM on the rigidified trajectory (``rigid_xyz``).
+    whose positions are already canonical and include the derived span endpoints.
+    The per-named-position input is still augmented per-frame by the tracker
+    mapping at the *aggregator call site* (so it carries mid_sternum /
+    head_vertex / foot_ball and the hand finger tips that ``body_positions``
+    alone lacks), but this path applies no remap itself.
 
     Always returns a result — never NaN. Check ``confidence`` or
     ``directly_observed_mass`` to assess measurement quality.
     """
-    if biomechanics.center_of_mass_definitions is None:
-        raise ValueError("No center_of_mass_definitions in biomechanics.")
-    if biomechanics.segment_connections is None:
-        raise ValueError("No segment_connections in biomechanics.")
+    # 1. Resolve span endpoints (silently skips spans missing an endpoint).
+    span_endpoints = _build_span_endpoints(canonical_positions)
 
-    # 1. Build segment endpoint dict (silently skips missing endpoints)
-    segment_positions = build_segment_positions(
-        canonical_positions, biomechanics.segment_connections
-    )
-
-    # 2. Per-segment CoM (silently skips missing segments)
+    # 2. Per-segment CoM (de Leva; silently skips missing spans).
     segment_coms = _calculate_all_segments_com_per_frame(
-        segment_positions, biomechanics.center_of_mass_definitions
+        span_endpoints, biomechanics.de_leva
     )
 
-    # 3. Weighted total body CoM with mass redistribution
+    # 3. Weighted total body CoM with mass redistribution.
     total_body_com, directly_observed = _calculate_total_body_com_with_redistribution(
-        segment_coms, biomechanics,
+        segment_coms, biomechanics.de_leva
     )
 
     return CenterOfMassResult(

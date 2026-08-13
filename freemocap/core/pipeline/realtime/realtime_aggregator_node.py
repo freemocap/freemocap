@@ -758,8 +758,20 @@ class RealtimeAggregatorNode(AggregatorNode):
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
                         if rigid_result is not None and rigid_result.body_positions:
+                            # CoM's de Leva spans need the DERIVED endpoints
+                            # (mid_sternum, head_vertex, foot_ball) and the hand
+                            # finger tips, which rigid_result.body_positions
+                            # alone lacks. Merge, later wins: rigidified values
+                            # override the mapping for shared names; derived-only
+                            # names come from the mapping.
+                            com_canonical = {
+                                **biomechanics.tracker_mapping.apply(filtered_keypoints),
+                                **rigid_result.body_positions,
+                                **rigid_result.left_hand_standard_positions,
+                                **rigid_result.right_hand_standard_positions,
+                            }
                             com_result = calculate_center_of_mass_from_canonical(
-                                rigid_result.body_positions,
+                                com_canonical,
                                 biomechanics,
                             )
                         else:

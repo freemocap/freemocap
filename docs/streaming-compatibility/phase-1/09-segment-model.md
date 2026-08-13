@@ -1109,16 +1109,31 @@ arrow key and both `split("->")` sites (F2) disappear because length is a proper
       internal arrow conventions; `window_seconds=window_s`); and the six `canonical_mapping_path()`
       call sites (4 in `skeleton_rigidifier.py`, 2 in `center_of_mass.py`) become
       `standard_human_mapping_path()`.
-- [ ] **Step 2:** Delete `skellyforge/biomechanics/` (F5) and `dlc_pipeline.py`.
-- [ ] **Step 3:** Re-express CoM against segments using **de Leva (1996)** — mass fraction and
+- [x] **Step 2:** Delete `skellyforge/biomechanics/` (F5) and `dlc_pipeline.py`.
+- [x] **Step 3:** Re-express CoM against segments using **de Leva (1996)** — mass fraction and
       CoM-as-fraction-of-segment-length, referenced to **joint centres**, which is what our origins are.
       Winter's table references bony landmarks, which is why `canonical_body.yaml` needed a `head` segment
       spanning ear-to-ear. Citation:
       de Leva, P. (1996). *Adjustments to Zatsiorsky-Seluyanov's segment inertia parameters.*
       Journal of Biomechanics, 29(9), 1223–1230.
-- [ ] **Step 4:** Strip `canonical_body.yaml` / `canonical_hand.yaml` to the **keypoint list**
-      only; `segment_connections`, `joint_hierarchy` and `bone_length_ratios` are superseded by the segment
-      model. Repoint `tracker_schema_message.py`'s render connections at the composed segments.
+      **Decided 2026-08-13 (user):** default = **`DE_LEVA_MEAN`** (the mean of the female and male
+      tables — the module already computes it; `segment_inertial_parameters("female"/"male"/"mean")`
+      exposes the per-sex tables, which de Leva's Table 4 defines — no values are dropped). **The
+      mass-redistribution policy is KEPT** (mass conservation is correct; the `directly_observed`
+      confidence signal stays honest) with its chains re-expressed in de Leva terms. **Segment mapping**
+      (documented in code with provenance; de Leva's segments are 8, ours are 55 — every unmapped VRM
+      segment carries zero mass inside a mapped span): head(+neck) → `neck_center→head_vertex`; trunk →
+      `mid_sternum→hips_center` (suprasternale≈mid_sternum, mid-hip≈hips_center); upper_arm/forearm/hand/
+      thigh/shank → our upper_arm/lower_arm/hand-chain (wrist→middle_finger_tip)/upper_leg/lower_leg;
+      foot → our foot (`ankle→foot_ball`, metatarsale II) with `toes` mass 0 (inside de Leva's foot);
+      hips/spine/chest/upper_chest individually, shoulder, eyes, jaw, fingers: mass 0 (inside the
+      trunk/hand masses).
+- [ ] **Step 4 (revised 2026-08-13, user):** **no interim stripped state.** Repoint
+      `tracker_schema_message.py`'s render connections at the composed segments now. The YAMLs
+      (`canonical_body.yaml` / `canonical_hand.yaml`) are **deleted wholesale in Phase E** — their
+      remaining readers (the old `AnatomicalStructure`/`ModelInfo` layer, the batch diagnostics
+      `segment_lengths.py`, and the realtime rigidifier's seed/`joint_hierarchy` dependency, whose
+      re-key onto the model is Phase E's rigidifier work) die with the posthoc rebuild.
 - [ ] **Step 5:** Run every suite in both repos; report.
 
 ---

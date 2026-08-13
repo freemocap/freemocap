@@ -2,10 +2,13 @@
 Tracker-schema handshake message.
 
 Sent once when a WebSocket client connects, and rebroadcast if the pipeline's
-tracker configuration changes. Carries every active tracker's
-`TrackerDefinition` so the frontend can render points and connections
-without hardcoding any tracker schema.
+tracker configuration changes. Carries the active tracker schemas (RTMPose +
+MediaPipe wholebody definitions, from the tracker side) plus the standard-human
+schema (keypoints + segment connections for 3D skeleton rendering), built from
+the composed model. The standard human is local skellyforge code that is always
+present, so there are no silent fallbacks here.
 """
+
 from typing import Any
 
 import msgspec
@@ -25,68 +28,35 @@ class TrackerSchemasMessage(msgspec.Struct):
     message_type: WebsocketMessageType = WebsocketMessageType.TRACKER_SCHEMAS
 
 
-def _build_canonical_schema(
-    *,
-    name: str,
-    landmark_names: list[str],
-    segment_connections: dict[str, dict[str, str]] | None,
-) -> TrackerDefinition | None:
-    """Build a ``TrackerDefinition`` from canonical anatomical data."""
-    connections: tuple[tuple[str, str], ...] = ()
-    if segment_connections is not None:
-        connections = tuple(
-            (conn["proximal"], conn["distal"])
-            for conn in segment_connections.values()
-        )
-    return TrackerDefinition(
-        name=name,
-        tracked_points=tuple(landmark_names),
-        connections=connections,
-    )
-
-
 def collect_active_tracker_schemas() -> dict[str, dict[str, Any]]:
     """Collect every active tracker schema the freemocap pipeline can emit.
 
-    Includes the RTMPose wholebody definition (for 2D overlay + keypoint
-    classification) and the canonical body/hand definitions (for 3D
-    skeleton connections).
+    The RTMPose/MediaPipe wholebody definitions carry the tracker-side
+    keypoint schemas (2D overlays + keypoint classification); the
+    ``standard_human`` definition carries the standard human's keypoints and
+    segment connections (3D skeleton rendering), built from the composed
+    model — the old ``canonical_body``/``canonical_hand`` AnatomicalStructure
+    schemas are retired with it.
     """
-    from skellyforge.skellymodels.models.anatomical_structure import AnatomicalStructure
-    from skellyforge.skellymodels.models.tracking_model_info import (
-        CanonicalBodyModelInfo,
-        CanonicalHandModelInfo,
+    from skellyforge.skellymodels.standard_human.standard_human_model import (
+        compose_standard_human,
+    )
+
+    human = compose_standard_human()
+    connections = tuple(
+        (segment.parent, segment.name)
+        for segment in human.segments
+        if segment.parent is not None
+    )
+    standard_human_schema = TrackerDefinition(
+        name="standard_human",
+        tracked_points=tuple(sorted(human.required_keypoints())),
+        connections=connections,
     )
 
     active: dict[str, TrackerDefinition] = {
         RTMPOSE_WHOLEBODY_DEFINITION.name: RTMPOSE_WHOLEBODY_DEFINITION,
         MEDIAPIPE_WHOLEBODY_DEFINITION.name: MEDIAPIPE_WHOLEBODY_DEFINITION,
+        standard_human_schema.name: standard_human_schema,
     }
-
-    # Canonical body schema
-    try:
-        body_info = CanonicalBodyModelInfo()
-        body_anatomy = AnatomicalStructure.from_model_info(body_info, "body")
-        body_schema = _build_canonical_schema(
-            name="canonical_body",
-            landmark_names=body_anatomy.landmark_names,
-            segment_connections=body_anatomy.segment_connections,
-        )
-        active[body_schema.name] = body_schema
-    except Exception:
-        pass  # canonical YAML not installed — skip gracefully
-
-    # Canonical hand schema
-    try:
-        hand_info = CanonicalHandModelInfo()
-        hand_anatomy = AnatomicalStructure.from_model_info(hand_info, "hand")
-        hand_schema = _build_canonical_schema(
-            name="canonical_hand",
-            landmark_names=hand_anatomy.landmark_names,
-            segment_connections=hand_anatomy.segment_connections,
-        )
-        active[hand_schema.name] = hand_schema
-    except Exception:
-        pass
-
     return {definition.name: definition.model_dump() for definition in active.values()}

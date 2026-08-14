@@ -104,6 +104,7 @@ async def test_schema_sent_before_samples_and_ack_gates_window():
         schema=schema,
         standard_human=_model(),
         source=source,
+        should_continue=lambda: True,
     )
 
     # 1. Supervisor contract: schema first (on connect), before any sample.
@@ -139,11 +140,43 @@ async def test_schema_sent_before_samples_and_ack_gates_window():
     for blob in ws.sent_bytes:
         sample = decode_sample(blob)
         assert sample.frame_number in (0, 1, 2)
-        # six groups → 5 non-overlay + 1 overlay(cam-0) = 6 blocks
-        assert len(sample.blocks) == 6
+        # seven groups → 6 non-overlay + 1 overlay(cam-0) = 7 blocks
+        assert len(sample.blocks) == 7
 
     # Backpressure recomputed after acks/sends: last_sent is the max observed.
     assert backpressure.last_sent == 2
+
+
+async def test_relay_stops_on_its_own_when_should_continue_flips():
+    """A2 — the relay owns its exit condition; no reliance on task cancel."""
+    ws = FakeWebSocket()
+    serializer = SendSerializer(ws)
+    backpressure = BackpressureController()
+    schema = _schema()
+    queue: asyncio.Queue[AggregationNodeOutputMessage | None] = asyncio.Queue()
+
+    async def source():
+        return await queue.get()
+
+    keep_running = {"value": True}
+    relay = FrameRelay(
+        serializer=serializer,
+        backpressure=backpressure,
+        schema=schema,
+        standard_human=_model(),
+        source=source,
+        should_continue=lambda: keep_running["value"],
+    )
+
+    task = asyncio.create_task(relay.run())
+    await asyncio.sleep(0.05)
+    assert not task.done()  # running, blocked on the empty source
+
+    keep_running["value"] = False
+    await queue.put(None)  # wake it so it can observe the flag
+    await asyncio.wait_for(task, timeout=2.0)
+    assert task.done()
+    assert not task.cancelled()  # exited by its own loop condition, not a cancel
 
 
 # ── Material-change predicate ─────────────────────────────────────────────

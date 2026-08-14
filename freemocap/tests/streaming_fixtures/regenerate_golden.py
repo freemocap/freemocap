@@ -27,6 +27,7 @@ import numpy as np
 
 from freemocap.core.streaming.standard_stream import StreamSample, StreamSchema, encode_sample, encode_schema
 from freemocap.core.tasks.mocap.center_of_mass import CoMConfidence, CenterOfMassResult
+from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage, CameraNodeOutputMessage
 from skellyforge.data_models.trajectory_3d import Point3d
@@ -56,6 +57,7 @@ def build() -> tuple[StreamSchema, StreamSample]:
         stream_name="golden-standard-stream",
         standard_human=model,
         camera_ids=("cam-0", "cam-1"),
+        tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
     )
 
     standard_skeleton = {
@@ -110,6 +112,12 @@ def build() -> tuple[StreamSchema, StreamSample]:
         },
         center_of_mass_result=com,
         xcom=Point3d(x=12.5, y=-4.0, z=0.0),
+        keypoints_arrays={
+            "nose": np.array([0.0, 0.0, 1600.0]),
+            "left_shoulder": np.array([-250.0, 0.0, 1400.0]),
+            "right_shoulder": np.array([250.0, 0.0, 1400.0]),
+            "left_wrist": np.array([-300.0, 100.0, 1100.0]),
+        },
         standard_skeleton=standard_skeleton,
         segment_rotations_world=rotation_world,
         segment_rotations_local=rotation_local,

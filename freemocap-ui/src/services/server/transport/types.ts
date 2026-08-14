@@ -5,18 +5,18 @@
 //   - freemocap/core/streaming/standard_stream/stream_schema.py  (schema JSON)
 //   - freemocap/core/streaming/standard_stream/stream_sample.py  (binary sample)
 //   - freemocap/core/streaming/standard_stream/coordinate_convention.py
-// See docs/streaming-compatibility/09-standard-stream-protocol.md (channels)
-// and docs/streaming-compatibility/phase-1/04-ui-wedge.md (this workstream).
+// See current-work-plans/03-transport/standard-stream-protocol.md (channels).
 
 // ── Enums — wire values are the serialized integer ─────────────────────
 
 export enum ChannelKind {
-  KEYPOINTS_3D = 0, // tracker keypoint names — triangulated detections
-  SEGMENT_ORIGINS = 1, // segment names — transform origin (proximal joint)
-  ROTATIONS_LOCAL = 2, // segment names, wxyz — parent-relative
-  ROTATIONS_WORLD = 3, // segment names, wxyz — world frame
-  DERIVED_POINTS = 4, // center_of_mass, xcom
-  OVERLAY_2D = 5, // per camera x layer
+  KEYPOINTS_3D = 0, // tracker-named measured keypoints
+  LANDMARKS_3D = 1, // the 76 hydrated standard-human landmarks
+  SEGMENT_ORIGINS = 2, // segment names — transform origin (proximal joint)
+  ROTATIONS_LOCAL = 3, // segment names, wxyz — parent-relative
+  ROTATIONS_WORLD = 4, // segment names, wxyz — world frame
+  DERIVED_POINTS = 5, // center_of_mass, xcom
+  OVERLAY_2D = 6, // per camera x layer
 }
 
 export enum OverlayLayer {
@@ -140,6 +140,7 @@ export interface ResolvedSample {
   frameNumber: number;
   subjectId: number;
   keypoints: PointsFrame | null;
+  landmarks: PointsFrame | null;
   segmentOrigins: PointsFrame | null;
   rotationsWorld: PointsFrame | null;
   rotationsLocal: PointsFrame | null;

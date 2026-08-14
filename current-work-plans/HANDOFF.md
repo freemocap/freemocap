@@ -28,14 +28,12 @@ linkage layer is not needed for it.
 |---|---|---|
 | skellyforge | committed+pushed: the landmark sweep (`rigid_points`→`landmarks`, `origin_keypoint`→`origin_landmark`, `target_keypoint`→`target_landmark`, `required_keypoints()`→`required_landmarks()`, `ReferenceGeometry.keypoints`→`landmarks`), the face-provenance reword (canon owned on this side), `test_face_mapping_consistency.py` (pins the cross-repo ratio agreement at TEST time — the runtime is tracker-free). **On disk since, uncommitted:** `tracker_contract.py` reads `landmark_names` (un-breaks it against current skellytracker), `rest_roll` removed (dead field), `observation.py`'s silent try/except removed (frozen legacy copy — dies with the posthoc rebuild) | 148 green at push; post-round: 141 verified locally + 4 tracker-contract tests that need the re-lock |
 | skellytracker | the mapping language sweep (`TrackerMapping.keypoint_names`→`landmark_names`; `known_tracker_keypoints` stays; the four YAML headers say "keys are landmark names; values hydrate them") | **234 green** |
-| freemocap | the docs reorg + the whole F0–F4 body of work; **`uv.lock` re-locked against the swept skellies but UNCOMMITTED** — and the source is pre-Sweep-3, so the backend green subset is currently RED (38F/26E, all Sweep-3 call sites) | 108 green only after Sweep 3; TS harnesses: decoder 5, renderer 11; `tsc` clean |
+| freemocap | committed+pushed: the docs reorg + the F0–F4 body of work. **On disk since, uncommitted: Sweep 3 landed** — the landmark renames (schema/sample/rigidifier + tests), the **dual channels** (`KEYPOINTS_3D` = tracker-named via `tracker_keypoint_names()`; new `LANDMARKS_3D` = the 76; goldens regenerated + TS mirror + decoder/SchemaRegistry), **A2** (relay stop signal), **B1** (send-count window + frame-distance RESET), **S2** (per-frame monitor + its config flag removed). *(Struck: the TS "long-axis" comment sweep — the renderer's prose describes the mesh's own length axis, accurate geometry, not the retired vocabulary.)* | **113 green** (backend subset); TS decoder 5 + renderer 11; `tsc` clean |
 
-**First action on pickup (the commit round — the user):** (1) skellyforge: `uv lock --upgrade-package
-skellytracker && uv sync`, run the full suite (expect 148 green — the 4 tracker-contract tests now pass
-against the swept tracker), commit + push. (2) freemocap: commit the re-locked `uv.lock`. The skelly
-remotes already carry the sweep commits (verified 2026-08-14: remote == local HEAD in both, and the
-installed freemocap env already has the swept shapes — `landmarks` / `landmark_names` present). Then
-Sweep 3.
+**First action on pickup (the commit round — the user):** everything is landed on disk; review, commit
++ push both repos. (skellyforge: the tracker-contract/rest_roll/observation round + the re-locked
+`uv.lock` — the full suite is verified 148 green against the current skellytracker. freemocap: Sweep 3.)
+Then **F5** — the gate.
 
 ## What exists end-to-end (the F0–F4 work, all reviewed)
 
@@ -66,27 +64,16 @@ Sweep 3.
 
 ## The queue (in order)
 
-0. **Done on disk (docs pass, 2026-08-14) — needs the commit round with the skellyforge fixes:** the
-   ontology drop-flag purge + decision record, the segment-model rewrite, the glossary transitional
-   block removal + name sweep, the tracker-mapping note flip, test counts stripped from layer docs +
-   CLAUDE.md files (counts live here only), IMPLEMENTATION_PLAN marked historical, the dual-channel
-   decision recorded in the 01/03 layer docs, the stabilization settle recorded in realtime-loop.md,
-   the "76 landmarks" sweep, the dead `docs/streaming-compatibility/` docstring links, the
-   CLAUDE.md branch (development-streaming) + Vitest corrections.
-1. **[USER] The skellyforge commit round** — the skellies are already pushed; only the on-disk
-   skellyforge round (see the table) is uncommitted: `uv lock --upgrade-package skellytracker && uv
-   sync`, run the full suite (expect 148 green), commit + push. freemocap's `uv.lock` (already
-   re-locked) gets committed too — the env already has the swept shapes (verified).
-2. **Sweep 3 — freemocap + TS** (the landmark vocabulary in the wrapper/sample/schema builder;
-   **the dual channels**: KEYPOINTS_3D repurposes to the tracker-named measured keypoints — the schema
-   builder gains a `tracker_keypoint_names` param from the mapping's tracker side; a NEW `LANDMARKS_3D`
-   channel carries the 76 — through the encoder, the aggregator message (adds the full tracker-named
-   keypoint set), goldens, and the TS mirror/decoder; plus the deferred fixes: **A2** (FrameRelay stop
-   signal), **B1** (ack window counts actual in-flight sends, not frame-number deltas), **S2** (remove
-   the per-frame `StreamingSegmentLengthMonitor` + the old `segment_lengths.py` live path from the
-   aggregator), the TS stale comments. *(Struck as already done: B2 — the material-change predicate
-   `lengths_differ_materially` is live; DERIVED_POINTS is name-keyed; the default height is
-   single-sourced at 1750 — 1700 doesn't exist.)*
+0. **Done on disk (docs pass + skellyforge round + Sweep 3, 2026-08-14) — one commit round covers all
+   of it:** the ontology drop-flag purge + decision record, the segment-model rewrite, the glossary
+   transitional block removal + name sweep, the tracker-mapping note flip, test counts stripped from
+   layer docs + CLAUDE.md files (counts live here only), IMPLEMENTATION_PLAN marked historical, the
+   dual-channel decision recorded + landed, the stabilization settle recorded in realtime-loop.md,
+   the "76 landmarks" sweep, the dead docstring links, the CLAUDE.md branch + Vitest corrections; the
+   skellyforge `tracker_contract` fix + `rest_roll` removal + `observation.py` freeze (re-locked,
+   148 green); Sweep 3 (renames, dual channels, A2/B1/S2, goldens + TS mirror).
+1. **[USER] The commit round** — review, commit + push skellyforge (the round + `uv.lock`) and
+   freemocap (Sweep 3). Then **F5** — the gate.
 3. **[USER] Push freemocap.**
 4. **F5 — the gate**: backend full-loop test (aggregator → sample → bytes → decode → identical
    rotations; a mock-camera realtime run producing non-NaN ROTATIONS_WORLD) + the frontend integration

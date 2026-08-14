@@ -32,6 +32,7 @@ from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.core.streaming.standard_stream import StreamSchema
+from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
@@ -79,6 +80,7 @@ class WebsocketServer:
         self._standard_human = compose_standard_human()
         self._schema: StreamSchema
         self._schema_camera_ids: tuple[str, ...] = ()
+        self._schema_detector_type: str | None = None
         self._schema_segment_lengths: dict[str, float] | None = None
         self._build_schema()
         # The relay consumes raw aggregator output via the injected source.
@@ -88,6 +90,7 @@ class WebsocketServer:
             schema=self._schema,
             standard_human=self._standard_human,
             source=self._await_next_aggregator_output,
+            should_continue=lambda: self.should_continue,
         )
 
     def _current_camera_ids(self) -> tuple[str, ...]:
@@ -104,24 +107,29 @@ class WebsocketServer:
     def _build_schema(self, segment_lengths: dict[str, float] | None = None) -> None:
         """Build (or rebuild) the standard-stream schema for the current topology.
 
-        The schema is immutable; the only things that can change at runtime are
-        the camera set (a new realtime pipeline run) and the measured segment
-        lengths (the estimators converging). Both are honest schema-change
-        triggers: the schema is re-built — and re-sent — when ``camera_ids``
-        differs from what it was built with, or when ``segment_lengths`` has
-        changed materially. ``segment_lengths=None`` yields the anthropometric
-        defaults (``length_ratio × NOMINAL_SUBJECT_HEIGHT_MM``) — the first send
-        on connect.
+        The schema is immutable; the things that can change at runtime are the
+        camera set (a new realtime pipeline run), the detector type (a pipeline
+        restart with a different tracker — its tracker keypoint names key the
+        KEYPOINTS_3D / OVERLAY_2D groups), and the measured segment lengths (the
+        estimators converging). All three are honest schema-change triggers: the
+        schema is re-built — and re-sent — when ``camera_ids`` or the detector
+        type differs from what it was built with, or when ``segment_lengths``
+        has changed materially. ``segment_lengths=None`` yields the
+        anthropometric defaults (``length_ratio × NOMINAL_SUBJECT_HEIGHT_MM``) —
+        the first send on connect.
         """
         camera_ids = self._current_camera_ids()
+        detector_type = self._current_detector_type()
         self._schema = StreamSchema.from_standard_human(
             stream_id=f"freemocap-{os.getpid()}",
             stream_name="freemocap standard stream",
             standard_human=self._standard_human,
             camera_ids=camera_ids,
+            tracker_keypoint_names=tracker_keypoint_names(detector_type),
             measured_lengths=segment_lengths,
         )
         self._schema_camera_ids = camera_ids
+        self._schema_detector_type = detector_type
         self._schema_segment_lengths = dict(segment_lengths) if segment_lengths else None
 
     # ── Frame source (wired to the app) ─────────────────────────────────
@@ -163,7 +171,22 @@ class WebsocketServer:
         return newest
 
     def _check_schema_change(self) -> bool:
-        return self._current_camera_ids() != self._schema_camera_ids
+        return (
+            self._current_camera_ids() != self._schema_camera_ids
+            or self._current_detector_type() != self._schema_detector_type
+        )
+
+    def _current_detector_type(self) -> str:
+        """The configured detector type from the live realtime pipelines.
+
+        One pipeline per camera set today; the schema's tracker keypoint names
+        come from the first live pipeline's config. Defaults to ``rtmpose``
+        (the config default) when no pipeline is running yet — the schema
+        re-sends when the type changes.
+        """
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            return pipeline.config.camera_node_config.detector_type
+        return "rtmpose"
 
     # ── JSON send helper (retained for non-sample messages) ────────────
     async def _send_msgspec_json(self, data: object) -> None:

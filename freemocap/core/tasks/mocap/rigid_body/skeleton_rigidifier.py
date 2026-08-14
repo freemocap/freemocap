@@ -10,16 +10,16 @@ This is the streaming counterpart of skellyforge's posthoc
 
 The trees are keyed onto the **segment model** (the composed standard human),
 not arrow-key joint pairs. Each segment's tree node is the segment *name*; the
-node's observed position is that segment's ``origin_keypoint`` from the
+node's observed position is that segment's ``origin_landmark`` from the
 tracker→standard-human mapping output (a mapping-produced point). An edge
-parent→child exists only when ``child.origin_keypoint == parent's EXACT axis
+parent→child exists only when ``child.origin_landmark == parent's EXACT axis
 target`` (the shared-keypoint chain — the EXACT axis is the segment's defining
 direction); its enforced length is the *parent* segment's estimate, keyed by the
 child node's name. Every other segment (origin-attached or keypoint-mismatched)
 is a tree root, anchored at its observed position — no length is enforced on
 those edges.
 
-**Graded dispatch:** a segment whose ``rigid_points`` has ≥ 3 keypoints is a
+**Graded dispatch:** a segment whose ``landmarks`` has ≥ 3 keypoints is a
 rigid body in the ordinary sense and gets the per-group rigid fit (see below);
 a 2-point segment keeps the span/edge path. Six segments qualify: ``head`` (7
 points), ``hips`` (4), ``left_foot``/``right_foot`` (3),
@@ -29,7 +29,7 @@ points), ``hips`` (4), ``left_foot``/``right_foot`` (3),
 ``RigidPointTemplate`` holding its invariant pairwise distances (built from a
 pair estimator dedicated to that group), and each frame the template is rigidly
 placed onto the observed points with ``fit_template_to_observed``. The fit is a
-rotation pinned at the segment's ``origin_keypoint`` (the anchor owns the
+rotation pinned at the segment's ``origin_landmark`` (the anchor owns the
 segment's position): for a tree root (``hips``) the anchor is the observed
 origin; for a chain segment (``head``, the feet, the toes) it is the body
 tree's *corrected* origin, so the tree owns the position and the fit only
@@ -163,8 +163,8 @@ def _exact_axis(segment: SegmentDefinition) -> AxisDefinition:
     """The segment's EXACT axis (its defining direction), by ``kind``.
 
     The EXACT axis — regardless of which basis axis (x/y/z) it is tagged on —
-    names the segment's shared-keypoint chain endpoint. Its ``target_keypoint``
-    is the distal keypoint a child's ``origin_keypoint`` must equal for the two
+    names the segment's shared-keypoint chain endpoint. Its ``target_landmark``
+    is the distal keypoint a child's ``origin_landmark`` must equal for the two
     to chain.
     """
     for axis in segment.axes:
@@ -177,15 +177,15 @@ def _exact_axis(segment: SegmentDefinition) -> AxisDefinition:
 
 
 def _exact_axis_target(segment: SegmentDefinition) -> str:
-    """The EXACT axis's ``target_keypoint`` (the segment's defining endpoint)."""
-    return _exact_axis(segment).target_keypoint
+    """The EXACT axis's ``target_landmark`` (the segment's defining endpoint)."""
+    return _exact_axis(segment).target_landmark
 
 
 def _hierarchy(group: list[SegmentDefinition]) -> dict[str, list[str]]:
     """Parent → children over a group's SEGMENT names, following the shared-
     keypoint chain.
 
-    An edge ``parent → child`` is kept only when ``child.origin_keypoint ==
+    An edge ``parent → child`` is kept only when ``child.origin_landmark ==
     parent's EXACT axis target`` (name equality). Segments that are
     ORIGIN-attached or keypoint-mismatched are dropped from the hierarchy —
     ``TreeRigidifier`` then treats them as roots and anchors them at their
@@ -204,7 +204,7 @@ def _hierarchy(group: list[SegmentDefinition]) -> dict[str, list[str]]:
         parent_seg = name_to_seg.get(seg.parent)
         if parent_seg is None:
             continue
-        if seg.origin_keypoint != _exact_axis_target(parent_seg):
+        if seg.origin_landmark != _exact_axis_target(parent_seg):
             continue
         hierarchy.setdefault(seg.parent, []).append(seg.name)
     return hierarchy
@@ -238,7 +238,7 @@ def _rigid_groups(
     Each such segment is a rigid body fit per frame with its own template and
     pair estimator. Derived from the model at ``create()`` — no hardcoded names.
     """
-    return tuple(seg for seg in segments if len(seg.rigid_points) >= 3)
+    return tuple(seg for seg in segments if len(seg.landmarks) >= 3)
 
 
 # ===========================================================================
@@ -394,7 +394,7 @@ class RealtimeSkeletonRigidifier:
         ]:
             seeds = {seg.name: seg.length_ratio * height_mm for seg in group}
             endpoints = {
-                seg.name: (seg.origin_keypoint, _exact_axis_target(seg))
+                seg.name: (seg.origin_landmark, _exact_axis_target(seg))
                 for seg in group
             }
             estimator = SegmentLengthEstimator(
@@ -416,7 +416,7 @@ class RealtimeSkeletonRigidifier:
         # estimator's ``lengths`` has a value before the first measurement).
         rigid_groups: dict[str, _RigidGroupState] = {}
         for seg in _rigid_groups(standard_human.segments):
-            points = tuple(seg.rigid_points)
+            points = tuple(seg.landmarks)
             pair_endpoints = {
                 _canonical_pair_string(a, b): (a, b)
                 for a, b in _all_pairs(points)
@@ -430,7 +430,7 @@ class RealtimeSkeletonRigidifier:
             rigid_groups[seg.name] = _RigidGroupState(
                 segment=seg,
                 points=points,
-                anchor=seg.origin_keypoint,
+                anchor=seg.origin_landmark,
                 pairs=pairs,
             )
 
@@ -539,10 +539,10 @@ class RealtimeSkeletonRigidifier:
         # origin, so a single pass over every segment's origin + axis targets is
         # the general rule.
         for seg in self._body_segments:
-            referenced = {seg.origin_keypoint}
+            referenced = {seg.origin_landmark}
             referenced.add(_exact_axis_target(seg))
             for axis in seg.axes:
-                referenced.add(axis.target_keypoint)
+                referenced.add(axis.target_landmark)
             for keypoint in referenced:
                 if keypoint not in body_positions:
                     obs = standard_body.get(keypoint)
@@ -713,13 +713,13 @@ class RealtimeSkeletonRigidifier:
         # Segment-keyed observed origins: this segment's node is its origin
         # keypoint from the mapping output (drop missing).
         positions = {
-            seg.name: observed_keypoints[seg.origin_keypoint]
+            seg.name: observed_keypoints[seg.origin_landmark]
             for seg in group
-            if seg.origin_keypoint in observed_keypoints
+            if seg.origin_landmark in observed_keypoints
         }
         # Edge lengths follow the shared-keypoint chain: the enforced length for
         # a kept edge is the PARENT segment's estimate, keyed by the CHILD
-        # node's name. Only edges father→child where child.origin_keypoint ==
+        # node's name. Only edges father→child where child.origin_landmark ==
         # father's EXACT axis target get an entry; roots have none.
         lengths_dict: dict[str, float] = {}
         for seg in group:
@@ -728,7 +728,7 @@ class RealtimeSkeletonRigidifier:
             parent_seg = name_to_seg.get(seg.parent)
             if parent_seg is None:
                 continue
-            if seg.origin_keypoint != _exact_axis_target(parent_seg):
+            if seg.origin_landmark != _exact_axis_target(parent_seg):
                 continue
             lengths_dict[seg.name] = lengths[seg.parent]
 
@@ -738,7 +738,7 @@ class RealtimeSkeletonRigidifier:
 
         # Convert corrected segment origins into corrected KEYPOINT positions in
         # two phases over the group's segments.
-        origin_set = {seg.origin_keypoint for seg in group}
+        origin_set = {seg.origin_landmark for seg in group}
 
         # Phase 1 (origins): each segment's corrected origin, under its origin
         # keypoint.
@@ -746,7 +746,7 @@ class RealtimeSkeletonRigidifier:
         for seg in group:
             origin = corrected.get(seg.name)
             if origin is not None:
-                out[seg.origin_keypoint] = origin
+                out[seg.origin_landmark] = origin
 
         # Phase 2 (exact-axis endpoints, only for keypoints NO segment's origin
         # owns). Leaf segments (``left_toes``, the finger distals) are extruded

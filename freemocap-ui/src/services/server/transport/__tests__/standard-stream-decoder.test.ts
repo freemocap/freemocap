@@ -62,22 +62,25 @@ const sampleBuf = sampleBytes.buffer.slice(
 function testSchemaRoundTrip(): void {
   const schema = decodeSchema(schemaJson);
   assertEq(schema.stream_id, "golden-stream-id", "stream_id");
-  assertEq(schema.channels.length, 6, "six channel groups");
+  assertEq(schema.channels.length, 7, "seven channel groups");
   assertEq(schema.channels[0].kind, ChannelKind.KEYPOINTS_3D, "channel 0 kind");
-  assertEq(schema.channels[1].kind, ChannelKind.SEGMENT_ORIGINS, "channel 1 kind");
-  assertEq(schema.channels[2].kind, ChannelKind.ROTATIONS_LOCAL, "channel 2 kind");
-  assertEq(schema.channels[3].kind, ChannelKind.ROTATIONS_WORLD, "channel 3 kind");
-  assertEq(schema.channels[4].kind, ChannelKind.DERIVED_POINTS, "channel 4 kind");
-  assertEq(schema.channels[5].kind, ChannelKind.OVERLAY_2D, "channel 5 kind");
-  assertEq(schema.channels[0].names.length, 76, "76 keypoints");
-  assertEq(schema.channels[1].names.length, 60, "60 segments");
+  assertEq(schema.channels[1].kind, ChannelKind.LANDMARKS_3D, "channel 1 kind");
+  assertEq(schema.channels[2].kind, ChannelKind.SEGMENT_ORIGINS, "channel 2 kind");
+  assertEq(schema.channels[3].kind, ChannelKind.ROTATIONS_LOCAL, "channel 3 kind");
+  assertEq(schema.channels[4].kind, ChannelKind.ROTATIONS_WORLD, "channel 4 kind");
+  assertEq(schema.channels[5].kind, ChannelKind.DERIVED_POINTS, "channel 5 kind");
+  assertEq(schema.channels[6].kind, ChannelKind.OVERLAY_2D, "channel 6 kind");
+  assertEq(schema.channels[0].names.length, 59, "59 rtmpose tracker keypoints");
+  assertEq(schema.channels[1].names.length, 76, "76 landmarks");
+  assertEq(schema.channels[2].names.length, 60, "60 segments");
   assertEq(schema.max_persons, 1, "max_persons");
   assertEq(schema.camera_ids.length, 2, "two cameras");
   assertEq(schema.segment_parents["hips"], null, "hips has no parent");
   assertEq(schema.segment_parents["spine"], "hips", "spine parent is hips");
   // segment_lengths: one entry per segment name (60), default anthropometric values.
   assertEq(Object.keys(schema.segment_lengths).length, 60, "60 segment lengths");
-  assertClose(schema.segment_lengths["hips"], 246.5, 1e-3, "hips default length");
+  // hips: length_ratio 0.145 × NOMINAL_SUBJECT_HEIGHT_MM (1750).
+  assertClose(schema.segment_lengths["hips"], 253.75, 1e-3, "hips default length");
   console.log("PASS: testSchemaRoundTrip");
 }
 
@@ -89,20 +92,32 @@ function testGoldenSampleDecode(): void {
 
   assertEq(sample.frameNumber, 42, "frame number 42");
   assertClose(sample.timestamp, 123.456, 1e-3, "timestamp 123.456");
-  assertEq(sample.blocks.length, 7, "5 groups + 2 camera overlays = 7 blocks");
+  assertEq(sample.blocks.length, 8, "6 groups + 2 camera overlays = 8 blocks");
 
   const registry = createSchemaRegistry();
   registry.register(schema);
   const resolved = registry.resolve(sample);
 
-  // KEYPOINTS_3D — hips_center position
+  // KEYPOINTS_3D — tracker-named nose position
   assert(resolved.keypoints !== null, "resolved keypoints present");
   const kpNames = resolved.keypoints!.names;
-  const hipsIdx = kpNames.indexOf("hips_center");
-  assert(hipsIdx !== -1, "hips_center in keypoint names");
-  const hx = resolved.keypoints!.data[hipsIdx * 3];
-  const hy = resolved.keypoints!.data[hipsIdx * 3 + 1];
-  const hz = resolved.keypoints!.data[hipsIdx * 3 + 2];
+  const noseKpIdx = kpNames.indexOf("nose");
+  assert(noseKpIdx !== -1, "nose in tracker keypoint names");
+  const nx = resolved.keypoints!.data[noseKpIdx * 3];
+  const ny = resolved.keypoints!.data[noseKpIdx * 3 + 1];
+  const nz = resolved.keypoints!.data[noseKpIdx * 3 + 2];
+  assertEq(nx, 0.0, "keypoints nose.x");
+  assertEq(ny, 0.0, "keypoints nose.y");
+  assertEq(nz, 1600.0, "keypoints nose.z");
+
+  // LANDMARKS_3D — hips_center position
+  assert(resolved.landmarks !== null, "resolved landmarks present");
+  const lmNames = resolved.landmarks!.names;
+  const hipsIdx = lmNames.indexOf("hips_center");
+  assert(hipsIdx !== -1, "hips_center in landmark names");
+  const hx = resolved.landmarks!.data[hipsIdx * 3];
+  const hy = resolved.landmarks!.data[hipsIdx * 3 + 1];
+  const hz = resolved.landmarks!.data[hipsIdx * 3 + 2];
   assertEq(hx, 0.0, "hips_center.x");
   assertEq(hy, 0.0, "hips_center.y");
   assertEq(hz, 900.0, "hips_center.z");

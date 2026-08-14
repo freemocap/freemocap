@@ -80,12 +80,13 @@ class ChannelKind(enum.IntEnum):
     exists to prevent). See 07 § Segment rotation conventions.
     """
 
-    KEYPOINTS_3D = 0        # triangulated tracker detections — columns (x, y, z, reprojection_error)
-    SEGMENT_ORIGINS = 1     # fitted segment transform origins — columns (x, y, z)
-    ROTATIONS_LOCAL = 2     # per-segment parent-relative quaternion — columns (w, x, y, z)
-    ROTATIONS_WORLD = 3     # per-segment world-frame quaternion — columns (w, x, y, z)
-    DERIVED_POINTS = 4      # whole-body kinematics (center_of_mass, xcom) — columns (x, y, z)
-    OVERLAY_2D = 5          # per-camera 2D projection — columns (x, y, visibility); keyed by (camera_id, overlay_layer)
+    KEYPOINTS_3D = 0        # tracker-named measured keypoints — columns (x, y, z, reprojection_error)
+    LANDMARKS_3D = 1        # the 76 hydrated standard-human landmarks — columns (x, y, z, reprojection_error)
+    SEGMENT_ORIGINS = 2     # fitted segment transform origins — columns (x, y, z)
+    ROTATIONS_LOCAL = 3     # per-segment parent-relative quaternion — columns (w, x, y, z)
+    ROTATIONS_WORLD = 4     # per-segment world-frame quaternion — columns (w, x, y, z)
+    DERIVED_POINTS = 5      # whole-body kinematics (center_of_mass, xcom) — columns (x, y, z)
+    OVERLAY_2D = 6          # per-camera 2D projection — columns (x, y, visibility); keyed by (camera_id, overlay_layer)
 
 
 class OverlayLayer(enum.IntEnum):
@@ -140,7 +141,7 @@ class RestPose(msgspec.Struct, frozen=True):
         geometry = build_reference_geometry(list(standard_human.segments), merged)
 
         positions: dict[str, tuple[float, float, float]] = {}
-        for name, pos in geometry.keypoints.items():
+        for name, pos in geometry.landmarks.items():
             positions[name] = (float(pos[0]), float(pos[1]), float(pos[2]))
 
         identity = (1.0, 0.0, 0.0, 0.0)
@@ -183,6 +184,7 @@ class StreamSchema(msgspec.Struct, frozen=True):
         camera_ids: Sequence[str] = (),
         convention: CoordinateConvention = FREEMOCAP_CANONICAL_CONVENTION,
         derived_point_names: Sequence[str] = DEFAULT_DERIVED_POINTS,
+        tracker_keypoint_names: Sequence[str] = (),
         max_persons: int = 1,
         measured_lengths: dict[str, float] | None = None,
     ) -> StreamSchema:
@@ -196,22 +198,26 @@ class StreamSchema(msgspec.Struct, frozen=True):
 
         Enumerates channels in fixed order (decoder indexes blocks by position):
 
-        0. **KEYPOINTS_3D** — tracker keypoint names (76, sorted),
+        0. **KEYPOINTS_3D** — the tracker-named measured keypoints
+           (``tracker_keypoint_names`` — the mapping's tracker side),
            columns ``(x, y, z, reprojection_error)``.
-        1. **SEGMENT_ORIGINS** — segment names (60), transform origins,
+        1. **LANDMARKS_3D** — the 76 hydrated standard-human landmarks
+           (``required_landmarks()``, sorted), columns
+           ``(x, y, z, reprojection_error)``.
+        2. **SEGMENT_ORIGINS** — segment names (60), transform origins,
            columns ``(x, y, z)``.
-        2. **ROTATIONS_LOCAL** — segment names, parent-relative quaternion,
+        3. **ROTATIONS_LOCAL** — segment names, parent-relative quaternion,
            columns ``(w, x, y, z)``.
-        3. **ROTATIONS_WORLD** — segment names, world-frame quaternion,
+        4. **ROTATIONS_WORLD** — segment names, world-frame quaternion,
            columns ``(w, x, y, z)``.
-        4. **DERIVED_POINTS** — ``center_of_mass``, ``xcom``,
+        5. **DERIVED_POINTS** — ``center_of_mass``, ``xcom``,
            columns ``(x, y, z)``.
-        5. **OVERLAY_2D** — one block per camera per layer in the sample,
+        6. **OVERLAY_2D** — one block per camera per layer in the sample,
            columns ``(x, y, visibility)``, keyed by ``camera_id`` +
            ``overlay_layer``. ``names`` lists the DETECTIONS-layer keypoints
-           (the detector's ``body``-stage 2D detections, NaN-padded); the
-           REPROJECTIONS layer carries the same keypoint set (the fitted model
-           projected back down), so ``names`` describes both layers' rows.
+           (the tracker-named 2D detections, NaN-padded); the REPROJECTIONS
+           layer carries the same keypoint set (the fitted model projected back
+           down), so ``names`` describes both layers' rows.
 
         ``segment_parents`` (segment → parent) and ``rest_pose`` together are
         what a consumer needs to compose the local-rotation chain into world
@@ -230,7 +236,8 @@ class StreamSchema(msgspec.Struct, frozen=True):
         """
         segment_names = tuple(standard_human.segment_names)
         segment_lengths = _merge_segment_lengths(standard_human, measured_lengths)
-        keypoint_names = tuple(sorted(standard_human.required_keypoints()))
+        landmark_names = tuple(sorted(standard_human.required_landmarks()))
+        tracker_names = tuple(tracker_keypoint_names)
         segment_parents: dict[SegmentNameString, SegmentNameString | None] = {
             name: parent for name, parent in standard_human.segment_parents.items()
         }
@@ -240,7 +247,13 @@ class StreamSchema(msgspec.Struct, frozen=True):
         channels: tuple[ChannelGroup, ...] = (
             ChannelGroup(
                 kind=ChannelKind.KEYPOINTS_3D,
-                names=keypoint_names,
+                names=tracker_names,
+                columns=KEYPOINTS_3D_COLUMNS,
+                units=units,
+            ),
+            ChannelGroup(
+                kind=ChannelKind.LANDMARKS_3D,
+                names=landmark_names,
                 columns=KEYPOINTS_3D_COLUMNS,
                 units=units,
             ),
@@ -270,7 +283,7 @@ class StreamSchema(msgspec.Struct, frozen=True):
             ),
             ChannelGroup(
                 kind=ChannelKind.OVERLAY_2D,
-                names=keypoint_names,
+                names=tracker_names,
                 columns=OVERLAY_2D_COLUMNS,
                 units="px",
             ),

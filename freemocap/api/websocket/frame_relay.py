@@ -51,17 +51,23 @@ class FrameRelay:
         schema: StreamSchema,
         standard_human,
         source: FrameSource,
+        should_continue: Callable[[], bool],
     ):
         self._serializer = serializer
         self._backpressure = backpressure
         self._schema = schema
         self._standard_human = standard_human
         self._source = source
+        self._should_continue = should_continue
         self._last_sent_frame_number: int = -1
 
     async def run(self) -> None:
-        """Relay frames until cancelled (the supervisor cancels on disconnect)."""
-        while True:
+        """Relay frames until the supervisor's ``should_continue`` goes False.
+
+        The relay owns its exit condition — no reliance on task cancellation
+        from ``gather`` (A2).
+        """
+        while self._should_continue():
             action = self._backpressure.should_send()
             if action is BackpressureAction.RESET:
                 logger.warning("backpressure RESET — clearing ack window")

@@ -1,7 +1,7 @@
 """FMC-WS-3 — StreamSchema.from_standard_human() classmethod tests.
 
-Builds the canonical StandardHuman model (60 segments, 76 required keypoints)
-and verifies the schema enumerates the six channel groups (KEYPOINTS_3D,
+Builds the canonical StandardHuman model (60 segments, 76 landmarks) and verifies
+the schema enumerates the seven channel groups (KEYPOINTS_3D, LANDMARKS_3D,
 SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D),
 carries topology + segment_parents, round-trips through JSON, and expands
 OVERLAY_2D per camera in the LSL channel list.
@@ -42,19 +42,21 @@ def _schema():
         stream_name="test",
         standard_human=_minimal_model(),
         camera_ids=("cam-0", "cam-1"),
+        tracker_keypoint_names=("left_hand_wrist", "nose", "right_shoulder"),
     )
 
 
 # ── Channel group tests ────────────────────────────────────────────────
 
 
-def test_schema_enumerates_six_channel_groups():
-    """from_standard_human produces 6 channel groups in the fixed order."""
+def test_schema_enumerates_seven_channel_groups():
+    """from_standard_human produces 7 channel groups in the fixed order."""
     channels = _schema().channels
-    assert len(channels) == 6
+    assert len(channels) == 7
     kinds = [group.kind for group in channels]
     assert kinds == [
         ChannelKind.KEYPOINTS_3D,
+        ChannelKind.LANDMARKS_3D,
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
@@ -66,15 +68,24 @@ def test_schema_enumerates_six_channel_groups():
 def test_keypoints_3d_group():
     group = _schema().channels[0]
     assert group.kind == ChannelKind.KEYPOINTS_3D
-    # 76 required keypoints, sorted by name.
-    assert group.names == tuple(sorted(_minimal_model().required_keypoints()))
+    # The tracker-named measured keypoints, as passed by the builder caller.
+    assert group.names == ("left_hand_wrist", "nose", "right_shoulder")
+    assert group.columns == ("x", "y", "z", "reprojection_error")
+    assert group.units == "mm"
+
+
+def test_landmarks_3d_group():
+    group = _schema().channels[1]
+    assert group.kind == ChannelKind.LANDMARKS_3D
+    # The 76 hydrated standard-human landmarks, sorted by name.
+    assert group.names == tuple(sorted(_minimal_model().required_landmarks()))
     assert len(group.names) == 76
     assert group.columns == ("x", "y", "z", "reprojection_error")
     assert group.units == "mm"
 
 
 def test_segment_origins_group():
-    group = _schema().channels[1]
+    group = _schema().channels[2]
     assert group.kind == ChannelKind.SEGMENT_ORIGINS
     assert group.names == tuple(_minimal_model().segment_names)
     assert len(group.names) == 60
@@ -83,7 +94,7 @@ def test_segment_origins_group():
 
 
 def test_rotations_local_group():
-    rlocal = _schema().channels[2]
+    rlocal = _schema().channels[3]
     assert rlocal.kind == ChannelKind.ROTATIONS_LOCAL
     assert rlocal.names == tuple(_minimal_model().segment_names)
     assert rlocal.columns == ("w", "x", "y", "z")
@@ -91,7 +102,7 @@ def test_rotations_local_group():
 
 
 def test_rotations_world_group():
-    rworld = _schema().channels[3]
+    rworld = _schema().channels[4]
     assert rworld.kind == ChannelKind.ROTATIONS_WORLD
     assert rworld.names == tuple(_minimal_model().segment_names)
     assert rworld.columns == ("w", "x", "y", "z")
@@ -100,8 +111,8 @@ def test_rotations_world_group():
 
 def test_local_and_world_rotations_are_distinct():
     # Both rotation kinds are first-class and separate groups.
-    rlocal = _schema().channels[2]
-    rworld = _schema().channels[3]
+    rlocal = _schema().channels[3]
+    rworld = _schema().channels[4]
     assert rlocal.kind is ChannelKind.ROTATIONS_LOCAL
     assert rworld.kind is ChannelKind.ROTATIONS_WORLD
     assert rlocal.kind != rworld.kind
@@ -110,31 +121,30 @@ def test_local_and_world_rotations_are_distinct():
 def test_keypoints_vs_segments_split():
     # The measured half (keypoints) and the reconstructed half (segments) are two
     # distinct channel groups with distinct kinds. Their name sets may overlap
-    # (e.g. `head`, `jaw` are both keypoint and segment names) — the group kind,
-    # not the name, is what distinguishes the two on the wire.
+    # (e.g. `nose` is both a tracker keypoint and a face-segment name) — the
+    # group kind, not the name, is what distinguishes the two on the wire.
     keypoints = _schema().channels[0]
-    segments = _schema().channels[1]
+    segments = _schema().channels[2]
     assert keypoints.kind is ChannelKind.KEYPOINTS_3D
     assert segments.kind is ChannelKind.SEGMENT_ORIGINS
     assert keypoints.kind != segments.kind
-    assert len(keypoints.names) == 76
+    assert len(keypoints.names) == 3
     assert len(segments.names) == 60
 
 
 def test_derived_points_group():
-    derived = _schema().channels[4]
+    derived = _schema().channels[5]
     assert derived.kind == ChannelKind.DERIVED_POINTS
     assert derived.names == ("center_of_mass", "xcom")
     assert derived.columns == ("x", "y", "z")
 
 
 def test_overlay_2d_group():
-    overlay = _schema().channels[5]
+    overlay = _schema().channels[6]
     assert overlay.kind == ChannelKind.OVERLAY_2D
-    # F2a review fix: OVERLAY_2D names describe the DETECTIONS rows — the 76
-    # keypoint names (what the detector saw in each camera), not segment names.
-    assert overlay.names == tuple(sorted(_minimal_model().required_keypoints()))
-    assert len(overlay.names) == 76
+    # OVERLAY_2D names describe the DETECTIONS rows — the tracker-named 2D
+    # detections (what the detector saw in each camera), not segment names.
+    assert overlay.names == ("left_hand_wrist", "nose", "right_shoulder")
     assert overlay.columns == ("x", "y", "visibility")
     assert overlay.units == "px"
 
@@ -271,8 +281,8 @@ def test_rest_pose_positions_match_reference_geometry():
 
     rest = _schema().rest_pose
     assert rest is not None
-    assert set(rest.positions) == set(geometry.keypoints)
-    for name, pos in geometry.keypoints.items():
+    assert set(rest.positions) == set(geometry.landmarks)
+    for name, pos in geometry.landmarks.items():
         assert rest.positions[name] == (
             float(pos[0]),
             float(pos[1]),
@@ -333,14 +343,15 @@ def test_schema_json_roundtrip_preserves_segment_parents():
 def test_lsl_channels_count():
     """LSL channel count covers all groups including per-camera overlays."""
     channels = schema_to_streaminfo_channels(_schema())
-    # keypoints_3d:  76 keypoints × 4 cols = 304
+    # keypoints_3d:  3 tracker keypoints × 4 cols = 12
+    # landmarks_3d:  76 landmarks × 4 cols = 304
     # segment_origins: 60 segments × 3 cols = 180
     # rotations_local: 60 segments × 4 cols = 240
     # rotations_world: 60 segments × 4 cols = 240
     # derived_points:  2 points   × 3 cols =   6
-    # overlay_2d:      2 cams × 76 keypoints × 3 cols = 456
-    # total: 304 + 180 + 240 + 240 + 6 + 456 = 1426
-    assert len(channels) == 1426
+    # overlay_2d:      2 cams × 3 keypoints × 3 cols = 18
+    # total: 12 + 304 + 180 + 240 + 240 + 6 + 18 = 1000
+    assert len(channels) == 1000
 
 
 def test_lsl_channels_have_rotation_labels():
@@ -355,9 +366,9 @@ def test_lsl_channels_have_rotation_labels():
 def test_lsl_channels_expand_overlays_per_camera():
     channels = schema_to_streaminfo_channels(_schema())
     labels = [label for label, _unit in channels]
-    # overlay names are now keypoint names (the DETECTIONS rows).
-    assert "cam-0.hips_center.x" in labels
-    assert "cam-0.hips_center.y" in labels
-    assert "cam-0.hips_center.visibility" in labels
-    assert "cam-1.nose.x" in labels
-    assert "cam-1.head_center.visibility" in labels
+    # overlay names are the tracker keypoint names (the DETECTIONS rows).
+    assert "cam-0.nose.x" in labels
+    assert "cam-0.nose.y" in labels
+    assert "cam-0.nose.visibility" in labels
+    assert "cam-1.left_hand_wrist.x" in labels
+    assert "cam-1.right_shoulder.visibility" in labels

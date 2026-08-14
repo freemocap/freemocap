@@ -73,6 +73,7 @@ export function createSchemaRegistry(): SchemaRegistry {
       };
 
       const kp = pointGroup(ChannelKind.KEYPOINTS_3D);
+      const lm = pointGroup(ChannelKind.LANDMARKS_3D);
       const seg = pointGroup(ChannelKind.SEGMENT_ORIGINS);
       const rw = pointGroup(ChannelKind.ROTATIONS_WORLD);
       const rl = pointGroup(ChannelKind.ROTATIONS_LOCAL);
@@ -80,6 +81,9 @@ export function createSchemaRegistry(): SchemaRegistry {
 
       const keypoints = kp.block && kp.group
         ? resolvePoints(kp.group.names, kp.block.cols, kp.block.data)
+        : null;
+      const landmarks = lm.block && lm.group
+        ? resolvePoints(lm.group.names, lm.block.cols, lm.block.data)
         : null;
       const segmentOrigins = seg.block && seg.group
         ? resolvePoints(seg.group.names, seg.block.cols, seg.block.data)
@@ -126,6 +130,7 @@ export function createSchemaRegistry(): SchemaRegistry {
         frameNumber: sample.frameNumber,
         subjectId: sample.subjectId,
         keypoints,
+        landmarks,
         segmentOrigins,
         rotationsWorld,
         rotationsLocal,

@@ -35,6 +35,7 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     CoMConfidence,
     CenterOfMassResult,
 )
+from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import (
     RealtimePipelineConfig,
 )
@@ -63,6 +64,7 @@ def _schema(**kwargs):
         stream_name="golden-standard-stream",
         standard_human=_model(),
         camera_ids=("cam-0", "cam-1"),
+        tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
     )
     kw.update(kwargs)
     return StreamSchema.from_standard_human(**kw)
@@ -137,7 +139,12 @@ def _message(**kwargs) -> AggregationNodeOutputMessage:
                 ),
             ),
         },
-        keypoints_arrays={},
+        keypoints_arrays={
+            "nose": np.array([0.0, 0.0, 1600.0]),
+            "left_shoulder": np.array([-250.0, 0.0, 1400.0]),
+            "right_shoulder": np.array([250.0, 0.0, 1400.0]),
+            "left_wrist": np.array([-300.0, 100.0, 1100.0]),
+        },
         center_of_mass_result=com,
         xcom=Point3d(x=12.5, y=-4.0, z=0.0),
         skeleton=None,
@@ -156,14 +163,15 @@ def _block_by_kind(sample: StreamSample, kind: ChannelKind) -> list:
     return [b for b in sample.blocks if b.kind is kind]
 
 
-def test_sample_has_six_groups_in_order():
+def test_sample_has_seven_groups_in_order():
     sample = StreamSample.from_aggregator_output(
         message=_message(), schema=_schema(), standard_human=_model()
     )
     kinds = [b.kind for b in sample.blocks]
-    # 6... but OVERLAY_2D is one per camera (2) → 5 + 2 = 7 blocks
+    # 7 groups... but OVERLAY_2D is one per camera (2) → 6 + 2 = 8 blocks
     assert kinds == [
         ChannelKind.KEYPOINTS_3D,
+        ChannelKind.LANDMARKS_3D,
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
@@ -178,29 +186,48 @@ def test_keypoints_3d_dims_and_values():
         message=_message(), schema=_schema(), standard_human=_model()
     )
     (kp,) = _block_by_kind(sample, ChannelKind.KEYPOINTS_3D)
-    schema = _schema()
-    group = schema.channels[0]
-    assert kp.data.shape == (len(group.names), 4)  # 76 × (x,y,z,reprojection_error)
-    assert len(group.names) == 76
+    group = _schema().channels[0]
+    assert kp.data.shape == (len(group.names), 4)  # tracker keypoints × (x,y,z,reprojection_error)
 
-    # positions keyed by standard-human name
+    # positions keyed by tracker name, from message.keypoints_arrays
     name_to_idx = {n: i for i, n in enumerate(group.names)}
-    hips_row = kp.data[name_to_idx["hips_center"]]
-    np.testing.assert_array_equal(hips_row[:3], np.array([0.0, 0.0, 900.0], dtype=np.float32))
-    assert np.isnan(hips_row[3])  # reprojection_error not carried this task
+    nose_row = kp.data[name_to_idx["nose"]]
+    np.testing.assert_array_equal(nose_row[:3], np.array([0.0, 0.0, 1600.0], dtype=np.float32))
+    assert np.isnan(nose_row[3])  # reprojection_error not carried this task
 
-    # a missing keypoint → full NaN row
-    missing = "left_big_toe"
+    # a tracker keypoint with no observation this frame → full NaN row
+    missing = "left_ankle"
     assert missing in name_to_idx
     assert np.all(np.isnan(kp.data[name_to_idx[missing]]))
 
 
-def test_segment_origins_from_origin_keypoint():
+def test_landmarks_3d_dims_and_values():
+    sample = StreamSample.from_aggregator_output(
+        message=_message(), schema=_schema(), standard_human=_model()
+    )
+    (lm,) = _block_by_kind(sample, ChannelKind.LANDMARKS_3D)
+    group = _schema().channels[1]
+    assert lm.data.shape == (76, 4)  # landmarks × (x,y,z,reprojection_error)
+    assert len(group.names) == 76
+
+    # positions keyed by standard-human name, from message.standard_skeleton
+    name_to_idx = {n: i for i, n in enumerate(group.names)}
+    hips_row = lm.data[name_to_idx["hips_center"]]
+    np.testing.assert_array_equal(hips_row[:3], np.array([0.0, 0.0, 900.0], dtype=np.float32))
+    assert np.isnan(hips_row[3])
+
+    # a missing landmark → full NaN row
+    missing = "left_big_toe"
+    assert missing in name_to_idx
+    assert np.all(np.isnan(lm.data[name_to_idx[missing]]))
+
+
+def test_segment_origins_from_origin_landmark():
     sample = StreamSample.from_aggregator_output(
         message=_message(), schema=_schema(), standard_human=_model()
     )
     (orig,) = _block_by_kind(sample, ChannelKind.SEGMENT_ORIGINS)
-    group = _schema().channels[1]
+    group = _schema().channels[2]
     assert orig.data.shape == (60, 3)
     name_to_idx = {n: i for i, n in enumerate(group.names)}
     # left_upper_arm's origin == left_shoulder
@@ -223,7 +250,7 @@ def test_rotations_wxyz_match_message():
     )
     world = _block_by_kind(sample, ChannelKind.ROTATIONS_WORLD)[0]
     local = _block_by_kind(sample, ChannelKind.ROTATIONS_LOCAL)[0]
-    group = _schema().channels[2]
+    group = _schema().channels[3]
     assert world.data.shape == (60, 4)
     name_to_idx = {n: i for i, n in enumerate(group.names)}
 
@@ -249,7 +276,7 @@ def test_derived_points_com_and_xcom():
         message=_message(), schema=_schema(), standard_human=_model()
     )
     (derived,) = _block_by_kind(sample, ChannelKind.DERIVED_POINTS)
-    group = _schema().channels[4]
+    group = _schema().channels[5]
     names = group.names  # ("center_of_mass", "xcom")
     name_to_idx = {n: i for i, n in enumerate(names)}
     assert derived.data.shape == (2, 3)
@@ -268,7 +295,7 @@ def test_xcom_none_yields_nan_row():
         message=_message(xcom=None), schema=_schema(), standard_human=_model()
     )
     (derived,) = _block_by_kind(sample, ChannelKind.DERIVED_POINTS)
-    names = _schema().channels[4].names
+    names = _schema().channels[5].names
     name_to_idx = {n: i for i, n in enumerate(names)}
     assert np.all(np.isnan(derived.data[name_to_idx["xcom"]]))
 
@@ -287,13 +314,13 @@ def test_overlay_2d_detections_per_camera():
     name_to_idx = {n: i for i, n in enumerate(kp_group.names)}
 
     cam0 = by_cam["cam-0"].data
-    assert cam0.shape == (76, 3)  # keypoint names × (x,y,visibility)
+    assert cam0.shape == (len(kp_group.names), 3)  # tracker keypoints × (x,y,visibility)
     np.testing.assert_array_equal(
         cam0[name_to_idx["nose"], :2],
         np.array([320.0, 240.0], dtype=np.float32),
     )
     # a keypoint not seen by this camera → NaN
-    assert np.all(np.isnan(cam0[name_to_idx["hips_center"]]))
+    assert np.all(np.isnan(cam0[name_to_idx["left_wrist"]]))
 
 
 # ── round-trip ─────────────────────────────────────────────────────────
@@ -333,13 +360,16 @@ def test_golden_schema_roundtrip():
     assert schema.stream_id == "golden-stream-id"
     assert [g.kind for g in schema.channels] == [
         ChannelKind.KEYPOINTS_3D,
+        ChannelKind.LANDMARKS_3D,
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
         ChannelKind.DERIVED_POINTS,
         ChannelKind.OVERLAY_2D,
     ]
-    assert schema.channels[0].names[0] == "head_center"  # sorted first
+    # the real rtmpose tracker keypoint set, sorted
+    assert schema.channels[0].names == tracker_keypoint_names("rtmpose")
+    assert schema.channels[1].names[0] == "head_center"  # sorted landmarks first
 
 
 def test_golden_sample_decodes_to_pinned_values():
@@ -348,16 +378,16 @@ def test_golden_sample_decodes_to_pinned_values():
     sample = decode_sample(golden.read_bytes())
 
     assert sample.frame_number == 42
-    kp = _block_by_kind(sample, ChannelKind.KEYPOINTS_3D)[0]
-    group = _schema().channels[0]
+    lm = _block_by_kind(sample, ChannelKind.LANDMARKS_3D)[0]
+    group = _schema().channels[1]
     name_to_idx = {n: i for i, n in enumerate(group.names)}
     np.testing.assert_array_equal(
-        kp.data[name_to_idx["hips_center"], :3],
+        lm.data[name_to_idx["hips_center"], :3],
         np.array([0.0, 0.0, 900.0], dtype=np.float32),
     )
 
     world = _block_by_kind(sample, ChannelKind.ROTATIONS_WORLD)[0]
-    seg_to_idx = {n: i for i, n in enumerate(_schema().channels[2].names)}
+    seg_to_idx = {n: i for i, n in enumerate(_schema().channels[3].names)}
     np.testing.assert_allclose(
         world.data[seg_to_idx["spine"]],
         np.array([0.7071, 0.0, 0.0, 0.7071], dtype=np.float32),

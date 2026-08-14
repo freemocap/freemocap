@@ -99,7 +99,7 @@ def _template_distances(
 def _group_points(name: str) -> tuple[str, ...]:
     """The rigid points of segment ``name`` in model order."""
     return next(
-        s.rigid_points
+        s.landmarks
         for s in compose_standard_human().segments
         if s.name == name
     )

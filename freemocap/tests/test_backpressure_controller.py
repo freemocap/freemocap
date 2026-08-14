@@ -88,3 +88,27 @@ def test_unacked_count_never_negative():
     assert c.unacked_count == 0
     c.ack(5)  # ack with nothing sent — no negative
     assert c.unacked_count == 0
+
+
+def test_skipped_frames_do_not_overcount_the_window():
+    # B1: newest-wins skipping makes frame numbers jump; the window counts
+    # actual sends, so a gap never fills the window spuriously.
+    c = _controller(window=3)
+    c.sent(100)
+    c.sent(105)  # frames 101–104 were skipped, never sent
+    assert c.unacked_count == 2  # not 6
+    assert c.should_send() is BackpressureAction.SEND
+    c.ack(105)
+    assert c.unacked_count == 0
+
+
+def test_ack_never_credits_unsent_frames():
+    # B1: an ack credits only frames actually sent — a gap never marks
+    # unsent frames acked.
+    c = _controller(window=3)
+    c.sent(100)
+    c.sent(105)
+    c.ack(104)  # the client received everything ≤104 — but 101–104 were never sent
+    assert c.unacked_count == 1  # only 100 acked
+    c.ack(105)
+    assert c.unacked_count == 0

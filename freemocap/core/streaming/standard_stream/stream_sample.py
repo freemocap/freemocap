@@ -32,7 +32,7 @@ from freemocap.core.streaming.standard_stream.stream_schema import (
 
 # Imported at runtime (not TYPE_CHECKING-only): beartype resolves these type
 # annotations from the module namespace when ``from_aggregator_output`` /
-# ``_camera_2d_detections`` / ``_origin_keypoint_names`` are called, and a
+# ``_camera_2d_detections`` / ``_origin_landmark_names`` are called, and a
 # lazy forward-ref that cannot be imported would raise at the first call.
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — resolved at runtime by beartype
 from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman  # noqa: TC002 — resolved at runtime by beartype
@@ -126,14 +126,17 @@ class StreamSample:
     ) -> StreamSample:
         """Build one sample from one aggregator output message + the F1 schema.
 
-        Fills the six blocks in schema order:
+        Fills the seven blocks in schema order:
 
-        - **KEYPOINTS_3D** — the schema's 76 keypoint names; positions from the
-          rigidified standard-human positions (merged body + standard hand
-          names, the aggregator's solver input). NaN rows for missing; the 4th
-          column (``reprojection_error``) is NaN (per-point reprojection error
-          is wired with the per-camera overlay in F2b).
-        - **SEGMENT_ORIGINS** — the 60 segments' ``origin_keypoint`` positions
+        - **KEYPOINTS_3D** — the tracker-named measured keypoints; positions
+          from ``message.keypoints_arrays`` (the filtered triangulations). NaN
+          rows for missing; the 4th column (``reprojection_error``) is NaN
+          (per-point reprojection error is wired with the per-camera overlay in
+          F2b).
+        - **LANDMARKS_3D** — the 76 hydrated standard-human landmarks;
+          positions from ``message.standard_skeleton`` (the rigidified solver
+          input). NaN rows for missing.
+        - **SEGMENT_ORIGINS** — the 60 segments' ``origin_landmark`` positions
           from the same merged source; NaN for missing.
         - **ROTATIONS_LOCAL** / **ROTATIONS_WORLD** — 60 wxyz rows each, from
           the message's ``segment_rotations_local`` / ``segment_rotations_world``
@@ -149,7 +152,7 @@ class StreamSample:
           (its wiring is later — the fitted segment model projected back down).
 
         ``standard_human`` is required to resolve each segment's
-        ``origin_keypoint`` (the schema carries segment *names* only, not their
+        ``origin_landmark`` (the schema carries segment *names* only, not their
         origin keypoints).
         """
         groups = {g.kind: g for g in schema.channels}
@@ -167,24 +170,41 @@ class StreamSample:
                 "without it cannot produce a sample."
             )
 
-        origin_names = cls._origin_keypoint_names(standard_human)
+        origin_names = cls._origin_landmark_names(standard_human)
 
         blocks: list[SampleBlock] = []
 
-        # 0. KEYPOINTS_3D
+        # 0. KEYPOINTS_3D — the tracker-named measured keypoints
+        # (``message.keypoints_arrays``); NaN rows where unobserved.
         kp_group = groups[ChannelKind.KEYPOINTS_3D]
+        tracker_positions: dict[str, np.ndarray] = message.keypoints_arrays or {}
         blocks.append(
             SampleBlock(
                 kind=ChannelKind.KEYPOINTS_3D,
                 data=cls._assemble_rows(
                     names=kp_group.names,
-                    positions=positions,
+                    positions=tracker_positions,
                     columns=kp_group.columns,
                 ),
             )
         )
 
-        # 1. SEGMENT_ORIGINS
+        # 1. LANDMARKS_3D — the 76 hydrated standard-human landmarks (the
+        # rigidified solver input, ``message.standard_skeleton``); NaN rows
+        # where unobserved.
+        lm_group = groups[ChannelKind.LANDMARKS_3D]
+        blocks.append(
+            SampleBlock(
+                kind=ChannelKind.LANDMARKS_3D,
+                data=cls._assemble_rows(
+                    names=lm_group.names,
+                    positions=positions,
+                    columns=lm_group.columns,
+                ),
+            )
+        )
+
+        # 2. SEGMENT_ORIGINS
         origin_positions = {
             segment_name: positions.get(origin_names[segment_name])
             for segment_name in groups[ChannelKind.SEGMENT_ORIGINS].names
@@ -200,7 +220,7 @@ class StreamSample:
             )
         )
 
-        # 2/3. ROTATIONS_LOCAL / ROTATIONS_WORLD
+        # 3/4. ROTATIONS_LOCAL / ROTATIONS_WORLD
         for kind, source in (
             (ChannelKind.ROTATIONS_LOCAL, message.segment_rotations_local),
             (ChannelKind.ROTATIONS_WORLD, message.segment_rotations_world),
@@ -217,7 +237,7 @@ class StreamSample:
                 )
             )
 
-        # 4. DERIVED_POINTS
+        # 5. DERIVED_POINTS
         com_row = np.full(3, np.nan)
         if message.center_of_mass_result is not None and not np.any(
             np.isnan(message.center_of_mass_result.total_body_com)
@@ -241,7 +261,7 @@ class StreamSample:
             SampleBlock(kind=ChannelKind.DERIVED_POINTS, data=derived_data.astype(np.float32))
         )
 
-        # 5. OVERLAY_2D — one DETECTIONS block per camera this task.
+        # 6. OVERLAY_2D — one DETECTIONS block per camera this task.
         # DETECTIONS carry keypoint names (what the detector saw in that camera),
         # per 09 § 2D overlays. The REPROJECTIONS layer — the fitted segment model
         # projected back into each camera — is NOT emitted yet: the fitted model
@@ -302,9 +322,9 @@ class StreamSample:
         return detections
 
     @staticmethod
-    def _origin_keypoint_names(standard_human: StandardHuman) -> dict[str, str]:
+    def _origin_landmark_names(standard_human: StandardHuman) -> dict[str, str]:
         """segment name → origin keypoint name (from the canonical model)."""
-        return {segment.name: segment.origin_keypoint for segment in standard_human.segments}
+        return {segment.name: segment.origin_landmark for segment in standard_human.segments}
 
     @staticmethod
     def _assemble_rows(

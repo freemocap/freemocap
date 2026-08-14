@@ -20,10 +20,10 @@ The precise on-wire behaviour: a text **schema** frame on connect (and on schema
 Ack-window semantics are being fixed (**B1**). Third-party protocol conformance (LSL/VMC) is
 [hub-and-adapters.md](hub-and-adapters.md).
 
-> **Dual-channel decision (2026-08-14, settled):** the point data splits into tracker-named
-> **`KEYPOINTS_3D`** (the measured keypoints) + a new **`LANDMARKS_3D`** (the 76 hydrated landmarks) —
-> see the channel table in [../01-data-model/stream-contract.md](../01-data-model/stream-contract.md).
-> Landed in Sweep 3; until then `KEYPOINTS_3D` carries the landmark names.
+> **Dual channels (2026-08-14, landed):** the point data travels as tracker-named
+> **`KEYPOINTS_3D`** (the measured keypoints) + **`LANDMARKS_3D`** (the 76 hydrated landmarks) — the
+> channel table + name sources live in
+> [../01-data-model/stream-contract.md](../01-data-model/stream-contract.md).
 
 ## Reconciliation notes
 Single-source the convention block from [../00-foundation/conventions.md](../00-foundation/conventions.md).

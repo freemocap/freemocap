@@ -17,7 +17,7 @@
 ## Scope table (authoritative)
 
 ### `[IN]` — near-term build
-- ✅ **Standard-human model** — DONE 2026-08-13: the composed 55-segment VRM 1.0 human (body + hands + face
+- ✅ **Standard-human model** — DONE 2026-08-13: the composed 60-segment human (55 VRM 1.0 bones + 5 face-detail — body + hands + face
   bones), dict-backed `StandardHuman`, T-pose reference geometry, keypoint-declared solver, one length
   estimator. See [phase-1/09](phase-1/09-segment-model.md).
 - **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; rewrite
@@ -156,6 +156,40 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-13 (face extension + the sanctioned lateral import — round done on disk, awaiting the
+  push)** — Per the user: (1) the face part grew five **face-detail segments** — `nose`
+  (head_center→nose, rest +X), `left_ear`/`right_ear` (head_center→ear, rest ±Y), `left_mouth`/
+  `right_mouth` (corner→nose, rest from the SAME ratios as the mapping's derived-corner offsets) —
+  all ORIGIN-attached to head, right sides authored side-agnostically (the geometry's blanket mirror
+  derives them, like `left_eye`/`right_eye` — the spec review caught the double-mirror my first
+  authored table would have caused). The model is **60 segments / 76 required keypoints**; aliases +5
+  rows (`vrm: None, unreal: None`). skellyforge 104 green. (2) **The tracker→model contract moved from
+  the golden fixture to a live load-time validator** ("real where available, estimate when possible"
+  — MediaPipe mouth corners mapped 1:1; RTMPose corners derived via `anatomical_offset`, lateral
+  ∓0.3·eye-width): skellytracker gained the import-light mapping-path registry (`core/io/
+  mapping_paths.py`; detector methods delegate) and the mouth entries; the fixture + completeness test
+  were DELETED; skellyforge gained `tracker_contract.py` (`validate_mapping_completeness` /
+  `validate_all_tracker_families`, fail-loud, family-named errors) over the ONE sanctioned
+  skellyforge→skellytracker import (base install, no detector extras — the leaky-abstraction rationale
+  recorded at the import site, in `skellyforge/pyproject.toml`, and in both CLAUDE.md files).
+  skellytracker 234 green. **NEXT: user pushes skellytracker + skellyforge → freemocap
+  `uv lock --upgrade-package skellytracker skellyforge` + `uv sync` → F0b** (the wrapper edge-key fix
+  + face-in-tree + 60/76 count updates).
+- **2026-08-13 (the rigid-points ontology reshape — decided, first task dispatched)** — Per the
+  user: no new kinds of rigid bodies; the SEGMENT grows the capacity. `SegmentDefinition` reshapes to
+  an explicit `rigid_points` list + `origin_keypoint` + exact (`x_axis`) / approximate (`y_axis`)
+  from→to axis pairs (bs-repo-style, Gram-Schmidt'd; the T-pose rest fields stay authored). The
+  rigidifier grades by declaration: 2 rigid points → the span path (the degenerate Procrustes);
+  3+ → the full rigid-body fit (median pairwise distances → MDS template → per-frame rotation-only
+  Procrustes anchored at the tree-corrected origin — adapted from the bs repo's ferret skull solver,
+  minus pyceres). The skull = the head's 7-point rigid set (incl. `head_vertex` — the model does not
+  care whether a mapping derives a point or a tracker measures it). The jaw + mouth corners
+  articulate and anchor at observed. The earlier face-pass fix (freemocap, rejected) is superseded.
+  Nuance pinned: the EXACT axis's names must be in `rigid_points`; the APPROXIMATE axis is a
+  direction reference and may be external (e.g. the upper arm's twist `wrist` is NOT rigid with the
+  upper arm). Skellytracker: untouched this round. Order: skellyforge reshape (suite green
+  throughout) → the fit module → push → freemocap wiring (dispatch + skull fit + delete the face
+  pass).
 - **2026-08-13 (sequencing set: realtime loop first, then posthoc; both planned)** — Per the user:
   the full realtime loop (reconstruct → stream over the LSL-compatible WS → 3JS rigid-body meshes)
   completes before the posthoc route is touched, because posthoc must converge on the contracts the

@@ -1746,15 +1746,15 @@ wheels = [
 
 [[package]]
 name = "ruff"
-version = "0.16.2"
+version = "0.16.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/73/e1/4508a569211b35599016e84ba65c1a992b7a4004b4b6c4bea02a851cba1b/ruff-0.16.2.tar.gz", hash = "sha256:c3d7828d12e8927a6fc65fe38e2c2541b9e762d360a1786d752cb1b8883b3c9c", size = 4885811, upload-time = "2026-08-07T13:31:01.432Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/b3/3213589383f8f1b3938781bd1278713f6d18621a14992b3e81fefb8a5ef9/ruff-0.16.3.tar.gz", hash = "sha256:e76d33a347661a84b5be6d043d0347fdc745dfdcf825a8f4fed64b5e26eebdf2", size = 4891904, upload-time = "2026-08-13T15:17:13.381Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/13/5a/995fe85a8470d3e391ac0f7fa8054bb454eaf33ee138196d6172ed1079c0/ruff-0.16.2-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:9a48cc05c6fbc811ca81b5d7ba95375affea6582d1b8024e455e41afbbf55344", size = 11072662, upload-time = "2026-08-07T13:30:18.143Z" },
-    { url = "https://files.pythonhosted.org/packages/32/53/370d767c61c71a971a4ace36703a7ecd8c393956349a7325d7fab2b56827/ruff-0.16.2-py3-none-macosx_11_0_arm64.whl", hash = "sha256:a2c0d14fcbb26c91f0f867a6dc9bd71bbc30b1b6151829c884f23faeab2e5700", size = 10566771, upload-time = "2026-08-07T13:30:20.899Z" },
-    { url = "https://files.pythonhosted.org/packages/c5/d3/8ef50149e8412a77f7ab409efdef0e2b23803707a3863da4fc64cb23d459/ruff-0.16.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ab3d62dde0b19facdd632008cc4827fc28ada7736c6bd35ab6f1050f0bfed53f", size = 11466130, upload-time = "2026-08-07T13:30:36.958Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/d0/1477ea50fc5a0d4b0b71d1d63d50770bdd794d90b43e37a7618e63ec9894/ruff-0.16.2-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:e0422abdf70070255fc4073ce9dfc814cc03db577013761ddd09bc1e4a9a4fbd", size = 11556038, upload-time = "2026-08-07T13:30:50.686Z" },
-    { url = "https://files.pythonhosted.org/packages/00/0d/929c800d920e61397d82a01b60bffc68da3052c17d31de59efaad2e4ed75/ruff-0.16.2-py3-none-win_amd64.whl", hash = "sha256:bcabe2f6d0fc7819f1431793005af4e4de7371927d037345bf941252b195b9fa", size = 12023338, upload-time = "2026-08-07T13:30:56.193Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/e6/2becf3942fddc29a29b8df47691d456fb1085391a694f74d84513251418c/ruff-0.16.3-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:fe155130631a2471fd2e14a7a664a4dfbd7194b8229c3d7b2a40b21178639081", size = 11135539, upload-time = "2026-08-13T15:16:30.87Z" },
+    { url = "https://files.pythonhosted.org/packages/3e/1e/4b8b72f0d006dbf19326aa99f9ca0ee2ff374187c4d301cf529a51aa06fe/ruff-0.16.3-py3-none-macosx_11_0_arm64.whl", hash = "sha256:e2ed719e14aa64d895c2ee922594a90a43c861a93f0575a95ff8c47cdbd13eb9", size = 10475095, upload-time = "2026-08-13T15:16:33.259Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/30/4c468429ac195addc5ee1b717b6ab1b66632786737ca3b2ed3443fb0c26a/ruff-0.16.3-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:294b95c4ae0cda9388525c2047778aa758d6b8d4bb876fd4e9eaa3ebc92343eb", size = 11058736, upload-time = "2026-08-13T15:16:48.823Z" },
+    { url = "https://files.pythonhosted.org/packages/35/85/7795f6e817af050e7517bf3e7aa9b061cce70ef33d280aad902c956c1ecf/ruff-0.16.3-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:a2d85c02f9b8e165d85e6779184d38c4132de12603dab59c51c28e22584f9e4d", size = 11626910, upload-time = "2026-08-13T15:17:03.299Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/99/e2a2bfc4fbf0a1e8a916bc9ebe6fe6c58cc34c28e0ffc6ce281d572d1c2e/ruff-0.16.3-py3-none-win_amd64.whl", hash = "sha256:e80a7d69ca2a6d1c4d352ec91458cdca6e56c83cdbcabd93e4abe1e53591d948", size = 11445993, upload-time = "2026-08-13T15:17:08.353Z" },
 ]
 
 [[package]]
@@ -1976,7 +1976,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#f93cb724e240afa2e1069fa9d550b450ad62231c" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#fd9e73f272199d11db9b0dfcb18e18d6ba03665f" }
 dependencies = [
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "pandas", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -1985,6 +1985,7 @@ dependencies = [
     { name = "pyyaml", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version < '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32') or (python_full_version < '3.12' and sys_platform == 'darwin')" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux') or (python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32') or (python_full_version >= '3.12' and sys_platform == 'darwin')" },
+    { name = "skellytracker", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "toml", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
 
@@ -2005,7 +2006,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#0613d3ff086e48a70dac4c0eb50119a45f954dd6" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#530c24b49664e97c1e2d8392105698d03b8f9af4" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2164,15 +2165,15 @@ wheels = [
 
 [[package]]
 name = "uvicorn"
-version = "0.52.2"
+version = "0.52.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "h11", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c3/53/be79eff13cc289570b4c6875fa4641a91a1dc51ece7f6213f364b0a58c4c/uvicorn-0.52.2.tar.gz", hash = "sha256:4294500b9c8f7a3ef3e975d9e4be08c3eb76441af449a9e6e10146c6a182ffec", size = 100685, upload-time = "2026-08-13T07:03:57.377Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2e/28/64ca011edf31c715b4fad359c587ea52391aaffa125065695590241ff617/uvicorn-0.52.3.tar.gz", hash = "sha256:18857b9e6579300be55c91c0a1cfd37d9a2cf0cabea33b88275f199eb73b8b58", size = 100621, upload-time = "2026-08-13T16:50:02.899Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c1/08/0d834cf3e61e476c9f422e856a9e37d12d708d7ada942a2774b1f42aee6c/uvicorn-0.52.2-py3-none-any.whl", hash = "sha256:0b916d247cf5500b320638ea11abf0fed7f348e8e1c7fde53a0e6b6319803512", size = 79912, upload-time = "2026-08-13T07:03:55.658Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/2b/ebd108734a8204c6b4b93c681c9a38c5273b3ccd5d129fee4ffc1d97772c/uvicorn-0.52.3-py3-none-any.whl", hash = "sha256:116af2710dbf47c80f463cd20ee4884b6662f4c9f227d797ddc7279d2fcc2c7c", size = 79859, upload-time = "2026-08-13T16:50:01.323Z" },
 ]
 
 [[package]]

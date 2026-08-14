@@ -35,15 +35,17 @@ deleted, not ported.
 | batch diagnostics (`kinematics/segment_lengths.py` + the freemocap CLI wrapper `segment_length_io.py`) | `bone_length_ratios` | re-keyed onto the model's segment `length_ratio`s (labels become segment names) |
 | `skellyforge/pipelines/test_pipeline.py` | `Human`, `Animal`, `ModelInfo` | rewritten or deleted with the layer it tests |
 | `data_models/observation.py` | runtime `try`/`except` fallback imports of skellytracker | the decision below |
+| `charuco_model_from_observations.py` (freemocap posthoc calibration) | `Board` actor + `CharucoBoard*ModelInfo` + the charuco YAMLs | **flagged 2026-08-13 (was missing from this map):** the boards are calibration rigs, not humans — E2 deletes `managers/` out from under them; they need their own disposition (a lightweight board structure, or the charuco model-infos carved out before the layer dies) |
+| `Point3d` type-alias consumers (`frontend_payload.py`, `pubsub_topics.py`, `body_kinematics_state.py`, the aggregator) | `data_models/trajectory_3d.py` | **flagged 2026-08-13:** `trajectory_3d.py` is standalone (no old-layer transitives — verified) but dies with `data_models/` — `Point3d` needs a home (freemocap's own types, or the new model layer) before E2 |
 
 ## 2. The decisions to make at the revisit (not now)
 
-1. **`observation.py` silent-fallback imports — keep or fail loudly?** The fallback rebinds
-   skellytracker types to `str`/`np.ndarray`/shims on `ImportError`. Keeping it violates fail-loud;
-   removing it makes skellyforge depend on skellytracker at import time (the import-rule-3 tension).
-   Options: (a) delete the shims and import skellytracker for real (rule 3 says "don't let it block"),
-   (b) delete the module's skellytracker coupling entirely if its only consumer (posthoc observation
-   loading) dies with the rebuild. Decide with the actual consumer map in hand.
+1. **`observation.py` silent-fallback imports — keep or fail loudly?** **Resolved 2026-08-13:** the
+   sanctioned skellyforge→skellytracker dependency (base only — see skellyforge's
+   `tracker_contract.py`) removes the import-rule-3 tension this decision was about. In E4 the
+   try/except shims become real imports (fail-loud), or the module dies with its consumers — the
+   consumer map (§7) still decides which. (The old options were: (a) delete the shims and import
+   skellytracker for real — now unexceptional, (b) drop the coupling entirely.)
 2. ~~The realtime rigidifier's re-key~~ — **resolved 2026-08-13: moved to F0 of the realtime
    loop** ([`11`](11-realtime-loop-completion.md)) — the user's call. Phase E inherits the re-keyed
    rigidifier; the live path carries no old-layer dependency by the time this doc executes.
@@ -106,5 +108,6 @@ deleted, not ported.
 - [x] The rigidifier re-key — resolved: landed in F0 (before the loop's manual run)
 - [ ] The encoder's keypoint handling (F2) — posthoc's serialization parity target
 - [ ] `observation.py`'s actual consumer map (who still imports it after E1–E3)
+- [ ] The charuco-consumer and `Point3d`-home dispositions (flagged 2026-08-13, §1)
 - [ ] New defects the loop surfaced (→ the defect register in
       [`07-spec-reconciliation.md`](07-spec-reconciliation.md))

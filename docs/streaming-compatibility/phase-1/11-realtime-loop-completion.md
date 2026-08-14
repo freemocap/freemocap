@@ -17,7 +17,7 @@
 orientation solver → **the standard stream over WebSocket** → **the TypeScript decoder** → **the
 Three.js rigid-body segment renderer** — with every step proven by tests and one manual full-loop run.
 
-**What already exists (Phase A/D):** the composed 55-segment model, the reference geometry, the
+**What already exists (Phase A/D):** the composed 60-segment model (55 VRM 1.0 bones + 5 face-detail), the reference geometry, the
 keypoint-declared solver, the one length estimator, the completeness contract (both tracker families),
 and a rewired aggregator whose frame carries `segment_rotations_world` / `segment_rotations_local` +
 rigidified body/hand keypoints. The wire and the viewport are the old protocol still.
@@ -76,6 +76,43 @@ that's why nothing broke. This pass ends the parallel-skeleton duplication.
       the **segment tree** (`segment_parents`) + segment-keyed lengths — read it, re-key its
       hierarchy input, keep its enforcement algorithm. The hand trees re-key onto the hand segment
       names the same way.
+- [ ] **Step 2b (the skull rigidifier — supersedes all earlier face handling, decided 2026-08-13):**
+      no face pass-through, no carve-outs. The ontology is generalized instead: every segment
+      declares its rigid point set EXPLICITLY (`rigid_points` + exact/approximate axis pairs — the
+      reshape in the skellyforge round below), and the rigidifier grades by what is declared:
+      **2 rigid points → the span/edge path (today's behavior); 3+ rigid points → the full
+      rigid-body fit** (median pairwise distances → MDS template → per-frame rotation-only
+      Procrustes anchored at the segment's tree-corrected origin). The two paths are one
+      mathematical family — the 2-point span enforcement IS the degenerate Procrustes. The skull is
+      the head segment's 7-point rigid set (`head_center`, `head_vertex`, `nose`, `left_eye`,
+      `right_eye`, `left_ear`, `right_ear`); `head_vertex` is a legitimate rigid point (derived by
+      today's mapping, possibly tracked directly by a future tracker — the model does not care).
+      The jaw + mouth corners articulate (they are NOT rigid points) and anchor at observed. The
+      52 blendshape channels stay declared-but-null and never touch the rigidifier.
+
+**The skellyforge reshape round (before F0b's wrapper wiring):**
+
+- [x] **R1 — the `SegmentDefinition` reshape (DONE 2026-08-13, on disk):** `rigid_points: tuple[str, ...]` (all keypoints
+      rigid on the segment, ≥2, distinct) + `origin_keypoint` + `x_axis: tuple[str, str]` (exact,
+      from→to) + `y_axis: tuple[str, str] | None` (approximate, from→to; `None` = the damped
+      minimal-roll fallback — today's twist-`None` case) + the T-pose rest fields unchanged.
+      Load-time validation: every name in the axis defs and the origin ∈ `rigid_points`. All
+      authored parts migrate mechanically: `x_axis = (origin, long_axis)`, `y_axis = (long_axis,
+      twist)` or `None` — today's semantics exactly, no transitional vocabulary. The head gains
+      its 7-point skull set. Model/part tests stay green through the whole reshape.
+- [x] **R2 — solver + reference geometry re-read (DONE 2026-08-13, on disk)** the same declarations through the new names
+      (Gram-Schmidt exact/approximate basis — already `coordinate_frame_ops.build_orthonormal_basis`;
+      the two-tier twist is unchanged). The rest pose stays the authored T-pose definitions.
+- [x] **R3 — the multi-point rigid fit module (DONE 2026-08-13, on disk)** (adapted from the bs repo's ferret skull solver —
+      `clients/bs/python_code/rigid_body_solver/`, minus the pyceres batch optimization): pairwise
+      rolling-median distances (the existing `SegmentLengthEstimator`, pair-keyed) → classical MDS
+      template (`reconstruct_from_distances`, sign-stabilized against the reference geometry) →
+      per-frame rotation-only Procrustes (the existing `align_point_sets_kabsch`), anchored at the
+      segment's tree-corrected origin. Template rebuilds when the medians change materially; per-frame
+      subset alignment for occlusion (≥3 common points; fewer → observed anchors). Tests: all
+      pairwise distances exact post-fit, rigid input → identity, subset fallbacks.
+      *(The temporal-smoothing factors the bs solver used are unnecessary here — the Euro filter
+      smooths keypoints upstream and the D3/D4 filter smooths orientations downstream.)*
 - [ ] **Step 3:** The aggregator passes the model to the rigidifier construction (it already has it
       per-run), and the rigidifier's per-frame measured lengths feed `build_reference_geometry`
       **per frame** (replacing the once-per-run nominal seeds from Task 9 Step 1 — lengths now live,
@@ -97,7 +134,7 @@ new model API) is superseded by this full pass.
       `ROTATIONS_LOCAL`, `ROTATIONS_WORLD`, `DERIVED_POINTS`, `OVERLAY_2D` — delete the legacy
       `ROTATIONS` member (D10); add `OverlayLayer` (`DETECTIONS` | `REPROJECTIONS`).
 - [ ] **Step 2:** `from_standard_human` enumerates the six groups: keypoint names from
-      `required_keypoints()` (72, sorted); segment names from `segment_names` (55); `segment_parents`
+      `required_keypoints()` (76, sorted); segment names from `segment_names` (60); `segment_parents`
       added (D29's `SegmentNameString` alias lands here); `rest_pose` from
       `build_reference_geometry(...).keypoints` (already the Phase-D shape). **The schema↔model
       coupling (D30) is decided: intended** — `from_standard_human` IS the boundary; note it in the
@@ -195,7 +232,7 @@ what the solver tests catch — cross-link to [`../14`](../14-engine-testing-str
   wire path and its flag are deleted.
 - The aggregator's frame reaches the frontend as schema+samples; the TS decoder is golden-byte
   parity with the Python encoder.
-- The 3JS viewport draws the 55 rigid-body segments from the solver's world quaternions
+- The 3JS viewport draws the 60 rigid-body segments from the solver's world quaternions
   (identity == T-pose), with the overlay layers available.
 - The manual full-loop run passed (F5 step 3).
-- Suites: freemocap (the green subset + the new F tests), skellyforge 94, skellytracker 226.
+- Suites: freemocap (the green subset + the new F tests), skellyforge 133, skellytracker 234.

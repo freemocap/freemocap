@@ -15,7 +15,8 @@
 model whose reference geometry is defined **directly from tracker keypoints**, with no canonical-keypoint
 or landmark layer anywhere in the path.
 
-**Architecture:** One composed 55-segment VRM 1.0 model in skellyforge (Tasks 1–5 of
+**Architecture:** One composed 60-segment model in skellyforge — 55 VRM 1.0 humanoid bones + 5
+face-detail segments (Tasks 1–5 of
 [`09-segment-model.md`](09-segment-model.md)); skellytracker's mappings guarantee that every keypoint the
 model declares is actually produced (Task 6, renamed files); the solver reads declared keypoints (Task 7);
 one length estimator (Task 8); the old models and bridges are deleted, not ported (Task 9); the posthoc
@@ -68,7 +69,7 @@ Foundation; no cross-repo friction. Detail in [`09`](09-segment-model.md).
        addon's `freemocap_tpose` **with the name translation** (addon `pelvis`→`hips`, `thigh`→`upper_leg`,
        `face`→`head`, `spine.001`→`chest`, …; `upper_chest`/`toes` authored, provenance stated); ROM
        `None` where the addon has no limit.
-4. [x] **Task 4** — hand + face parts; `StandardHuman` rewrite onto composition (55 segments, `dict`-backed
+4. [x] **Task 4** — hand + face parts; `StandardHuman` rewrite onto composition (60 segments, `dict`-backed
        indices — kills D13's O(n²)).
 5. [x] **Task 5** — reference geometry from the T-pose (`origin + basis + length`, no distal point).
 
@@ -211,7 +212,8 @@ Gated on: Round 1 (composed model + renamed mappings reach freemocap's env).
 
 ## 5. Definition of done (whole project)
 
-- One segment model in skellyforge; the composed standard human is **55 segments**, matching `BONE_ALIASES`.
+- One segment model in skellyforge; the composed standard human is **60 segments** (55 VRM 1.0 humanoid
+  + 5 face detail), matching `BONE_ALIASES`.
 - Every segment produces an orientation; no silent skips, no first-child inference; the live `neck`/`head`
   crash is impossible (validation at load) and its bridges are deleted.
 - Every tracker mapping produces the full required keypoint set; a gap fails at load; the mapping files no

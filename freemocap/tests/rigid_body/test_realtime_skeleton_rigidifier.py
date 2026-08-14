@@ -153,3 +153,62 @@ def test_reset_clears_learned_lengths(rigidifier):
 
     rig.reset()  # forget the rolling window -> back to seeds
     assert rig.body_segment_lengths["left_upper_arm"] == pytest.approx(seed)
+
+
+def test_face_nose_passes_through_uncorrected(rigidifier):
+    # The face's ``nose`` long-axis keypoint is a shared direction reference —
+    # it passes through at the observed position, NOT extruded to a length.
+    pose = _upright_rtmpose_pose()
+    out = _frame(rigidifier, pose, t=0.0)
+    observed_nose = np.array([0.0, 1720.0, 0.0])
+    assert np.allclose(out.body_positions["nose"], observed_nose, atol=1e-6)
+
+
+def test_face_ears_present_at_observed(rigidifier):
+    pose = _upright_rtmpose_pose()
+    out = _frame(rigidifier, pose, t=0.0)
+    assert np.allclose(out.body_positions["left_ear"], pose["left_ear"], atol=1e-6)
+    assert np.allclose(out.body_positions["right_ear"], pose["right_ear"], atol=1e-6)
+
+
+def test_all_eight_face_keypoints_survive(rigidifier):
+    # The face's eight segments are childless roots in the body tree — their
+    # origin keypoints (left_eye / right_eye / jaw / left_mouth / right_mouth)
+    # never equal ``head``'s long axis, so the tree never anchors them and their
+    # origins would silently vanish without the wrapper-side observed fallback.
+    # Fully observed: ALL EIGHT face keypoints must appear in body_positions.
+    pose = _upright_rtmpose_pose()
+    out = _frame(rigidifier, pose, t=0.0)
+    body = out.body_positions
+
+    # Tracked keypoints: equal to the observed position.
+    for name in ("nose", "left_eye", "right_eye", "left_ear", "right_ear"):
+        assert np.allclose(body[name], pose[name], atol=1e-6), name
+
+    # Derived keypoints (from the mapping's anatomical_offset entries — NOT in
+    # the raw pose) must be present and finite.
+    for name in ("jaw", "left_mouth", "right_mouth"):
+        assert name in body, name
+        assert np.all(np.isfinite(body[name])), name
+
+    # Sanity: the jaw sits below the nose (mouth below nose in a standing pose).
+    assert body["jaw"][1] < body["nose"][1]
+
+
+
+def test_left_hip_anchored_at_observed(rigidifier):
+    # ``left_upper_leg`` is ORIGIN-attached (origin ``left_hip`` ≠ ``hips``'s
+    # long axis ``trunk_center``), so it is a root anchored at its observed
+    # position — ``left_hip`` is not displaced by the tree.
+    pose = _upright_rtmpose_pose()
+    out = _frame(rigidifier, pose, t=0.0)
+    assert np.allclose(out.body_positions["left_hip"], pose["left_hip"], atol=1e-6)
+
+
+def test_hips_center_not_displaced(rigidifier):
+    # With the old degenerate ``hips→spine`` same-keypoint edge gone, ``spine``
+    # is now a root and ``hips_center`` stays at its observed position.
+    pose = _upright_rtmpose_pose()
+    out = _frame(rigidifier, pose, t=0.0)
+    observed_hips_center = np.mean([pose["left_hip"], pose["right_hip"]], axis=0)
+    assert np.allclose(out.body_positions["hips_center"], observed_hips_center, atol=1e-6)

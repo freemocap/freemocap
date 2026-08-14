@@ -1,6 +1,6 @@
 """FMC-WS-3 — StreamSchema.from_standard_human() classmethod tests.
 
-Builds the canonical StandardHuman model (55 segments) and verifies the schema
+Builds the canonical StandardHuman model (60 segments) and verifies the schema
 enumerates the correct channel groups (SKELETON_POINTS, DERIVED_POINTS,
 ROTATIONS_WORLD, ROTATIONS_LOCAL, OVERLAY_2D), carries topology, round-trips
 through JSON, and expands OVERLAY_2D per camera in the LSL channel list.
@@ -20,7 +20,7 @@ from skellyforge.skellymodels.standard_human.standard_human_model import (
 
 
 def _minimal_model() -> StandardHuman:
-    """The canonical 55-segment standard human."""
+    """The canonical 60-segment standard human."""
     return compose_standard_human()
 
 
@@ -102,12 +102,12 @@ def test_schema_carries_topology():
 def test_connections_from_hierarchy():
     """Parent→child segment edges match the model's hierarchy."""
     connections = _schema().connections
-    # hips→spine, spine→head (and the 55-segment model's full edge set)
+    # hips→spine, spine→head (and the 60-segment model's full edge set)
     assert ("hips", "spine") in connections
     assert ("spine", "chest") in connections
     assert ("hips", "left_upper_leg") in connections
-    # 55 segments, 1 root — so 54 parent→child edges
-    assert len(connections) == 54
+    # 60 segments, 1 root — so 59 parent→child edges
+    assert len(connections) == 59
 
 
 def test_joint_hierarchy_from_model():
@@ -126,9 +126,9 @@ def test_joint_hierarchy_from_model():
 def test_rest_pose_positions():
     rest = _schema().rest_pose
     assert rest is not None
-    # the reference geometry emits one rest position per declared keypoint (67
-    # for the 55-segment human), not per segment.
-    assert len(rest.positions) == 67
+    # the reference geometry emits one rest position per declared keypoint (71
+    # for the 60-segment human), not per segment.
+    assert len(rest.positions) == 71
     # the root segment's origin keypoint sits at the model origin.
     assert rest.positions["hips_center"] == (0.0, 0.0, 0.0)
 
@@ -158,13 +158,13 @@ def test_schema_json_roundtrip():
 def test_lsl_channels_count():
     """LSL channel count covers all groups including per-camera overlays."""
     channels = schema_to_streaminfo_channels(_schema())
-    # skeleton: 55 segments × 4 cols = 220
+    # skeleton: 60 segments × 4 cols = 240
     # derived:   2 points × 3 cols = 6
-    # rworld:   55 segments × 4 cols = 220
-    # rlocal:   55 segments × 4 cols = 220
-    # overlay:   2 cams × 55 segments × 3 cols = 330
-    # total: 996
-    assert len(channels) == 996
+    # rworld:   60 segments × 4 cols = 240
+    # rlocal:   60 segments × 4 cols = 240
+    # overlay:   2 cams × 60 segments × 3 cols = 360
+    # total: 1086
+    assert len(channels) == 1086
 
 
 def test_lsl_channels_have_rotation_labels():

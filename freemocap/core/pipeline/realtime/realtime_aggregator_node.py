@@ -59,6 +59,9 @@ from skellyforge.kinematics.orientation_solver import (
 from skellyforge.skellymodels.standard_human.standard_human_model import (
     compose_standard_human,
 )
+from skellyforge.skellymodels.standard_human.tracker_contract import (
+    validate_all_tracker_families,
+)
 from skellyforge.skellymodels.standard_human.reference_geometry import (
     build_reference_geometry,
 )
@@ -264,6 +267,9 @@ class RealtimeAggregatorNode(AggregatorNode):
         # run (D16): the model is cheap to build, and every recording gets a
         # fresh instance — no module globals.
         standard_human = compose_standard_human()
+        # Fail loud at load: a tracker-family mapping gap must raise before the
+        # pipeline starts, not mid-run when a required keypoint goes missing.
+        validate_all_tracker_families(standard_human)
 
         # Create the skeleton rigidifier (segment trees + per-segment online
         # length estimators + forward-pass tree rigidifiers). Loaded once at
@@ -726,10 +732,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # ---- Per-frame reference geometry ----
                     # Lengths are now live: rebuild the solver's rest-pose map
                     # from the rigidifier's measured segment lengths instead of
-                    # the once-per-run nominal seeds. The face's three segments
-                    # are excluded from the rigidifier's trees, so keep their
-                    # nominal ``length_ratio × height`` spans to leave the
-                    # geometry map complete. The reference DIRECTIONS are
+                    # the once-per-run nominal seeds. The face's eight segments
+                    # are excluded from the rigidifier's length ESTIMATOR, so
+                    # keep their nominal ``length_ratio × height`` spans to leave
+                    # the geometry map complete. The reference DIRECTIONS are
                     # unchanged — only the rest-pose map and schema values follow
                     # the measurements (quaternions never depend on length).
                     if (
@@ -749,7 +755,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         reference_geometry = build_reference_geometry(
                             list(standard_human.segments), measured_lengths
                         ).segments
-                    # The rigidifier hands back canonical body keypoints plus the
+                    # The rigidifier hands back standard-human body keypoints plus the
                     # standard-human-keyed hand points; the solver consumes the
                     # tracker's named keypoints STRAIGHT THROUGH (no bone-keyed
                     # map — the standard human already names every keypoint it

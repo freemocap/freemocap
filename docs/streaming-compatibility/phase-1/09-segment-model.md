@@ -95,8 +95,10 @@ damping, so the check is confirmation, not a blocker.
    numeric rest geometry — its `humanoid.md` "Estimated Position" column is anatomical prose
    (`hips`→Crotch, `leftLowerArm`→elbow). The orientations port from the addon's `freemocap_tpose`
    (`rotation` euler + `roll`); the lengths are measured.
-5. **Full VRM 1.0 humanoid: 55 segments.** Body + hands + face. Not a subset. Parts authored once,
-   instantiated per side.
+5. **Full VRM 1.0 humanoid: 55 segments — plus 5 FreeMoCap face-detail segments (60 total).** Body +
+   hands + face. Not a subset. Parts authored once,
+   instantiated per side. (The face-detail five — nose, ears, mouth corners — are tracked-keypoint head
+   axes beyond VRM's humanoid set; added 2026-08-13, see the face-part section below.)
 6. **Derive, don't omit.** If a VRM segment can be determined for a given tracker — directly or via
    `anatomical_offset` — it is. This is per-tracker work.
 7. **ROM limits are specified now, computed later.** Declared on the segment; the solver ignores them in
@@ -816,6 +818,20 @@ emit it in the rest-keypoint map; the solver's per-frame input supplies it live 
 produce it), and test fixtures supply a schematic position. The face bones therefore skip at the strict
 T-pose identity check and solve from live data — geometry now, gaze fidelity with face tracking.
 
+**Face-detail segments (added 2026-08-13, the user's decision):** five more face segments give the
+head's tracked-keypoint axes — `nose` (origin `head_center`, long-axis `nose`, rest `(0, π/2, 0)` — +X
+forward, the user's specified alignment), `left_ear`/`right_ear` (origin `head_center`, long-axis the
+ear keypoint, rest `(−π/2, 0, 0)` — +Y leftward per the user, mirrored for the right), and
+`left_mouth`/`right_mouth` (origin the mouth-corner keypoint, long-axis `nose`, rest `(±α, β, 0)` with
+`β = asin(0.2/√(0.2²+0.3²+0.35²))`, `α = asin(0.3/(√(0.2²+0.3²+0.35²)·cos β))` — the corner→nose
+direction from the SAME ratios as the mapping's derived-corner offsets, the facial-proportions canon
+estimate). All five: `parent=head`, ORIGIN, no twist, roll 0, `length_ratio` 0.01 nominal, ROM `None`.
+The right-side rest rotations are authored SIDE-AGNOSTICALLY (identical to the left) — the reference
+geometry's blanket right-side mirror derives them, exactly like `left_eye`/`right_eye`. Mouth corners:
+MediaPipe tracks them (mapped 1:1); RTMPose derives them (Task 6 `anatomical_offset`, lateral
+∓0.3·eye-width). The model is **60 segments**, `required_keypoints()` = **76**; the 52 blendshape
+channels stay declared-but-null.
+
 **`StandardHuman` rewrite (step 5):** a **frozen dataclass** (validators in `__post_init__`, matching
 `SegmentDefinition`; Pydantic leaves the model layer — segments carry no numpy arrays so nothing needs
 `arbitrary_types_allowed`):
@@ -837,9 +853,9 @@ T-pose identity check and solve from live data — geometry now, gaze fidelity w
 - The old constructor (`from_bone_definitions`, `subject_height_mm`, `t_pose_markers`) is **deleted**,
   not kept — reference geometry is Task 5's job, from measured lengths.
 
-**Composition entry point:** `compose_standard_human(name="standard_human")` builds the 55-segment
+**Composition entry point:** `compose_standard_human(name="standard_human")` builds the 60-segment
 human: `compose_parts([(BODY_MIDLINE_PART, ""), (BODY_LIMB_PART, "left_"), (BODY_LIMB_PART, "right_"),
-(HAND_PART, "left_"), (HAND_PART, "right_"), (FACE_PART, "")])` — 20 + 32 + 3 = 55, matching
+(HAND_PART, "left_"), (HAND_PART, "right_"), (FACE_PART, "")])` — 20 + 32 + 8 = 60, matching
 `BONE_ALIASES`. (The `undriven_segments` field from the first build is removed — every segment is
 driven; the face's blendshape *channels* are what stay declared-but-null.)
 
@@ -850,7 +866,7 @@ driven; the face's blendshape *channels* are what stay declared-but-null.)
 - [x] **Step 3:** Author `hand_part.py` and `face_part.py`.
 - [x] **Step 4:** Run; expected PASS (additive — the existing suite stays green).
 - [x] **Step 5:** Rewrite `StandardHuman` per the spec above; write `test_standard_human_model.py`
-      (55 segments matching `BONE_ALIASES`; `required_keypoints()` excludes the undriven three;
+      (60 segments matching `BONE_ALIASES`; `required_keypoints()` = 76 — every segment driven;
       validators: duplicate names, two roots, missing parent, cycle — one test each).
 - [x] **Step 6:** Write `test_hierarchy_accessors_agree` — `segment_parents`, children, and
       root-to-segment chains describe the same tree ([`14`](../14-engine-testing-strategy.md) §7).
@@ -1163,7 +1179,8 @@ arrow key and both `split("->")` sites (F2) disappear because length is a proper
 
 - One segment model. `canonical_body.yaml`'s segment/hierarchy/ratio stack, `_BONE_TO_LANDMARK`,
   `HumanBone.proximal_landmark` and the aggregator bootstrap are gone.
-- The composed standard human is **55 segments** — body, hands, face — matching `BONE_ALIASES`.
+- The composed standard human is **60 segments** — 55 VRM 1.0 humanoid bones + 5 face-detail segments
+  (nose, ears, mouth corners) — matching `BONE_ALIASES`.
 - **Every** segment produces an orientation. No silent skips, no first-child inference.
 - Every tracker mapping produces the full required keypoint set; a gap fails at load.
 - Realtime and posthoc share one length estimator; posthoc passes an unbounded window.

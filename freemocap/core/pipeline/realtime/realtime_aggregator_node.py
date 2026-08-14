@@ -254,8 +254,8 @@ class RealtimeAggregatorNode(AggregatorNode):
         # Load body biomechanics for per-frame center of mass calculation, using
         # the tracker->canonical mapping that matches the configured detector
         # (RTMPose and MediaPipe use different keypoint naming conventions).
-        # Validated once at init via skellyforge's AnatomicalStructure — no
-        # Pydantic in the hot loop.
+        # Validated once at init via skellyforge's validate_all_tracker_families —
+        # no Pydantic in the hot loop.
         detector_type = pipeline_config.camera_node_config.detector_type
         biomechanics = (
             load_body_biomechanics(detector_type)

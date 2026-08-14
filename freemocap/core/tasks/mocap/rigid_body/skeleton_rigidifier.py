@@ -9,36 +9,41 @@ This is the streaming counterpart of skellyforge's posthoc
       observed child, normalize it, and place the child exactly ``length`` away.
 
 The trees are keyed onto the **segment model** (the composed standard human),
-not the old landmark-pair joint hierarchy. Each segment's tree node is the
-segment *name*; the node's observed position is that segment's ``origin_keypoint``
-from the tracker→standard-human mapping output (a mapping-produced point). An
-edge parent→child exists only when ``child.origin_keypoint ==
-parent.axes[0].to_keypoint`` (the shared-keypoint chain — ``axes[0]`` is the
-authoritative EXACT long axis); its enforced length is the *parent* segment's
-estimate, keyed by the child node's name. Every other segment (origin-attached
-or keypoint-mismatched) is a tree root, anchored at its observed position — no
-length is enforced on those edges.
+not arrow-key joint pairs. Each segment's tree node is the segment *name*; the
+node's observed position is that segment's ``origin_keypoint`` from the
+tracker→standard-human mapping output (a mapping-produced point). An edge
+parent→child exists only when ``child.origin_keypoint == parent's EXACT axis
+target`` (the shared-keypoint chain — the EXACT axis is the segment's defining
+direction); its enforced length is the *parent* segment's estimate, keyed by the
+child node's name. Every other segment (origin-attached or keypoint-mismatched)
+is a tree root, anchored at its observed position — no length is enforced on
+those edges.
 
 **Graded dispatch:** a segment whose ``rigid_points`` has ≥ 3 keypoints is a
-rigid body in the ordinary sense and gets the multi-point rigid fit (see the
-skull below); a 2-point segment keeps the span/edge path. Only ``head``
-qualifies today.
+rigid body in the ordinary sense and gets the per-group rigid fit (see below);
+a 2-point segment keeps the span/edge path. Six segments qualify: ``head`` (7
+points), ``hips`` (4), ``left_foot``/``right_foot`` (3),
+``left_toes``/``right_toes`` (3).
 
-The trees are keyed onto the segment model. The **skull** (``head``, whose
-``rigid_points`` is the 7-point set ``('head_center', 'head_vertex', 'nose',
-'left_eye', 'right_eye', 'left_ear', 'right_ear')``) is not enforced edge-by-
-edge. Instead a ``RigidPointTemplate`` holds its invariant pairwise distances
-(built from the head pair estimator's medians), and each frame the template is
-rigidly placed onto the observed skull with ``fit_template_to_observed``,
-pinned at ``head_center`` — the body tree's *corrected* head node, which owns
-the head's position (the neck chain); the fit only rotates the skull.
+**Per-group rigid fits.** Each ≥ 3-rigid-point segment owns a
+``RigidPointTemplate`` holding its invariant pairwise distances (built from a
+pair estimator dedicated to that group), and each frame the template is rigidly
+placed onto the observed points with ``fit_template_to_observed``. The fit is a
+rotation pinned at the segment's ``origin_keypoint`` (the anchor owns the
+segment's position): for a tree root (``hips``) the anchor is the observed
+origin; for a chain segment (``head``, the feet, the toes) it is the body
+tree's *corrected* origin, so the tree owns the position and the fit only
+rotates the rigid point set. The orientations of the exact/approximate axes are
+*not* read positionally — every rigid point of the group rides the fit at its
+template distance from the anchor.
 
 The articulated face points (``jaw`` / ``left_mouth`` / ``right_mouth``) are
-NOT in any rigid set. They (and any other segment origin keypoint the tree and
-fit leaves out) anchor at their observed position via a general rule: after the
-tree + fit passes, any segment origin keypoint missing from the output takes its
-observed position. The 52 blendshape channels (ARKit) are declared-but-null and
-never touch the rigidifier.
+NOT in any rigid set. They (and any other segment origin keypoint or axis
+target the tree and fits leave out) anchor at their observed position via a
+general rule: after the tree + fit passes, any keypoint referenced by a
+segment's origin or axes but missing from the output takes its observed
+position. The 52 blendshape channels (ARKit) are declared-but-null and never
+touch the rigidifier.
 
 Keeping the observed direction but overriding the length is what makes the
 skeleton track the subject's pose while holding rigid segment lengths. The
@@ -49,24 +54,20 @@ of collapsing onto its parent.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path  # noqa: TC003  # used at runtime in beartype-checked module-level type variables
 from typing import Literal
 
 import numpy as np
 
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
-    MediapipePoseKeypointDetector,
-)
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
-    MediapipeHandKeypointDetector,
-)
-from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
-    RTMPoseBodyDetector,
-)
-from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_detector import (
-    RTMPoseHandDetector,
-)
 from skellytracker.core.io.tracker_mapping import TrackerMapping
+
+from freemocap.core.streaming.standard_stream.stream_schema import (
+    NOMINAL_SUBJECT_HEIGHT_MM,
+)
+from freemocap.core.tasks.mocap.tracker_mappings import (
+    body_mapping_yaml_path,
+    hand_mapping_yaml_path,
+)
 
 from skellyforge.kinematics.online_segment_lengths import SegmentLengthEstimator
 from skellyforge.kinematics.rigid_point_set import (
@@ -77,17 +78,19 @@ from skellyforge.kinematics.skeleton_rigidifier import TreeRigidifier
 from skellyforge.skellymodels.standard_human.face_part import FACE_PART
 from skellyforge.skellymodels.standard_human.hand_part import HAND_PART
 from skellyforge.skellymodels.standard_human.segment_definition import (
+    AxisDefinition,
+    AxisKind,
     SegmentDefinition,
 )
 from skellyforge.skellymodels.standard_human.standard_human_model import (
-    StandardHuman,
+    StandardHuman,  # noqa: TC002  # used at runtime (beartype resolves the forward ref in `create`)
 )
 
 # The face's segments participate in the body tree as anatomical segments but
-# their keypoints are covered by the skull rigid set (eyes/nose/ears ride the
+# their keypoints are covered by the head rigid set (eyes/nose/ears ride the
 # head's rigid fit) or the orphan-anchor rule (jaw/mouths) — they need no tree
 # treatment of their own. They stay out of the length ESTIMATOR for the same
-# reason: their spans are either rigid on the skull or nominal direction
+# reason: their spans are either rigid on the head or nominal direction
 # references.
 _FACE_SEGMENT_NAMES: frozenset[str] = frozenset(s.name for s in FACE_PART.segments)
 
@@ -95,22 +98,11 @@ _FACE_SEGMENT_NAMES: frozenset[str] = frozenset(s.name for s in FACE_PART.segmen
 # ``left_``/``right_``-prefixed versions of these).
 _HAND_SEGMENT_NAMES: frozenset[str] = frozenset(s.name for s in HAND_PART.segments)
 
-# tracker→standard-human mapping YAMLs (shipped with skellytracker), keyed by
-# CameraNodeConfig.detector_type so RealtimeSkeletonRigidifier.create() can
-# pick the mapping that matches the configured detector's keypoint names.
-_BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseBodyDetector.standard_human_mapping_path(),
-    "mediapipe": MediapipePoseKeypointDetector.standard_human_mapping_path(),
-}
-_HAND_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseHandDetector.standard_human_mapping_path(),
-    "mediapipe": MediapipeHandKeypointDetector.standard_human_mapping_path(),
-}
 
-# How often (in frames) the skull template is rebuilt from the current pair
-# medians. Rebuilds keep chirality/orientation stable by seeding the MDS with
-# the previous template's positions. 30 frames ≈ once per second at 30fps.
-_SKULL_TEMPLATE_REBUILD_INTERVAL_FRAMES = 30
+# How often (in frames) each rigid-group template is rebuilt from the current
+# pair medians. Rebuilds keep chirality/orientation stable by seeding the MDS
+# with the previous template's positions. 30 frames ≈ once per second at 30fps.
+_TEMPLATE_REBUILD_INTERVAL_FRAMES = 30
 
 
 # ===========================================================================
@@ -167,14 +159,26 @@ def _split_segments(
     return body, hand, face
 
 
-def _long_axis_to_keypoint(segment: SegmentDefinition) -> str:
-    """The segment's sharing-chain endpoint: its first (EXACT) axis's ``to`` end.
+def _exact_axis(segment: SegmentDefinition) -> AxisDefinition:
+    """The segment's EXACT axis (its defining direction), by ``kind``.
 
-    ``axes[0]`` is the authoritative long axis (declared first, guaranteed EXACT
-    at load). Its ``to_keypoint`` is the old ``long_axis_keypoint`` — the distal
-    keypoint a child's ``origin_keypoint`` must equal for the two to chain.
+    The EXACT axis — regardless of which basis axis (x/y/z) it is tagged on —
+    names the segment's shared-keypoint chain endpoint. Its ``target_keypoint``
+    is the distal keypoint a child's ``origin_keypoint`` must equal for the two
+    to chain.
     """
-    return segment.axes[0].to_keypoint
+    for axis in segment.axes:
+        if axis.kind is AxisKind.EXACT:
+            return axis
+    raise ValueError(
+        f"segment {segment.name!r} has no EXACT axis — cannot derive its "
+        "defining direction"
+    )
+
+
+def _exact_axis_target(segment: SegmentDefinition) -> str:
+    """The EXACT axis's ``target_keypoint`` (the segment's defining endpoint)."""
+    return _exact_axis(segment).target_keypoint
 
 
 def _hierarchy(group: list[SegmentDefinition]) -> dict[str, list[str]]:
@@ -182,11 +186,10 @@ def _hierarchy(group: list[SegmentDefinition]) -> dict[str, list[str]]:
     keypoint chain.
 
     An edge ``parent → child`` is kept only when ``child.origin_keypoint ==
-    parent.axes[0].to_keypoint`` (name equality). Segments that are
-    ORIGIN-attached or keypoint-mismatched (e.g. ``left_shoulder``, whose origin
-    ``left_sternoclavicular`` ≠ ``upper_chest``'s long axis ``neck_center``) are
-    dropped from the hierarchy — ``TreeRigidifier`` then treats them as roots and
-    anchors them at their observed position (no length enforced on those edges).
+    parent's EXACT axis target`` (name equality). Segments that are
+    ORIGIN-attached or keypoint-mismatched are dropped from the hierarchy —
+    ``TreeRigidifier`` then treats them as roots and anchors them at their
+    observed position (no length enforced on those edges).
 
     Root segments (``parent is None``) are left out — ``TreeRigidifier`` derives
     its roots as parents that never appear as children. Parent keys that refer
@@ -201,7 +204,7 @@ def _hierarchy(group: list[SegmentDefinition]) -> dict[str, list[str]]:
         parent_seg = name_to_seg.get(seg.parent)
         if parent_seg is None:
             continue
-        if seg.origin_keypoint != _long_axis_to_keypoint(parent_seg):
+        if seg.origin_keypoint != _exact_axis_target(parent_seg):
             continue
         hierarchy.setdefault(seg.parent, []).append(seg.name)
     return hierarchy
@@ -227,12 +230,15 @@ def _all_pairs(names: tuple[str, ...]) -> list[tuple[str, str]]:
     ]
 
 
-def _head_segment(group: list[SegmentDefinition]) -> SegmentDefinition | None:
-    """The ``head`` segment in the group, if it is a rigid body (≥ 3 points)."""
-    for seg in group:
-        if seg.name == "head":
-            return seg
-    return None
+def _rigid_groups(
+    segments: tuple[SegmentDefinition, ...],
+) -> tuple[SegmentDefinition, ...]:
+    """Every segment with ≥ 3 rigid points, in model order.
+
+    Each such segment is a rigid body fit per frame with its own template and
+    pair estimator. Derived from the model at ``create()`` — no hardcoded names.
+    """
+    return tuple(seg for seg in segments if len(seg.rigid_points) >= 3)
 
 
 # ===========================================================================
@@ -245,19 +251,19 @@ class RigidifyResult:
     """Rigidified skeleton positions for one frame.
 
     ``body_positions`` is keyed by standard-human body keypoint names, including
-    the corrected long-axis endpoints (``head_vertex``, ``mid_sternum``-adjacent
+    the corrected exact-axis endpoints (``head_vertex``, ``mid_sternum``-adjacent
     endpoints, ``foot_ball``, ``toes``, ...) so the solver and center-of-mass get
-    every derived endpoint. The skull's seven rigid points (``head_center``,
-    ``head_vertex``, ``nose``, ``left_eye``/``right_eye``, ``left_ear``/
-    ``right_ear``) are rigidly aligned — their pairwise distances are held at the
-    template's, ``head_center`` is the body tree's correction, and the rest ride
-    the rotation-only fit. The articulated face points (``jaw`` / ``left_mouth`` /
-    ``right_mouth``) anchor at their observed positions. Hand positions use the
-    configured detector's side-prefixed tracker names (``right_hand_thumb1`` for
-    RTMPose, ``right_hand_thumb_cmc`` for MediaPipe) so they key into the
-    frontend's hand schema. The ``*_standard_positions`` fields carry the same
-    hand points keyed by the standard-human side-prefixed names (``left_wrist``,
-    ``left_index_finger_tip``, ...), now including the corrected long-axis
+    every derived endpoint. The ≥ 3-rigid-point groups (``head``'s seven points,
+    ``hips``'s four, both feet and toes) are rigidly aligned — their pairwise
+    distances are held at the template's, the group's origin is the body tree's
+    correction, and the rest ride the rotation-only fit. The articulated face
+    points (``jaw`` / ``left_mouth`` / ``right_mouth``) anchor at their observed
+    positions. Hand positions use the configured detector's side-prefixed
+    tracker names (``right_hand_thumb1`` for RTMPose, ``right_hand_thumb_cmc``
+    for MediaPipe) so they key into the frontend's hand schema. The
+    ``*_standard_positions`` fields carry the same hand points keyed by the
+    standard-human side-prefixed names (``left_wrist``,
+    ``left_index_finger_tip``, ...), now including the corrected exact-axis
     endpoints (the finger tips), for the composed standard-human orientation
     solver. Trees with insufficient data (missing root) come back empty.
     """
@@ -267,6 +273,27 @@ class RigidifyResult:
     right_hand_positions: dict[str, np.ndarray]
     left_hand_standard_positions: dict[str, np.ndarray]
     right_hand_standard_positions: dict[str, np.ndarray]
+
+
+# Per-rigid-group state: the set of rigid point names, a pair estimator over
+# them, the invariant template, and the rebuild bookkeeping.
+@dataclass(slots=True)
+class _RigidGroupState:
+    """State for one ≥ 3-rigid-point segment's per-frame rigid fit."""
+
+    segment: SegmentDefinition
+    # The rigid points, in the model's declared order.
+    points: tuple[str, ...]
+    # The segment's origin keypoint (the fit anchor, present among ``points``).
+    anchor: str
+    # Pairwise-length estimator over the group's rigid set, keyed by the
+    # canonical ``"a|b"`` pair strings.
+    pairs: SegmentLengthEstimator
+    # The invariant template, built from pair medians + a chirality/anchor
+    # reference configuration. ``None`` until the first fully-observed frame.
+    template: RigidPointTemplate | None = None
+    # Frames processed since the last template (re)build.
+    frames_since_template_build: int = 0
 
 
 @dataclass
@@ -279,14 +306,16 @@ class RealtimeSkeletonRigidifier:
     hand keypoints, advance the per-segment length estimators with the
     **measured** (real, not extrapolated) keypoints, and run a single closed-form
     forward pass over the segment trees that holds the estimated lengths while
-    following the observed pose, then place the skull rigidly over the corrected
-    head.
+    following the observed pose, then place every ≥ 3-rigid-point group rigidly
+    over its corrected origin.
 
     The trees are keyed onto the segment model: three groups (body, right hand,
     left hand) each get their own hierarchy, length estimator, and tree
-    rigidifier. The head (a ≥ 3 rigid-point segment) is additionally fit with a
-    ``RigidPointTemplate`` over its 7-point skull set, whose pairwise distances
-    are estimated by a dedicated pair estimator seeded from the head's rigid set.
+    rigidifier. Every segment with ≥ 3 rigid points is additionally fit with a
+    ``RigidPointTemplate`` over its rigid set, whose pairwise distances are
+    estimated by a dedicated pair estimator. The fit is rotation-only, pinned at
+    the segment's origin — for a tree root (``hips``) the observed origin, for a
+    chain segment the body tree's corrected origin.
     """
 
     _body_mapping: TrackerMapping = field(repr=False)
@@ -296,7 +325,6 @@ class RealtimeSkeletonRigidifier:
     _body_segments: tuple[SegmentDefinition, ...] = field(repr=False)
     _rhand_segments: tuple[SegmentDefinition, ...] = field(repr=False)
     _lhand_segments: tuple[SegmentDefinition, ...] = field(repr=False)
-    _face_segments: tuple[SegmentDefinition, ...] = field(repr=False)
 
     _body_tree: TreeRigidifier = field(repr=False)
     _hand_tree_r: TreeRigidifier = field(repr=False)
@@ -309,19 +337,12 @@ class RealtimeSkeletonRigidifier:
     _hand_name_to_tracker_r: dict[str, str] = field(repr=False)
     _hand_name_to_tracker_l: dict[str, str] = field(repr=False)
 
-    # ── Skull state ───────────────────────────────────────────────────────
-    # The 7 rigid points of ``head`` keyed canonically ``"a|b"`` → pair length.
-    _skull_points: tuple[str, ...] = field(repr=False, default=())
-    # Pairwise-length estimator over the skull's rigid set (same estimator class
-    # as the body, keyed by the 21 canonical pair strings).
-    _skull_pairs: SegmentLengthEstimator = field(repr=False, default=None)  # type: ignore[assignment]
-    # The invariant template, built from pair medians + a chirality/anchor
-    # reference configuration. ``None`` until the first fully-observed frame.
-    _skull_template: RigidPointTemplate = field(repr=False, default=None)  # type: ignore[assignment]
-    # Frames processed since the last template (re)build; drives rebuild policy.
-    _frames_since_template_build: int = field(repr=False, init=False, default=0)
+    # ── Rigid-group state ─────────────────────────────────────────────────
+    # Per-segment rigid-fit state for every ≥ 3-rigid-point body segment
+    # (``head``, ``hips``, both feet, both toes), keyed by segment name.
+    _rigid_groups: dict[str, _RigidGroupState] = field(repr=False, default_factory=dict)
 
-    height_mm: float = 1750.0
+    height_mm: float = NOMINAL_SUBJECT_HEIGHT_MM
 
     @classmethod
     def create(
@@ -329,7 +350,7 @@ class RealtimeSkeletonRigidifier:
         *,
         standard_human: StandardHuman,
         detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose",
-        height_mm: float = 1750.0,
+        height_mm: float = NOMINAL_SUBJECT_HEIGHT_MM,
         window_s: float = 10.0,
     ) -> "RealtimeSkeletonRigidifier":
         """Build the per-group state from the composed standard human + mappings.
@@ -358,12 +379,12 @@ class RealtimeSkeletonRigidifier:
 
         # The body TREE carries the body segments *plus* the face segments (its
         # anatomical segments enter as potential roots), while the length
-        # ESTIMATOR stays body-only (face spans are covered by the skull rigid
+        # ESTIMATOR stays body-only (face spans are covered by the head rigid
         # set or the orphan-anchor rule, not lengths to enforce).
         body_tree_group = [*body, *face]
 
-        body_mapping = TrackerMapping.from_yaml(_BODY_MAPPING_YAML_BY_DETECTOR[detector_type])
-        hand_yaml = _HAND_MAPPING_YAML_BY_DETECTOR[detector_type]
+        body_mapping = TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type))
+        hand_yaml = hand_mapping_yaml_path(detector_type)
         hand_mapping_r, name_to_tracker_r = _build_hand_mapping(hand_yaml, side="right")
         hand_mapping_l, name_to_tracker_l = _build_hand_mapping(hand_yaml, side="left")
 
@@ -373,7 +394,7 @@ class RealtimeSkeletonRigidifier:
         ]:
             seeds = {seg.name: seg.length_ratio * height_mm for seg in group}
             endpoints = {
-                seg.name: (seg.origin_keypoint, _long_axis_to_keypoint(seg))
+                seg.name: (seg.origin_keypoint, _exact_axis_target(seg))
                 for seg in group
             }
             estimator = SegmentLengthEstimator(
@@ -387,32 +408,30 @@ class RealtimeSkeletonRigidifier:
         rhand_lengths, _ = make_spec(rhand)
         lhand_lengths, _ = make_spec(lhand)
 
-        # ── Skull pair estimator ──────────────────────────────────────────
-        head = _head_segment(list(standard_human.segments))
-        skull_points: tuple[str, ...] = ()
-        skull_pairs: SegmentLengthEstimator | None = None
-        if head is not None and len(head.rigid_points) >= 3:
-            skull_points = tuple(head.rigid_points)
-            # 7 points → 21 pairwise segments. Keyed by the canonical ``"a|b"``
-            # string (a plain data key, NOT the template's sorted tuple key —
-            # the template's ``pair_distances`` wants ``tuple[str, str]`` keys,
-            # which the wrapper converts when building a template).
+        # ── Rigid-group pair estimators ───────────────────────────────────
+        # Every ≥ 3-rigid-point body segment gets a pair estimator over its
+        # rigid points, so its template can hold the invariant pairwise
+        # distances. Seeds are nominal placeholders replaced by measured medians
+        # within a frame or two of full observation (they only exist so the
+        # estimator's ``lengths`` has a value before the first measurement).
+        rigid_groups: dict[str, _RigidGroupState] = {}
+        for seg in _rigid_groups(standard_human.segments):
+            points = tuple(seg.rigid_points)
             pair_endpoints = {
                 _canonical_pair_string(a, b): (a, b)
-                for a, b in _all_pairs(skull_points)
+                for a, b in _all_pairs(points)
             }
-            # Seed values are NOMINAL placeholders (``0.02 × height_mm`` each) —
-            # replaced by measured medians within a frame or two of full
-            # observation. The seed only exists to satisfy the estimator's
-            # endpoint==seed validation (every pair must be seeded up front so
-            # ``lengths`` has a value before the first measurement lands).
-            pair_seeds = {
-                key: 0.02 * height_mm for key in pair_endpoints
-            }
-            skull_pairs = SegmentLengthEstimator(
+            pair_seeds = {key: 0.02 * height_mm for key in pair_endpoints}
+            pairs = SegmentLengthEstimator(
                 segment_endpoints=pair_endpoints,
                 segment_seeds=pair_seeds,
                 window_seconds=window_s,
+            )
+            rigid_groups[seg.name] = _RigidGroupState(
+                segment=seg,
+                points=points,
+                anchor=seg.origin_keypoint,
+                pairs=pairs,
             )
 
         return cls(
@@ -422,7 +441,6 @@ class RealtimeSkeletonRigidifier:
             _body_segments=tuple(body_tree_group),
             _rhand_segments=tuple(rhand),
             _lhand_segments=tuple(lhand),
-            _face_segments=tuple(face),
             _body_tree=TreeRigidifier(joint_hierarchy=_hierarchy(body_tree_group)),
             _hand_tree_r=TreeRigidifier(joint_hierarchy=_hierarchy(rhand)),
             _hand_tree_l=TreeRigidifier(joint_hierarchy=_hierarchy(lhand)),
@@ -431,8 +449,7 @@ class RealtimeSkeletonRigidifier:
             _lhand_lengths=lhand_lengths,
             _hand_name_to_tracker_r=name_to_tracker_r,
             _hand_name_to_tracker_l=name_to_tracker_l,
-            _skull_points=skull_points,
-            _skull_pairs=skull_pairs,
+            _rigid_groups=rigid_groups,
             height_mm=height_mm,
         )
 
@@ -502,32 +519,30 @@ class RealtimeSkeletonRigidifier:
 
         body_positions = body_out
 
-        # ── Skull fit (body only — the hand groups have no rigid-body segment) ─
-        if self._skull_pairs is not None and self._skull_points:
-            self._apply_skull_fit(
-                body_positions=body_positions,
-                measured_body=measured_body,
-                standard_body=standard_body,
-                t=t,
-            )
+        # ── Rigid-group fits (body only — the hand groups have no rigid body) ─
+        self._apply_rigid_group_fits(
+            body_positions=body_positions,
+            measured_body=measured_body,
+            standard_body=standard_body,
+            t=t,
+        )
 
         # ── Orphan-anchor rule ────────────────────────────────────────────
-        # Any keypoint the tree + fit left out of the output takes its observed
+        # Any keypoint the tree + fits left out of the output takes its observed
         # position so no tracked keypoint silently vanishes. This covers every
-        # keypoint a group's segments' axes reference — a segment's origin, its
-        # exact long axis (``axes[0]`` from/to), and its approximate axis' names
-        # when present (``axes[1]``, whose twist-direction keypoints — e.g.
-        # ``left_heel``/``right_heel`` on the foot and ``left_small_toe``/
-        # ``right_small_toe`` on the toes — are never part of the tree output).
-        # Roots/orphans alone (the articulated face points ``jaw`` /
-        # ``left_mouth`` / ``right_mouth``) are each some segment's origin, so a
-        # single pass over every segment's origin + axis endpoints is the general
-        # rule.
+        # keypoint a group's segments reference — a segment's origin and every
+        # axis' target keypoint (the approximate axes' twist-direction
+        # keypoints — e.g. ``left_heel``/``right_heel`` on the foot and
+        # ``left_small_toe``/``right_small_toe`` on the toes — are never part of
+        # the tree output). Roots/orphans alone (the articulated face points
+        # ``jaw`` / ``left_mouth`` / ``right_mouth``) are each some segment's
+        # origin, so a single pass over every segment's origin + axis targets is
+        # the general rule.
         for seg in self._body_segments:
             referenced = {seg.origin_keypoint}
+            referenced.add(_exact_axis_target(seg))
             for axis in seg.axes:
-                referenced.add(axis.from_keypoint)
-                referenced.add(axis.to_keypoint)
+                referenced.add(axis.target_keypoint)
             for keypoint in referenced:
                 if keypoint not in body_positions:
                     obs = standard_body.get(keypoint)
@@ -549,7 +564,7 @@ class RealtimeSkeletonRigidifier:
         # ``rhand_out``/``lhand_out`` are already keyed by side-prefixed standard
         # names (``left_wrist``, ``left_index_finger_tip``, ...) — the composed
         # standard human's own hand keypoint vocabulary — so they serve the
-        # orientation solver directly, corrected long-axis endpoints included.
+        # orientation solver directly, corrected exact-axis endpoints included.
         rhand_standard = {
             name: pos for name, pos in rhand_out.items()
         }
@@ -565,7 +580,7 @@ class RealtimeSkeletonRigidifier:
             right_hand_standard_positions=rhand_standard,
         )
 
-    def _apply_skull_fit(
+    def _apply_rigid_group_fits(
         self,
         *,
         body_positions: dict[str, np.ndarray],
@@ -573,98 +588,110 @@ class RealtimeSkeletonRigidifier:
         standard_body: dict[str, np.ndarray],
         t: float,
     ) -> None:
-        """Update the skull pair estimator and place the skull template rigidly.
+        """Advance each rigid group's pair estimator and place its template.
 
-        The pair estimator is advanced with the head's rigid points from the
-        MAPPING OUTPUT (the ``standard_body`` positions), using the real-only
-        ``measured`` variant — extrapolated points never teach lengths. The
-        template is then fit onto the observed skull, pinned at the body tree's
-        corrected ``head_center`` (the anchor owns the head's position), and its
-        corrected positions overwrite whatever the tree wrote for the 7 skull
-        keypoints.
+        For every ≥ 3-rigid-point segment, the pair estimator is advanced with
+        the group's rigid points from the MAPPING OUTPUT (the ``standard_body``
+        positions), using the real-only ``measured`` variant — extrapolated
+        points never teach lengths. The template is then fit onto the observed
+        rigid points. The anchor is the segment's origin:
+
+        * For a tree root (``hips``) — ``parent is None`` on the tree — the
+          anchor is the OBSERVED origin (the root owns its position); the fit
+          is rotation-only.
+        * For a chain segment (``head``, the feet, the toes) the anchor is the
+          body tree's CORRECTED origin (the tree's chain owns the position);
+          the fit only rotates the rigid point set.
 
         Template build/rebuild policy:
 
-        * The FIRST build happens at the first frame where all 7 rigid points
-          are observed, using the current pair medians and
-          ``reference_configuration =`` that frame's observed 7 positions — the
-          real-data chirality anchor. (The model's rest map deliberately lacks
-          ``nose``, so the reference-geometry route is unavailable.)
-        * Subsequent REBUILDS — every ``_SKULL_TEMPLATE_REBUILD_INTERVAL_FRAMES``
-          frames, or on ``reset()`` — pass ``reference_configuration =`` the
-          PREVIOUS template's positions, keeping chirality + orientation stable
-          across rebuilds.
+        * The FIRST build happens at the first frame where every rigid point is
+          observed, using the current pair medians and
+          ``reference_configuration =`` that frame's observed positions — the
+          real-data chirality anchor.
+        * Subsequent REBUILDS — every ``_TEMPLATE_REBUILD_INTERVAL_FRAMES``
+          frames, or on ``reset()`` — pass the PREVIOUS template's positions as
+          the reference configuration, keeping chirality + orientation stable.
         """
-        # Advance the pair estimator with measured skull points (real only).
-        measured_skull = {
-            name: measured_body[name]
-            for name in self._skull_points
-            if name in measured_body
-        }
-        self._skull_pairs.update(measured_skull, t=t)
+        for state in self._rigid_groups.values():
+            points = state.points
 
-        # Observed skull: the 7 rigid points from the mapping output. Missing
-        # points are dropped — the fit extrapolates them from the template.
-        observed_skull = {
-            name: standard_body[name]
-            for name in self._skull_points
-            if name in standard_body and np.all(np.isfinite(standard_body[name]))
-        }
+            # Advance the pair estimator with measured points (real only).
+            measured_points = {
+                name: measured_body[name]
+                for name in points
+                if name in measured_body
+            }
+            state.pairs.update(measured_points, t=t)
 
-        all_observed = all(name in observed_skull for name in self._skull_points)
+            # Observed points from the mapping output; missing/non-finite points
+            # are dropped — the fit extrapolates them from the template.
+            observed_points = {
+                name: standard_body[name]
+                for name in points
+                if name in standard_body and np.all(np.isfinite(standard_body[name]))
+            }
 
-        if all_observed and (
-            self._skull_template is None
-            or self._frames_since_template_build >= _SKULL_TEMPLATE_REBUILD_INTERVAL_FRAMES
-        ):
-            pair_distances = self._skull_pair_distances()
-            reference_configuration: dict[str, np.ndarray] = (
-                {name: self._skull_template.positions[self._skull_points.index(name)]
-                 for name in self._skull_points}
-                if self._skull_template is not None
-                else dict(observed_skull)
+            all_observed = all(name in observed_points for name in points)
+
+            if all_observed and (
+                state.template is None
+                or state.frames_since_template_build >= _TEMPLATE_REBUILD_INTERVAL_FRAMES
+            ):
+                pair_distances = self._pair_distances(state)
+                reference_configuration: dict[str, np.ndarray] = (
+                    {name: state.template.positions[points.index(name)]
+                     for name in points}
+                    if state.template is not None
+                    else dict(observed_points)
+                )
+                state.template = RigidPointTemplate.from_distances(
+                    point_names=list(points),
+                    pair_distances=pair_distances,
+                    reference_configuration=reference_configuration,
+                )
+                state.frames_since_template_build = 0
+
+            if state.template is None:
+                # No template yet (not enough points observed this frame) — the
+                # group's points stay at whatever the tree produced; the orphan
+                # anchor rule below fills in any observed point the tree missed.
+                continue
+
+            # Anchor: the tree's corrected origin for chain segments, the
+            # observed origin for tree roots.
+            anchor_observed = body_positions.get(state.anchor)
+            if anchor_observed is None:
+                anchor_observed = standard_body.get(state.anchor)
+
+            if (
+                anchor_observed is not None
+                and np.all(np.isfinite(anchor_observed))
+                and state.anchor in observed_points
+            ):
+                observed_points = {**observed_points, state.anchor: anchor_observed}
+
+            corrected = fit_template_to_observed(
+                state.template,
+                observed_points,
+                anchor_name=state.anchor,
             )
-            self._skull_template = RigidPointTemplate.from_distances(
-                point_names=list(self._skull_points),
-                pair_distances=pair_distances,
-                reference_configuration=reference_configuration,
-            )
-            self._frames_since_template_build = 0
 
-        if self._skull_template is None:
-            # No template yet (not enough points observed this frame) — the
-            # skull keypoints stay at whatever the tree produced; the orphan
-            # anchor rule below fills in any observed point the tree missed.
-            return
+            # Merge the corrected group into body_positions, overwriting what
+            # the tree wrote for the group's rigid points.
+            for name in points:
+                pos = corrected.get(name)
+                if pos is not None and np.all(np.isfinite(pos)):
+                    body_positions[name] = pos
 
-        # Anchor at the body tree's corrected head node when present; otherwise
-        # a full (R+t) fit (head_center among observed_skull ≤ 2 points → fit
-        # degenerates to observed passthrough).
-        anchor_observed = body_positions.get("head_center")
-        if anchor_observed is not None:
-            observed_skull = {**observed_skull, "head_center": anchor_observed}
+            state.frames_since_template_build += 1
 
-        corrected = fit_template_to_observed(
-            self._skull_template,
-            observed_skull,
-            anchor_name="head_center",
-        )
-
-        # Merge the corrected skull into body_positions, overwriting what the
-        # tree wrote for the 7 skull keypoints.
-        for name in self._skull_points:
-            pos = corrected.get(name)
-            if pos is not None and np.all(np.isfinite(pos)):
-                body_positions[name] = pos
-
-        self._frames_since_template_build += 1
-
-    def _skull_pair_distances(self) -> dict[tuple[str, str], float]:
+    def _pair_distances(self, state: _RigidGroupState) -> dict[tuple[str, str], float]:
         """The current pair medians, keyed by the template's ``(a, b)`` tuples."""
-        lengths = self._skull_pairs.lengths
+        lengths = state.pairs.lengths
         return {
             _pair_key(a, b): lengths[_canonical_pair_string(a, b)]
-            for a, b in _all_pairs(self._skull_points)
+            for a, b in _all_pairs(state.points)
         }
 
     def _rigidify_group(
@@ -678,7 +705,7 @@ class RealtimeSkeletonRigidifier:
 
         Returns ``(corrected_keypoints, used_directions)`` where
         ``corrected_keypoints`` is keyed by the group's KEYPOINT names (each
-        segment's corrected origin plus its corrected long-axis endpoint) and
+        segment's corrected origin plus its corrected exact-axis endpoint) and
         ``used_directions`` maps each SEGMENT name to the unit direction
         actually used.
         """
@@ -693,7 +720,7 @@ class RealtimeSkeletonRigidifier:
         # Edge lengths follow the shared-keypoint chain: the enforced length for
         # a kept edge is the PARENT segment's estimate, keyed by the CHILD
         # node's name. Only edges father→child where child.origin_keypoint ==
-        # father.axes[0].to_keypoint get an entry; roots have none.
+        # father's EXACT axis target get an entry; roots have none.
         lengths_dict: dict[str, float] = {}
         for seg in group:
             if seg.parent is None:
@@ -701,7 +728,7 @@ class RealtimeSkeletonRigidifier:
             parent_seg = name_to_seg.get(seg.parent)
             if parent_seg is None:
                 continue
-            if seg.origin_keypoint != _long_axis_to_keypoint(parent_seg):
+            if seg.origin_keypoint != _exact_axis_target(parent_seg):
                 continue
             lengths_dict[seg.name] = lengths[seg.parent]
 
@@ -721,43 +748,42 @@ class RealtimeSkeletonRigidifier:
             if origin is not None:
                 out[seg.origin_keypoint] = origin
 
-        # Phase 2 (long-axis endpoints, only for keypoints NO segment's origin
-        # owns). The head is a rigid body (fit elsewhere); other leaf segments
-        # (``left_toes``, the finger distals) are extruded from the observed
-        # origin→long-axis direction at the segment's own length. Face segments
-        # are SKIPPED here — their keypoints ride the skull rigid set or the
-        # orphan-anchor rule, not the tree.
+        # Phase 2 (exact-axis endpoints, only for keypoints NO segment's origin
+        # owns). Leaf segments (``left_toes``, the finger distals) are extruded
+        # from the observed origin→exact-axis direction at the segment's own
+        # length. Face segments are SKIPPED here — their keypoints ride the head
+        # rigid set or the orphan-anchor rule, not the tree. ≥ 3-rigid-point
+        # segments are also skipped — their exact-axis endpoints are placed by the
+        # rigid-group fit, not extruded here.
         for seg in group:
-            long_kp = _long_axis_to_keypoint(seg)
-            if long_kp in origin_set:
+            distal_kp = _exact_axis_target(seg)
+            if distal_kp in origin_set:
                 continue
             if seg.name in _FACE_SEGMENT_NAMES:
                 continue
-            # The head's rigid points (including ``head_vertex``) are placed by
-            # the skull fit, not extruded here.
-            if seg.name == "head":
+            if seg.name in self._rigid_groups:
                 continue
             origin = corrected.get(seg.name)
             observed_origin = positions.get(seg.name)
-            observed_long = observed_keypoints.get(long_kp)
-            if origin is None or observed_origin is None or observed_long is None:
+            observed_distal = observed_keypoints.get(distal_kp)
+            if origin is None or observed_origin is None or observed_distal is None:
                 continue
-            vec = np.asarray(observed_long, dtype=float) - np.asarray(
+            vec = np.asarray(observed_distal, dtype=float) - np.asarray(
                 observed_origin, dtype=float
             )
             norm = float(np.linalg.norm(vec))
             if np.isfinite(norm) and norm > 1e-6:
-                out[long_kp] = origin + (vec / norm) * lengths[seg.name]
+                out[distal_kp] = origin + (vec / norm) * lengths[seg.name]
 
         return out, directions
 
     def reset(self) -> None:
-        """Forget learned lengths, the skull template, and gap-fill directions.
+        """Forget learned lengths, the rigid-group templates, and gap directions.
 
         Clears the rolling-window length buffers (estimates fall back to the
-        anthropometric seeds), the skull template (next fully-observed frame
-        rebuilds it), and the carried per-segment gap-fill directions, so the
-        next frames re-derive everything from fresh observations.
+        anthropometric seeds), the rigid-group templates (next fully-observed
+        frame rebuilds them), and the carried per-segment gap-fill directions,
+        so the next frames re-derive everything from fresh observations.
         """
         self._body_tree.reset()
         self._hand_tree_r.reset()
@@ -765,10 +791,10 @@ class RealtimeSkeletonRigidifier:
         self._body_lengths.reset()
         self._rhand_lengths.reset()
         self._lhand_lengths.reset()
-        self._skull_template = None
-        self._frames_since_template_build = 0
-        if self._skull_pairs is not None:
-            self._skull_pairs.reset()
+        for state in self._rigid_groups.values():
+            state.template = None
+            state.frames_since_template_build = 0
+            state.pairs.reset()
 
     @property
     def body_segment_lengths(self) -> dict[str, float]:

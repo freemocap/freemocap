@@ -1,0 +1,48 @@
+# Conventions
+
+The coordinate, rotation, and framing conventions every other layer assumes. Single-source: if another
+doc needs one of these facts, it links here.
+
+## World / canonical space
+
+- **Units:** millimetres (mm).
+- **Handedness:** right-handed.
+- **Axes:** **+Z up**, **+X forward** (anterior), **+Y = the subject's left** (so a T-pose subject's
+  left arm points +Y).
+- **Origin:** the reference pose places the root (`hips`) at the world origin; it is a *schematic*
+  identity frame of orientations × lengths, not a metric scan (see
+  [../01-data-model/reference-geometry.md](../01-data-model/reference-geometry.md)).
+
+## Rotations
+
+- **Quaternions are `wxyz`** (scalar-first), unit-norm.
+- **`identity == T-pose`.** A segment whose live pose equals its T-pose reference solves to the
+  identity quaternion — world **and** local. This is the contract every downstream consumer relies on.
+- **Composition:** `q_child_local = conj(q_parent) · q_child_world`. The root's local equals its world.
+- **Euler (authoring only):** `rest_rotation` is an extrinsic XYZ triple (radians) that extrudes a
+  segment's declared axis; every authored value is single-axis, so the convention only matters here.
+
+## The VRM 1.0 local frame (per-segment)
+
+Each segment's rest frame is right-handed and declared by **name**, not slot:
+
+- **Body / hand segments:** the EXACT axis is declared on **`y`**, with **+Y toward the child bone**
+  (the VRM 1.0 humanoid rule).
+- **Face bones:** the EXACT axis is declared on **`z`**, with **+Z = the gaze direction** (VRM's
+  face-bone rule).
+- The remaining basis axes come from the segment's own declared direction reference (Gram-Schmidt'd
+  against the exact axis) plus the T-pose geometry — never a fixed global axis.
+
+See [../01-data-model/segment-model.md](../01-data-model/segment-model.md) for how axes are declared and
+resolved.
+
+## Mirroring
+
+The left side is authored; the right side is generated at reference-geometry build by **negating Y and
+rebuilding the frame right-handed** — a basis is never reflected (a reflected basis would have
+`det = -1` and silently mirror the model).
+
+## Sources
+Fresh from `skellyforge` (`segment_definition.py` authoring-convention docstring, `reference_geometry.py`,
+`orientation_solver.py`) + the workspace `CLAUDE.md`. Original prose:
+[`archive/streaming-compatibility-specs/07-coordinate-conventions.md`](../archive/streaming-compatibility-specs/07-coordinate-conventions.md).

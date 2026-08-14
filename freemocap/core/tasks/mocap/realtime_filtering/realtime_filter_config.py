@@ -10,6 +10,10 @@ Consumed by the realtime aggregator node, which wires these values into:
 
 from pydantic import BaseModel
 
+from freemocap.core.streaming.standard_stream.stream_schema import (
+    NOMINAL_SUBJECT_HEIGHT_MM,
+)
+
 
 class RealtimeFilterConfig(BaseModel):
     """Tunable parameters for the realtime filtering pipeline.
@@ -84,8 +88,9 @@ class RealtimeFilterConfig(BaseModel):
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco
     # calibration produces mm-scale coordinates, so the bone-length seeds
-    # (which scale by height) use the same units.
-    height_mm: float = 1750.0
+    # (which scale by height) use the same units. Single source of truth is
+    # NOMINAL_SUBJECT_HEIGHT_MM.
+    height_mm: float = NOMINAL_SUBJECT_HEIGHT_MM
 
     # ---- Triangulation reprojection gate ----
     # Reject triangulated points whose mean reprojection error across cameras

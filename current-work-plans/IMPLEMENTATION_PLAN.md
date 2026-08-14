@@ -1,16 +1,20 @@
 # Implementation Plan & Progress
 
-> **Living document.** This is the authoritative source for *scope* (what we're building and when)
-> and *progress* (what's done). The spec docs (`00`–`08`) describe the target system; this file
-> tracks the work to get there. Update the [Progress log](#progress-log) as work lands; move items
-> between scope buckets deliberately, never silently.
+> **Living document.** The authoritative tracker for *scope* + *progress*.
+>
+> **⚠ Reorganized 2026-08-14.** The docs are now split **by layer** — see [README](README.md) and the
+> `00-foundation` … `04-ui` folders. The old spec set (`00–14`, `phase-1/`) is archived verbatim under
+> [`archive/`](archive/) — its inline links below are repointed there. This tracker gets a fresh rewrite
+> (a follow-up, after the human-model ontology discussion). Current model counts are **60 segments / 76
+> keypoints**. The dated Progress log below is a **historical record**
+> (pre-reorg) — read it as history, not current instruction.
 
 ## How to use this document
 
 - The [Scope table](#scope-table-authoritative) is the single source of truth for
   `[IN]` / `[LATER]` / `[FUTURE]` tags used throughout the spec docs.
 - Each phase has a checklist. Check items only when they're done and verified per
-  [08 — Testing Strategy](08-testing-strategy.md).
+  [08 — Testing Strategy](archive/streaming-compatibility-specs/08-testing-strategy.md).
 - Unknowns are `TBD` with an explicit **trigger** — the event that unblocks them, listed in
   [Dependencies & blockers](#dependencies--blockers).
 
@@ -19,14 +23,14 @@
 ### `[IN]` — near-term build
 - ✅ **Standard-human model** — DONE 2026-08-13: the composed 60-segment human (55 VRM 1.0 bones + 5 face-detail — body + hands + face
   bones), dict-backed `StandardHuman`, T-pose reference geometry, keypoint-declared solver, one length
-  estimator. See [phase-1/09](phase-1/09-segment-model.md).
+  estimator. See [phase-1/09](archive/phase-1-work-plans/09-segment-model.md).
 - **Kinematics engine fold-in**: copy/adapt `bs/kinematics_core` into **SkellyForge**; rewrite
   `AnatomicalStructure`/`ModelInfo`/managers onto the standard human; produce per-bone world+local
-  quaternions (identity == T-pose). ([11](11-kinematics-fold-in.md)).
+  quaternions (identity == T-pose). ([11](archive/streaming-compatibility-specs/11-kinematics-fold-in.md)).
 - **Tracker→standard-human mapping**: every keypoint the model declares produced from tracker keypoints
   via the `*_to_standard_human_mapping.yaml` forms (string/list/dict/`anatomical_offset` — SC bilateral
   landed; `mid_sternum`/`head_vertex`/`foot_ball`/`jaw` are Phase B). The completeness contract
-  (`required_keypoints()` = 72) is the interface ([13](13-tracker-to-canonical-mapping.md), [09 Task 6](phase-1/09-segment-model.md)).
+  (`required_keypoints()` = 76) is the interface ([13](archive/streaming-compatibility-specs/13-tracker-to-canonical-mapping.md), [09 Task 6](archive/phase-1-work-plans/09-segment-model.md)).
 - **The LSL-shaped standard stream**: a schema (channels, joint hierarchy, T-pose, convention, units)
   sent once + timestamped samples per frame (with both `ROTATIONS_WORLD` + `ROTATIONS_LOCAL` channel
   groups), mirroring LSL's data model, over the existing WebSocket. Backend standard-stream encoder +
@@ -34,7 +38,7 @@
 - Canonical-frame extensions: **segment-rotation channels** (world + local, via the folded-in engine),
   **subject dimension**, **convention/rest-pose in the schema**, **per-point confidence / reprojection
   error**.
-- **On-disk serialization**: migrate the **parquet** schema to tidy-long ([10](10-serialization-and-tidy-format.md)).
+- **On-disk serialization**: migrate the **parquet** schema to tidy-long ([10](archive/streaming-compatibility-specs/10-serialization-and-tidy-format.md)).
 - Streaming hub: frame tap, latest-frame mailbox, derived views, `StreamingManager`, supervision.
 - `/streaming/*` HTTP control plane (list / start / streams / stop); scoped fail-loud; **start idle**;
   **ephemeral server-side** config.
@@ -53,8 +57,8 @@
 ### `[LATER]`
 - VRChat OSC adapter; Rokoko JSON adapter.
 - **Align** the disabled kinematics code to the new engine/models; keep it out of hot loops until validated
-  ([06](06-backend-refactor-and-cleanup.md), [11](11-kinematics-fold-in.md)).
-- Scapula (scapulothoracic detail) via the `anatomical_offset` mechanism ([12](12-standard-human-model.md)).
+  ([06](archive/streaming-compatibility-specs/06-backend-refactor-and-cleanup.md), [11](archive/streaming-compatibility-specs/11-kinematics-fold-in.md)).
+- Scapula (scapulothoracic detail) via the `anatomical_offset` mechanism ([12](archive/streaming-compatibility-specs/12-standard-human-model.md)).
 - Face blendshapes driven from tracked face landmarks (null until wired).
 - Dedicated high-frequency `streaming_status` WS message (if `app_state` cadence proves insufficient).
 - One-way-WS decision + authoritative-reconnect fix for the stale-UI-after-crash issue.
@@ -71,16 +75,16 @@
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
 | *(Resolved — see progress log: kinematics engine → `bs/` copy-in; serialization → parquet tidy-long; standard-human → VRM rig; rest pose → canonical T-pose; incoming-code dependency gone.)* | — | — |
-| ~~Forward-axis confirmation of FMC canonical convention~~ | — | **Resolved 2026-08-12 — `+X` forward.** Canonical convention is `mm · right-handed · +Z up · +X forward` (robotics/biomechanics standards): a **declared internal standard**, not derived from calibration output. Conversion happens at adapter edges on request; re-orientation is an explicit user action via the HTTP control plane. Code currently says `+Y` (defect D34). See [07](07-coordinate-conventions.md#the-freemocap-canonical-convention). |
-| ~~World-quaternion direction convention~~ | — | **Resolved 2026-08-12** — `q_world` maps segment-frame → world; `q_local = conj(q_parent) · q_child`. Stated in [07 § Segment rotation conventions](07-coordinate-conventions.md#segment-rotation-conventions). Confirmed empirically by the round-trip test specified in doc 14 before the fix lands. |
+| ~~Forward-axis confirmation of FMC canonical convention~~ | — | **Resolved 2026-08-12 — `+X` forward.** Canonical convention is `mm · right-handed · +Z up · +X forward` (robotics/biomechanics standards): a **declared internal standard**, not derived from calibration output. Conversion happens at adapter edges on request; re-orientation is an explicit user action via the HTTP control plane. Code currently says `+Y` (defect D34). See [07](archive/streaming-compatibility-specs/07-coordinate-conventions.md#the-freemocap-canonical-convention). |
+| ~~World-quaternion direction convention~~ | — | **Resolved 2026-08-12** — `q_world` maps segment-frame → world; `q_local = conj(q_parent) · q_child`. Stated in [07 § Segment rotation conventions](archive/streaming-compatibility-specs/07-coordinate-conventions.md#segment-rotation-conventions). Confirmed empirically by the round-trip test specified in doc 14 before the fix lands. |
 | Multi-subject keying detail | Subject addressing on the frame | Multi-person tracking design |
 | `app_state` / inbound "settings" audit | Status feed; one-way-WS decision; dead-path removal | Audit during the wedge |
 | Rokoko plugin licensing/source acceptance | Rokoko adapter `[LATER]` | Read Rokoko's open-source plugins |
-| ~~Landmark-vs-bone: what do `POINTS` / `OVERLAY_2D` enumerate?~~ | — | **Resolved 2026-08-13 by the reframe** — the landmark layer is retired entirely; the channel groups enumerate tracker **keypoints** (`KEYPOINTS_3D`) and **segments** (`SEGMENT_ORIGINS` + rotations), per [09-standard-stream-protocol § channels](09-standard-stream-protocol.md#channels). FMC-WS-3 implements against it (Phase F). |
+| ~~Landmark-vs-bone: what do `POINTS` / `OVERLAY_2D` enumerate?~~ | — | **Resolved 2026-08-13 by the reframe** — the landmark layer is retired entirely; the channel groups enumerate tracker **keypoints** (`KEYPOINTS_3D`) and **segments** (`SEGMENT_ORIGINS` + rotations), per [09-standard-stream-protocol § channels](archive/streaming-compatibility-specs/09-standard-stream-protocol.md#channels). FMC-WS-3 implements against it (Phase F). |
 | ~~Where the canonical bone definition lives~~ | — | **Resolved 2026-08-13** — **pure Python, composed**: parts authored in `body_part.py`/`hand_part.py`/`face_part.py`, expanded by `compose_parts()`, validated by the frozen `StandardHuman` dataclass. No YAML model; the old aggregator bootstrap is deleted in Phase D (Task 9). |
-| ~~Does `ROTATIONS_WORLD` have a committed consumer?~~ | — | **Resolved 2026-08-12** — yes, and it stays. The stream carries **everything** (small data); [FMC-RB](phase-1/06-rigid-body-bone-renderer.md) drives the viewport from it directly. |
-| ~~Camera parameters for 2D landmark reprojection~~ | — | **Resolved 2026-08-12** — the **existing camera calibration infrastructure**. If we reconstruct 3D, we know the cameras by definition. See [FMC-SR §3](phase-1/07-spec-reconciliation.md#3-2d-overlays-carry-both-detections-and-reprojections-new). |
-| ~~Testing home for the SkellyForge engine~~ | — | **Resolved 2026-08-12** — new sibling doc [14 — Engine Testing Strategy](14-engine-testing-strategy.md). [08](08-testing-strategy.md) keeps the wire; 14 owns the math. Suite added to `[IN]` scope. |
+| ~~Does `ROTATIONS_WORLD` have a committed consumer?~~ | — | **Resolved 2026-08-12** — yes, and it stays. The stream carries **everything** (small data); [FMC-RB](archive/phase-1-work-plans/06-rigid-body-bone-renderer.md) drives the viewport from it directly. |
+| ~~Camera parameters for 2D landmark reprojection~~ | — | **Resolved 2026-08-12** — the **existing camera calibration infrastructure**. If we reconstruct 3D, we know the cameras by definition. See [FMC-SR §3](archive/phase-1-work-plans/07-spec-reconciliation.md#3-2d-overlays-carry-both-detections-and-reprojections-new). |
+| ~~Testing home for the SkellyForge engine~~ | — | **Resolved 2026-08-12** — new sibling doc [14 — Engine Testing Strategy](archive/streaming-compatibility-specs/14-engine-testing-strategy.md). [08](archive/streaming-compatibility-specs/08-testing-strategy.md) keeps the wire; 14 owns the math. Suite added to `[IN]` scope. |
 
 ## Phased build order
 
@@ -92,14 +96,14 @@ This spec folder. Agree architecture, scope, and open questions before code.
 - [ ] Final review pass with the team.
 
 ### Phase 1 — The LSL-shaped standard stream (the foundation) `[planning]`
-Detailed workstream plans live in [`phase-1/`](phase-1/README.md) (FMC-WS-1…FMC-WS-5; **positions-first**, rotations
+Detailed workstream plans live in [`phase-1/`](archive/phase-1-work-plans/README.md) (FMC-WS-1…FMC-WS-5; **positions-first**, rotations
 via FMC-WS-5 parallel). Reshape FreeMoCap's own streaming into schema + timestamped samples; the UI is its first
 consumer.
 - [ ] Backend **standard-stream encoder**: schema once (channels, joint hierarchy, T-pose, convention,
       units) + timestamped sample per frame; fused with the `websocket_server.py` send-path reshape.
 - [ ] Canonical frame carries subject dimension, convention (in schema), confidence/reprojection error.
 - [ ] Segment-rotation channel defined in the schema; the folded-in `bs/` engine produces rotations live
-      (copy/adapt into SkellyForge — [11](11-kinematics-fold-in.md)). *(not blocked — we have the code)*
+      (copy/adapt into SkellyForge — [11](archive/streaming-compatibility-specs/11-kinematics-fold-in.md)). *(not blocked — we have the code)*
 - [ ] UI wedge: extract message-routing + connection lifecycle from `ServerContextProvider` into a
       connection/transport service that consumes the standard stream (schema then samples).
 - [ ] Tests: schema round-trip, standard-stream golden bytes, sample reconstruction.
@@ -130,20 +134,20 @@ consumer.
 
 ## Todo (current focus)
 
-**Current phase: F — the realtime loop** ([`phase-1/11`](phase-1/11-realtime-loop-completion.md):
+**Current phase: F — the realtime loop** ([`phase-1/11`](archive/phase-1-work-plans/11-realtime-loop-completion.md):
  six-group schema → encoder + WS reshape → TS decoder/wedge → rigid-body renderer → the manual
  full-loop run) — **Phase D (Task 9) is DONE** and awaits Commit Round 2; the posthoc rebuild
- (Phase E, [`phase-1/12`](phase-1/12-posthoc-rebuild.md)) is spec'd as revisit notes and executes
+ (Phase E, [`phase-1/12`](archive/phase-1-work-plans/12-posthoc-rebuild.md)) is spec'd as revisit notes and executes
  AFTER the loop. *(previous text, superseded 2026-08-13: D — retire the old models)* —
 Round 1 is pushed + synced (freemocap's env runs the new skellies); Task 9 Step 1 fixes the
 now-broken freemocap call sites and deletes the bootstrap. Phase B is DONE (the completeness
 contract is green, 226 skellytracker tests). *(previous text, superseded 2026-08-13: B — the keypoint
 contract)* —
-[`phase-1/10`](phase-1/10-whole-project-alignment.md) step order; detail in
-[`phase-1/09` Task 6](phase-1/09-segment-model.md#task-6-the-required-keypoint-contract-per-tracker).
+[`phase-1/10`](archive/phase-1-work-plans/10-whole-project-alignment.md) step order; detail in
+[`phase-1/09` Task 6](archive/phase-1-work-plans/09-segment-model.md#task-6-the-required-keypoint-contract-per-tracker).
 **Phase A is COMPLETE** (2026-08-13): Tasks 1–8 + the 4B+5+7 model-rewrite unit + the mapping rename,
 skellyforge suite 94/94, skellytracker 222 passed (non-video). Phase B remaining: the completeness
-contract test (parametrized over all four mappings against `required_keypoints()` = 72 — it will fail
+contract test (parametrized over all four mappings against `required_keypoints()` = 76 — it will fail
 RED on `mid_sternum`, `head_vertex`, `foot_ball` ×2, `jaw`), the load-time raise test, the five
 `anatomical_offset` definitions in both body mappings (+ the `eye_width` named length), then **Commit
 Round 1** (the user pushes skellyforge + skellytracker; freemocap's two mapping-path dicts + the
@@ -211,10 +215,10 @@ freemocap test **collection** repaired this session (4 files repointed to
 - **2026-08-13 (sequencing set: realtime loop first, then posthoc; both planned)** — Per the user:
   the full realtime loop (reconstruct → stream over the LSL-compatible WS → 3JS rigid-body meshes)
   completes before the posthoc route is touched, because posthoc must converge on the contracts the
-  loop proves (locked decision 8). New detail plans: [`phase-1/11`](phase-1/11-realtime-loop-completion.md)
+  loop proves (locked decision 8). New detail plans: [`phase-1/11`](archive/phase-1-work-plans/11-realtime-loop-completion.md)
   (the loop: six-group schema incl. D10/D22/D29/D30/D34/D35 → encoder + WS reshape incl. D36 →
   TS decoder/wedge → FMC-RB renderer incl. D5/D6/D14/D15 → the manual full-loop run as the gate) and
-  [`phase-1/12`](phase-1/12-posthoc-rebuild.md) (the posthoc rebuild spec as REVISIT notes: the old
+  [`phase-1/12`](archive/phase-1-work-plans/12-posthoc-rebuild.md) (the posthoc rebuild spec as REVISIT notes: the old
   layer's consumer map, the four decisions to make at the revisit, E1–E5 outline, the revisit
   checklist). Doc 10 reordered accordingly (F before E).
 - **2026-08-13 (TASK 9 COMPLETE — Phase D done)** — Steps 2–4: deleted
@@ -290,7 +294,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   bones are now **driven** segments: ORIGIN-attached to the head (head-center line), eyes rest +X, jaw
   rest ≈12.5° off +Z (derived from the Task 6 jaw-offset design: 0.9·eye-width down / 0.2 posterior of
   `nose`, `reference_length: eye_width` — added to Task 6's derived-keypoint list in both body
-  mappings). The `undriven_segments` machinery is deleted; `required_keypoints()` = 72 over all 55
+  mappings). The `undriven_segments` machinery is deleted; `required_keypoints()` = 76 over all 55
   segments; the shared `nose` keypoint is off-chain (not emitted in the rest-keypoint map — no
   authoritative rest position). Suite **83/83 green**. Uncommitted — user owns git.
 - **2026-08-13 (SF-SM Tasks 4–7 done — the model-rewrite unit)** — The hand part (16 segments, fan
@@ -336,14 +340,14 @@ freemocap test **collection** repaired this session (4 files repointed to
 - **2026-08-12 (whole-project alignment re-derived; D7/D8 disposed)** — The paused D7/D8 work was built
   on the retired tracker→canonical framing and cannot be *finished*: disposition is keep-the-keypoint-half
   (bilateral SC mappings + D39), revert-the-graph-half (`canonical_body.yaml` reroot → HEAD). New
-  [`phase-1/10`](phase-1/10-whole-project-alignment.md) re-derives the ordered whole-project path (A–G),
+  [`phase-1/10`](archive/phase-1-work-plans/10-whole-project-alignment.md) re-derives the ordered whole-project path (A–G),
   surfaces the **posthoc rebuild as unowned-but-mandatory** (locked decision 8; SF-AL F4 open; `13` §
   Remaining work; blast radius incl. `pipelines/test_pipeline.py`), and records the mapping-YAML rename
   blast radius (4 detector paths + freemocap's 2 path-constant dicts). Also this session: freemocap test
   collection repaired (the kinematics-move commit left 4 test modules importing math names from the I/O
   wrapper; repointed to `skellyforge.kinematics.segment_lengths` — collection clean, 130 tests).
 - **2026-08-12 (SF-SM aligned to keypoint → segment reference geometry)** — Per the user's notes on
-  [`phase-1/09`](phase-1/09-segment-model.md): the "canonical keypoint" vocabulary is retired — segment
+  [`phase-1/09`](archive/phase-1-work-plans/09-segment-model.md): the "canonical keypoint" vocabulary is retired — segment
   definitions reference keypoints **directly by name** (origin / long-axis / twist), with no intermediate
   canonical-keypoint or landmark set. Absorbed: the `_BONE_TO_LANDMARK`/`proximal_landmark` bridges are
   framed as already-obviated artifacts (deleted, not ported); twist resolution is stated as two-tier
@@ -353,7 +357,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   change; Task 3 records the `freemocap_tpose` name translation and `None` ROM limits for segments the
   addon gives none. Documentation pass only — no code.
 - **2026-08-12 (SF-AL architecture agreed)** — Worked the design through before writing code. Decisions
-  recorded in [`phase-1/08`](phase-1/08-skellyforge-alignment.md#agreed-architecture): **compose what we
+  recorded in [`phase-1/08`](archive/phase-1-work-plans/08-skellyforge-alignment.md#agreed-architecture): **compose what we
   author, generate the flat skeleton at load** (the 55-segment table is 15+15 duplicated fingers — the
   forbidden shape); **parts join by name agreement**, so a hand's local `wrist` becomes `left_wrist` under
   its prefix and unifies with the body's — no attachment mechanism, one joint hierarchy; **mirroring
@@ -362,7 +366,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   face is a different kind of thing** — expressions, not segments, composed alongside the skeleton;
   **one human per `StandardHuman`**, multi-subject is a list; **the model layer knows nothing about
   trackers** (the `Aspect` array-slicing job is deleted); **composition replaces the Actor/Human/Animal/
-  Board inheritance**. Two guard tests added to [14 §7](14-engine-testing-strategy.md#7-standard-human-model).
+  Board inheritance**. Two guard tests added to [14 §7](archive/streaming-compatibility-specs/14-engine-testing-strategy.md#7-standard-human-model).
 - **2026-08-12 (SF-AL — SkellyForge is not aligned to the standard human)** — Surfaced while implementing
   D7/D8. The trigger was cosmetic (arrow-delimited dict keys in `canonical_body.yaml`); the survey found
   the arrow is a symptom. **`canonical_body.yaml` and its consumers predate the standard-human redesign
@@ -374,7 +378,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   references** to `standard_human/` — two parallel human models. Six skeleton-building files remain in
   FreeMoCap, including a second CoM implementation. **Proof the redundancy already costs:** the clavicle
   reroot updated two of the three encodings and the model silently went inconsistent — nothing could have
-  caught it. Plan: [`phase-1/08-skellyforge-alignment.md`](phase-1/08-skellyforge-alignment.md).
+  caught it. Plan: [`phase-1/08-skellyforge-alignment.md`](archive/phase-1-work-plans/08-skellyforge-alignment.md).
   **D7/D8 is paused mid-flight** and must be finished or reverted before the restructure.
 
 - **2026-08-12 (aggregator wired — damping live end-to-end)** — `realtime_aggregator_node.py` now passes
@@ -388,7 +392,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   **Next: D7/D8 sternoclavicular**, or the remaining FMC-SR doc items (§4 sequencing record, §8 stale sweep,
   §9 FMC-RB defects). *Uncommitted in freemocap.*
 - **2026-08-12 (D3/D4 — real critical damping)** — `skellyforge/kinematics/critically_damped_orientation.py`
-  implements the filter [12 § Critical damping](12-standard-human-model.md) specifies: second-order,
+  implements the filter [12 § Critical damping](archive/streaming-compatibility-specs/12-standard-human-model.md) specifies: second-order,
   damping ratio 1, per-segment angular-velocity state, **solved analytically** rather than with the
   polynomial `exp` approximation game engines use. Runs in the tangent space (log/exp map) because SO(3)
   is not a vector space — `RotationQuaternion.from_rotation_vector` / `.to_rotation_vector` added, with
@@ -406,19 +410,19 @@ freemocap test **collection** repaired this session (4 files repointed to
   *Uncommitted in skellyforge.*
 - **2026-08-12 (D1 fixed — `ROTATIONS_LOCAL` is now correct)** — `orientation_solver.py` now composes
   parent-relative rotation as `conj(q_parent_world) * q_child_world`, per
-  [07 § Segment rotation conventions](07-coordinate-conventions.md#segment-rotation-conventions).
+  [07 § Segment rotation conventions](archive/streaming-compatibility-specs/07-coordinate-conventions.md#segment-rotation-conventions).
   **22/22 green** in skellyforge (was 18/22). The `FrameOrientationResult` docstring stated the reversed
   form and was corrected with it. Swept the engine for the same pattern: the only other `conj` composition
   is the angular-velocity finite difference in `quaternion_math.py` (`q_next * conj(q_curr)`), which is the
   **spatial** angular velocity of one body between frames — not a hierarchy composition — and is correct.
-  This is the bug doc [07 § the local-rotation trap](07-coordinate-conventions.md#the-local-rotation-trap-vmc-and-unreal)
+  This is the bug doc [07 § the local-rotation trap](archive/streaming-compatibility-specs/07-coordinate-conventions.md#the-local-rotation-trap-vmc-and-unreal)
   warned about; it is now closed before any VMC work begins.
-  **Next: D3/D4 critical damping** ([12 § Critical damping](12-standard-human-model.md), [14 §5](14-engine-testing-strategy.md#5-critical-damping)).
+  **Next: D3/D4 critical damping** ([12 § Critical damping](archive/streaming-compatibility-specs/12-standard-human-model.md), [14 §5](archive/streaming-compatibility-specs/14-engine-testing-strategy.md#5-critical-damping)).
   *Uncommitted in skellyforge.*
 - **2026-08-12 (engine test suite stood up; D1 confirmed)** — First code of the FMC-SR follow-up.
   `skellyforge/tests/` now exists (it did not before — `pytest` collected nothing across ~3,200 lines of
   math) with pytest config in `pyproject.toml`. Two modules per
-  [14 §2](14-engine-testing-strategy.md#2-composition-convention--the-decisive-one):
+  [14 §2](archive/streaming-compatibility-specs/14-engine-testing-strategy.md#2-composition-convention--the-decisive-one):
   `test_quaternion_composition.py` pins the convention in isolation (Hamilton semantics,
   non-commutativity, differential bend, round-trip, 3-deep chain) — **12 green**;
   `test_orientation_solver_composition.py` runs a real skeleton through `solve_frame_orientations()` and
@@ -432,10 +436,10 @@ freemocap test **collection** repaired this session (4 files repointed to
   failing test in front of it), then D3/D4 critical damping.
   *Uncommitted in skellyforge — the user must commit before freemocap sees any of it.*
 - **2026-08-12 (checkpoint audit)** — Plans read against the code landed on `development-streaming`;
-  findings in [`AUDIT_2026-08-12.md`](AUDIT_2026-08-12.md). Headline: the strategy holds and the
+  findings in [`AUDIT_2026-08-12.md`](archive/AUDIT_2026-08-12.md). Headline: the strategy holds and the
   **sequencing reversal was the right call**, but it was recorded only in
-  [`phase-1/standard-human-model/README.md`](phase-1/standard-human-model/README.md) and never propagated —
-  [`phase-1/README.md`](phase-1/README.md) still asserts "DECIDED: (A) positions-first (Option B rejected)"
+  [`phase-1/standard-human-model/README.md`](archive/phase-1-work-plans/standard-human-model/README.md) and never propagated —
+  [`phase-1/README.md`](archive/phase-1-work-plans/README.md) still asserts "DECIDED: (A) positions-first (Option B rejected)"
   and FMC-WS-5 still reads "no code until agreed" with 0/6 checked for work that's done. **SF-SH-6 (spec
   updates, marked *continuous*) is the workstream that hasn't run, and it's the root cause of nearly every
   drift item.** Also found: FMC-WS-5 and the `standard-human-model` sub-plan are two live plans for the same
@@ -540,9 +544,9 @@ freemocap test **collection** repaired this session (4 files repointed to
 - **2026-08-10 (consistency-pass)** — Full start-to-finish pass reconciling evolved decisions from review
   notes. Reversals/locks: **don't defer** the derived-joint-center fix — added the **`anatomical_offset` mapping
   form** (deterministic, anthropometric, no runtime fit) that produces the anterior clavicle SC/GH centers
-  ([13](13-tracker-to-canonical-mapping.md), [12](12-standard-human-model.md)); **keep the parquet file**,
-  migrate its schema to tidy-long ([10](10-serialization-and-tidy-format.md)); **align, don't delete** the
-  disabled `core/kinematics` (out of hot loops until validated — [06](06-backend-refactor-and-cleanup.md));
+  ([13](archive/streaming-compatibility-specs/13-tracker-to-canonical-mapping.md), [12](archive/streaming-compatibility-specs/12-standard-human-model.md)); **keep the parquet file**,
+  migrate its schema to tidy-long ([10](archive/streaming-compatibility-specs/10-serialization-and-tidy-format.md)); **align, don't delete** the
+  disabled `core/kinematics` (out of hot loops until validated — [06](archive/streaming-compatibility-specs/06-backend-refactor-and-cleanup.md));
   **timestamp is the primary time key** (frame # secondary; image data is a separate stream linked by frame #);
   `stream_id` unique vs `stream_name` label; subjects are a **sample** dimension (not a schema field);
   quaternion order **`wxyz`**; keypoint(tracker)/landmark(canonical) terminology. The "incoming SkellyModels
@@ -554,7 +558,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   fallback) and the **derived-joint-center** approach (the clavicle *should* root at an anterior SC joint, not the shoulder
   midpoint / C7-T1). *(Superseded by the consistency-pass above — the anterior fix is **not** deferred; it
   uses the `anatomical_offset` mapping form.)* Wrote
-  [12 — Standard Human Model](12-standard-human-model.md). **Open:** face blendshapes; offset magnitudes;
+  [12 — Standard Human Model](archive/streaming-compatibility-specs/12-standard-human-model.md). **Open:** face blendshapes; offset magnitudes;
   VRM bone subset for v1; scapula modeling.
 - **2026-08-10 (investigation)** — Investigated the overlap between SkellyModels' `Human` actor,
   FreeMoCap `core/kinematics`, and `clients/bs/python_code/kinematics_core`. Findings: the canonical
@@ -563,8 +567,8 @@ freemocap test **collection** repaired this session (4 files repointed to
   rigid-body engine (quaternion orientation + angular kinematics + tidy serialization) that appears to be
   the "segment-rotation code that lives elsewhere."** Its on-disk serialization (reference-geometry JSON +
   tidy long CSV) is the disk twin of the standard stream's schema+samples, and a cleaner format than the
-  SkellyForge parquet. Wrote [09](09-standard-stream-protocol.md) (wire contract), [10](10-serialization-and-tidy-format.md)
-  (serialization), [11](11-kinematics-fold-in.md) (kinematics fold-in). **Open:** confirm bs/ is the rotation
+  SkellyForge parquet. Wrote [09](archive/streaming-compatibility-specs/09-standard-stream-protocol.md) (wire contract), [10](archive/streaming-compatibility-specs/10-serialization-and-tidy-format.md)
+  (serialization), [11](archive/streaming-compatibility-specs/11-kinematics-fold-in.md) (kinematics fold-in). **Open:** confirm bs/ is the rotation
   source; adopt tidy format?; resolve the standard-human shape.
 - **2026-08-10 (revised)** — Architecture **inverted** after a review pass over the first draft. New
   keystone: reshape FreeMoCap's own streaming into an **LSL-shaped standard stream** (schema once +

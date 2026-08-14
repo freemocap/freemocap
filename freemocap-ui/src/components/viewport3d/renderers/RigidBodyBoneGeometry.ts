@@ -26,9 +26,6 @@ export const CONE_RADIUS_TOP = 0.6;     // distal end — narrower
 export const CONE_HEIGHT = 1.0;         // unit height along +Z
 export const SPHERE_RADIUS = 1.1;       // slightly wider than the cone base
 
-/** Number of merge groups fed to mergeGeometries — asserted so the merge holds. */
-export const BONE_NUM_MERGE_GROUPS = 2;
-
 const _apex = new Vector3();
 
 /**
@@ -82,9 +79,12 @@ export function createBoneMeshGeometry(): BufferGeometry {
 }
 
 /**
- * Merge a set of buffer geometries into one (all attribute buffers preserved,
- * non-indexed). Mirrors three's `mergeGeometries` without the
- * `three/examples/jsm/...` import so this module stays testable in node.
+ * Merge a set of buffer geometries into one (non-indexed). Mirrors three's
+ * `mergeGeometries` without the `three/examples/jsm/...` import so this
+ * module stays testable in node.
+ *
+ * Only float32 attribute buffers are concatenated — non-float32 attributes
+ * (e.g. any integer or half-float storage) are not preserved here.
  */
 export function mergeBufferGeometries(geometries: BufferGeometry[]): BufferGeometry {
     const nonIndexed = geometries.map((g) => g.index ? g.toNonIndexed() : g);

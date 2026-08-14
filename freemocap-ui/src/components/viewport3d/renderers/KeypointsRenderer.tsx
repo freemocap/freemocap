@@ -51,7 +51,7 @@ function getKeypointRadius(name: string): number {
  * each frame, so `frame.pointNames` is a fresh array reference every frame even
  * when the names are unchanged — a reference check would rebuild the index maps
  * every frame. Comparing by content fires the rebuild only on a real schema /
- * landmark-set change.
+ * keypoint-set change.
  */
 function samePointNames(a: readonly string[], b: readonly string[] | null): boolean {
     if (b === null || a.length !== b.length) return false;

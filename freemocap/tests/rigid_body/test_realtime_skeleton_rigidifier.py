@@ -84,6 +84,27 @@ def _frame(rig: RealtimeSkeletonRigidifier, pose: dict[str, np.ndarray], t: floa
     return rig.rigidify_frame(pose, measured=pose, t=t)
 
 
+def _group_state(rig: RealtimeSkeletonRigidifier, name: str):
+    """The per-segment rigid-fit state for ``name`` (e.g. ``"head"``, ``"hips"``)."""
+    return rig._rigid_groups[name]  # noqa: SLF001
+
+
+def _template_distances(
+    rig: RealtimeSkeletonRigidifier, name: str
+) -> dict[tuple[str, str], float]:
+    """The invariant pair distances held by ``name``'s rigid-group template."""
+    return _group_state(rig, name).template.pair_distances
+
+
+def _group_points(name: str) -> tuple[str, ...]:
+    """The rigid points of segment ``name`` in model order."""
+    return next(
+        s.rigid_points
+        for s in compose_standard_human().segments
+        if s.name == name
+    )
+
+
 def test_create_seeds_all_segments(rigidifier):
     # 20 body segments + 16 per hand. Keys are SEGMENT names, not arrow keys.
     assert len(rigidifier.body_segment_lengths) == 20
@@ -207,21 +228,20 @@ def test_hips_center_not_displaced(rigidifier):
 
 
 def test_skull_pairwise_distances_equal_medians(rigidifier):
-    # (a) Two frames of the same pose: the corrected skull's 21 pairwise
-    # distances equal the estimated medians EXACTLY — the skull is a rigid body.
+    # (a) Two frames of the same pose: the corrected head-group's 21 pairwise
+    # distances equal the estimated medians EXACTLY — the head is a rigid body.
     rig = rigidifier
     pose = _upright_rtmpose_pose()
     _frames(rig, pose, n=3)
     out = _frame(rig, pose, t=3.0)
 
     corrected = {name: out.body_positions[name] for name in _SKULL_POINTS}
-    observed = {name: pose[name] for name in _SKULL_POINTS if name in pose}
 
     corrected_d = _pairwise_distances(corrected)
 
     # The template holds the pair medians: distances are exact after the fit.
     assert len(corrected_d) == 21
-    template_d = rig._skull_template.pair_distances  # noqa: SLF001
+    template_d = _template_distances(rig, "head")
     for key, d in corrected_d.items():
         assert d == pytest.approx(template_d[key], abs=1e-6), key
 
@@ -348,9 +368,9 @@ def test_fewer_than_three_skull_points_passthrough(rigidifier):
 
 def test_skull_template_rebuild_is_chirality_stable(rigidifier):
     # Feed 31+ frames (t = 0..30) so the 30-frame template REBUILD fires at least
-    # once. The skull must remain rigid (pairwise distances == estimator medians)
-    # AND chirality-consistent across the rebuild: the corrected ``nose`` stays on
-    # the same side of the eye/ear plane, and nothing crashes.
+    # once. The head-group must remain rigid (pairwise distances == estimator
+    # medians) AND chirality-consistent across the rebuild: the corrected ``nose``
+    # stays on the same side of the eye/ear plane, and nothing crashes.
     rig = rigidifier
     pose = _upright_rtmpose_pose()
     n = 31
@@ -359,9 +379,9 @@ def test_skull_template_rebuild_is_chirality_stable(rigidifier):
 
     # Sanity: the rebuild actually fired at least twice (template built at frame
     # 0 and rebuilt at frame 30).
-    assert rig._frames_since_template_build < 30  # noqa: SLF001
+    assert _group_state(rig, "head").frames_since_template_build < 30
 
-    template_d = rig._skull_template.pair_distances  # noqa: SLF001
+    template_d = _template_distances(rig, "head")
 
     # Chirality reference: a plane through left_ear/right_ear/left_eye (three
     # observed skull points). The corrected ``nose`` must stay on the SAME side
@@ -386,3 +406,142 @@ def test_skull_template_rebuild_is_chirality_stable(rigidifier):
         if sign_ref is None:
             sign_ref = s
         assert s == sign_ref, f"chirality flipped at frame {i}"
+
+
+# ===========================================================================
+# Per-group rigid fit — every ≥ 3-rigid-point segment is a rigid body fit
+# (head, hips, both feet, both toes), keyed by segment name.
+# ===========================================================================
+
+
+def _group_pairwise(
+    out: "object", names: tuple[str, ...]
+) -> dict[tuple[str, str], float]:
+    """The pairwise distances of the output positions ``out.body_positions``."""
+    positions = {name: out.body_positions[name] for name in names}
+    return _pairwise_distances(positions, names)
+
+
+def test_foot_group_keeps_pairwise_distances_exact_under_heel_noise(rigidifier):
+    # The left foot is a 3-point rigid group (``left_ankle``, ``left_foot_ball``,
+    # ``left_heel``). Noise on ONE point (``left_heel``) → the corrected heel is
+    # template-extrapolated, and all 3 pairwise distances stay exact.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    clean = _frame(rig, pose, t=3.0)
+    clean_d = _group_pairwise(clean, _group_points("left_foot"))
+
+    noisy = dict(pose)
+    noisy["left_heel"] = pose["left_heel"] + np.array([80.0, -50.0, 120.0])
+    out = _frame(rig, noisy, t=4.0)
+
+    corrected_d = _group_pairwise(out, _group_points("left_foot"))
+    for key in clean_d:
+        assert corrected_d[key] == pytest.approx(clean_d[key], abs=1e-6), key
+
+    # The corrected heel is the template geometry, not the noisy observation.
+    assert not np.allclose(out.body_positions["left_heel"], noisy["left_heel"], atol=10.0)
+
+
+def test_hips_group_keeps_pairwise_distances_exact_under_hip_noise(rigidifier):
+    # The hips is a 4-point rigid group (a tree root, anchored at the observed
+    # ``hips_center``). Noise on ONE point (``left_hip``) → the corrected hip is
+    # template-extrapolated, and all 6 pairwise distances stay exact.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    clean = _frame(rig, pose, t=3.0)
+    clean_d = _group_pairwise(clean, _group_points("hips"))
+
+    noisy = dict(pose)
+    noisy["left_hip"] = pose["left_hip"] + np.array([60.0, -40.0, 90.0])
+    out = _frame(rig, noisy, t=4.0)
+
+    corrected_d = _group_pairwise(out, _group_points("hips"))
+    for key in clean_d:
+        assert corrected_d[key] == pytest.approx(clean_d[key], abs=1e-6), key
+
+
+def test_hips_anchor_is_observed_center(rigidifier):
+    # The hips is a tree root: its origin ``hips_center`` anchors at its observed
+    # (mapping-derived) position, not displaced by the tree or the fit.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+    observed = rig._body_mapping.apply(pose)  # noqa: SLF001
+    assert np.allclose(out.body_positions["hips_center"], observed["hips_center"], atol=1e-6)
+
+
+def test_toes_group_keeps_pairwise_distances_exact(rigidifier):
+    # The left toes is a 3-point rigid group (``left_foot_ball``, ``left_big_toe``,
+    # ``left_small_toe``). Its pairwise distances stay exact after the fit.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+
+    names = _group_points("left_toes")
+    template_d = _template_distances(rig, "left_toes")
+    corrected_d = _group_pairwise(out, names)
+    for key in template_d:
+        assert corrected_d[key] == pytest.approx(template_d[key], abs=1e-6), key
+
+
+def test_missing_rigid_point_still_extrapolated_and_rigid(rigidifier):
+    # Drop one hip (a 4-point group's rigid point). The fit still emits the
+    # missing point (extrapolated from the template — a rigid group holds every
+    # point), and every pairwise distance stays at the template's exactly.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+
+    names = _group_points("hips")
+    missing = dict(pose)
+    del missing["left_hip"]
+    out = _frame(rig, missing, t=4.0)
+
+    assert "left_hip" in out.body_positions
+    assert np.all(np.isfinite(out.body_positions["left_hip"]))
+
+    template_d = _template_distances(rig, "hips")
+    corrected_d = _group_pairwise(out, names)
+    for key in template_d:
+        assert corrected_d[key] == pytest.approx(template_d[key], abs=1e-6), key
+
+
+def test_fewer_than_three_foot_points_passthrough(rigidifier):
+    # Fewer than 3 of the foot's rigid points observed → the fit is under-
+    # determined and passes the observed points through (no crash).
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+
+    few = dict(pose)
+    # ``left_heel`` is a rigid point; ``left_big_toe`` feeds the derived
+    # ``left_foot_ball``, so removing both leaves only ``left_ankle`` observed.
+    del few["left_heel"]
+    del few["left_big_toe"]
+    out = _frame(rig, few, t=3.0)
+
+    # Anchored point is present and the fit is under-determined (no crash,
+    # finite output).
+    assert "left_ankle" in out.body_positions
+    assert np.all(np.isfinite(out.body_positions["left_ankle"]))
+
+
+def test_two_point_segment_still_enforces_span_exactly(rigidifier):
+    # A 2-point segment (``left_upper_arm``) has no rigid-group fit; its span is
+    # enforced exactly by the tree forward pass — no template, no rotation fit.
+    rig = rigidifier
+    # Make sure the 2-point segment is NOT in the rigid-group map.
+    assert "left_upper_arm" not in rig._rigid_groups  # noqa: SLF001
+
+    pose = _upright_rtmpose_pose()
+    _frame(rig, pose, t=0.0)
+    est = rig.body_segment_lengths["left_upper_arm"]
+    out = _frame(rig, pose, t=0.1)
+    body = out.body_positions
+    measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
+    assert measured == pytest.approx(est, abs=1e-6)

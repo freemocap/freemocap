@@ -13,7 +13,7 @@ frontend decoder stays in sync)::
                     + BLOCK_DATA (row-major f32)
     SAMPLE_FOOTER   mirrors SAMPLE_HEADER (integrity check)
 
-Missing landmarks/segments → NaN rows. See
+Missing keypoints/segments → NaN rows. See
 [09 — Standard Stream Protocol](docs/streaming-compatibility/09-standard-stream-protocol.md).
 """
 from __future__ import annotations
@@ -26,7 +26,6 @@ import numpy as np
 
 from freemocap.core.streaming.standard_stream.stream_schema import (
     ChannelKind,
-    DEFAULT_DERIVED_POINTS,
     OverlayLayer,
     StreamSchema,
 )
@@ -230,9 +229,12 @@ class StreamSample:
                 [message.xcom.x, message.xcom.y, message.xcom.z], dtype=np.float32
             )
         derived_names = groups[ChannelKind.DERIVED_POINTS].names
+        # Key each derived row by its schema-declared name (not by positional
+        # tuple index) so a reordering of the schema's derived channels never
+        # misplaces the CoM / XCoM rows.
         derived_by_name = {
-            DEFAULT_DERIVED_POINTS[0]: com_row,   # center_of_mass
-            DEFAULT_DERIVED_POINTS[1]: xcom_row,  # xcom
+            "center_of_mass": com_row,
+            "xcom": xcom_row,
         }
         derived_data = np.stack([derived_by_name[n] for n in derived_names])
         blocks.append(
@@ -399,7 +401,7 @@ def decode_sample(buf: bytes) -> StreamSample:
     """Reconstruct one sample from the binary wire format.
 
     Blocks are self-describing (kind / cols / num_elements / camera_id); mapping a
-    block's columns back to landmark names is the schema's job, not the sample's.
+    block's columns back to keypoint names is the schema's job, not the sample's.
     """
     view = memoryview(buf)
     header = np.frombuffer(view[:SAMPLE_HEADER_SIZE], dtype=SAMPLE_HEADER_DTYPE)[0]

@@ -50,7 +50,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import IntEnum
-from pathlib import Path  # noqa: TC003  (module-level var annotation is evaluated at runtime)
 from typing import Literal
 
 import numpy as np
@@ -60,24 +59,11 @@ from skellyforge.kinematics.inertial.anthropometric_parameters import (
     SegmentInertialParameters,
     segment_inertial_parameters,
 )
-from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_pose_detector import (
-    MediapipePoseKeypointDetector,
-)
-from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
-    RTMPoseBodyDetector,
-)
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
-# Tracker→canonical body mapping (shipped with skellytracker). This is the
-# single derivation of the computed span endpoints (mid_sternum, head_vertex,
-# foot_ball, …) from raw tracker keypoints — the same mapping the realtime
-# skeleton fitter uses. Keyed by CameraNodeConfig.detector_type so the loader
-# can pick the mapping that actually matches the keypoint names the configured
-# detector produces.
-_BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
-    "rtmpose": RTMPoseBodyDetector.standard_human_mapping_path(),
-    "mediapipe": MediapipePoseKeypointDetector.standard_human_mapping_path(),
-}
+from freemocap.core.tasks.mocap.tracker_mappings import (
+    body_mapping_yaml_path,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -133,14 +119,25 @@ def _segment_key(de_leva_name: str, side: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Anatomical limb chains, distal → proximal, as side-prefixed segment keys.
+# Anatomical limb chains, distal → proximal, as (de Leva name, segment key)
+# tuples. The de Leva name is carried alongside its side-prefixed segment key
+# so downstream mass lookups never derive the name back out of the key by
+# string parsing.
 # ---------------------------------------------------------------------------
 
-_SEGMENT_CHAINS: list[list[str]] = [
-    [ _segment_key("foot", side), _segment_key("shank", side), _segment_key("thigh", side) ]
+_SEGMENT_CHAINS: list[list[tuple[str, str]]] = [
+    [
+        ("foot", _segment_key("foot", side)),
+        ("shank", _segment_key("shank", side)),
+        ("thigh", _segment_key("thigh", side)),
+    ]
     for side in _SIDES
 ] + [
-    [ _segment_key("hand", side), _segment_key("forearm", side), _segment_key("upper_arm", side) ]
+    [
+        ("hand", _segment_key("hand", side)),
+        ("forearm", _segment_key("forearm", side)),
+        ("upper_arm", _segment_key("upper_arm", side)),
+    ]
     for side in _SIDES
 ]
 
@@ -248,7 +245,7 @@ def load_body_biomechanics(
     ``detector_type`` (the same one the skeleton fitter uses).
     """
     return BodyBiomechanics(
-        tracker_mapping=TrackerMapping.from_yaml(_BODY_MAPPING_YAML_BY_DETECTOR[detector_type]),
+        tracker_mapping=TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type)),
         de_leva=segment_inertial_parameters(sex),
         sex=sex,
     )
@@ -261,14 +258,16 @@ def load_body_biomechanics(
 
 def _build_span_endpoints(
     keypoints: dict[str, np.ndarray],
-) -> dict[str, dict[str, np.ndarray]]:
+) -> dict[str, tuple[str, dict[str, np.ndarray]]]:
     """Resolve the proximal/distal endpoint of every de Leva span for this frame.
 
     Returns a dict keyed by *final segment key* (``trunk``, ``head``,
-    ``left_thigh``, …) → ``{"proximal": ... , "distal": ...}``. A span whose
-    endpoint is absent this frame is omitted — the redistribution handles it.
+    ``left_thigh``, …) → ``(de_leva_name, {"proximal": ... , "distal": ...})``.
+    The de Leva name is carried alongside its endpoints so downstream lookups
+    never derive it back out of the key by string parsing. A span whose endpoint
+    is absent this frame is omitted — the redistribution handles it.
     """
-    endpoints: dict[str, dict[str, np.ndarray]] = {}
+    endpoints: dict[str, tuple[str, dict[str, np.ndarray]]] = {}
     for de_leva_name, span in _DE_LEVA_SPANS.items():
         if span.sided:
             for side in _SIDES:
@@ -276,21 +275,24 @@ def _build_span_endpoints(
                 distal = keypoints.get(f"{side}_{span.distal}")
                 if proximal is None or distal is None:
                     continue
-                endpoints[_segment_key(de_leva_name, side)] = {
-                    "proximal": proximal,
-                    "distal": distal,
-                }
+                endpoints[_segment_key(de_leva_name, side)] = (
+                    de_leva_name,
+                    {"proximal": proximal, "distal": distal},
+                )
         else:
             proximal = keypoints.get(span.proximal)
             distal = keypoints.get(span.distal)
             if proximal is None or distal is None:
                 continue
-            endpoints[de_leva_name] = {"proximal": proximal, "distal": distal}
+            endpoints[de_leva_name] = (
+                de_leva_name,
+                {"proximal": proximal, "distal": distal},
+            )
     return endpoints
 
 
 def _calculate_all_segments_com_per_frame(
-    span_endpoints: dict[str, dict[str, np.ndarray]],
+    span_endpoints: dict[str, tuple[str, dict[str, np.ndarray]]],
     de_leva: dict[str, SegmentInertialParameters],
 ) -> dict[str, np.ndarray]:
     """Per-frame segment center of mass, de Leva (1996) math.
@@ -301,10 +303,7 @@ def _calculate_all_segments_com_per_frame(
     ``proximal``.
     """
     result: dict[str, np.ndarray] = {}
-    for seg_key, endpoints in span_endpoints.items():
-        de_leva_name = (
-            "trunk" if seg_key in ("trunk", "head") else seg_key.split("_", 1)[1]
-        )
+    for seg_key, (de_leva_name, endpoints) in span_endpoints.items():
         seg_info = de_leva.get(de_leva_name)
         if seg_info is None:
             continue
@@ -336,9 +335,8 @@ def _calculate_total_body_com_with_redistribution(
 
     for chain in _SEGMENT_CHAINS:
         accumulated = 0.0  # redistributed mass from missing distal segments
-        for seg_key in chain:  # distal → proximal
+        for de_leva_name, seg_key in chain:  # distal → proximal
             seg_com = segment_com_data.get(seg_key)
-            de_leva_name = seg_key.split("_", 1)[1]
             seg_mass = de_leva[de_leva_name].mass_fraction
             if seg_com is not None:
                 # Visible — own mass is directly observed, accumulated is not.

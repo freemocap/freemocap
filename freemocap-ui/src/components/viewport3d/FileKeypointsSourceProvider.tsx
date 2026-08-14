@@ -31,6 +31,10 @@ import {calibrationLoadedFromBundle} from "@/store/slices/calibration/calibratio
 
 const PARQUET_KEYPOINTS_COLUMN = "3d_xyz";
 
+// Guard so the "no skeleton source" warning fires at most once per session,
+// not once per subscribeToSkeleton call / frame.
+let skeletonWarned = false;
+
 const ParquetColumnNames = {
     frame:      "frame",
     keypoint:   "keypoint",
@@ -449,6 +453,12 @@ export const FileKeypointsSourceProvider: React.FC<{
         },
         subscribeToSkeleton: (_cb: KeypointsCallback) => {
             // Playback has no skeleton data — return no-op unsubscribe.
+            if (!skeletonWarned) {
+                skeletonWarned = true;
+                console.warn(
+                    "[FileKeypointsSource] playback is live-stream-only: subscribeToSkeleton has no source and the rigid-body renderer will not update",
+                );
+            }
             return () => {};
         },
         getLatestKeypoints: () =>

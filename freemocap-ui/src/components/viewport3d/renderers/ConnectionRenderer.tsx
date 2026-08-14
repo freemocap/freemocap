@@ -236,7 +236,7 @@ export function ConnectionRenderer() {
         invalidate();
     }, [activeSchema, invalidate]);
 
-    // Skeleton: FABRIK-fitted canonical body + hand landmarks. These drive
+    // Skeleton: FABRIK-fitted canonical body + hand keypoints. These drive
     // the stick-figure connections. Each frame replaces the body/hand entries
     // in pointsRef.
     useEffect(() => {

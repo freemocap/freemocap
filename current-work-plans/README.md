@@ -13,6 +13,8 @@ self-describing stream of a canonical, VRM-1.0-aligned human.
 
 ## Layers (read in order)
 
+**Start with [`ontology.md`](ontology.md)** — the seven-layer kinematic architecture, the now/future line, and the VMC Definition of Done. Then the layers below.
+
 | # | Layer | Covers |
 |---|-------|--------|
 | **00** | [foundation/](00-foundation/) | Conventions (frames, units, quaternions), the keypoint/segment vocabulary, testing philosophy — the facts every other layer assumes. |
@@ -45,6 +47,7 @@ Live scope + progress: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 - **Single source of truth** — each fact lives in exactly one doc, cross-linked from the others. A fact
   stated twice is a bug.
 - **Positive definitions** — a doc says what a thing *is*, not the infinite set of what it isn't.
-- **Vocabulary** — keypoint / segment only. "Landmark" and "canonical" (as a mapping layer) are
-  **retired**; if you find them outside `archive/`, that's a bug.
+- **Vocabulary** — keypoint (measured) · landmark (segment-local point) · segment (oriented volume), per
+  [ontology.md](ontology.md). "Canonical" as a *mapping layer* stays retired; the old vague "landmark
+  *layer*" is retired, but the *term* `landmark` is **revived** with a precise meaning.
 - **Code is truth** — these plans describe the committed code. Drift is a defect to fix, in the doc.

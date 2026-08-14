@@ -1,20 +1,28 @@
 # Glossary
 
-The vocabulary shared across every layer. **Keypoint** and **segment** are the only two nouns for the
-data; "landmark" and "canonical" (as a mapping layer) are **retired**.
+The vocabulary shared across every layer, grounded in [the ontology](../ontology.md). The data nouns are
+**keypoint** (measured), **landmark** (segment-local named point), and **segment** (oriented volume).
+"Canonical" as a *mapping layer* stays retired; **the term "landmark" is revived** with a precise meaning.
 
-## Data
+## Data (the ontology stack — see [ontology.md](../ontology.md))
 
-- **keypoint** — a point tracked in 2D and triangulated to 3D, named by the tracker. May be **derived**
-  (a mean of others, or an `anatomical_offset` from a tracked point — e.g. `head_vertex`, `foot_ball`,
-  `jaw`). Produced by **skellytracker**; the mapping renames/derives tracker points into the names the
-  segment model declares.
-- **segment** — a VRM-1.0-aligned **rigid body**: an **origin**, an **orientation**, and a **length**.
-  Owned by **skellyforge**. *Not* an anatomical bone — `HumanBone` names are VRM's vocabulary. The model
-  is **60 segments**; their union of keypoints is the **76** a tracker must supply.
-- **rigid_points** — the explicit set of keypoints rigid on a segment (fixed pairwise distances). Two
-  points → a single axis (the degenerate rigid body); 3+ → the full rigid-body fit.
-- **origin_keypoint** — the segment's origin; every axis direction starts here. Must be in `rigid_points`.
+- **keypoint** — a measured 3D world point, tracker-named. May be **derived** (a mean, or an
+  `anatomical_offset` from a tracked point — e.g. `head_vertex`, `foot_ball`, `jaw`). Produced by
+  **skellytracker**; pure measurement.
+- **mapping** — the one seam: hydrates a landmark from keypoints (direct / weighted / offset). The
+  skellytracker ↔ skellyforge interface.
+- **landmark** — a **named point in a segment's local frame** (skellyforge). Two faces: a *static local
+  definition* (rest shape) + a *per-frame world hydration* (or absent = occlusion). The atom of the model.
+  *(The old vague "landmark **layer**" is retired; this precise sense is revived — standard biomech/rigging usage.)*
+- **segment** — an **oriented volume of space**: origin + orientation (+ length), solved from its
+  landmarks. VRM-1.0-aligned; *not* an anatomical bone (`HumanBone` is VRM's vocabulary). **60 segments /
+  76 landmarks.** 2 hydrated landmarks → simple (twist unobserved); 3+ non-collinear → full 6-DOF.
+- **skeleton** — the rooted parent→child tree of segments; a joint angle is the *derived* relative
+  orientation, not a modeled constraint.
+
+> **Current-code names (pre-refactor):** the segment refactor renames today's `rigid_points` → a segment's
+> **landmarks**, `origin_keypoint` → the origin landmark, and an axis `target_keypoint` → an axis's target
+> landmark. Until it lands, the code still reads `rigid_points` / `target_keypoint`.
 
 ## Frame construction
 
@@ -33,9 +41,12 @@ data; "landmark" and "canonical" (as a mapping layer) are **retired**.
    segment's own geometry.
 2. **Damped-minimal** — otherwise → swing-only, roll carried by the critically-damped filter.
 
-> The **linkage/chain layer** (resolving an under-determined segment's twist from its neighbours) is
-> **future work** — do not describe it as current. Twist today is own-geometry-or-damped.
+> The **linkage/chain (constraint/solve) layer** — resolving an under-determined segment's twist from its
+> neighbours — is **future work** (see [ontology.md](../ontology.md)); do not describe it as current.
+> Twist today is own-geometry-or-damped.
 
 ## Retired (do not reintroduce outside `archive/`)
-`landmark`, `canonical` (mapping sense), `long_axis_keypoint`/`twist_keypoint`, `from_keypoint`/
-`to_keypoint`. (MediaPipe's own `PoseLandmarker` *product* name is the sole exception.)
+The old **landmark *layer*** (a vague intermediate fitted-point stage) — but note **the *term* `landmark`
+is revived** above with a precise meaning. Also retired: `canonical` (mapping sense),
+`long_axis_keypoint`/`twist_keypoint`, `from_keypoint`/`to_keypoint`. (MediaPipe's own `PoseLandmarker`
+*product* name is the sole exception.)

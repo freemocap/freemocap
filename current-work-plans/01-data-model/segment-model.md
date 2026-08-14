@@ -1,8 +1,9 @@
 # Segment Model
 
-> **Scaffold (2026-08-14) — pending ontology revision.** Structure + current facts fixed; full prose is
-> authored **after the human-model ontology discussion** (segments / the "rigidifier" framing are being
-> revised).
+> **Scaffold (2026-08-14).** The [ontology](../ontology.md) is settled (measurement model; VMC DoD); this
+> doc fills in as the **segment refactor** lands. Segments become *sets of landmarks* (`rigid_points` →
+> landmarks); each segment reports an explicit **observed-vs-unobserved-DOF** flag — the seam for future
+> twist-backfill. Simple (2 landmarks) and complex (3+) are the graded capability.
 
 **Describes:** `skellyforge/skellymodels/standard_human/` — `segment_definition.py`, `segment_parts.py`,
 `body_part.py`, `hand_part.py`, `face_part.py`, `standard_human_model.py`.

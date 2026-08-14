@@ -19,12 +19,13 @@ client-message handler in one per-connection supervisor.
 - **`WebsocketServer`** — the supervisor: builds the schema on connect, resends it on camera-topology or
   material length change, runs the five tasks under one `gather`, routes client acks to the relay.
 
-## Known defects (plan — Part 1, held)
-- **A2** — `FrameRelay.run()` loops `while True` while the other tasks honour `should_continue`; the relay
-  can't self-terminate on disconnect. Give it a stop signal.
-- **B1** — the ack window counts frame-number deltas but treats them as in-flight count; incompatible with
-  the relay's newest-wins skipping. Count actual in-flight sends.
-- **B2** — the schema is rebuilt + resent per-frame while lengths converge. Debounce + hysteresis.
+## Known defects (the fix queue)
+- **A2 (open)** — `FrameRelay.run()` loops `while True` while the other tasks honour `should_continue`;
+  the relay can't self-terminate on disconnect. Give it a stop signal.
+- **B1 (open)** — the ack window counts frame-number deltas but treats them as in-flight count;
+  incompatible with the relay's newest-wins skipping. Count actual in-flight sends.
+- **B2 (done)** — the schema re-send is already gated: rebuilt only on camera-set change or when
+  `lengths_differ_materially` fires (any segment > 1.0 mm); converged estimators stop re-sending.
 
 ## Reconciliation notes
 "Standard-stream sample," not "binary keypoints." Image data stays a **separate** JPEG stream keyed by

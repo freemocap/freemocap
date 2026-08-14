@@ -1,34 +1,58 @@
 # Segment Model
 
-> **Scaffold (2026-08-14).** The [ontology](../ontology.md) is settled (measurement model; VMC DoD); this
-> doc fills in as the **segment refactor** lands. Segments become *sets of landmarks* (`rigid_points` →
-> landmarks); each segment reports an explicit **observed-vs-unobserved-DOF** flag — the seam for future
-> twist-backfill. Simple (2 landmarks) and complex (3+) are the graded capability.
-
 **Describes:** `skellyforge/skellymodels/standard_human/` — `segment_definition.py`, `segment_parts.py`,
 `body_part.py`, `hand_part.py`, `face_part.py`, `standard_human_model.py`.
 **Salvage:** [`archive/phase-1-work-plans/09-segment-model.md`](../archive/phase-1-work-plans/09-segment-model.md),
 [`archive/streaming-compatibility-specs/12-standard-human-model.md`](../archive/streaming-compatibility-specs/12-standard-human-model.md).
 
 ## What this covers
-The canonical, VRM-1.0-aligned human as a composed set of rigid-body **segments**, each defined
-**directly from tracker keypoints** — origin + orientation + length, no landmark layer.
+
+The canonical, VRM-1.0-aligned human as a composed set of rigid-body **segments**, each defined **from
+hydrated landmarks** — origin + orientation + length. A segment is declared by its **landmarks** (the
+points rigid on it), an **origin landmark**, and **tagged axis declarations** built from those landmarks;
+the per-frame world positions of the landmarks (hydrated through the tracker mapping, or absent =
+occlusion) drive the solve. *(The retired thing was the old vague "landmark **layer**" — a separate
+fitted-point stage. The precise landmark is alive and is the atom of the model, per
+[the ontology](../ontology.md).)*
 
 ## Key facts (committed code)
-- **`SegmentDefinition`** = `name`, `parent`, `parent_attachment` (`ORIGIN`/`DISTAL`), `rigid_points`,
-  `origin_keypoint`, `axes`, `rest_rotation`, `rest_roll`†, `length_ratio`, `rotation_limits?`.
-- **`AxisDefinition(axis: Literal["x","y","z"], kind: EXACT|APPROXIMATE, target_keypoint)`** — name-driven
-  (exact may sit on any of x/y/z), direction `= positions[target] − positions[origin]`, target ∈ rigid_points.
-- **Authoring convention:** body/hand exact on **y** (+Y toward child); face exact on **z** (+Z gaze).
-- **Composition:** midline (6) + limb ×2 (7 each = 14) + hand ×2 (16 each = 32) + face (8) = **60**;
-  `required_keypoints()` = **76**.
-- **Head** = 7-point skull clique (`head_center`, `head_vertex`, `nose`, eyes, ears); jaw + mouth corners
-  articulate (not in the clique).
-- Frozen dataclasses, fail-loud `__post_init__` validators; dict-backed name→segment + parent→children
-  indices built once.
-- † **`rest_roll` is dead** (authored `0.0`, read nowhere) — C1 in the plan removes it.
+
+- **`SegmentDefinition`** = `name`, `parent`, `parent_attachment` (`ORIGIN`/`DISTAL`), `landmarks`,
+  `origin_landmark`, `axes`, `rest_rotation`, `length_ratio`, `rotation_limits?`.
+- **`AxisDefinition(axis: Literal["x","y","z"], kind: EXACT|APPROXIMATE, target_landmark)`** — name-driven:
+  the EXACT axis may sit on any of x/y/z (no positional rules); the direction is
+  `positions[target_landmark] − positions[origin_landmark]`; **every axis target must be a member of the
+  segment's own `landmarks`** (enforced at load — a segment's frame is a function of its own rigid
+  geometry only, never an external reference).
+- **Authoring convention (VRM 1.0):** body/hand segments declare the EXACT axis on **y** (+Y toward the
+  child bone); face segments on **z** (+Z = gaze). The machinery is axis-name-agnostic; the convention
+  lives in the authored data.
+- **Composition:** midline (6) + limb ×2 (7 each = 14) + hand ×2 (16 each = 32) + face (8) = **60
+  segments**; `required_landmarks()` = **76**. Counts are single-sourced in the
+  [glossary](../../current-work-plans/00-foundation/glossary.md).
+- **Head** = the 7-point skull clique (`head_center`, `head_vertex`, `nose`, left/right eyes, left/right
+  ears); `jaw` + the mouth corners articulate (not in the clique).
+- Frozen dataclasses, fail-loud `__post_init__` validators (origin ∈ landmarks, every axis target ∈
+  landmarks, distinct names, finite `length_ratio`); dict-backed name→segment + parent→children indices
+  built once.
+- `rotation_limits` is **declared, not yet enforced** (the future constraint layer will read it).
+
+## Graded capability
+
+A rigid body is a point set with fixed pairwise distances; a 2-point segment is the degenerate case.
+
+- **2 landmarks (simple):** origin + exact axis directly; the roll is **not resolved** by the segment's
+  own geometry — the critically-damped minimal roll carries it.
+- **3+ landmarks (complex):** full 6-DOF via the MDS-template + rotation-only Procrustes fit (see
+  [02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md)).
+
+*(Decision 2026-08-14: the per-segment observed/unobserved-DOF **flag** was dropped — the grade is the
+seam and is visible directly from the hydrated-landmark count on the stream. See the
+[ontology](../ontology.md) constitution.)*
 
 ## Reconciliation notes
-Kill any `long_axis_keypoint`/`twist_keypoint`/`from_keypoint`/`to_keypoint`, "landmark", "55/72". The
-face-segment ontology (eyes/mouths targeting `nose`) is under review — hold detailed face prose for the
-ontology pass.
+
+Kill any `long_axis_keypoint`/`twist_keypoint`/`from_keypoint`/`to_keypoint`, `rigid_points`,
+`origin_keypoint`, `target_keypoint`, `required_keypoints()` — all renamed by the landmark sweep
+(`landmarks`, `origin_landmark`, `target_landmark`, `required_landmarks()`). `rest_roll` is removed
+(dead field — authored 0.0 everywhere, read nowhere).

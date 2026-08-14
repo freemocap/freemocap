@@ -15,7 +15,7 @@ Declared keypoints → per-segment world + local quaternions, `identity == T-pos
 (det=+1), classical MDS for rigid templates.
 
 ## Key facts (committed code)
-- **`build_segment_frame(axes, positions, origin_keypoint)`** — the ONE frame builder. Name-driven: each
+- **`build_segment_frame(axes, positions, origin_landmark)`** — the ONE frame builder. Name-driven: each
   axis fills its declared basis slot (x/y/z); the exact axis seeds, the approximate is Gram-Schmidt'd,
   the third is the cross product. Collinearity gate degrades a bad approximate to `(None, False)`.
 - **`solve_frame_orientations`** — walks segments in hierarchy order; per segment: swing
@@ -26,8 +26,8 @@ Declared keypoints → per-segment world + local quaternions, `identity == T-pos
 
 ## Future work (not current)
 The **linkage/chain layer** that would resolve an under-determined segment's twist from its neighbours
-(the retired "chain-resolved" tier). Held for the user's incoming plan; `compute_live_bone_basis` is the
-orphaned breadcrumb (do not delete yet).
+(the retired "chain-resolved" tier) — the constraint/solve layer of [the ontology](../ontology.md), seams
+only. `compute_live_bone_basis` is the orphaned breadcrumb (do not delete yet).
 
 ## Reconciliation notes
 Name-driven everywhere (no "basis[0] = long axis"); two tiers, not three.

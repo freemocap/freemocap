@@ -13,18 +13,37 @@ the *shapes*, that one owns the *transport*.
 The LSL-shaped contract: a **schema** (channels, channel groups, joint hierarchy, T-pose, convention,
 units, per-subject dimension) sent once + change, then timestamped **samples** per frame.
 
-## Key facts (committed code — verify against the in-flight tweaks before finalizing)
+## Key facts (committed code)
 - Schema is built from the composed `StandardHuman` (`StreamSchema.from_standard_human`), keyed to the
   live camera set; carries **measured segment lengths** with a default-then-update lifecycle (anthropometric
   seeds until the estimators converge).
-- **Six channel groups** (F1): the segment rotations (world + local) and the keypoint/position groups.
+- **The channel table** — fixed order, one `ChannelGroup` per group (the decoder indexes by position):
+
+  | # | Group | Names | Columns |
+  |---|-------|-------|---------|
+  | 0 | `KEYPOINTS_3D` | *(see the decision below)* | `x, y, z, reprojection_error` |
+  | 1 | `SEGMENT_ORIGINS` | the 60 segment names | `x, y, z` |
+  | 2 | `ROTATIONS_LOCAL` | the 60 segment names | `w, x, y, z` |
+  | 3 | `ROTATIONS_WORLD` | the 60 segment names | `w, x, y, z` |
+  | 4 | `DERIVED_POINTS` | `center_of_mass`, `xcom` | `x, y, z` |
+  | 5 | `OVERLAY_2D` | per camera × layer (DETECTIONS / REPROJECTIONS) | `x, y, visibility` |
+
 - Samples: binary, `wxyz` rotations, keyed by frame number; golden-byte parity with the TS decoder
   ([../04-ui/ui-integration.md](../04-ui/ui-integration.md)).
 
-## Open / in-flight
-`stream_schema.py` / `stream_sample.py` are being actively tweaked ("length seeds"); reconcile before
-authoring the final channel table. The per-frame schema-resend behaviour is **B2** in the plan (debounce).
+## Decision (2026-08-14) — dual channels, settled; implemented in Sweep 3
+
+The point data travels as **two channels, not one**:
+
+- **`KEYPOINTS_3D`** carries the **tracker-named measured keypoints** — the raw, un-mapped detections
+  (the schema builder gains the tracker-side names from the mapping).
+- **A new `LANDMARKS_3D`** channel carries the **76 hydrated landmarks** — the model-side named points
+  after mapping (missing this frame = a NaN row, i.e. occlusion).
+
+Both are first-class consumers of the ontology: keypoints are the measurement, landmarks are the model
+points. Until Sweep 3 lands, the committed code still carries the 76 landmark names inside
+`KEYPOINTS_3D`; the split is the queued change, not yet in the code.
 
 ## Reconciliation notes
-Counts 60/76; `wxyz`; convention block = the [00-foundation/conventions.md](../00-foundation/conventions.md)
+`wxyz`; convention block = the [00-foundation/conventions.md](../00-foundation/conventions.md)
 facts, single-sourced (the schema *states* them, doesn't redefine them).

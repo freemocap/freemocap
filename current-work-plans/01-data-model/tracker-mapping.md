@@ -11,19 +11,24 @@ freemocap's mapping-path SSOT (`freemocap/core/tasks/mocap/tracker_mappings.py`)
 
 ## What this covers
 The **one interface** between skellytracker (keypoints) and skellyforge (segments): the mapping YAMLs.
-Tracker keypoints in → the named keypoints the segment model declares out. Makes skellyforge's output
-identical regardless of which tracker fed it.
+Tracker keypoints in → the named **landmarks** the segment model declares out (the mapping's output is
+always a landmark; the production form — direct / weighted / offset — is the mechanism). Makes
+skellyforge's output identical regardless of which tracker fed it.
 
 ## Key facts (committed code)
 - Mapping forms: string / list (mean) / dict / **`anatomical_offset`** (a derived point at an offset from
   a tracked one — e.g. `head_vertex`, `foot_ball`, `jaw`, mouth corners for RTMPose).
 - **Completeness contract:** skellyforge validates at load that a tracker mapping produces the full
-  **76** required keypoints; a gap **raises** (the sanctioned lateral skellyforge→skellytracker import,
+  **76** landmarks; a gap **raises** (the sanctioned lateral skellyforge→skellytracker import,
   base install only — see the workspace `CLAUDE.md` import rules).
-- **Boundary rule (decided 2026-08-14):** the standard human is authoritative and **does not depend on
-  the tracker**. Any shared anatomical ratio flows **tracker → human**, never human → tracker (see the
-  S1 decision in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md)).
+- **Boundary rule (decided 2026-08-14):** the rest-pose/model side never imports skellytracker at
+  runtime; the ONE sanctioned import is `tracker_contract.py` (the load-time completeness contract —
+  base install, no detector extras). Shared anatomical ratios (face/mouth) are owned on the human side
+  and pinned against the mappings by a **test**, not shared — see
+  [`ontology.md`](../ontology.md)'s boundary section.
 
 ## Reconciliation notes
 Files are `*_to_standard_human_mapping.yaml`; detector method `standard_human_mapping_path()`. The old
-`tracker_info/canonical_*.yaml` are retired (removed with S2). Kill "canonical mapping" / "landmark".
+`tracker_info/canonical_*.yaml` files are retired (still on disk, consumed only by the old model layer —
+they die with it in the posthoc rebuild, see [02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md)).
+"Canonical mapping" as a phrase stays retired; the mapping's output is a **landmark**.

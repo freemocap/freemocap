@@ -14,7 +14,7 @@ frontend decoder stays in sync)::
     SAMPLE_FOOTER   mirrors SAMPLE_HEADER (integrity check)
 
 Missing keypoints/segments → NaN rows. See
-[09 — Standard Stream Protocol](docs/streaming-compatibility/09-standard-stream-protocol.md).
+`current-work-plans/03-transport/standard-stream-protocol.md`.
 """
 from __future__ import annotations
 

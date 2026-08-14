@@ -24,17 +24,18 @@ linkage layer is not needed for it.
 
 ## Where the work stands (all green)
 
-| Repo | State (the user committed everything on 2026-08-14) | Suite |
+| Repo | State (committed on the remotes 2026-08-14; + one on-disk round since) | Suite |
 |---|---|---|
-| skellyforge | the landmark sweep (`rigid_points`→`landmarks`, `origin_keypoint`→`origin_landmark`, `target_keypoint`→`target_landmark`, `required_keypoints()`→`required_landmarks()`, `ReferenceGeometry.keypoints`→`landmarks`), the face-provenance reword (canon owned on this side), `test_face_mapping_consistency.py` (pins the cross-repo ratio agreement at TEST time — the runtime is tracker-free) | **148 green** |
+| skellyforge | committed+pushed: the landmark sweep (`rigid_points`→`landmarks`, `origin_keypoint`→`origin_landmark`, `target_keypoint`→`target_landmark`, `required_keypoints()`→`required_landmarks()`, `ReferenceGeometry.keypoints`→`landmarks`), the face-provenance reword (canon owned on this side), `test_face_mapping_consistency.py` (pins the cross-repo ratio agreement at TEST time — the runtime is tracker-free). **On disk since, uncommitted:** `tracker_contract.py` reads `landmark_names` (un-breaks it against current skellytracker), `rest_roll` removed (dead field), `observation.py`'s silent try/except removed (frozen legacy copy — dies with the posthoc rebuild) | 148 green at push; post-round: 141 verified locally + 4 tracker-contract tests that need the re-lock |
 | skellytracker | the mapping language sweep (`TrackerMapping.keypoint_names`→`landmark_names`; `known_tracker_keypoints` stays; the four YAML headers say "keys are landmark names; values hydrate them") | **234 green** |
-| freemocap | the docs reorg + the whole F0–F4 body of work | **108 green** (the green subset); TS harnesses: decoder 5, renderer 11; `tsc` clean |
+| freemocap | the docs reorg + the whole F0–F4 body of work; **`uv.lock` re-locked against the swept skellies but UNCOMMITTED** — and the source is pre-Sweep-3, so the backend green subset is currently RED (38F/26E, all Sweep-3 call sites) | 108 green only after Sweep 3; TS harnesses: decoder 5, renderer 11; `tsc` clean |
 
-**First action on pickup: verify the REMOTE tips.** freemocap's env installs the skellies **from git** —
-committed-locally is not enough; the sweep commits must be on the `development-streaming` remotes and
-freemocap re-locked (`uv lock --upgrade-package skellyforge skellytracker && uv sync`) before any
-freemocap code touches the new names. `git ls-remote origin development-streaming` in each skelly and
-compare against the local HEADs.
+**First action on pickup (the commit round — the user):** (1) skellyforge: `uv lock --upgrade-package
+skellytracker && uv sync`, run the full suite (expect 148 green — the 4 tracker-contract tests now pass
+against the swept tracker), commit + push. (2) freemocap: commit the re-locked `uv.lock`. The skelly
+remotes already carry the sweep commits (verified 2026-08-14: remote == local HEAD in both, and the
+installed freemocap env already has the swept shapes — `landmarks` / `landmark_names` present). Then
+Sweep 3.
 
 ## What exists end-to-end (the F0–F4 work, all reviewed)
 
@@ -65,23 +66,27 @@ compare against the local HEADs.
 
 ## The queue (in order)
 
-1. **[USER] Push skellyforge + skellytracker to the remotes** (committed locally already), then
-   freemocap `uv lock --upgrade-package skellyforge skellytracker && uv sync`. Verify the installed
-   shapes: `uv run python -c "from skellyforge.skellymodels.standard_human.segment_definition import
-   SegmentDefinition; assert 'landmarks' in SegmentDefinition.__dataclass_fields__"` and
-   `TrackerMapping` has `landmark_names`.
-2. **Sweep 3 — freemocap + TS + docs** (the landmark vocabulary in the wrapper/CoM/schema builder;
+0. **Done on disk (docs pass, 2026-08-14) — needs the commit round with the skellyforge fixes:** the
+   ontology drop-flag purge + decision record, the segment-model rewrite, the glossary transitional
+   block removal + name sweep, the tracker-mapping note flip, test counts stripped from layer docs +
+   CLAUDE.md files (counts live here only), IMPLEMENTATION_PLAN marked historical, the dual-channel
+   decision recorded in the 01/03 layer docs, the stabilization settle recorded in realtime-loop.md,
+   the "76 landmarks" sweep, the dead `docs/streaming-compatibility/` docstring links, the
+   CLAUDE.md branch (development-streaming) + Vitest corrections.
+1. **[USER] The skellyforge commit round** — the skellies are already pushed; only the on-disk
+   skellyforge round (see the table) is uncommitted: `uv lock --upgrade-package skellytracker && uv
+   sync`, run the full suite (expect 148 green), commit + push. freemocap's `uv.lock` (already
+   re-locked) gets committed too — the env already has the swept shapes (verified).
+2. **Sweep 3 — freemocap + TS** (the landmark vocabulary in the wrapper/sample/schema builder;
    **the dual channels**: KEYPOINTS_3D repurposes to the tracker-named measured keypoints — the schema
    builder gains a `tracker_keypoint_names` param from the mapping's tracker side; a NEW `LANDMARKS_3D`
    channel carries the 76 — through the encoder, the aggregator message (adds the full tracker-named
    keypoint set), goldens, and the TS mirror/decoder; plus the deferred fixes: **A2** (FrameRelay stop
-   signal), **B1** (ack window counts actual in-flight sends, not frame-number deltas), **B2** (schema
-   rebuild only on the material-change fire — predicate first), **S2** (remove the per-frame
-   `StreamingSegmentLengthMonitor` + the old `segment_lengths.py` live path from the aggregator), the
-   default-height unification (1700 vs 1750 → one constant), the DERIVED_POINTS positional-index fix,
-   the TS stale comments; docs: the glossary boundary line ("the mapping's output is always a landmark —
-   the production form is the mechanism"), the segment-model scaffold's "no landmark layer" line, the
-   dropped-observed-DOF decision record in the ontology seams, count drift).
+   signal), **B1** (ack window counts actual in-flight sends, not frame-number deltas), **S2** (remove
+   the per-frame `StreamingSegmentLengthMonitor` + the old `segment_lengths.py` live path from the
+   aggregator), the TS stale comments. *(Struck as already done: B2 — the material-change predicate
+   `lengths_differ_materially` is live; DERIVED_POINTS is name-keyed; the default height is
+   single-sourced at 1750 — 1700 doesn't exist.)*
 3. **[USER] Push freemocap.**
 4. **F5 — the gate**: backend full-loop test (aggregator → sample → bytes → decode → identical
    rotations; a mock-camera realtime run producing non-NaN ROTATIONS_WORLD) + the frontend integration
@@ -105,8 +110,9 @@ compare against the local HEADs.
 - The rest-pose/model side never imports skellytracker at runtime — the sanctioned import is
   `tracker_contract.py` ONLY. The face/mouth cross-repo ratios are pinned by a TEST, not shared.
 - The stabilization stack needs no new work (see the orientation section).
-- **Open**: `data_models/observation.py`'s silent try/except shim import (the known Phase-E item — the
-  user hasn't chosen fix-now vs E4).
+- **Resolved (2026-08-14)**: `data_models/observation.py`'s silent try/except shim — the try/except is
+  removed; the module is a **frozen legacy copy** (the real-import target no longer exists in
+  skellytracker) that dies with the posthoc rebuild (Phase E).
 - **Working rules** (unchanged): never touch git (the user owns it — report stopping points); plan==code
   (docs edited in the same pass); fail loudly; no duplicated information; no backwards compat; cross-repo
   work ends at commit rounds; ask before unilateral design decisions.

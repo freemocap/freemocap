@@ -1,10 +1,9 @@
 # Segment-Length Estimation (+ enforcement / rigid fit)
 
-> **Scaffold (2026-08-14) — pending ontology revision + in-flight rework.** This is the doc whose *framing*
-> is being reconsidered: the task is **segment-length estimation** (and holding those lengths while
-> following the observed pose), **not "skeleton rigidifying."** Name (`skeleton_rigidifier` → ?) and scope
-> settle at the ontology check-in. The module is also mid-rework on disk (542-line diff) — author against
-> the settled version.
+> The task is **segment-length estimation** — holding the estimated lengths while following the observed
+> pose — *not* "skeleton rigidifying" (the old framing). The wrapper module keeps the file name
+> `skeleton_rigidifier.py` for now; a rename is a mechanical item if wanted. The stabilization story is
+> settled — see [realtime-loop.md](realtime-loop.md).
 
 **Describes:** `freemocap/core/tasks/mocap/rigid_body/skeleton_rigidifier.py` (the freemocap wrapper) +
 `skellyforge/kinematics/online_segment_lengths.py` (`SegmentLengthEstimator`),
@@ -16,7 +15,7 @@ the *measured* (non-extrapolated) keypoints, then a single forward pass that **h
 lengths while following the observed direction**. ≥3-point segments (the skull) get the rigid-body
 template fit; 2-point segments keep the span/edge path. Lengths feed the stream schema.
 
-## Key facts (committed code — verify post-rework)
+## Key facts (committed code)
 - Per-group state (body / left hand / right hand); the head additionally gets a `RigidPointTemplate`
   (21 skull pair-distances, rebuilt ~every 30 frames, chirality-stabilized).
 - The skull template is built from **measured pair-medians + observed positions**, not the reference

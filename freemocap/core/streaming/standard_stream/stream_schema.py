@@ -9,7 +9,7 @@ Stream dimensions (subjects, cameras) are fixed at stream creation; a topology
 change tears down and rebuilds the stream with a new schema (schema-on-change).
 
 SSOT for the wire contract:
-[09 — Standard Stream Protocol](docs/streaming-compatibility/09-standard-stream-protocol.md).
+`current-work-plans/03-transport/standard-stream-protocol.md`.
 """
 from __future__ import annotations
 

@@ -30,17 +30,17 @@ numbers, no "which doc-11 do you mean."
 ## Status (2026-08-14)
 
 The canonical human is **built and green**: skellyforge's 60-segment VRM 1.0 model (name-driven axes,
-keypoint-driven solver, reference geometry, per-group rigid fit) — 147 tests. The freemocap realtime
-backend (six-group schema, encoder, WebSocket reshape) and the freemocap-ui decoder + rigid-body
-renderer are landed and green. Remaining: a small code tail (transport robustness, an old-model
-diagnostic to retire), the **F5 full-loop gate** (tests + a manual run), then the posthoc rebuild.
-Live scope + progress: [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+keypoint-driven solver, reference geometry, per-group rigid fit), the freemocap realtime backend
+(six-group schema, encoder, WebSocket reshape), and the freemocap-ui decoder + rigid-body renderer.
+Remaining: a small code tail (transport robustness, an old-model diagnostic to retire), the **F5
+full-loop gate** (tests + a manual run), then the posthoc rebuild. Live scope + progress:
+[HANDOFF.md](HANDOFF.md) (the queue) + [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (historical log).
 
 ## Canonical conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
 **mm · right-handed · +Z up · +X forward**, quaternions **wxyz**, **identity == T-pose**,
-`q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the model is **60 segments /
-76 required keypoints**.
+`q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the model composition is
+**60 segments / 76 landmarks** (single-sourced in the [glossary](00-foundation/glossary.md)).
 
 ## House rules for these docs
 

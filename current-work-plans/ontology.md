@@ -35,11 +35,14 @@ segment's shape at rest) and a *per-frame world hydration* (or absent = occlusio
 
 **Segment** — an **oriented volume of space**: origin + orientation, solved from its hydrated landmarks.
 Graded by how many landmarks are hydrated:
-- **2 landmarks (simple):** origin + long axis directly; **twist unobserved** (reported as *unobserved*,
-  not zero).
+- **2 landmarks (simple):** origin + long axis directly; the roll is **not resolved** by the segment's
+  own geometry — the critically-damped minimal roll carries it (see the glossary's twist tiers).
 - **3+ non-collinear (complex):** full 6-DOF by best-fit (Kabsch) of the local↔world landmark clouds.
 
-A segment's pose is always 6-DOF; what varies is how many DOF its landmarks *observe*. *(skellyforge)*
+A segment's pose is always 6-DOF; what varies is how much of it the segment's own landmarks determine.
+*(Decision 2026-08-14: the per-segment observed/unobserved-DOF **flag** was dropped — more machinery than
+the stream needed. The graded landmark count is the seam; a segment's grade is visible directly from its
+hydrated landmarks on the wire.)* *(skellyforge)*
 
 **Skeleton** — a **rooted parent→child tree of segments**. The connection is the hierarchy edge; a **joint
 angle is the derived relative orientation** `conj(q_parent) · q_child` — measured, not constrained. Chains
@@ -56,11 +59,17 @@ joint angle, this layer *constrains* it — enabling joint-specific fits and ana
 the hierarchy edge + the segments' landmarks.
 
 **Chain / IK** — a solving path through the tree (FABRIK-style) that **backfills unobserved DOF** (a simple
-segment's twist inferred from its neighbours) and reconciles under-observed regions. Attaches at the
-per-segment observed/unobserved-DOF flag.
+2-landmark segment's twist inferred from its neighbours) and reconciles under-observed regions. Attaches at
+the simple-segment grade — recognizable directly from the stream (2 hydrated landmarks), so no per-segment
+flag is needed.
 
 > These are the "share-a-landmark / joints / chains" ideas from earlier drafts, correctly relocated: a
 > *solve* concern for the measurement-poor case, not part of the measurement core.
+>
+> **Stability does not wait for this layer.** The measurement stack alone — Euro filter (keypoints) →
+> tree/fit rigidification → critically-damped orientation solve — stabilizes the stream today: the
+> 2-landmark tree pass preserves the old skeleton-rigidifier's effect, and the 3+ per-group fits are
+> strictly stronger. Settled 2026-08-14; see [02-pipeline/realtime-loop.md](02-pipeline/realtime-loop.md).
 
 ## The constitution — invariants at every layer
 
@@ -69,8 +78,9 @@ per-segment observed/unobserved-DOF flag.
 - **Compositional data + a global registry** — the registry gives O(1) validation; the data stays
   hierarchical (never flattened to get global names).
 - **Two-faced landmark** — static local definition + per-frame world hydration.
-- **Observed vs. unobserved DOF** — never "6-DOF with some unspecified"; a segment declares which DOF its
-  landmarks observe.
+- **The graded segment, not a flag** — a segment's solvability is declared by its landmarks (2 = simple,
+  damped roll; 3+ = full fit). *(An earlier observed/unobserved-DOF flag was dropped 2026-08-14 — the
+  grade carries the same information and is recoverable from the stream itself.)*
 - **Observation-first** — direct/FK where measured; IK/constraint only where not.
 - **Lean core + adapters** — VMC / URDF / VRM / OpenSim / C3D / LSL are edge projections, never baked into
   the core.
@@ -89,12 +99,16 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 
 ## The seams the now-work must leave (and nothing more)
 
-1. **Per-segment 6-DOF pose + an observed/unobserved-DOF flag.** (Attach point for IK twist-backfill.)
+1. **Per-segment 6-DOF pose, graded by landmark count** (2 = simple, twist damped; 3+ = full fit). (The
+   attach point for IK twist-backfill — a segment's grade is visible from its hydrated-landmark count on
+   the stream, so the simple segments are findable without a per-segment flag. *(A flag was dropped
+   2026-08-14; see the constitution.)*)
 2. **Landmarks first-class, globally-named, segment-local.** (Attach point for joint-specific fits; the
    simple↔complex grade falls out of landmark count.)
 3. **Parent-child hierarchy + derived joint angles, kept separate from estimation.** (Attach point for the
    typed-joint layer.)
-4. **An output schema rich enough to project outward** — frames + hierarchy + observed-DOF metadata. VMC
+4. **An output schema rich enough to project outward** — frames + hierarchy + per-frame landmark
+   presence (a missing row is occlusion). VMC
    now; URDF/VRM/OpenSim later. (**URDF is the completeness checklist:** if the schema can round-trip a
    URDF, it can feed robotics + sim.)
 5. **No joint constraints baked into segment estimation.** The measurement core stays pure.

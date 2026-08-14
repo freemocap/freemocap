@@ -15,20 +15,19 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
   definition* (rest shape) + a *per-frame world hydration* (or absent = occlusion). The atom of the model.
   *(The old vague "landmark **layer**" is retired; this precise sense is revived — standard biomech/rigging usage.)*
 - **segment** — an **oriented volume of space**: origin + orientation (+ length), solved from its
-  landmarks. VRM-1.0-aligned; *not* an anatomical bone (`HumanBone` is VRM's vocabulary). **60 segments /
-  76 landmarks.** 2 hydrated landmarks → simple (twist unobserved); 3+ non-collinear → full 6-DOF.
+  landmarks. VRM-1.0-aligned; *not* an anatomical bone (`HumanBone` is VRM's vocabulary). The model is
+  **60 segments / 76 landmarks** (single-sourced here; composition per
+  [01-data-model/segment-model.md](../01-data-model/segment-model.md)). 2 hydrated landmarks → simple
+  (roll carried by the damped filter); 3+ non-collinear → full 6-DOF.
 - **skeleton** — the rooted parent→child tree of segments; a joint angle is the *derived* relative
   orientation, not a modeled constraint.
-
-> **Current-code names (pre-refactor):** the segment refactor renames today's `rigid_points` → a segment's
-> **landmarks**, `origin_keypoint` → the origin landmark, and an axis `target_keypoint` → an axis's target
-> landmark. Until it lands, the code still reads `rigid_points` / `target_keypoint`.
 
 ## Frame construction
 
 - **axis (declaration)** — one of a segment's tagged local-frame axes: a **name** (`x`/`y`/`z`, which
-  basis vector it defines), a **kind**, and a **`target_keypoint`** (in `rigid_points`). Its direction is
-  `positions[target_keypoint] − positions[origin_keypoint]` — the segment's own geometry only.
+  basis vector it defines), a **kind**, and a **`target_landmark`** (in the segment's `landmarks`). Its
+  direction is `positions[target_landmark] − positions[origin_landmark]` — the segment's own geometry
+  only.
   - **EXACT** — the segment's defining direction, resolved directly every frame.
   - **APPROXIMATE** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
     exact axis; when absent, the segment's roll falls to the damped minimal-roll tier.

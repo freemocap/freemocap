@@ -1,24 +1,19 @@
 # Implementation Plan & Progress
 
-> **Living document.** The authoritative tracker for *scope* + *progress*.
->
-> **⚠ Reorganized 2026-08-14.** The docs are now split **by layer** — see [README](README.md) and the
-> `00-foundation` … `04-ui` folders. The old spec set (`00–14`, `phase-1/`) is archived verbatim under
-> [`archive/`](archive/) — its inline links below are repointed there. This tracker gets a fresh rewrite
-> (a follow-up, after the human-model ontology discussion). Current model counts are **60 segments / 76
-> keypoints**. The dated Progress log below is a **historical record**
-> (pre-reorg) — read it as history, not current instruction.
+> **Historical (frozen 2026-08-14).** The scope table, phases, and dependencies below are **frozen at the
+> docs reorg** — the live queue lives in [HANDOFF.md](HANDOFF.md) + the layer docs
+> ([README.md](README.md)); this tracker gets a fresh rewrite after the F5 gate. The dated Progress log
+> is **history**, not current instruction. The old spec set (`00–14`, `phase-1/`) is archived verbatim
+> under [`archive/`](archive/).
 
 ## How to use this document
 
-- The [Scope table](#scope-table-authoritative) is the single source of truth for
-  `[IN]` / `[LATER]` / `[FUTURE]` tags used throughout the spec docs.
-- Each phase has a checklist. Check items only when they're done and verified per
-  [08 — Testing Strategy](archive/streaming-compatibility-specs/08-testing-strategy.md).
-- Unknowns are `TBD` with an explicit **trigger** — the event that unblocks them, listed in
-  [Dependencies & blockers](#dependencies--blockers).
+- The scope table + phases are **frozen** as of the reorg (2026-08-14); `[IN]`/`[LATER]`/`[FUTURE]` tags
+  in the archived specs refer to this table's state at freeze time.
+- Live scope + the queue: [HANDOFF.md](HANDOFF.md); live design per layer: [README.md](README.md).
+- The Progress log below is history.
 
-## Scope table (authoritative)
+## Scope table (frozen at the 2026-08-14 reorg)
 
 ### `[IN]` — near-term build
 - ✅ **Standard-human model** — DONE 2026-08-13: the composed 60-segment human (55 VRM 1.0 bones + 5 face-detail — body + hands + face

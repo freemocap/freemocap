@@ -3,9 +3,9 @@ Flat, schema-driven skeleton overlay payload.
 
 A `SkeletonOverlayData` carries a per-camera snapshot of a tracker's output as
 a single list of fully-prefixed named points (e.g. `body.nose`, `left_hand.wrist`,
-`face.contour_0`). It references a tracker schema by id — the frontend looks up
-the matching `TrackedObjectDefinition` (sent separately over the `tracker_schemas`
-WebSocket message) to draw connections.
+`face.contour_0`). It references a tracker definition by name (the
+`tracker_definition_name` used when the tracker was built); the frontend resolves
+connections against the definition it already holds.
 
 This decoupling means adding a new tracker requires authoring a YAML definition,
 not editing renderer code on either side.
@@ -31,9 +31,9 @@ class SkeletonPointModel(msgspec.Struct):
 class SkeletonOverlayData(msgspec.Struct):
     """Per-camera flat list of detected skeleton points for a single frame.
 
-    `tracker_id` points at a `TrackedObjectDefinition` already sent to the
-    frontend via the `tracker_schemas` handshake message. The frontend resolves
-    connections by name against that schema.
+    `tracker_id` names the tracker definition (its `tracker_definition_name`)
+    that produced these points. The frontend resolves connections by name
+    against that already-known definition.
     """
     camera_id: str
     frame_number: int

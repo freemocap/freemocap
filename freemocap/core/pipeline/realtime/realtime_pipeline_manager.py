@@ -26,6 +26,7 @@ from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePi
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves in the new accessor signature
 
 logger = logging.getLogger(__name__)
 
@@ -148,6 +149,21 @@ class RealtimePipelineManager(PipelineManagerABC):
                 )
                 if packet is not None:
                     latest.append(packet)
+        return latest
+
+    def get_latest_aggregator_outputs(
+            self,
+            if_newer_than: FrameNumberInt,
+    ) -> list[AggregationNodeOutputMessage]:
+        """The newest aggregator output per live pipeline (standard-stream source)."""
+        latest: list[AggregationNodeOutputMessage] = []
+        with self.lock:
+            for pipeline in self.pipelines.values():
+                message = pipeline.get_latest_aggregator_output(
+                    if_newer_than=if_newer_than,
+                )
+                if message is not None:
+                    latest.append(message)
         return latest
 
     # ------------------------------------------------------------------

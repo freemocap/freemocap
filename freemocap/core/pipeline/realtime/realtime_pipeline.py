@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from queue import Empty
 
 from pydantic import BaseModel, ConfigDict
-from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
 from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellycam.core.camera_group.camera_group import CameraGroup
 from skellycam.core.ipc.process_management.managed_worker import WorkerMode
@@ -33,7 +32,6 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
-from freemocap.core.viz.frontend_keypoints_serializer import build_keypoints_payload
 from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
@@ -426,6 +424,39 @@ class RealtimePipeline:
         """
         return await asyncio.to_thread(self.result_ready_event.wait, timeout)
 
+    def get_latest_aggregator_output(
+        self,
+        if_newer_than: FrameNumberInt,
+    ) -> AggregationNodeOutputMessage | None:
+        """Drain and return the newest aggregator output newer than ``if_newer_than``.
+
+        The standard-stream FrameRelay consumes this — the raw message carries
+        the rotations / CoM / xcom / rigidified skeleton the encoder needs,
+        which ``FrontendImagePacket`` (the old path) did not expose. Mirrors the
+        subscription-drain in ``get_latest_frontend_payload`` but returns the
+        message itself rather than a rendered packet.
+        """
+        if not self.alive:
+            return None
+
+        aggregation_output: AggregationNodeOutputMessage | None = None
+        while True:
+            try:
+                candidate = self.aggregation_output_subscription.get_nowait()
+            except Empty:
+                break
+            if candidate.frame_number > if_newer_than:
+                aggregation_output = candidate
+
+        if aggregation_output is None:
+            return None
+
+        # Consume the backpressure events — the next aggregator pass is gated on
+        # this consumed signal, exactly as the old payload path did.
+        self.result_ready_event.clear()
+        self.result_consumed_event.set()
+        return aggregation_output
+
     def get_latest_frontend_payload(
         self,
         if_newer_than: FrameNumberInt,
@@ -474,39 +505,13 @@ class RealtimePipeline:
         )
         if payload is not None:
             frames_bytearray, mf_timestamp = payload
-            detector_type = aggregation_output.pipeline_config.camera_node_config.detector_type
-            if detector_type == "mediapipe":
-                # Mediapipe keypoints use body.{point} naming (stage-prefixed). Embed names
-                # in both the KEYPOINTS_3D block and a SKELETON_3D block so ConnectionRenderer
-                # can draw connections using the mediapipe_wholebody schema. No rigidified
-                # skeleton is available for mediapipe, so raw keypoints serve as the skeleton.
-                keypoints_binary_payload = build_keypoints_payload(
-                    frame_number=aggregation_output.frame_number,
-                    tracker_id=MEDIAPIPE_WHOLEBODY_DEFINITION.name,
-                    point_names=list(aggregation_output.keypoints_arrays.keys()),
-                    keypoints_arrays=aggregation_output.keypoints_arrays,
-                    skeleton_arrays=aggregation_output.keypoints_arrays,
-                    embed_keypoint_names=True,
-                )
-            else:
-                # The rigidified skeleton covers body + hands but not face.
-                # Merge raw face keypoints from keypoints_arrays so the frontend's
-                # SKELETON_3D block includes face points and can draw face connections.
-                rtm_skeleton = dict(aggregation_output.skeleton) if aggregation_output.skeleton else {}
-                for name, coords in aggregation_output.keypoints_arrays.items():
-                    if name.startswith("face_"):
-                        rtm_skeleton[name] = coords
-                keypoints_binary_payload = build_keypoints_payload(
-                    frame_number=aggregation_output.frame_number,
-                    tracker_id=RTMPOSE_WHOLEBODY_DEFINITION.name,
-                    point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
-                    keypoints_arrays=aggregation_output.keypoints_arrays,
-                    skeleton_arrays=rtm_skeleton,
-                )
+            # D36 — the legacy binary-keypoints payload died with the standard
+            # stream. ``FrontendImagePacket`` now carries image bytes + the
+            # JSON metadata only; the skeleton/keypoint data rides the
+            # standard-stream sample (FrameRelay → StreamSample.from_aggregator_output).
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,
                 multiframe_timestamp=mf_timestamp,
                 frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
-                keypoints_binary_payload=keypoints_binary_payload,
             )
         return None

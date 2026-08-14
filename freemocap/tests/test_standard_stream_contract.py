@@ -35,13 +35,13 @@ def _example_schema() -> StreamSchema:
         coordinate_convention=FREEMOCAP_CANONICAL_CONVENTION,
         channels=(
             ChannelGroup(
-                kind=ChannelKind.POINTS,
+                kind=ChannelKind.KEYPOINTS_3D,
                 names=("left_elbow", "right_elbow"),
                 columns=("x", "y", "z", "reprojection_error"),
                 units="mm",
             ),
             ChannelGroup(
-                kind=ChannelKind.ROTATIONS,
+                kind=ChannelKind.ROTATIONS_WORLD,
                 names=("left_upper_arm",),
                 columns=("w", "x", "y", "z"),
                 units="quaternion",
@@ -68,8 +68,8 @@ def _example_sample() -> StreamSample:
         frame_number=42,
         subject_id=0,
         blocks=[
-            SampleBlock(ChannelKind.POINTS, points),
-            SampleBlock(ChannelKind.ROTATIONS, rotations),
+            SampleBlock(ChannelKind.KEYPOINTS_3D, points),
+            SampleBlock(ChannelKind.ROTATIONS_WORLD, rotations),
             SampleBlock(ChannelKind.OVERLAY_2D, overlay_cam0, camera_id="cam-0"),
             SampleBlock(ChannelKind.OVERLAY_2D, overlay_cam1, camera_id="cam-1"),
         ],
@@ -80,7 +80,7 @@ def _example_sample() -> StreamSample:
 
 def test_header_sizes_are_locked():
     assert SAMPLE_HEADER_SIZE == 32
-    assert BLOCK_HEADER_SIZE == 28
+    assert BLOCK_HEADER_SIZE == 32
     assert SAMPLE_FOOTER_SIZE == 32
 
 
@@ -91,7 +91,7 @@ def test_schema_roundtrip():
     restored = decode_schema(encode_schema(schema))
     assert restored == schema
     assert restored.coordinate_convention == FREEMOCAP_CANONICAL_CONVENTION
-    assert restored.channels[0].kind == ChannelKind.POINTS
+    assert restored.channels[0].kind == ChannelKind.KEYPOINTS_3D
     assert restored.joint_hierarchy["left_shoulder"] == ("left_elbow",)
 
 
@@ -109,7 +109,7 @@ def test_sample_roundtrip_preserves_nan_wxyz_and_camera_ids():
     # POINTS incl. the NaN-missing row (assert_array_equal treats NaN==NaN as equal)
     np.testing.assert_array_equal(restored.blocks[0].data, sample.blocks[0].data)
     # ROTATIONS wxyz order preserved
-    assert restored.blocks[1].kind == ChannelKind.ROTATIONS
+    assert restored.blocks[1].kind == ChannelKind.ROTATIONS_WORLD
     np.testing.assert_array_equal(restored.blocks[1].data, sample.blocks[1].data)
     # OVERLAY_2D per-camera blocks keyed by camera_id
     assert restored.blocks[2].camera_id == "cam-0"
@@ -148,8 +148,8 @@ def test_schema_and_sample_flatten_to_matching_lengths():
         frame_number=0,
         subject_id=0,
         blocks=[
-            SampleBlock(ChannelKind.POINTS, np.zeros((2, 4), dtype=np.float32)),
-            SampleBlock(ChannelKind.ROTATIONS, np.zeros((1, 4), dtype=np.float32)),
+            SampleBlock(ChannelKind.KEYPOINTS_3D, np.zeros((2, 4), dtype=np.float32)),
+            SampleBlock(ChannelKind.ROTATIONS_WORLD, np.zeros((1, 4), dtype=np.float32)),
         ],
     )
     assert sample_to_flat_vector(sample).shape[0] == len(channels)

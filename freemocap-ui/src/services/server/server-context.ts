@@ -4,8 +4,10 @@ import type { LogStore } from './server-helpers/log-store';
 import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
 import type { Point3d, BodyKinematics } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
+import type { RotationsFrame, RollingChannelName, StreamSchema } from './transport/types';
 
 export type CoMCallback = (point: Point3d | null) => void;
+export type RotationsCallback = (frame: RotationsFrame) => void;
 
 export interface ServerContextValue {
     isConnected: boolean;
@@ -31,6 +33,13 @@ export interface ServerContextValue {
     trackerSchemas: Record<string, TrackedObjectDefinition>;
     activeTrackerId: string | null;
     getActiveSchema: () => TrackedObjectDefinition | null;
+    // Standard-stream (F3) additions
+    subscribeToRotations: (cb: RotationsCallback) => () => void;
+    getLatestRotations: () => RotationsFrame | null;
+    getRollingWindow: (channelName: RollingChannelName) => unknown[];
+    // Standard-stream schema access (F4 — the rigid-body renderer needs it).
+    subscribeToSchema: (cb: (schema: StreamSchema) => void) => () => void;
+    getStreamSchema: () => StreamSchema | null;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);

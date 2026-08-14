@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from freemocap.core.streaming.standard_stream.stream_sample import StreamSample
 from freemocap.core.streaming.standard_stream.stream_schema import ChannelKind, StreamSchema
+from freemocap.core.streaming.standard_stream.stream_sample import StreamSample  # noqa: TC001 — beartype resolves this in the ``sample_to_flat_vector`` signature at runtime
 
 
 def schema_to_streaminfo_channels(schema: StreamSchema) -> list[tuple[str, str]]:

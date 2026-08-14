@@ -52,15 +52,16 @@ class CoordinateConvention(msgspec.Struct, frozen=True):
 
 
 # FreeMoCap's canonical convention: robotics/biomechanics standards — millimeters,
-# right-handed, +Z up. ``forward_axis`` is the one open TBD (see
-# [07 — Coordinate Conventions](docs/streaming-compatibility/07-coordinate-conventions.md)):
-# +Y is the working assumption (the Blender export path treats data as X-right /
-# Y-forward / Z-up) pending confirmation against the ground-plane calibration basis.
+# right-handed, +Z up, +X forward (see
+# [07 — Coordinate Conventions](docs/streaming-compatibility/07-coordinate-conventions.md)).
+# The +X forward value is a **declared internal standard**, not derived from
+# whatever the calibration produced — all FreeMoCap data is in it internally,
+# conversion happens at the adapter edge on request.
 FREEMOCAP_CANONICAL_CONVENTION = CoordinateConvention(
     units=Units.MILLIMETERS,
     handedness=Handedness.RIGHT,
     up_axis=Axis.PLUS_Z,
-    forward_axis=Axis.PLUS_Y,  # TODO(convention): confirm the canonical forward-axis
+    forward_axis=Axis.PLUS_X,
     rotation_frame=RotationFrame.LOCAL,
     rotation_form=RotationForm.QUATERNION,
 )

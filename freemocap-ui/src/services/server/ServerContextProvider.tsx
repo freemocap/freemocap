@@ -1,9 +1,20 @@
 // ServerContextProvider.tsx
+//
+// Thin consumer of TransportService (F3). The socket ownership, binary
+// first-byte demux, standard-stream schema/sample decode, and rolling-window
+// stores live in TransportService. This provider retains:
+//   - the JPEG image pipeline (FrameProcessor + CanvasManager) — separate from
+//     the standard stream and owned by the renderer workstream (F4);
+//   - the inbound/redux JSON routing (settings, framerate, posthoc progress,
+//     app_state, logs) — the server still routes these over the WS;
+//   - the subscriber-hook surface (now backed by TransportService subscribers).
+// The retired legacy keypoints binary path (D36) is gone.
+
 import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import { ServerContext, type ServerContextValue } from './server-context';
 export { useServer, useServerOptional, ServerContext, type ServerContextValue } from './server-context';
 
-import {ConnectionState, WebSocketConnection} from "@/services/server/server-helpers/websocket-connection";
+import {ConnectionState} from "@/services/server/server-helpers/websocket-connection";
 import {FrameProcessor} from "@/services/server/server-helpers/frame-processor/frame-processor";
 import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
@@ -18,11 +29,6 @@ import {
     isTrackerSchemas,
 } from "@/services/server/server-helpers/websocket-message-types";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
-import {
-    BLOCK_KIND,
-    isKeypointsMessage,
-    parseKeypointsMessage,
-} from "@/services/server/server-helpers/frame-processor/keypoints-binary-parser";
 import {Point3d, BodyKinematics} from "@/components/viewport3d";
 import {
     KeypointsCallback,
@@ -33,6 +39,8 @@ import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slic
 import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
 import type {AppStateMessage} from "@/store/slices/connection/connection-types";
 import {loadCalibrationForRecording} from "@/store/slices/calibration";
+import {TransportService} from "@/services/server/transport/TransportService";
+import type {RotationsFrame, RollingChannelName, StreamSchema} from "@/services/server/transport/types";
 
 // Type guard for the server's authoritative APP_STATE snapshot
 function isAppState(data: any): data is AppStateMessage {
@@ -68,7 +76,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
 
     // Service instances
-    const wsConnectionRef = useRef<WebSocketConnection | null>(null);
+    const transportRef = useRef<TransportService | null>(null);
     const frameProcessorRef = useRef<FrameProcessor | null>(null);
     const canvasManagerRef = useRef<CanvasManager | null>(null);
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
@@ -80,7 +88,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // Last-dispatched progress per pipeline — skip dispatch when value is unchanged
     const lastPipelineProgressRef = useRef<Record<string, string>>({});
 
-    // 3D data refs and subscriber sets
+    // 3D data refs and subscriber sets (backed by TransportService below).
     const keypointsRef = useRef<KeypointsFrame | null>(null);
     const keypointsSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
     const skeletonRef = useRef<KeypointsFrame | null>(null);
@@ -88,29 +96,54 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const centerOfMassSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
     const xcomSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
     const bodyKinematicsSubscribersRef = useRef<Set<(bk: BodyKinematics | null) => void>>(new Set());
+    const rotationsRef = useRef<RotationsFrame | null>(null);
+    const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
 
-    // Holds the latest binary payload received from the WebSocket.
+    // Holds the latest binary JPEG payload received from the WebSocket.
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
-    const pendingJsonPayloadRef = useRef<FrontendPayloadMessage | null>(null);
-    const pendingKeypointsRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
-    const frameLoopRef = useRef<number | null>(null);
     const pendingAckFrameNumberRef = useRef<number | null>(null);
+    const frameLoopRef = useRef<number | null>(null);
 
     // Cached sorted camera IDs from the last frame
     const lastCameraIdsRef = useRef<string[]>([]);
 
-
     // Initialize services once
     useEffect(() => {
-        wsConnectionRef.current = new WebSocketConnection({
+        transportRef.current = new TransportService({
             url: serverUrls.getWebSocketUrl(),
-            reconnectDelay: 1000,
-            maxReconnectAttempts: 5,
-            heartbeatInterval: 30000
+            maxWindowFrames: 100,
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
+
+        // Fan standard-stream sample subscribers out to the legacy subscriber sets.
+        const subs: (() => void)[] = [];
+        const transport = transportRef.current;
+        subs.push(transport.subscribeToKeypoints((frame) => {
+            const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
+            keypointsRef.current = kf;
+            for (const cb of keypointsSubscribersRef.current) cb(kf);
+        }));
+        subs.push(transport.subscribeToSegmentOrigins((frame) => {
+            const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
+            skeletonRef.current = kf;
+            for (const cb of skeletonSubscribersRef.current) cb(kf);
+        }));
+        subs.push(transport.subscribeToDerivedPoints((derived) => {
+            const com = derived.centerOfMass;
+            const xcom = derived.xcom;
+            for (const cb of centerOfMassSubscribersRef.current) {
+                cb(com ? { x: com[0], y: com[1], z: com[2] } : null);
+            }
+            for (const cb of xcomSubscribersRef.current) {
+                cb(xcom ? { x: xcom[0], y: xcom[1], z: xcom[2] } : null);
+            }
+        }));
+        subs.push(transport.subscribeToRotations((frame) => {
+            rotationsRef.current = frame;
+            for (const cb of rotationsSubscribersRef.current) cb(frame);
+        }));
 
         const handleBeforeUnload = (): void => {
             logStoreRef.current?.persistNow();
@@ -118,10 +151,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
+            for (const unsub of subs) unsub();
             window.removeEventListener('beforeunload', handleBeforeUnload);
             logStoreRef.current?.dispose();
-            if (wsConnectionRef.current) {
-                wsConnectionRef.current.disconnect();
+            if (transportRef.current) {
+                transportRef.current.disconnect();
+                transportRef.current = null;
             }
             if (canvasManagerRef.current) {
                 canvasManagerRef.current.terminateAllWorkers();
@@ -132,10 +167,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
-    // Set up WebSocket connection and handlers
+    // Wire connection state + message routing to the transport service.
     useEffect(() => {
-        const ws = wsConnectionRef.current;
-        if (!ws) return;
+        const transport = transportRef.current;
+        if (!transport) return;
 
         const handleStateChange = (newState: ConnectionState): void => {
             const connected = newState === ConnectionState.CONNECTED;
@@ -149,27 +184,24 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 serverFpsRef.current = null;
                 processingFrameRef.current = false;
                 pendingPayloadRef.current = null;
-                pendingJsonPayloadRef.current = null;
-                pendingKeypointsRef.current = null;
                 pendingAckFrameNumberRef.current = null;
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
                 keypointsRef.current = null;
                 skeletonRef.current = null;
+                rotationsRef.current = null;
                 trackerSchemasRef.current = {};
                 activeTrackerIdRef.current = null;
                 setTrackerSchemas({});
                 setActiveTrackerId(null);
                 setConnectedCameraIds([]);
+                transport.reset();
                 store.dispatch(serverDisconnected());
             }
         };
 
-        let lastFrontendFrameTime = 0;
-        const frontendDurations: number[] = [];
-
         const dispatchFrames = (
-            result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>
+            result: Awaited<ReturnType<FrameProcessor['processFramePayload']>>,
         ): void => {
             if (!result) return;
 
@@ -210,35 +242,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                     frameData.height,
                 );
             }
-
-            const now = performance.now();
-            if (lastFrontendFrameTime > 0) {
-                const dur = now - lastFrontendFrameTime;
-                frontendDurations.push(dur);
-                if (frontendDurations.length > 30) frontendDurations.shift();
-                if (frontendDurations.length >= 2) {
-                    let sum = 0, min = Infinity, max = -Infinity;
-                    for (const d of frontendDurations) {
-                        sum += d;
-                        if (d < min) min = d;
-                        if (d > max) max = d;
-                    }
-                    const mean = sum / frontendDurations.length;
-                    framerateStoreRef.current.updateFrontend({
-                        mean_frame_duration_ms: mean,
-                        mean_frames_per_second: mean > 0 ? 1000 / mean : 0,
-                        frame_duration_mean: mean,
-                        frame_duration_median: mean,
-                        frame_duration_min: min,
-                        frame_duration_max: max,
-                        frame_duration_stddev: 0,
-                        frame_duration_coefficient_of_variation: 0,
-                        calculation_window_size: frontendDurations.length,
-                        framerate_source: 'Display (browser)',
-                    });
-                }
-            }
-            lastFrontendFrameTime = now;
         };
 
         const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
@@ -271,47 +274,117 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             for (const cb of bodyKinematicsSubscribersRef.current) cb(bodyKinematics);
         };
 
-        const dispatchBinaryKeypoints = (buf: ArrayBuffer): void => {
-            const parsed = parseKeypointsMessage(buf);
-            for (const block of parsed.blocks) {
-                let pointNames: readonly string[] | null = null;
-                if (block.pointNames) {
-                    pointNames = block.pointNames;
-                } else {
-                    const schema = trackerSchemasRef.current[block.trackerId];
-                    if (!schema) continue;
-                    pointNames = schema.tracked_points;
-                }
+        // JSON messages that aren't the standard-stream schema still route here.
+        transport.on('message', (event: MessageEvent) => {
+            if (typeof event.data !== 'string') return undefined;
+            if (event.data === 'pong') return undefined;
 
-                const interleaved = block.interleaved instanceof Float32Array
-                    ? block.interleaved
-                    : new Float32Array(block.interleaved);
-                const frame: KeypointsFrame = { pointNames, interleaved };
-
-                if (block.kind === BLOCK_KIND.KEYPOINTS_3D) {
-                    // When a known-schema tracker sends a keypoints block, update the
-                    // active tracker so the 3D viewport uses the matching connection schema.
-                    if (
-                        block.trackerId in trackerSchemasRef.current &&
-                        activeTrackerIdRef.current !== block.trackerId
-                    ) {
-                        activeTrackerIdRef.current = block.trackerId;
-                        setActiveTrackerId(block.trackerId);
-                        canvasManagerRef.current?.setSchema(trackerSchemasRef.current, block.trackerId);
-                    }
-                    keypointsRef.current = frame;
-                    for (const cb of keypointsSubscribersRef.current) cb(frame);
-                } else if (block.kind === BLOCK_KIND.SKELETON_3D) {
-                    skeletonRef.current = frame;
-                    for (const cb of skeletonSubscribersRef.current) cb(frame);
-                }
+            let jsonData: any;
+            try {
+                jsonData = JSON.parse(event.data);
+            } catch {
+                return undefined;
             }
-        };
 
-        let decodeStartTime = 0;
+            if (isLogRecord(jsonData)) {
+                logStoreRef.current.add(jsonData);
+            } else if (isTrackerSchemas(jsonData)) {
+                const schemas = jsonData.schemas;
+                trackerSchemasRef.current = schemas;
+                const keys = Object.keys(schemas);
+                const firstId = keys.length > 0 ? keys[0] : null;
+                activeTrackerIdRef.current = firstId;
+                setTrackerSchemas(schemas);
+                setActiveTrackerId(firstId);
+                canvasManagerRef.current?.setSchema(schemas, firstId);
+            } else if (isFramerateUpdate(jsonData)) {
+                serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
+                framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
+            } else if (isFrontendPayload(jsonData)) {
+                dispatchJsonPayload(jsonData);
+            } else if (isPosthocProgress(jsonData)) {
+                const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
+                    calibration: PipelineType.CALIBRATION,
+                    mocap: PipelineType.MOCAP,
+                };
+                const pipelineType = PIPELINE_TYPE_MAP[jsonData.pipeline_type];
+                if (!pipelineType) {
+                    console.error('[WS] Unknown pipeline_type in progress message:', jsonData.pipeline_type, jsonData);
+                } else {
+                    const progress = Math.round(jsonData.progress_fraction * 100);
+                    const dedupeKey = `${jsonData.phase}:${progress}`;
+                    if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== dedupeKey) {
+                        lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
+                        const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+                            queued: PipelinePhase.QUEUED,
+                            setting_up: PipelinePhase.SETTING_UP,
+                            processing_images: PipelinePhase.PROCESSING_VIDEOS,
+                            collecting_camera_output: PipelinePhase.SETTING_UP,
+                            building_recorders: PipelinePhase.AGGREGATING,
+                            triangulating: PipelinePhase.AGGREGATING,
+                            exporting_blender: PipelinePhase.FINALIZING,
+                            validating_observations: PipelinePhase.AGGREGATING,
+                            running_solver: PipelinePhase.AGGREGATING,
+                            saving_calibration: PipelinePhase.FINALIZING,
+                            complete: PipelinePhase.COMPLETE,
+                            failed: PipelinePhase.FAILED,
+                        };
+                        store.dispatch(pipelineProgressUpdated({
+                            pipelineId: jsonData.pipeline_id,
+                            pipelineType,
+                            phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+                            progress,
+                            detail: jsonData.detail,
+                            recordingName: jsonData.recording_name,
+                            recordingPath: jsonData.recording_path,
+                        }));
+                        if (!jsonData.pipeline_id.includes(':')) {
+                            if (pipelineType === PipelineType.MOCAP) {
+                                store.dispatch({
+                                    type: 'mocap/posthocProgressReceived',
+                                    payload: {phase: jsonData.phase, progress_fraction: jsonData.progress_fraction, detail: jsonData.detail},
+                                });
+                            } else {
+                                store.dispatch({
+                                    type: 'calibration/calibrationPipelineProgressReceived',
+                                    payload: {phase: jsonData.phase},
+                                });
+                                if (jsonData.phase === 'complete' && jsonData.recording_name) {
+                                    const recordingPath: string = jsonData.recording_path ?? '';
+                                    const recordingName: string = jsonData.recording_name;
+                                    const parentDir = recordingPath.endsWith(recordingName)
+                                        ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
+                                        : null;
+                                    store.dispatch(loadCalibrationForRecording({
+                                        recordingId: recordingName,
+                                        recordingParentDirectory: parentDir,
+                                    }));
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (isAppState(jsonData)) {
+                store.dispatch(serverStateReceived(jsonData));
+            } else if (jsonData.message_type !== 'stream_schema') {
+                console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
+            }
+            return undefined;
+        });
+
+        // JPEG image frames arrive as non-sample binary → process via the frame
+        // processor, and decode the frame ack (frameNumber at offset 8).
+        transport.subscribeToImages((buf) => {
+            if (buf.byteLength >= 16) {
+                const view = new DataView(buf);
+                pendingAckFrameNumberRef.current = Number(view.getBigInt64(8, true));
+            }
+            pendingPayloadRef.current = buf;
+        });
+
         const processFrameLoop = (): void => {
             if (pendingAckFrameNumberRef.current !== null) {
-                ws.send({
+                transport.send({
                     type: 'frameAcknowledgment',
                     frameNumber: pendingAckFrameNumberRef.current,
                     displayImageSizes: canvasManagerRef.current?.getDisplaySizes(),
@@ -319,33 +392,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 pendingAckFrameNumberRef.current = null;
             }
 
-            if (pendingJsonPayloadRef.current !== null) {
-                const jsonPayload = pendingJsonPayloadRef.current;
-                pendingJsonPayloadRef.current = null;
-                dispatchJsonPayload(jsonPayload);
-            }
-
-            if (pendingKeypointsRef.current !== null) {
-                const buf = pendingKeypointsRef.current;
-                pendingKeypointsRef.current = null;
-                try {
-                    dispatchBinaryKeypoints(buf);
-                } catch (err) {
-                    console.error('Error parsing binary keypoints message:', err);
-                }
-            }
-
             if (!processingFrameRef.current && pendingPayloadRef.current !== null) {
                 const payload = pendingPayloadRef.current;
                 pendingPayloadRef.current = null;
                 processingFrameRef.current = true;
-                decodeStartTime = performance.now();
                 frameProcessorRef.current!.processFramePayload(payload)
-                    .then(result => {
-                        const decodeMs = performance.now() - decodeStartTime;
-                        if (decodeMs > 100) console.warn(`decode spike: ${decodeMs.toFixed(1)}ms`);
-                        dispatchFrames(result);
-                    })
+                    .then(result => dispatchFrames(result))
                     .catch(err => console.error('Error processing frame:', err))
                     .finally(() => { processingFrameRef.current = false; });
             }
@@ -355,123 +407,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
         frameLoopRef.current = requestAnimationFrame(processFrameLoop);
 
-        const handleMessage = (event: MessageEvent): void => {
-            if (event.data instanceof ArrayBuffer) {
-                if (isKeypointsMessage(event.data)) {
-                    pendingKeypointsRef.current = event.data;
-                } else {
-                    if (event.data.byteLength >= 16) {
-                        const view = new DataView(event.data);
-                        pendingAckFrameNumberRef.current = Number(view.getBigInt64(8, true));
-                    }
-                    pendingPayloadRef.current = event.data;
-                }
-            }
-            else if (typeof event.data === 'string') {
-                if (event.data === 'pong') return;
-
-                try {
-                    const jsonData = JSON.parse(event.data);
-
-                    if (isLogRecord(jsonData)) {
-                        logStoreRef.current.add(jsonData);
-                    }
-                    else if (isTrackerSchemas(jsonData)) {
-                        const schemas = jsonData.schemas;
-                        trackerSchemasRef.current = schemas;
-                        const keys = Object.keys(schemas);
-                        const firstId = keys.length > 0 ? keys[0] : null;
-                        activeTrackerIdRef.current = firstId;
-                        setTrackerSchemas(schemas);
-                        setActiveTrackerId(firstId);
-                        canvasManagerRef.current?.setSchema(schemas, firstId);
-                    }
-                    else if (isFramerateUpdate(jsonData)) {
-                        serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
-                        framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
-                    }
-                    else if (isFrontendPayload(jsonData)) {
-                        pendingJsonPayloadRef.current = jsonData;
-                    } else if (isPosthocProgress(jsonData)) {
-                        const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
-                            calibration: PipelineType.CALIBRATION,
-                            mocap: PipelineType.MOCAP,
-                        };
-                        const pipelineType = PIPELINE_TYPE_MAP[jsonData.pipeline_type];
-                        if (!pipelineType) {
-                            console.error('[WS] Unknown pipeline_type in progress message:', jsonData.pipeline_type, jsonData);
-                        } else {
-                            const progress = Math.round(jsonData.progress_fraction * 100);
-                            const dedupeKey = `${jsonData.phase}:${progress}`;
-                            if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== dedupeKey) {
-                                lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
-                                const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
-                                    queued: PipelinePhase.QUEUED,
-                                    setting_up: PipelinePhase.SETTING_UP,
-                                    processing_images: PipelinePhase.PROCESSING_VIDEOS,
-                                    collecting_camera_output: PipelinePhase.SETTING_UP,
-                                    building_recorders: PipelinePhase.AGGREGATING,
-                                    triangulating: PipelinePhase.AGGREGATING,
-                                    exporting_blender: PipelinePhase.FINALIZING,
-                                    validating_observations: PipelinePhase.AGGREGATING,
-                                    running_solver: PipelinePhase.AGGREGATING,
-                                    saving_calibration: PipelinePhase.FINALIZING,
-                                    complete: PipelinePhase.COMPLETE,
-                                    failed: PipelinePhase.FAILED,
-                                };
-                                store.dispatch(pipelineProgressUpdated({
-                                    pipelineId: jsonData.pipeline_id,
-                                    pipelineType,
-                                    phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
-                                    progress,
-                                    detail: jsonData.detail,
-                                    recordingName: jsonData.recording_name,
-                                    recordingPath: jsonData.recording_path,
-                                }));
-                                if (!jsonData.pipeline_id.includes(':')) {
-                                    if (pipelineType === PipelineType.MOCAP) {
-                                        store.dispatch({
-                                            type: 'mocap/posthocProgressReceived',
-                                            payload: {phase: jsonData.phase, progress_fraction: jsonData.progress_fraction, detail: jsonData.detail},
-                                        });
-                                    } else {
-                                        store.dispatch({
-                                            type: 'calibration/calibrationPipelineProgressReceived',
-                                            payload: {phase: jsonData.phase},
-                                        });
-                                        if (jsonData.phase === 'complete' && jsonData.recording_name) {
-                                            const recordingPath: string = jsonData.recording_path ?? '';
-                                            const recordingName: string = jsonData.recording_name;
-                                            const parentDir = recordingPath.endsWith(recordingName)
-                                                ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
-                                                : null;
-                                            store.dispatch(loadCalibrationForRecording({
-                                                recordingId: recordingName,
-                                                recordingParentDirectory: parentDir,
-                                            }));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if (isAppState(jsonData)) {
-                        store.dispatch(serverStateReceived(jsonData));
-                    } else {
-                        console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
-                    }
-                } catch (error) {
-                    console.error('Error parsing JSON message:', error);
-                }
-            }
-        };
-
-        ws.on('state-change', handleStateChange);
-        ws.on('message', handleMessage);
+        transport.on('state-change', handleStateChange);
 
         return () => {
-            ws.off('state-change', handleStateChange);
-            ws.off('message', handleMessage);
-            ws.disconnect();
+            transport.off('state-change', handleStateChange);
+            transport.disconnect();
             if (frameLoopRef.current !== null) {
                 cancelAnimationFrame(frameLoopRef.current);
                 frameLoopRef.current = null;
@@ -480,15 +420,15 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     }, []);
 
     const connect = useCallback((): void => {
-        wsConnectionRef.current?.connect();
+        transportRef.current?.connect();
     }, []);
 
     const disconnect = useCallback((): void => {
-        wsConnectionRef.current?.disconnect();
+        transportRef.current?.disconnect();
     }, []);
 
     const sendWebsocketMessage = useCallback((data: string | object): void => {
-        wsConnectionRef.current?.send(data);
+        transportRef.current?.send(data);
     }, []);
 
     const setCanvasForCamera = useCallback((cameraId: string, canvas: HTMLCanvasElement): void => {
@@ -542,12 +482,35 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
+    const subscribeToRotations = useCallback((cb: (frame: RotationsFrame) => void): () => void => {
+        rotationsSubscribersRef.current.add(cb);
+        return () => {
+            rotationsSubscribersRef.current.delete(cb);
+        };
+    }, []);
+
+    const subscribeToSchema = useCallback((cb: (schema: StreamSchema) => void): () => void => {
+        return transportRef.current?.subscribeToSchema(cb) ?? (() => {});
+    }, []);
+
+    const getStreamSchema = useCallback((): StreamSchema | null => {
+        return transportRef.current?.getSchema() ?? null;
+    }, []);
+
     const getLatestKeypoints = useCallback((): KeypointsFrame | null => {
         return keypointsRef.current;
     }, []);
 
     const getLatestSkeleton = useCallback((): KeypointsFrame | null => {
         return skeletonRef.current;
+    }, []);
+
+    const getLatestRotations = useCallback((): RotationsFrame | null => {
+        return rotationsRef.current;
+    }, []);
+
+    const getRollingWindow = useCallback((channelName: RollingChannelName): unknown[] => {
+        return transportRef.current?.getRollingWindow(channelName) ?? [];
     }, []);
 
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
@@ -565,10 +528,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         serverUrls.setHost(host);
         serverUrls.setPort(port);
         const newUrl = serverUrls.getWebSocketUrl();
-        const ws = wsConnectionRef.current;
-        if (ws && newUrl !== currentUrl) {
-            ws.disconnect();
-            ws.updateUrl(newUrl);
+        const transport = transportRef.current;
+        if (transport && newUrl !== currentUrl) {
+            transport.updateUrl(newUrl);
+            transport.disconnect();
         }
     }, []);
 
@@ -596,7 +559,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         trackerSchemas,
         activeTrackerId,
         getActiveSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema]);
+        subscribeToRotations,
+        getLatestRotations,
+        getRollingWindow,
+        subscribeToSchema,
+        getStreamSchema,
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema, subscribeToRotations, getLatestRotations, getRollingWindow, subscribeToSchema, getStreamSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

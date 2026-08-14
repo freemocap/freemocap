@@ -67,6 +67,7 @@ export function ViewportOverlay({
   const toggleFace = useCallback(() => toggle("face"), [toggle]);
   const toggleConnections = useCallback(() => toggle("connections"), [toggle]);
   const toggleCameras = useCallback(() => toggle("cameras"), [toggle]);
+  const toggleRigidBodyBones = useCallback(() => toggle("rigidBodyBones"), [toggle]);
   const toggleCenterOfMass = useCallback(() => toggle("centerOfMass"), [toggle]);
   const toggleComSphere = useCallback(() => toggle("centerOfMassSphere"), [toggle]);
   const toggleComProjection = useCallback(() => toggle("centerOfMassProjection"), [toggle]);
@@ -134,6 +135,11 @@ export function ViewportOverlay({
               countRef={camerasCountRef}
               checked={visibility.cameras}
               onChange={toggleCameras}
+            />
+            <VisToggle
+              label="Rigid Body Bones"
+              checked={visibility.rigidBodyBones}
+              onChange={toggleRigidBodyBones}
             />
             <CollapsibleVisibilityGroup
               label="Center of Mass"

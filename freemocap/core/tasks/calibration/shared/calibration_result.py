@@ -103,6 +103,7 @@ class CalibrationResult(BaseModel, TomlMixin):
         meta["n_observations_used"] = self.n_observations_used
         meta["n_observations_rejected"] = self.n_observations_rejected
         meta["solver_time_seconds"] = self.time_seconds
+        meta["groundplane_applied"] = self.groundplane_aligned
         meta["board"] = {
             "squares_x": self.board.squares_x,
             "squares_y": self.board.squares_y,

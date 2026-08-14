@@ -68,9 +68,8 @@ class FrontendImagePacket:
     images_bytearray: bytearray
     multiframe_timestamp: MultiframeTimestampFloat
     frontend_payload: FrontendPayload
-    # Optional binary keypoints message. Built when FREEMOCAP_BINARY_KEYPOINTS=1.
-    # Format: see freemocap.api.websocket.binary_keypoints_protocol.
-    keypoints_binary_payload: bytearray | None = None
+    # D36 — the legacy binary-keypoints payload was retired; the skeleton /
+    # keypoint / rotation data now rides the standard-stream sample (FrameRelay).
 
     @property
     def frame_number(self) -> FrameNumberInt:

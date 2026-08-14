@@ -118,9 +118,14 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     center_of_mass_result: CenterOfMassResult | None = None
     xcom: Point3d | None = None
     skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
+    standard_skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
     body_kinematics: BodyKinematicsState | None = None
+    # Per-segment measured rest lengths (mm), keyed by segment name — the
+    # rigidifier's current estimates (body + both hands). Feeds the schema's
+    # ``segment_lengths`` default-then-update lifecycle.
+    segment_lengths: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

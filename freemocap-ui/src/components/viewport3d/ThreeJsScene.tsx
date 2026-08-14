@@ -13,6 +13,7 @@ import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRe
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
 import {CenterOfMassRenderer} from "@/components/viewport3d/renderers/CenterOfMassRenderer";
 import {BodyKinematicsRenderer} from "@/components/viewport3d/renderers/BodyKinematicsRenderer";
+import {RigidBodyBoneRenderer} from "@/components/viewport3d/renderers/RigidBodyBoneRenderer";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
@@ -117,6 +118,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             {visibility.connections && <ConnectionRenderer />}
             {visibility.face && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
+            {visibility.rigidBodyBones && <RigidBodyBoneRenderer />}
             <BloomLayer />
         </>
     );

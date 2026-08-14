@@ -115,7 +115,8 @@ CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 # The solver's reference geometry needs only correct DIRECTIONS (lengths do not
 # affect solved quaternions), so nominal anthropometric seeds are the honest
 # v1; live measured lengths refine the geometry when the estimator feeds it.
-_NOMINAL_SUBJECT_HEIGHT_MM = 1700.0
+# Shared SSOT with the stream schema's rest-pose build.
+from freemocap.core.streaming.standard_stream.stream_schema import NOMINAL_SUBJECT_HEIGHT_MM
 
 def _merge_angulation(
         *,
@@ -336,7 +337,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         reference_geometry = build_reference_geometry(
             list(standard_human.segments),
             {
-                s.name: s.length_ratio * _NOMINAL_SUBJECT_HEIGHT_MM
+                s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
                 for s in standard_human.segments
             },
         ).segments
@@ -750,7 +751,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         for seg in standard_human.segments:
                             if seg.name not in measured_lengths:
                                 measured_lengths[seg.name] = (
-                                    seg.length_ratio * _NOMINAL_SUBJECT_HEIGHT_MM
+                                    seg.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
                                 )
                         reference_geometry = build_reference_geometry(
                             list(standard_human.segments), measured_lengths
@@ -899,6 +900,23 @@ class RealtimeAggregatorNode(AggregatorNode):
                             #     )
 
                 # ---- Publish aggregated output ----
+                # The schema's segment_lengths field: the rigidifier's measured
+                # body + both-hand lengths, with the face's eight segments kept
+                # at their nominal spans (the estimator does not cover them).
+                # The same merge the schema build does, so the wire lengths and
+                # the rest pose stay consistent with the per-frame geometry.
+                segment_lengths: dict[str, float] = {}
+                if skeleton_rigidifier is not None:
+                    segment_lengths = {
+                        **skeleton_rigidifier.body_segment_lengths,
+                        **skeleton_rigidifier.left_hand_segment_lengths,
+                        **skeleton_rigidifier.right_hand_segment_lengths,
+                    }
+                    for seg in standard_human.segments:
+                        if seg.name not in segment_lengths:
+                            segment_lengths[seg.name] = (
+                                seg.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
+                            )
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,
@@ -918,9 +936,19 @@ class RealtimeAggregatorNode(AggregatorNode):
                             if rigid_result is not None
                             else None
                         ),
+                        standard_skeleton=(
+                            {
+                                **rigid_result.body_positions,
+                                **rigid_result.left_hand_standard_positions,
+                                **rigid_result.right_hand_standard_positions,
+                            }
+                            if rigid_result is not None
+                            else None
+                        ),
                         segment_rotations_world=segment_rotations_world,
                         segment_rotations_local=segment_rotations_local,
                         body_kinematics=body_kinematics,
+                        segment_lengths=segment_lengths,
                     ),
                 )
                 # Mark the slot as full and not-yet-consumed; the consumer

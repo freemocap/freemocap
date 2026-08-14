@@ -124,5 +124,6 @@ def run_anipose_calibration(
         time_seconds=elapsed,
         n_observations_used=len(charuco_frame_numbers) * len(cameras),
         n_observations_rejected=0,
+        groundplane_aligned=groundplane_success.success if use_charuco_as_groundplane else False,
     )
     return result, ground_plane_result

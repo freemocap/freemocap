@@ -7,6 +7,7 @@ import logging
 import multiprocessing
 from dataclasses import dataclass, field
 from multiprocessing.sharedctypes import Synchronized
+from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
 from skellycam.core.camera.config.camera_config import CameraConfigs
@@ -25,6 +26,9 @@ from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineCon
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+
+if TYPE_CHECKING:
+    from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +184,15 @@ class FreemocapApplication:
         )
 
         return realtime_pipeline_packets, posthoc_progress
+
+    def get_latest_aggregator_outputs(
+            self,
+            if_newer_than: FrameNumberInt,
+    ) -> list["AggregationNodeOutputMessage"]:
+        """The newest aggregator output per live pipeline (standard-stream frame source)."""
+        return self.realtime_pipeline_manager.get_latest_aggregator_outputs(
+            if_newer_than=if_newer_than,
+        )
 
     # ------------------------------------------------------------------
     # State projection (websocket APP_STATE snapshot)

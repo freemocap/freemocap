@@ -46,6 +46,10 @@ sense — we can shuffle later.
 Names are **landmarks** (canonical); convention/hierarchy/rest-pose sourced from `AnatomicalStructure`
 ([13](../13-tracker-to-canonical-mapping.md), [12](../12-standard-human-model.md)).
 
+**Coupling decision (D30):** `StreamSchema.from_standard_human()` is the intended boundary between the
+segment model and the wire — the schema is derived *from* the composed model, and that coupling is by
+design, not a defect.
+
 ## The sample — `sample.py`
 
 Evolve the aligned-numpy-dtype framing from `binary_keypoints_protocol.py`:

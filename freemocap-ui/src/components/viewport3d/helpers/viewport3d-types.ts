@@ -43,6 +43,7 @@ export interface ViewportVisibility {
     bodyKinematics: boolean;
     reactionMassEllipsoid: boolean;
     centroidalMomentPivot: boolean;
+    rigidBodyBones: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -61,6 +62,7 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     bodyKinematics: true,
     reactionMassEllipsoid: true,
     centroidalMomentPivot: true,
+    rigidBodyBones: true,
 };
 
 /** Live stats from each renderer. */

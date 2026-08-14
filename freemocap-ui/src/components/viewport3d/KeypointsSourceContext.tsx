@@ -1,5 +1,6 @@
 import React, {createContext, useContext, useMemo} from "react";
 import {useServerOptional} from "@/services/server/server-context";
+import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/services/server/transport/types';
 
 /**
  * Abstraction over "where do 3D keypoints come from". The Streaming panel
@@ -34,6 +35,13 @@ export interface KeypointsSource {
     subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
     getLatestSkeleton: () => KeypointsFrame | null;
+    // Standard-stream (F3) additions — optional, for renderers (F4) to consume.
+    subscribeToRotations?: (cb: (frame: RotationsFrame) => void) => () => void;
+    getLatestRotations?: () => RotationsFrame | null;
+    getRollingWindow?: (channelName: RollingChannelName) => unknown[];
+    // Standard-stream schema access (F4 — the rigid-body renderer's name→index map).
+    subscribeToSchema?: (cb: (schema: StreamSchema) => void) => () => void;
+    getStreamSchema?: () => StreamSchema | null;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -73,6 +81,11 @@ export function useKeypointsSource(): KeypointsSource {
             subscribeToSkeleton: server.subscribeToSkeleton,
             getLatestKeypoints: server.getLatestKeypoints,
             getLatestSkeleton: server.getLatestSkeleton,
+            subscribeToRotations: server.subscribeToRotations,
+            getLatestRotations: server.getLatestRotations,
+            getRollingWindow: server.getRollingWindow,
+            subscribeToSchema: server.subscribeToSchema,
+            getStreamSchema: server.getStreamSchema,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -80,6 +93,11 @@ export function useKeypointsSource(): KeypointsSource {
         server?.subscribeToSkeleton,
         server?.getLatestKeypoints,
         server?.getLatestSkeleton,
+        server?.subscribeToRotations,
+        server?.getLatestRotations,
+        server?.getRollingWindow,
+        server?.subscribeToSchema,
+        server?.getStreamSchema,
     ]);
 
     const source = ctx ?? liveAdapter;

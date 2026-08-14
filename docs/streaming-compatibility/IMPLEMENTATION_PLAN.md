@@ -175,6 +175,24 @@ freemocap test **collection** repaired this session (4 files repointed to
   skellytracker 234 green. **NEXT: user pushes skellytracker + skellyforge → freemocap
   `uv lock --upgrade-package skellytracker skellyforge` + `uv sync` → F0b** (the wrapper edge-key fix
   + face-in-tree + 60/76 count updates).
+- **2026-08-13 (F0 COMPLETE — the skull rigidifier + the rigid-points reshape, end to end)** — The
+  reshape landed in skellyforge (pushed `fd9e73f`; 133 green): `SegmentDefinition` = explicit
+  `rigid_points` + TAGGED axes (`AxisDefinition` x/y/z × EXACT/APPROXIMATE × from→to — no preset
+  roles; first axis must be EXACT; EXACT axes ⊆ rigid_points, APPROXIMATE may be external like the
+  upper arm's `wrist`), the shared `build_segment_frame` dispatch (1 exact → damped fallback; 2 →
+  Gram-Schmidt; 2-exact-collinear → raise; 3 → the third declaration resolves only ẑ's sign; soft
+  degradation for approximate collinearity), the head's 7-point skull set (incl. `head_vertex` —
+  the model doesn't care tracked-vs-derived), and `kinematics/rigid_point_set.py` (bs-repo-derived
+  MDS template, chirality-stabilized, per-frame rotation-only Procrustes — reflection-free via the
+  existing Umeyama Kabsch; pyceres deliberately not ported). The freemocap wrapper then wired the
+  graded dispatch (2 rigid points → the span path; 3+ → the fit): the skull pair estimator (21
+  canonical pair keys, wall-clock window — the synthetic-counter bug the quality review caught was
+  fixed), the 30-frame chirality-stable template rebuild policy, the fit anchored at the
+  tree-corrected `head_center`, the rejected face pass deleted and replaced by the general
+  orphan-anchor rule (every axis-referenced keypoint emits from observed — the foot/toes twist
+  keypoints `heel`/`small_toe` restored), and the retired-name migration across freemocap.
+  **F0 done: freemocap subset 62 green** (skull tests: 21 distances exact, noise→rigid,
+  missing-point extrapolation, <3 passthrough, rebuild chirality). NEXT: F1 (the six-group schema).
 - **2026-08-13 (the rigid-points ontology reshape — decided, first task dispatched)** — Per the
   user: no new kinds of rigid bodies; the SEGMENT grows the capacity. `SegmentDefinition` reshapes to
   an explicit `rigid_points` list + `origin_keypoint` + exact (`x_axis`) / approximate (`y_axis`)

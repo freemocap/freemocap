@@ -67,16 +67,16 @@ that's why nothing broke. This pass ends the parallel-skeleton duplication.
    geometry + tests, against the pushed API. freemocap's env runs the pinned commit, never the local
    checkout — cross-repo work ends at the round.
 
-- [ ] **Step 1:** The freemocap wrapper (`skeleton_rigidifier.py`) builds its three
+- [x] **Step 1 (DONE 2026-08-13):** The freemocap wrapper (`skeleton_rigidifier.py`) builds its three
       `SegmentLengthEstimator`s from the **model**: seeds `{segment.name: segment.length_ratio ×
-      height}`; endpoints `{segment.name: (segment.origin_keypoint, segment.long_axis_keypoint)}` —
+      height}`; endpoints `{segment.name: (segment.axes[0].from_keypoint, segment.axes[0].to_keypoint)}` —
       the arrow-key labels die. The `AnatomicalStructure` / `canonical_body.yaml` dependency in the
       live path dies with them.
-- [ ] **Step 2:** The `TreeRigidifier` (skellyforge `kinematics/skeleton_rigidifier.py`) consumes
+- [x] **Step 2 (DONE 2026-08-13):** The `TreeRigidifier` (skellyforge `kinematics/skeleton_rigidifier.py`) consumes
       the **segment tree** (`segment_parents`) + segment-keyed lengths — read it, re-key its
       hierarchy input, keep its enforcement algorithm. The hand trees re-key onto the hand segment
       names the same way.
-- [ ] **Step 2b (the skull rigidifier — supersedes all earlier face handling, decided 2026-08-13):**
+- [x] **Step 2b (DONE 2026-08-13 — the skull rigidifier — supersedes all earlier face handling, decided 2026-08-13):**
       no face pass-through, no carve-outs. The ontology is generalized instead: every segment
       declares its rigid point set EXPLICITLY (`rigid_points` + exact/approximate axis pairs — the
       reshape in the skellyforge round below), and the rigidifier grades by what is declared:
@@ -92,14 +92,16 @@ that's why nothing broke. This pass ends the parallel-skeleton duplication.
 
 **The skellyforge reshape round (before F0b's wrapper wiring):**
 
-- [x] **R1 — the `SegmentDefinition` reshape (DONE 2026-08-13, on disk):** `rigid_points: tuple[str, ...]` (all keypoints
-      rigid on the segment, ≥2, distinct) + `origin_keypoint` + `x_axis: tuple[str, str]` (exact,
-      from→to) + `y_axis: tuple[str, str] | None` (approximate, from→to; `None` = the damped
-      minimal-roll fallback — today's twist-`None` case) + the T-pose rest fields unchanged.
-      Load-time validation: every name in the axis defs and the origin ∈ `rigid_points`. All
-      authored parts migrate mechanically: `x_axis = (origin, long_axis)`, `y_axis = (long_axis,
-      twist)` or `None` — today's semantics exactly, no transitional vocabulary. The head gains
-      its 7-point skull set. Model/part tests stay green through the whole reshape.
+- [x] **R1 — the `SegmentDefinition` reshape (DONE 2026-08-13, pushed):** `rigid_points: tuple[str, ...]` (all keypoints
+      rigid on the segment, ≥2, distinct) + `origin_keypoint` + TAGGED `axes: tuple[AxisDefinition,
+      ...]` (1–3; `AxisDefinition` = axis ∈ {x,y,z} × kind ∈ {EXACT, APPROXIMATE} × from→to — the
+      tags carry the roles, no preset x-exact/y-approximate; the first axis must be EXACT) + the
+      T-pose rest fields unchanged. Load-time validation: origin ∈ `rigid_points`; EXACT axes'
+      keypoints ∈ `rigid_points`; APPROXIMATE axes are direction references and may be external
+      (the upper arm's `wrist`). All authored parts migrate mechanically: exact `(origin,
+      long_axis)`, approximate `(origin, twist)` or none — today's semantics exactly (the modules
+      compute twist as origin→twist; verified), no transitional vocabulary. The head gains its
+      7-point skull set. Model/part tests stay green through the whole reshape.
 - [x] **R2 — solver + reference geometry re-read (DONE 2026-08-13, on disk)** the same declarations through the new names
       (Gram-Schmidt exact/approximate basis — already `coordinate_frame_ops.build_orthonormal_basis`;
       the two-tier twist is unchanged). The rest pose stays the authored T-pose definitions.
@@ -113,14 +115,17 @@ that's why nothing broke. This pass ends the parallel-skeleton duplication.
       pairwise distances exact post-fit, rigid input → identity, subset fallbacks.
       *(The temporal-smoothing factors the bs solver used are unnecessary here — the Euro filter
       smooths keypoints upstream and the D3/D4 filter smooths orientations downstream.)*
-- [ ] **Step 3:** The aggregator passes the model to the rigidifier construction (it already has it
+- [x] **Step 3 (DONE 2026-08-13):** The aggregator passes the model to the rigidifier construction (it already has it
       per-run), and the rigidifier's per-frame measured lengths feed `build_reference_geometry`
       **per frame** (replacing the once-per-run nominal seeds from Task 9 Step 1 — lengths now live,
       the solver's reference directions are unchanged, the schema's rest pose follows).
-- [ ] **Step 4:** Tests — the rigidifier's enforced lengths equal the measured segment medians;
+- [x] **Step 4 (DONE 2026-08-13):** Tests — the rigidifier's enforced lengths equal the measured segment medians;
       rigidification preserves the tree's root and segment endpoints; the old-name grep across the
       freemocap live path is clean (`joint_hierarchy`, `bone_length_ratios`,
-      `AnatomicalStructure` — zero hits in the realtime path).
+      `AnatomicalStructure` — zero hits in the realtime path). **F0 is COMPLETE**: the graded
+      dispatch (2 rigid points → the span path; 3+ → the skull fit, 21 pairwise distances exact),
+      the orphan-anchor rule covering every axis-referenced keypoint, and the wall-clock window fix
+      all landed — 62 green in the freemocap subset.
 
 ## 3. F1 — `StreamSchema.from_standard_human()` against the six-group layout
 ## 2. F1 — `StreamSchema.from_standard_human()` against the six-group layout

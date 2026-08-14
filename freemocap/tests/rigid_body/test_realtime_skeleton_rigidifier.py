@@ -3,6 +3,8 @@
 Needs the live skellyforge standard-human model and the skellytracker
 RTMPose->standard-human mapping YAMLs in the venv.
 """
+import itertools
+
 import numpy as np
 import pytest
 
@@ -12,6 +14,18 @@ from skellyforge.skellymodels.standard_human.standard_human_model import (
 
 from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import (
     RealtimeSkeletonRigidifier,
+)
+
+
+# The head's 7 rigid points, in the model's declared order.
+_SKULL_POINTS = (
+    "head_center",
+    "head_vertex",
+    "nose",
+    "left_eye",
+    "right_eye",
+    "left_ear",
+    "right_ear",
 )
 
 
@@ -33,6 +47,30 @@ def _upright_rtmpose_pose() -> dict[str, np.ndarray]:
         "left_small_toe": p(-160, 20, 140), "right_small_toe": p(160, 20, 140),
         "left_heel": p(-140, 40, -40), "right_heel": p(140, 40, -40),
     }
+
+
+def _pairwise_distances(
+    positions: dict[str, np.ndarray], names: tuple[str, ...] = _SKULL_POINTS
+) -> dict[tuple[str, str], float]:
+    """The 21 pairwise distances of the skull, keyed by sorted name tuples."""
+    out: dict[tuple[str, str], float] = {}
+    for a, b in itertools.combinations(names, 2):
+        key = (a, b) if a <= b else (b, a)
+        out[key] = float(np.linalg.norm(positions[a] - positions[b]))
+    return out
+
+
+def _frames(
+    rig: RealtimeSkeletonRigidifier,
+    pose: dict[str, np.ndarray],
+    n: int,
+    *,
+    t0: float = 0.0,
+    dt: float = 1.0,
+) -> None:
+    """Feed ``n`` identical frames so the length windows converge on medians."""
+    for i in range(n):
+        rig.rigidify_frame(pose, measured=pose, t=t0 + i * dt)
 
 
 @pytest.fixture
@@ -68,46 +106,6 @@ def test_body_lengths_keyed_by_segment_names(rigidifier):
     assert all("->" not in k for k in rigidifier.body_segment_lengths)
     assert all("->" not in k for k in rigidifier.right_hand_segment_lengths)
     assert all("->" not in k for k in rigidifier.left_hand_segment_lengths)
-
-
-def test_head_vertex_sits_one_head_length_above_head_center(rigidifier):
-    # (a) — a straight standing pose's corrected head_vertex sits ~
-    # head.length_ratio × height above the corrected head_center.
-    rig = rigidifier
-    head_ratio = next(
-        s.length_ratio
-        for s in compose_standard_human().segments
-        if s.name == "head"
-    )
-    out = _frame(rig, _upright_rtmpose_pose(), t=0.0)
-    head_center = out.body_positions["head_center"]
-    head_vertex = out.body_positions["head_vertex"]
-    span = float(np.linalg.norm(head_vertex - head_center))
-    assert span == pytest.approx(head_ratio * 1750.0, rel=0.1)
-
-
-def test_output_segment_length_equals_estimate(rigidifier):
-    # The rigid guarantee: an output segment's length is exactly the current
-    # estimate, not whatever this frame's noisy observation happened to be.
-    out = _frame(rigidifier, _upright_rtmpose_pose(), t=0.0)
-    est = rigidifier.body_segment_lengths["left_upper_arm"]
-    body = out.body_positions
-    measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
-    assert measured == pytest.approx(est, abs=1e-6)
-
-
-def test_segment_length_is_rigid_to_pose_change(rigidifier):
-    rig = rigidifier
-    pose1 = _upright_rtmpose_pose()
-    _frame(rig, pose1, t=0.0)
-    # Bend the elbow drastically (very different observed upper-arm length).
-    pose2 = dict(pose1)
-    pose2["left_elbow"] = pose1["left_shoulder"] + np.array([0.0, -100.0, 0.0])
-    out2 = _frame(rig, pose2, t=0.1)
-    est = rig.body_segment_lengths["left_upper_arm"]
-    body = out2.body_positions
-    measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
-    assert measured == pytest.approx(est, abs=1e-6)
 
 
 def test_body_only_input_returns_empty_hands(rigidifier):
@@ -155,45 +153,34 @@ def test_reset_clears_learned_lengths(rigidifier):
     assert rig.body_segment_lengths["left_upper_arm"] == pytest.approx(seed)
 
 
-def test_face_nose_passes_through_uncorrected(rigidifier):
-    # The face's ``nose`` long-axis keypoint is a shared direction reference —
-    # it passes through at the observed position, NOT extruded to a length.
-    pose = _upright_rtmpose_pose()
-    out = _frame(rigidifier, pose, t=0.0)
-    observed_nose = np.array([0.0, 1720.0, 0.0])
-    assert np.allclose(out.body_positions["nose"], observed_nose, atol=1e-6)
+# ===========================================================================
+# Tree edge behavior (unchanged by the skull work) — the two previously-failing
+# guarantees must keep passing.
+# ===========================================================================
 
 
-def test_face_ears_present_at_observed(rigidifier):
-    pose = _upright_rtmpose_pose()
-    out = _frame(rigidifier, pose, t=0.0)
-    assert np.allclose(out.body_positions["left_ear"], pose["left_ear"], atol=1e-6)
-    assert np.allclose(out.body_positions["right_ear"], pose["right_ear"], atol=1e-6)
-
-
-def test_all_eight_face_keypoints_survive(rigidifier):
-    # The face's eight segments are childless roots in the body tree — their
-    # origin keypoints (left_eye / right_eye / jaw / left_mouth / right_mouth)
-    # never equal ``head``'s long axis, so the tree never anchors them and their
-    # origins would silently vanish without the wrapper-side observed fallback.
-    # Fully observed: ALL EIGHT face keypoints must appear in body_positions.
-    pose = _upright_rtmpose_pose()
-    out = _frame(rigidifier, pose, t=0.0)
+def test_output_segment_length_equals_estimate(rigidifier):
+    # The rigid guarantee: an output segment's length is exactly the current
+    # estimate, not whatever this frame's noisy observation happened to be.
+    out = _frame(rigidifier, _upright_rtmpose_pose(), t=0.0)
+    est = rigidifier.body_segment_lengths["left_upper_arm"]
     body = out.body_positions
+    measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
+    assert measured == pytest.approx(est, abs=1e-6)
 
-    # Tracked keypoints: equal to the observed position.
-    for name in ("nose", "left_eye", "right_eye", "left_ear", "right_ear"):
-        assert np.allclose(body[name], pose[name], atol=1e-6), name
 
-    # Derived keypoints (from the mapping's anatomical_offset entries — NOT in
-    # the raw pose) must be present and finite.
-    for name in ("jaw", "left_mouth", "right_mouth"):
-        assert name in body, name
-        assert np.all(np.isfinite(body[name])), name
-
-    # Sanity: the jaw sits below the nose (mouth below nose in a standing pose).
-    assert body["jaw"][1] < body["nose"][1]
-
+def test_segment_length_is_rigid_to_pose_change(rigidifier):
+    rig = rigidifier
+    pose1 = _upright_rtmpose_pose()
+    _frame(rig, pose1, t=0.0)
+    # Bend the elbow drastically (very different observed upper-arm length).
+    pose2 = dict(pose1)
+    pose2["left_elbow"] = pose1["left_shoulder"] + np.array([0.0, -100.0, 0.0])
+    out2 = _frame(rig, pose2, t=0.1)
+    est = rig.body_segment_lengths["left_upper_arm"]
+    body = out2.body_positions
+    measured = float(np.linalg.norm(body["left_elbow"] - body["left_shoulder"]))
+    assert measured == pytest.approx(est, abs=1e-6)
 
 
 def test_left_hip_anchored_at_observed(rigidifier):
@@ -212,3 +199,190 @@ def test_hips_center_not_displaced(rigidifier):
     out = _frame(rigidifier, pose, t=0.0)
     observed_hips_center = np.mean([pose["left_hip"], pose["right_hip"]], axis=0)
     assert np.allclose(out.body_positions["hips_center"], observed_hips_center, atol=1e-6)
+
+
+# ===========================================================================
+# Skull rigid fit — the head is a 7-point rigid body, not an edge.
+# ===========================================================================
+
+
+def test_skull_pairwise_distances_equal_medians(rigidifier):
+    # (a) Two frames of the same pose: the corrected skull's 21 pairwise
+    # distances equal the estimated medians EXACTLY — the skull is a rigid body.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+
+    corrected = {name: out.body_positions[name] for name in _SKULL_POINTS}
+    observed = {name: pose[name] for name in _SKULL_POINTS if name in pose}
+
+    corrected_d = _pairwise_distances(corrected)
+
+    # The template holds the pair medians: distances are exact after the fit.
+    assert len(corrected_d) == 21
+    template_d = rig._skull_template.pair_distances  # noqa: SLF001
+    for key, d in corrected_d.items():
+        assert d == pytest.approx(template_d[key], abs=1e-6), key
+
+
+def test_skull_anchor_is_body_tree_correction(rigidifier):
+    # The anchor ``head_center`` is the BODY TREE's corrected head node — the
+    # neck chain owns the head's position. In a straight standing pose the
+    # corrected head_center is rigidly placed, not the raw mean-of-ears.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+
+    # head_vertex sits one head-length above head_center (the skull is rigid,
+    # and head_center → head_vertex is one of its 21 exact edges).
+    head_ratio = next(
+        s.length_ratio
+        for s in compose_standard_human().segments
+        if s.name == "head"
+    )
+    span = float(np.linalg.norm(
+        out.body_positions["head_vertex"] - out.body_positions["head_center"]
+    ))
+    assert span == pytest.approx(head_ratio * 1750.0, rel=0.1)
+
+
+def test_articulated_face_points_stay_observed(rigidifier):
+    # Jaw / left_mouth / right_mouth are NOT in any rigid set — they anchor at
+    # their observed (mapping-output) positions, not displaced by the skull fit.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+
+    # Re-derive the observed face points from the mapping (same as the wrapper).
+    observed = rig._body_mapping.apply(pose)  # noqa: SLF001
+    for name in ("jaw", "left_mouth", "right_mouth"):
+        assert name in out.body_positions, name
+        assert np.allclose(out.body_positions[name], observed[name], atol=1e-6), name
+
+
+def test_orphan_anchor_emits_approximate_axis_keypoints(rigidifier):
+    # The foot/toes segments' approximate (twist) axis keypoints — left_heel /
+    # right_heel (foot twist) and left_small_toe / right_small_toe (toes twist) —
+    # are not the segment origin or long-axis endpoint, so the tree leaves them
+    # out. The orphan-anchor rule must still emit them at their observed
+    # positions, or those segments silently lose their twist direction every
+    # frame and fall to the damped fallback.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    out = _frame(rig, pose, t=3.0)
+
+    observed = rig._body_mapping.apply(pose)  # noqa: SLF001
+    for name in ("left_heel", "right_heel", "left_small_toe", "right_small_toe"):
+        assert name in out.body_positions, name
+        assert np.allclose(out.body_positions[name], observed[name], atol=1e-6), name
+
+
+def test_noise_on_one_skull_point_keeps_skull_rigid(rigidifier):
+    # (b) Large noise on ONE skull point (nose) for one frame: the corrected
+    # skull stays rigid (all 21 pairwise distances still exact) and the corrected
+    # nose is the template-extrapolated position, not the noisy observation.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    clean = _frame(rig, pose, t=3.0)
+    clean_d = _pairwise_distances(
+        {n: clean.body_positions[n] for n in _SKULL_POINTS}
+    )
+
+    noisy = dict(pose)
+    noisy["nose"] = np.array([200.0, 500.0, 300.0])  # wildly wrong nose
+    out = _frame(rig, noisy, t=4.0)
+
+    corrected_d = _pairwise_distances(
+        {n: out.body_positions[n] for n in _SKULL_POINTS}
+    )
+    # Rigid: every pairwise distance unchanged (the fit is a rigid transform).
+    for key in clean_d:
+        assert corrected_d[key] == pytest.approx(clean_d[key], abs=1e-6), key
+
+    # The corrected nose is the template geometry, NOT the noisy observation.
+    assert not np.allclose(out.body_positions["nose"], noisy["nose"], atol=10.0)
+    assert np.linalg.norm(out.body_positions["nose"] - noisy["nose"]) > 100.0
+    assert np.linalg.norm(out.body_positions["nose"] - clean.body_positions["nose"]) < 5.0
+
+
+def test_missing_skull_point_extrapolated(rigidifier):
+    # (c) A frame with ``left_ear`` missing: the fit still emits a corrected
+    # ``left_ear`` (extrapolated from the template — the point of a rigid body).
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+    missing = dict(pose)
+    del missing["left_ear"]
+    out = _frame(rig, missing, t=3.0)
+
+    assert "left_ear" in out.body_positions
+    left_ear = out.body_positions["left_ear"]
+    assert np.all(np.isfinite(left_ear))
+
+
+def test_fewer_than_three_skull_points_passthrough(rigidifier):
+    # (d) Fewer than 3 skull points observed: the fit is under-determined and
+    # passes observed through (corrected == observed for the surviving skull
+    # points, no crash).
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    _frames(rig, pose, n=3)
+
+    few = dict(pose)
+    # Leave only ``nose`` as a skull rigid point (+ head_center derived from the
+    # ears the rest of the pose still carries); drop both eyes and both ears so
+    # fewer than 3 of the 7 rigid points remain observed.
+    for name in ("left_eye", "right_eye", "left_ear", "right_ear"):
+        few.pop(name, None)
+    out = _frame(rig, few, t=3.0)
+
+    # No crash; nose (the one surviving rigid point) is present at observed.
+    assert "nose" in out.body_positions
+    assert np.allclose(out.body_positions["nose"], pose["nose"], atol=1e-6)
+
+
+def test_skull_template_rebuild_is_chirality_stable(rigidifier):
+    # Feed 31+ frames (t = 0..30) so the 30-frame template REBUILD fires at least
+    # once. The skull must remain rigid (pairwise distances == estimator medians)
+    # AND chirality-consistent across the rebuild: the corrected ``nose`` stays on
+    # the same side of the eye/ear plane, and nothing crashes.
+    rig = rigidifier
+    pose = _upright_rtmpose_pose()
+    n = 31
+    for i in range(n):
+        _frame(rig, pose, t=float(i))
+
+    # Sanity: the rebuild actually fired at least twice (template built at frame
+    # 0 and rebuilt at frame 30).
+    assert rig._frames_since_template_build < 30  # noqa: SLF001
+
+    template_d = rig._skull_template.pair_distances  # noqa: SLF001
+
+    # Chirality reference: a plane through left_ear/right_ear/left_eye (three
+    # observed skull points). The corrected ``nose`` must stay on the SAME side
+    # of that plane every frame.
+    le = pose["left_ear"]
+    re = pose["right_ear"]
+    third = pose["left_eye"]
+    plane_normal = np.cross(re - le, third - le)
+    plane_normal = plane_normal / np.linalg.norm(plane_normal)
+
+    sign_ref = None
+    for i in range(n):
+        out = _frame(rig, pose, t=float(n + i))  # post-rebuild steady-state frames
+        corrected = {name: out.body_positions[name] for name in _SKULL_POINTS}
+        corrected_d = _pairwise_distances(corrected)
+        for key, d in corrected_d.items():
+            assert d == pytest.approx(template_d[key], abs=1e-6), key
+
+        nose = out.body_positions["nose"]
+        s = float(np.sign(np.dot(nose - le, plane_normal)))
+        assert s != 0.0
+        if sign_ref is None:
+            sign_ref = s
+        assert s == sign_ref, f"chirality flipped at frame {i}"

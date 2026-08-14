@@ -61,7 +61,7 @@ import numpy as np
 
 from skellytracker.core.io.tracker_mapping import TrackerMapping
 
-from freemocap.core.streaming.standard_stream.stream_schema import (
+from freemocap.core.streaming.constants import (
     NOMINAL_SUBJECT_HEIGHT_MM,
 )
 from freemocap.core.tasks.mocap.tracker_mappings import (

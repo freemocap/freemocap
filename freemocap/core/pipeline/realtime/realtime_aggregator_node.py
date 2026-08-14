@@ -112,7 +112,7 @@ CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 # affect solved quaternions), so nominal anthropometric seeds are the honest
 # v1; live measured lengths refine the geometry when the estimator feeds it.
 # Shared SSOT with the stream schema's rest-pose build.
-from freemocap.core.streaming.standard_stream.stream_schema import NOMINAL_SUBJECT_HEIGHT_MM
+from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM
 
 def _merge_angulation(
         *,
@@ -744,11 +744,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         reference_geometry = build_reference_geometry(
                             list(standard_human.segments), measured_lengths
                         ).segments
-                    # The rigidifier hands back standard-human body keypoints plus the
-                    # standard-human-keyed hand points; the solver consumes the
-                    # tracker's named keypoints STRAIGHT THROUGH (no bone-keyed
-                    # map — the standard human already names every keypoint it
-                    # needs).
+                    # The rigidifier hands back the hydrated standard-human
+                    # landmarks (body + standard-named hands); the solver
+                    # consumes them straight through — no bone-keyed map, the
+                    # standard human already names every landmark it needs.
                     segment_rotations_world: dict[str, np.ndarray] | None = None
                     segment_rotations_local: dict[str, np.ndarray] | None = None
                     if (
@@ -756,7 +755,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         and rigid_result.body_positions
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        solver_keypoints = {
+                        solver_landmarks = {
                             **rigid_result.body_positions,
                             **rigid_result.left_hand_standard_positions,
                             **rigid_result.right_hand_standard_positions,
@@ -764,7 +763,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         orientation_result = solve_frame_orientations(
                             standard_human=standard_human,
                             reference_geometry=reference_geometry,
-                            keypoints=solver_keypoints,
+                            landmarks=solver_landmarks,
                             timestamp_seconds=frame_time,
                             previous_result=previous_orientation_result,
                         )

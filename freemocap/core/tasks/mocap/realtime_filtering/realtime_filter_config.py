@@ -10,7 +10,7 @@ Consumed by the realtime aggregator node, which wires these values into:
 
 from pydantic import BaseModel
 
-from freemocap.core.streaming.standard_stream.stream_schema import (
+from freemocap.core.streaming.constants import (
     NOMINAL_SUBJECT_HEIGHT_MM,
 )
 

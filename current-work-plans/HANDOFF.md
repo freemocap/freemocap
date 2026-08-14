@@ -28,7 +28,7 @@ linkage layer is not needed for it.
 |---|---|---|
 | skellyforge | committed+pushed: the landmark sweep (`rigid_points`→`landmarks`, `origin_keypoint`→`origin_landmark`, `target_keypoint`→`target_landmark`, `required_keypoints()`→`required_landmarks()`, `ReferenceGeometry.keypoints`→`landmarks`), the face-provenance reword (canon owned on this side), `test_face_mapping_consistency.py` (pins the cross-repo ratio agreement at TEST time — the runtime is tracker-free). **On disk since, uncommitted:** `tracker_contract.py` reads `landmark_names` (un-breaks it against current skellytracker), `rest_roll` removed (dead field), `observation.py`'s silent try/except removed (frozen legacy copy — dies with the posthoc rebuild) | 148 green at push; post-round: 141 verified locally + 4 tracker-contract tests that need the re-lock |
 | skellytracker | the mapping language sweep (`TrackerMapping.keypoint_names`→`landmark_names`; `known_tracker_keypoints` stays; the four YAML headers say "keys are landmark names; values hydrate them") | **234 green** |
-| freemocap | committed+pushed: the docs reorg + the F0–F4 body of work. **On disk since, uncommitted: Sweep 3 landed** — the landmark renames (schema/sample/rigidifier + tests), the **dual channels** (`KEYPOINTS_3D` = tracker-named via `tracker_keypoint_names()`; new `LANDMARKS_3D` = the 76; goldens regenerated + TS mirror + decoder/SchemaRegistry), **A2** (relay stop signal), **B1** (send-count window + frame-distance RESET), **S2** (per-frame monitor + its config flag removed). *(Struck: the TS "long-axis" comment sweep — the renderer's prose describes the mesh's own length axis, accurate geometry, not the retired vocabulary.)* | **113 green** (backend subset); TS decoder 5 + renderer 11; `tsc` clean |
+| freemocap | committed+pushed: the docs reorg + the F0–F4 body of work. **On disk since, uncommitted: Sweep 3 + F5 landed** — the landmark renames (schema/sample/rigidifier + tests), the **dual channels** (`KEYPOINTS_3D` = tracker-named via `tracker_keypoint_names()`; new `LANDMARKS_3D` = the 76; goldens regenerated + TS mirror + decoder/SchemaRegistry), **A2** (relay stop signal), **B1** (send-count window + frame-distance RESET), **S2** (per-frame monitor + its config flag removed); **F5a** `test_full_loop.py` (rigidifier → solver → message → bytes → decode: wire rotations equal the solver's, mock-camera standing run is non-NaN, arm abduction rotates the humerus ~90° while the spine stays) + **F5b** the TS integration harness (dual channels resolve, instances placed from the golden wire, wxyz convention pinned). **The gate caught a real break en route:** the pushed skellyforge renamed `solve_frame_orientations(..., keypoints=)` → `landmarks=` — the aggregator call site is fixed. *(Struck: the TS "long-axis" comment sweep — the renderer's prose describes the mesh's own length axis, accurate geometry, not the retired vocabulary.)* | **115 green** (backend subset); TS decoder 5 + renderer 11 + integration 3; `tsc` clean |
 
 **First action on pickup (the commit round — the user):** everything is landed on disk; review, commit
 + push both repos. (skellyforge: the tracker-contract/rest_roll/observation round + the re-locked
@@ -73,7 +73,14 @@ Then **F5** — the gate.
    skellyforge `tracker_contract` fix + `rest_roll` removal + `observation.py` freeze (re-locked,
    148 green); Sweep 3 (renames, dual channels, A2/B1/S2, goldens + TS mirror).
 1. **[USER] The commit round** — review, commit + push skellyforge (the round + `uv.lock`) and
-   freemocap (Sweep 3). Then **F5** — the gate.
+   freemocap (Sweep 3 + F5; the re-locked `uv.lock` line — the f97d434 skellyforge pin — rides along).
+2. **[USER] The manual full-loop run — THE gate.** Fire up the realtime loop
+   (`python freemocap/__main__.py` + `npm run dev`) and check: **T-pose at
+   capture start** (identity frames), **arm bend rotates the humerus mesh
+   without pop**, **hidden-hand degradation** (occluded hand degrades, no
+   crash), **no schema drift** (no schema re-send spam once lengths converge).
+   This is the moment the rigid-body segment meshes appear in the 3JS viewport.
+   Then: the VMC adapter (F5+1).
 3. **[USER] Push freemocap.**
 4. **F5 — the gate**: backend full-loop test (aggregator → sample → bytes → decode → identical
    rotations; a mock-camera realtime run producing non-NaN ROTATIONS_WORLD) + the frontend integration

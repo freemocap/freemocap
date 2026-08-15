@@ -1,4 +1,4 @@
-"""F2a — ``StreamSample.from_aggregator_output()`` + golden bytes.
+"""F2a — the producer-composed sample + golden bytes.
 
 The encoder half of F2 (doc 11 §4 Step 1 + Step 4). Builds one six-block sample
 from a synthetic ``AggregationNodeOutputMessage`` + the F1 schema, asserts the
@@ -28,8 +28,13 @@ from freemocap.core.streaming.standard_stream import (
     encode_sample,
     encode_schema,
 )
-from freemocap.core.streaming.standard_stream.stream_schema import (
-    StreamSchema,
+from freemocap.core.streaming.standard_stream.producers import (
+    compose,
+    compose_sample,
+)
+from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+    FrameContext,
+    StreamContext,
 )
 from freemocap.core.tasks.mocap.center_of_mass import (
     CoMConfidence,
@@ -59,15 +64,42 @@ def _model():
 
 
 def _schema(**kwargs):
+    """The composed schema for the synthetic two-camera rtmpose stream."""
     kw = dict(
-        stream_id="golden-stream-id",
-        stream_name="golden-standard-stream",
         standard_human=_model(),
         camera_ids=("cam-0", "cam-1"),
         tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+        pipeline_live=True,
     )
     kw.update(kwargs)
-    return StreamSchema.from_standard_human(**kw)
+    return compose(
+        StreamContext(**kw),
+        stream_id="golden-stream-id",
+        stream_name="golden-standard-stream",
+    ).schema
+
+
+def _sample(message=None, *, timestamp=None, image_payload=None) -> StreamSample:
+    """Compose one sample from the synthetic message through the producers."""
+    if message is None:
+        message = _message()
+    frame_ctx = FrameContext(
+        frame_number=message.frame_number,
+        timestamp=timestamp if timestamp is not None else 0.0,
+        aggregator_output=message,
+        image_payload=image_payload,
+    )
+    composition = compose(
+        StreamContext(
+            standard_human=_model(),
+            camera_ids=("cam-0", "cam-1"),
+            tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+            pipeline_live=True,
+        ),
+        stream_id="golden-stream-id",
+        stream_name="golden-standard-stream",
+    )
+    return compose_sample(composition, frame_ctx)
 
 
 def _observation(*, frame_number: int, body_points: dict[str, tuple[float, float]]) -> Observation:
@@ -163,28 +195,30 @@ def _block_by_kind(sample: StreamSample, kind: ChannelKind) -> list:
     return [b for b in sample.blocks if b.kind is kind]
 
 
-def test_sample_has_seven_groups_in_order():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+def test_sample_has_groups_in_producer_order():
+    sample = _sample(image_payload=b"jpeg")
     kinds = [b.kind for b in sample.blocks]
-    # 7 groups... but OVERLAY_2D is one per camera (2) → 6 + 2 = 8 blocks
+    # 10 groups in producer order; the overlay kinds are one per camera (2) →
+    # 12 blocks; IMAGE_JPEG composes last (odd-length uint8 blob must not
+    # precede float32).
     assert kinds == [
         ChannelKind.KEYPOINTS_3D,
         ChannelKind.LANDMARKS_3D,
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
+        ChannelKind.SEGMENT_LENGTHS,
+        ChannelKind.OVERLAY_2D,
+        ChannelKind.OVERLAY_REPROJECTIONS,
+        ChannelKind.OVERLAY_2D,
+        ChannelKind.OVERLAY_REPROJECTIONS,
         ChannelKind.DERIVED_POINTS,
-        ChannelKind.OVERLAY_2D,
-        ChannelKind.OVERLAY_2D,
+        ChannelKind.IMAGE_JPEG,
     ]
 
 
 def test_keypoints_3d_dims_and_values():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     (kp,) = _block_by_kind(sample, ChannelKind.KEYPOINTS_3D)
     group = _schema().channels[0]
     assert kp.data.shape == (len(group.names), 4)  # tracker keypoints × (x,y,z,reprojection_error)
@@ -202,9 +236,7 @@ def test_keypoints_3d_dims_and_values():
 
 
 def test_landmarks_3d_dims_and_values():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     (lm,) = _block_by_kind(sample, ChannelKind.LANDMARKS_3D)
     group = _schema().channels[1]
     assert lm.data.shape == (76, 4)  # landmarks × (x,y,z,reprojection_error)
@@ -223,9 +255,7 @@ def test_landmarks_3d_dims_and_values():
 
 
 def test_segment_origins_from_origin_landmark():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     (orig,) = _block_by_kind(sample, ChannelKind.SEGMENT_ORIGINS)
     group = _schema().channels[2]
     assert orig.data.shape == (60, 3)
@@ -245,9 +275,7 @@ def test_segment_origins_from_origin_landmark():
 
 
 def test_rotations_wxyz_match_message():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     world = _block_by_kind(sample, ChannelKind.ROTATIONS_WORLD)[0]
     local = _block_by_kind(sample, ChannelKind.ROTATIONS_LOCAL)[0]
     group = _schema().channels[3]
@@ -272,11 +300,9 @@ def test_rotations_wxyz_match_message():
 
 
 def test_derived_points_com_and_xcom():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     (derived,) = _block_by_kind(sample, ChannelKind.DERIVED_POINTS)
-    group = _schema().channels[5]
+    group = _schema().channels[8]
     names = group.names  # ("center_of_mass", "xcom")
     name_to_idx = {n: i for i, n in enumerate(names)}
     assert derived.data.shape == (2, 3)
@@ -291,19 +317,15 @@ def test_derived_points_com_and_xcom():
 
 
 def test_xcom_none_yields_nan_row():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(xcom=None), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample(message=_message(xcom=None))
     (derived,) = _block_by_kind(sample, ChannelKind.DERIVED_POINTS)
-    names = _schema().channels[5].names
+    names = _schema().channels[8].names
     name_to_idx = {n: i for i, n in enumerate(names)}
     assert np.all(np.isnan(derived.data[name_to_idx["xcom"]]))
 
 
 def test_overlay_2d_detections_per_camera():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     overlays = _block_by_kind(sample, ChannelKind.OVERLAY_2D)
     assert len(overlays) == 2  # one per camera
 
@@ -325,13 +347,61 @@ def test_overlay_2d_detections_per_camera():
     assert np.all(np.isnan(cam0[name_to_idx["left_wrist"]]))
 
 
+def test_segment_lengths_block_carries_measured_values():
+    sample = _sample(message=_message(segment_lengths={"hips": 246.5, "spine": 263.5}))
+    (lengths,) = _block_by_kind(sample, ChannelKind.SEGMENT_LENGTHS)
+    group = _schema().channels[5]
+    assert lengths.data.shape == (60, 1)
+    name_to_idx = {n: i for i, n in enumerate(group.names)}
+    assert lengths.data[name_to_idx["hips"]][0] == pytest.approx(246.5)
+    assert lengths.data[name_to_idx["spine"]][0] == pytest.approx(263.5)
+    # unmeasured segment → NaN row
+    assert np.isnan(lengths.data[name_to_idx["head"]][0])
+
+
+def test_image_jpeg_block_carries_raw_bytes():
+    jpeg = bytes([0xFF, 0xD8, 0xFF]) + b"fake-jpeg"  # odd length — pins the uint8 alignment path
+    sample = _sample(image_payload=jpeg)
+    (image,) = _block_by_kind(sample, ChannelKind.IMAGE_JPEG)
+    assert image.data.dtype == np.uint8
+    assert image.data.tobytes() == jpeg
+
+
+def test_no_image_payload_omits_the_block():
+    """A frame with no image payload (e.g. shm eviction) ships no image block;
+    the consumer keeps its last image."""
+    sample = _sample(image_payload=None)
+    assert _block_by_kind(sample, ChannelKind.IMAGE_JPEG) == []
+
+
+def test_overlay_reprojections_per_camera():
+    sample = _sample(message=_message(reprojected_segment_origins={
+        "cam-0": {"hips": (320.0, 240.0), "spine": (310.0, 230.0)},
+        "cam-1": {"hips": (310.0, 250.0)},
+    }))
+    reprojs = _block_by_kind(sample, ChannelKind.OVERLAY_REPROJECTIONS)
+    assert len(reprojs) == 2  # one per camera
+
+    by_cam = {r.camera_id: r for r in reprojs}
+    assert set(by_cam) == {"cam-0", "cam-1"}
+
+    group = _schema().channels[7]
+    name_to_idx = {n: i for i, n in enumerate(group.names)}
+    cam0 = by_cam["cam-0"].data
+    assert cam0.shape == (60, 3)  # segment names × (x,y,visibility)
+    np.testing.assert_array_equal(
+        cam0[name_to_idx["hips"], :2],
+        np.array([320.0, 240.0], dtype=np.float32),
+    )
+    # a segment with no reprojection this frame → NaN row
+    assert np.all(np.isnan(cam0[name_to_idx["head"]]))
+
+
 # ── round-trip ─────────────────────────────────────────────────────────
 
 
 def test_sample_roundtrip_field_by_field():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model(), timestamp=123.456
-    )
+    sample = _sample(timestamp=123.456)
     restored = StreamSample.from_bytes(sample.to_bytes())
 
     assert restored.timestamp == pytest.approx(123.456)
@@ -345,9 +415,7 @@ def test_sample_roundtrip_field_by_field():
 
 
 def test_encode_is_deterministic_via_method():
-    sample = StreamSample.from_aggregator_output(
-        message=_message(), schema=_schema(), standard_human=_model()
-    )
+    sample = _sample()
     assert sample.to_bytes() == sample.to_bytes()
 
 
@@ -366,8 +434,11 @@ def test_golden_schema_roundtrip():
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
-        ChannelKind.DERIVED_POINTS,
+        ChannelKind.SEGMENT_LENGTHS,
         ChannelKind.OVERLAY_2D,
+        ChannelKind.OVERLAY_REPROJECTIONS,
+        ChannelKind.DERIVED_POINTS,
+        ChannelKind.IMAGE_JPEG,
     ]
     # the real rtmpose tracker keypoint set, sorted
     assert schema.channels[0].names == tracker_keypoint_names("rtmpose")

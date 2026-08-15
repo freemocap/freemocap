@@ -1,13 +1,13 @@
 """Standard-stream wire contract: schema (StreamInfo) + sample (binary) + codecs.
 
-WS-1 — pure contract + codecs, no pipeline / WebSocket wiring. The SSOT for the
-wire format used by the backend encoder (WS-2), the UI decoder (WS-4), and the
-LSL route. See
-[09 — Standard Stream Protocol](docs/streaming-compatibility/09-standard-stream-protocol.md)
-and [WS-1 plan](docs/streaming-compatibility/phase-1/01-standard-stream-contract.md).
+Pure contract + codecs, no pipeline / WebSocket wiring. The SSOT for the wire
+format used by the backend encoder, the UI decoder, and the LSL route. See
+[current-work-plans/03-transport/standard-stream-protocol.md](../../../current-work-plans/03-transport/standard-stream-protocol.md)
+and
+[current-work-plans/01-data-model/stream-contract.md](../../../current-work-plans/01-data-model/stream-contract.md).
 """
 from freemocap.core.streaming.standard_stream.coordinate_convention import (
-    FREEMOCAP_CANONICAL_CONVENTION,
+    FREEMOCAP_COORDINATE_CONVENTION,
     Axis,
     CoordinateConvention,
     Handedness,
@@ -35,9 +35,11 @@ from freemocap.core.streaming.standard_stream.stream_sample import (
 from freemocap.core.streaming.standard_stream.stream_schema import (
     DEFAULT_DERIVED_POINTS,
     DERIVED_POINT_COLUMNS,
+    IMAGE_JPEG_COLUMNS,
     KEYPOINTS_3D_COLUMNS,
     OVERLAY_2D_COLUMNS,
     ROTATION_COLUMNS,
+    SEGMENT_LENGTHS_COLUMNS,
     SEGMENT_ORIGINS_COLUMNS,
     ChannelGroup,
     ChannelKind,
@@ -51,12 +53,13 @@ from freemocap.core.streaming.standard_stream.stream_schema import (
 __all__ = [
     # coordinate convention
     "Units", "Handedness", "Axis", "RotationFrame", "RotationForm",
-    "CoordinateConvention", "FREEMOCAP_CANONICAL_CONVENTION",
+    "CoordinateConvention", "FREEMOCAP_COORDINATE_CONVENTION",
     # schema
     "ChannelKind", "OverlayLayer", "ChannelGroup", "RestPose", "StreamSchema",
     "encode_schema", "decode_schema",
     "KEYPOINTS_3D_COLUMNS", "SEGMENT_ORIGINS_COLUMNS",
     "DERIVED_POINT_COLUMNS", "ROTATION_COLUMNS", "OVERLAY_2D_COLUMNS",
+    "SEGMENT_LENGTHS_COLUMNS", "IMAGE_JPEG_COLUMNS",
     "DEFAULT_DERIVED_POINTS",
     # sample
     "MessageType", "DtypeCode", "SampleBlock", "StreamSample",

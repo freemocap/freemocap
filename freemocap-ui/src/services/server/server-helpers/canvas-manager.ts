@@ -1,4 +1,3 @@
-import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
 import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
@@ -79,12 +78,17 @@ export class CanvasManager {
      * Send a frame to a worker. Creates the worker if it doesn't exist yet.
      * Transfers the raw pixel buffer (ArrayBuffer) — ImageBitmap creation
      * happens in the per-camera worker so GPU uploads are independent.
+     *
+     * ``skeleton`` is the SAME sample's overlay observation for this camera
+     * (the standard stream carries images + overlays in one sample), so the
+     * worker composites the frame's own overlay — no cross-stream timing.
      */
     public sendFrameToWorker(
         cameraId: string,
         pixelBuffer: ArrayBuffer,
         width: number,
         height: number,
+        skeleton: SkeletonObservation | null = null,
     ): boolean {
         const workerInfo = this.workers.get(cameraId);
 
@@ -103,7 +107,7 @@ export class CanvasManager {
 
         try {
             workerInfo.worker.postMessage(
-                { type: 'frame', pixelBuffer, width, height },
+                { type: 'frame', pixelBuffer, width, height, skeleton },
                 [pixelBuffer],
             );
             return true;
@@ -197,30 +201,6 @@ export class CanvasManager {
         };
 
         return worker;
-    }
-
-    /**
-     * Route the latest overlay observations to each camera's worker. Inputs are
-     * per-camera dicts (cameraId → observation); each worker gets only its own.
-     */
-    public updateOverlays(
-        charuco: Record<string, CharucoObservation> | null | undefined,
-        skeleton: Record<string, SkeletonObservation> | null | undefined,
-    ): void {
-        const cameraIds = new Set<string>();
-        if (charuco) for (const id of Object.keys(charuco)) cameraIds.add(id);
-        if (skeleton) for (const id of Object.keys(skeleton)) cameraIds.add(id);
-
-        for (const cameraId of cameraIds) {
-            const info = this.workers.get(cameraId);
-            if (info?.initialized) {
-                info.worker.postMessage({
-                    type: "overlays",
-                    charuco: charuco?.[cameraId] ?? null,
-                    skeleton: skeleton?.[cameraId] ?? null,
-                });
-            }
-        }
     }
 
     /** Toggle which overlay types every camera worker composites. */

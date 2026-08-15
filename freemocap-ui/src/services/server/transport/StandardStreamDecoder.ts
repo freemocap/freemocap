@@ -11,7 +11,7 @@
 //                          dtype_code u1 @2 · cols u1 @3 · camera_id S16 @4 ·
 //                          overlay_layer u1 @20 · [pad→24] num_elements u4 @24 ·
 //                          data_byte_length u4 @28
-//              + BLOCK_DATA (row-major f32, num_elements×cols)
+//              + BLOCK_DATA (row-major; float32 or, for IMAGE_JPEG, uint8 per dtype_code)
 //   SAMPLE_FOOTER (32 B):  mirrors SAMPLE_HEADER
 //
 // Offsets locked by freemocap/tests/test_standard_stream_contract.py
@@ -23,6 +23,7 @@
 
 import {
   ChannelKind,
+  DtypeCode,
   MessageType,
   OverlayLayer,
   type DecodedSample,
@@ -147,8 +148,8 @@ export function decodeSample(buf: ArrayBuffer, schema: StreamSchema): DecodedSam
       throw new Error(`StandardStreamDecoder: block ${b} bad BLOCK_HEADER message_type=${blockType}`);
     }
     const kind = blockView.getUint8(BLOCK.block_kind) as ChannelKind;
-    const dtypeCode = blockView.getUint8(BLOCK.dtype_code);
-    if (dtypeCode !== 0) {
+    const dtypeCode = blockView.getUint8(BLOCK.dtype_code) as DtypeCode;
+    if (dtypeCode !== DtypeCode.FLOAT32 && dtypeCode !== DtypeCode.UINT8) {
       throw new Error(`StandardStreamDecoder: block ${b} unsupported dtype_code=${dtypeCode}`);
     }
     const cols = blockView.getUint8(BLOCK.cols);
@@ -158,17 +159,30 @@ export function decodeSample(buf: ArrayBuffer, schema: StreamSchema): DecodedSam
     const dataByteLength = blockView.getUint32(BLOCK.data_byte_length, true);
 
     cursor += BLOCK_HEADER_SIZE;
-    const expectedBytes = numElements * cols * 4; // float32
+    const bytesPerElement = dtypeCode === DtypeCode.UINT8 ? 1 : 4;
+    const expectedBytes = numElements * cols * bytesPerElement;
     if (dataByteLength !== expectedBytes) {
       throw new Error(
-        `StandardStreamDecoder: block ${b} data_byte_length=${dataByteLength} != ${expectedBytes} (num_elements×cols×4)`,
+        `StandardStreamDecoder: block ${b} data_byte_length=${dataByteLength} != ${expectedBytes} (num_elements×cols×${bytesPerElement})`,
       );
     }
     if (cursor + dataByteLength > buf.byteLength) {
       throw new Error(`StandardStreamDecoder: block ${b} data runs past end of buffer`);
     }
 
-    const data = new Float32Array(buf, cursor, numElements * cols);
+    // A preceding uint8 block can have an odd byte length, misaligning this
+    // block's byteOffset for a Float32Array view (which requires 4-byte
+    // alignment). uint8 views have no such constraint; for float32 we copy the
+    // slice into a fresh (aligned) buffer when misaligned. The encoder composes
+    // the IMAGE_JPEG block last, so this copy is off the normal path.
+    let data: Float32Array | Uint8Array;
+    if (dtypeCode === DtypeCode.UINT8) {
+      data = new Uint8Array(buf, cursor, numElements * cols);
+    } else if (cursor % 4 === 0) {
+      data = new Float32Array(buf, cursor, numElements * cols);
+    } else {
+      data = new Float32Array(buf.slice(cursor, cursor + dataByteLength));
+    }
     cursor += dataByteLength;
 
     // Cross-check the block kind against the schema by KIND, not by position.
@@ -181,7 +195,7 @@ export function decodeSample(buf: ArrayBuffer, schema: StreamSchema): DecodedSam
       );
     }
 
-    blocks.push({ kind, data, numElements, cols, cameraId, overlayLayer });
+    blocks.push({ kind, dtypeCode, data, numElements, cols, cameraId, overlayLayer });
   }
 
   if (cursor + SAMPLE_FOOTER_SIZE > buf.byteLength) {

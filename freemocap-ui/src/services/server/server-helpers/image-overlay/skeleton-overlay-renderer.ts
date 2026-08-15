@@ -28,6 +28,11 @@ export interface SkeletonObservation {
     image_width: number;
     image_height: number;
     points: SkeletonPoint[];
+    /** The fitted skeleton's segment-origin landmarks projected into this
+     * camera — drawn as larger dots with the segment connections between. */
+    landmarks?: SkeletonPoint[];
+    /** Segment parent→child name pairs, drawn between the landmarks. */
+    connections?: [string, string][];
     // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
     bbox_x1?: number;
     bbox_y1?: number;
@@ -35,12 +40,6 @@ export interface SkeletonObservation {
     bbox_y2?: number;
     bbox_from_detector?: boolean;
 }
-
-// Debug HUD (frame number + tracker/point counts) drawn on top of every camera
-// feed. It's redrawn every frame per camera — two stroked+filled text draws plus
-// a font set each — which showed up as ~12% of main-thread time during streaming.
-// Off by default; flip to true when debugging the overlay pipeline.
-const SHOW_SKELETON_DEBUG_HUD = false;
 
 // Classification used for colour routing. Kept deliberately loose — any name
 // containing "left" / "right" is treated as a side, otherwise center.
@@ -173,6 +172,7 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
 
         const { scaleX, scaleY } = this;
 
+        // Tracker keypoint detections — small dots, no connections.
         const pointMap = new Map<string, Point2D>();
         for (const p of observation.points) {
             pointMap.set(p.name, {
@@ -182,20 +182,29 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
                 visibility: p.visibility,
             });
         }
-
-        // Connections first (underneath the points), then points.
-        if (this.schema && this.schema.name === observation.tracker_id) {
-            this.drawConnections(pointMap, this.schema);
-        }
-
         this.drawAllPoints(pointMap);
+
+        // Segment-origin landmarks — larger dots with the segment skeleton
+        // connections drawn between them.
+        const landmarks = observation.landmarks ?? [];
+        const landmarkMap = new Map<string, Point2D>();
+        for (const p of landmarks) {
+            landmarkMap.set(p.name, {
+                x: p.x * scaleX,
+                y: p.y * scaleY,
+                id: p.name,
+                visibility: p.visibility,
+            });
+        }
+        if (landmarkMap.size > 0) {
+            this.drawConnections(landmarkMap, observation.connections ?? []);
+            this.drawLandmarkPoints(landmarkMap);
+        }
 
         // Debug: draw person bounding box.
         this.drawBbox(observation);
 
-        if (SHOW_SKELETON_DEBUG_HUD) {
-            this.drawInfo(observation);
-        }
+        this.drawStats(observation);
 
         this.ctx.restore();
     }
@@ -248,9 +257,9 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
 
     private drawConnections(
         pointMap: Map<string, Point2D>,
-        schema: TrackedObjectDefinition,
+        connections: [string, string][],
     ): void {
-        for (const [a, b] of schema.connections) {
+        for (const [a, b] of connections) {
             const start = pointMap.get(a);
             const end = pointMap.get(b);
             if (!start || !end || !this.isValidPoint(start) || !this.isValidPoint(end)) continue;
@@ -268,6 +277,36 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         }
     }
 
+    /** The landmark dots: larger than the keypoint dots, same classification
+     *  colours with a bright fill so the fitted skeleton reads above the
+     *  keypoint scatter. */
+    private drawLandmarkPoints(pointMap: Map<string, Point2D>): void {
+        const buckets = new Map<DrawStyle, Point2D[]>();
+        for (const point of pointMap.values()) {
+            const style = this.styleFor(point.id as string);
+            const list = buckets.get(style);
+            if (list) list.push(point);
+            else buckets.set(style, [point]);
+        }
+        for (const [style, points] of buckets) {
+            this.drawPoints(points, {...style, pointRadius: style.pointRadius + 4, pointColor: '#FFFFFF', pointStroke: style.pointStroke});
+        }
+    }
+
+    /** The always-on stats block: frame number + counts of finite points. */
+    private drawStats(observation: SkeletonObservation): void {
+        const finite = (points: SkeletonPoint[]): number =>
+            points.reduce((n, p) => n + (Number.isFinite(p.x) && Number.isFinite(p.y) ? 1 : 0), 0);
+        const kp = finite(observation.points);
+        const lm = finite(observation.landmarks ?? []);
+
+        const text = `f ${observation.frame_number}  ·  kp ${kp}  ·  lm ${lm}`;
+        const w = 10 + text.length * 7;
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        this.ctx.fillRect(6, 6, w, 22);
+        this.drawText(text, 11, 17, 12, '#DDDDDD', '#111111', 2);
+    }
+
     private drawAllPoints(pointMap: Map<string, Point2D>): void {
         // Bucket by style so we can call drawPoints with one style per batch.
         const buckets = new Map<DrawStyle, Point2D[]>();
@@ -280,35 +319,5 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         for (const [style, points] of buckets) {
             this.drawPoints(points, style);
         }
-    }
-
-    private drawInfo(observation: SkeletonObservation): void {
-        const {points, frame_number, tracker_id} = observation;
-
-        this.ctx.fillStyle = this.INFO_BG;
-        this.ctx.fillRect(5, 5, 500, 60);
-
-        this.drawText(
-            `Frame: ${frame_number}`,
-            10,
-            25,
-            14,
-            this.TEXT_COLOR,
-            this.TEXT_STROKE,
-            2,
-        );
-
-        const schemaSuffix = this.schema
-            ? (this.schema.name === tracker_id ? '' : ' (schema mismatch!)')
-            : ' (schema pending)';
-        this.drawText(
-            `Tracker: ${tracker_id} — points: ${points.length}${schemaSuffix}`,
-            10,
-            50,
-            14,
-            points.length > 0 ? '#00FF00' : '#FF4444',
-            this.TEXT_STROKE,
-            2,
-        );
     }
 }

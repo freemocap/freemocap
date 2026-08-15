@@ -1,7 +1,7 @@
 """Coordinate-convention value type for the standard stream.
 
 Convention is a *schema* fact — declared once, never per sample. See
-[07 — Coordinate Conventions](docs/streaming-compatibility/07-coordinate-conventions.md).
+[current-work-plans/00-foundation/conventions.md](../../../current-work-plans/00-foundation/conventions.md).
 """
 from __future__ import annotations
 
@@ -51,13 +51,13 @@ class CoordinateConvention(msgspec.Struct, frozen=True):
     rotation_form: RotationForm
 
 
-# FreeMoCap's canonical convention: robotics/biomechanics standards — millimeters,
-# right-handed, +Z up, +X forward (see
-# [07 — Coordinate Conventions](docs/streaming-compatibility/07-coordinate-conventions.md)).
+# FreeMoCap's coordinate convention: robotics/biomechanics standards —
+# millimeters, right-handed, +Z up, +X forward (see
+# [current-work-plans/00-foundation/conventions.md](../../../current-work-plans/00-foundation/conventions.md)).
 # The +X forward value is a **declared internal standard**, not derived from
 # whatever the calibration produced — all FreeMoCap data is in it internally,
 # conversion happens at the adapter edge on request.
-FREEMOCAP_CANONICAL_CONVENTION = CoordinateConvention(
+FREEMOCAP_COORDINATE_CONVENTION = CoordinateConvention(
     units=Units.MILLIMETERS,
     handedness=Handedness.RIGHT,
     up_axis=Axis.PLUS_Z,

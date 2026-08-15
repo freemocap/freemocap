@@ -25,7 +25,6 @@ from freemocap.core.pipeline.abcs.pipeline_manager_abc import PipelineManagerABC
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.types.type_overloads import PipelineIdString, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves in the new accessor signature
 
 logger = logging.getLogger(__name__)
@@ -134,22 +133,6 @@ class RealtimePipelineManager(PipelineManagerABC):
         _done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
         for t in pending:
             t.cancel()
-
-    def get_latest_frontend_payloads(
-            self,
-            if_newer_than: FrameNumberInt,
-            display_image_sizes: dict[str, dict[str, float]] | None = None,
-    ) -> list[FrontendImagePacket]:
-        latest: list[FrontendImagePacket] = []
-        with self.lock:
-            for pipeline_id, pipeline in self.pipelines.items():
-                packet = pipeline.get_latest_frontend_payload(
-                    if_newer_than=if_newer_than,
-                    display_image_sizes=display_image_sizes,
-                )
-                if packet is not None:
-                    latest.append(packet)
-        return latest
 
     def get_latest_aggregator_outputs(
             self,

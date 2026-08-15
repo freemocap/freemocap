@@ -10,7 +10,7 @@ import pytest
 
 from freemocap.core.streaming.standard_stream import (
     BLOCK_HEADER_SIZE,
-    FREEMOCAP_CANONICAL_CONVENTION,
+    FREEMOCAP_COORDINATE_CONVENTION,
     SAMPLE_FOOTER_SIZE,
     SAMPLE_HEADER_SIZE,
     ChannelGroup,
@@ -32,7 +32,7 @@ def _example_schema() -> StreamSchema:
     return StreamSchema(
         stream_id="stream-uuid-1234",
         stream_name="freemocap standard stream",
-        coordinate_convention=FREEMOCAP_CANONICAL_CONVENTION,
+        coordinate_convention=FREEMOCAP_COORDINATE_CONVENTION,
         channels=(
             ChannelGroup(
                 kind=ChannelKind.KEYPOINTS_3D,
@@ -90,7 +90,7 @@ def test_schema_roundtrip():
     schema = _example_schema()
     restored = decode_schema(encode_schema(schema))
     assert restored == schema
-    assert restored.coordinate_convention == FREEMOCAP_CANONICAL_CONVENTION
+    assert restored.coordinate_convention == FREEMOCAP_COORDINATE_CONVENTION
     assert restored.channels[0].kind == ChannelKind.KEYPOINTS_3D
     assert restored.joint_hierarchy["left_shoulder"] == ("left_elbow",)
 
@@ -120,6 +120,59 @@ def test_sample_roundtrip_preserves_nan_wxyz_and_camera_ids():
 def test_encode_is_deterministic():
     sample = _example_sample()
     assert encode_sample(sample) == encode_sample(sample)
+
+
+def test_uint8_image_block_roundtrips_byte_exact():
+    """An IMAGE_JPEG uint8 block ships raw bytes (dtype UINT8) and round-trips
+    byte-exact, composed after a float32 SEGMENT_LENGTHS block."""
+    jpeg_bytes = b"\xff\xd8\xff\xe0JFIF\x00\x01\x02\x03fake-jpeg-payload"  # odd length
+    jpeg = np.frombuffer(jpeg_bytes, dtype=np.uint8).reshape(-1, 1)
+    lengths = np.array([[253.75], [180.0]], dtype=np.float32)  # SEGMENT_LENGTHS, cols=1
+    sample = StreamSample(
+        timestamp=1.5,
+        frame_number=7,
+        subject_id=0,
+        blocks=[
+            SampleBlock(ChannelKind.SEGMENT_LENGTHS, lengths),
+            SampleBlock(ChannelKind.IMAGE_JPEG, jpeg),  # composed last (odd length)
+        ],
+    )
+    restored = decode_sample(encode_sample(sample))
+    assert len(restored.blocks) == 2
+
+    seg, img = restored.blocks
+    assert seg.kind == ChannelKind.SEGMENT_LENGTHS
+    assert seg.data.dtype == np.float32
+    np.testing.assert_array_equal(seg.data, lengths)
+
+    assert img.kind == ChannelKind.IMAGE_JPEG
+    assert img.data.dtype == np.uint8
+    np.testing.assert_array_equal(img.data, jpeg)
+    assert img.data.tobytes() == jpeg_bytes
+
+
+def test_uint8_dtype_code_on_the_wire():
+    """The IMAGE_JPEG block header carries dtype_code UINT8 (1), not FLOAT32."""
+    from freemocap.core.streaming.standard_stream.stream_sample import (
+        BLOCK_HEADER_DTYPE,
+        DtypeCode,
+    )
+
+    jpeg = np.frombuffer(b"\x00\x01\x02\x03", dtype=np.uint8).reshape(-1, 1)
+    blob = encode_sample(
+        StreamSample(
+            timestamp=0.0,
+            frame_number=0,
+            subject_id=0,
+            blocks=[SampleBlock(ChannelKind.IMAGE_JPEG, jpeg)],
+        )
+    )
+    block_header = np.frombuffer(
+        blob[SAMPLE_HEADER_SIZE : SAMPLE_HEADER_SIZE + BLOCK_HEADER_SIZE],
+        dtype=BLOCK_HEADER_DTYPE,
+    )[0]
+    assert int(block_header["dtype_code"]) == int(DtypeCode.UINT8)
+    assert int(block_header["data_byte_length"]) == 4
 
 
 def test_first_byte_demuxes_cleanly():

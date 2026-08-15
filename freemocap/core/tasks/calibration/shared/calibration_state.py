@@ -114,6 +114,17 @@ class CalibrationStateTracker:
         return self._is_valid and self._triangulator is not None
 
     @property
+    def triangulator(self) -> Triangulator:
+        """The loaded triangulator — raises when there is no valid calibration.
+
+        Callers gate on ``is_valid`` first; this property fails loud rather
+        than returning None for an unchecked caller.
+        """
+        if self._triangulator is None:
+            raise ValueError("No valid calibration — triangulator is not available")
+        return self._triangulator
+
+    @property
     def calibration_path(self) -> Path | None:
         return self._calibration_path
 
@@ -353,14 +364,16 @@ class CalibrationStateTracker:
         except Exception as e:
             self._consecutive_failure_count += 1
             if self._consecutive_failure_count >= MAX_CONSECUTIVE_FAILURES:
+                # Running without a valid calibration for the live camera set
+                # is an expected mode (2D-only) — one summary line at
+                # invalidation, no traceback, no per-frame spam.
                 logger.error(
                     f"Triangulation failed {self._consecutive_failure_count} times "
-                    f"consecutively — invalidating calibration. Last error: {e}",
-                    exc_info=True,
+                    f"consecutively — invalidating calibration. Last error: {e}"
                 )
                 self._invalidate()
             else:
-                logger.warning(
+                logger.debug(
                     f"Triangulation failed (failure "
                     f"{self._consecutive_failure_count}/{MAX_CONSECUTIVE_FAILURES}): {e}",
                 )

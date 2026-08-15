@@ -32,7 +32,6 @@ from freemocap.core.pipeline.realtime.realtime_skeleton_inference_node import (
     RealtimeSkeletonInferenceNode,
 )
 from freemocap.core.types.type_overloads import PipelineIdString, TopicSubscriptionQueue, FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendPayload, FrontendImagePacket
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputTopic,
@@ -64,6 +63,7 @@ class RealtimePipeline:
     skeleton_inference_node: RealtimeSkeletonInferenceNode | None
     charuco_recorder_node: CharucoRecorderNode | None
     aggregation_output_subscription: TopicSubscriptionQueue
+    pipeline_config_subscription: TopicSubscriptionQueue
     result_ready_event: multiprocessing.synchronize.Event
     result_consumed_event: multiprocessing.synchronize.Event
     ipc: PipelineIPC
@@ -111,9 +111,14 @@ class RealtimePipeline:
     ) -> "RealtimePipeline":
         global_kill_flag = camera_group.ipc.global_kill_flag
 
+        # ONE id for the pipeline and its IPC — the aggregator's output message
+        # carries ipc.pipeline_id, and consumers look the pipeline up by its id.
+        pipeline_id: PipelineIdString = str(uuid.uuid4())[:6]
+
         ipc = PipelineIPC.create(
             global_kill_flag=global_kill_flag,
             heartbeat_timestamp=worker_registry.heartbeat_timestamp,
+            pipeline_id=pipeline_id,
         )
         pubsub = PubSubTopicManager.create(
             global_kill_flag=global_kill_flag,
@@ -208,9 +213,12 @@ class RealtimePipeline:
         aggregation_output_subscription = pubsub.get_subscription(
             AggregationNodeOutputTopic,
         )
+        pipeline_config_subscription = pubsub.get_subscription(
+            PipelineConfigUpdateTopic,
+        )
 
         return cls(
-            id=str(uuid.uuid4())[:6],
+            id=pipeline_id,
             camera_group=camera_group,
             config=pipeline_config,
             camera_nodes=camera_nodes,
@@ -218,6 +226,7 @@ class RealtimePipeline:
             skeleton_inference_node=skeleton_inference_node,
             charuco_recorder_node=charuco_recorder_node,
             aggregation_output_subscription=aggregation_output_subscription,
+            pipeline_config_subscription=pipeline_config_subscription,
             result_ready_event=result_ready_event,
             result_consumed_event=result_consumed_event,
             ipc=ipc,
@@ -432,9 +441,8 @@ class RealtimePipeline:
 
         The standard-stream FrameRelay consumes this — the raw message carries
         the rotations / CoM / xcom / rigidified skeleton the encoder needs,
-        which ``FrontendImagePacket`` (the old path) did not expose. Mirrors the
-        subscription-drain in ``get_latest_frontend_payload`` but returns the
-        message itself rather than a rendered packet.
+        The standard-stream FrameRelay consumes this — the raw message carries
+        the rotations / CoM / xcom / rigidified skeleton the encoder needs.
         """
         if not self.alive:
             return None
@@ -456,62 +464,3 @@ class RealtimePipeline:
         self.result_ready_event.clear()
         self.result_consumed_event.set()
         return aggregation_output
-
-    def get_latest_frontend_payload(
-        self,
-        if_newer_than: FrameNumberInt,
-        display_image_sizes: dict[str, dict[str, float]] | None = None,
-    ) -> FrontendImagePacket | None:
-        if not self.alive:
-            if self.camera_group.alive:
-                result = self.camera_group.get_latest_frontend_payload(
-                    if_newer_than=if_newer_than,
-                    display_image_sizes=display_image_sizes,
-                )
-                if result is not None:
-                    frame_number, mf_timestamp, frames_bytearray = result
-                    return FrontendImagePacket(
-                        images_bytearray=frames_bytearray,
-                        multiframe_timestamp=mf_timestamp,
-
-                        frontend_payload=FrontendPayload(
-                            frame_number=frame_number,
-                            camera_group_id=self.camera_group.id,
-                        ),
-                    )
-            return None
-
-        aggregation_output: AggregationNodeOutputMessage | None = None
-        while True:
-            try:
-                aggregation_output = self.aggregation_output_subscription.get_nowait()
-            except Empty:
-                break
-
-        if aggregation_output is None:
-            return None
-
-        # Flip the backpressure events: clear "ready" (we just took it) and
-        # set "consumed" (the aggregator can now process the next frame).
-        # The aggregator should already be idling on the consumed-gate, so
-        # this signal is what kicks off the next pass — in parallel with
-        # the websocket sending this packet to the frontend.
-        self.result_ready_event.clear()
-        self.result_consumed_event.set()
-
-        payload = self.camera_group.get_frontend_payload_by_frame_number(
-            frame_number=aggregation_output.frame_number,
-            display_image_sizes=display_image_sizes,
-        )
-        if payload is not None:
-            frames_bytearray, mf_timestamp = payload
-            # D36 — the legacy binary-keypoints payload died with the standard
-            # stream. ``FrontendImagePacket`` now carries image bytes + the
-            # JSON metadata only; the skeleton/keypoint data rides the
-            # standard-stream sample (FrameRelay → StreamSample.from_aggregator_output).
-            return FrontendImagePacket(
-                images_bytearray=frames_bytearray,
-                multiframe_timestamp=mf_timestamp,
-                frontend_payload=FrontendPayload.from_aggregation_output(aggregation_output),
-            )
-        return None

@@ -1,20 +1,24 @@
 // offscreen-renderer.worker.ts
 //
 // Per-camera module Web Worker that owns one camera's display <canvas> (via
-// OffscreenCanvas) AND composites that camera's 2D overlay. Each camera has its
-// own worker, so overlay compositing runs in PARALLEL across cameras instead of
-// serializing in the single decode worker. The decode worker now returns raw
-// bitmaps; this worker draws the CharUco / skeleton overlay on top before display.
+// OffscreenCanvas) AND composites that camera's 2D skeleton overlay. Each
+// camera has its own worker, so overlay compositing runs in PARALLEL across
+// cameras instead of serializing in the single decode worker. The decode
+// worker returns raw bitmaps; this worker draws the skeleton overlay on top
+// before display.
+//
+// The frame and its skeleton observation arrive in ONE message — the standard
+// stream carries the image and the overlay for frame N in the same sample, so
+// this worker composites the frame's own overlay (no cross-stream timing, no
+// staleness heuristic). The last observation is kept until a newer one
+// replaces it.
 
 import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
-import type { CharucoObservation } from "@/services/server/server-helpers/image-overlay/charuco-types";
 import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 // tsconfig uses the DOM lib (no WebWorker lib); cast self for postMessage.
 const workerScope = self as unknown as Worker;
-
-const OVERLAY_STALE_MS = 500;
 
 let offscreenCanvas: OffscreenCanvas | null = null;
 let ctx: ImageBitmapRenderingContext | null = null;
@@ -23,21 +27,17 @@ let pendingFrame: ImageBitmap | null = null;
 let renderScheduled = false;
 
 // This worker handles exactly one camera, so a single OverlayManager + a single
-// latest observation per type is all the state it needs.
+// latest observation is all the state it needs.
 const overlayManager = new OverlayManager();
-let latestCharuco: CharucoObservation | null = null;
 let latestSkeleton: SkeletonObservation | null = null;
-let lastOverlayTime = 0;
-let charucoEnabled = true;
 let skeletonEnabled = true;
 
-let _compositeLogCount = 0; // TEMP DEBUG — remove
-
 interface InitMessage { type: "init"; canvas: OffscreenCanvas; }
-interface FrameMessage { type: "frame"; pixelBuffer: ArrayBuffer; width: number; height: number; }
-interface OverlaysMessage {
-    type: "overlays";
-    charuco: CharucoObservation | null;
+interface FrameMessage {
+    type: "frame";
+    pixelBuffer: ArrayBuffer;
+    width: number;
+    height: number;
     skeleton: SkeletonObservation | null;
 }
 interface VisibilityMessage { type: "visibility"; charuco: boolean; skeleton: boolean; }
@@ -46,7 +46,7 @@ interface SchemaMessage {
     schemas: Record<string, TrackedObjectDefinition>;
     activeId: string | null;
 }
-type InboundMessage = InitMessage | FrameMessage | OverlaysMessage | VisibilityMessage | SchemaMessage;
+type InboundMessage = InitMessage | FrameMessage | VisibilityMessage | SchemaMessage;
 
 self.addEventListener("message", (event: MessageEvent) => {
     const msg = event.data as InboundMessage;
@@ -57,18 +57,10 @@ self.addEventListener("message", (event: MessageEvent) => {
             workerScope.postMessage({ type: "initialized" });
             break;
         case "frame":
-            handleFrame(msg.pixelBuffer, msg.width, msg.height);
-            break;
-        case "overlays":
-            // null means "no update this message" (not "clear") — staleness evicts.
-            if (msg.charuco !== null) latestCharuco = msg.charuco;
-            if (msg.skeleton !== null) latestSkeleton = msg.skeleton;
-            lastOverlayTime = performance.now();
+            handleFrame(msg.pixelBuffer, msg.width, msg.height, msg.skeleton);
             break;
         case "visibility":
-            charucoEnabled = msg.charuco;
             skeletonEnabled = msg.skeleton;
-            if (!charucoEnabled) latestCharuco = null;
             if (!skeletonEnabled) latestSkeleton = null;
             break;
         case "schema":
@@ -77,33 +69,20 @@ self.addEventListener("message", (event: MessageEvent) => {
     }
 });
 
-function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): void {
+function handleFrame(
+    pixelBuffer: ArrayBuffer,
+    width: number,
+    height: number,
+    skeleton: SkeletonObservation | null,
+): void {
     if (!pixelBuffer || pixelBuffer.byteLength <= 0 || width <= 0 || height <= 0) {
         return;
     }
 
-    const overlayFresh = performance.now() - lastOverlayTime <= OVERLAY_STALE_MS;
-    if (!overlayFresh) {
-        latestCharuco = null;
-        latestSkeleton = null;
-    }
-    const charucoObs = charucoEnabled && overlayFresh ? latestCharuco : null;
-    const skeletonObs = skeletonEnabled && overlayFresh ? latestSkeleton : null;
-
-    // TEMP DEBUG — remove
-    _compositeLogCount++;
-    if (skeletonObs && _compositeLogCount % 30 === 0) {
-        let finite = 0;
-        for (const p of skeletonObs.points) {
-            if (Number.isFinite(p.x) && Number.isFinite(p.y)) finite++;
-        }
-        console.log(
-            `[TEMP] worker composite frame=${width}x${height} fresh=${overlayFresh} ` +
-            `obsDims=${skeletonObs.image_width}x${skeletonObs.image_height} ` +
-            `points=${skeletonObs.points.length} finite=${finite} ` +
-            `first=${JSON.stringify(skeletonObs.points.slice(0, 2))}`,
-        );
-    }
+    // The observation travels WITH its frame; a null here means "no overlay
+    // this frame" — keep the last one (replaced only by a newer observation).
+    if (skeleton !== null) latestSkeleton = skeleton;
+    const skeletonObs = skeletonEnabled ? latestSkeleton : null;
 
     // Create ImageBitmap from raw pixels — this is the GPU upload step,
     // happening independently in each per-camera worker instead of batched
@@ -115,9 +94,9 @@ function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): v
         height,
     );
     createImageBitmap(imageData).then((rawBitmap) => {
-        if (charucoObs || skeletonObs) {
+        if (skeletonObs) {
             overlayManager
-                .processFrame("", rawBitmap, charucoObs, skeletonObs)
+                .processFrame("", rawBitmap, null, skeletonObs)
                 .then((composite) => setPending(composite))
                 .catch((err) => {
                     rawBitmap.close();

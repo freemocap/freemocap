@@ -1,8 +1,10 @@
 """The standard-stream ``stream_sample`` binary wire format + codec.
 
 One per frame: ``SAMPLE_HEADER`` + N blocks + ``SAMPLE_FOOTER``, contiguous,
-little-endian, ``float32``. Names live in the schema, not here (no ``embed_names``).
-Replaces the retired legacy keypoints protocol (D36).
+little-endian. Names live in the schema, not here (no ``embed_names``). Each block
+declares its own ``dtype_code``: ``float32`` for every point / rotation / scalar
+block, ``uint8`` for the raw-bytes ``IMAGE_JPEG`` block. ``data_byte_length`` is the
+authority for a block's data size. Replaces the retired legacy keypoints protocol (D36).
 
 Layout (numpy structured dtypes, ``align=True`` — sizes are locked by a test so the
 frontend decoder stays in sync)::
@@ -10,8 +12,14 @@ frontend decoder stays in sync)::
     SAMPLE_HEADER   message_type u1 · timestamp f8 · frame_number i8 · subject_id u4 · num_blocks u4
     per block:      BLOCK_HEADER (message_type u1 · block_kind u1 · dtype_code u1 · cols u1 ·
                     camera_id S16 · overlay_layer u1 · num_elements u4 · data_byte_length u4)
-                    + BLOCK_DATA (row-major f32)
+                    + BLOCK_DATA (row-major; float32 or uint8 per dtype_code)
     SAMPLE_FOOTER   mirrors SAMPLE_HEADER (integrity check)
+
+Block-order note: a ``uint8`` block may have an odd byte length, which would
+misalign a following ``float32`` block for 4-byte-aligned typed-array views. The
+``IMAGE_JPEG`` block is therefore composed LAST; the decoder is also alignment-safe
+(it copies a misaligned slice) so the ordering is a performance choice, not a
+correctness dependency.
 
 Missing keypoints/segments → NaN rows. See
 `current-work-plans/03-transport/standard-stream-protocol.md`.
@@ -27,15 +35,7 @@ import numpy as np
 from freemocap.core.streaming.standard_stream.stream_schema import (
     ChannelKind,
     OverlayLayer,
-    StreamSchema,
 )
-
-# Imported at runtime (not TYPE_CHECKING-only): beartype resolves these type
-# annotations from the module namespace when ``from_aggregator_output`` /
-# ``_camera_2d_detections`` / ``_origin_landmark_names`` are called, and a
-# lazy forward-ref that cannot be imported would raise at the first call.
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — resolved at runtime by beartype
-from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman  # noqa: TC002 — resolved at runtime by beartype
 
 
 class MessageType(IntEnum):
@@ -49,6 +49,7 @@ class MessageType(IntEnum):
 
 class DtypeCode(IntEnum):
     FLOAT32 = 0
+    UINT8 = 1  # raw bytes — the IMAGE_JPEG block (opaque JPEG payload)
 
 
 CAMERA_ID_BYTES = 16
@@ -87,14 +88,16 @@ SAMPLE_FOOTER_SIZE = SAMPLE_HEADER_DTYPE.itemsize  # footer mirrors header
 
 @dataclass(slots=True)
 class SampleBlock:
-    """One block of a sample: a (num_elements, cols) float array of one kind.
+    """One block of a sample: a (num_elements, cols) array of one kind.
 
-    ``camera_id`` and ``overlay_layer`` are set only for ``OVERLAY_2D`` blocks
-    (one block per camera per layer).
+    ``data.dtype`` selects the wire dtype: ``uint8`` → the raw-bytes ``UINT8``
+    encoding (the ``IMAGE_JPEG`` blob, shape ``(num_bytes, 1)``); anything else is
+    cast to ``float32``. ``camera_id`` and ``overlay_layer`` are set only for
+    ``OVERLAY_2D`` blocks (one block per camera per layer).
     """
 
     kind: ChannelKind
-    data: np.ndarray  # (num_elements, cols) — cast to float32 on encode
+    data: np.ndarray  # (num_elements, cols) — float32 unless dtype is uint8
     camera_id: str = ""
     overlay_layer: OverlayLayer = OverlayLayer.DETECTIONS
 
@@ -107,252 +110,6 @@ class StreamSample:
     frame_number: int
     subject_id: int
     blocks: list[SampleBlock] = field(default_factory=list)
-
-    # ── Encoder (aggregator output → six-group sample) ────────────────────
-    # The frame source is the aggregator's output message; this method builds
-    # the six blocks declared by the F1 schema. The schema is the SSOT for the
-    # *names* (channel layout); the message carries the per-frame *numbers*.
-    # See doc 11 §4 Step 1 + 09 § channels.
-
-    @classmethod
-    def from_aggregator_output(
-        cls,
-        *,
-        message: AggregationNodeOutputMessage,
-        schema: StreamSchema,
-        standard_human: StandardHuman,
-        timestamp: float | None = None,
-        subject_id: int = 0,
-    ) -> StreamSample:
-        """Build one sample from one aggregator output message + the F1 schema.
-
-        Fills the seven blocks in schema order:
-
-        - **KEYPOINTS_3D** — the tracker-named measured keypoints; positions
-          from ``message.keypoints_arrays`` (the filtered triangulations). NaN
-          rows for missing; the 4th column (``reprojection_error``) is NaN
-          (per-point reprojection error is wired with the per-camera overlay in
-          F2b).
-        - **LANDMARKS_3D** — the 76 hydrated standard-human landmarks;
-          positions from ``message.standard_skeleton`` (the rigidified solver
-          input). NaN rows for missing.
-        - **SEGMENT_ORIGINS** — the 60 segments' ``origin_landmark`` positions
-          from the same merged source; NaN for missing.
-        - **ROTATIONS_LOCAL** / **ROTATIONS_WORLD** — 60 wxyz rows each, from
-          the message's ``segment_rotations_local`` / ``segment_rotations_world``
-          dicts; NaN rows for unsolved segments.
-        - **DERIVED_POINTS** — ``center_of_mass`` + ``xcom`` (3-column rows).
-          CoM from ``message.center_of_mass_result.total_body_com``; XCoM from
-          ``message.xcom``. Both already computed by the aggregator (XCoM needs
-          ``prev_com`` + ``dt`` state, which lives in the aggregator loop), so
-          the encoder only *places* them; it never recomputes.
-        - **OVERLAY_2D** — per camera × layer. The DETECTIONS layer is filled
-          from the message's per-camera 2D detections (NaN-padded to the schema
-          column count); the REPROJECTIONS layer stays NaN-allocated this task
-          (its wiring is later — the fitted segment model projected back down).
-
-        ``standard_human`` is required to resolve each segment's
-        ``origin_landmark`` (the schema carries segment *names* only, not their
-        origin keypoints).
-        """
-        groups = {g.kind: g for g in schema.channels}
-
-        # The rigidified standard-human positions: merged body + standard-named
-        # hands. ``standard_skeleton`` is the aggregator's exact solver input and
-        # is keyed by standard-human names — the encoder cannot fall back to
-        # tracker-named positions (``message.skeleton``) because those would be
-        # silently fed into standard-human lookups as an all-NaN stream.
-        # An empty skeleton (2D-only frames, no solve yet) encodes as NaN rows;
-        # the OVERLAY_2D blocks still carry the per-camera 2D detections.
-        positions: dict[str, np.ndarray] = message.standard_skeleton or {}
-
-        origin_names = cls._origin_landmark_names(standard_human)
-
-        blocks: list[SampleBlock] = []
-
-        # 0. KEYPOINTS_3D — the tracker-named measured keypoints
-        # (``message.keypoints_arrays``); NaN rows where unobserved.
-        kp_group = groups[ChannelKind.KEYPOINTS_3D]
-        tracker_positions: dict[str, np.ndarray] = message.keypoints_arrays or {}
-        blocks.append(
-            SampleBlock(
-                kind=ChannelKind.KEYPOINTS_3D,
-                data=cls._assemble_rows(
-                    names=kp_group.names,
-                    positions=tracker_positions,
-                    columns=kp_group.columns,
-                ),
-            )
-        )
-
-        # 1. LANDMARKS_3D — the 76 hydrated standard-human landmarks (the
-        # rigidified solver input, ``message.standard_skeleton``); NaN rows
-        # where unobserved.
-        lm_group = groups[ChannelKind.LANDMARKS_3D]
-        blocks.append(
-            SampleBlock(
-                kind=ChannelKind.LANDMARKS_3D,
-                data=cls._assemble_rows(
-                    names=lm_group.names,
-                    positions=positions,
-                    columns=lm_group.columns,
-                ),
-            )
-        )
-
-        # 2. SEGMENT_ORIGINS
-        origin_positions = {
-            segment_name: positions.get(origin_names[segment_name])
-            for segment_name in groups[ChannelKind.SEGMENT_ORIGINS].names
-        }
-        blocks.append(
-            SampleBlock(
-                kind=ChannelKind.SEGMENT_ORIGINS,
-                data=cls._assemble_rows(
-                    names=groups[ChannelKind.SEGMENT_ORIGINS].names,
-                    positions=origin_positions,
-                    columns=groups[ChannelKind.SEGMENT_ORIGINS].columns,
-                ),
-            )
-        )
-
-        # 3/4. ROTATIONS_LOCAL / ROTATIONS_WORLD
-        for kind, source in (
-            (ChannelKind.ROTATIONS_LOCAL, message.segment_rotations_local),
-            (ChannelKind.ROTATIONS_WORLD, message.segment_rotations_world),
-        ):
-            quats: dict[str, np.ndarray] = source or {}
-            blocks.append(
-                SampleBlock(
-                    kind=kind,
-                    data=cls._assemble_rows(
-                        names=groups[kind].names,
-                        positions=quats,
-                        columns=groups[kind].columns,
-                    ),
-                )
-            )
-
-        # 5. DERIVED_POINTS
-        com_row = np.full(3, np.nan)
-        if message.center_of_mass_result is not None and not np.any(
-            np.isnan(message.center_of_mass_result.total_body_com)
-        ):
-            com_row = message.center_of_mass_result.total_body_com.astype(np.float32)
-        xcom_row = np.full(3, np.nan)
-        if message.xcom is not None:
-            xcom_row = np.array(
-                [message.xcom.x, message.xcom.y, message.xcom.z], dtype=np.float32
-            )
-        derived_names = groups[ChannelKind.DERIVED_POINTS].names
-        # Key each derived row by its schema-declared name (not by positional
-        # tuple index) so a reordering of the schema's derived channels never
-        # misplaces the CoM / XCoM rows.
-        derived_by_name = {
-            "center_of_mass": com_row,
-            "xcom": xcom_row,
-        }
-        derived_data = np.stack([derived_by_name[n] for n in derived_names])
-        blocks.append(
-            SampleBlock(kind=ChannelKind.DERIVED_POINTS, data=derived_data.astype(np.float32))
-        )
-
-        # 6. OVERLAY_2D — one DETECTIONS block per camera this task.
-        # DETECTIONS carry keypoint names (what the detector saw in that camera),
-        # per 09 § 2D overlays. The REPROJECTIONS layer — the fitted segment model
-        # projected back into each camera — is NOT emitted yet: the fitted model
-        # is not projected down until the per-camera reprojection wiring (F2b).
-        # The block-header ``overlay_layer`` byte now tags each block, so a
-        # decoder can distinguish DETECTIONS (=0) from REPROJECTIONS (=1).
-        kp_names = groups[ChannelKind.OVERLAY_2D].names
-        for camera_id in schema.camera_ids:
-            detections = cls._camera_2d_detections(message, camera_id)
-            blocks.append(
-                SampleBlock(
-                    kind=ChannelKind.OVERLAY_2D,
-                    data=cls._assemble_rows(
-                        names=kp_names,
-                        positions=detections,
-                        columns=groups[ChannelKind.OVERLAY_2D].columns,
-                    ),
-                    camera_id=camera_id,
-                    overlay_layer=OverlayLayer.DETECTIONS,
-                )
-            )
-
-        return cls(
-            timestamp=(
-                float(timestamp) if timestamp is not None else 0.0
-            ),
-            frame_number=message.frame_number,
-            subject_id=subject_id,
-            blocks=blocks,
-        )
-
-    @staticmethod
-    def _camera_2d_detections(
-        message: AggregationNodeOutputMessage,
-        camera_id: str,
-    ) -> dict[str, np.ndarray]:
-        """The per-camera tracker 2D detections (``name -> (x, y)``) for one camera.
-
-        Reads the camera's ``skeleton_observation`` body-stage keypoints — the
-        detector's raw 2D output for that camera's image. Missing/observable but
-        NaN points are skipped (the encoder NaN-fills them). Returns an empty dict
-        when there is no skeleton observation for this camera (2D-only mode).
-        """
-        cam_output = message.camera_node_outputs.get(camera_id)
-        if cam_output is None or cam_output.skeleton_observation is None:
-            return {}
-        observation = cam_output.skeleton_observation
-        body_stage = observation.stages.get("body")
-        if body_stage is None or body_stage.keypoints is None:
-            return {}
-        kpts = body_stage.keypoints
-        detections: dict[str, np.ndarray] = {}
-        for i, name in enumerate(kpts.names):
-            x, y, _z = kpts.xyz[i]
-            if np.isnan(x) or np.isnan(y):
-                continue
-            detections[name] = np.array(
-                [x, y, kpts.visibility[i]], dtype=np.float32
-            )
-        return detections
-
-    @staticmethod
-    def _origin_landmark_names(standard_human: StandardHuman) -> dict[str, str]:
-        """segment name → origin keypoint name (from the canonical model)."""
-        return {segment.name: segment.origin_landmark for segment in standard_human.segments}
-
-    @staticmethod
-    def _assemble_rows(
-        *,
-        names: tuple[str, ...],
-        positions: dict[str, np.ndarray | None],
-        columns: tuple[str, ...],
-    ) -> np.ndarray:
-        """Build a ``(len(names), len(columns))`` float32 block: each name's
-        position (first ``len(columns)`` coords) if present, else a NaN row.
-
-        ``columns`` is the group's per-element column tuple (e.g. ``("x","y","z")``
-        for a point group, ``("x","y","z","reprojection_error")`` for KEYPOINTS_3D,
-        ``("x","y","visibility")`` for OVERLAY_2D). A position vector may carry more
-        or fewer values than the group declares; the first ``len(columns)`` coords
-        are placed, the remainder (e.g. reprojection_error / visibility) NaN-filled,
-        and a shorter vector is NaN-padded.
-        """
-        n_cols = len(columns)
-        rows = np.full((len(names), n_cols), np.nan, dtype=np.float32)
-        for i, name in enumerate(names):
-            pos = positions.get(name)
-            if pos is None:
-                continue
-            arr = np.asarray(pos, dtype=np.float32)
-            if arr.size == 0:
-                continue
-            k = min(n_cols, int(arr.size))
-            rows[i, :k] = arr[:k]
-        return rows
 
     # ── Codec (six-group binary) ─────────────────────────────────────────
     # All numpy on the wire, float32 (== the original codec's ``_WIRE_DTYPE``);
@@ -386,7 +143,14 @@ def encode_sample(sample: StreamSample) -> bytes:
 
     parts: list[bytes] = [header.tobytes()]
     for block in sample.blocks:
-        arr = np.ascontiguousarray(block.data, dtype=_WIRE_DTYPE)
+        # dtype selects the wire encoding: uint8 blocks (IMAGE_JPEG) ship raw
+        # bytes; everything else is cast to float32.
+        if block.data.dtype == np.uint8:
+            dtype_code = DtypeCode.UINT8
+            arr = np.ascontiguousarray(block.data, dtype=np.uint8)
+        else:
+            dtype_code = DtypeCode.FLOAT32
+            arr = np.ascontiguousarray(block.data, dtype=_WIRE_DTYPE)
         if arr.ndim != 2:
             raise ValueError(f"block data must be 2D (num_elements, cols), got shape {arr.shape}")
         num_elements, cols = arr.shape
@@ -395,7 +159,7 @@ def encode_sample(sample: StreamSample) -> bytes:
         block_header = np.frombuffer(bytearray(BLOCK_HEADER_SIZE), dtype=BLOCK_HEADER_DTYPE, count=1)
         block_header["message_type"] = int(MessageType.BLOCK_HEADER)
         block_header["block_kind"] = int(block.kind)
-        block_header["dtype_code"] = int(DtypeCode.FLOAT32)
+        block_header["dtype_code"] = int(dtype_code)
         block_header["cols"] = cols
         block_header["camera_id"] = block.camera_id.encode("ascii", errors="ignore")[:CAMERA_ID_BYTES]
         block_header["overlay_layer"] = int(block.overlay_layer)
@@ -438,7 +202,13 @@ def decode_sample(buf: bytes) -> StreamSample:
         cols = int(block_header["cols"])
         num_elements = int(block_header["num_elements"])
         data_len = int(block_header["data_byte_length"])
-        data = np.frombuffer(view[cursor:cursor + data_len], dtype=_WIRE_DTYPE).reshape(num_elements, cols)
+        dtype_code = int(block_header["dtype_code"])
+        if dtype_code == int(DtypeCode.UINT8):
+            data = np.frombuffer(view[cursor:cursor + data_len], dtype=np.uint8).reshape(num_elements, cols)
+        elif dtype_code == int(DtypeCode.FLOAT32):
+            data = np.frombuffer(view[cursor:cursor + data_len], dtype=_WIRE_DTYPE).reshape(num_elements, cols)
+        else:
+            raise ValueError(f"standard-stream sample: unknown dtype_code {dtype_code}")
         cursor += data_len
 
         camera_id = bytes(block_header["camera_id"]).decode("ascii", errors="ignore").rstrip("\x00")

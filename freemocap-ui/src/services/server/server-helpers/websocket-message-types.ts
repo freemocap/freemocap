@@ -1,19 +1,6 @@
 import {z} from 'zod';
-import {
-    CharucoObservation,
-    CharucoOverlayDataMessage,
-    CharucoOverlayDataMessageSchema,
-} from "@/services/server/server-helpers/image-overlay/charuco-types";
-import {
-    SkeletonObservation,
-    SkeletonOverlayDataMessage,
-    SkeletonOverlayDataMessageSchema,
-} from "@/services/server/server-helpers/image-overlay/skeleton-types";
-import {ModelInfo} from "@/services/server/server-helpers/image-overlay/image-overlay-system";
-import {OverlayRendererFactory} from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import {DetailedFramerate} from "@/services/server/server-helpers/framerate-store";
 import {LogRecord} from "@/services/server/server-helpers/log-store";
-import {Point3d, BodyKinematics} from "@/components/viewport3d";
 import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 
 // Type guard to check if a message is a log record
@@ -46,25 +33,6 @@ export function isFramerateUpdate(data: any): data is FramerateUpdateMessage {
         typeof data.backend_framerate === 'object' &&
         data.frontend_framerate &&
         typeof data.frontend_framerate === 'object'
-    );
-}
-
-export interface FrontendPayloadMessage {
-    message_type: 'frontend_payload';
-    frame_number: number;
-    charuco_overlays: Record<string, CharucoObservation>
-    skeleton_overlays: Record<string, SkeletonObservation>
-    center_of_mass: Point3d | null;
-    xcom: Point3d | null;
-    body_kinematics: BodyKinematics | null;
-}
-
-export function isFrontendPayload(data: any): data is FrontendPayloadMessage {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'frontend_payload' &&
-        data.frame_number && typeof data.frame_number === 'number'
     );
 }
 

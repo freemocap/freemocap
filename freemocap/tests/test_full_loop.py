@@ -25,6 +25,11 @@ from freemocap.core.streaming.standard_stream import (
     StreamSchema,
     decode_sample,
 )
+from freemocap.core.streaming.standard_stream.producers import compose, compose_sample
+from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+    FrameContext,
+    StreamContext,
+)
 from freemocap.core.tasks.mocap.center_of_mass import (
     CoMConfidence,
     CenterOfMassResult,
@@ -178,6 +183,7 @@ def _message(
     result,
     orientation: FrameOrientationResult,
     pose: dict[str, np.ndarray],
+    lengths: dict[str, float],
 ) -> AggregationNodeOutputMessage:
     """A real aggregator message: tracker keypoints + rigidified landmarks +
     solved rotations + two mock cameras."""
@@ -216,18 +222,22 @@ def _message(
         standard_skeleton=_solver_input(result),
         segment_rotations_world=orientation.world_quaternions,
         segment_rotations_local=orientation.local_quaternions,
+        segment_lengths=lengths,
     )
 
 
-def _schema(model: StandardHuman, lengths: dict[str, float]) -> StreamSchema:
-    return StreamSchema.from_standard_human(
+def _schema(model: StandardHuman) -> StreamSchema:
+    """The composed schema; live lengths ride the per-frame SEGMENT_LENGTHS block."""
+    return compose(
+        StreamContext(
+            standard_human=model,
+            camera_ids=("cam-0", "cam-1"),
+            tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+            pipeline_live=True,
+        ),
         stream_id="loop",
         stream_name="full-loop",
-        standard_human=model,
-        camera_ids=("cam-0", "cam-1"),
-        tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
-        measured_lengths=lengths,
-    )
+    ).schema
 
 
 def _block_by_kind(sample: StreamSample, kind: ChannelKind):
@@ -261,15 +271,29 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
 
     result = rig.rigidify_frame(pose, measured=pose, t=100.0)
     lengths = _measured_lengths(model, rig)
-    message = _message(model, result, orientation, pose)
-    sample = StreamSample.from_aggregator_output(
-        message=message, schema=_schema(model, lengths), standard_human=model
+    message = _message(model, result, orientation, pose, lengths)
+    sample = compose_sample(
+        compose(
+            StreamContext(
+                standard_human=model,
+                camera_ids=("cam-0", "cam-1"),
+                tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+                pipeline_live=True,
+            ),
+            stream_id="loop",
+            stream_name="full-loop",
+        ),
+        FrameContext(
+            frame_number=message.frame_number,
+            timestamp=0.0,
+            aggregator_output=message,
+        ),
     )
     restored = StreamSample.from_bytes(sample.to_bytes())
 
     # Wire ROTATIONS_WORLD rows equal the solver's quaternions (float32 wire).
     (world_block,) = _block_by_kind(restored, ChannelKind.ROTATIONS_WORLD)
-    group = _schema(model, lengths).channels[4]
+    group = _schema(model).channels[4]
     name_to_idx = {n: i for i, n in enumerate(group.names)}
     for name, q in world.items():
         row = world_block.data[name_to_idx[name]]
@@ -277,7 +301,7 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
 
     # LANDMARKS_3D carries the rigidified hips_center.
     (lm_block,) = _block_by_kind(restored, ChannelKind.LANDMARKS_3D)
-    lm_names = _schema(model, lengths).channels[1].names
+    lm_names = _schema(model).channels[1].names
     hips_idx = lm_names.index("hips_center")
     np.testing.assert_allclose(
         lm_block.data[hips_idx, :3], result.body_positions["hips_center"], atol=1e-4
@@ -285,7 +309,7 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
 
     # KEYPOINTS_3D carries the tracker-named nose measurement.
     (kp_block,) = _block_by_kind(restored, ChannelKind.KEYPOINTS_3D)
-    kp_names = _schema(model, lengths).channels[0].names
+    kp_names = _schema(model).channels[0].names
     nose_idx = kp_names.index("nose")
     np.testing.assert_allclose(
         kp_block.data[nose_idx, :3], pose["nose"], atol=1e-4

@@ -32,8 +32,8 @@ import numpy as np
 from freemocap.core.tasks.mocap.center_of_mass import (
     load_body_biomechanics,
     CenterOfMassResult,
+    calculate_center_of_mass,
     calculate_center_of_mass_per_frame,
-    calculate_center_of_mass_from_canonical,
     calculate_xcom,
 )
 from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
@@ -53,7 +53,11 @@ from skellyforge.kinematics.orientation_solver import (
     solve_frame_orientations,
 )
 from skellyforge.skellymodels.standard_human.standard_human_model import (
+    StandardHuman,  # noqa: TC002 — beartype resolves this in the _reproject_segment_origins signature at runtime
     compose_standard_human,
+)
+from freemocap.core.streaming.standard_stream.sample_block_helpers import (
+    origin_landmark_names,
 )
 from skellyforge.skellymodels.standard_human.tracker_contract import (
     validate_all_tracker_families,
@@ -73,7 +77,7 @@ from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import Re
     GateResult
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.pipeline.realtime.realtime_keypoint_filter import RealtimeKeypointFilter
-from freemocap.core.types.type_overloads import TopicPublicationQueue
+from freemocap.core.types.type_overloads import TopicPublicationQueue, TrackedPointNameString
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
 from freemocap.pubsub.pubsub_topics import (
     CameraNodeOutputMessage,
@@ -113,6 +117,38 @@ CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 # v1; live measured lengths refine the geometry when the estimator feeds it.
 # Shared SSOT with the stream schema's rest-pose build.
 from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM
+
+def _reproject_segment_origins(
+        *,
+        calibration,
+        standard_human: StandardHuman,
+        solver_landmarks: dict[str, np.ndarray],
+) -> dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]]:
+    """Project the fitted skeleton's segment origins into every camera.
+
+    Builds one (60, 3) array of origin positions in the solver's standard-human
+    names, runs it through the calibration's triangulator projection, and
+    returns ``{camera_id: {segment_name: (x, y)}}`` in capture-resolution px.
+    Origins not hydrated this frame project to NaN and are dropped.
+    """
+    origin_names = origin_landmark_names(standard_human)
+    segment_names = list(standard_human.segment_names)
+    origins = np.full((len(segment_names), 3), np.nan, dtype=np.float64)
+    for i, name in enumerate(segment_names):
+        pos = solver_landmarks.get(origin_names[name])
+        if pos is not None and not np.any(np.isnan(pos)):
+            origins[i] = np.asarray(pos, dtype=np.float64)[:3]
+    projected = calibration.triangulator.project(origins)  # (n_cameras, 60, 2)
+    out: dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]] = {}
+    for cam_idx, camera_id in enumerate(calibration.triangulator.camera_ids):
+        per_cam: dict[TrackedPointNameString, tuple[float, float]] = {}
+        for i, name in enumerate(segment_names):
+            x, y = projected[cam_idx, i]
+            if not (np.isnan(x) or np.isnan(y)):
+                per_cam[name] = (float(x), float(y))
+        out[camera_id] = per_cam
+    return out
+
 
 def _merge_angulation(
         *,
@@ -248,7 +284,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         )
 
         # Load body biomechanics for per-frame center of mass calculation, using
-        # the tracker->canonical mapping that matches the configured detector
+        # the tracker→standard-human mapping that matches the configured detector
         # (RTMPose and MediaPipe use different keypoint naming conventions).
         # Validated once at init via skellyforge's validate_all_tracker_families —
         # no Pydantic in the hot loop.
@@ -380,7 +416,7 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                     # Rebuild biomechanics / skeleton rigidifier if the detector
                     # type changed (RTMPose <-> MediaPipe use different tracker
-                    # keypoint names, so the loaded canonical mapping would
+                    # keypoint names, so the loaded standard-human mapping would
                     # otherwise silently go stale) or if center-of-mass /
                     # skeleton-fitting were toggled on/off.
                     new_detector_type = pipeline_config.camera_node_config.detector_type
@@ -399,7 +435,7 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                     # Recreate the rigidifier when the detector naming changes or
                     # any fit parameter changed — silently stale fit params are
-                    # worse than a one-time canonical-model reload.
+                    # worse than a one-time model reload.
                     filter_config_changed = (
                         rigidifier_filter_config is not None
                         and filter_config != rigidifier_filter_config
@@ -631,6 +667,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 xcom: Point3d | None = None
                 body_kinematics = None
                 rigid_result: RigidifyResult | None = None
+                reprojected_segment_origins: dict[
+                    CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
+                ] = {}
                 if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
@@ -777,6 +816,21 @@ class RealtimeAggregatorNode(AggregatorNode):
                         if timer is not None:
                             timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
 
+                        # ---- Segment-origin reprojections (the 2D skeleton) ----
+                        # Project the fitted skeleton's segment origins back into
+                        # each camera — the OVERLAY_REPROJECTIONS layer (larger
+                        # dots + connections on the frontend). Only possible with
+                        # a valid calibration.
+                        if calibration.is_valid:
+                            t0 = time.perf_counter() if timer is not None else 0.0
+                            reprojected_segment_origins = _reproject_segment_origins(
+                                calibration=calibration,
+                                standard_human=standard_human,
+                                solver_landmarks=solver_landmarks,
+                            )
+                            if timer is not None:
+                                timer.record("segment_reprojection", (time.perf_counter() - t0) * 1e3)
+
                     # ---- Center of mass ----
                     # Prefer the rigidified skeleton (matches posthoc, which
                     # computes CoM on rigid_xyz); fall back to raw keypoints when
@@ -797,14 +851,14 @@ class RealtimeAggregatorNode(AggregatorNode):
                             # alone lacks. Merge, later wins: rigidified values
                             # override the mapping for shared names; derived-only
                             # names come from the mapping.
-                            com_canonical = {
+                            standard_human_positions = {
                                 **biomechanics.tracker_mapping.apply(filtered_keypoints),
                                 **rigid_result.body_positions,
                                 **rigid_result.left_hand_standard_positions,
                                 **rigid_result.right_hand_standard_positions,
                             }
-                            com_result = calculate_center_of_mass_from_canonical(
-                                com_canonical,
+                            com_result = calculate_center_of_mass(
+                                standard_human_positions,
                                 biomechanics,
                             )
                         else:
@@ -914,10 +968,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         segment_rotations_local=segment_rotations_local,
                         body_kinematics=body_kinematics,
                         segment_lengths=segment_lengths,
+                        reprojected_segment_origins=reprojected_segment_origins,
                     ),
                 )
                 # Mark the slot as full and not-yet-consumed; the consumer
-                # (websocket relay via RealtimePipeline.get_latest_frontend_payload)
+                # (websocket relay via RealtimePipeline.get_latest_aggregator_output)
                 # flips these in the opposite order on grab.
                 result_consumed_event.clear()
                 result_ready_event.set()

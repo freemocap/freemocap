@@ -1,14 +1,14 @@
 // ServerContextProvider.tsx
 //
-// Thin consumer of TransportService (F3). The socket ownership, binary
-// first-byte demux, standard-stream schema/sample decode, and rolling-window
-// stores live in TransportService. This provider retains:
-//   - the JPEG image pipeline (FrameProcessor + CanvasManager) — separate from
-//     the standard stream and owned by the renderer workstream (F4);
+// Thin consumer of TransportService. The socket ownership, binary first-byte
+// demux, standard-stream schema/sample decode, and rolling-window stores live
+// in TransportService. One sample per frame carries the pose, the overlays,
+// AND the IMAGE_JPEG camera images — this provider feeds the image bytes into
+// the FrameProcessor (decode) and the CanvasManager (per-camera display +
+// overlay composite), and retains:
 //   - the inbound/redux JSON routing (settings, framerate, posthoc progress,
 //     app_state, logs) — the server still routes these over the WS;
 //   - the subscriber-hook surface (now backed by TransportService subscribers).
-// The retired legacy keypoints binary path (D36) is gone.
 
 import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import { ServerContext, type ServerContextValue } from './server-context';
@@ -21,9 +21,7 @@ import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
 import {
-    FrontendPayloadMessage,
     isFramerateUpdate,
-    isFrontendPayload,
     isLogRecord,
     isPosthocProgress,
     isTrackerSchemas,
@@ -40,7 +38,7 @@ import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/st
 import type {AppStateMessage} from "@/store/slices/connection/connection-types";
 import {loadCalibrationForRecording} from "@/store/slices/calibration";
 import {TransportService} from "@/services/server/transport/TransportService";
-import type {RotationsFrame, RollingChannelName, StreamSchema} from "@/services/server/transport/types";
+import type {RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema} from "@/services/server/transport/types";
 import {OverlayLayer} from "@/services/server/transport/types";
 import type {SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
 
@@ -100,12 +98,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const bodyKinematicsSubscribersRef = useRef<Set<(bk: BodyKinematics | null) => void>>(new Set());
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
+    const segmentLengthsRef = useRef<SegmentLengthsFrame | null>(null);
 
     // Holds the latest binary JPEG payload received from the WebSocket.
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const pendingAckFrameNumberRef = useRef<number | null>(null);
     const frameLoopRef = useRef<number | null>(null);
+    // Overlay observations keyed by frame number, then camera id — the image
+    // and its overlay for frame N arrive in the same sample, and the decode is
+    // async, so the observation is matched to the frame by number.
+    const pendingOverlaysRef = useRef<Map<number, Map<string, SkeletonObservation>>>(new Map());
 
     // Cached sorted camera IDs from the last frame
     const lastCameraIdsRef = useRef<string[]>([]);
@@ -147,39 +150,44 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             for (const cb of rotationsSubscribersRef.current) cb(frame);
         }));
         subs.push(transport.subscribeToOverlay((overlay) => {
-            // OVERLAY_2D DETECTIONS → per-camera skeleton overlay. The legacy
-            // `skeleton_overlay` JSON message path is gone (D36); this is its
-            // standard-stream replacement.
-            // TEMP DEBUG — remove
-            console.log(
-                `[TEMP] ServerContextProvider overlay cb camera=${overlay.cameraId} ` +
-                `layer=${overlay.layer} frame=${overlay.frameNumber} points=${overlay.names.length}`
-            );
-            if (overlay.layer !== OverlayLayer.DETECTIONS) return;
-            // OVERLAY_2D values are capture-resolution px; the schema carries
-            // each camera's capture size so the renderer scales to the display
-            // bitmap.
+            // Per-camera 2D overlays, in capture-resolution px (the schema
+            // carries each camera's capture size so the renderer scales to
+            // the display bitmap). DETECTIONS = tracker keypoints (small
+            // dots); REPROJECTIONS = the fitted skeleton's segment-origin
+            // landmarks (larger dots + segment connections). Both layers of
+            // one sample merge into ONE observation, keyed by frame number —
+            // dispatchFrames pairs the decoded frame with its own sample.
+            if (overlay.layer !== OverlayLayer.DETECTIONS && overlay.layer !== OverlayLayer.REPROJECTIONS) return;
             const dims = transport.getSchema()?.camera_image_sizes[overlay.cameraId];
-            // TEMP DEBUG — remove
-            let finite = 0;
-            for (let i = 0; i < overlay.data.length; i++) if (Number.isFinite(overlay.data[i])) finite++;
-            console.log(`[TEMP] cb dims=${dims} finite=${finite}/${overlay.data.length} first=${overlay.data.slice(0, 3)}`);
-            const observation: SkeletonObservation = {
+            const frameOverlays = pendingOverlaysRef.current.get(overlay.frameNumber)
+                ?? new Map<string, SkeletonObservation>();
+            const observation: SkeletonObservation = frameOverlays.get(overlay.cameraId) ?? {
                 message_type: 'skeleton_overlay',
                 camera_id: overlay.cameraId,
                 frame_number: overlay.frameNumber,
                 tracker_id: activeTrackerIdRef.current ?? 'RTMPoseTracker',
                 image_width: dims?.[0] ?? 0,
                 image_height: dims?.[1] ?? 0,
-                points: overlay.names.map((name, i) => ({
-                    name,
-                    x: overlay.data[i * 3],
-                    y: overlay.data[i * 3 + 1],
-                    z: 0,
-                    visibility: overlay.data[i * 3 + 2],
-                })),
+                points: [],
             };
-            canvasManagerRef.current?.updateOverlays(undefined, { [overlay.cameraId]: observation });
+            const points = overlay.names.map((name, i) => ({
+                name,
+                x: overlay.data[i * 3],
+                y: overlay.data[i * 3 + 1],
+                z: 0,
+                visibility: overlay.data[i * 3 + 2],
+            }));
+            if (overlay.layer === OverlayLayer.DETECTIONS) {
+                observation.points = points;
+            } else {
+                observation.landmarks = points;
+                observation.connections = transport.getSchema()?.connections ?? [];
+            }
+            frameOverlays.set(overlay.cameraId, observation);
+            pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);
+        }));
+        subs.push(transport.subscribeToSegmentLengths((frame) => {
+            segmentLengthsRef.current = frame;
         }));
 
         const handleBeforeUnload = (): void => {
@@ -222,11 +230,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 processingFrameRef.current = false;
                 pendingPayloadRef.current = null;
                 pendingAckFrameNumberRef.current = null;
+                pendingOverlaysRef.current.clear();
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
                 keypointsRef.current = null;
                 skeletonRef.current = null;
                 rotationsRef.current = null;
+                segmentLengthsRef.current = null;
                 trackerSchemasRef.current = {};
                 activeTrackerIdRef.current = null;
                 setTrackerSchemas({});
@@ -272,43 +282,20 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
 
             for (const frameData of frames) {
+                const overlay = pendingOverlaysRef.current.get(frameData.frameNumber)?.get(frameData.cameraId) ?? null;
+                // Prune overlay entries older than a few frames — they are
+                // consumed at most once and the map must not grow.
+                for (const key of pendingOverlaysRef.current.keys()) {
+                    if (key < frameData.frameNumber - 5) pendingOverlaysRef.current.delete(key);
+                }
                 canvasManagerRef.current?.sendFrameToWorker(
                     frameData.cameraId,
                     frameData.pixelBuffer,
                     frameData.width,
                     frameData.height,
+                    overlay,
                 );
             }
-        };
-
-        const dispatchJsonPayload = (payload: FrontendPayloadMessage): void => {
-            if (payload.charuco_overlays || payload.skeleton_overlays) {
-                canvasManagerRef.current?.updateOverlays(
-                    payload.charuco_overlays,
-                    payload.skeleton_overlays,
-                );
-            }
-
-            if (payload.center_of_mass) {
-                const comPoint: Point3d = {
-                    x: (payload.center_of_mass as Point3d).x,
-                    y: (payload.center_of_mass as Point3d).y,
-                    z: (payload.center_of_mass as Point3d).z,
-                };
-                for (const cb of centerOfMassSubscribersRef.current) cb(comPoint);
-            }
-
-            if (payload.xcom) {
-                const xcomPoint: Point3d = {
-                    x: (payload.xcom as Point3d).x,
-                    y: (payload.xcom as Point3d).y,
-                    z: (payload.xcom as Point3d).z,
-                };
-                for (const cb of xcomSubscribersRef.current) cb(xcomPoint);
-            }
-
-            const bodyKinematics = payload.body_kinematics ?? null;
-            for (const cb of bodyKinematicsSubscribersRef.current) cb(bodyKinematics);
         };
 
         // JSON messages that aren't the standard-stream schema still route here.
@@ -326,8 +313,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (isLogRecord(jsonData)) {
                 logStoreRef.current.add(jsonData);
             } else if (isTrackerSchemas(jsonData)) {
-                // TEMP DEBUG — remove
-                console.log(`[TEMP] tracker_schemas message received: ${Object.keys(jsonData.schemas ?? {}).join(", ")}`);
                 const schemas = jsonData.schemas;
                 trackerSchemasRef.current = schemas;
                 const keys = Object.keys(schemas);
@@ -339,8 +324,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             } else if (isFramerateUpdate(jsonData)) {
                 serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
                 framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
-            } else if (isFrontendPayload(jsonData)) {
-                dispatchJsonPayload(jsonData);
             } else if (isPosthocProgress(jsonData)) {
                 const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
                     calibration: PipelineType.CALIBRATION,
@@ -411,13 +394,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             return undefined;
         });
 
-        // JPEG image frames arrive as non-sample binary → process via the frame
-        // processor, and decode the frame ack (frameNumber at offset 8).
-        transport.subscribeToImages((buf) => {
-            if (buf.byteLength >= 16) {
-                const view = new DataView(buf);
-                pendingAckFrameNumberRef.current = Number(view.getBigInt64(8, true));
-            }
+        // The IMAGE_JPEG block bytes for frame N arrive in the same sample as
+        // frame N's overlays — feed them to the frame processor and ack with
+        // the sample's own frame number.
+        transport.subscribeToImages((buf, frameNumber) => {
+            pendingAckFrameNumberRef.current = frameNumber;
             pendingPayloadRef.current = buf;
         });
 
@@ -548,6 +529,10 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return rotationsRef.current;
     }, []);
 
+    const getLatestSegmentLengths = useCallback((): SegmentLengthsFrame | null => {
+        return segmentLengthsRef.current;
+    }, []);
+
     const getRollingWindow = useCallback((channelName: RollingChannelName): unknown[] => {
         return transportRef.current?.getRollingWindow(channelName) ?? [];
     }, []);
@@ -600,10 +585,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getActiveSchema,
         subscribeToRotations,
         getLatestRotations,
+        getLatestSegmentLengths,
         getRollingWindow,
         subscribeToSchema,
         getStreamSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema, subscribeToRotations, getLatestRotations, getRollingWindow, subscribeToSchema, getStreamSchema]);
+    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema, subscribeToRotations, getLatestRotations, getLatestSegmentLengths, getRollingWindow, subscribeToSchema, getStreamSchema]);
 
     return (
         <ServerContext.Provider value={contextValue}>

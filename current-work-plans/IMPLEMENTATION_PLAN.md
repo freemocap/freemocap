@@ -155,6 +155,30 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-15 (the unified stream — cutover landed + the 2D overlay upgrade)** — The two-stream
+  websocket model (image relay + sample relay draining one aggregator queue with asymmetric
+  backpressure) was replaced by **one producer-composed stream**: `standard_stream/producers/`
+  (keypoints / segment / overlay / derived / image) compose the schema and every sample;
+  `FrameRelay` is the single consumer of the aggregator output (newest-wins, no ack window —
+  `BackpressureController` deleted); the camera JPEGs ride each sample as an `IMAGE_JPEG` uint8
+  block; `SEGMENT_LENGTHS` is per-frame; the schema re-sends on a composite producer signature
+  (camera set / detector / pipeline live / **camera image sizes** — a rotation change propagates
+  to the frontend with no restarts). The frontend consumes one sample per frame: image + overlays
+  delivered to the canvas workers as a matched pair (the 500 ms staleness heuristic is gone).
+  Hard-won runtime invariants: **calibration hot-reloads** (the aggregator polls the TOML every 1 s
+  — finishing a calibration lights up the 3D skeleton + reprojections live, no restarts) and
+  **no-restart rotation propagation** (image sizes ride the schema signature). Also landed: the 2D
+  overlay upgrade — `OVERLAY_REPROJECTIONS` (kind 9): the aggregator projects the fitted skeleton's
+  60 segment-origin landmarks into each camera (valid calibration only); the frontend draws
+  keypoint detections as small dots, the reprojected landmarks as larger dots with the segment
+  parent→child connections between them, plus an always-on stats HUD
+  (`f <frame> · kp <n> · lm <n>`). Wire kinds are now 0–9; goldens regenerated; 133 backend tests,
+  `tsc`, and all three TS harnesses green. Deleted en route: `from_standard_human`,
+  `from_aggregator_output`, `get_latest_frontend_payload(s)`, the frontend-payload JSON machinery,
+  `backpressure_controller.py`. Known gaps (flagged, not done): the dead `tracker_schemas`
+  handshake deletion, dead charuco-renderer frontend files, the playback HTTP image path,
+  per-camera `IMAGE_JPEG` blocks, and the renderer's live-`SEGMENT_LENGTHS` merge.
+
 - **2026-08-13 (face extension + the sanctioned lateral import — round done on disk, awaiting the
   push)** — Per the user: (1) the face part grew five **face-detail segments** — `nose`
   (head_center→nose, rest +X), `left_ear`/`right_ear` (head_center→ear, rest ±Y), `left_mouth`/

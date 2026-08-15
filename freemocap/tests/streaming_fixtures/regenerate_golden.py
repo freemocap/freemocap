@@ -26,6 +26,11 @@ from pathlib import Path
 import numpy as np
 
 from freemocap.core.streaming.standard_stream import StreamSample, StreamSchema, encode_sample, encode_schema
+from freemocap.core.streaming.standard_stream.producers import compose, compose_sample
+from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+    FrameContext,
+    StreamContext,
+)
 from freemocap.core.tasks.mocap.center_of_mass import CoMConfidence, CenterOfMassResult
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -52,15 +57,19 @@ def _observation(*, frame_number: int, body_points: dict[str, tuple[float, float
 
 def build() -> tuple[StreamSchema, StreamSample]:
     model = compose_standard_human()
-    schema = StreamSchema.from_standard_human(
-        stream_id="golden-stream-id",
-        stream_name="golden-standard-stream",
+    context = StreamContext(
         standard_human=model,
         camera_ids=("cam-0", "cam-1"),
         # image_size is (height, width); the schema field is (width, height).
         camera_image_sizes={"cam-0": (640, 480), "cam-1": (640, 480)},
         tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+        pipeline_live=True,
     )
+    schema = compose(
+        context,
+        stream_id="golden-stream-id",
+        stream_name="golden-standard-stream",
+    ).schema
 
     standard_skeleton = {
         "hips_center": np.array([0.0, 0.0, 900.0]),
@@ -124,8 +133,21 @@ def build() -> tuple[StreamSchema, StreamSample]:
         segment_rotations_world=rotation_world,
         segment_rotations_local=rotation_local,
     )
-    sample = StreamSample.from_aggregator_output(
-        message=message, schema=schema, standard_human=model, timestamp=123.456
+    frame_ctx = FrameContext(
+        frame_number=message.frame_number,
+        timestamp=123.456,
+        aggregator_output=message,
+        # An odd-length fake JPEG pins the uint8 alignment path (the block is
+        # composed last).
+        image_payload=bytes([0xFF, 0xD8, 0xFF]) + b"golden-fake-jpeg",
+    )
+    sample = compose_sample(
+        compose(
+            context,
+            stream_id="golden-stream-id",
+            stream_name="golden-standard-stream",
+        ),
+        frame_ctx,
     )
     return schema, sample
 

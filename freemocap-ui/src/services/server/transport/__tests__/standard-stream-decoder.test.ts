@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { decodeSchema, decodeSample } from "../StandardStreamDecoder";
 import { createSchemaRegistry } from "../SchemaRegistry";
 import { RollingWindowStore } from "../RollingWindowStore";
-import { ChannelKind, OverlayLayer } from "../types";
+import { ChannelKind, DtypeCode, OverlayLayer, type StreamSchema } from "../types";
 
 // Tiny framework-free assert.
 function assert(cond: unknown, message: string): asserts cond {
@@ -62,14 +62,17 @@ const sampleBuf = sampleBytes.buffer.slice(
 function testSchemaRoundTrip(): void {
   const schema = decodeSchema(schemaJson);
   assertEq(schema.stream_id, "golden-stream-id", "stream_id");
-  assertEq(schema.channels.length, 7, "seven channel groups");
+  assertEq(schema.channels.length, 10, "ten channel groups");
   assertEq(schema.channels[0].kind, ChannelKind.KEYPOINTS_3D, "channel 0 kind");
   assertEq(schema.channels[1].kind, ChannelKind.LANDMARKS_3D, "channel 1 kind");
   assertEq(schema.channels[2].kind, ChannelKind.SEGMENT_ORIGINS, "channel 2 kind");
   assertEq(schema.channels[3].kind, ChannelKind.ROTATIONS_LOCAL, "channel 3 kind");
   assertEq(schema.channels[4].kind, ChannelKind.ROTATIONS_WORLD, "channel 4 kind");
-  assertEq(schema.channels[5].kind, ChannelKind.DERIVED_POINTS, "channel 5 kind");
+  assertEq(schema.channels[5].kind, ChannelKind.SEGMENT_LENGTHS, "channel 5 kind");
   assertEq(schema.channels[6].kind, ChannelKind.OVERLAY_2D, "channel 6 kind");
+  assertEq(schema.channels[7].kind, ChannelKind.OVERLAY_REPROJECTIONS, "channel 7 kind");
+  assertEq(schema.channels[8].kind, ChannelKind.DERIVED_POINTS, "channel 8 kind");
+  assertEq(schema.channels[9].kind, ChannelKind.IMAGE_JPEG, "channel 9 kind");
   assertEq(schema.channels[0].names.length, 59, "59 rtmpose tracker keypoints");
   assertEq(schema.channels[1].names.length, 76, "76 landmarks");
   assertEq(schema.channels[2].names.length, 60, "60 segments");
@@ -92,7 +95,7 @@ function testGoldenSampleDecode(): void {
 
   assertEq(sample.frameNumber, 42, "frame number 42");
   assertClose(sample.timestamp, 123.456, 1e-3, "timestamp 123.456");
-  assertEq(sample.blocks.length, 8, "6 groups + 2 camera overlays = 8 blocks");
+  assertEq(sample.blocks.length, 12, "10 groups, overlay kinds ×2 cameras = 12 blocks");
 
   const registry = createSchemaRegistry();
   registry.register(schema);
@@ -150,17 +153,22 @@ function testGoldenSampleDecode(): void {
   assert(resolved.derived.xcom !== null, "xcom present");
   assertClose(resolved.derived.xcom![0], 12.5, 1e-4, "XCoM.x");
 
-  // Overlays — one DETECTIONS block per camera (cam-0 + cam-1)
-  assertEq(resolved.overlays.length, 2, "two overlay blocks");
-  const byCam = new Map(resolved.overlays.map((o) => [o.cameraId, o]));
-  assert(byCam.has("cam-0"), "cam-0 overlay");
-  assert(byCam.has("cam-1"), "cam-1 overlay");
-  assertEq(byCam.get("cam-0")!.layer, OverlayLayer.DETECTIONS, "cam-0 overlay layer");
+  // Overlays — one DETECTIONS + one REPROJECTIONS block per camera
+  assertEq(resolved.overlays.length, 4, "four overlay blocks (2 layers × 2 cams)");
+  const detections = resolved.overlays.filter((o) => o.layer === OverlayLayer.DETECTIONS);
+  const reprojections = resolved.overlays.filter((o) => o.layer === OverlayLayer.REPROJECTIONS);
+  assertEq(detections.length, 2, "two DETECTIONS blocks");
+  assertEq(reprojections.length, 2, "two REPROJECTIONS blocks");
+
+  const byCam = new Map(detections.map((o) => [o.cameraId, o]));
   const cam0 = byCam.get("cam-0")!;
   const noseIdx = cam0.names.indexOf("nose");
   assert(noseIdx !== -1, "nose in overlay names");
   assertEq(cam0.data[noseIdx * 3], 320.0, "cam-0 nose.x");
   assertEq(cam0.data[noseIdx * 3 + 1], 240.0, "cam-0 nose.y");
+
+  // REPROJECTIONS names are the 60 segment names.
+  assertEq(reprojections[0].names.length, 60, "60 segment names in reprojections");
   console.log("PASS: testGoldenSampleDecode");
 }
 
@@ -214,6 +222,94 @@ function testFirstByteTags(): void {
   console.log("PASS: testFirstByteTags");
 }
 
+// ── 6. uint8 (IMAGE_JPEG) block + misaligned-float robustness ───────────
+
+interface RawBlock {
+  kind: ChannelKind;
+  dtypeCode: DtypeCode;
+  cols: number;
+  numElements: number;
+  data: Uint8Array;
+}
+
+/** Build a minimal standard-stream sample buffer by hand (there is no TS
+ *  encoder). Mirrors the 32-byte header layout in StandardStreamDecoder. */
+function buildSample(frameNumber: number, blocks: RawBlock[]): ArrayBuffer {
+  let total = 32 + 32; // SAMPLE_HEADER + SAMPLE_FOOTER
+  for (const b of blocks) total += 32 + b.data.byteLength;
+  const buf = new ArrayBuffer(total);
+  const view = new DataView(buf);
+  view.setUint8(0, 10); // SAMPLE_HEADER
+  view.setFloat64(8, 0, true);
+  view.setBigInt64(16, BigInt(frameNumber), true);
+  view.setUint32(24, 0, true);
+  view.setUint32(28, blocks.length, true);
+  let cur = 32;
+  for (const b of blocks) {
+    view.setUint8(cur + 0, 11); // BLOCK_HEADER
+    view.setUint8(cur + 1, b.kind);
+    view.setUint8(cur + 2, b.dtypeCode);
+    view.setUint8(cur + 3, b.cols);
+    view.setUint32(cur + 24, b.numElements, true);
+    view.setUint32(cur + 28, b.data.byteLength, true);
+    cur += 32;
+    new Uint8Array(buf, cur, b.data.byteLength).set(b.data);
+    cur += b.data.byteLength;
+  }
+  view.setUint8(cur + 0, 12); // SAMPLE_FOOTER
+  view.setFloat64(cur + 8, 0, true);
+  view.setBigInt64(cur + 16, BigInt(frameNumber), true);
+  view.setUint32(cur + 24, 0, true);
+  view.setUint32(cur + 28, blocks.length, true);
+  return buf;
+}
+
+const uint8TestSchema = {
+  stream_id: "t",
+  stream_name: "t",
+  coordinate_convention: {
+    units: "mm", handedness: "right", up_axis: "+z",
+    forward_axis: "+x", rotation_frame: "local", rotation_form: "quaternion",
+  },
+  channels: [
+    { kind: ChannelKind.SEGMENT_LENGTHS, names: ["hips"], columns: ["length_mm"], units: "mm" },
+    { kind: ChannelKind.IMAGE_JPEG, names: ["image"], columns: ["jpeg_bytes"], units: "jpeg" },
+  ],
+  connections: [], joint_hierarchy: {}, segment_parents: {}, rest_pose: null,
+  segment_lengths: {}, camera_ids: [], camera_image_sizes: {}, max_persons: 1,
+  message_type: "stream_schema",
+} as unknown as StreamSchema;
+
+function testUint8AndMisalignedFloatDecode(): void {
+  // An IMAGE_JPEG uint8 block of ODD length (3), followed by a float32
+  // SEGMENT_LENGTHS block whose data therefore lands on a non-4-aligned offset
+  // → exercises both the uint8 decode path and the alignment-safe float copy.
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff]);
+  const lenBytes = new Uint8Array(4);
+  new DataView(lenBytes.buffer).setFloat32(0, 42.5, true);
+  const buf = buildSample(99, [
+    { kind: ChannelKind.IMAGE_JPEG, dtypeCode: DtypeCode.UINT8, cols: 1, numElements: 3, data: jpeg },
+    { kind: ChannelKind.SEGMENT_LENGTHS, dtypeCode: DtypeCode.FLOAT32, cols: 1, numElements: 1, data: lenBytes },
+  ]);
+  const sample = decodeSample(buf, uint8TestSchema);
+  assertEq(sample.frameNumber, 99, "image-sample frame number");
+  assertEq(sample.blocks.length, 2, "two blocks");
+
+  const img = sample.blocks[0];
+  assertEq(img.kind, ChannelKind.IMAGE_JPEG, "block0 kind IMAGE_JPEG");
+  assertEq(img.dtypeCode, DtypeCode.UINT8, "block0 dtype UINT8");
+  assert(img.data instanceof Uint8Array, "block0 data is Uint8Array");
+  assertEq(img.data.length, 3, "block0 byte length 3");
+  assertEq(img.data[0], 0xff, "block0 byte 0");
+  assertEq(img.data[1], 0xd8, "block0 byte 1");
+
+  const seg = sample.blocks[1];
+  assertEq(seg.kind, ChannelKind.SEGMENT_LENGTHS, "block1 kind SEGMENT_LENGTHS");
+  assert(seg.data instanceof Float32Array, "block1 data is Float32Array (copied when misaligned)");
+  assertClose(seg.data[0], 42.5, 1e-6, "block1 float value survives misalignment");
+  console.log("PASS: testUint8AndMisalignedFloatDecode");
+}
+
 // ── run ────────────────────────────────────────────────────────────────
 
 testSchemaRoundTrip();
@@ -221,5 +317,6 @@ testGoldenSampleDecode();
 testRollingWindowEviction();
 testRollingWindowSubscriber();
 testFirstByteTags();
+testUint8AndMisalignedFloatDecode();
 
 console.log("\nAll standard-stream decoder tests passed.");

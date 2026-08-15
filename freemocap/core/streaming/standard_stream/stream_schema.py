@@ -14,12 +14,10 @@ SSOT for the wire contract:
 from __future__ import annotations
 
 import enum
-from collections.abc import Mapping, Sequence  # noqa: TC003 — beartype resolves this in the ``from_standard_human`` signature at runtime
 
 import msgspec
 
 from freemocap.core.streaming.standard_stream.coordinate_convention import (
-    FREEMOCAP_CANONICAL_CONVENTION,
     CoordinateConvention,
 )
 from freemocap.core.types.type_overloads import SegmentNameString  # noqa: TC001 — msgspec resolves this at class-def time for ``segment_parents``
@@ -27,7 +25,7 @@ from skellyforge.skellymodels.standard_human.reference_geometry import (
     build_reference_geometry,
 )
 from skellyforge.skellymodels.standard_human.standard_human_model import (
-    StandardHuman,  # noqa: TC002 — beartype resolves this in the ``from_standard_human`` signature at runtime
+    StandardHuman,  # noqa: TC002 — beartype resolves this in the RestPose/merge-helper signatures at runtime
 )
 
 from freemocap.core.streaming.constants import (  # noqa: E402  # after the module docstring — see the header note
@@ -37,27 +35,19 @@ from freemocap.core.streaming.constants import (  # noqa: E402  # after the modu
 
 def _merge_segment_lengths(
     standard_human: StandardHuman,
-    measured_lengths: dict[str, float] | None,
 ) -> dict[str, float]:
-    """Per-segment rest length: measured where available, anthropometric default otherwise.
+    """The anthropometric default per-segment rest lengths.
 
-    The schema's ``segment_lengths`` contract is *default-then-update*: on first
-    send the mapping carries the anthropometric defaults (``length_ratio ×
-    NOMINAL_SUBJECT_HEIGHT_MM``); whenever the rigifier's live measured
-    estimates change materially, the server re-sends a schema whose
-    ``measured_lengths`` override the measured segments and leave the rest at
-    their defaults. This helper is the single point where a measured dict is
-    merged over the defaults (shared by the rest-pose build and the
-    ``segment_lengths`` field).
+    The schema carries defaults (``length_ratio × NOMINAL_SUBJECT_HEIGHT_MM``)
+    so a consumer can render before the first sample arrives; the live measured
+    estimates ride the per-frame ``SEGMENT_LENGTHS`` block and never touch the
+    schema. Shared by the rest-pose build and the schema's ``segment_lengths``
+    field.
     """
-    merged = {
+    return {
         segment.name: segment.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
         for segment in standard_human.segments
     }
-    if measured_lengths:
-        for name, length in measured_lengths.items():
-            merged[name] = float(length)
-    return merged
 
 
 # ── Column layouts — SSOT alongside the wire contract ─────────────────────
@@ -66,6 +56,8 @@ SEGMENT_ORIGINS_COLUMNS = ("x", "y", "z")
 DERIVED_POINT_COLUMNS = ("x", "y", "z")
 ROTATION_COLUMNS = ("w", "x", "y", "z")
 OVERLAY_2D_COLUMNS = ("x", "y", "visibility")
+SEGMENT_LENGTHS_COLUMNS = ("length_mm",)
+IMAGE_JPEG_COLUMNS = ("jpeg_bytes",)
 
 DEFAULT_DERIVED_POINTS = ("center_of_mass", "xcom")
 
@@ -85,6 +77,15 @@ class ChannelKind(enum.IntEnum):
     ROTATIONS_WORLD = 4     # per-segment world-frame quaternion — columns (w, x, y, z)
     DERIVED_POINTS = 5      # whole-body kinematics (center_of_mass, xcom) — columns (x, y, z)
     OVERLAY_2D = 6          # per-camera 2D projection — columns (x, y, visibility); keyed by (camera_id, overlay_layer)
+    SEGMENT_LENGTHS = 7     # per-segment rest length (mm), sent every frame — columns (length_mm,)
+    IMAGE_JPEG = 8          # camera images — a uint8 block (dtype_code UINT8). Currently ONE opaque
+                            # multi-camera JPEG blob (the SkellyCam frontend payload; the consumer splits
+                            # it per camera). TODO: split into per-camera IMAGE_JPEG blocks, symmetric with
+                            # OVERLAY_2D, once the SkellyCam payload is unpacked backend-side.
+    OVERLAY_REPROJECTIONS = 9  # per-camera 2D segment-origin landmarks — the fitted skeleton projected
+                               # back into each camera (capture-resolution px). Columns (x, y, visibility),
+                               # keyed by camera_id; names are the 60 segment names. Empty (NaN) rows when
+                               # there is no valid calibration / no solve this frame.
 
 
 class OverlayLayer(enum.IntEnum):
@@ -109,7 +110,7 @@ class ChannelGroup(msgspec.Struct, frozen=True):
 class RestPose(msgspec.Struct, frozen=True):
     """The declared T-pose: identity rotation == this pose.
 
-    Populated by the canonical human model. Orientations are wxyz quaternions.
+    Populated by the standard human model. Orientations are wxyz quaternions.
     """
 
     positions: dict[str, tuple[float, float, float]] = msgspec.field(default_factory=dict)
@@ -119,23 +120,16 @@ class RestPose(msgspec.Struct, frozen=True):
     def from_standard_human(
         cls,
         standard_human: StandardHuman,
-        measured_lengths: dict[str, float] | None = None,
     ) -> RestPose:
-        """Build the rest pose from the canonical model's T-pose.
+        """Build the rest pose from the standard human model's T-pose.
 
         Joint center positions come from the model's reference geometry (rest
-        keypoint positions, keyed by keypoint name). Orientations are identity
-        quaternions — by contract, identity quaternion == T-pose.
-
-        ``measured_lengths`` overrides individual segments' rest lengths; any
-        segment NOT in the override falls back to its anthropometric default
-        (``length_ratio × NOMINAL_SUBJECT_HEIGHT_MM``). The same merged lengths
-        dict drives ``build_reference_geometry`` so the rest pose positions and
-        the schema's ``segment_lengths`` stay consistent. See
-        ``StreamSchema.from_standard_human`` for the default-then-update
-        lifecycle.
+        keypoint positions, keyed by keypoint name) at the anthropometric
+        default lengths. Orientations are identity quaternions — by contract,
+        identity quaternion == T-pose. The live measured lengths ride the
+        per-frame ``SEGMENT_LENGTHS`` block, not the rest pose.
         """
-        merged = _merge_segment_lengths(standard_human, measured_lengths)
+        merged = _merge_segment_lengths(standard_human)
         geometry = build_reference_geometry(list(standard_human.segments), merged)
 
         positions: dict[str, tuple[float, float, float]] = {}
@@ -163,10 +157,10 @@ class StreamSchema(msgspec.Struct, frozen=True):
     joint_hierarchy: dict[str, tuple[str, ...]] = msgspec.field(default_factory=dict)
     segment_parents: dict[SegmentNameString, SegmentNameString | None] = msgspec.field(default_factory=dict)
     rest_pose: RestPose | None = None
-    # Per-segment rest lengths (mm), one entry per segment name. Default-then-
-    # update lifecycle: anthropometric defaults on first send, then re-sent with
-    # measured values when the live estimates change materially (see
-    # ``from_standard_human``).
+    # Per-segment rest lengths (mm), one entry per segment name — the
+    # anthropometric defaults (a consumer renders before the first sample
+    # arrives). The live measured estimates ride the per-frame SEGMENT_LENGTHS
+    # block and never touch the schema.
     segment_lengths: dict[str, float] = msgspec.field(default_factory=dict)
     camera_ids: tuple[str, ...] = ()  # cameras for OVERLAY_2D — fixed at stream creation
     # Per-camera capture-resolution image size (width, height) in px — the
@@ -175,148 +169,6 @@ class StreamSchema(msgspec.Struct, frozen=True):
     camera_image_sizes: dict[str, tuple[int, int]] = msgspec.field(default_factory=dict)
     max_persons: int = 1   # reserved for multi-subject; 1 for now
     message_type: str = "stream_schema"
-
-    @classmethod
-    def from_standard_human(
-        cls,
-        *,
-        stream_id: str,
-        stream_name: str,
-        standard_human: StandardHuman,
-        camera_ids: Sequence[str] = (),
-        convention: CoordinateConvention = FREEMOCAP_CANONICAL_CONVENTION,
-        derived_point_names: Sequence[str] = DEFAULT_DERIVED_POINTS,
-        tracker_keypoint_names: Sequence[str] = (),
-        max_persons: int = 1,
-        measured_lengths: dict[str, float] | None = None,
-        camera_image_sizes: Mapping[str, tuple[int, int]] | None = None,
-    ) -> StreamSchema:
-        """Build the standard-stream schema from the canonical human model.
-
-        THIS function IS the boundary between the model and the wire. The
-        coupling between the schema and ``StandardHuman`` is intended (D30):
-        the composed model is the one source of the channel names, hierarchy,
-        and rest pose. This module importing the model at module scope is that
-        decision made concrete.
-
-        Enumerates channels in fixed order (decoder indexes blocks by position):
-
-        0. **KEYPOINTS_3D** — the tracker-named measured keypoints
-           (``tracker_keypoint_names`` — the mapping's tracker side),
-           columns ``(x, y, z, reprojection_error)``.
-        1. **LANDMARKS_3D** — the 76 hydrated standard-human landmarks
-           (``required_landmarks()``, sorted), columns
-           ``(x, y, z, reprojection_error)``.
-        2. **SEGMENT_ORIGINS** — segment names (60), transform origins,
-           columns ``(x, y, z)``.
-        3. **ROTATIONS_LOCAL** — segment names, parent-relative quaternion,
-           columns ``(w, x, y, z)``.
-        4. **ROTATIONS_WORLD** — segment names, world-frame quaternion,
-           columns ``(w, x, y, z)``.
-        5. **DERIVED_POINTS** — ``center_of_mass``, ``xcom``,
-           columns ``(x, y, z)``.
-        6. **OVERLAY_2D** — one block per camera per layer in the sample,
-           columns ``(x, y, visibility)``, keyed by ``camera_id`` +
-           ``overlay_layer``. ``names`` lists the DETECTIONS-layer keypoints
-           (the tracker-named 2D detections, NaN-padded); the REPROJECTIONS
-           layer carries the same keypoint set (the fitted model projected back
-           down), so ``names`` describes both layers' rows. Values are
-           capture-resolution image px — the per-camera capture sizes live in
-           ``camera_image_sizes``.
-
-        ``segment_parents`` (segment → parent) and ``rest_pose`` together are
-        what a consumer needs to compose the local-rotation chain into world
-        placement — the VMC/VRM model.
-
-        ``measured_lengths`` carries the live measured per-segment rest lengths
-        (keyed by segment name) from the rigidifier. The schema's
-        ``segment_lengths`` (and the rest pose, via the same merged dict) is the
-        *default-then-update* lifecycle: without ``measured_lengths`` every
-        segment takes its anthropometric default (``length_ratio ×
-        NOMINAL_SUBJECT_HEIGHT_MM``); when the estimates change materially, the
-        server calls this again with ``measured_lengths`` so only the measured
-        segments are overridden and the rest stay at their defaults. The
-        frontend therefore always has lengths — starting from human defaults and
-        converging to the measured values over the stream.
-        """
-        segment_names = tuple(standard_human.segment_names)
-        segment_lengths = _merge_segment_lengths(standard_human, measured_lengths)
-        landmark_names = tuple(sorted(standard_human.required_landmarks()))
-        tracker_names = tuple(tracker_keypoint_names)
-        segment_parents: dict[SegmentNameString, SegmentNameString | None] = {
-            name: parent for name, parent in standard_human.segment_parents.items()
-        }
-        units = convention.units.value
-
-        # ── Channel groups (fixed order) ──────────────────────────────
-        channels: tuple[ChannelGroup, ...] = (
-            ChannelGroup(
-                kind=ChannelKind.KEYPOINTS_3D,
-                names=tracker_names,
-                columns=KEYPOINTS_3D_COLUMNS,
-                units=units,
-            ),
-            ChannelGroup(
-                kind=ChannelKind.LANDMARKS_3D,
-                names=landmark_names,
-                columns=KEYPOINTS_3D_COLUMNS,
-                units=units,
-            ),
-            ChannelGroup(
-                kind=ChannelKind.SEGMENT_ORIGINS,
-                names=segment_names,
-                columns=SEGMENT_ORIGINS_COLUMNS,
-                units=units,
-            ),
-            ChannelGroup(
-                kind=ChannelKind.ROTATIONS_LOCAL,
-                names=segment_names,
-                columns=ROTATION_COLUMNS,
-                units="quaternion",
-            ),
-            ChannelGroup(
-                kind=ChannelKind.ROTATIONS_WORLD,
-                names=segment_names,
-                columns=ROTATION_COLUMNS,
-                units="quaternion",
-            ),
-            ChannelGroup(
-                kind=ChannelKind.DERIVED_POINTS,
-                names=tuple(derived_point_names),
-                columns=DERIVED_POINT_COLUMNS,
-                units=units,
-            ),
-            ChannelGroup(
-                kind=ChannelKind.OVERLAY_2D,
-                names=tracker_names,
-                columns=OVERLAY_2D_COLUMNS,
-                units="px",
-            ),
-        )
-
-        # ── Connections: parent→child segment edges ──────────────────
-        connections: list[tuple[str, str]] = []
-        for segment in standard_human.segments:
-            for child in standard_human.get_children(segment.name):
-                connections.append((segment.name, child.name))
-
-        rest_pose = RestPose.from_standard_human(standard_human, measured_lengths)
-
-        return cls(
-            stream_id=stream_id,
-            stream_name=stream_name,
-            coordinate_convention=convention,
-            channels=channels,
-            connections=tuple(connections),
-            joint_hierarchy={k: tuple(v) for k, v in standard_human.joint_hierarchy.items()},
-            segment_parents=segment_parents,
-            rest_pose=rest_pose,
-            segment_lengths=segment_lengths,
-            camera_ids=tuple(camera_ids),
-            camera_image_sizes=dict(camera_image_sizes) if camera_image_sizes else {},
-            max_persons=max_persons,
-        )
-
 
 _ENCODER = msgspec.json.Encoder()
 

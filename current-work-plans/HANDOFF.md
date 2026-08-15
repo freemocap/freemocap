@@ -1,126 +1,169 @@
-# Handoff — 2026-08-14 (realtime loop at the F5 gate)
+# Handoff — 2026-08-15 (one producer-composed stream landed; 2D overlay upgraded; user mid-calibration)
 
-**For a fresh agent (or the same one after compaction).** Read [`ontology.md`](ontology.md) first, then this
-file, then [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)'s progress log (history only — the layer docs
-are the live plans). The archive/ tree is history.
+**For a fresh agent (or the same one after compaction).** This file is the entry point. Follow the
+orientation protocol below, then **confirm your understanding with the user in chat before touching
+anything**. Do not start work on assumptions — the user has repeatedly (and correctly) rejected agents
+who read stale docs, patched symptoms instead of structures, or required restarts in the workflow.
 
-## Orientation in one page
+## The orientation protocol (exhaustive)
 
-FreeMoCap turns multi-camera frames into a streamed, canonical human. The settled ontology
-([ontology.md](ontology.md)): **keypoint** (measured 3D point, tracker-named — skellytracker) →
-**mapping** (the one seam: hydrates landmarks from keypoints — the four YAMLs) → **landmark** (a
-segment-local named point; two faces: static rest definition + per-frame world hydration — skellyforge) →
-**segment** (an oriented volume; graded: 2 landmarks = simple, twist carried by the damped roll; 3+ =
-full 6-DOF via the MDS-template + Procrustes fit) → **skeleton** (rooted tree; joint angles derived,
-`q_local = conj(q_parent)·q_child`). The future constraint/solve layer (typed linkages, chains/IK,
-twist-backfill) is **seams only** — it adds constraints later, NOT stability now. The now-DoD: a
-**VMC-compatible realtime segment stream** to the frontend.
+Read, in this order:
 
-**The stabilization stack (answered + settled 2026-08-14 — do not re-litigate):** Euro filter (keypoints)
-→ tree/fit rigidification (enforced lengths/shapes — the 2-landmark tree pass IS the old
-skeleton-rigidifier; the 3+ landmark per-group fits are strictly stronger) → critically-damped
-orientation solve (D3/D4). The old rigidifier's stabilizing effect is fully preserved. The future
-linkage layer is not needed for it.
+1. **This file** — the whole thing. It is the live state.
+2. **[`ontology.md`](ontology.md)** — the kinematic ontology (keypoint → mapping → landmark → segment →
+   skeleton). The now-DoD: a **VMC-compatible realtime segment stream** to the frontend. The constraint/
+   solve layer (linkages, chains/IK) is **future — seams only, do not describe it as current**.
+3. **[`00-foundation/conventions.md`](00-foundation/conventions.md)** + [`glossary.md`](00-foundation/glossary.md) —
+   mm · right-handed · +Z up · +X forward; quaternions **wxyz**; **identity == T-pose**;
+   `q_local = conj(q_parent)·q_child`; 60 segments / 76 landmarks (single-sourced in the glossary).
+4. **[`01-data-model/stream-contract.md`](01-data-model/stream-contract.md)** — THE wire contract. The
+   producer model, the channel table (kinds 0–9 — note `OVERLAY_REPROJECTIONS = 9` landed 2026-08-15),
+   the schema-signature lifecycle, dtype codes (FLOAT32=0, UINT8=1 for `IMAGE_JPEG`). This is the
+   single source of truth for shapes.
+5. **[`03-transport/backend-encoder-ws.md`](03-transport/backend-encoder-ws.md)** +
+   [`standard-stream-protocol.md`](03-transport/standard-stream-protocol.md) — one relay, one consumer,
+   newest-wins, no ack window, images in the sample.
+6. **[`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)'s progress log** — history only. The layer docs
+   are the live plans; where docs and code disagree, **the code wins and the doc is a bug** (fix the doc).
+7. The code itself, in this order: `core/streaming/standard_stream/producers/` →
+   `api/websocket/{frame_relay,websocket_server,send_serializer}.py` →
+   `core/pipeline/realtime/realtime_aggregator_node.py` (the reprojection site) →
+   `freemocap-ui/src/services/server/` (TransportService → SchemaRegistry → ServerContextProvider →
+   `server-helpers/{canvas-manager,offscreen-renderer.worker}.ts` → `image-overlay/skeleton-overlay-renderer.ts`).
 
-## Where the work stands (all green)
+`archive/` is history, never guidance. The workspace is a **multi-repo** clone (`project/freemocap/`
+contains `freemocap/` + `freemocap-ui/`; `skellyforge`/`skellytracker` are siblings). freemocap installs
+the skellies **from git**, so local skelly edits are invisible until the user commits/pushes them and
+`uv sync` advances the pin. **The user owns ALL git — never commit, push, or suggest it; report stopping
+points instead.**
 
-| Repo | State (committed on the remotes 2026-08-14; + one on-disk round since) | Suite |
+**Before proceeding, confirm with the user that you understand:** (a) the one-stream model and why the
+two-stream model was deleted; (b) the no-restart runtime invariants below; (c) the current queue and
+what "the gate" is. Ask if anything is unclear. Then and only then pick up the work.
+
+## Where we are right now (2026-08-15)
+
+The unified streaming layer is **landed and green end-to-end** (all on disk, uncommitted — the user owns
+the commit round). What exists:
+
+- **One producer-composed stream.** `standard_stream/producers/` composes the schema and every sample
+  from five producers (keypoints / segment / overlay / derived / image). `FrameRelay` is the single
+  consumer of the aggregator output; flow control is newest-wins (**no** `BackpressureController` — it's
+  deleted). The camera JPEGs ride every sample as an `IMAGE_JPEG` uint8 block; `SEGMENT_LENGTHS` is
+  per-frame; the schema re-sends only when a composite producer **signature** changes. The frontend
+  consumes one sample per frame: the image and its overlays are delivered to the per-camera canvas
+  workers as a matched pair keyed by frame number (the old 500 ms staleness heuristic is deleted).
+- **The 2D overlay upgrade.** `OVERLAY_2D` (DETECTIONS) = the tracker's raw 2D keypoints → small dots,
+  no connections. `OVERLAY_REPROJECTIONS` (kind 9) = the fitted skeleton's **60 segment-origin
+  landmarks** projected into each camera by the aggregator (valid calibration only) → larger dots with
+  the schema's segment parent→child `connections` between them, plus an always-on stats HUD
+  (`f <frame> · kp <n> · lm <n>`) per camera feed. In 2D-only mode the reprojection rows are NaN →
+  nothing drawn.
+- **The user is calibrating the cameras right now.** The moment a valid calibration is saved, the
+  running server hot-reloads it (see the invariants) and the 3D solve + the landmark skeleton lines
+  light up live. No restart, ever.
+
+## Runtime invariants (hard-won — do not break them)
+
+1. **No restarts in the workflow.** The server stays up across configuration changes. Two concrete
+   mechanisms, both live:
+   - **Calibration hot-reload:** the aggregator polls the calibration TOML every 1 s
+     (`CALIBRATION_POLL_INTERVAL_SECONDS` in `realtime_aggregator_node.py`; `check_for_update()` in
+     `calibration_state.py` compares mtimes) → reloads → `is_valid` → the next frame carries real
+     `OVERLAY_REPROJECTIONS` values. Finishing a calibration turns the 2D skeleton lines on **live**.
+   - **Config changes rebuild the schema via the pubsub network.** The supervisor subscribes to
+     freemocap's `PipelineConfigUpdateTopic` (per pipeline) and skellycam's
+     `UPDATE_CAMERA_SETTINGS` / `EXTRACTED_CONFIG` (per camera group — the camera workers publish the
+     extracted config when they apply a settings change, e.g. a rotation). Any message → a FULL schema
+     rebuild + resend. The composite **signature** (which includes `camera_image_sizes` — a rotation
+     swaps width/height while keeping the same camera ids, and was a real bug until included) remains
+     as the backstop for pipeline start/stop and configs mid-application.
+   Any future data-model change must ride the same mechanism, not a restart.
+
+2. **The stream is lockstep by construction.** Images, overlays, and pose for frame N travel in ONE
+   sample. Do not reintroduce a second send path, a second consumer of `aggregation_output_subscription`,
+   or any cross-stream timing heuristic (that was the original blink bug).
+
+3. **Expected cases are not log spam.** Running without a valid calibration is a normal 2D-only mode:
+   per-frame triangulation failures are `debug`-level; exactly one summary ERROR at invalidation, no
+   traceback. (Same principle for any other "totally OK" state.)
+
+## Where the work stands per repo
+
+| Repo | State | Suite |
 |---|---|---|
-| skellyforge | committed+pushed: the landmark sweep (`rigid_points`→`landmarks`, `origin_keypoint`→`origin_landmark`, `target_keypoint`→`target_landmark`, `required_keypoints()`→`required_landmarks()`, `ReferenceGeometry.keypoints`→`landmarks`), the face-provenance reword (canon owned on this side), `test_face_mapping_consistency.py` (pins the cross-repo ratio agreement at TEST time — the runtime is tracker-free). **On disk since, uncommitted:** `tracker_contract.py` reads `landmark_names` (un-breaks it against current skellytracker), `rest_roll` removed (dead field), `observation.py`'s silent try/except removed (frozen legacy copy — dies with the posthoc rebuild) | 148 green at push; post-round: 141 verified locally + 4 tracker-contract tests that need the re-lock |
-| skellytracker | the mapping language sweep (`TrackerMapping.keypoint_names`→`landmark_names`; `known_tracker_keypoints` stays; the four YAML headers say "keys are landmark names; values hydrate them") | **234 green** |
-| freemocap | committed+pushed: the docs reorg + the F0–F4 body of work. **On disk since, uncommitted: Sweep 3 + F5 landed** — the landmark renames (schema/sample/rigidifier + tests), the **dual channels** (`KEYPOINTS_3D` = tracker-named via `tracker_keypoint_names()`; new `LANDMARKS_3D` = the 76; goldens regenerated + TS mirror + decoder/SchemaRegistry), **A2** (relay stop signal), **B1** (send-count window + frame-distance RESET), **S2** (per-frame monitor + its config flag removed); **F5a** `test_full_loop.py` (rigidifier → solver → message → bytes → decode: wire rotations equal the solver's, mock-camera standing run is non-NaN, arm abduction rotates the humerus ~90° while the spine stays) + **F5b** the TS integration harness (dual channels resolve, instances placed from the golden wire, wxyz convention pinned). **The gate caught a real break en route:** the pushed skellyforge renamed `solve_frame_orientations(..., keypoints=)` → `landmarks=` — the aggregator call site is fixed. *(Struck: the TS "long-axis" comment sweep — the renderer's prose describes the mesh's own length axis, accurate geometry, not the retired vocabulary.)* | **115 green** (backend subset); TS decoder 5 + renderer 11 + integration 3; `tsc` clean |
+| skellyforge | committed+pushed through the 2026-08-14 round (landmark sweep, face-provenance reword, tracker-contract test); on-disk round (`tracker_contract.py` reads `landmark_names`, `rest_roll` removed, `observation.py` freeze) still uncommitted | 148 green at push; 141 + 4 tracker-contract tests post-round |
+| skellytracker | mapping language sweep (keypoint→landmark naming in the YAMLs + `TrackerMapping`) | 234 green |
+| freemocap | committed+pushed through the 2026-08-14 round (docs reorg, F0–F4, Sweep 3). **On disk since, uncommitted: the entire unified-stream cutover + the overlay upgrade** (producers, single relay, signature lifecycle, IMAGE_JPEG, SEGMENT_LENGTHS, OVERLAY_REPROJECTIONS, deleted backpressure/frontend-payload machinery, TS cutover, goldens) | **133 green** backend subset; `tsc` clean; TS harnesses green (decoder 6 / integration 3 / rigid-body 6) |
+| freemocap-ui | part of the freemocap repo (same clone root) — TS cutover landed on disk | as above |
 
-**First action on pickup (the commit round — the user):** everything is landed on disk; review, commit
-+ push both repos. (skellyforge: the tracker-contract/rest_roll/observation round + the re-locked
-`uv.lock` — the full suite is verified 148 green against the current skellytracker. freemocap: Sweep 3.)
-Then **F5** — the gate.
-
-## What exists end-to-end (the F0–F4 work, all reviewed)
-
-- **Skellyforge**: the 60-segment VRM-1.0 model (`SegmentDefinition(landmarks, origin_landmark, axes:
-  AxisDefinition(axis: Literal["x","y","z"], kind: EXACT|APPROXIMATE, target_landmark), rest_rotation,
-  rest_roll, length_ratio)`), name-driven two-pass frame builder (all EXACTs hard on their named vectors
-  first, APPROXIMATEs Gram-Schmidt'd — the approximate-before-exact ordering bug is fixed), VRM local
-  conventions (+Y toward child; +Z gaze for eyes/jaw; rest frames derived from the T-pose geometry),
-  reference geometry (identity == T-pose), the keypoint-declared solver (two-tier twist: own-geometry
-  resolve or damped minimal roll; D3/D4 damping), `rigid_point_set.py` (MDS template chirality-stabilized
-  + rotation-only Procrustes, bs-repo-derived, pyceres deliberately NOT ported), the one length
-  estimator (windowed/unbounded), `tracker_contract.py` (the ONE sanctioned skellyforge→skellytracker
-  import: the load-time completeness contract).
-- **Skellytracker**: the four mapping YAMLs (all 76 landmarks produced per tracker; MediaPipe mouth
-  corners real, RTMPose derived via `anatomical_offset`), `TrackerMapping` (four production forms +
-  `known_tracker_keypoints` load-time raise), the light `mapping_paths` registry.
-- **Freemocap**: the wrapper's graded dispatch (2-landmark span path via `TreeRigidifier`; 3+ per-group
-  fits — head 7 / hips 4 / feet 3 / toes 3, anchored at the tree-corrected origin, 30-frame
-  chirality-stable template rebuilds), the six-group schema (KEYPOINTS_3D, SEGMENT_ORIGINS,
-  ROTATIONS_LOCAL/WORLD, DERIVED_POINTS, OVERLAY_2D; `segment_lengths` shipped with
-  defaults-then-material-change re-sends; frozen), the sample encoder (golden fixtures for cross-language
-  parity), the WS send-path decomposition (SendSerializer one-writer / BackpressureController /
-  FrameRelay / thin supervisor), D36 legacy deletion, the de Leva CoM, the TS transport + decoder +
-  rolling windows + the rigid-body renderer (schema-driven lengths, D5/D6/D14/D15 fixed).
-- The calibration `groundplane_aligned` one-liner is fixed; the pyceres calibration pipeline is DEAD
-  (leave it); the D35 convention gap (camera-0-pinned calibration delivers optical-frame data) is
-  documented and DEFERRED to the calibration round.
+**First action on pickup (the user):** the commit round for all of the above — nothing more.
 
 ## The queue (in order)
 
-0. **Done on disk (docs pass + skellyforge round + Sweep 3, 2026-08-14) — one commit round covers all
-   of it:** the ontology drop-flag purge + decision record, the segment-model rewrite, the glossary
-   transitional block removal + name sweep, the tracker-mapping note flip, test counts stripped from
-   layer docs + CLAUDE.md files (counts live here only), IMPLEMENTATION_PLAN marked historical, the
-   dual-channel decision recorded + landed, the stabilization settle recorded in realtime-loop.md,
-   the "76 landmarks" sweep, the dead docstring links, the CLAUDE.md branch + Vitest corrections; the
-   skellyforge `tracker_contract` fix + `rest_roll` removal + `observation.py` freeze (re-locked,
-   148 green); Sweep 3 (renames, dual channels, A2/B1/S2, goldens + TS mirror).
-1. **[USER] The commit round** — review, commit + push skellyforge (the round + `uv.lock`) and
-   freemocap (Sweep 3 + F5; the re-locked `uv.lock` line — the f97d434 skellyforge pin — rides along).
-2. **[USER] The manual full-loop run — THE gate.** Fire up the realtime loop
-   (`python freemocap/__main__.py` + `npm run dev`) and check: **T-pose at
-   capture start** (identity frames), **arm bend rotates the humerus mesh
-   without pop**, **hidden-hand degradation** (occluded hand degrades, no
-   crash), **no schema drift** (no schema re-send spam once lengths converge).
-   This is the moment the rigid-body segment meshes appear in the 3JS viewport.
-   Then: the VMC adapter (F5+1).
-3. **[USER] Push freemocap.**
-4. **F5 — the gate**: backend full-loop test (aggregator → sample → bytes → decode → identical
-   rotations; a mock-camera realtime run producing non-NaN ROTATIONS_WORLD) + the frontend integration
-   test (connect → schema → samples → renderer instances placed). Then **the user's manual full-loop
-   run** — the checklist: T-pose at capture start, arm bend rotates the humerus mesh without pop,
-   hidden-hand degradation, no schema drift.
-5. **F5+1**: the thin VMC adapter (VRM 1.0→0.x name map; the local frames are already VMC-ready). Then
-   the posthoc rebuild opens ([`02-pipeline/posthoc-rebuild.md`](02-pipeline/posthoc-rebuild.md)).
+0. **The commit round — [USER].** Review + commit + push everything on disk (skellyforge round;
+   freemocap unified-stream + overlay work). Report the stopping point, don't touch git.
+1. **Finish the manual calibration → the F5 gate.** The user is calibrating now. Then the gate
+   checklist: T-pose at capture start (identity frames), arm bend rotates the humerus mesh without
+   pop, hidden-hand degradation (no crash), no schema drift, and now also: **dots + landmark skeleton
+   lines + stats HUD in lockstep with the video, no blinking**.
+2. **F5+1 — the VMC adapter** (thin VRM 1.0→0.x name map; local frames are already VMC-ready).
+3. **The posthoc rebuild** ([`02-pipeline/posthoc-rebuild.md`](02-pipeline/posthoc-rebuild.md)) — gated
+   on F5.
+
+## Known gaps (flagged, deliberately not done in the cutover)
+
+- **Dead `tracker_schemas` handshake** — the frontend still handles it (provider handler →
+  `canvasManager.setSchema` → worker `schema` message → `OverlayManager.setTrackerSchemas` →
+  renderer `setSchema`), but nothing sends it anymore. The renderer no longer uses it for connections
+  (landmarks use the schema's `connections` now). Delete the whole chain as one cleanup.
+- **Dead charuco renderer files** on the frontend (`charuco-overlay-renderer.ts`, `charuco-types.ts`,
+  the OverlayManager charuco half) — no producer feeds charuco overlays anymore.
+- **Playback HTTP path** serves images outside the unified stream — untouched, still works, revisit in
+  the posthoc rebuild.
+- **`IMAGE_JPEG` is one opaque multi-camera blob** — per-camera blocks are the documented future shape
+  (needs SkellyCam payload unpacking backend-side).
+- **The rigid-body renderer reads schema-default lengths** — live per-frame `SEGMENT_LENGTHS` is
+  resolved into `TransportService.segmentLengthsWindow` + exposed via `getLatestSegmentLengths()`, but
+  the 3D renderer doesn't merge them yet.
+- **Keypoint connections deliberately NOT drawn** — the user wants keypoints as plain small dots; only
+  the landmark layer gets connections.
+- The stale-calibration camera-set mismatch (`d441` vs TOML `4da6`) is the user's environment state —
+  expected to resolve with the current calibration round.
 
 ## Locked decisions (do not re-litigate)
 
-- Landmark is REVIVED with the precise two-faced meaning; "canonical" (mapping sense) stays retired;
-  `from/to_keypoint`, `long_axis`, `twist_keypoint` are retired. Code/comments describe the system AS IT
-  IS — never by contrast with removed designs.
-- All axis targets inside the segment's own landmarks — no external references ever (the upper arm's
-  wrist case was the lesson). First-axis-is-EXACT positional rules are dead; the machinery is
-  name-driven.
-- VRM local conventions (+Y toward child, +Z gaze) — the VMC adapter is a pure name map later.
-- The observed/unobserved-DOF flag is **dropped** (complexity > value; the damped roll fills unobserved
-  twist; the graded landmark count remains the seam). Record this in the ontology if not yet recorded.
-- The rest-pose/model side never imports skellytracker at runtime — the sanctioned import is
-  `tracker_contract.py` ONLY. The face/mouth cross-repo ratios are pinned by a TEST, not shared.
-- The stabilization stack needs no new work (see the orientation section).
-- **Resolved (2026-08-14)**: `data_models/observation.py`'s silent try/except shim — the try/except is
-  removed; the module is a **frozen legacy copy** (the real-import target no longer exists in
-  skellytracker) that dies with the posthoc rebuild (Phase E).
-- **Working rules** (unchanged): never touch git (the user owns it — report stopping points); plan==code
-  (docs edited in the same pass); fail loudly; no duplicated information; no backwards compat; cross-repo
-  work ends at commit rounds; ask before unilateral design decisions.
+- One producer-composed stream, schema as the single source of truth for the data model, newest-wins,
+  no ack window, images in the sample — the whole "Current initiative" history is settled; the
+  two-stream model was a defect, not an option.
+- The overlay split: keypoints = small dots; segment-origin landmarks = larger dots + connections.
+- Landmark is REVIVED with the precise two-faced meaning; "canonical" (mapping sense), `long_axis`,
+  `twist_keypoint`, `from/to_keypoint` are retired. Code describes the system AS IT IS.
+- All axis targets inside the segment's own landmarks; VRM local conventions (+Y toward child, +Z gaze);
+  the observed/unobserved-DOF flag is dropped (the graded landmark count is the seam).
+- The rest-pose/model side never imports skellytracker at runtime (`tracker_contract.py` only).
+- The stabilization stack (Euro filter → tree/fit rigidification → critically-damped solve) is settled.
+- `data_models/observation.py` is a frozen legacy copy that dies with the posthoc rebuild.
+- **Working rules:** never touch git (the user owns it); plan==code (docs edited in the same pass);
+  fail loudly; no duplicated information; no backwards compat; cross-repo work ends at commit rounds;
+  check in before changes; **keep answers short**; **no restarts as a workflow requirement**;
+  expected cases log quietly.
 
 ## Env
 
-- WebFetch broken (DeepSeek routing) — use curl + WebSearch.
-- Suites: skellyforge `uv run --with pytest pytest skellyforge/tests/ -q -o addopts=""` (148);
-  skellytracker `uv run pytest skellytracker/tests -m "not video" -q` (234); freemocap
-  `uv run --group dev pytest freemocap/tests/rigid_body/ freemocap/tests/test_standard_stream_contract.py
-  freemocap/tests/test_stream_schema_builder.py freemocap/tests/test_center_of_mass.py
-  freemocap/tests/test_stream_sample_encoder.py freemocap/tests/test_backpressure_controller.py
-  freemocap/tests/test_send_serializer.py freemocap/tests/test_frame_relay.py -q` (108); TS: the
-  house harnesses (esbuild+node — there is NO Vitest despite what older docs say) + `npx tsc --noEmit`.
-- The golden fixtures regenerate via `uv run python -m freemocap.tests.streaming_fixtures.regenerate_golden`
-  and are re-copied into `freemocap-ui/src/services/server/transport/__fixtures__/` (sha-identical —
-  they are the cross-language parity anchors; regeneration IS a wire change).
+- Suites (all green as of this handoff):
+  - freemocap backend subset: `uv run --group dev pytest freemocap/tests/rigid_body/
+    freemocap/tests/test_standard_stream_contract.py freemocap/tests/test_stream_schema_builder.py
+    freemocap/tests/test_center_of_mass.py freemocap/tests/test_stream_sample_encoder.py
+    freemocap/tests/test_send_serializer.py freemocap/tests/test_frame_relay.py
+    freemocap/tests/test_full_loop.py freemocap/tests/kinematics/ -q` → **133 passed**.
+  - TS: `npx tsc --noEmit` (clean) + the three house harnesses (esbuild+node — NO Vitest):
+    `standard-stream-decoder.test.ts`, `standard-stream-integration.test.ts`,
+    `rigid-body-bone.test.ts` (run pattern is in each file's header).
+- Golden fixtures: `uv run python -m freemocap.tests.streaming_fixtures.regenerate_golden` then copy
+  `schema_golden.json` + `sample_golden.bin` into
+  `freemocap-ui/src/services/server/transport/__fixtures__/`. **Regeneration IS a wire change** — the
+  goldens are the Python↔TS parity anchors.
+- The user's gate workflow: `python freemocap/__main__.py` + `npm run dev` in `freemocap-ui/`; cameras
+  are 4× USB (d441/be07/099c/583d); TensorRT is unavailable on this machine (nvinfer_10.dll missing —
+  CUDA fallback is the normal state, not an error).

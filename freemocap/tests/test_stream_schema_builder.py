@@ -1,26 +1,27 @@
-"""FMC-WS-3 — StreamSchema.from_standard_human() classmethod tests.
+"""FMC-WS-3 — producer-composed StreamSchema tests.
 
-Builds the canonical StandardHuman model (60 segments, 76 landmarks) and verifies
-the schema enumerates the seven channel groups (KEYPOINTS_3D, LANDMARKS_3D,
-SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D),
-carries topology + segment_parents, round-trips through JSON, and expands
-OVERLAY_2D per camera in the LSL channel list.
-
-The authoritative channel layout is
-[09 — the Standard Stream Protocol](../../docs/streaming-compatibility/09-standard-stream-protocol.md#channels);
-this module asserts the code matches it.
+Builds the StandardHuman model (60 segments, 76 landmarks), composes
+the schema through the channel producers, and verifies the nine channel groups
+(KEYPOINTS_3D, LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD,
+SEGMENT_LENGTHS, OVERLAY_2D, DERIVED_POINTS, IMAGE_JPEG), the hierarchy /
+topology metadata, the anthropometric default lengths, round-trips through
+JSON, and the LSL channel expansion. "Camera-only" vs "camera + reconstruction"
+is two schemas produced by one mechanism — the producer activeness.
 """
 import pytest
 
 from freemocap.core.streaming.standard_stream import (
-    FREEMOCAP_CANONICAL_CONVENTION,
+    FREEMOCAP_COORDINATE_CONVENTION,
     Axis,
     ChannelKind,
     OverlayLayer,
-    StreamSchema,
     decode_schema,
     encode_schema,
     schema_to_streaminfo_channels,
+)
+from freemocap.core.streaming.standard_stream.producers import compose
+from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+    StreamContext,
 )
 from freemocap.core.streaming.standard_stream.stream_schema import (
     NOMINAL_SUBJECT_HEIGHT_MM,
@@ -30,29 +31,40 @@ from skellyforge.skellymodels.standard_human.standard_human_model import (
     compose_standard_human,
 )
 
+TRACKER_NAMES = ("left_hand_wrist", "nose", "right_shoulder")
+
 
 def _minimal_model() -> StandardHuman:
     """The canonical 60-segment standard human."""
     return compose_standard_human()
 
 
-def _schema():
-    return StreamSchema.from_standard_human(
-        stream_id="s1",
-        stream_name="test",
+def _context(**kwargs) -> StreamContext:
+    kw = dict(
         standard_human=_minimal_model(),
         camera_ids=("cam-0", "cam-1"),
-        tracker_keypoint_names=("left_hand_wrist", "nose", "right_shoulder"),
+        tracker_keypoint_names=TRACKER_NAMES,
+        pipeline_live=True,
     )
+    kw.update(kwargs)
+    return StreamContext(**kw)
+
+
+def _schema(**kwargs):
+    return compose(
+        _context(**kwargs),
+        stream_id="s1",
+        stream_name="test",
+    ).schema
 
 
 # ── Channel group tests ────────────────────────────────────────────────
 
 
-def test_schema_enumerates_seven_channel_groups():
-    """from_standard_human produces 7 channel groups in the fixed order."""
+def test_schema_enumerates_ten_channel_groups():
+    """The active producers contribute 10 channel groups in producer order."""
     channels = _schema().channels
-    assert len(channels) == 7
+    assert len(channels) == 10
     kinds = [group.kind for group in channels]
     assert kinds == [
         ChannelKind.KEYPOINTS_3D,
@@ -60,16 +72,25 @@ def test_schema_enumerates_seven_channel_groups():
         ChannelKind.SEGMENT_ORIGINS,
         ChannelKind.ROTATIONS_LOCAL,
         ChannelKind.ROTATIONS_WORLD,
-        ChannelKind.DERIVED_POINTS,
+        ChannelKind.SEGMENT_LENGTHS,
         ChannelKind.OVERLAY_2D,
+        ChannelKind.OVERLAY_REPROJECTIONS,
+        ChannelKind.DERIVED_POINTS,
+        ChannelKind.IMAGE_JPEG,
     ]
+
+
+def test_camera_only_schema_has_image_group_only():
+    """With no live pipeline, only the ImageProducer contributes."""
+    channels = _schema(pipeline_live=False).channels
+    assert [g.kind for g in channels] == [ChannelKind.IMAGE_JPEG]
 
 
 def test_keypoints_3d_group():
     group = _schema().channels[0]
     assert group.kind == ChannelKind.KEYPOINTS_3D
-    # The tracker-named measured keypoints, as passed by the builder caller.
-    assert group.names == ("left_hand_wrist", "nose", "right_shoulder")
+    # The tracker-named measured keypoints, as passed by the context.
+    assert group.names == TRACKER_NAMES
     assert group.columns == ("x", "y", "z", "reprojection_error")
     assert group.units == "mm"
 
@@ -118,6 +139,31 @@ def test_local_and_world_rotations_are_distinct():
     assert rlocal.kind != rworld.kind
 
 
+def test_segment_lengths_group():
+    lengths = _schema().channels[5]
+    assert lengths.kind == ChannelKind.SEGMENT_LENGTHS
+    assert lengths.names == tuple(_minimal_model().segment_names)
+    assert lengths.columns == ("length_mm",)
+    assert lengths.units == "mm"
+
+
+def test_overlay_reprojections_group():
+    reproj = _schema().channels[7]
+    assert reproj.kind == ChannelKind.OVERLAY_REPROJECTIONS
+    # Names are the 60 segment names — the fitted skeleton's origin landmarks
+    # projected back into each camera.
+    assert reproj.names == tuple(_minimal_model().segment_names)
+    assert reproj.columns == ("x", "y", "visibility")
+    assert reproj.units == "px"
+
+
+def test_image_jpeg_group():
+    image = _schema().channels[9]
+    assert image.kind == ChannelKind.IMAGE_JPEG
+    assert image.names == ("image",)
+    assert image.columns == ("jpeg_bytes",)
+
+
 def test_keypoints_vs_segments_split():
     # The measured half (keypoints) and the reconstructed half (segments) are two
     # distinct channel groups with distinct kinds. Their name sets may overlap
@@ -133,7 +179,7 @@ def test_keypoints_vs_segments_split():
 
 
 def test_derived_points_group():
-    derived = _schema().channels[5]
+    derived = _schema().channels[8]
     assert derived.kind == ChannelKind.DERIVED_POINTS
     assert derived.names == ("center_of_mass", "xcom")
     assert derived.columns == ("x", "y", "z")
@@ -144,7 +190,7 @@ def test_overlay_2d_group():
     assert overlay.kind == ChannelKind.OVERLAY_2D
     # OVERLAY_2D names describe the DETECTIONS rows — the tracker-named 2D
     # detections (what the detector saw in each camera), not segment names.
-    assert overlay.names == ("left_hand_wrist", "nose", "right_shoulder")
+    assert overlay.names == TRACKER_NAMES
     assert overlay.columns == ("x", "y", "visibility")
     assert overlay.units == "px"
 
@@ -162,7 +208,7 @@ def test_overlay_layer_enum_present():
 
 def test_schema_carries_topology():
     schema = _schema()
-    assert schema.coordinate_convention == FREEMOCAP_CANONICAL_CONVENTION
+    assert schema.coordinate_convention == FREEMOCAP_COORDINATE_CONVENTION
     assert schema.camera_ids == ("cam-0", "cam-1")
     assert schema.max_persons == 1
 
@@ -171,23 +217,16 @@ def test_schema_carries_capture_image_sizes():
     """camera_image_sizes pins the OVERLAY_2D coordinate space (capture-res px)."""
     assert _schema().camera_image_sizes == {}
     sizes = {"cam-0": (1920, 1080), "cam-1": (640, 480)}
-    schema = StreamSchema.from_standard_human(
-        stream_id="s1",
-        stream_name="test",
-        standard_human=_minimal_model(),
-        camera_ids=("cam-0", "cam-1"),
-        tracker_keypoint_names=(),
-        camera_image_sizes=sizes,
-    )
+    schema = _schema(camera_image_sizes=sizes)
     assert schema.camera_image_sizes == sizes
     # round-trips through JSON (tuples → arrays on the wire)
     assert decode_schema(encode_schema(schema)).camera_image_sizes == sizes
 
 
 def test_convention_forward_axis_is_plus_x():
-    # D34 — the canonical convention is mm · right-handed · +Z up · +X forward.
-    assert FREEMOCAP_CANONICAL_CONVENTION.forward_axis == Axis.PLUS_X
-    assert FREEMOCAP_CANONICAL_CONVENTION.up_axis == Axis.PLUS_Z
+    # The coordinate convention is mm · right-handed · +Z up · +X forward.
+    assert FREEMOCAP_COORDINATE_CONVENTION.forward_axis == Axis.PLUS_X
+    assert FREEMOCAP_COORDINATE_CONVENTION.up_axis == Axis.PLUS_Z
 
 
 def test_connections_from_hierarchy():
@@ -223,11 +262,12 @@ def test_segment_parents_agrees_with_model():
     assert schema.segment_parents["spine"] == "hips"
 
 
-# ── Segment-lengths tests (default-then-update lifecycle) ────────────────
+# ── Segment-lengths tests ───────────────────────────────────────────────
 
 
 def test_segment_lengths_default_to_ratio_times_height():
-    """Every segment's default length == length_ratio × NOMINAL_SUBJECT_HEIGHT_MM."""
+    """Every schema length is the anthropometric default; live estimates ride
+    the per-frame SEGMENT_LENGTHS block, never the schema."""
     model = _minimal_model()
     schema = _schema()
     assert len(schema.segment_lengths) == 60
@@ -236,40 +276,12 @@ def test_segment_lengths_default_to_ratio_times_height():
         assert schema.segment_lengths[segment.name] == expected
 
 
-def test_segment_lengths_override_replaces_measured_and_keeps_defaults():
-    """An override dict replaces the named segments, leaves the rest default."""
-    model = _minimal_model()
-    schema = StreamSchema.from_standard_human(
-        stream_id="s1",
-        stream_name="test",
-        standard_human=model,
-        camera_ids=("cam-0", "cam-1"),
-        measured_lengths={"left_upper_arm": 333.0},
-    )
-    assert schema.segment_lengths["left_upper_arm"] == 333.0
-    # A non-overridden segment keeps its anthropometric default.
-    expected_spine = next(
-        s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM for s in model.segments if s.name == "spine"
-    )
-    assert schema.segment_lengths["spine"] == expected_spine
-    assert len(schema.segment_lengths) == 60
-
-
-def test_rest_pose_consistent_with_measured_lengths():
-    """The rest pose and segment_lengths share the same merged lengths dict."""
-    model = _minimal_model()
-    schema = StreamSchema.from_standard_human(
-        stream_id="s1",
-        stream_name="test",
-        standard_human=model,
-        measured_lengths={"left_upper_arm": 333.0},
-    )
-    # The rest pose was built from the same merged dict, so a measured segment's
-    # rest-pose span reflects the override (left_shoulder → left_elbow along the
-    # arm's long axis in the reference geometry). Just assert the schema carries
-    # the override in both places consistently (exact span is solver territory).
-    assert schema.segment_lengths["left_upper_arm"] == 333.0
-    assert schema.rest_pose is not None
+def test_camera_only_schema_carries_no_segment_lengths():
+    """Without a live pipeline the SegmentProducer is inactive — no lengths."""
+    schema = _schema(pipeline_live=False)
+    assert schema.segment_lengths == {}
+    assert schema.rest_pose is None
+    assert schema.connections == ()
 
 
 # ── Rest pose tests ─────────────────────────────────────────────────────
@@ -358,17 +370,20 @@ def test_schema_json_roundtrip_preserves_segment_parents():
 
 
 def test_lsl_channels_count():
-    """LSL channel count covers all groups including per-camera overlays."""
+    """LSL channel count covers all groups incl. per-camera overlays; the
+    IMAGE_JPEG group is skipped (LSL is not a video consumer)."""
     channels = schema_to_streaminfo_channels(_schema())
-    # keypoints_3d:  3 tracker keypoints × 4 cols = 12
-    # landmarks_3d:  76 landmarks × 4 cols = 304
+    # keypoints_3d:    3 tracker keypoints × 4 cols = 12
+    # landmarks_3d:   76 landmarks  × 4 cols = 304
     # segment_origins: 60 segments × 3 cols = 180
     # rotations_local: 60 segments × 4 cols = 240
     # rotations_world: 60 segments × 4 cols = 240
-    # derived_points:  2 points   × 3 cols =   6
-    # overlay_2d:      2 cams × 3 keypoints × 3 cols = 18
-    # total: 12 + 304 + 180 + 240 + 240 + 6 + 18 = 1000
-    assert len(channels) == 1000
+    # segment_lengths: 60 segments × 1 col  =  60
+    # derived_points:   2 points   × 3 cols =   6
+    # overlay_2d:       2 cams × 3 keypoints × 3 cols = 18
+    # overlay_reproj:  60 segments × 3 cols = 180
+    # total: 12 + 304 + 180 + 240 + 240 + 60 + 18 + 180 + 6 = 1240
+    assert len(channels) == 1240
 
 
 def test_lsl_channels_have_rotation_labels():
@@ -389,3 +404,10 @@ def test_lsl_channels_expand_overlays_per_camera():
     assert "cam-0.nose.visibility" in labels
     assert "cam-1.left_hand_wrist.x" in labels
     assert "cam-1.right_shoulder.visibility" in labels
+
+
+def test_lsl_channels_carry_segment_lengths_but_not_images():
+    channels = schema_to_streaminfo_channels(_schema())
+    labels = [label for label, _unit in channels]
+    assert "hips.length_mm" in labels
+    assert not any(label.startswith("image.") for label in labels)

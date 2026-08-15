@@ -2,7 +2,7 @@
 Per-frame center of mass calculation for the real-time pipeline.
 
 Computes whole-body and per-segment center of mass from a ``dict[str, np.ndarray]``
-of named 3D keypoint positions — the exact canonical format the real-time
+of named 3D positions — the exact standard-human-named format the real-time
 aggregator node produces after rigidification — using the de Leva (1996)
 body-segment inertial parameters (BSIP) rather than the retired Winter table.
 
@@ -11,15 +11,15 @@ Reference
 de Leva, P. (1996). *Adjustments to Zatsiorsky-Seluyanov's segment inertia
 parameters.* Journal of Biomechanics, 29(9), 1223–1230, Table 4. Values are
 provided by ``skellyforge.kinematics.inertial.anthropometric_parameters``,
-referenced to **joint centres** (which is what the canonical keypoints are),
+referenced to **joint centres** (which is what the standard-human landmarks are),
 unlike Winter's bony-landmark table (which is why the old model needed a ``head``
 segment spanning ear-to-ear).
 
 Segment mapping (de Leva → FreeMoCap, documented with provenance)
 -----------------------------------------------------------------
-de Leva's 8 segments are mapped onto the canonical keypoint spans below; the
-canonical skeleton has 55 segments, so **every unmapped VRM segment carries zero
-mass** — its anatomy lives inside a mapped span:
+de Leva's 8 segments are mapped onto the standard-human landmark spans below;
+**every VRM segment outside a mapped span carries zero mass** — its anatomy
+lives inside a mapped span:
 
 * ``hips`` / ``spine`` / ``chest`` / ``upper_chest`` individually, and ``shoulder``
   (the sternoclavicular→shoulder clavicle piece): zero mass, inside ``trunk``.
@@ -185,13 +185,13 @@ class BodyBiomechanics(BaseModel):
 
     Carries the de Leva (1996) inertial-parameter table (mass fractions and
     segment-CoM fractions, keyed by de Leva segment name), plus the
-    tracker→canonical mapping used to derive the span endpoint keypoints each
-    frame. The span table is a module constant (``_DE_LEVA_SPANS``), not a
+    tracker→standard-human mapping used to derive the span endpoint landmarks
+    each frame. The span table is a module constant (``_DE_LEVA_SPANS``), not a
     field — it is static data and never varies per subject.
 
     No Pydantic validation touches the hot loop: ``tracker_mapping`` is applied
-    once per frame to produce canonical names, and the span/table lookups are
-    plain dicts.
+    once per frame to produce standard-human landmark names, and the span/table
+    lookups are plain dicts.
     """
 
     tracker_mapping: TrackerMapping
@@ -241,8 +241,8 @@ def load_body_biomechanics(
 
     The de Leva table comes from skellyforge's ``segment_inertial_parameters``
     (default: the mean of the female/male tables); span endpoints are derived
-    each frame via the skellytracker tracker→canonical mapping for the given
-    ``detector_type`` (the same one the skeleton fitter uses).
+    each frame via the skellytracker tracker→standard-human mapping for the
+    given ``detector_type`` (the same one the skeleton fitter uses).
     """
     return BodyBiomechanics(
         tracker_mapping=TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type)),
@@ -426,34 +426,34 @@ def calculate_center_of_mass_per_frame(
     keypoints: dict[str, np.ndarray],
     biomechanics: BodyBiomechanics,
 ) -> CenterOfMassResult:
-    """Compute center of mass from raw RTMPose **tracker** keypoints for one frame.
+    """Compute center of mass from raw **tracker** keypoints for one frame.
 
-    Maps tracker keypoints → canonical names (adding the derived span endpoints
-    mid_sternum / head_vertex / foot_ball, etc.), then delegates to
-    ``calculate_center_of_mass_from_canonical``.
+    Maps tracker keypoints → standard-human landmarks (adding the derived span
+    endpoints mid_sternum / head_vertex / foot_ball, etc.), then delegates to
+    ``calculate_center_of_mass``.
     """
-    canonical = biomechanics.tracker_mapping.apply(keypoints)
-    return calculate_center_of_mass_from_canonical(canonical, biomechanics)
+    standard_human_positions = biomechanics.tracker_mapping.apply(keypoints)
+    return calculate_center_of_mass(standard_human_positions, biomechanics)
 
 
-def calculate_center_of_mass_from_canonical(
-    canonical_positions: dict[str, np.ndarray],
+def calculate_center_of_mass(
+    standard_human_positions: dict[str, np.ndarray],
     biomechanics: BodyBiomechanics,
 ) -> CenterOfMassResult:
-    """Compute center of mass from already-canonical-named positions for one frame.
+    """Compute center of mass from already standard-human-named positions for one frame.
 
     Use this with the rigidified skeleton (``RealtimeSkeletonRigidifier`` output),
-    whose positions are already canonical and include the derived span endpoints.
-    The per-named-position input is still augmented per-frame by the tracker
-    mapping at the *aggregator call site* (so it carries mid_sternum /
-    head_vertex / foot_ball and the hand finger tips that ``body_positions``
-    alone lacks), but this path applies no remap itself.
+    whose positions are already standard-human-named and include the derived span
+    endpoints. The input is still augmented per-frame by the tracker mapping at
+    the *aggregator call site* (so it carries mid_sternum / head_vertex /
+    foot_ball and the hand finger tips that ``body_positions`` alone lacks), but
+    this path applies no remap itself.
 
     Always returns a result — never NaN. Check ``confidence`` or
     ``directly_observed_mass`` to assess measurement quality.
     """
     # 1. Resolve span endpoints (silently skips spans missing an endpoint).
-    span_endpoints = _build_span_endpoints(canonical_positions)
+    span_endpoints = _build_span_endpoints(standard_human_positions)
 
     # 2. Per-segment CoM (de Leva; silently skips missing spans).
     segment_coms = _calculate_all_segments_com_per_frame(

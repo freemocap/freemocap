@@ -4,11 +4,13 @@
 // SchemaRegistry, and per-channel RollingWindowStores. Plain TS class — no
 // React. The ServerContextProvider becomes a thin consumer of this.
 //
-// Outbound data flow: stream_schema JSON (routed to SchemaRegistry) then
-// binary stream_samples (decoded → resolved → fan-out to rolling-window
-// stores + subscriber sets). The inbound settings/frame-ack JSON the server
-// still expects (frameAcknowledgment {frameNumber, displayImageSizes}) is
-// preserved via the connection's send() path — see ServerContextProvider.
+// Data flow: stream_schema JSON (routed to SchemaRegistry) then binary
+// stream_samples (decoded → resolved → fan-out to rolling-window stores +
+// subscriber sets). One sample carries EVERY block for its frame — pose,
+// overlays, and the IMAGE_JPEG camera images — so image and overlay consumers
+// see the same frame atomically. The inbound settings/frame-ack JSON the
+// server still expects (frameAcknowledgment {frameNumber, displayImageSizes})
+// is preserved via the connection's send() path — see ServerContextProvider.
 
 import {
   ConnectionState,
@@ -19,6 +21,7 @@ import { createRoutingTable } from "./RoutingTable";
 import { createSchemaRegistry, type SchemaRegistry } from "./SchemaRegistry";
 import { RollingWindowStore } from "./RollingWindowStore";
 import {
+  ChannelKind,
   MessageType,
   type DerivedPointsFrame,
   type OverlayFrame,
@@ -26,12 +29,15 @@ import {
   type ResolvedSample,
   type RollingChannelName,
   type RotationsFrame,
+  type SegmentLengthsFrame,
   type StreamSchema,
 } from "./types";
 
 export type RotationsCallback = (frame: RotationsFrame) => void;
 export type OverlayCallback = (frame: OverlayFrame) => void;
 export type DerivedCallback = (frame: DerivedPointsFrame) => void;
+export type SegmentLengthsCallback = (frame: SegmentLengthsFrame) => void;
+export type ImageCallback = (buf: ArrayBuffer, frameNumber: number) => void;
 
 export interface TransportServiceOptions {
   url: string;
@@ -49,22 +55,23 @@ export class TransportService {
   readonly segmentOriginsWindow: RollingWindowStore<PointsFrame>;
   readonly rotationsWorldWindow: RollingWindowStore<RotationsFrame>;
   readonly derivedWindow: RollingWindowStore<DerivedPointsFrame>;
+  readonly segmentLengthsWindow: RollingWindowStore<SegmentLengthsFrame>;
 
   // Latest-frame refs + subscriber sets.
   private keypointsLatest: PointsFrame | null = null;
   private segmentOriginsLatest: PointsFrame | null = null;
   private rotationsLatest: RotationsFrame | null = null;
   private derivedLatest: DerivedPointsFrame | null = null;
+  private segmentLengthsLatest: SegmentLengthsFrame | null = null;
 
   private readonly keypointsSubscribers = new Set<(f: PointsFrame) => void>();
   private readonly segmentOriginsSubscribers = new Set<(f: PointsFrame) => void>();
   private readonly rotationsSubscribers = new Set<RotationsCallback>();
   private readonly derivedSubscribers = new Set<DerivedCallback>();
+  private readonly segmentLengthsSubscribers = new Set<SegmentLengthsCallback>();
   private readonly overlaySubscribers = new Set<OverlayCallback>();
-  private readonly imageSubscribers = new Set<(buf: ArrayBuffer) => void>();
+  private readonly imageSubscribers = new Set<ImageCallback>();
   private readonly schemaSubscribers = new Set<(s: StreamSchema) => void>();
-
-  private _debugCount = 0; // TEMP DEBUG — remove
 
   constructor(options: TransportServiceOptions) {
     this.maxWindowFrames = options.maxWindowFrames ?? 100;
@@ -74,6 +81,7 @@ export class TransportService {
     this.segmentOriginsWindow = new RollingWindowStore<PointsFrame>({ maxFrames: this.maxWindowFrames });
     this.rotationsWorldWindow = new RollingWindowStore<RotationsFrame>({ maxFrames: this.maxWindowFrames });
     this.derivedWindow = new RollingWindowStore<DerivedPointsFrame>({ maxFrames: this.maxWindowFrames });
+    this.segmentLengthsWindow = new RollingWindowStore<SegmentLengthsFrame>({ maxFrames: this.maxWindowFrames });
 
     this.wireRoutes();
   }
@@ -98,22 +106,22 @@ export class TransportService {
       if (!schema) return; // sample before schema — drop (schema-once contract).
       const decoded = decodeSample(buf, schema);
       const resolved = this.schemaRegistry.resolve(decoded);
-      // TEMP DEBUG — remove
-      if (this._debugCount <= 5 || this._debugCount % 100 === 0) {
-        console.log(
-          `[TEMP] TransportService decoded sample #${this._debugCount} frame=${decoded.frameNumber} ` +
-          `blocks=${decoded.blocks.map(b => `${b.kind}:${b.numElements}`).join(",")} ` +
-          `overlays=${resolved.overlays.length}`
-        );
+
+      // The IMAGE_JPEG block: copy the uint8 view out of the wire buffer (the
+      // buffer may be reused) and fan it to the image subscribers with the
+      // sample's frame number — the image and the overlays for frame N arrive
+      // in the SAME sample.
+      const imageBlock = decoded.blocks.find((b) => b.kind === ChannelKind.IMAGE_JPEG);
+      if (imageBlock && imageBlock.data instanceof Uint8Array) {
+        const copy = new Uint8Array(imageBlock.data);
+        this.imageSubscribers.forEach((cb) => cb(copy.buffer, decoded.frameNumber));
       }
-      this._debugCount++;
+
       this.acceptResolved(resolved);
     });
 
-    // Non-sample binary frames (JPEG images, first byte 0/1/2) fall through.
-    this.routingTable.registerBinaryFallback((buf) => {
-      this.imageSubscribers.forEach((cb) => cb(buf));
-    });
+    // Every binary frame on this connection is a standard-stream sample; there
+    // is no second image protocol to fall through to.
 
     this.connection.on("message", (event: MessageEvent) => {
       const data = event.data;
@@ -127,11 +135,6 @@ export class TransportService {
         }
         if (message) this.routingTable.routeJson(message);
       } else if (data instanceof ArrayBuffer) {
-        // TEMP DEBUG — remove
-        if (this._debugCount <= 5 || this._debugCount % 100 === 0) {
-          const firstByte = data.byteLength > 0 ? new Uint8Array(data)[0] : null;
-          console.log(`[TEMP] TransportService binary frame firstByte=${firstByte} len=${data.byteLength}`);
-        }
         this.routingTable.routeBinary(data);
       }
     });
@@ -162,13 +165,13 @@ export class TransportService {
     this.derivedWindow.push(resolved.derived);
     this.derivedSubscribers.forEach((cb) => cb(resolved.derived));
 
+    if (resolved.segmentLengths) {
+      this.segmentLengthsLatest = resolved.segmentLengths;
+      this.segmentLengthsWindow.push(resolved.segmentLengths);
+      this.segmentLengthsSubscribers.forEach((cb) => cb(resolved.segmentLengths!));
+    }
+
     for (const overlay of resolved.overlays) {
-      // TEMP DEBUG — remove
-      console.log(
-        `[TEMP] TransportService overlay frame camera=${overlay.cameraId} layer=${overlay.layer} ` +
-        `names=${overlay.names.length} dataLen=${overlay.data.length} ` +
-        `subscribers=${this.overlaySubscribers.size}`
-      );
       this.overlaySubscribers.forEach((cb) => cb(overlay));
     }
   }
@@ -233,6 +236,13 @@ export class TransportService {
     };
   }
 
+  subscribeToSegmentLengths(cb: SegmentLengthsCallback): () => void {
+    this.segmentLengthsSubscribers.add(cb);
+    return () => {
+      this.segmentLengthsSubscribers.delete(cb);
+    };
+  }
+
   subscribeToOverlay(cb: OverlayCallback): () => void {
     this.overlaySubscribers.add(cb);
     return () => {
@@ -253,7 +263,9 @@ export class TransportService {
     return this.schemaRegistry.schema;
   }
 
-  subscribeToImages(cb: (buf: ArrayBuffer) => void): () => void {
+  /** The IMAGE_JPEG block bytes for frame N — the frame number comes with the
+   * sample so the consumer can pair the image with its overlay atomically. */
+  subscribeToImages(cb: ImageCallback): () => void {
     this.imageSubscribers.add(cb);
     return () => {
       this.imageSubscribers.delete(cb);
@@ -276,6 +288,10 @@ export class TransportService {
 
   getLatestDerived(): DerivedPointsFrame | null {
     return this.derivedLatest;
+  }
+
+  getLatestSegmentLengths(): SegmentLengthsFrame | null {
+    return this.segmentLengthsLatest;
   }
 
   /** Pull the rolling window for a named channel (most-recent last). */
@@ -301,9 +317,11 @@ export class TransportService {
     this.segmentOriginsWindow.clear();
     this.rotationsWorldWindow.clear();
     this.derivedWindow.clear();
+    this.segmentLengthsWindow.clear();
     this.keypointsLatest = null;
     this.segmentOriginsLatest = null;
     this.rotationsLatest = null;
     this.derivedLatest = null;
+    this.segmentLengthsLatest = null;
   }
 }

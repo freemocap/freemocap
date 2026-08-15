@@ -24,10 +24,6 @@ from freemocap.core.types.type_overloads import (
 )
 from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
-if TYPE_CHECKING:
-    from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-    from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
-
 logger = logging.getLogger(__name__)
 
 
@@ -126,6 +122,13 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     # rigidifier's current estimates (body + both hands). Feeds the schema's
     # ``segment_lengths`` default-then-update lifecycle.
     segment_lengths: dict[str, float] = field(default_factory=dict)
+    # Per-camera segment-origin landmark reprojections (camera_id → segment
+    # name → (x, y) in capture-resolution px) — the fitted skeleton projected
+    # back into each camera. Empty when there is no valid calibration or no
+    # solved skeleton this frame (2D-only mode).
+    reprojected_segment_origins: dict[
+        CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
+    ] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -138,47 +141,6 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                     f"AggregationNodeOutputMessage frame number {self.frame_number}"
                 )
 
-    @property
-    def charuco_overlay_data(self) -> dict:
-        from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-
-        overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
-        for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.charuco_observation is not None:
-                overlay_data[camera_id] = CharucoOverlayData.from_observation(
-                    camera_id=camera_id,
-                    observation=cam_output.charuco_observation,
-                )
-        return overlay_data
-
-    @property
-    def skeleton_overlay_data(self) -> dict:
-        from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
-        from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
-
-        detector_type = (
-            self.pipeline_config.camera_node_config.detector_type
-            if self.pipeline_config is not None
-            else "rtmpose"
-        )
-        tracker_def_name = (
-            MEDIAPIPE_WHOLEBODY_DEFINITION.name
-            if detector_type == "mediapipe"
-            else RTMPOSE_WHOLEBODY_DEFINITION.name
-        )
-
-        overlay_data: dict[CameraIdString, SkeletonOverlayData] = {}
-        for camera_id, cam_output in self.camera_node_outputs.items():
-            if cam_output.skeleton_observation is not None:
-                overlay_data[camera_id] = SkeletonOverlayData.from_observation(
-                    camera_id=camera_id,
-                    observation=cam_output.skeleton_observation,
-                    tracker_definition_name=tracker_def_name,
-                )
-        return overlay_data
-
-
-    @property
     def camera_ids(self) -> list[CameraIdString]:
         return list(self.camera_node_outputs.keys())
 

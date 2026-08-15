@@ -7,6 +7,7 @@
 
 import {
   ChannelKind,
+  DtypeCode,
   OverlayLayer,
   type ChannelGroup,
   type DecodedSample,
@@ -15,7 +16,20 @@ import {
   type PointsFrame,
   type ResolvedSample,
   type StreamSchema,
+  type TypedArrayBlock,
 } from "./types";
+
+/** Narrow a decoded block to its Float32Array data, failing loud if it is not
+ *  float32. Every kind resolved into a typed frame here is float32 by schema;
+ *  the uint8 IMAGE_JPEG block is consumed on the image path, not here. */
+function asFloat32(block: TypedArrayBlock): Float32Array {
+  if (block.dtypeCode !== DtypeCode.FLOAT32 || !(block.data instanceof Float32Array)) {
+    throw new Error(
+      `SchemaRegistry: expected a float32 block for kind ${block.kind}, got dtype_code ${block.dtypeCode}`,
+    );
+  }
+  return block.data;
+}
 
 export interface SchemaRegistry {
   readonly schema: StreamSchema | null;
@@ -77,22 +91,28 @@ export function createSchemaRegistry(): SchemaRegistry {
       const seg = pointGroup(ChannelKind.SEGMENT_ORIGINS);
       const rw = pointGroup(ChannelKind.ROTATIONS_WORLD);
       const rl = pointGroup(ChannelKind.ROTATIONS_LOCAL);
+      const lengths = pointGroup(ChannelKind.SEGMENT_LENGTHS);
       const derived = pointGroup(ChannelKind.DERIVED_POINTS);
 
       const keypoints = kp.block && kp.group
-        ? resolvePoints(kp.group.names, kp.block.cols, kp.block.data)
+        ? resolvePoints(kp.group.names, kp.block.cols, asFloat32(kp.block))
         : null;
       const landmarks = lm.block && lm.group
-        ? resolvePoints(lm.group.names, lm.block.cols, lm.block.data)
+        ? resolvePoints(lm.group.names, lm.block.cols, asFloat32(lm.block))
         : null;
       const segmentOrigins = seg.block && seg.group
-        ? resolvePoints(seg.group.names, seg.block.cols, seg.block.data)
+        ? resolvePoints(seg.group.names, seg.block.cols, asFloat32(seg.block))
         : null;
       const rotationsWorld = rw.block && rw.group
-        ? resolveQuat(rw.group.names, rw.block.cols, rw.block.data)
+        ? resolveQuat(rw.group.names, rw.block.cols, asFloat32(rw.block))
         : null;
       const rotationsLocal = rl.block && rl.group
-        ? resolveQuat(rl.group.names, rl.block.cols, rl.block.data)
+        ? resolveQuat(rl.group.names, rl.block.cols, asFloat32(rl.block))
+        : null;
+
+      // SEGMENT_LENGTHS: one length_mm column per segment name.
+      const segmentLengths = lengths.block && lengths.group
+        ? { names: lengths.group.names, data: asFloat32(lengths.block) }
         : null;
 
       // DERIVED_POINTS: row 0 = center_of_mass, row 1 = xcom (columns x,y,z).
@@ -115,15 +135,25 @@ export function createSchemaRegistry(): SchemaRegistry {
 
       const overlays: OverlayFrame[] = [];
       const overlayGroup = schema.channels.find((g) => g.kind === ChannelKind.OVERLAY_2D) ?? null;
+      const reprojGroup = schema.channels.find((g) => g.kind === ChannelKind.OVERLAY_REPROJECTIONS) ?? null;
       for (const block of sample.blocks) {
-        if (block.kind !== ChannelKind.OVERLAY_2D || !overlayGroup) continue;
-        overlays.push({
-          cameraId: block.cameraId,
-          layer: block.overlayLayer,
-          frameNumber: sample.frameNumber,
-          names: overlayGroup.names,
-          data: block.data,
-        });
+        if (block.kind === ChannelKind.OVERLAY_2D && overlayGroup) {
+          overlays.push({
+            cameraId: block.cameraId,
+            layer: block.overlayLayer,
+            frameNumber: sample.frameNumber,
+            names: overlayGroup.names,
+            data: asFloat32(block),
+          });
+        } else if (block.kind === ChannelKind.OVERLAY_REPROJECTIONS && reprojGroup) {
+          overlays.push({
+            cameraId: block.cameraId,
+            layer: OverlayLayer.REPROJECTIONS,
+            frameNumber: sample.frameNumber,
+            names: reprojGroup.names,
+            data: asFloat32(block),
+          });
+        }
       }
 
       return {
@@ -136,6 +166,7 @@ export function createSchemaRegistry(): SchemaRegistry {
         rotationsWorld,
         rotationsLocal,
         derived: { centerOfMass, xcom },
+        segmentLengths,
         overlays,
       };
     },

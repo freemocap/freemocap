@@ -1,14 +1,18 @@
 """
-WebSocket server with settings sync integration.
+WebSocket server — the per-connection supervisor of the single standard stream.
 
-Thin supervisor for one WebSocket connection: composes the standard-stream
-send path (SendSerializer + FrameRelay + BackpressureController) with the
-image relay, log relay, app-state sender, and the inbound client-message
-handler (settings sync + frame acks + display sizes).
+Thin supervisor for one WebSocket connection: composes the standard-stream send
+path (SendSerializer + FrameRelay) with the log relay, app-state sender, and
+the inbound client-message handler (display sizes). The FrameRelay is the ONE
+consumer of the pipeline's aggregator output; the camera images ride the same
+sample as the ``IMAGE_JPEG`` block. Flow control is newest-wins — there is no
+ack window; the inbound ``frameAcknowledgment`` carries ``displayImageSizes``
+only (they drive SkellyCam's JPEG downscaling).
 
-The standard-stream send path (schema once, then binary samples) replaced the
-legacy binary-keypoints protocol (D36). Image data stays a separate JPEG
-bytearray stream, linked by frame number.
+The schema is composed from the channel producers whenever the data model
+changes (pipeline start/stop, detector, camera set) — one composite signature,
+not per-cause checks. "Camera-only" vs "camera + reconstruction" is two schemas
+produced by one mechanism.
 """
 import asyncio
 import json
@@ -18,29 +22,33 @@ import time
 from queue import Empty
 
 import msgspec
-import numpy as np
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
+from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
+from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
+from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellylogs import get_websocket_log_queue
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
-from freemocap.api.websocket.backpressure_controller import BackpressureController
-from freemocap.api.websocket.frame_relay import FrameRelay, lengths_differ_materially, schema_bytes
+from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.core.streaming.standard_stream import StreamSchema
+from freemocap.core.streaming.standard_stream import encode_schema
+from freemocap.core.streaming.standard_stream.producers import (
+    compose,
+    signature_of,
+)
+from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+    FrameContext,
+    StreamContext,
+)
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves the _await_next_aggregator_output return annotation at runtime
 from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
-from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
-from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 
 logger = logging.getLogger(__name__)
-
-_empty_source_log_count = 0  # TEMP DEBUG — remove
 
 
 class FramerateMessage(msgspec.Struct):
@@ -62,7 +70,6 @@ class WebsocketServer:
 
         self._websocket_should_continue = True
         self.ws_tasks: list[asyncio.Task] = []
-        self.last_received_frontend_confirmation: FrameNumberInt = -1
         self._display_image_sizes: dict[CameraGroupIdString, dict[str, float]] | None = None
 
         self._frontend_framerate_trackers: dict[CameraGroupIdString, FramerateTracker] = {}
@@ -73,116 +80,105 @@ class WebsocketServer:
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
-        # Ack window: 3 frames in flight before waiting; reset at 300 behind.
-        self._backpressure = BackpressureController(window_size=3, reset_threshold=300)
-        # Schema built once at connect, re-built on a camera-topology change.
         self._standard_human = compose_standard_human()
-        self._schema: StreamSchema
-        self._schema_camera_ids: tuple[str, ...] = ()
-        self._schema_detector_type: str | None = None
-        self._schema_segment_lengths: dict[str, float] | None = None
-        self._build_schema()
-        # The relay consumes raw aggregator output via the injected source.
+        # Config-update subscriptions (one each, keyed) — the schema rebuilds
+        # on ANY config change riding the pubsub network.
+        self._config_subscriptions: dict[tuple[str, str], object] = {}
+        # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
             serializer=self._serializer,
-            backpressure=self._backpressure,
-            schema=self._schema,
-            standard_human=self._standard_human,
-            source=self._await_next_aggregator_output,
+            source=self._await_next_frame,
             should_continue=lambda: self.should_continue,
         )
+        # The initial composition (may be image-only — the schema re-sends when
+        # the data model changes, e.g. a pipeline starts).
+        self._relay.set_composition(self._compose_current())
 
-    def _current_camera_ids(self) -> tuple[str, ...]:
-        """The sorted camera IDs across all live realtime pipelines.
+    # ── Schema lifecycle ─────────────────────────────────────────────────
 
-        This is the schema's ``camera_ids`` — the honest driver of the schema-
-        change trigger (a new pipeline run with a different camera set).
-        """
-        ids: set[str] = set()
-        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
-            ids.update(pipeline.camera_ids)
-        return tuple(sorted(ids))
-
-    def _build_schema(self, segment_lengths: dict[str, float] | None = None) -> None:
-        """Build (or rebuild) the standard-stream schema for the current topology.
-
-        The schema is immutable; the things that can change at runtime are the
-        camera set (a new realtime pipeline run), the detector type (a pipeline
-        restart with a different tracker — its tracker keypoint names key the
-        KEYPOINTS_3D / OVERLAY_2D groups), and the measured segment lengths (the
-        estimators converging). All three are honest schema-change triggers: the
-        schema is re-built — and re-sent — when ``camera_ids`` or the detector
-        type differs from what it was built with, or when ``segment_lengths``
-        has changed materially. ``segment_lengths=None`` yields the
-        anthropometric defaults (``length_ratio × NOMINAL_SUBJECT_HEIGHT_MM``) —
-        the first send on connect.
-        """
+    def _build_stream_context(self) -> StreamContext:
         camera_ids = self._current_camera_ids()
         detector_type = self._current_detector_type()
-        self._schema = StreamSchema.from_standard_human(
-            stream_id=f"freemocap-{os.getpid()}",
-            stream_name="freemocap standard stream",
+        return StreamContext(
             standard_human=self._standard_human,
             camera_ids=camera_ids,
-            tracker_keypoint_names=tracker_keypoint_names(detector_type),
-            measured_lengths=segment_lengths,
             camera_image_sizes=self._camera_image_sizes(),
+            tracker_keypoint_names=tuple(tracker_keypoint_names(detector_type)),
+            detector_type=detector_type,
+            pipeline_live=bool(camera_ids),
         )
-        self._schema_camera_ids = camera_ids
-        self._schema_detector_type = detector_type
-        self._schema_segment_lengths = dict(segment_lengths) if segment_lengths else None
 
-    # ── Frame source (wired to the app) ─────────────────────────────────
-    async def _await_next_aggregator_output(self) -> "AggregationNodeOutputMessage | None":
-        """Wait for a new aggregator output, then pull the newest one.
+    def _compose_current(self):
+        ctx = self._build_stream_context()
+        return compose(
+            ctx,
+            stream_id=f"freemocap-{os.getpid()}",
+            stream_name="freemocap standard stream",
+        )
 
-        This is the relay's frame source: same wake-up primitive the old relay
-        used, but pulling the *raw aggregator output* (the standard-stream
-        encoder input) rather than a rendered FrontendImagePacket.
+    def _refresh_config_subscriptions(self) -> None:
+        """Subscribe (once each, keyed) to the config-update topics of every
+        live pipeline + its camera group.
+
+        The schema rebuilds on ANY config change riding the existing pubsub
+        network: freemocap's ``PipelineConfigUpdateTopic`` (per pipeline) and
+        skellycam's ``UPDATE_CAMERA_SETTINGS`` / ``EXTRACTED_CONFIG`` (per
+        camera group — the camera workers publish the extracted config when
+        they apply a settings change, e.g. a rotation).
         """
-        await self._app.wait_for_realtime_result(timeout=0.5)
-
-        # Re-check topology each wake-up; rebuild + resend the schema if the
-        # camera set changed (a new pipeline run).
-        if self._check_schema_change():
-            self._build_schema()
-            self._relay.set_schema(self._schema)
-            await self._serializer.send_schema_json(schema_bytes(self._schema))
-
-        outputs = self._app.get_latest_aggregator_outputs(
-            if_newer_than=self._relay.last_sent_frame_number,
-        )
-        if not outputs:
-            # TEMP DEBUG — remove
-            global _empty_source_log_count
-            _empty_source_log_count += 1
-            if _empty_source_log_count <= 5 or _empty_source_log_count % 200 == 0:
-                logger.info(
-                    f"[TEMP] aggregator source empty #{_empty_source_log_count} "
-                    f"(relay last_sent={self._relay.last_sent_frame_number})"
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if not pipeline.alive:
+                continue
+            pipeline_key = (pipeline.id, "pipeline")
+            if pipeline_key not in self._config_subscriptions:
+                self._config_subscriptions[pipeline_key] = (
+                    pipeline.pipeline_config_subscription
                 )
-            return None
-        # One pipeline per camera set today; take the newest frame_number.
-        newest = max(outputs, key=lambda m: m.frame_number)
+            group_pubsub = pipeline.camera_group.ipc.pubsub
+            for topic in (TopicTypes.UPDATE_CAMERA_SETTINGS, TopicTypes.EXTRACTED_CONFIG):
+                key = (pipeline.camera_group.id, topic.name)
+                if key not in self._config_subscriptions:
+                    self._config_subscriptions[key] = group_pubsub.get_subscription(topic)
 
-        # Segment lengths are carried per frame. When they change materially
-        # (first arrival, or any segment moves > threshold), rebuild + resend the
-        # schema with the measured lengths so the frontend converges to the live
-        # estimates.
-        if lengths_differ_materially(
-            self._schema_segment_lengths, newest.segment_lengths
-        ):
-            self._build_schema(segment_lengths=newest.segment_lengths)
-            self._relay.set_schema(self._schema)
-            await self._serializer.send_schema_json(schema_bytes(self._schema))
+    def _drain_config_updates(self) -> bool:
+        """True if any config-update message arrived since the last drain."""
+        got = False
+        for subscription in self._config_subscriptions.values():
+            while True:
+                try:
+                    subscription.get_nowait()
+                    got = True
+                except Empty:
+                    break
+        return got
 
-        return newest
+    async def _ensure_composition(self) -> None:
+        """Rebuild + resend the schema when the data model changed.
 
-    def _check_schema_change(self) -> bool:
-        return (
-            self._current_camera_ids() != self._schema_camera_ids
-            or self._current_detector_type() != self._schema_detector_type
-        )
+        Two triggers: (1) a config-update message on the pubsub network — a
+        FULL rebuild, the event is authoritative; (2) the composite producer
+        signature changing for reasons that don't ride a config topic (a
+        pipeline starting / stopping).
+        """
+        self._refresh_config_subscriptions()
+        config_changed = self._drain_config_updates()
+
+        current = self._relay.composition
+        if current is not None and not config_changed:
+            signature = signature_of(self._build_stream_context())
+            if signature == signature_of(current.context):
+                return
+        composition = self._compose_current()
+        self._relay.set_composition(composition)
+        await self._serializer.send_schema_json(encode_schema(composition.schema))
+
+    def _current_camera_ids(self) -> tuple[str, ...]:
+        """The sorted camera IDs across all live realtime pipelines."""
+        ids: set[str] = set()
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                ids.update(pipeline.camera_ids)
+        return tuple(sorted(ids))
 
     def _camera_image_sizes(self) -> dict[str, tuple[int, int]]:
         """Per-camera capture-resolution image size (width, height) in px.
@@ -193,6 +189,8 @@ class WebsocketServer:
         """
         sizes: dict[str, tuple[int, int]] = {}
         for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if not pipeline.alive:
+                continue
             for camera_id in pipeline.camera_ids:
                 config = pipeline.camera_configs[camera_id]
                 sizes[camera_id] = (int(config.width), int(config.height))
@@ -207,8 +205,97 @@ class WebsocketServer:
         re-sends when the type changes.
         """
         for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
-            return pipeline.config.camera_node_config.detector_type
+            if pipeline.alive:
+                return pipeline.config.camera_node_config.detector_type
         return "rtmpose"
+
+    # ── Frame source (wired to the app) ─────────────────────────────────
+
+    async def _await_next_frame(self) -> "FrameContext | None":
+        """Wait for the next frame, then compose its FrameContext.
+
+        One sample per frame carries images + overlays + reconstruction
+        together — while a pipeline is live the source waits for the NEXT
+        aggregator output (lockstep, newest-wins); with no pipeline it serves
+        camera images directly (the schema declares IMAGE_JPEG only).
+        """
+        await self._app.wait_for_realtime_result(timeout=0.5)
+
+        if not self._app.realtime_pipeline_manager.pipelines:
+            return await self._await_camera_only_frame()
+
+        outputs = self._app.get_latest_aggregator_outputs(
+            if_newer_than=self._relay.last_sent_frame_number,
+        )
+        if not outputs:
+            # Pipeline live but no new solver output — keep waiting; the
+            # sample must carry the frame's pose and image together.
+            return None
+        newest = max(outputs, key=lambda m: m.frame_number)
+
+        await self._ensure_composition()
+
+        image_bytes: bytearray | None = None
+        mf_timestamp: float = 0.0
+        pipeline = self._app.realtime_pipeline_manager.pipelines.get(newest.pipeline_id)
+        if pipeline is not None:
+            payload = pipeline.camera_group.get_frontend_payload_by_frame_number(
+                frame_number=newest.frame_number,
+                display_image_sizes=self._display_image_sizes,
+            )
+            if payload is not None:
+                image_bytes, mf_timestamp = payload
+
+        self._record_framerate(
+            camera_group_id=newest.camera_group_id,
+            frame_number=newest.frame_number,
+        )
+        await self._send_framerate_updates()
+
+        if image_bytes is None:
+            # A live pipeline frame with no camera-group payload is an
+            # anomaly — surface it rather than silently shipping a sample
+            # without its image block.
+            logger.warning(
+                f"camera-group payload unavailable for aggregator frame "
+                f"{newest.frame_number} — sample sent without its IMAGE_JPEG block"
+            )
+
+        return FrameContext(
+            frame_number=newest.frame_number,
+            timestamp=float(mf_timestamp),
+            aggregator_output=newest,
+            image_payload=bytes(image_bytes) if image_bytes is not None else None,
+        )
+
+    async def _await_camera_only_frame(self) -> "FrameContext | None":
+        """Camera-only mode (no realtime pipeline): serve camera images.
+
+        The schema declares IMAGE_JPEG only; each sample carries just the
+        newest camera-group payload.
+        """
+        await self._ensure_composition()
+        payloads: dict[
+            CameraGroupIdString, tuple[FrameNumberInt, float, bytearray]
+        ] = self._app.camera_group_manager.get_latest_frontend_payloads(
+            if_newer_than=self._relay.last_sent_frame_number,
+            display_image_sizes=self._display_image_sizes,
+        )
+        if not payloads:
+            return None
+        group_id, (frame_number, mf_timestamp, image_bytes) = max(
+            payloads.items(), key=lambda item: item[1][0]
+        )
+        self._record_framerate(
+            camera_group_id=group_id,
+            frame_number=frame_number,
+        )
+        await self._send_framerate_updates()
+        return FrameContext(
+            frame_number=int(frame_number),
+            timestamp=float(mf_timestamp),
+            image_payload=bytes(image_bytes),
+        )
 
     # ── JSON send helper (retained for non-sample messages) ────────────
     async def _send_msgspec_json(self, data: object) -> None:
@@ -243,10 +330,11 @@ class WebsocketServer:
     async def run(self):
         logger.info("Starting websocket runner...")
         # Schema first, on connect — the frontend indexes sample blocks by it.
-        await self._serializer.send_schema_json(schema_bytes(self._schema))
+        composition = self._relay.composition
+        if composition is not None:
+            await self._serializer.send_schema_json(encode_schema(composition.schema))
         self.ws_tasks = [
             asyncio.create_task(self._relay.run(), name="WebsocketStandardStreamRelay"),
-            asyncio.create_task(self._image_relay(), name="WebsocketFrontendImageRelay"),
             asyncio.create_task(self._logs_relay(), name="WebsocketLogsRelay"),
             asyncio.create_task(self._client_message_handler(), name="WebsocketClientMessageHandler"),
             asyncio.create_task(self._app_state_sender(), name="WebsocketAppStateSender"),
@@ -256,6 +344,11 @@ class WebsocketServer:
             await asyncio.gather(*self.ws_tasks)
         except Exception as e:
             logger.exception(f"Error in websocket runner: {e.__class__}: {e}")
+            # A fatal runner error must stop the whole app — if it only kills
+            # this connection, the frontend reconnects into the same crash
+            # forever.
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
             for task in self.ws_tasks:
                 if not task.done():
                     task.cancel()
@@ -285,50 +378,28 @@ class WebsocketServer:
             self._global_kill_flag.value = True
             raise
 
-    async def _image_relay(self) -> None:
-        """Relay JPEG image bytearrays alongside the standard stream.
+    def _record_framerate(
+        self,
+        *,
+        camera_group_id: CameraGroupIdString,
+        frame_number: FrameNumberInt,
+    ) -> None:
+        """Record the server-side sample cadence.
 
-        Image data stays separate (doc 02 § Goal 4): images are keyed by frame
-        number and sent via ``send_bytes`` on any *new* frame, but never gated
-        by the standard-stream ack window. Skips when there are no realtime
-        pipelines producing images (camera-only path is preserved too).
+        ``ServerFramerateCalculator`` derives per-frame durations from
+        consecutive timestamps — its documented input is ``perf_counter_ns``
+        at grab time, so the record uses the local monotonic clock. (Passing
+        the capture timestamp is wrong: its 0.0/None case produces
+        non-positive durations and the calculator raises.)
         """
-        logger.info("Starting frontend image relay...")
-        last_sent_img: FrameNumberInt = -1
-        try:
-            while self.should_continue:
-                packets, progress_updates = self._app.get_latest_frontend_payloads(
-                    if_newer_than=last_sent_img,
-                    display_image_sizes=self._display_image_sizes,
-                )
-                for packet in packets:
-                    if packet.images_bytearray is not None:
-                        await self._serializer.send_raw_bytes(bytes(packet.images_bytearray))
-                    last_sent_img = packet.frame_number
-                    self._record_framerate(packet)
-                for update_message in progress_updates:
-                    await self._send_msgspec_json(update_message)
-                await self._send_framerate_updates()
-                await await_10ms()
-        except WebSocketDisconnect:
-            logger.api("Client disconnected, ending image relay task...")
-        except asyncio.CancelledError:
-            pass
-        except Exception as e:
-            logger.exception(f"Error in image relay: {e.__class__}: {e}")
-            self._websocket_should_continue = False
-            self._global_kill_flag.value = True
-            raise
-
-    def _record_framerate(self, packet) -> None:
-        camera_group_id = packet.camera_group_id
-        frame_number = packet.frame_number
         if camera_group_id not in self._server_framerate_calculators:
             self._server_framerate_calculators[camera_group_id] = ServerFramerateCalculator(
                 source_name="Server")
         self._server_framerate_calculators[camera_group_id].update(
             frame_number=frame_number,
-            capture_timestamp_ns=float(packet.multiframe_timestamp),
+            # float(): skellycam's signature types this as float; perf_counter_ns
+            # returns int.
+            capture_timestamp_ns=float(time.perf_counter_ns()),
         )
         if camera_group_id not in self._display_framerate_trackers:
             self._display_framerate_trackers[camera_group_id] = FramerateTracker.create(
@@ -407,12 +478,10 @@ class WebsocketServer:
                         if text_content.strip().startswith("{") or text_content.strip().startswith("["):
                             try:
                                 data = json.loads(text_content)
-                                data_message_type = data.get("message_type", "")
 
                                 if "frameNumber" in data:
-                                    # Frame ack → free standard-stream ack window.
-                                    self._relay.ack(data["frameNumber"])
-                                    self.last_received_frontend_confirmation = data["frameNumber"]
+                                    # The ack's only remaining role: display image
+                                    # sizes, which drive SkellyCam's JPEG downscaling.
                                     raw_sizes = data.get("displayImageSizes", None)
                                     if raw_sizes is not None:
                                         parsed = {

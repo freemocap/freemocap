@@ -17,6 +17,9 @@ export enum ChannelKind {
   ROTATIONS_WORLD = 4, // segment names, wxyz — world frame
   DERIVED_POINTS = 5, // center_of_mass, xcom
   OVERLAY_2D = 6, // per camera x layer
+  SEGMENT_LENGTHS = 7, // segment names, length_mm — sent every frame
+  IMAGE_JPEG = 8, // camera images — one opaque multi-camera JPEG blob (uint8); split per-camera later
+  OVERLAY_REPROJECTIONS = 9, // per camera — the fitted skeleton's segment-origin landmarks projected back down
 }
 
 export enum OverlayLayer {
@@ -32,9 +35,11 @@ export enum MessageType {
   SAMPLE_FOOTER = 12,
 }
 
-// DtypeCode on the block header (stream_sample.py). Only float32 is emitted.
+// DtypeCode on the block header (stream_sample.py). float32 for point/rotation/
+// scalar blocks; uint8 for the raw-bytes IMAGE_JPEG block.
 export enum DtypeCode {
   FLOAT32 = 0,
+  UINT8 = 1,
 }
 
 // ── Schema JSON ────────────────────────────────────────────────────────
@@ -83,10 +88,13 @@ export interface StreamSchema {
 
 // ── Decoded sample ─────────────────────────────────────────────────────
 
-/** One block of a sample, decoded to a (numElements × cols) float32 array. */
+/** One block of a sample, decoded to a (numElements × cols) typed array.
+ *  `data` is a Float32Array for FLOAT32 blocks and a Uint8Array for UINT8
+ *  (IMAGE_JPEG) blocks — discriminate with `dtypeCode`. */
 export interface TypedArrayBlock {
   kind: ChannelKind;
-  data: Float32Array; // (numElements * cols) row-major interleaved
+  dtypeCode: DtypeCode;
+  data: Float32Array | Uint8Array; // (numElements * cols) row-major interleaved
   numElements: number;
   cols: number;
   cameraId: string; // "" except OVERLAY_2D blocks
@@ -106,6 +114,13 @@ export interface DecodedSample {
 export interface PointsFrame {
   names: readonly string[];
   /** interleaved [x0,y0,z0, x1,y1,z1, …] — length names.length * 3. */
+  data: Float32Array;
+}
+
+/** The per-frame SEGMENT_LENGTHS block: names + one length_mm per segment. */
+export interface SegmentLengthsFrame {
+  names: readonly string[];
+  /** length_mm per segment — length names.length. */
   data: Float32Array;
 }
 
@@ -150,5 +165,6 @@ export interface ResolvedSample {
   rotationsWorld: PointsFrame | null;
   rotationsLocal: PointsFrame | null;
   derived: DerivedPointsFrame;
+  segmentLengths: SegmentLengthsFrame | null;
   overlays: OverlayFrame[];
 }

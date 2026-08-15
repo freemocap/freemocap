@@ -23,7 +23,6 @@ from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimeP
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import FrameNumberInt
-from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves the get_latest_aggregator_outputs return annotation at runtime
 
@@ -146,41 +145,6 @@ class FreemocapApplication:
         Used by the websocket relay for an event-driven wake-up. Falls back immediately when no pipeline is alive (camera-only or idle mode).
         """
         await self.realtime_pipeline_manager.wait_for_any_result_ready(timeout=timeout)
-
-    def get_latest_frontend_payloads(
-            self,
-            if_newer_than: FrameNumberInt,
-            display_image_sizes: dict[str, dict[str, float]] | None = None,
-    ) -> tuple[list[FrontendImagePacket], list[PipelineProgressMessage]]:
-        # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
-        posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
-        posthoc_progress.extend(self.posthoc_pipeline_manager.evict_completed())
-
-        realtime_pipelines = self.realtime_pipeline_manager.pipelines
-        active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
-
-        if not active_pipelines:
-            # Camera-only / posthoc-only path
-            results: list[FrontendImagePacket] = []
-            for cg_id, payload in self.camera_group_manager.get_latest_frontend_payloads(
-                    if_newer_than=if_newer_than,
-                    display_image_sizes=display_image_sizes,
-            ).items():
-                frame_number, mf_timestamp, image_bytes = payload  # unpack the known tuple shape
-                results.append(FrontendImagePacket(
-                    images_bytearray=image_bytes,
-                    multiframe_timestamp=mf_timestamp,
-                    frontend_payload=FrontendPayload(camera_group_id=cg_id, frame_number=frame_number),
-                ))
-            return results, posthoc_progress
-
-        # Realtime pipeline path — delegate to manager, which also returns FrontendImagePacket
-        realtime_pipeline_packets = self.realtime_pipeline_manager.get_latest_frontend_payloads(
-            if_newer_than=if_newer_than,
-            display_image_sizes=display_image_sizes,
-        )
-
-        return realtime_pipeline_packets, posthoc_progress
 
     def get_latest_aggregator_outputs(
             self,

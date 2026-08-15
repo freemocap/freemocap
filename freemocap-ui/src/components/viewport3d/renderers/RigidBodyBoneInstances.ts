@@ -49,10 +49,46 @@ export interface BoneInstanceTable {
     /** name → long-axis basis name (the segment's EXACT axis declaration;
      * body/hand = "y", face = "z"), resolved ONCE at schema time. */
     byNameLongAxis: ReadonlyMap<string, BoneLongAxis>;
+    /** name → rest-frame orientation [w, x, y, z] from rest_pose.orientations:
+     * the rotation mapping the segment's LOCAL frame to its world T-pose.
+     * Resolved ONCE at schema time; composed before ROTATIONS_WORLD. */
+    byNameRestOrientation: ReadonlyMap<string, readonly [number, number, number, number]>;
 }
 
 /** The local basis slot a segment's long axis (its EXACT axis) occupies. */
 export type BoneLongAxis = "x" | "y" | "z";
+
+/** wxyz → 3×3 rotation matrix (row-major, 9 floats). Matches skellyforge's
+ * RotationQuaternion.to_rotation_matrix (Diebel 2006 eq. 125). */
+function rotationMatrixFromQuaternion(q: readonly [number, number, number, number]): number[] {
+    const [w, x, y, z] = q;
+    return [
+        1 - 2 * (y * y + z * z), 2 * (x * y - w * z),     2 * (x * z + w * y),
+        2 * (x * y + w * z),     1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+        2 * (x * z - w * y),     2 * (y * z + w * x),     1 - 2 * (x * x + y * y),
+    ];
+}
+
+/** 3×3 matrix multiply, both row-major (9 floats each). */
+function multiply3x3(a: readonly number[], b: readonly number[]): number[] {
+    const out = new Array<number>(9);
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            out[row * 3 + col] =
+                a[row * 3] * b[col] + a[row * 3 + 1] * b[3 + col] + a[row * 3 + 2] * b[6 + col];
+        }
+    }
+    return out;
+}
+
+/** The constant rotation mapping the unit geometry's +Z (long axis) onto the
+ * segment's declared long-axis slot (its EXACT axis name). Row-major 3×3,
+ * right-handed, determinant +1. */
+function permuteMatrix(longAxis: BoneLongAxis): number[] {
+    return longAxis === "z" ? [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        : longAxis === "y" ? [1, 0, 0, 0, 0, 1, 0, -1, 0]   // ẑ → ŷ, ŷ → -ẑ
+        :                    [0, 0, 1, 0, 1, 0, -1, 0, 0];  // ẑ → x̂, x̂ → -ẑ
+}
 
 /**
  * Doc 11 F4 Step 3 — per-segment REST LENGTH, resolved ONCE at schema time.
@@ -150,6 +186,7 @@ export function buildBoneInstances(schema: StreamSchema): BoneInstanceTable {
             instances: [],
             byNameLength: new Map(),
             byNameLongAxis: new Map(),
+            byNameRestOrientation: new Map(),
         };
     }
 
@@ -169,6 +206,24 @@ export function buildBoneInstances(schema: StreamSchema): BoneInstanceTable {
         byNameLongAxis.set(name, axis);
     }
 
+    // Per-segment rest-frame orientation (rest_pose.orientations): the rotation
+    // mapping the segment's LOCAL frame to its world T-pose. Without it the
+    // world quaternions (measured relative to the rest frame) cannot be
+    // applied to the unit geometry — a schema with segments but no rest
+    // orientations is a defect, not a renderer default.
+    const restOrientations = schema.rest_pose?.orientations;
+    if (!restOrientations) {
+        throw new Error("buildBoneInstances: schema declares no rest_pose.orientations — bone geometry has no rest frame to orient onto");
+    }
+    const byNameRestOrientation = new Map<string, readonly [number, number, number, number]>();
+    for (const name of names) {
+        const q = restOrientations[name];
+        if (!q || q.length !== 4) {
+            throw new Error(`buildBoneInstances: segment ${name} has no rest orientation (got ${JSON.stringify(q)})`);
+        }
+        byNameRestOrientation.set(name, q as [number, number, number, number]);
+    }
+
     // D5: every bone index resolves via the name — segment_parents (the
     // topology) is NOT used for index assignment.
     const nameToIndex = new Map<string, number>();
@@ -183,86 +238,62 @@ export function buildBoneInstances(schema: StreamSchema): BoneInstanceTable {
 
     const byNameLength = buildSegmentLengths(schema);
 
-    return { nameToIndex, byName, instances, byNameLength, byNameLongAxis };
+    return { nameToIndex, byName, instances, byNameLength, byNameLongAxis, byNameRestOrientation };
 }
 
 /**
  * Per-frame instance transform (pure — the only per-frame math, unit-tested).
  *
- * Computes a 4×4 column-major matrix that places a unit-length (+Z) geometry
- * at `origin`, oriented by the world quaternion, with its long axis mapped
- * onto the segment's declared long-axis basis slot (`longAxis`) and scaled to
- * `length` (and by the radius-independent `crossSection` on the transverse
- * axes — D6's radius is a fixed parameter, never derived from length).
+ * Computes a 4×4 column-major matrix placing a unit-length (+Z) geometry at
+ * origin, oriented by the world quaternion, with its long axis mapped onto the
+ * segment's declared long-axis slot and scaled to length (transverse axes by
+ * the radius-independent crossSection — D6).
  *
- * The VRM local-frame convention declares the long axis on +Y for body/hand
- * segments and +Z for face segments; the unit geometry is always +Z, so a
- * per-axis constant rotation Q maps geometry +Z onto the declared slot.
+ * Composition: world = R_world · R_rest · Q · S, where
+ *   Q        permuteMatrix(longAxis) — geometry +Z onto the long-axis slot,
+ *   R_rest   rotationMatrixFromQuaternion(restOrientation) — the segment's
+ *            LOCAL frame to its world T-pose (rest_pose.orientations),
+ *   R_world  rotationMatrixFromQuaternion(quatWXYZ) — world-rest → world-live
+ *            (ROTATIONS_WORLD).
+ * At T-pose R_world is identity, so geometry +Z lands on the segment's rest
+ * long axis (a spine's +Y → world +Z, up) — the fix for the ~90° mis-orientation.
  *
- * @param origin      proximal joint (segment origin), mm
- * @param quatWXYZ    world-frame quaternion [w, x, y, z]
- * @param length      segment long-axis length; NaN/0 hides the instance
- * @param crossSection transverse radius (mm) — same for 1 mm and 500 mm bones
- * @param longAxis    the segment's EXACT axis basis name ("x" | "y" | "z")
+ * @param origin          proximal joint (segment origin), mm
+ * @param quatWXYZ        world-frame quaternion [w, x, y, z] (ROTATIONS_WORLD)
+ * @param restOrientation per-segment rest-frame orientation [w, x, y, z]
+ *                        (rest_pose.orientations): local frame → world T-pose
+ * @param longAxis        the segment's EXACT axis basis name ("x" | "y" | "z")
+ * @param length          segment long-axis length; NaN/0 hides the instance
+ * @param crossSection    transverse radius (mm) — same for 1 mm and 500 mm bones
  * @returns a 16-float column-major matrix, or null when the segment is hidden
  */
 export function computeBoneMatrix(
     origin: readonly [number, number, number],
     quatWXYZ: readonly [number, number, number, number],
+    restOrientation: readonly [number, number, number, number],
+    longAxis: BoneLongAxis,
     length: number,
     crossSection: number,
-    longAxis: BoneLongAxis,
 ): number[] | null {
     if (!Number.isFinite(length) || length <= 0) return null;
     for (let i = 0; i < 3; i++) if (!Number.isFinite(origin[i])) return null;
     for (let i = 0; i < 4; i++) if (!Number.isFinite(quatWXYZ[i])) return null;
+    for (let i = 0; i < 4; i++) if (!Number.isFinite(restOrientation[i])) return null;
 
-    const [ow, ox, oy, oz] = quatWXYZ;
+    const R = rotationMatrixFromQuaternion(quatWXYZ);        // world-rest → world-live
+    const Rrest = rotationMatrixFromQuaternion(restOrientation); // local → world T-pose
+    const Q = permuteMatrix(longAxis);                       // geometry +Z → long-axis slot
+    const Rtotal = multiply3x3(R, multiply3x3(Rrest, Q));    // geometry → world-live
 
-    // A point p_local maps to:  R · S · Q · p_local + origin.
-    // Q rotates the unit geometry's +Z onto the declared long-axis slot.
-    // S scales the long axis by `length` and the transverse axes by
-    // `crossSection`. R is the segment's world rotation (wxyz).
-    // Column-major storage is m[col*4 + row]; columns 0..2 = R·S·Q,
-    // column 3 = translation origin.
-    const sx = crossSection;
-    const sy = crossSection;
-    const sz = length;
-
-    // Q (row-major 3×3, right-handed, determinant +1). The geometry's +Z
-    // (its long axis) maps onto the declared long-axis slot; the remaining
-    // axes keep the frame right-handed.
-    const Q: readonly number[] =
-        longAxis === "z" ? [1, 0, 0, 0, 1, 0, 0, 0, 1]
-        : longAxis === "y" ? [1, 0, 0, 0, 0, 1, 0, -1, 0]   // ẑ → ŷ, ŷ → -ẑ
-        :                    [0, 0, 1, 0, 1, 0, -1, 0, 0];  // ẑ → x̂, x̂ → -ẑ
-
-    // R (wxyz → rotation matrix):
-    const r00 = 1 - 2 * (oy * oy + oz * oz);
-    const r01 = 2 * (ox * oy - ow * oz);
-    const r02 = 2 * (ox * oz + ow * oy);
-    const r10 = 2 * (ox * oy + ow * oz);
-    const r11 = 1 - 2 * (ox * ox + oz * oz);
-    const r12 = 2 * (oy * oz - ow * ox);
-    const r20 = 2 * (ox * oz - ow * oy);
-    const r21 = 2 * (oy * oz + ow * ox);
-    const r22 = 1 - 2 * (ox * ox + oy * oy);
-
+    // Column-major storage: m[col*4 + row] = (Rtotal · S)[row][col] =
+    // Rtotal[row][col] * s_col, since S is diagonal (scale applies to the
+    // GEOMETRY's axes: geometry z = long axis → length).
     const m = new Array<number>(16);
     for (let col = 0; col < 3; col++) {
-        // v = Q · (S · e_col): the scale applies to the GEOMETRY's axes
-        // (geometry z = long axis → length), then Q rotates them onto the
-        // segment's declared long-axis slot.
-        const s0 = col === 0 ? sx : 0;
-        const s1 = col === 1 ? sy : 0;
-        const s2 = col === 2 ? sz : 0;
-        const v0 = Q[0] * s0 + Q[1] * s1 + Q[2] * s2;
-        const v1 = Q[3] * s0 + Q[4] * s1 + Q[5] * s2;
-        const v2 = Q[6] * s0 + Q[7] * s1 + Q[8] * s2;
-        // R · v
-        m[col * 4 + 0] = r00 * v0 + r01 * v1 + r02 * v2;
-        m[col * 4 + 1] = r10 * v0 + r11 * v1 + r12 * v2;
-        m[col * 4 + 2] = r20 * v0 + r21 * v1 + r22 * v2;
+        const s = col === 0 ? crossSection : col === 1 ? crossSection : length;
+        m[col * 4 + 0] = Rtotal[col] * s;
+        m[col * 4 + 1] = Rtotal[3 + col] * s;
+        m[col * 4 + 2] = Rtotal[6 + col] * s;
         m[col * 4 + 3] = 0;
     }
     // column 3 (translation)

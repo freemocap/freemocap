@@ -114,9 +114,20 @@ export function RigidBodyBoneRenderer() {
 
     // Build the name→slot table ONCE per schema arrival (D14).
     const rebuild = useCallback((schema: StreamSchema) => {
-        tableRef.current = buildBoneInstances(schema);
-        tableAppliedRef.current = false; // per-instance colors re-applied on the fresh table
-        applyTable();
+        try {
+            const segGroup = schema.channels.find((g) => g.kind === 2);
+            console.log(
+                "[BONE-DIAG] rebuild: segments=" + (segGroup ? segGroup.names.length : 0) +
+                " rest_pose=" + (schema.rest_pose ? "present" : "null") +
+                " orientations=" + (schema.rest_pose?.orientations ? Object.keys(schema.rest_pose.orientations).length : 0) +
+                " segment_axes=" + (schema.segment_axes ? Object.keys(schema.segment_axes).length : 0),
+            );
+            tableRef.current = buildBoneInstances(schema);
+            tableAppliedRef.current = false; // per-instance colors re-applied on the fresh table
+            applyTable();
+        } catch (e) {
+            console.error("[BONE-DIAG] rebuild FAILED:", e);
+        }
     }, [applyTable]);
 
     // Initial schema (if already registered) + every subsequent schema arrival.
@@ -137,6 +148,9 @@ export function RigidBodyBoneRenderer() {
     // Subscribe segment origins (SEGMENT_ORIGINS, 3-interleaved xyz).
     useEffect(() => {
         return subscribeToSkeleton((frame) => {
+            if (skeletonRef.current === null) {
+                console.log("[BONE-DIAG] first skeleton frame: " + frame.pointNames.length + " points, finite=" + Array.from(frame.interleaved).filter(Number.isFinite).length);
+            }
             skeletonRef.current = frame;
             dirtyRef.current = true;
         });
@@ -146,6 +160,9 @@ export function RigidBodyBoneRenderer() {
     useEffect(() => {
         if (!subscribeToRotations) return;
         return subscribeToRotations((frame) => {
+            if (rotationsRef.current === null) {
+                console.log("[BONE-DIAG] first rotations frame: " + frame.boneNames.length + " bones, finite=" + Array.from(frame.worldQuaternions).filter(Number.isFinite).length);
+            }
             rotationsRef.current = frame;
             dirtyRef.current = true;
         });
@@ -216,15 +233,19 @@ export function RigidBodyBoneRenderer() {
                     // The long axis is scaled by the segment's rest length
                     // (resolved once at schema time, doc 11 F4 Step 3), not a
                     // fixed unit span. D6: the transverse cross-section stays a
-                    // fixed parameter, independent of length. The long-axis
-                    // basis name orients the unit geometry (VRM: +Y body/hand,
-                    // +Z face) — resolved once at schema time like the rest.
+                    // fixed parameter, independent of length. The unit geometry
+                    // is oriented by composing the rest-frame orientation
+                    // (rest_pose.orientations, local→world T-pose) with the
+                    // world quaternion (ROTATIONS_WORLD), then mapped onto the
+                    // long-axis slot (segment_axes) — resolved once at schema
+                    // time like the rest.
                     const matrix = computeBoneMatrix(
                         [ox, oy, oz],
                         [qw, qx, qy, qz],
+                        table.byNameRestOrientation.get(name)!,
+                        table.byNameLongAxis.get(name)!,
                         table.byNameLength.get(name) ?? 1.0,
                         BONE_CROSS_SECTION,
-                        table.byNameLongAxis.get(name)!,
                     );
                     if (matrix !== null) {
                         mesh.setMatrixAt(slot, _matrix4.fromArray(matrix));

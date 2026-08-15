@@ -21,6 +21,7 @@ from freemocap.core.streaming.standard_stream.coordinate_convention import (
     CoordinateConvention,
 )
 from freemocap.core.types.type_overloads import SegmentNameString  # noqa: TC001 — msgspec resolves this at class-def time for ``segment_parents``
+from skellyforge.kinematics.quaternion_math import RotationQuaternion
 from skellyforge.skellymodels.standard_human.reference_geometry import (
     build_reference_geometry,
 )
@@ -108,13 +109,21 @@ class ChannelGroup(msgspec.Struct, frozen=True):
 
 
 class RestPose(msgspec.Struct, frozen=True):
-    """The declared T-pose: identity rotation == this pose.
+    """The declared T-pose the live pose is measured against.
 
-    Populated by the standard human model. Orientations are wxyz quaternions.
+    positions — rest landmark positions (mm), one per schematic keypoint.
+    orientations — per-segment rest-frame orientation (wxyz): the rotation
+    mapping the segment's LOCAL frame to its world-frame T-pose. The solver
+    measures ROTATIONS_WORLD *relative to* this rest frame, so at T-pose
+    ROTATIONS_WORLD is identity — but the rest frame itself is NOT the
+    identity: a body segment's +Y points toward its child (the spine's +Y is
+    world +Z, up). A consumer renders a segment by composing this rest
+    orientation (and its long-axis name, segment_axes) before applying
+    ROTATIONS_WORLD.
     """
 
     positions: dict[str, tuple[float, float, float]] = msgspec.field(default_factory=dict)
-    reference_orientations: dict[str, tuple[float, float, float, float]] = msgspec.field(default_factory=dict)
+    orientations: dict[str, tuple[float, float, float, float]] = msgspec.field(default_factory=dict)
 
     @classmethod
     def from_standard_human(
@@ -123,11 +132,11 @@ class RestPose(msgspec.Struct, frozen=True):
     ) -> RestPose:
         """Build the rest pose from the standard human model's T-pose.
 
-        Joint center positions come from the model's reference geometry (rest
-        keypoint positions, keyed by keypoint name) at the anthropometric
-        default lengths. Orientations are identity quaternions — by contract,
-        identity quaternion == T-pose. The live measured lengths ride the
-        per-frame ``SEGMENT_LENGTHS`` block, not the rest pose.
+        Positions come from the model's reference geometry (rest landmark
+        positions, keyed by landmark name) at the anthropometric default
+        lengths. Orientations are the per-segment rest-frame rotations
+        (reference_geometry basis → quaternion, local→world). The live measured
+        lengths ride the per-frame SEGMENT_LENGTHS block, not the rest pose.
         """
         merged = _merge_segment_lengths(standard_human)
         geometry = build_reference_geometry(list(standard_human.segments), merged)
@@ -136,10 +145,19 @@ class RestPose(msgspec.Struct, frozen=True):
         for name, pos in geometry.landmarks.items():
             positions[name] = (float(pos[0]), float(pos[1]), float(pos[2]))
 
-        identity = (1.0, 0.0, 0.0, 0.0)
-        reference_orientations = {name: identity for name in standard_human.segment_names}
+        orientations: dict[str, tuple[float, float, float, float]] = {}
+        for segment in standard_human.segments:
+            q = RotationQuaternion.from_rotation_matrix(
+                geometry.segments[segment.name].basis.T
+            )
+            orientations[segment.name] = (
+                float(q.w),
+                float(q.x),
+                float(q.y),
+                float(q.z),
+            )
 
-        return cls(positions=positions, reference_orientations=reference_orientations)
+        return cls(positions=positions, orientations=orientations)
 
 
 class StreamSchema(msgspec.Struct, frozen=True):
@@ -158,7 +176,9 @@ class StreamSchema(msgspec.Struct, frozen=True):
     segment_parents: dict[SegmentNameString, SegmentNameString | None] = msgspec.field(default_factory=dict)
     # Per-segment long-axis basis name (the segment's EXACT axis declaration:
     # "x" | "y" | "z") — body/hand segments declare "y", face segments "z".
-    # The 3D bone renderer orients its unit geometry onto this axis.
+    # This names WHICH axis of the rest frame (rest_pose.orientations) is the
+    # long axis; a consumer orients its geometry onto that axis, composes the
+    # rest orientation, then applies ROTATIONS_WORLD.
     segment_axes: dict[str, str] = msgspec.field(default_factory=dict)
     rest_pose: RestPose | None = None
     # Per-segment rest lengths (mm), one entry per segment name — the

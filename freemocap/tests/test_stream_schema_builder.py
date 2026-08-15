@@ -319,14 +319,39 @@ def test_rest_pose_positions_match_reference_geometry():
         )
 
 
-def test_rest_pose_orientations_are_identity():
+def test_rest_pose_orientations_match_reference_basis():
+    """RestPose orientations equal the reference geometry's per-segment rest frames."""
+    from skellyforge.kinematics.quaternion_math import RotationQuaternion
+    from skellyforge.skellymodels.standard_human.reference_geometry import (
+        build_reference_geometry,
+    )
+
+    model = _minimal_model()
+    nominal = {s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM for s in model.segments}
+    geometry = build_reference_geometry(list(model.segments), nominal)
+
     rest = _schema().rest_pose
-    identity = (1.0, 0.0, 0.0, 0.0)
     assert rest is not None
-    # one identity orientation per segment name
-    assert len(rest.reference_orientations) == len(_minimal_model().segments)
-    for name in ("hips", "spine", "head"):
-        assert rest.reference_orientations[name] == identity
+    assert set(rest.orientations) == {s.name for s in model.segments}
+    for segment in model.segments:
+        q = RotationQuaternion.from_rotation_matrix(
+            geometry.segments[segment.name].basis.T
+        )
+        assert rest.orientations[segment.name] == (q.w, q.x, q.y, q.z)
+
+
+def test_rest_pose_spine_orientation_maps_local_y_to_world_up():
+    """The spine's rest frame sends its local +Y (toward child) to world +Z (up)."""
+    import numpy as np
+
+    from skellyforge.kinematics.quaternion_math import RotationQuaternion
+
+    rest = _schema().rest_pose
+    assert rest is not None
+    w, x, y, z = rest.orientations["spine"]
+    q = RotationQuaternion(w=w, x=x, y=y, z=z)
+    up = q.to_rotation_matrix() @ np.array([0.0, 1.0, 0.0])
+    assert np.allclose(up, [0.0, 0.0, 1.0], atol=1e-6)
 
 
 # ── Frozen schema tests (D22) ───────────────────────────────────────────

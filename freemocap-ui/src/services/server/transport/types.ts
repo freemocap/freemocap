@@ -62,7 +62,10 @@ export interface ChannelGroup {
 
 export interface RestPose {
   positions: Record<string, [number, number, number]>;
-  reference_orientations: Record<string, [number, number, number, number]>;
+  /** Per-segment rest-frame orientation (wxyz): the rotation mapping the
+   * segment's LOCAL frame to its world-frame T-pose. ROTATIONS_WORLD is
+   * measured relative to this rest frame (identity == T-pose in that frame). */
+  orientations: Record<string, [number, number, number, number]>;
 }
 
 export interface StreamSchema {

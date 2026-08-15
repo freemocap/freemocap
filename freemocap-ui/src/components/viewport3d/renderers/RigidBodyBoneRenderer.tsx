@@ -37,19 +37,23 @@ import {
 const MAX_BONES = 256;
 const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
-// Fixed transverse cross-section (world units). D6: a 1 mm segment renders the
-// SAME radius as a 500 mm one — long-axis `length` only scales the Z span.
-const BONE_CROSS_SECTION = 0.5;
+// Fixed transverse cross-section (mm). D6: a 1 mm segment renders the
+// SAME radius as a 500 mm one — long-axis `length` only scales the long-axis
+// span. Sized for visibility in a ~2 m (mm-unit) scene: ~15 mm radius.
+const BONE_CROSS_SECTION = 15;
 
 // Scratch (zero per-frame allocation).
 const DUMMY = new Object3D();
 const _matrix4 = new Matrix4();
 
-// Pre-built side colors (D15: applied once at schema time).
+// Pre-built side colors (D15: applied once at schema time). Dimmed so the lit
+// (MeshStandard) bones stay UNDER the scene's bloom threshold (0.9) — the bones
+// are matte shaded forms, not glowing like the CoM markers.
+const BONE_COLOR_DIM = 0.7;
 const SIDE_COLORS: Record<string, Color> = {
-    left: new Color(...BONE_SIDE_COLORS.left),
-    right: new Color(...BONE_SIDE_COLORS.right),
-    center: new Color(...BONE_SIDE_COLORS.center),
+    left: new Color(...BONE_SIDE_COLORS.left).multiplyScalar(BONE_COLOR_DIM),
+    right: new Color(...BONE_SIDE_COLORS.right).multiplyScalar(BONE_COLOR_DIM),
+    center: new Color(...BONE_SIDE_COLORS.center).multiplyScalar(BONE_COLOR_DIM),
 };
 const HIDDEN_COLOR = new Color("#000000");
 
@@ -63,35 +67,29 @@ export function RigidBodyBoneRenderer() {
     const skeletonRef = useRef<KeypointsFrame | null>(null);
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const dirtyRef = useRef(false);
+    const _diagFrameRef = useRef(0); // bone diagnostic frame counter — remove after
 
     // Schema-time name→slot table (D5/D14); rebuilt once on schema arrival.
     const tableRef = useRef<BoneInstanceTable | null>(null);
     const tableAppliedRef = useRef(false);
 
     const geometry = useMemo(() => createBoneMeshGeometry(), []);
+    // Unlit material (self-illuminated at the per-instance side color) so the
+    // bones are always visible regardless of scene lighting. The instanceColor
+    // side colors are pre-DIMMED (BONE_COLOR_DIM) so they no longer bloom the way
+    // the old full-bright white did. (A lit/shaded look would need guaranteed,
+    // ungated scene lights — a follow-up once visibility is confirmed.)
     const material = useMemo(
-        () => new MeshBasicMaterial({ vertexColors: false, color: "#ffffff" }),
+        () => new MeshBasicMaterial({ color: "#ffffff" }),
         [],
     );
 
     useEffect(() => () => { geometry.dispose(); material.dispose(); }, [geometry, material]);
 
-    // Build the name→slot table ONCE per schema arrival (D14).
-    const rebuild = useCallback((schema: StreamSchema) => {
-        tableRef.current = buildBoneInstances(schema);
-        tableAppliedRef.current = false; // per-instance colors re-applied in the init effect
-    }, []);
-
-    // Initial schema (if already registered) + every subsequent schema arrival.
-    useEffect(() => {
-        const existing = getStreamSchema?.();
-        if (existing) rebuild(existing);
-        const unsub = subscribeToSchema ? subscribeToSchema(rebuild) : () => {};
-        return unsub;
-    }, [getStreamSchema, subscribeToSchema, rebuild]);
-
-    // Hide all + set per-instance colors ONCE per table (D15).
-    useEffect(() => {
+    // Hide all + set per-instance colors ONCE per table (D15). Runs whenever a
+    // fresh table lands — via rebuild() directly, so a schema arriving AFTER
+    // mount applies too (the old effect keyed on the ref never re-fired).
+    const applyTable = useCallback(() => {
         const mesh = meshRef.current;
         const table = tableRef.current;
         if (!mesh || !table || tableAppliedRef.current) return;
@@ -112,7 +110,29 @@ export function RigidBodyBoneRenderer() {
         mesh.instanceMatrix.needsUpdate = true;
         mesh.count = MAX_BONES;
         tableAppliedRef.current = true;
-    }, [tableRef]);
+    }, []);
+
+    // Build the name→slot table ONCE per schema arrival (D14).
+    const rebuild = useCallback((schema: StreamSchema) => {
+        tableRef.current = buildBoneInstances(schema);
+        tableAppliedRef.current = false; // per-instance colors re-applied on the fresh table
+        applyTable();
+    }, [applyTable]);
+
+    // Initial schema (if already registered) + every subsequent schema arrival.
+    useEffect(() => {
+        const existing = getStreamSchema?.();
+        if (existing) rebuild(existing);
+        const unsub = subscribeToSchema ? subscribeToSchema(rebuild) : () => {};
+        return unsub;
+    }, [getStreamSchema, subscribeToSchema, rebuild]);
+
+    // Mesh-mounted re-check: the rebuild effect above runs in the same commit,
+    // so the table is already applied when it exists; this covers any mount
+    // ordering where the mesh was not yet available.
+    useEffect(() => {
+        applyTable();
+    }, [applyTable, getStreamSchema, subscribeToSchema]);
 
     // Subscribe segment origins (SEGMENT_ORIGINS, 3-interleaved xyz).
     useEffect(() => {
@@ -135,6 +155,35 @@ export function RigidBodyBoneRenderer() {
     useFrame(() => {
         const mesh = meshRef.current;
         const table = tableRef.current;
+
+        // Diagnostic — sample the FULL gate state ~a few seconds in (frame 90),
+        // BEFORE the early-return gate, so it reveals which precondition is
+        // missing (table? tableApplied? rotations?) + whether the schema is
+        // reaching this renderer at all. Remove after diagnosing.
+        _diagFrameRef.current++;
+        if (_diagFrameRef.current === 90) {
+            const skel = skeletonRef.current, rot = rotationsRef.current;
+            let finiteBoth = 0;
+            if (table && skel && rot) {
+                for (const [name] of table.nameToIndex) {
+                    const si = skel.pointNames.indexOf(name);
+                    const qi = rot.boneNames.indexOf(name);
+                    if (si !== -1 && qi !== -1
+                        && Number.isFinite(skel.interleaved[si * 3])
+                        && Number.isFinite(rot.worldQuaternions[qi * 4])) finiteBoth++;
+                }
+            }
+            console.log(
+                `[BONE-DIAG] mesh=${!!mesh} table=${!!table}(${table?.nameToIndex.size ?? 0}) ` +
+                `tableApplied=${tableAppliedRef.current} dirty=${dirtyRef.current} ` +
+                `skeleton=${!!skel}(${skel?.pointNames.length ?? 0}) ` +
+                `rotations=${!!rot}(${rot?.boneNames.length ?? 0}) finiteBoth=${finiteBoth} ` +
+                `getSchema=${typeof getStreamSchema} subSchema=${typeof subscribeToSchema} ` +
+                `existingSchema=${!!(getStreamSchema && getStreamSchema())} ` +
+                `rot0=${rot ? Array.from(rot.worldQuaternions.slice(0, 4)) : "n/a"}`,
+            );
+        }
+
         if (!mesh || !table || !dirtyRef.current || !tableAppliedRef.current) return;
 
         const skeleton = skeletonRef.current;
@@ -167,12 +216,15 @@ export function RigidBodyBoneRenderer() {
                     // The long axis is scaled by the segment's rest length
                     // (resolved once at schema time, doc 11 F4 Step 3), not a
                     // fixed unit span. D6: the transverse cross-section stays a
-                    // fixed parameter, independent of length.
+                    // fixed parameter, independent of length. The long-axis
+                    // basis name orients the unit geometry (VRM: +Y body/hand,
+                    // +Z face) — resolved once at schema time like the rest.
                     const matrix = computeBoneMatrix(
                         [ox, oy, oz],
                         [qw, qx, qy, qz],
                         table.byNameLength.get(name) ?? 1.0,
                         BONE_CROSS_SECTION,
+                        table.byNameLongAxis.get(name)!,
                     );
                     if (matrix !== null) {
                         mesh.setMatrixAt(slot, _matrix4.fromArray(matrix));

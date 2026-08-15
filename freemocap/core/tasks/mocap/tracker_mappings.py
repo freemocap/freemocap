@@ -5,6 +5,11 @@ Shipped with skellytracker. Keyed by ``CameraNodeConfig.detector_type`` (``rtmpo
 standard-human names (the skeleton rigidifier, the center-of-mass loader) picks the
 mapping that matches the configured detector's naming convention. Single source of
 truth for these dicts — all consumers import from here.
+
+The keypoint names are the tracker's FULL output set: every name the configured
+detector can emit appears in the schema's KEYPOINTS_3D / OVERLAY_2D groups. The
+tracker never filters its own keypoints — foot / hand / face points ride the
+stream as pure measurements even where no standard-human landmark consumes them.
 """
 from __future__ import annotations
 
@@ -14,17 +19,21 @@ from skellytracker.core.detectors.keypoint_detectors.mediapipe.body.mediapipe_po
     MediapipePoseKeypointDetector,
     _POINT_NAMES as _MEDIAPIPE_BODY_NAMES,
 )
+from skellytracker.core.detectors.keypoint_detectors.mediapipe.face.mediapipe_face_detector import (
+    _POINT_NAMES as _MEDIAPIPE_FACE_NAMES,
+)
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.hands.mediapipe_hand_detector import (
     MediapipeHandKeypointDetector,
     _HAND_POINT_NAMES as _MEDIAPIPE_HAND_NAMES,
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose.body.rtmpose_body_detector import (
     RTMPoseBodyDetector,
-    _POINT_NAMES as _RTMPOSE_BODY_NAMES,
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose.hand.rtmpose_hand_detector import (
     RTMPoseHandDetector,
-    _POINT_NAMES as _RTMPOSE_HAND_NAMES,
+)
+from skellytracker.core.detectors.keypoint_detectors.rtmpose.wholebody.rtmpose_wholebody_detector import (
+    _POINT_NAMES as _RTMPOSE_WHOLEBODY_NAMES,
 )
 
 _BODY_MAPPING_YAML_BY_DETECTOR: dict[str, Path] = {
@@ -48,26 +57,29 @@ def hand_mapping_yaml_path(detector_type: str) -> Path:
 
 
 def tracker_keypoint_names(detector_type: str) -> tuple[str, ...]:
-    """The tracker keypoint names the standard stream's KEYPOINTS_3D carries, sorted.
+    """The tracker's FULL keypoint-name set the standard stream carries, sorted.
 
-    These are the names the detectors actually emit — the same constants the
-    detectors load from their point-name YAMLs (imported here, aliased) — so the
-    schema's KEYPOINTS_3D / OVERLAY_2D names and the per-frame
-    ``keypoints_arrays`` keys stay in lockstep. Hand names are side-prefixed
-    exactly as the detectors compose them (``left_hand_`` / ``right_hand_``).
-    The mapping's ``TrackerMapping.tracker_names`` is NOT the source: its
-    anatomical-offset forms may reference standard-human landmark names (e.g.
-    ``hips_center`` as an offset origin), which the tracker never emits.
+    These are the names the configured detector actually emits — imported from
+    the detector's own point-name constants — so the schema's KEYPOINTS_3D /
+    OVERLAY_2D names and the per-frame ``keypoints_arrays`` keys stay in
+    lockstep. Every keypoint the model can produce appears here, including face
+    / foot / hand points that no standard-human landmark consumes; the tracker
+    never filters its own output. Hand names are side-prefixed exactly as the
+    detectors compose them (``left_hand_`` / ``right_hand_``). The mapping's
+    ``TrackerMapping.tracker_names`` is NOT the source: its anatomical-offset
+    forms may reference standard-human landmark names (e.g. ``hips_center`` as
+    an offset origin), which the tracker never emits.
     """
     if detector_type == "rtmpose":
-        body_names = _RTMPOSE_BODY_NAMES
-        hand_names = _RTMPOSE_HAND_NAMES
+        # RTMPose wholebody — one detector, all 133 keypoints (body + feet +
+        # hands + face), side-prefixed by the detector itself.
+        return tuple(sorted(_RTMPOSE_WHOLEBODY_NAMES))
     elif detector_type == "mediapipe":
-        body_names = _MEDIAPIPE_BODY_NAMES
-        hand_names = _MEDIAPIPE_HAND_NAMES
+        # MediaPipe pose + hands + face.
+        names = set(_MEDIAPIPE_BODY_NAMES)
+        names.update(_MEDIAPIPE_FACE_NAMES)
+        for side in ("left", "right"):
+            names.update(f"{side}_hand_{n}" for n in _MEDIAPIPE_HAND_NAMES)
+        return tuple(sorted(names))
     else:
         raise ValueError(f"unknown detector_type {detector_type!r} (rtmpose | mediapipe)")
-    names = set(body_names)
-    for side in ("left", "right"):
-        names.update(f"{side}_hand_{n}" for n in hand_names)
-    return tuple(sorted(names))

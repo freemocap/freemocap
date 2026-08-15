@@ -83,11 +83,13 @@ export function FaceRenderer() {
                 // Match both face_0000 (RTMPose) and face.lips_61 (MediaPipe)
                 // — consistent with classifyPointName() in skeleton-config.ts
                 if (!/^face[._]/.test(pointNames[i])) continue;
-                const off = i * 4;
-                if (!interleaved[off + 3]) continue;
+                // The keypoints frame is 3-interleaved xyz (SchemaRegistry
+                // re-packs KEYPOINTS_3D — no 4th column here).
+                const off = i * 3;
                 const x = interleaved[off];
                 const y = interleaved[off + 1];
                 const z = interleaved[off + 2];
+                if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
                 face.set(pointNames[i], { x, y, z });
                 // MediaPipe-style face.{group}_{index} → contour line data present
                 if (pointNames[i].startsWith("face.")) hasContourNames = true;

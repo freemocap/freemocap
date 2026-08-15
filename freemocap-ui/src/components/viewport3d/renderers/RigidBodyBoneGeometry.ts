@@ -11,9 +11,6 @@
 import {
     BufferGeometry,
     CylinderGeometry,
-    Float32BufferAttribute,
-    SphereGeometry,
-    Vector3,
 } from "three";
 
 /**
@@ -21,108 +18,55 @@ import {
  * Kept exported so tests can assert the elliptical cross-section is real.
  */
 export const BONE_SQUISH_X = 0.55;
-export const CONE_RADIUS_BOTTOM = 1.0; // proximal "joint" end — wider
-export const CONE_RADIUS_TOP = 0.6;     // distal end — narrower
-export const CONE_HEIGHT = 1.0;         // unit height along +Z
-export const SPHERE_RADIUS = 1.1;       // slightly wider than the cone base
-
-const _apex = new Vector3();
+export const CONE_RADIUS_BOTTOM = 1.0; // proximal "joint" end (at the origin) — wider
+export const CONE_RADIUS_TOP = 0.4;     // distal end — narrower (tapers toward the tip)
+export const CONE_HEIGHT = 1.0;         // unit height along +Z (origin → distal)
 
 /**
- * Produces a cone spanning (0, 0, APEX_O) .. (0, 0, 1), elliptical on the
- * local X axis. Geometry template computed from a source cylinder with a
- * non-zero APEX_O, so the exact apex can never re-trigger normalization NaNs
- * behind an operation that guards on a zero delta. The translated positions
- * are baked into the attribute buffer, so the result is origin-agnostic.
+ * A unit tapered cone whose LONG AXIS is +Z, spanning Z∈[0, 1]: the WIDE
+ * (proximal) end sits at the origin (Z=0, the joint), the NARROW tip at Z=1
+ * (the distal end). Built from a THREE cylinder (whose long axis is +Y) and
+ * re-oriented onto +Z, so per-instance scaling of Z by the segment length grows
+ * the bone in ONE direction from its origin — never a double-ended spike.
  */
-function makeEllipticalCone(): BufferGeometry {
-    // APEX_O !== 0 is load-bearing: keep the apex off the origin so the cone
-    // length is never degenerate (guards against NaN in any downstream pass).
-    const APEX_O = 0.5;
-    const n = 12;              // radial segments
+function makeConeAlongZ(): BufferGeometry {
+    const n = 12; // radial segments
+    // CylinderGeometry(radiusTop@+Y, radiusBottom@-Y, height): long axis +Y in
+    // [-0.5, 0.5], wide end (radiusBottom) at -Y.
     const cone = new CylinderGeometry(
         CONE_RADIUS_TOP,
         CONE_RADIUS_BOTTOM,
         CONE_HEIGHT,
         n,
-        1,                     // heightSegments — a single ring is enough
-        false,                 // openEnded? no — caps stay
+        1,      // heightSegments — a single ring is enough
+        false,  // openEnded? no — caps stay
     );
-
-    const pos = cone.attributes.position as Float32BufferAttribute;
-    for (let i = 0; i < pos.count; i++) {
-        _apex.fromBufferAttribute(pos, i);
-        // Squish X (roll visibility)
-        _apex.x *= BONE_SQUISH_X;
-        // Map cylinder Z in [-0.5, +0.5] to the span [APEX_O, 1] via y = -2z.
-        _apex.z = APEX_O - 2 * _apex.z;
-        pos.setXYZ(i, _apex.x, _apex.y, _apex.z);
-    }
-    if (cone.boundingSphere) cone.boundingSphere = null;
-
+    // +Y → +Z: the wide (-Y) end maps to -Z, the narrow (+Y) end to +Z; then
+    // translate +Z by half the height so the wide/proximal end lands at Z=0 and
+    // the narrow/distal tip at Z=1. rotate/translate carry the normals.
+    cone.rotateX(Math.PI / 2);
+    cone.translate(0, 0, CONE_HEIGHT / 2);
     return cone;
 }
 
 /**
- * Build the shared unit-length elliptical cone + proximal sphere mesh.
- * The cone spans (+Z) from a (configurable but fixed) apex to length 1;
- * the sphere sits at the proximal end (Z = 0).
+ * Build the shared unit-length bone mesh: a tapered cone along +Z from the joint
+ * (Z=0, the wide base) to the distal tip (Z=1, narrow), squished on X so
+ * ROLL/twist is visible (a circular bone looks identical at every roll angle).
+ * Per-instance, Z scales to the segment length and X/Y to a fixed cross-section
+ * (D6).
+ *
+ * No joint sphere is merged in: the per-instance scale is non-uniform
+ * (Z = length ≫ X/Y = cross-section), so a merged sphere would stretch into a
+ * length-long spindle. The joint "blob" is the keypoint/landmark sphere already
+ * drawn at each joint; a dedicated per-bone joint sphere would be a SEPARATE,
+ * uniformly-scaled instanced mesh (a possible follow-up polish).
  */
 export function createBoneMeshGeometry(): BufferGeometry {
-    const cone = makeEllipticalCone();
-    const sphere = new SphereGeometry(SPHERE_RADIUS, 8, 6);
-
-    // Merge the cone + proximal sphere into one non-indexed BufferGeometry.
-    // The sphere's center is at Z=0 — its distal half overlaps the cone's apex,
-    // which is exactly the proximal-joint blend we want.
-    return mergeBufferGeometries([cone, sphere]);
-}
-
-/**
- * Merge a set of buffer geometries into one (non-indexed). Mirrors three's
- * `mergeGeometries` without the `three/examples/jsm/...` import so this
- * module stays testable in node.
- *
- * Only float32 attribute buffers are concatenated — non-float32 attributes
- * (e.g. any integer or half-float storage) are not preserved here.
- */
-export function mergeBufferGeometries(geometries: BufferGeometry[]): BufferGeometry {
-    const nonIndexed = geometries.map((g) => g.index ? g.toNonIndexed() : g);
-
-    // Attribute names are the union of each geometry's attributes.
-    const attrNames = new Set<string>();
-    for (const g of nonIndexed) {
-        for (const name of Object.keys(g.attributes)) attrNames.add(name);
-    }
-
-    const merged = new BufferGeometry();
-    for (const name of attrNames) {
-        const arrays: ArrayLike<number>[] = [];
-        let itemSize = 0;
-        for (const g of nonIndexed) {
-            const attr = g.attributes[name];
-            if (!attr) continue;
-            const typed = attr as Float32BufferAttribute;
-            // Push the backing typed array + that geometry's itemSize.
-            arrays.push(typed.array);
-            if (itemSize === 0) itemSize = typed.itemSize;
-        }
-        if (arrays.length === 0) continue;
-
-        // Concatenate typed arrays (Float32/BufferAttribute storage is
-        // uniform in practice for position/normal/uv).
-        const total = arrays.reduce((acc, a) => acc + a.length, 0);
-        const out = new Float32Array(total);
-        let offset = 0;
-        for (const a of arrays) {
-            out.set(a as Float32Array, offset);
-            offset += (a as Float32Array).length;
-        }
-        merged.setAttribute(name, new Float32BufferAttribute(out, itemSize));
-    }
-
-    // If every source had an index, we can preserve one — but mixed/absent
-    // indices collapse to non-indexed above, so a merged index is unnecessary
-    // for correctness and omitted for simplicity.
-    return merged;
+    const cone = makeConeAlongZ();
+    // Squish the transverse X for roll visibility, then recompute normals so the
+    // lit material shades the (non-uniformly scaled) surface correctly.
+    cone.scale(BONE_SQUISH_X, 1, 1);
+    cone.computeVertexNormals();
+    return cone;
 }

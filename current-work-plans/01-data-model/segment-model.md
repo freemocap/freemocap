@@ -18,7 +18,13 @@ fitted-point stage. The precise landmark is alive and is the atom of the model, 
 ## Key facts (committed code)
 
 - **`SegmentDefinition`** = `name`, `parent`, `parent_attachment` (`ORIGIN`/`DISTAL`), `landmarks`,
-  `origin_landmark`, `axes`, `rest_rotation`, `length_ratio`, `rotation_limits?`.
+  `origin_landmark`, `axes`, `rest_rotation`, `length_ratio`, `rotation_limits?`, `rigid_with_parent?`.
+- **`rigid_with_parent: bool = False`** — declares a **rigid child** (see the
+  [glossary](../00-foundation/glossary.md)): the segment's pose is never solved from its own hydrated
+  landmarks; it inherits the parent's solved pose composed with its authored rest local rotation.
+  **Load-time validation (fail-loud):** every landmark of a rigid child must be a member of its parent's
+  `landmarks` — a rigid child whose geometry escapes the parent's rigid set is an authoring error and
+  raises. Declared, never inferred.
 - **`AxisDefinition(axis: Literal["x","y","z"], kind: EXACT|APPROXIMATE, target_landmark)`** — name-driven:
   the EXACT axis may sit on any of x/y/z (no positional rules); the direction is
   `positions[target_landmark] − positions[origin_landmark]`; **every axis target must be a member of the
@@ -31,7 +37,9 @@ fitted-point stage. The precise landmark is alive and is the atom of the model, 
   segments**; `required_landmarks()` = **76**. Counts are single-sourced in the
   [glossary](../../current-work-plans/00-foundation/glossary.md).
 - **Head** = the 7-point skull clique (`head_center`, `head_vertex`, `nose`, left/right eyes, left/right
-  ears); `jaw` + the mouth corners articulate (not in the clique).
+  ears); `jaw` + the mouth corners articulate (not in the clique). The face-detail segments split the
+  same way: **eyes / ears / nose are rigid children of the head** (their landmarks are all skull-clique
+  members); **jaw / mouth corners articulate** and anchor at observed.
 - Frozen dataclasses, fail-loud `__post_init__` validators (origin ∈ landmarks, every axis target ∈
   landmarks, distinct names, finite `length_ratio`); dict-backed name→segment + parent→children indices
   built once.
@@ -45,6 +53,9 @@ A rigid body is a point set with fixed pairwise distances; a 2-point segment is 
   own geometry — the critically-damped minimal roll carries it.
 - **3+ landmarks (complex):** full 6-DOF via the MDS-template + rotation-only Procrustes fit (see
   [02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md)).
+- **Rigid child (declared):** no independent solve — inherits the parent's solved pose composed with its
+  rest local rotation. The grade is authored, not derived: `rigid_with_parent` with the landmark-
+  containment validation above.
 
 *(Decision 2026-08-14: the per-segment observed/unobserved-DOF **flag** was dropped — the grade is the
 seam and is visible directly from the hydrated-landmark count on the stream. See the

@@ -55,7 +55,7 @@ composes **last** so its odd-length uint8 blob never precedes a float32 block):
 | Producer | Active when | Groups it contributes |
 |---|---|---|
 | `KeypointsProducer` | a realtime pipeline is live | `KEYPOINTS_3D`, `LANDMARKS_3D` |
-| `SegmentProducer` | a realtime pipeline is live | `SEGMENT_ORIGINS`, `ROTATIONS_LOCAL`, `ROTATIONS_WORLD`, `SEGMENT_LENGTHS` (+ hierarchy / parents / connections / rest_pose) |
+| `SegmentProducer` | a realtime pipeline is live | `SEGMENT_ORIGINS`, `ROTATIONS_LOCAL`, `ROTATIONS_WORLD`, `SEGMENT_LENGTHS` (+ hierarchy / parents / connections / rest_pose / `segment_axes` — each segment's long-axis basis name, the EXACT axis declaration: body/hand = `y`, face = `z`; the 3D bone renderer orients its unit geometry onto it) |
 | `OverlayProducer` | a realtime pipeline is live | `OVERLAY_2D` + `OVERLAY_REPROJECTIONS` (per camera each) |
 | `DerivedProducer` | a realtime pipeline is live | `DERIVED_POINTS` |
 | `ImageProducer` | cameras exist (always, in every mode) | `IMAGE_JPEG` (+ `camera_ids` / `camera_image_sizes`) |
@@ -127,6 +127,17 @@ data occupies; only float32 blocks satisfy `data_byte_length == num_elements × 
   `SendSerializer` (see [../03-transport/backend-encoder-ws.md](../03-transport/backend-encoder-ws.md))
   serializes the rebuild→send-schema→send-samples sequence, so a consumer never sees a sample it cannot
   decode.
+
+## The producer↔consumer contract (load-bearing)
+
+The producer may emit **any valid schema variation** — image-only (camera-only mode, before a pipeline is
+live), image + full reconstruction, or any future producer set. Correspondingly, **every consumer MUST
+gracefully handle whatever schema it receives**, including a schema that omits a channel group the
+consumer cares about. A consumer that assumes a group is always present — and breaks when it is absent —
+is **the defect**; a producer emitting a valid partial schema is **not**. This is a system-wide invariant,
+not a per-consumer special case: resolve-a-group logic should degrade to "draw/emit nothing for that
+group," never throw. *(A concrete violation: the 3D bone renderer once threw on the image-only schema
+because it assumed `SEGMENT_ORIGINS` was always present — that is the class of bug this contract forbids.)*
 
 ## Reconciliation notes
 `wxyz` quaternions; convention block = the [00-foundation/conventions.md](../00-foundation/conventions.md)

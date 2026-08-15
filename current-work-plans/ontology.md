@@ -34,10 +34,16 @@ segment's shape at rest) and a *per-frame world hydration* (or absent = occlusio
 > standard biomech/rigging usage. See [glossary](00-foundation/glossary.md).
 
 **Segment** — an **oriented volume of space**: origin + orientation, solved from its hydrated landmarks.
-Graded by how many landmarks are hydrated:
+Graded by how its pose is determined:
 - **2 landmarks (simple):** origin + long axis directly; the roll is **not resolved** by the segment's
   own geometry — the critically-damped minimal roll carries it (see the glossary's twist tiers).
 - **3+ non-collinear (complex):** full 6-DOF by best-fit (Kabsch) of the local↔world landmark clouds.
+- **Rigid child (declared, not inferred):** a segment authored `rigid_with_parent` — every one of its
+  landmarks is a member of its parent's landmark set, so it has no independent articulation geometry.
+  Its pose is **not solved from its own hydrated landmarks**: it inherits the parent's solved pose
+  composed with its authored rest local rotation (`q_world = q_parent · q_rest_local`). The head's
+  eye / ear / nose segments are rigid children of the skull clique; the jaw and the mouth corners are
+  **not** — they articulate and anchor at observed.
 
 A segment's pose is always 6-DOF; what varies is how much of it the segment's own landmarks determine.
 *(Decision 2026-08-14: the per-segment observed/unobserved-DOF **flag** was dropped — more machinery than
@@ -79,8 +85,9 @@ flag is needed.
   hierarchical (never flattened to get global names).
 - **Two-faced landmark** — static local definition + per-frame world hydration.
 - **The graded segment, not a flag** — a segment's solvability is declared by its landmarks (2 = simple,
-  damped roll; 3+ = full fit). *(An earlier observed/unobserved-DOF flag was dropped 2026-08-14 — the
-  grade carries the same information and is recoverable from the stream itself.)*
+  damped roll; 3+ = full fit; all-in-the-parent = rigid child, declared). *(An earlier
+  observed/unobserved-DOF flag was dropped 2026-08-14 — the grade carries the same information and is
+  recoverable from the stream itself.)*
 - **Observation-first** — direct/FK where measured; IK/constraint only where not.
 - **Lean core + adapters** — VMC / URDF / VRM / OpenSim / C3D / LSL are edge projections, never baked into
   the core.

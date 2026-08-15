@@ -164,6 +164,9 @@ export function ThreeJsCanvas() {
     subscribeToKeypoints,
     subscribeToSkeleton,
     getLatestSkeleton,
+    subscribeToSchema,
+    getStreamSchema,
+    subscribeToRotations,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -228,6 +231,12 @@ export function ThreeJsCanvas() {
   }, [subscribeToSkeleton]);
 
   useEffect(() => {
+    return subscribeToRotations?.((frame) => {
+      VIEWPORT_WORKER.postMessage({ type: "rotations", data: frame });
+    });
+  }, [subscribeToRotations]);
+
+  useEffect(() => {
     if (isPlayback) return;
     VIEWPORT_WORKER.postMessage({
       type: "schemaState",
@@ -237,6 +246,19 @@ export function ThreeJsCanvas() {
       },
     });
   }, [isPlayback, server.activeTrackerId, server.trackerSchemas]);
+
+  // The standard-stream schema must reach the worker: the rigid-body renderer
+  // builds its name→slot table from it (segment names, lengths, long axes).
+  useEffect(() => {
+    if (isPlayback) return;
+    const existing = getStreamSchema?.();
+    if (existing) {
+      VIEWPORT_WORKER.postMessage({ type: "streamSchema", data: existing });
+    }
+    return subscribeToSchema?.((schema) => {
+      VIEWPORT_WORKER.postMessage({ type: "streamSchema", data: schema });
+    });
+  }, [isPlayback, getStreamSchema, subscribeToSchema]);
 
   useEffect(() => {
     VIEWPORT_WORKER.postMessage({

@@ -88,6 +88,15 @@ function makeSchemaFixture(): StreamSchema {
             right_upper_arm: 150,
             left_lower_leg: 350,
         },
+        // All five are body segments — the VRM convention declares their long
+        // axis on +Y.
+        segment_axes: {
+            hips: "y",
+            spine: "y",
+            left_upper_arm: "y",
+            right_upper_arm: "y",
+            left_lower_leg: "y",
+        },
         camera_ids: [],
         camera_image_sizes: {},
         max_persons: 1,
@@ -138,7 +147,7 @@ function testClassifyBone(): void {
 
 function testComputeBoneMatrixIdentity(): void {
     // Identity quat [1,0,0,0], origin at origin, length 2, crossSection 0.5.
-    const m = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 2, 0.5)!;
+    const m = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 2, 0.5, "z")!;
     assert(m !== null, "identity matrix not hidden");
 
     // Column-major. Column 0 = (0.5*1, 0, 0) → x-axis scaled 0.5.
@@ -165,7 +174,7 @@ function testComputeBoneMatrixIdentity(): void {
 function testComputeBoneMatrixPlusZ90(): void {
     // Quaternion for 90° about +Z (wxyz): (cos45, 0, 0, sin45).
     const s = Math.SQRT1_2;
-    const m = computeBoneMatrix([1, 2, 3], [s, 0, 0, s], 4, 0.5)!;
+    const m = computeBoneMatrix([1, 2, 3], [s, 0, 0, s], 4, 0.5, "z")!;
     assert(m !== null, "+Z90 matrix not hidden");
 
     // Rotation about Z leaves col0 and col1 rotated in XY; col2 (0,0,1) stays.
@@ -190,8 +199,8 @@ function testComputeBoneMatrixPlusZ90(): void {
 function testCrossSectionIndependentOfLength(): void {
     // A 1 mm segment and a 500 mm segment, same crossSection: the transverse
     // radius (columns 0 and 1 magnitude) is IDENTICAL.
-    const short = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 1, 0.5)!;
-    const long = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 500, 0.5)!;
+    const short = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 1, 0.5, "z")!;
+    const long = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 500, 0.5, "z")!;
     assert(short !== null && long !== null, "both matrices resolved");
 
     const transverseMag = (m: number[]) => Math.hypot(m[0], m[1], m[2]);
@@ -206,11 +215,34 @@ function testCrossSectionIndependentOfLength(): void {
 // ---- 6. hidden mesh: NaN / zero length hides -------------------------------
 
 function testComputeBoneMatrixHidesInvalid(): void {
-    assertEq(computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 0, 0.5), null, "zero length hidden");
-    assertEq(computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], NaN, 0.5), null, "NaN length hidden");
-    assertEq(computeBoneMatrix([NaN, 0, 0], [1, 0, 0, 0], 1, 0.5), null, "NaN origin hidden");
-    assertEq(computeBoneMatrix([0, 0, 0], [NaN, 0, 0, 0], 1, 0.5), null, "NaN quat hidden");
+    assertEq(computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 0, 0.5, "z"), null, "zero length hidden");
+    assertEq(computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], NaN, 0.5, "z"), null, "NaN length hidden");
+    assertEq(computeBoneMatrix([NaN, 0, 0], [1, 0, 0, 0], 1, 0.5, "z"), null, "NaN origin hidden");
+    assertEq(computeBoneMatrix([0, 0, 0], [NaN, 0, 0, 0], 1, 0.5, "z"), null, "NaN quat hidden");
     console.log("PASS: testComputeBoneMatrixHidesInvalid");
+}
+
+// ---- 6b. long-axis slot: body/hand segments declare +Y ----------------------
+
+function testComputeBoneMatrixYAxis(): void {
+    // Identity quat + longAxis "y" (the VRM body/hand convention): the unit
+    // geometry's +Z must map onto the segment's +Y — the long-axis scale
+    // moves from column 2 to column 1.
+    const m = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 4, 0.5, "y")!;
+    assert(m !== null, "y-axis matrix not hidden");
+
+    // Column 1 is the transverse axis that carried the geometry's +Z:
+    // (0, 0, -0.5).
+    assertClose(m[6], -0.5, 1e-6, "m[6] = -0.5 (geometry +Z mapped onto -Y transverse)");
+    assertClose(m[4], 0, 1e-6, "m[4] = 0");
+    assertClose(m[5], 0, 1e-6, "m[5] = 0");
+    // Column 2 is now the long axis: (0, length, 0).
+    assertClose(m[9], 4, 1e-6, "m[9] = length 4 (long axis on +Y)");
+    assertClose(m[8], 0, 1e-6, "m[8] = 0");
+    assertClose(m[10], 0, 1e-6, "m[10] = 0");
+    // Column 0 unchanged: (0.5, 0, 0).
+    assertClose(m[0], 0.5, 1e-6, "m[0] = 0.5");
+    console.log("PASS: testComputeBoneMatrixYAxis");
 }
 
 // ---- 7. rest-length derivation from schema.segment_lengths (doc 11 F4 Step 3) --
@@ -234,8 +266,8 @@ function testDifferentRestSpansScaleLongAxisDifferently(): void {
     // left_upper_arm = 400 mm, right_upper_arm = 150 mm (identical crossSection,
     // identity quaternion, same origin). Their long-axis (col2, m[10]) scales are
     // their distinct rest lengths — the core of F4 Step 3.
-    const left = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 400, 0.5)!;
-    const right = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 150, 0.5)!;
+    const left = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 400, 0.5, "z")!;
+    const right = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 150, 0.5, "z")!;
     assert(left !== null && right !== null, "both matrices resolved");
 
     assertClose(left[10], 400, 1e-6, "left long-axis scale = 400");
@@ -249,8 +281,8 @@ function testDifferentRestSpansScaleLongAxisDifferently(): void {
 
 function testCrossSectionIndependentOfRestLength(): void {
     // Same 500 mm cross-section magnitude regardless of the per-segment length.
-    const short = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 150, 0.5)!;
-    const long = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 400, 0.5)!;
+    const short = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 150, 0.5, "z")!;
+    const long = computeBoneMatrix([0, 0, 0], [1, 0, 0, 0], 400, 0.5, "z")!;
     const transverseMag = (m: number[]) => Math.hypot(m[0], m[1], m[2]);
     assertClose(transverseMag(short), 0.5, 1e-6, "150 mm transverse radius (D6)");
     assertClose(transverseMag(long), 0.5, 1e-6, "400 mm transverse radius (D6)");
@@ -288,12 +320,29 @@ function testNewSchemaUpdatesLengths(): void {
     console.log("PASS: testNewSchemaUpdatesLengths");
 }
 
+// ---- 11. segment_axes is required (fail loudly, no defaults) -----------------
+
+function testBuildBoneInstancesRequiresSegmentAxes(): void {
+    const schema = makeSchemaFixture();
+    // @ts-expect-error — deliberate schema defect under test
+    delete schema.segment_axes;
+    let threw = false;
+    try {
+        buildBoneInstances(schema);
+    } catch (e) {
+        threw = String(e).includes("segment_axes");
+    }
+    assert(threw, "missing segment_axes must throw");
+    console.log("PASS: testBuildBoneInstancesRequiresSegmentAxes");
+}
+
 // ---- run -------------------------------------------------------------------
 
 testComputeBoneMatrixHidesInvalid();
 testClassifyBone();
 testBuildBoneInstancesIndexByName();
 testComputeBoneMatrixIdentity();
+testComputeBoneMatrixYAxis();
 testComputeBoneMatrixPlusZ90();
 testCrossSectionIndependentOfLength();
 testBuildSegmentsLengthsFromSchema();
@@ -301,5 +350,6 @@ testDifferentRestSpansScaleLongAxisDifferently();
 testCrossSectionIndependentOfRestLength();
 testMissingSchemaLengthFallsBackToUnitLength();
 testNewSchemaUpdatesLengths();
+testBuildBoneInstancesRequiresSegmentAxes();
 
 console.log("\nAll rigid-body bone tests passed.");

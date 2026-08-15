@@ -277,9 +277,9 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         }
     }
 
-    /** The landmark dots: larger than the keypoint dots, same classification
-     *  colours with a bright fill so the fitted skeleton reads above the
-     *  keypoint scatter. */
+    /** The landmark markers: open circles (stroke only, nothing in the middle),
+     *  slightly larger than the keypoint dots, so the fitted skeleton reads
+     *  above the keypoint scatter without covering it. */
     private drawLandmarkPoints(pointMap: Map<string, Point2D>): void {
         const buckets = new Map<DrawStyle, Point2D[]>();
         for (const point of pointMap.values()) {
@@ -289,22 +289,58 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
             else buckets.set(style, [point]);
         }
         for (const [style, points] of buckets) {
-            this.drawPoints(points, {...style, pointRadius: style.pointRadius + 4, pointColor: '#FFFFFF', pointStroke: style.pointStroke});
+            this.drawPoints(points, {...style, pointRadius: 5, fillPoint: false, pointColor: '#FFFFFF', pointStroke: '#FFFFFF'});
         }
     }
 
-    /** The always-on stats block: frame number + counts of finite points. */
+    /** The always-on stats block — a two-line legend mirroring the drawing
+     *  convention: line 1 = a filled dot = "keypoints" + an open circle =
+     *  "landmarks" (full words, no abbreviations), line 2 = the frame number.
+     *  Stacked so it fits narrow (portrait) camera feeds. */
     private drawStats(observation: SkeletonObservation): void {
         const finite = (points: SkeletonPoint[]): number =>
             points.reduce((n, p) => n + (Number.isFinite(p.x) && Number.isFinite(p.y) ? 1 : 0), 0);
         const kp = finite(observation.points);
         const lm = finite(observation.landmarks ?? []);
 
-        const text = `f ${observation.frame_number}  ·  kp ${kp}  ·  lm ${lm}`;
-        const w = 10 + text.length * 7;
+        const fontSize = 11;
+        const lineHeight = 17;
+        const textWidth = (s: string): number => s.length * (fontSize * 0.62);
+        const kpLabel = `${kp} keypoints`;
+        const lmLabel = `${lm} landmarks`;
+        const frameText = `frame ${observation.frame_number}`;
+
+        const legendWidth = 16 + (9 + textWidth(kpLabel) + 14)
+            + (9 + textWidth(lmLabel)) + 8;
+        const bgWidth = Math.max(legendWidth, 16 + textWidth(frameText) + 8);
+
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-        this.ctx.fillRect(6, 6, w, 22);
-        this.drawText(text, 11, 17, 12, '#DDDDDD', '#111111', 2);
+        this.ctx.fillRect(6, 6, bgWidth, 8 + lineHeight * 2);
+
+        const glyphY = 6 + lineHeight - 5;   // glyph center on line 1
+        const line1Y = 6 + lineHeight;       // text baseline on line 1
+        const line2Y = 6 + lineHeight * 2;   // text baseline on line 2
+
+        let x = 14;
+
+        // Filled dot glyph + "N keypoints".
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.beginPath();
+        this.ctx.arc(x, glyphY, 3.5, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.drawText(kpLabel, x + 9, line1Y, fontSize, '#DDDDDD', '#111111', 2);
+        x += 9 + textWidth(kpLabel) + 14;
+
+        // Open circle glyph + "N landmarks".
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(x, glyphY, 3.5, 0, Math.PI * 2);
+        this.ctx.stroke();
+        this.drawText(lmLabel, x + 9, line1Y, fontSize, '#DDDDDD', '#111111', 2);
+
+        // Line 2: frame number.
+        this.drawText(frameText, 14, line2Y, fontSize, '#DDDDDD', '#111111', 2);
     }
 
     private drawAllPoints(pointMap: Map<string, Point2D>): void {

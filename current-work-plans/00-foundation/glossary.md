@@ -19,6 +19,9 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
   **60 segments / 76 landmarks** (single-sourced here; composition per
   [01-data-model/segment-model.md](../01-data-model/segment-model.md)). 2 hydrated landmarks → simple
   (roll carried by the damped filter); 3+ non-collinear → full 6-DOF.
+- **rigid child** — a segment authored `rigid_with_parent` whose landmarks are all members of its
+  parent's landmark set: no independent solve, it inherits the parent's pose composed with its rest
+  local rotation. Declared, never inferred. (The head's eye / ear / nose segments.)
 - **skeleton** — the rooted parent→child tree of segments; a joint angle is the *derived* relative
   orientation, not a modeled constraint.
 

@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import time
+from dataclasses import asdict
 from queue import Empty
 
 import msgspec
@@ -338,6 +339,7 @@ class WebsocketServer:
             asyncio.create_task(self._logs_relay(), name="WebsocketLogsRelay"),
             asyncio.create_task(self._client_message_handler(), name="WebsocketClientMessageHandler"),
             asyncio.create_task(self._app_state_sender(), name="WebsocketAppStateSender"),
+            asyncio.create_task(self._posthoc_progress_sender(), name="WebsocketPosthocProgressSender"),
         ]
 
         try:
@@ -374,6 +376,36 @@ class WebsocketServer:
             logger.info("Client disconnected, ending app-state sender task...")
         except Exception as e:
             logger.exception(f"Error in app-state sender: {e.__class__}: {e}")
+            self._websocket_should_continue = False
+            self._global_kill_flag.value = True
+            raise
+
+    async def _posthoc_progress_sender(self):
+        """Drain posthoc pipeline progress and forward it to the client.
+
+        The posthoc pipelines publish progress into per-pipeline
+        subscriptions; this task is the single drainer that moves them onto
+        the websocket as ``posthoc_progress`` messages (the frontend's
+        progress panel consumes these). The manager's queue is drained each
+        tick — a progress message is never lost, and the sender idles when
+        there is nothing to forward.
+        """
+        logger.info("Starting posthoc-progress sender task...")
+        try:
+            while self.should_continue:
+                updates = self._app.posthoc_pipeline_manager.get_progress_updates()
+                updates.extend(
+                    self._app.posthoc_pipeline_manager.evict_completed()
+                )
+                for update in updates:
+                    await self._send_msgspec_json(asdict(update))
+                await asyncio.sleep(0.5)
+        except asyncio.CancelledError:
+            pass
+        except WebSocketDisconnect:
+            logger.info("Client disconnected, ending posthoc-progress sender task...")
+        except Exception as e:
+            logger.exception(f"Error in posthoc-progress sender: {e.__class__}: {e}")
             self._websocket_should_continue = False
             self._global_kill_flag.value = True
             raise

@@ -26,12 +26,12 @@ const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 // body‑part) layer uses the per‑category values, while the raw layer uses
 // RAW_KEYPOINT_RADIUS uniformly.
 // ---------------------------------------------------------------------------
-const RAW_KEYPOINT_RADIUS = 0.05;
-const SKELETON_POINT_RADIUS = 0.04;
+const RAW_KEYPOINT_RADIUS = 0.06;
+const SKELETON_POINT_RADIUS = 0.055;
 
 const BODY_KEYPOINT_RADIUS = 0.07;
-const HAND_KEYPOINT_RADIUS = 0.022;
-const FACE_KEYPOINT_RADIUS = 0.015;
+const HAND_KEYPOINT_RADIUS = 0.035;
+const FACE_KEYPOINT_RADIUS = 0.025;
 const UNSPECIFIED_KEYPOINT_RADIUS = 0.06;
 
 function getKeypointRadius(name: string): number {
@@ -70,9 +70,14 @@ interface KeypointLayerProps {
     radius: number;
     statsKey: "keypoints" | "skeleton";
     colorMode?: "uniform" | "byBodyPart";
+    /** Values per point in the interleaved frame data. Every PointsFrame is
+     *  3-interleaved xyz: SchemaRegistry.resolvePoints strips the 4th column
+     *  (reprojection_error) from KEYPOINTS_3D and SEGMENT_ORIGINS is natively
+     *  3-column. */
+    stride: 3 | 4;
 }
 
-function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform" }: KeypointLayerProps) {
+function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform", stride }: KeypointLayerProps) {
     const workerData = useWorkerData();
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
@@ -162,12 +167,14 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
             let x = 0, y = 0, z = 0;
 
             if (frameIdx !== undefined && interleaved) {
-                const off = frameIdx * 4;
-                const vis = interleaved[off + 3];
+                const off = frameIdx * stride;
                 x = interleaved[off];
                 y = interleaved[off + 1];
                 z = interleaved[off + 2];
-                visible = vis > 0 && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
+                // The data is displayed as received — no visibility gating: the
+                // 4th value of a KEYPOINTS_3D point is reprojection_error, not
+                // a confidence to filter on. NaN (missing) rows hide the point.
+                visible = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z);
             }
 
             if (visible) {
@@ -216,6 +223,7 @@ export function KeypointsRenderer() {
                     radius={RAW_KEYPOINT_RADIUS}
                     statsKey="keypoints"
                     colorMode="byBodyPart"
+                    stride={3}
                 />
             )}
             {visibility.skeleton && (
@@ -225,6 +233,7 @@ export function KeypointsRenderer() {
                     radius={SKELETON_POINT_RADIUS}
                     statsKey="skeleton"
                     colorMode="byBodyPart"
+                    stride={3}
                 />
             )}
         </>

@@ -96,7 +96,7 @@ function testInstancesPlacedFromWire(): void {
             rotations.data[rIdx * 4 + 3],
         ];
         const length = schema.segment_lengths[name];
-        const matrix = computeBoneMatrix(origin, quat, length, 20.0);
+        const matrix = computeBoneMatrix(origin, quat, length, 20.0, schema.segment_axes[name]);
         if (matrix === null) {
             // An unobserved segment (NaN row) — the renderer skips it; this is
             // the expected degradation path, not an error.
@@ -125,7 +125,7 @@ function testWireQuaternionDrivesBoneAxes(): void {
     // while the transverse axis (column 0) rotates x̂ → ŷ.
     const origin: [number, number, number] = [0, 0, 0];
     const quat: [number, number, number, number] = [0.7071, 0, 0, 0.7071];
-    const matrix = computeBoneMatrix(origin, quat, 100.0, 1.0);
+    const matrix = computeBoneMatrix(origin, quat, 100.0, 1.0, "z");
     assert(matrix !== null, "matrix computed");
     // column 0 (x axis): (0, 1, 0)
     assertClose(matrix![0], 0.0, 1e-3, "col0 x");

@@ -46,7 +46,13 @@ export interface BoneInstanceTable {
     instances: readonly BoneInstance[];
     /** name → rest length (mm), resolved ONCE at schema time (doc 11 F4 Step 3). */
     byNameLength: ReadonlyMap<string, number>;
+    /** name → long-axis basis name (the segment's EXACT axis declaration;
+     * body/hand = "y", face = "z"), resolved ONCE at schema time. */
+    byNameLongAxis: ReadonlyMap<string, BoneLongAxis>;
 }
+
+/** The local basis slot a segment's long axis (its EXACT axis) occupies. */
+export type BoneLongAxis = "x" | "y" | "z";
 
 /**
  * Doc 11 F4 Step 3 — per-segment REST LENGTH, resolved ONCE at schema time.
@@ -131,10 +137,36 @@ export function buildBoneInstances(schema: StreamSchema): BoneInstanceTable {
             break;
         }
     }
-    // Schema always declares SEGMENT_ORIGINS (60 segments); a missing group is a
-    // schema defect (fail loudly, per project rules) — no silent empty table.
+    // No SEGMENT_ORIGINS group → an image-only schema (camera-only mode, before a
+    // realtime pipeline is live — the producer model legitimately emits these).
+    // There are no segments to build: return an EMPTY table so the renderer draws
+    // no bones until a reconstruction schema arrives. NOT a defect — do not throw
+    // (a throw here, during the renderer's synchronous schema-effect setup, would
+    // abort before the schema subscription is wired and never recover).
     if (names.length === 0) {
-        throw new Error("buildBoneInstances: schema declares no SEGMENT_ORIGINS channel group");
+        return {
+            nameToIndex: new Map(),
+            byName: new Map(),
+            instances: [],
+            byNameLength: new Map(),
+            byNameLongAxis: new Map(),
+        };
+    }
+
+    // Every segment's long-axis basis must be declared on the schema — the
+    // unit bone geometry is oriented onto it. A missing map (or a missing
+    // name) is a schema defect, not a renderer default.
+    const schemaAxes = schema.segment_axes;
+    if (!schemaAxes) {
+        throw new Error("buildBoneInstances: schema declares no segment_axes — bone geometry has no long axis to orient onto");
+    }
+    const byNameLongAxis = new Map<string, BoneLongAxis>();
+    for (const name of names) {
+        const axis = schemaAxes[name];
+        if (axis !== "x" && axis !== "y" && axis !== "z") {
+            throw new Error(`buildBoneInstances: segment ${name} declares no valid long axis (got ${String(axis)})`);
+        }
+        byNameLongAxis.set(name, axis);
     }
 
     // D5: every bone index resolves via the name — segment_parents (the
@@ -151,20 +183,27 @@ export function buildBoneInstances(schema: StreamSchema): BoneInstanceTable {
 
     const byNameLength = buildSegmentLengths(schema);
 
-    return { nameToIndex, byName, instances, byNameLength };
+    return { nameToIndex, byName, instances, byNameLength, byNameLongAxis };
 }
 
 /**
  * Per-frame instance transform (pure — the only per-frame math, unit-tested).
  *
  * Computes a 4×4 column-major matrix that places a unit-length (+Z) geometry
- * at `origin`, oriented by the world quaternion, scaled to `length` along the
- * long axis (and by the radius-independent `crossSection` on the transverse
+ * at `origin`, oriented by the world quaternion, with its long axis mapped
+ * onto the segment's declared long-axis basis slot (`longAxis`) and scaled to
+ * `length` (and by the radius-independent `crossSection` on the transverse
  * axes — D6's radius is a fixed parameter, never derived from length).
+ *
+ * The VRM local-frame convention declares the long axis on +Y for body/hand
+ * segments and +Z for face segments; the unit geometry is always +Z, so a
+ * per-axis constant rotation Q maps geometry +Z onto the declared slot.
  *
  * @param origin      proximal joint (segment origin), mm
  * @param quatWXYZ    world-frame quaternion [w, x, y, z]
  * @param length      segment long-axis length; NaN/0 hides the instance
+ * @param crossSection transverse radius (mm) — same for 1 mm and 500 mm bones
+ * @param longAxis    the segment's EXACT axis basis name ("x" | "y" | "z")
  * @returns a 16-float column-major matrix, or null when the segment is hidden
  */
 export function computeBoneMatrix(
@@ -172,6 +211,7 @@ export function computeBoneMatrix(
     quatWXYZ: readonly [number, number, number, number],
     length: number,
     crossSection: number,
+    longAxis: BoneLongAxis,
 ): number[] | null {
     if (!Number.isFinite(length) || length <= 0) return null;
     for (let i = 0; i < 3; i++) if (!Number.isFinite(origin[i])) return null;
@@ -179,13 +219,23 @@ export function computeBoneMatrix(
 
     const [ow, ox, oy, oz] = quatWXYZ;
 
-    // A point p_local maps to:  R(p_local ⊙ scale) + origin.
-    // Column-major storage is  m[col*4 + row].
-    // columns 0..2 = R * scale (rotation rows applied to scaled axes),
-    // column 3   = translation origin.
+    // A point p_local maps to:  R · S · Q · p_local + origin.
+    // Q rotates the unit geometry's +Z onto the declared long-axis slot.
+    // S scales the long axis by `length` and the transverse axes by
+    // `crossSection`. R is the segment's world rotation (wxyz).
+    // Column-major storage is m[col*4 + row]; columns 0..2 = R·S·Q,
+    // column 3 = translation origin.
     const sx = crossSection;
     const sy = crossSection;
     const sz = length;
+
+    // Q (row-major 3×3, right-handed, determinant +1). The geometry's +Z
+    // (its long axis) maps onto the declared long-axis slot; the remaining
+    // axes keep the frame right-handed.
+    const Q: readonly number[] =
+        longAxis === "z" ? [1, 0, 0, 0, 1, 0, 0, 0, 1]
+        : longAxis === "y" ? [1, 0, 0, 0, 0, 1, 0, -1, 0]   // ẑ → ŷ, ŷ → -ẑ
+        :                    [0, 0, 1, 0, 1, 0, -1, 0, 0];  // ẑ → x̂, x̂ → -ẑ
 
     // R (wxyz → rotation matrix):
     const r00 = 1 - 2 * (oy * oy + oz * oz);
@@ -199,12 +249,22 @@ export function computeBoneMatrix(
     const r22 = 1 - 2 * (ox * ox + oy * oy);
 
     const m = new Array<number>(16);
-    // column 0 (x axis scaled by sx)
-    m[0] = r00 * sx; m[1] = r10 * sx; m[2] = r20 * sx; m[3] = 0;
-    // column 1 (y axis scaled by sy)
-    m[4] = r01 * sy; m[5] = r11 * sy; m[6] = r21 * sy; m[7] = 0;
-    // column 2 (z axis — long axis — scaled by sz)
-    m[8] = r02 * sz; m[9] = r12 * sz; m[10] = r22 * sz; m[11] = 0;
+    for (let col = 0; col < 3; col++) {
+        // v = Q · (S · e_col): the scale applies to the GEOMETRY's axes
+        // (geometry z = long axis → length), then Q rotates them onto the
+        // segment's declared long-axis slot.
+        const s0 = col === 0 ? sx : 0;
+        const s1 = col === 1 ? sy : 0;
+        const s2 = col === 2 ? sz : 0;
+        const v0 = Q[0] * s0 + Q[1] * s1 + Q[2] * s2;
+        const v1 = Q[3] * s0 + Q[4] * s1 + Q[5] * s2;
+        const v2 = Q[6] * s0 + Q[7] * s1 + Q[8] * s2;
+        // R · v
+        m[col * 4 + 0] = r00 * v0 + r01 * v1 + r02 * v2;
+        m[col * 4 + 1] = r10 * v0 + r11 * v1 + r12 * v2;
+        m[col * 4 + 2] = r20 * v0 + r21 * v1 + r22 * v2;
+        m[col * 4 + 3] = 0;
+    }
     // column 3 (translation)
     m[12] = origin[0]; m[13] = origin[1]; m[14] = origin[2]; m[15] = 1;
 

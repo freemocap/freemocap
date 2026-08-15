@@ -156,6 +156,10 @@ class StreamSchema(msgspec.Struct, frozen=True):
     connections: tuple[tuple[str, str], ...] = ()
     joint_hierarchy: dict[str, tuple[str, ...]] = msgspec.field(default_factory=dict)
     segment_parents: dict[SegmentNameString, SegmentNameString | None] = msgspec.field(default_factory=dict)
+    # Per-segment long-axis basis name (the segment's EXACT axis declaration:
+    # "x" | "y" | "z") — body/hand segments declare "y", face segments "z".
+    # The 3D bone renderer orients its unit geometry onto this axis.
+    segment_axes: dict[str, str] = msgspec.field(default_factory=dict)
     rest_pose: RestPose | None = None
     # Per-segment rest lengths (mm), one entry per segment name — the
     # anthropometric defaults (a consumer renders before the first sample

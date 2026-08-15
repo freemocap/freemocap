@@ -16,14 +16,14 @@ import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/service
  * A single frame of keypoint data in typed-array form.
  *
  * `interleaved` is a Float32Array whose layout depends on which stream produced
- * it. The keypoints stream is a 4-column interleave of `x, y, z` plus a
- * visibility flag; the skeleton stream (consumed by the rigid-body renderer) is
- * a 3-column `x, y, z` interleave, i.e.:
+ * it. Every PointsFrame delivered to consumers is 3-interleaved `x, y, z`:
+ * SchemaRegistry.resolvePoints strips KEYPOINTS_3D's 4th column
+ * (reprojection_error) and SEGMENT_ORIGINS is natively 3-column:
  *
- *   keypoints: [x₀, y₀, z₀, vis₀,  x₁, y₁, z₁, vis₁, … ]   stride 4
- *   skeleton:  [x₀, y₀, z₀,  x₁, y₁, z₁, … ]               stride 3
+ *   keypoints: [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3
+ *   skeleton:  [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3
  *
- * Missing / untriangulated points have NaN coords and visibility = 0.
+ * Missing / untriangulated points have NaN coords.
  *
  * The array is dense and schema-ordered when the binary websocket path is
  * active; it may be sparse (only present points) when falling back to JSON.

@@ -73,6 +73,10 @@ export interface StreamSchema {
   connections: [string, string][];
   joint_hierarchy: Record<string, string[]>;
   segment_parents: Record<string, string | null>;
+  /** Per-segment long-axis basis name (the segment's EXACT axis declaration):
+   * body/hand segments declare "y", face segments declare "z". The 3D bone
+   * renderer orients its unit geometry onto this axis. */
+  segment_axes: Record<string, "x" | "y" | "z">;
   rest_pose: RestPose | null;
   /** Per-segment rest lengths (mm), keyed by segment name. Default-then-update:
    * anthropometric defaults on first send, then re-sent with measured values. */

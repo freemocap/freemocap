@@ -41,6 +41,8 @@ export interface DrawStyle {
     labelStroke: string;
     labelFontSize: number;
     showLabels: boolean;
+    /** False = stroke-only (open circle); default true = filled (closed) circle. */
+    fillPoint?: boolean;
 }
 
 export interface ObservationMetadata {
@@ -133,15 +135,19 @@ export abstract class BaseOverlayRenderer {
             // Skip invalid points
             if (!this.isValidPoint(point)) continue;
 
-            // Draw filled circle
-            this.ctx.fillStyle = style.pointColor;
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, style.pointRadius, 0, Math.PI * 2);
-            this.ctx.fill();
+            // Draw filled circle (unless the style declares an open circle)
+            if (style.fillPoint !== false) {
+                this.ctx.fillStyle = style.pointColor;
+                this.ctx.beginPath();
+                this.ctx.arc(point.x, point.y, style.pointRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
 
             // Draw stroke
             this.ctx.strokeStyle = style.pointStroke;
             this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(point.x, point.y, style.pointRadius, 0, Math.PI * 2);
             this.ctx.stroke();
 
             // Draw label if enabled

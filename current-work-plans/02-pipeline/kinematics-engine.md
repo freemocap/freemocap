@@ -21,6 +21,8 @@ Declared keypoints → per-segment world + local quaternions, `identity == T-pos
 - **`solve_frame_orientations`** — walks segments in hierarchy order; per segment: swing
   (`rotation_between_vectors(ref.basis[exact], live_exact)`), then **two-tier twist** — resolved from the
   live frame, else damped-minimal via `critically_damped_orientation`. Local = `conj(parent)·child` (D1).
+  A **rigid child** skips the frame build entirely: `q_world = q_parent_world ⊗ q_rest_local`, no damping
+  (the parent's rotation is already damped) — the child inherits the parent's stability by construction.
 - **`rigid_point_set.py`** — MDS template + rotation-only Procrustes fit for ≥3-point rigid bodies (the
   skull); consumed by the segment-length/fitting stage.
 

@@ -84,6 +84,13 @@ class SegmentProducer(ChannelProducer):
                 for key, value in standard_human.joint_hierarchy.items()
             },
             "segment_parents": dict(standard_human.segment_parents),
+            # Per-segment long-axis basis name (the EXACT axis declaration):
+            # body/hand segments declare +Y, face segments declare +Z. The 3D
+            # bone renderer orients the unit geometry onto it.
+            "segment_axes": {
+                segment.name: segment.exact_axis.axis
+                for segment in standard_human.segments
+            },
             "rest_pose": RestPose.from_standard_human(standard_human),
             # Anthropometric defaults; the live estimates ride the per-frame
             # SEGMENT_LENGTHS block.
@@ -91,7 +98,16 @@ class SegmentProducer(ChannelProducer):
         }
 
     def signature(self, ctx: StreamContext) -> Hashable:
-        return ("segments", tuple(ctx.standard_human.segment_names))
+        return (
+            "segments",
+            tuple(ctx.standard_human.segment_names),
+            tuple(
+                sorted(
+                    (s.name, s.exact_axis.axis)
+                    for s in ctx.standard_human.segments
+                )
+            ),
+        )
 
     def fill(self, frame_ctx: FrameContext) -> list[SampleBlock]:
         message = frame_ctx.aggregator_output

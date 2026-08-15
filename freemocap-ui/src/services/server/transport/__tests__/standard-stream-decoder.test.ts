@@ -73,7 +73,7 @@ function testSchemaRoundTrip(): void {
   assertEq(schema.channels[7].kind, ChannelKind.OVERLAY_REPROJECTIONS, "channel 7 kind");
   assertEq(schema.channels[8].kind, ChannelKind.DERIVED_POINTS, "channel 8 kind");
   assertEq(schema.channels[9].kind, ChannelKind.IMAGE_JPEG, "channel 9 kind");
-  assertEq(schema.channels[0].names.length, 59, "59 rtmpose tracker keypoints");
+  assertEq(schema.channels[0].names.length, 133, "133 rtmpose wholebody keypoints (body + feet + hands + face)");
   assertEq(schema.channels[1].names.length, 76, "76 landmarks");
   assertEq(schema.channels[2].names.length, 60, "60 segments");
   assertEq(schema.max_persons, 1, "max_persons");

@@ -67,7 +67,6 @@ export function RigidBodyBoneRenderer() {
     const skeletonRef = useRef<KeypointsFrame | null>(null);
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const dirtyRef = useRef(false);
-    const _diagFrameRef = useRef(0); // bone diagnostic frame counter — remove after
 
     // Schema-time name→slot table (D5/D14); rebuilt once on schema arrival.
     const tableRef = useRef<BoneInstanceTable | null>(null);
@@ -114,27 +113,19 @@ export function RigidBodyBoneRenderer() {
 
     // Build the name→slot table ONCE per schema arrival (D14).
     const rebuild = useCallback((schema: StreamSchema) => {
-        try {
-            const segGroup = schema.channels.find((g) => g.kind === 2);
-            console.log(
-                "[BONE-DIAG] rebuild: segments=" + (segGroup ? segGroup.names.length : 0) +
-                " rest_pose=" + (schema.rest_pose ? "present" : "null") +
-                " orientations=" + (schema.rest_pose?.orientations ? Object.keys(schema.rest_pose.orientations).length : 0) +
-                " segment_axes=" + (schema.segment_axes ? Object.keys(schema.segment_axes).length : 0),
-            );
-            tableRef.current = buildBoneInstances(schema);
-            tableAppliedRef.current = false; // per-instance colors re-applied on the fresh table
-            applyTable();
-        } catch (e) {
-            console.error("[BONE-DIAG] rebuild FAILED:", e);
-        }
+        tableRef.current = buildBoneInstances(schema);
+        tableAppliedRef.current = false; // per-instance colors re-applied on the fresh table
+        applyTable();
     }, [applyTable]);
 
     // Initial schema (if already registered) + every subsequent schema arrival.
+    // Subscribe FIRST, then rebuild from the already-registered schema — so a
+    // throw in rebuild can never abort the subscription (defense-in-depth; the
+    // empty-table image-only path means a throw is no longer expected here).
     useEffect(() => {
+        const unsub = subscribeToSchema ? subscribeToSchema(rebuild) : () => {};
         const existing = getStreamSchema?.();
         if (existing) rebuild(existing);
-        const unsub = subscribeToSchema ? subscribeToSchema(rebuild) : () => {};
         return unsub;
     }, [getStreamSchema, subscribeToSchema, rebuild]);
 
@@ -148,9 +139,6 @@ export function RigidBodyBoneRenderer() {
     // Subscribe segment origins (SEGMENT_ORIGINS, 3-interleaved xyz).
     useEffect(() => {
         return subscribeToSkeleton((frame) => {
-            if (skeletonRef.current === null) {
-                console.log("[BONE-DIAG] first skeleton frame: " + frame.pointNames.length + " points, finite=" + Array.from(frame.interleaved).filter(Number.isFinite).length);
-            }
             skeletonRef.current = frame;
             dirtyRef.current = true;
         });
@@ -160,9 +148,6 @@ export function RigidBodyBoneRenderer() {
     useEffect(() => {
         if (!subscribeToRotations) return;
         return subscribeToRotations((frame) => {
-            if (rotationsRef.current === null) {
-                console.log("[BONE-DIAG] first rotations frame: " + frame.boneNames.length + " bones, finite=" + Array.from(frame.worldQuaternions).filter(Number.isFinite).length);
-            }
             rotationsRef.current = frame;
             dirtyRef.current = true;
         });
@@ -172,34 +157,6 @@ export function RigidBodyBoneRenderer() {
     useFrame(() => {
         const mesh = meshRef.current;
         const table = tableRef.current;
-
-        // Diagnostic — sample the FULL gate state ~a few seconds in (frame 90),
-        // BEFORE the early-return gate, so it reveals which precondition is
-        // missing (table? tableApplied? rotations?) + whether the schema is
-        // reaching this renderer at all. Remove after diagnosing.
-        _diagFrameRef.current++;
-        if (_diagFrameRef.current === 90) {
-            const skel = skeletonRef.current, rot = rotationsRef.current;
-            let finiteBoth = 0;
-            if (table && skel && rot) {
-                for (const [name] of table.nameToIndex) {
-                    const si = skel.pointNames.indexOf(name);
-                    const qi = rot.boneNames.indexOf(name);
-                    if (si !== -1 && qi !== -1
-                        && Number.isFinite(skel.interleaved[si * 3])
-                        && Number.isFinite(rot.worldQuaternions[qi * 4])) finiteBoth++;
-                }
-            }
-            console.log(
-                `[BONE-DIAG] mesh=${!!mesh} table=${!!table}(${table?.nameToIndex.size ?? 0}) ` +
-                `tableApplied=${tableAppliedRef.current} dirty=${dirtyRef.current} ` +
-                `skeleton=${!!skel}(${skel?.pointNames.length ?? 0}) ` +
-                `rotations=${!!rot}(${rot?.boneNames.length ?? 0}) finiteBoth=${finiteBoth} ` +
-                `getSchema=${typeof getStreamSchema} subSchema=${typeof subscribeToSchema} ` +
-                `existingSchema=${!!(getStreamSchema && getStreamSchema())} ` +
-                `rot0=${rot ? Array.from(rot.worldQuaternions.slice(0, 4)) : "n/a"}`,
-            );
-        }
 
         if (!mesh || !table || !dirtyRef.current || !tableAppliedRef.current) return;
 

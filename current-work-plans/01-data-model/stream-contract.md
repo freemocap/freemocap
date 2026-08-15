@@ -55,7 +55,7 @@ composes **last** so its odd-length uint8 blob never precedes a float32 block):
 | Producer | Active when | Groups it contributes |
 |---|---|---|
 | `KeypointsProducer` | a realtime pipeline is live | `KEYPOINTS_3D`, `LANDMARKS_3D` |
-| `SegmentProducer` | a realtime pipeline is live | `SEGMENT_ORIGINS`, `ROTATIONS_LOCAL`, `ROTATIONS_WORLD`, `SEGMENT_LENGTHS` (+ hierarchy / parents / connections / rest_pose / `segment_axes` — each segment's long-axis basis name, the EXACT axis declaration: body/hand = `y`, face = `z`; the 3D bone renderer orients its unit geometry onto it) |
+| `SegmentProducer` | a realtime pipeline is live | `SEGMENT_ORIGINS`, `ROTATIONS_LOCAL`, `ROTATIONS_WORLD`, `SEGMENT_LENGTHS` (+ hierarchy / parents / connections / rest_pose / `segment_axes` names each segment's long-axis basis (the EXACT axis declaration: body/hand = `y`, face = `z`); `rest_pose.orientations` carries each segment's rest-frame orientation (wxyz, local→world T-pose), composed before `ROTATIONS_WORLD`) |
 | `OverlayProducer` | a realtime pipeline is live | `OVERLAY_2D` + `OVERLAY_REPROJECTIONS` (per camera each) |
 | `DerivedProducer` | a realtime pipeline is live | `DERIVED_POINTS` |
 | `ImageProducer` | cameras exist (always, in every mode) | `IMAGE_JPEG` (+ `camera_ids` / `camera_image_sizes`) |
@@ -84,7 +84,7 @@ Fixed producer-determined order; each block is **self-describing** (its header c
 - **`SEGMENT_LENGTHS` is sent every frame.** Segment lengths are per-frame data (the estimators converge
   over the stream), so they live in the sample, not the schema. This retires the old "resend the schema
   when lengths change materially" machinery — length changes never touch the schema. The schema's
-  `rest_pose` still carries anthropometric **default** lengths so a consumer can render before the first
+  `segment_lengths` still carries anthropometric **default** lengths so a consumer can render before the first
   sample arrives; per-frame `SEGMENT_LENGTHS` overrides once samples flow.
 
 - **`IMAGE_JPEG` carries the camera images.** One opaque block per sample = the SkellyCam multi-camera
@@ -109,6 +109,22 @@ Fixed producer-determined order; each block is **self-describing** (its header c
   `freemocap/core/tasks/mocap/tracker_mappings.py::tracker_keypoint_names(detector_type)`).
   `LANDMARKS_3D` carries the **76 hydrated standard-human landmarks** (model-side named points after
   mapping; a missing frame = a NaN row).
+
+## The rest pose (T-pose)
+
+`schema.rest_pose` (a `RestPose`, present only while the `SegmentProducer` is active) declares the
+T-pose the live pose is measured against:
+
+- `positions` — rest landmark positions (mm), one per schematic keypoint.
+- `orientations` — per-segment **rest-frame orientation** (wxyz): the rotation mapping the segment's LOCAL
+  frame to its world-frame T-pose. `ROTATIONS_WORLD` is measured *relative to* this frame (identity ==
+  T-pose), but the rest frame itself is NOT identity — a body segment's +Y points toward its child (the
+  spine's +Y is world +Z, up). A bone consumer composes `orientations` (with its long-axis name from
+  `segment_axes`) before applying `ROTATIONS_WORLD`.
+
+`schema.segment_axes` maps each segment name to its long-axis basis name (`x`/`y`/`z`) — which axis of
+the rest frame is the segment's defining direction (the EXACT axis declaration: body/hand = `y`, face =
+`z`).
 
 ## dtype codes
 

@@ -155,6 +155,21 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-15 (the 3D bone orientation fix — rest-derived orientation landed)** — The 3D rigid-body
+  bones were ~90° mis-oriented because the renderer oriented its unit geometry against the segment's
+  *nominal* long-axis label (+Y body / +Z face) and applied `ROTATIONS_WORLD` directly — but
+  `ROTATIONS_WORLD` is measured *relative to each segment's rest frame* (identity == T-pose), and that
+  rest frame is not identity (a spine's +Y points world +Z, up). Fixed by exposing the per-segment rest
+  frame on the wire: `RestPose` now carries `orientations` (per-segment rest-frame orientation wxyz,
+  local→world T-pose, from `reference_geometry.basis`) in place of the old all-identity
+  `reference_orientations`; `segment_axes` (the long-axis basis name) stays. The 3D renderer composes
+  `ROTATIONS_WORLD · rest_orientation · Q_permute · S` (`computeBoneMatrix`) instead of
+  `ROTATIONS_WORLD · Q_permute · S`. VRM-1.0-compatible by construction — the model already authors
+  VRM 1.0 rest frames (body/hand +Y toward child, face +Z gaze); the fix just puts them on the wire.
+  Verified: `tsc` clean, all three TS harnesses green (incl. a new rest-orientation regression test),
+  goldens regenerated (schema only — the sample is unchanged); backend subset runs via the user's env.
+  Uncommitted in freemocap — user owns git.
+
 - **2026-08-15 (the unified stream — cutover landed + the 2D overlay upgrade)** — The two-stream
   websocket model (image relay + sample relay draining one aggregator queue with asymmetric
   backpressure) was replaced by **one producer-composed stream**: `standard_stream/producers/`

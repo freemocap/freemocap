@@ -64,6 +64,8 @@ export class TransportService {
   private readonly imageSubscribers = new Set<(buf: ArrayBuffer) => void>();
   private readonly schemaSubscribers = new Set<(s: StreamSchema) => void>();
 
+  private _debugCount = 0; // TEMP DEBUG — remove
+
   constructor(options: TransportServiceOptions) {
     this.maxWindowFrames = options.maxWindowFrames ?? 100;
     this.connection = new WebSocketConnection({ url: options.url });
@@ -96,6 +98,15 @@ export class TransportService {
       if (!schema) return; // sample before schema — drop (schema-once contract).
       const decoded = decodeSample(buf, schema);
       const resolved = this.schemaRegistry.resolve(decoded);
+      // TEMP DEBUG — remove
+      if (this._debugCount <= 5 || this._debugCount % 100 === 0) {
+        console.log(
+          `[TEMP] TransportService decoded sample #${this._debugCount} frame=${decoded.frameNumber} ` +
+          `blocks=${decoded.blocks.map(b => `${b.kind}:${b.numElements}`).join(",")} ` +
+          `overlays=${resolved.overlays.length}`
+        );
+      }
+      this._debugCount++;
       this.acceptResolved(resolved);
     });
 
@@ -116,6 +127,11 @@ export class TransportService {
         }
         if (message) this.routingTable.routeJson(message);
       } else if (data instanceof ArrayBuffer) {
+        // TEMP DEBUG — remove
+        if (this._debugCount <= 5 || this._debugCount % 100 === 0) {
+          const firstByte = data.byteLength > 0 ? new Uint8Array(data)[0] : null;
+          console.log(`[TEMP] TransportService binary frame firstByte=${firstByte} len=${data.byteLength}`);
+        }
         this.routingTable.routeBinary(data);
       }
     });
@@ -147,6 +163,12 @@ export class TransportService {
     this.derivedSubscribers.forEach((cb) => cb(resolved.derived));
 
     for (const overlay of resolved.overlays) {
+      // TEMP DEBUG — remove
+      console.log(
+        `[TEMP] TransportService overlay frame camera=${overlay.cameraId} layer=${overlay.layer} ` +
+        `names=${overlay.names.length} dataLen=${overlay.data.length} ` +
+        `subscribers=${this.overlaySubscribers.size}`
+      );
       this.overlaySubscribers.forEach((cb) => cb(overlay));
     }
   }

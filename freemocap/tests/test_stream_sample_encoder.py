@@ -319,6 +319,8 @@ def test_overlay_2d_detections_per_camera():
         cam0[name_to_idx["nose"], :2],
         np.array([320.0, 240.0], dtype=np.float32),
     )
+    # the tracker's confidence rides the visibility column
+    assert cam0[name_to_idx["nose"], 2] == 1.0
     # a keypoint not seen by this camera → NaN
     assert np.all(np.isnan(cam0[name_to_idx["left_wrist"]]))
 

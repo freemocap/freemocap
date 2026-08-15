@@ -162,13 +162,9 @@ class StreamSample:
         # is keyed by standard-human names — the encoder cannot fall back to
         # tracker-named positions (``message.skeleton``) because those would be
         # silently fed into standard-human lookups as an all-NaN stream.
-        positions: dict[str, np.ndarray] = message.standard_skeleton
-        if not positions:
-            raise ValueError(
-                "from_aggregator_output: message.standard_skeleton is None/empty — "
-                "the encoder requires the standard-human-keyed source; a message "
-                "without it cannot produce a sample."
-            )
+        # An empty skeleton (2D-only frames, no solve yet) encodes as NaN rows;
+        # the OVERLAY_2D blocks still carry the per-camera 2D detections.
+        positions: dict[str, np.ndarray] = message.standard_skeleton or {}
 
         origin_names = cls._origin_landmark_names(standard_human)
 
@@ -318,7 +314,9 @@ class StreamSample:
             x, y, _z = kpts.xyz[i]
             if np.isnan(x) or np.isnan(y):
                 continue
-            detections[name] = np.array([x, y], dtype=np.float32)
+            detections[name] = np.array(
+                [x, y, kpts.visibility[i]], dtype=np.float32
+            )
         return detections
 
     @staticmethod

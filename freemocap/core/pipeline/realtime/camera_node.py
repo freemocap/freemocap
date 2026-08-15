@@ -253,6 +253,10 @@ class CameraNode(SourceNode):
                     frame_msg: ProcessFrameNumberMessage = process_frame_number_sub.get(timeout=0.005)
                 except queue.Empty:
                     continue
+                except InterruptedError:
+                    # Windows Ctrl+C interrupts the wait syscall during
+                    # shutdown; re-check the loop condition.
+                    continue
                 frame_recarray = camera_shm.get_data_by_index(
                     index=frame_msg.frame_number,
                     rec_array=frame_recarray,

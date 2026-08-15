@@ -120,6 +120,7 @@ export function createSchemaRegistry(): SchemaRegistry {
         overlays.push({
           cameraId: block.cameraId,
           layer: block.overlayLayer,
+          frameNumber: sample.frameNumber,
           names: overlayGroup.names,
           data: block.data,
         });

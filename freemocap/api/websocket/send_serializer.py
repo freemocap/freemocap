@@ -26,6 +26,8 @@ from starlette.websockets import WebSocket, WebSocketState
 
 logger = logging.getLogger(__name__)
 
+_send_log_count = 0  # TEMP DEBUG — remove
+
 
 @runtime_checkable
 class _WebSocketTransport(Protocol):
@@ -77,6 +79,14 @@ class SendSerializer:
 
     async def send_sample(self, sample_bytes: bytes) -> None:
         """Send one standard-stream sample (binary frame)."""
+        # TEMP DEBUG — remove
+        global _send_log_count
+        _send_log_count += 1
+        if _send_log_count <= 5 or _send_log_count % 100 == 0:
+            logger.info(
+                f"[TEMP] serializer send_sample #{_send_log_count} "
+                f"len={len(sample_bytes)} first_byte={sample_bytes[0] if sample_bytes else None}"
+            )
         await self.send_raw_bytes(sample_bytes)
 
     async def send_json(self, data: object) -> None:

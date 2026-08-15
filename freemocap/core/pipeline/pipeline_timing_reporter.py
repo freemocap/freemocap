@@ -105,6 +105,10 @@ class PipelineTimingReporter:
                     msg: PipelineTimingMessage = self.timing_sub.get(timeout=0.5)
                 except Empty:
                     msg = None
+                except InterruptedError:
+                    # Windows Ctrl+C interrupts the wait syscall during
+                    # shutdown; treat as an empty tick and re-check stop_event.
+                    msg = None
                 if msg is not None:
                     self._ingest(msg)
 

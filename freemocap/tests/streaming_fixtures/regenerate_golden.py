@@ -57,6 +57,8 @@ def build() -> tuple[StreamSchema, StreamSample]:
         stream_name="golden-standard-stream",
         standard_human=model,
         camera_ids=("cam-0", "cam-1"),
+        # image_size is (height, width); the schema field is (width, height).
+        camera_image_sizes={"cam-0": (640, 480), "cam-1": (640, 480)},
         tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
     )
 

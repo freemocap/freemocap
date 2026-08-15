@@ -167,6 +167,23 @@ def test_schema_carries_topology():
     assert schema.max_persons == 1
 
 
+def test_schema_carries_capture_image_sizes():
+    """camera_image_sizes pins the OVERLAY_2D coordinate space (capture-res px)."""
+    assert _schema().camera_image_sizes == {}
+    sizes = {"cam-0": (1920, 1080), "cam-1": (640, 480)}
+    schema = StreamSchema.from_standard_human(
+        stream_id="s1",
+        stream_name="test",
+        standard_human=_minimal_model(),
+        camera_ids=("cam-0", "cam-1"),
+        tracker_keypoint_names=(),
+        camera_image_sizes=sizes,
+    )
+    assert schema.camera_image_sizes == sizes
+    # round-trips through JSON (tuples → arrays on the wire)
+    assert decode_schema(encode_schema(schema)).camera_image_sizes == sizes
+
+
 def test_convention_forward_axis_is_plus_x():
     # D34 — the canonical convention is mm · right-handed · +Z up · +X forward.
     assert FREEMOCAP_CANONICAL_CONVENTION.forward_axis == Axis.PLUS_X

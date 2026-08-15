@@ -89,6 +89,7 @@ function makeSchemaFixture(): StreamSchema {
             left_lower_leg: 350,
         },
         camera_ids: [],
+        camera_image_sizes: {},
         max_persons: 1,
         message_type: "stream_schema",
     };

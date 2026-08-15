@@ -29,6 +29,11 @@ units, per-subject dimension) sent once + change, then timestamped **samples** p
   | 5 | `DERIVED_POINTS` | `center_of_mass`, `xcom` | `x, y, z` |
   | 6 | `OVERLAY_2D` | per camera × layer (DETECTIONS / REPROJECTIONS) | `x, y, visibility` |
 
+- **OVERLAY_2D coordinate space** (2026-08-15): values are **capture-resolution image px** (the tracker's
+  detections in the camera's image, unscaled), `visibility` carries the tracker's confidence (0–1). The
+  schema's **`camera_image_sizes`** (`{camera_id: [width, height]}`) declares each camera's capture size;
+  consumers scale overlay points to their own display size with it.
+
 - Samples: binary, `wxyz` rotations, keyed by frame number; golden-byte parity with the TS decoder
   ([../04-ui/ui-integration.md](../04-ui/ui-integration.md)).
 

@@ -20,12 +20,15 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 
+import numpy as np
+
 from freemocap.api.websocket.backpressure_controller import (
     BackpressureAction,
     BackpressureController,
 )
 from freemocap.api.websocket.send_serializer import SendSerializer  # noqa: TC001 — beartype resolves this in the FrameRelay.__init__ signature at runtime
 from freemocap.core.streaming.standard_stream import (
+    ChannelKind,
     StreamSample,
     StreamSchema,
     encode_schema,
@@ -33,6 +36,8 @@ from freemocap.core.streaming.standard_stream import (
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001
 
 logger = logging.getLogger(__name__)
+
+_relay_sample_log_count = 0  # TEMP DEBUG — remove
 
 # The source contract: return the next aggregator output message (the frame to
 # encode), or None if no new frame is available yet. Raised CancelledError stops
@@ -90,6 +95,16 @@ class FrameRelay:
             schema=self._schema,
             standard_human=self._standard_human,
         )
+        # TEMP DEBUG — remove
+        global _relay_sample_log_count
+        _relay_sample_log_count += 1
+        if _relay_sample_log_count <= 5 or _relay_sample_log_count % 100 == 0:
+            logger.info(
+                f"[TEMP] relay sample #{_relay_sample_log_count} frame={message.frame_number} "
+                f"skeleton={bool(message.standard_skeleton)} "
+                f"blocks={[(b.kind.name, len(b.data)) for b in sample.blocks]} "
+                f"overlay_finite={[int(np.isfinite(b.data).all(axis=1).sum()) for b in sample.blocks if b.kind == ChannelKind.OVERLAY_2D]}"
+            )
         await self._serializer.send_sample(sample.to_bytes())
         self._last_sent_frame_number = message.frame_number
         self._backpressure.sent(message.frame_number)

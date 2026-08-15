@@ -15,11 +15,8 @@ class CalibrationResult(BaseModel, TomlMixin):
     """Output of either calibration pipeline.
 
     Both the anipose and pyceres paths produce this type. It can be
-    serialized to/from the anipose-compatible TOML format.
-
-    Provides get_triangulator() and get_triangulator_for_cameras() to
-    build a Triangulator for downstream 3D reconstruction without any
-    anipose dependency.
+    serialized to/from the anipose-compatible TOML format. Triangulator
+    construction lives in ``freemocap.core.tasks.triangulation.triangulator``.
     """
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)
@@ -45,34 +42,6 @@ class CalibrationResult(BaseModel, TomlMixin):
             if cam.id == camera_id:
                 return cam
         raise KeyError(f"Camera '{camera_id}' not found. Available: {self.camera_ids}")
-
-    # ---- Triangulator construction ----
-
-    def get_triangulator(self) -> "Triangulator":
-        """Build a Triangulator from this calibration's cameras.
-
-        The Triangulator performs DLT triangulation directly from CameraModel
-        intrinsics/extrinsics with no anipose dependency.
-        """
-        from freemocap.core.tasks.triangulation.triangulator import Triangulator
-
-        return Triangulator.from_calibration_result(calibration=self)
-
-    def get_triangulator_for_cameras(self, camera_ids: list[str]) -> "Triangulator":
-        """Build a Triangulator with cameras ordered to match the given IDs.
-
-        Use this when the current session's cameras may be a subset of,
-        or in a different order than, the calibration's cameras.
-
-        Raises:
-            KeyError: If any camera_id is not found in this calibration.
-        """
-        from freemocap.core.tasks.triangulation.triangulator import Triangulator
-
-        return Triangulator.from_calibration_for_cameras(
-            calibration=self,
-            camera_ids=camera_ids,
-        )
 
     # ---- Anipose-compatible TOML (same as existing) ----
 

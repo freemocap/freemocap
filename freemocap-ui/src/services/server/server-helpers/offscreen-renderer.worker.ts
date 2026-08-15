@@ -31,6 +31,8 @@ let lastOverlayTime = 0;
 let charucoEnabled = true;
 let skeletonEnabled = true;
 
+let _compositeLogCount = 0; // TEMP DEBUG — remove
+
 interface InitMessage { type: "init"; canvas: OffscreenCanvas; }
 interface FrameMessage { type: "frame"; pixelBuffer: ArrayBuffer; width: number; height: number; }
 interface OverlaysMessage {
@@ -87,6 +89,21 @@ function handleFrame(pixelBuffer: ArrayBuffer, width: number, height: number): v
     }
     const charucoObs = charucoEnabled && overlayFresh ? latestCharuco : null;
     const skeletonObs = skeletonEnabled && overlayFresh ? latestSkeleton : null;
+
+    // TEMP DEBUG — remove
+    _compositeLogCount++;
+    if (skeletonObs && _compositeLogCount % 30 === 0) {
+        let finite = 0;
+        for (const p of skeletonObs.points) {
+            if (Number.isFinite(p.x) && Number.isFinite(p.y)) finite++;
+        }
+        console.log(
+            `[TEMP] worker composite frame=${width}x${height} fresh=${overlayFresh} ` +
+            `obsDims=${skeletonObs.image_width}x${skeletonObs.image_height} ` +
+            `points=${skeletonObs.points.length} finite=${finite} ` +
+            `first=${JSON.stringify(skeletonObs.points.slice(0, 2))}`,
+        );
+    }
 
     // Create ImageBitmap from raw pixels — this is the GPU upload step,
     // happening independently in each per-camera worker instead of batched

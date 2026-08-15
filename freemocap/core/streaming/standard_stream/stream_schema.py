@@ -14,7 +14,7 @@ SSOT for the wire contract:
 from __future__ import annotations
 
 import enum
-from collections.abc import Sequence  # noqa: TC003 — beartype resolves this in the ``from_standard_human`` signature at runtime
+from collections.abc import Mapping, Sequence  # noqa: TC003 — beartype resolves this in the ``from_standard_human`` signature at runtime
 
 import msgspec
 
@@ -169,6 +169,10 @@ class StreamSchema(msgspec.Struct, frozen=True):
     # ``from_standard_human``).
     segment_lengths: dict[str, float] = msgspec.field(default_factory=dict)
     camera_ids: tuple[str, ...] = ()  # cameras for OVERLAY_2D — fixed at stream creation
+    # Per-camera capture-resolution image size (width, height) in px — the
+    # coordinate space of OVERLAY_2D values. Static per stream (camera-fixed);
+    # consumers scale overlay points to their own display size with it.
+    camera_image_sizes: dict[str, tuple[int, int]] = msgspec.field(default_factory=dict)
     max_persons: int = 1   # reserved for multi-subject; 1 for now
     message_type: str = "stream_schema"
 
@@ -185,6 +189,7 @@ class StreamSchema(msgspec.Struct, frozen=True):
         tracker_keypoint_names: Sequence[str] = (),
         max_persons: int = 1,
         measured_lengths: dict[str, float] | None = None,
+        camera_image_sizes: Mapping[str, tuple[int, int]] | None = None,
     ) -> StreamSchema:
         """Build the standard-stream schema from the canonical human model.
 
@@ -215,7 +220,9 @@ class StreamSchema(msgspec.Struct, frozen=True):
            ``overlay_layer``. ``names`` lists the DETECTIONS-layer keypoints
            (the tracker-named 2D detections, NaN-padded); the REPROJECTIONS
            layer carries the same keypoint set (the fitted model projected back
-           down), so ``names`` describes both layers' rows.
+           down), so ``names`` describes both layers' rows. Values are
+           capture-resolution image px — the per-camera capture sizes live in
+           ``camera_image_sizes``.
 
         ``segment_parents`` (segment → parent) and ``rest_pose`` together are
         what a consumer needs to compose the local-rotation chain into world
@@ -306,6 +313,7 @@ class StreamSchema(msgspec.Struct, frozen=True):
             rest_pose=rest_pose,
             segment_lengths=segment_lengths,
             camera_ids=tuple(camera_ids),
+            camera_image_sizes=dict(camera_image_sizes) if camera_image_sizes else {},
             max_persons=max_persons,
         )
 

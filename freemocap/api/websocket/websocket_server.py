@@ -16,7 +16,6 @@ import logging
 import os
 import time
 from queue import Empty
-from typing import TYPE_CHECKING
 
 import msgspec
 import numpy as np
@@ -33,15 +32,15 @@ from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.core.streaming.standard_stream import StreamSchema
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001 — beartype resolves the _await_next_aggregator_output return annotation at runtime
 from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 
-if TYPE_CHECKING:
-    from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
-
 logger = logging.getLogger(__name__)
+
+_empty_source_log_count = 0  # TEMP DEBUG — remove
 
 
 class FramerateMessage(msgspec.Struct):
@@ -127,6 +126,7 @@ class WebsocketServer:
             camera_ids=camera_ids,
             tracker_keypoint_names=tracker_keypoint_names(detector_type),
             measured_lengths=segment_lengths,
+            camera_image_sizes=self._camera_image_sizes(),
         )
         self._schema_camera_ids = camera_ids
         self._schema_detector_type = detector_type
@@ -153,6 +153,14 @@ class WebsocketServer:
             if_newer_than=self._relay.last_sent_frame_number,
         )
         if not outputs:
+            # TEMP DEBUG — remove
+            global _empty_source_log_count
+            _empty_source_log_count += 1
+            if _empty_source_log_count <= 5 or _empty_source_log_count % 200 == 0:
+                logger.info(
+                    f"[TEMP] aggregator source empty #{_empty_source_log_count} "
+                    f"(relay last_sent={self._relay.last_sent_frame_number})"
+                )
             return None
         # One pipeline per camera set today; take the newest frame_number.
         newest = max(outputs, key=lambda m: m.frame_number)
@@ -175,6 +183,20 @@ class WebsocketServer:
             self._current_camera_ids() != self._schema_camera_ids
             or self._current_detector_type() != self._schema_detector_type
         )
+
+    def _camera_image_sizes(self) -> dict[str, tuple[int, int]]:
+        """Per-camera capture-resolution image size (width, height) in px.
+
+        The coordinate space of the OVERLAY_2D values; the schema carries it so
+        consumers can scale overlay points to their own display size. Sourced
+        from the live pipelines' camera configs (rotation-aware width/height).
+        """
+        sizes: dict[str, tuple[int, int]] = {}
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            for camera_id in pipeline.camera_ids:
+                config = pipeline.camera_configs[camera_id]
+                sizes[camera_id] = (int(config.width), int(config.height))
+        return sizes
 
     def _current_detector_type(self) -> str:
         """The configured detector type from the live realtime pipelines.
@@ -281,7 +303,7 @@ class WebsocketServer:
                 )
                 for packet in packets:
                     if packet.images_bytearray is not None:
-                        await self._serializer.send_raw_bytes(packet.images_bytearray)
+                        await self._serializer.send_raw_bytes(bytes(packet.images_bytearray))
                     last_sent_img = packet.frame_number
                     self._record_framerate(packet)
                 for update_message in progress_updates:

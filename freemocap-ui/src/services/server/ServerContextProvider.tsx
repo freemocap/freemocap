@@ -41,6 +41,8 @@ import type {AppStateMessage} from "@/store/slices/connection/connection-types";
 import {loadCalibrationForRecording} from "@/store/slices/calibration";
 import {TransportService} from "@/services/server/transport/TransportService";
 import type {RotationsFrame, RollingChannelName, StreamSchema} from "@/services/server/transport/types";
+import {OverlayLayer} from "@/services/server/transport/types";
+import type {SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
 
 // Type guard for the server's authoritative APP_STATE snapshot
 function isAppState(data: any): data is AppStateMessage {
@@ -143,6 +145,41 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToRotations((frame) => {
             rotationsRef.current = frame;
             for (const cb of rotationsSubscribersRef.current) cb(frame);
+        }));
+        subs.push(transport.subscribeToOverlay((overlay) => {
+            // OVERLAY_2D DETECTIONS → per-camera skeleton overlay. The legacy
+            // `skeleton_overlay` JSON message path is gone (D36); this is its
+            // standard-stream replacement.
+            // TEMP DEBUG — remove
+            console.log(
+                `[TEMP] ServerContextProvider overlay cb camera=${overlay.cameraId} ` +
+                `layer=${overlay.layer} frame=${overlay.frameNumber} points=${overlay.names.length}`
+            );
+            if (overlay.layer !== OverlayLayer.DETECTIONS) return;
+            // OVERLAY_2D values are capture-resolution px; the schema carries
+            // each camera's capture size so the renderer scales to the display
+            // bitmap.
+            const dims = transport.getSchema()?.camera_image_sizes[overlay.cameraId];
+            // TEMP DEBUG — remove
+            let finite = 0;
+            for (let i = 0; i < overlay.data.length; i++) if (Number.isFinite(overlay.data[i])) finite++;
+            console.log(`[TEMP] cb dims=${dims} finite=${finite}/${overlay.data.length} first=${overlay.data.slice(0, 3)}`);
+            const observation: SkeletonObservation = {
+                message_type: 'skeleton_overlay',
+                camera_id: overlay.cameraId,
+                frame_number: overlay.frameNumber,
+                tracker_id: activeTrackerIdRef.current ?? 'RTMPoseTracker',
+                image_width: dims?.[0] ?? 0,
+                image_height: dims?.[1] ?? 0,
+                points: overlay.names.map((name, i) => ({
+                    name,
+                    x: overlay.data[i * 3],
+                    y: overlay.data[i * 3 + 1],
+                    z: 0,
+                    visibility: overlay.data[i * 3 + 2],
+                })),
+            };
+            canvasManagerRef.current?.updateOverlays(undefined, { [overlay.cameraId]: observation });
         }));
 
         const handleBeforeUnload = (): void => {
@@ -289,6 +326,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             if (isLogRecord(jsonData)) {
                 logStoreRef.current.add(jsonData);
             } else if (isTrackerSchemas(jsonData)) {
+                // TEMP DEBUG — remove
+                console.log(`[TEMP] tracker_schemas message received: ${Object.keys(jsonData.schemas ?? {}).join(", ")}`);
                 const schemas = jsonData.schemas;
                 trackerSchemasRef.current = schemas;
                 const keys = Object.keys(schemas);

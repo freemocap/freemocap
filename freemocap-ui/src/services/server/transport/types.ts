@@ -73,6 +73,10 @@ export interface StreamSchema {
    * anthropometric defaults on first send, then re-sent with measured values. */
   segment_lengths: Record<string, number>;
   camera_ids: string[];
+  /** Per-camera capture-resolution image size [width, height] in px — the
+   * coordinate space of OVERLAY_2D values. Consumers scale overlay points to
+   * their own display size with it. */
+  camera_image_sizes: Record<string, [number, number]>;
   max_persons: number;
   message_type: "stream_schema";
 }
@@ -120,6 +124,7 @@ export interface RotationsFrame {
 export interface OverlayFrame {
   cameraId: string;
   layer: OverlayLayer;
+  frameNumber: number;
   names: readonly string[];
   /** interleaved [x,y,visibility, …] — length names.length * 3. */
   data: Float32Array;

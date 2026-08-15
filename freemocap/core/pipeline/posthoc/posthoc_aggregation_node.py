@@ -158,6 +158,10 @@ class PosthocAggregationNode(AggregatorNode):
                         msg: VideoNodeOutputMessage = video_node_output_subscription.get(timeout=0.001)
                     except Empty:
                         continue
+                    except InterruptedError:
+                        # Windows Ctrl+C interrupts the wait syscall during
+                        # shutdown; re-check the loop condition.
+                        continue
 
                     if msg.camera_id not in camera_ids:
                         raise ValueError(

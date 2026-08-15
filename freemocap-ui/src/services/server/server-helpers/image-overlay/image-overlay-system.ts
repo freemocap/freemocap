@@ -133,9 +133,6 @@ export abstract class BaseOverlayRenderer {
             // Skip invalid points
             if (!this.isValidPoint(point)) continue;
 
-            // Optional visibility threshold
-            if (point.visibility !== undefined && point.visibility < 0.5) continue;
-
             // Draw filled circle
             this.ctx.fillStyle = style.pointColor;
             this.ctx.beginPath();

@@ -518,6 +518,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         cam_output: CameraNodeOutputMessage = camera_node_sub.get(timeout=0.005)
                     except queue.Empty:
                         continue
+                    except InterruptedError:
+                        # Windows Ctrl+C interrupts the wait syscall during
+                        # shutdown; re-check the loop condition.
+                        continue
                     if cam_output.camera_id not in camera_ids:
                         raise ValueError(
                             f"Camera ID {cam_output.camera_id} not in "

@@ -50,6 +50,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
 
     const [syncEnabled, setSyncEnabled] = useState(false);
     const [syncMethod, setSyncMethod] = useState<SyncMethod>(SyncMethod.AUDIO);
+    const [brightnessRatioThreshold, setBrightnessRatioThreshold] = useState('1000');
     const [syncing, setSyncing] = useState(false);
     const [syncJobId, setSyncJobId] = useState<string | null>(null);
     const [syncError, setSyncError] = useState<string | null>(null);
@@ -157,7 +158,13 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             let jobId: string | undefined;
             if (syncEnabled) {
                 setSyncing(true);
-                const started = await dispatch(startVideoSync({videoPaths, method: syncMethod})).unwrap();
+                const started = await dispatch(startVideoSync({
+                    videoPaths,
+                    method: syncMethod,
+                    brightnessRatioThreshold: syncMethod === SyncMethod.BRIGHTNESS
+                        ? Number(brightnessRatioThreshold)
+                        : undefined,
+                })).unwrap();
                 setSyncJobId(started.jobId);
                 await pollSyncResult(started.jobId);
                 jobId = started.jobId;
@@ -184,7 +191,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         } finally {
             setBusy(false);
         }
-    }, [videoPaths, recordingName, busy, syncEnabled, syncMethod, pollSyncResult, dispatch, onClose, onImported]);
+    }, [videoPaths, recordingName, busy, syncEnabled, syncMethod, brightnessRatioThreshold, pollSyncResult, dispatch, onClose, onImported]);
 
     const importDisabledReason = busy
         ? (syncing ? 'Synchronizing…' : 'Importing…')
@@ -307,6 +314,22 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                                         buttonType={syncMethod === SyncMethod.BRIGHTNESS ? 'activated' : 'idle'}
                                         className="quaternary"
                                         onClick={() => setSyncMethod(SyncMethod.BRIGHTNESS)}
+                                        disabled={busy}
+                                    />
+                                </div>
+                            )}
+
+                            {syncEnabled && syncMethod === SyncMethod.BRIGHTNESS && (
+                                <div className="flex flex-row gap-2 items-center">
+                                    <p className="text sm text-gray">Brightness ratio threshold</p>
+                                    <input
+                                        className="input-field text md"
+                                        style={{width: '6rem'}}
+                                        type="number"
+                                        min={0}
+                                        step={100}
+                                        value={brightnessRatioThreshold}
+                                        onChange={(e) => setBrightnessRatioThreshold(e.target.value)}
                                         disabled={busy}
                                     />
                                 </div>

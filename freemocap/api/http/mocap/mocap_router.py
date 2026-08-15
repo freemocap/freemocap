@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from skellycam.core.recorders.videos.parse_video_filename import ParsedVideoFilename
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skelly_synchronize.core.models import SyncMethod, SyncRequest, SyncResult
+from skelly_synchronize.core.models import SyncMethod, SyncRequest, SyncResult, VideoBackendKind
 
 from freemocap.app.freemocap_application import get_freemocap_app
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoHelper
@@ -137,6 +137,8 @@ class CheckVideoSyncResponse(BaseModel):
 class SynchronizeVideosRequest(BaseModel):
     video_paths: list[str] = Field(alias="videoPaths")
     method: SyncMethod = Field(default=SyncMethod.AUDIO, alias="method")
+    # Only used when method == BRIGHTNESS; see skelly_synchronize.core.models.SyncRequest.
+    brightness_ratio_threshold: float = Field(default=1000.0, alias="brightnessRatioThreshold")
 
 
 class SynchronizeVideosStartResponse(BaseModel):
@@ -274,7 +276,9 @@ async def synchronize_videos(request: SynchronizeVideosRequest) -> SynchronizeVi
         raw_video_folder_path=raw_folder,
         synchronized_video_folder_path=job_tmp_dir / "synchronized",
         method=request.method,
-        create_debug_artifacts=False,
+        video_handler=VideoBackendKind.FFMPEG,
+        brightness_ratio_threshold=request.brightness_ratio_threshold,
+        create_debug_artifacts=True,
     )
     job = get_freemocap_app().create_sync_job(sync_request)
     logger.info(f"Started sync job [{job.id}] for {len(paths)} video(s), method={request.method}")

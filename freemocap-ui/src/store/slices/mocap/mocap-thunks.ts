@@ -231,16 +231,16 @@ export interface SyncResult {
 
 export const startVideoSync = createAsyncThunk<
     { jobId: string },
-    { videoPaths: string[]; method: SyncMethod },
+    { videoPaths: string[]; method: SyncMethod; brightnessRatioThreshold?: number },
     { state: RootState; rejectValue: string }
 >(
     'mocap/startVideoSync',
-    async ({ videoPaths, method }, { rejectWithValue }) => {
+    async ({ videoPaths, method, brightnessRatioThreshold }, { rejectWithValue }) => {
         try {
             const response = await fetch(serverUrls.endpoints.synchronizeVideos, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ videoPaths, method }),
+                body: JSON.stringify({ videoPaths, method, brightnessRatioThreshold }),
             });
 
             if (!response.ok) {

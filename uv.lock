@@ -2022,7 +2022,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs#9114990350d7fb36747526286671c17abd7e523e" }
+source = { git = "https://github.com/freemocap/skellylogs#8c4b5eace34b9b0bf44018de2f646b50288c2aa5" }
 
 [[package]]
 name = "skellypings"

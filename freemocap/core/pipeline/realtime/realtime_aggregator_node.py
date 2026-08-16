@@ -115,7 +115,7 @@ CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 # The solver's reference geometry needs only correct DIRECTIONS (lengths do not
 # affect solved quaternions), so nominal anthropometric seeds are the honest
 # v1; live measured lengths refine the geometry when the estimator feeds it.
-# Shared SSOT with the stream schema's rest-pose build.
+# Shared SSOT with the model's rest-pose build.
 from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM
 
 def _reproject_segment_origins(
@@ -365,7 +365,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         # result lands. Once the estimator has live measured lengths, the
         # per-frame build (below) replaces this. The solver's reference
         # DIRECTIONS are unchanged by live lengths — the lengths only refine the
-        # rest-pose map and schema values; quaternions never depend on them.
+        # rest-pose map and model values; quaternions never depend on them.
         reference_geometry = build_reference_geometry(
             list(standard_human.segments),
             {
@@ -768,7 +768,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # are excluded from the rigidifier's length ESTIMATOR, so
                     # keep their nominal ``length_ratio × height`` spans to leave
                     # the geometry map complete. The reference DIRECTIONS are
-                    # unchanged — only the rest-pose map and schema values follow
+                    # unchanged — only the rest-pose map and model values follow
                     # the measurements (quaternions never depend on length).
                     if (
                         skeleton_rigidifier is not None
@@ -919,10 +919,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Publish aggregated output ----
-                # The schema's segment_lengths field: the rigidifier's measured
+                # The model's segment_lengths field: the rigidifier's measured
                 # body + both-hand lengths, with the face's eight segments kept
                 # at their nominal spans (the estimator does not cover them).
-                # The same merge the schema build does, so the wire lengths and
+                # The same merge the model build does, so the wire lengths and
                 # the rest pose stay consistent with the per-frame geometry.
                 segment_lengths: dict[str, float] = {}
                 if skeleton_rigidifier is not None:

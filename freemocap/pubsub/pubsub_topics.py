@@ -119,7 +119,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
     body_kinematics: BodyKinematicsState | None = None
     # Per-segment measured rest lengths (mm), keyed by segment name — the
-    # rigidifier's current estimates (body + both hands). Feeds the schema's
+    # rigidifier's current estimates (body + both hands). Feeds the model's
     # ``segment_lengths`` default-then-update lifecycle.
     segment_lengths: dict[str, float] = field(default_factory=dict)
     # Per-camera segment-origin landmark reprojections (camera_id → segment

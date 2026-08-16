@@ -1,8 +1,7 @@
 # The Message Protocol (self-describing; no schema, no samples)
 
-> **Status: IN PROGRESS — step 1 landed (contract + codec + parity test, additive).** The committed wire
-> still runs schema-then-samples; steps 2–5 below replace it. See the preservation inventory in
-> 04-ui/ui-integration.md.
+> **Status: step 2 DONE (backend emits CBOR messages, 74 backend tests green).** Step 3 (frontend
+> dispatch) is the remaining cutover work. See the preservation inventory in 04-ui/ui-integration.md.
 
 **Describes:** the wire behavior — one WebSocket carrying a stream of **self-describing messages**.
 There is no schema and no samples. Every message is typed, versioned, and carries everything needed to

@@ -16,6 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 async def main(force_preferred_port:bool=True) -> None:
+    # Configure logging once, at startup — NOT at import time. freemocap's
+    # package __init__ stays side-effect free so sandboxes/CI/child processes
+    # can import it without I/O or thread spawns.
+    from skellylogs import configure_logging, LogLevels
+    configure_logging(LogLevels.TRACE)
+
     # Heavy imports are here (not at module level) so that multiprocessing
     # child processes don't re-import the entire app tree on Windows.
     # Windows uses the `spawn` start method, which re-executes this file

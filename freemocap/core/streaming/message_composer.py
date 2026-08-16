@@ -9,8 +9,8 @@ See current-work-plans/03-transport/message-relay.md.
 """
 from __future__ import annotations
 
+from collections.abc import Hashable
 from dataclasses import dataclass, replace
-from typing import Hashable
 
 from freemocap.core.streaming.message_model import (
     CameraLayoutMessage,

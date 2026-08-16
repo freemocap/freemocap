@@ -5,7 +5,6 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 @dataclass
 class PipelineProgressMessage:
-    message_type: str = "posthoc_progress"
     pipeline_id: str = ""
     pipeline_type: str = ""
     phase: str = ""

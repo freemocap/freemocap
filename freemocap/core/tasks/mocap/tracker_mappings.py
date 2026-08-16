@@ -57,10 +57,10 @@ def hand_mapping_yaml_path(detector_type: str) -> Path:
 
 
 def tracker_keypoint_names(detector_type: str) -> tuple[str, ...]:
-    """The tracker's FULL keypoint-name set the standard stream carries, sorted.
+    """The tracker's FULL keypoint-name set the frame carries, sorted.
 
     These are the names the configured detector actually emits — imported from
-    the detector's own point-name constants — so the schema's KEYPOINTS_3D /
+    the detector's own point-name constants — so the frame's KEYPOINTS_3D /
     OVERLAY_2D names and the per-frame ``keypoints_arrays`` keys stay in
     lockstep. Every keypoint the model can produce appears here, including face
     / foot / hand points that no standard-human landmark consumes; the tracker

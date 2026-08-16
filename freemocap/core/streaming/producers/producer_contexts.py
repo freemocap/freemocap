@@ -1,6 +1,6 @@
 """Contexts passed to channel producers.
 
-StreamContext is the structural (schema-time) state: what the producers need to
+StreamContext is the structural (composition-time) state: what the producers need to
 declare activeness and a change signature — it never carries per-frame values.
 FrameContext is the per-frame payload passed to fill().
 """

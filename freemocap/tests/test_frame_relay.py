@@ -1,28 +1,22 @@
-"""F2b — FrameRelay integration (schema-then-samples, newest-wins).
+"""FrameRelay integration (self-describing message path, newest-wins).
 
 Drives the real FrameRelay through a controllable FrameContext source and a
-fake WebSocket. Verifies the supervisor's contract: the schema JSON is sent
-first (on connect), then binary sample frames flow as frame contexts arrive —
-composed through the channel producers. There is no ack window: the relay
-sends every context the source yields (newest-wins lives in the source).
+fake WebSocket. Verifies the relay's contract: each frame context composes into
+one self-describing CBOR frame message and is sent. There is no ack window —
+the relay sends every context the source yields (newest-wins lives in the
+source).
 """
 import asyncio
+import time
 
+import cbor2
 import numpy as np
 from starlette.websockets import WebSocketState
 
 from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
-from freemocap.core.streaming.standard_stream import (
-    MessageType,
-    decode_sample,
-    encode_schema,
-)
-from freemocap.core.streaming.standard_stream.producers import compose
-from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
-    FrameContext,
-    StreamContext,
-)
+from freemocap.core.streaming.message_composer import compose_messages
+from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 from freemocap.core.tasks.mocap.center_of_mass import CoMConfidence, CenterOfMassResult
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
@@ -47,27 +41,18 @@ class FakeWebSocket:
         self.client_state = WebSocketState.DISCONNECTED
 
 
-def _model():
-    return compose_standard_human()
-
-
 def _composition():
-    return compose(
+    return compose_messages(
         StreamContext(
-            standard_human=_model(),
+            standard_human=compose_standard_human(),
             camera_ids=("cam-0",),
             tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
             pipeline_live=True,
-        ),
-        stream_id="relay-test",
-        stream_name="relay-test",
+        )
     )
 
 
 async def _wait_for_sent_bytes(ws: FakeWebSocket, count: int, timeout: float = 5.0) -> None:
-    """Poll until the relay has written ``count`` byte frames, or timeout."""
-    import time
-
     deadline = time.monotonic() + timeout
     while len(ws.sent_bytes) < count:
         if time.monotonic() >= deadline:
@@ -105,59 +90,39 @@ def _frame_ctx(frame_number: int) -> FrameContext:
     )
 
 
-async def test_schema_sent_before_samples_and_frames_relay():
+async def test_frames_relay_as_cbor_messages():
     ws = FakeWebSocket()
     serializer = SendSerializer(ws)
-    composition = _composition()
-
     queue: asyncio.Queue[FrameContext | None] = asyncio.Queue()
 
     async def source():
         return await queue.get()
 
-    relay = FrameRelay(
-        serializer=serializer,
-        source=source,
-        should_continue=lambda: True,
-    )
-    relay.set_composition(composition)
+    relay = FrameRelay(serializer=serializer, source=source, should_continue=lambda: True)
+    relay.set_composition(_composition())
 
-    # 1. Supervisor contract: schema first (on connect), before any sample.
-    await serializer.send_schema_json(encode_schema(composition.schema))
-    assert len(ws.sent_text) == 1
-    assert ws.sent_text[0].startswith("{")
-    assert '"stream_schema"' in ws.sent_text[0]
-    assert ws.sent_bytes == []
-
-    # 2. Start the relay and feed frames — every context becomes one sample
-    # (no ack window gates the send).
     relay_task = asyncio.create_task(relay.run())
-
     await queue.put(_frame_ctx(0))
     await queue.put(_frame_ctx(1))
     await _wait_for_sent_bytes(ws, 2)
-
     await queue.put(_frame_ctx(2))
     await _wait_for_sent_bytes(ws, 3)
-
     relay_task.cancel()
     try:
         await relay_task
     except asyncio.CancelledError:
         pass
 
-    # All three frames became binary sample frames with the sample tag byte.
-    assert len(ws.sent_bytes) >= 1
-    assert ws.sent_bytes[0][0] == int(MessageType.SAMPLE_HEADER)
+    frame_numbers = []
     for blob in ws.sent_bytes:
-        sample = decode_sample(blob)
-        assert sample.frame_number in (0, 1, 2)
-
+        message = cbor2.loads(blob)
+        assert message["kind"] == "frame"
+        frame_numbers.append(message["frame_number"])
+    assert frame_numbers == [0, 1, 2]
     assert relay.last_sent_frame_number == 2
 
 
 async def test_relay_stops_on_its_own_when_should_continue_flips():
-    """A2 — the relay owns its exit condition; no reliance on task cancel."""
     ws = FakeWebSocket()
     serializer = SendSerializer(ws)
     queue: asyncio.Queue[FrameContext | None] = asyncio.Queue()
@@ -175,23 +140,17 @@ async def test_relay_stops_on_its_own_when_should_continue_flips():
 
     task = asyncio.create_task(relay.run())
     await asyncio.sleep(0.05)
-    assert not task.done()  # running, blocked on the empty source
+    assert not task.done()
 
     keep_running["value"] = False
-    await queue.put(None)  # wake it so it can observe the flag
+    await queue.put(None)
     await asyncio.wait_for(task, timeout=2.0)
     assert task.done()
-    assert not task.cancelled()  # exited by its own loop condition, not a cancel
+    assert not task.cancelled()
 
 
 def test_message_carries_segment_lengths():
-    """The aggregator output message carries the rigidifier's measured lengths."""
-    synthetic = {
-        "hips": 246.5,
-        "left_upper_arm": 333.0,
-        "right_hand": 180.0,
-        "left_thumb_distal": 25.0,
-    }
+    synthetic = {"hips": 246.5, "left_upper_arm": 333.0}
     msg = AggregationNodeOutputMessage(segment_lengths=synthetic)
     assert msg.segment_lengths == synthetic
 

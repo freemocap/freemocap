@@ -1,5 +1,7 @@
 # Backend Message Relay + WebSocket Send-Path
 
+> **Status: IMPLEMENTED** — the backend now matches this doc (see HANDOFF.md for the verified green state).
+
 **Describes:** freemocap/api/websocket/ — send_serializer.py, frame_relay.py, websocket_server.py —
 recomposed as a single **message relay** that emits typed, self-describing messages instead of a schema
 plus binary samples. This completes the websocket_server.py breakup in the archived spec 06.

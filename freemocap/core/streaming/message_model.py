@@ -2,8 +2,8 @@
 
 Every message is a frozen slots dataclass: a ClassVar "kind" (a MessageKind
 StrEnum), the envelope fields (version, timestamp, sequence), and a kind payload.
-There is no schema and no sample — each message carries everything needed to
-decode it. Serialization is encode_message, which walks the dataclass fields
+Each message is self-describing — it carries everything needed to decode it.
+Serialization is encode_message, which walks the dataclass fields
 in declaration order (the documented field order: kind, version, timestamp,
 sequence, then the payload) and omits None-valued optional fields.
 
@@ -91,8 +91,7 @@ class ChannelBlock:
     """One named column block: kind + names + columns + data (a byte string of
     packed float32 little-endian, columns by names, row-major). camera_id is
     present only on the per-camera overlay channels (OVERLAY_2D /
-    OVERLAY_REPROJECTIONS); the old overlay_layer byte folds into the two
-    distinct channel kinds."""
+    OVERLAY_REPROJECTIONS)."""
 
     kind: ChannelKind
     names: tuple[str, ...]

@@ -1,10 +1,11 @@
-"""F5a — the full realtime loop, backend half of the gate.
+"""F5a — the full realtime loop, backend half of the gate (message path).
 
-Synthetic rtmpose keypoints → the real rigidifier → the real orientation solver
-→ a real aggregator message → sample bytes → decode → the wire rotations equal
-the solver's, and a mock-camera standing run yields **non-NaN ROTATIONS_WORLD**
-for every solved segment. An arm-abduction frame set then shows the change
-lands where it should: the humerus rotates ~90° while the spine stays put.
+Synthetic rtmpose keypoints -> the real rigidifier -> the real orientation solver
+-> a real aggregator message -> a self-describing frame message -> CBOR -> the
+wire rotations equal the solver's, and a mock-camera standing run yields non-NaN
+ROTATIONS_WORLD for every solved segment. An arm-abduction frame set then shows
+the change lands where it should: the humerus rotates ~90° while the spine stays
+put.
 
 This is the backend half of F5; the frontend integration test and the user's
 manual run are the other halves.
@@ -13,20 +14,16 @@ from __future__ import annotations
 
 import math
 
+import cbor2
 import numpy as np
 
-# NOTE the import order matters: ``realtime_pipeline_config`` must NOT be the
-# first freemocap import — importing it first trips a circular import through
-# ``pubsub_topics`` (``pubsub_topics`` imports the config; if the config is
-# still mid-init, the re-import finds it partially initialized).
-from freemocap.core.streaming.standard_stream import (
-    ChannelKind,
-    StreamSample,
-    StreamSchema,
-    decode_sample,
-)
-from freemocap.core.streaming.standard_stream.producers import compose, compose_sample
-from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+# NOTE the import order matters: realtime_pipeline_config must NOT be the first
+# freemocap import — importing it first trips a circular import through
+# pubsub_topics (pubsub_topics imports the config; if the config is still
+# mid-init, the re-import finds it partially initialized).
+from freemocap.core.streaming.message_composer import compose_messages
+from freemocap.core.streaming.message_model import ChannelKind, encode_message
+from freemocap.core.streaming.producers.producer_contexts import (
     FrameContext,
     StreamContext,
 )
@@ -117,7 +114,7 @@ def _abducted_left_arm(pose: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
 def _observation(
     *, frame_number: int, body_points: dict[str, tuple[float, float]]
 ) -> Observation:
-    """A minimal per-camera skeleton Observation with a ``body`` stage."""
+    """A minimal per-camera skeleton Observation with a body stage."""
     names = tuple(body_points.keys())
     xyz = np.array([(x, y, 0.0) for x, y in body_points.values()], dtype=np.float64)
     visibility = np.full(len(names), 1.0)
@@ -161,7 +158,7 @@ def _solve(
     n_frames: int = 30,
     dt: float = 1.0,
 ) -> FrameOrientationResult:
-    """Feed ``n`` identical frames, then solve the last frame (damped)."""
+    """Feed n identical frames, then solve the last frame (damped)."""
     result = None
     for i in range(n_frames):
         result = rig.rigidify_frame(pose, measured=pose, t=float(i) * dt)
@@ -226,22 +223,35 @@ def _message(
     )
 
 
-def _schema(model: StandardHuman) -> StreamSchema:
-    """The composed schema; live lengths ride the per-frame SEGMENT_LENGTHS block."""
-    return compose(
+def _frame_message(model, result, orientation, pose, lengths) -> dict:
+    """Compose the self-describing frame message, encode, and CBOR-decode."""
+    composition = compose_messages(
         StreamContext(
             standard_human=model,
             camera_ids=("cam-0", "cam-1"),
             tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
             pipeline_live=True,
-        ),
-        stream_id="loop",
-        stream_name="full-loop",
-    ).schema
+        )
+    )
+    frame = composition.compose_frame_message(
+        FrameContext(
+            frame_number=7,
+            timestamp=0.0,
+            aggregator_output=_message(model, result, orientation, pose, lengths),
+        )
+    )
+    return cbor2.loads(encode_message(frame))
 
 
-def _block_by_kind(sample: StreamSample, kind: ChannelKind):
-    return [b for b in sample.blocks if b.kind is kind]
+def _channel_by_kind(restored: dict, kind: str) -> dict:
+    for channel in restored["subjects"][0]["channels"]:
+        if channel["kind"] == kind:
+            return channel
+    raise AssertionError(f"no {kind} channel in the frame")
+
+
+def _channel_data(channel: dict, cols: int) -> np.ndarray:
+    return np.frombuffer(channel["data"], dtype="<f4").reshape(len(channel["names"]), cols)
 
 
 def _quat_angle_rad(a: np.ndarray, b: np.ndarray) -> float:
@@ -254,7 +264,7 @@ def _quat_angle_rad(a: np.ndarray, b: np.ndarray) -> float:
 
 
 def test_full_loop_wire_rotations_equal_solver_and_are_finite():
-    """aggregator → sample → bytes → decode: rotations identical + non-NaN."""
+    """aggregator -> frame message -> CBOR -> decode: rotations identical + non-NaN."""
     model = compose_standard_human()
     rig = RealtimeSkeletonRigidifier.create(
         standard_human=model, detector_type="rtmpose", height_mm=NOMINAL_HEIGHT_MM
@@ -262,7 +272,6 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     pose = _standing_pose()
     orientation = _solve(model, rig, pose)
 
-    # Every solved segment's world quaternion is finite — the mock-camera gate.
     world = orientation.world_quaternions
     assert world, "the standing pose must solve segments"
     for name, q in world.items():
@@ -271,49 +280,30 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
 
     result = rig.rigidify_frame(pose, measured=pose, t=100.0)
     lengths = _measured_lengths(model, rig)
-    message = _message(model, result, orientation, pose, lengths)
-    sample = compose_sample(
-        compose(
-            StreamContext(
-                standard_human=model,
-                camera_ids=("cam-0", "cam-1"),
-                tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
-                pipeline_live=True,
-            ),
-            stream_id="loop",
-            stream_name="full-loop",
-        ),
-        FrameContext(
-            frame_number=message.frame_number,
-            timestamp=0.0,
-            aggregator_output=message,
-        ),
-    )
-    restored = StreamSample.from_bytes(sample.to_bytes())
+    restored = _frame_message(model, result, orientation, pose, lengths)
 
-    # Wire ROTATIONS_WORLD rows equal the solver's quaternions (float32 wire).
-    (world_block,) = _block_by_kind(restored, ChannelKind.ROTATIONS_WORLD)
-    group = _schema(model).channels[4]
-    name_to_idx = {n: i for i, n in enumerate(group.names)}
+    # ROTATIONS_WORLD rows equal the solver's quaternions (float32 wire).
+    world_channel = _channel_by_kind(restored, "ROTATIONS_WORLD")
+    world_data = _channel_data(world_channel, 4)
+    name_to_idx = {n: i for i, n in enumerate(world_channel["names"])}
     for name, q in world.items():
-        row = world_block.data[name_to_idx[name]]
-        np.testing.assert_allclose(row, np.asarray(q, dtype=np.float32), atol=1e-6)
+        np.testing.assert_allclose(
+            world_data[name_to_idx[name]], np.asarray(q, dtype=np.float32), atol=1e-6
+        )
 
     # LANDMARKS_3D carries the rigidified hips_center.
-    (lm_block,) = _block_by_kind(restored, ChannelKind.LANDMARKS_3D)
-    lm_names = _schema(model).channels[1].names
-    hips_idx = lm_names.index("hips_center")
+    lm_channel = _channel_by_kind(restored, "LANDMARKS_3D")
+    lm_data = _channel_data(lm_channel, 4)
+    hips_idx = lm_channel["names"].index("hips_center")
     np.testing.assert_allclose(
-        lm_block.data[hips_idx, :3], result.body_positions["hips_center"], atol=1e-4
+        lm_data[hips_idx, :3], result.body_positions["hips_center"], atol=1e-4
     )
 
     # KEYPOINTS_3D carries the tracker-named nose measurement.
-    (kp_block,) = _block_by_kind(restored, ChannelKind.KEYPOINTS_3D)
-    kp_names = _schema(model).channels[0].names
-    nose_idx = kp_names.index("nose")
-    np.testing.assert_allclose(
-        kp_block.data[nose_idx, :3], pose["nose"], atol=1e-4
-    )
+    kp_channel = _channel_by_kind(restored, "KEYPOINTS_3D")
+    kp_data = _channel_data(kp_channel, 4)
+    nose_idx = kp_channel["names"].index("nose")
+    np.testing.assert_allclose(kp_data[nose_idx, :3], pose["nose"], atol=1e-4)
 
 
 def test_arm_abduction_rotates_humerus_and_leaves_spine():

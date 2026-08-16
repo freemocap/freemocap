@@ -1,18 +1,20 @@
 """
-WebSocket server — the per-connection supervisor of the single standard stream.
+WebSocket server — the per-connection supervisor of the self-describing message
+stream.
 
-Thin supervisor for one WebSocket connection: composes the standard-stream send
-path (SendSerializer + FrameRelay) with the log relay, app-state sender, and
-the inbound client-message handler (display sizes). The FrameRelay is the ONE
-consumer of the pipeline's aggregator output; the camera images ride the same
-sample as the ``IMAGE_JPEG`` block. Flow control is newest-wins — there is no
-ack window; the inbound ``frameAcknowledgment`` carries ``displayImageSizes``
-only (they drive SkellyCam's JPEG downscaling).
+Thin supervisor for one WebSocket connection: composes the message send path
+(SendSerializer + FrameRelay) with the replace-kind emitters (convention, model,
+camera_layout), the log relay, the app-state sender, the posthoc-progress
+sender, and the inbound client-message handler (display sizes). The FrameRelay
+is the ONE consumer of the pipeline's aggregator output; the camera images ride
+each frame message's image field. Flow control is newest-wins — there is no ack
+window; the inbound frameAcknowledgment carries displayImageSizes only (they
+drive SkellyCam's JPEG downscaling).
 
-The schema is composed from the channel producers whenever the data model
-changes (pipeline start/stop, detector, camera set) — one composite signature,
-not per-cause checks. "Camera-only" vs "camera + reconstruction" is two schemas
-produced by one mechanism.
+The replace-kinds are emitted on connect and re-emitted whole whenever the data
+model changes (pipeline start/stop, detector, camera set) — one composite
+signature, not per-cause checks. "Camera-only" vs "camera + reconstruction" is
+two message sets produced by one mechanism.
 """
 import asyncio
 import json
@@ -78,8 +80,8 @@ class WebsocketServer:
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
         self._standard_human = compose_standard_human()
-        # Config-update subscriptions (one each, keyed) — the schema rebuilds
-        # on ANY config change riding the pubsub network.
+        # Config-update subscriptions (one each, keyed) — the replace-kinds
+        # re-emit on ANY config change riding the pubsub network.
         self._config_subscriptions: dict[tuple[str, str], object] = {}
         # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
@@ -87,11 +89,11 @@ class WebsocketServer:
             source=self._await_next_frame,
             should_continue=lambda: self.should_continue,
         )
-        # The initial composition (may be image-only — the schema re-sends when
-        # the data model changes, e.g. a pipeline starts).
+        # The initial composition (may be image-only — the replace-kinds re-emit
+        # when the data model changes, e.g. a pipeline starts).
         self._relay.set_composition(self._compose_current())
 
-    # ── Schema lifecycle ─────────────────────────────────────────────────
+    # ── Composition lifecycle ──────────────────────────────────────────
 
     def _build_stream_context(self) -> StreamContext:
         camera_ids = self._current_camera_ids()
@@ -117,7 +119,7 @@ class WebsocketServer:
         """Subscribe (once each, keyed) to the config-update topics of every
         live pipeline + its camera group.
 
-        The schema rebuilds on ANY config change riding the existing pubsub
+        The replace-kinds re-emit on ANY config change riding the existing pubsub
         network: freemocap's ``PipelineConfigUpdateTopic`` (per pipeline) and
         skellycam's ``UPDATE_CAMERA_SETTINGS`` / ``EXTRACTED_CONFIG`` (per
         camera group — the camera workers publish the extracted config when
@@ -180,7 +182,7 @@ class WebsocketServer:
     def _camera_image_sizes(self) -> dict[str, tuple[int, int]]:
         """Per-camera capture-resolution image size (width, height) in px.
 
-        The coordinate space of the OVERLAY_2D values; the schema carries it so
+        The coordinate space of the OVERLAY_2D values; the camera_layout message carries it so
         consumers can scale overlay points to their own display size. Sourced
         from the live pipelines' camera configs (rotation-aware width/height).
         """
@@ -196,10 +198,10 @@ class WebsocketServer:
     def _current_detector_type(self) -> str:
         """The configured detector type from the live realtime pipelines.
 
-        One pipeline per camera set today; the schema's tracker keypoint names
+        One pipeline per camera set today; the frame's tracker keypoint names
         come from the first live pipeline's config. Defaults to ``rtmpose``
-        (the config default) when no pipeline is running yet — the schema
-        re-sends when the type changes.
+        (the config default) when no pipeline is running yet — the replace-kinds
+        re-emit when the type changes.
         """
         for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
             if pipeline.alive:
@@ -211,10 +213,10 @@ class WebsocketServer:
     async def _await_next_frame(self) -> "FrameContext | None":
         """Wait for the next frame, then compose its FrameContext.
 
-        One sample per frame carries images + overlays + reconstruction
+        One frame message per frame carries images + overlays + reconstruction
         together — while a pipeline is live the source waits for the NEXT
         aggregator output (lockstep, newest-wins); with no pipeline it serves
-        camera images directly (the schema declares IMAGE_JPEG only).
+        camera images directly (the frame's image field).
         """
         await self._app.wait_for_realtime_result(timeout=0.5)
 
@@ -226,7 +228,7 @@ class WebsocketServer:
         )
         if not outputs:
             # Pipeline live but no new solver output — keep waiting; the
-            # sample must carry the frame's pose and image together.
+            # frame message must carry the frame's pose and image together.
             return None
         newest = max(outputs, key=lambda m: m.frame_number)
 
@@ -251,11 +253,11 @@ class WebsocketServer:
 
         if image_bytes is None:
             # A live pipeline frame with no camera-group payload is an
-            # anomaly — surface it rather than silently shipping a sample
-            # without its image block.
+            # anomaly — surface it rather than silently shipping a frame message
+            # without its image.
             logger.warning(
                 f"camera-group payload unavailable for aggregator frame "
-                f"{newest.frame_number} — sample sent without its IMAGE_JPEG block"
+                f"{newest.frame_number} — frame message sent without its image"
             )
 
         return FrameContext(
@@ -268,7 +270,7 @@ class WebsocketServer:
     async def _await_camera_only_frame(self) -> "FrameContext | None":
         """Camera-only mode (no realtime pipeline): serve camera images.
 
-        The schema declares IMAGE_JPEG only; each sample carries just the
+        Each frame message carries just the
         newest camera-group payload.
         """
         await self._ensure_composition()
@@ -408,7 +410,7 @@ class WebsocketServer:
         camera_group_id: CameraGroupIdString,
         frame_number: FrameNumberInt,
     ) -> None:
-        """Record the server-side sample cadence.
+        """Record the server-side frame cadence.
 
         ``ServerFramerateCalculator`` derives per-frame durations from
         consecutive timestamps — its documented input is ``perf_counter_ns``

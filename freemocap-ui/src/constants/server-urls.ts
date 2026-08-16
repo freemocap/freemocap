@@ -104,6 +104,9 @@ class ServerUrls {
             blenderExport: `${baseUrl}/freemocap/blender/export`,
             blenderOpen: `${baseUrl}/freemocap/blender/open`,
 
+            // Ffmpeg endpoints
+            ffmpegDetect: `${baseUrl}/freemocap/ffmpeg/detect`,
+
             // WebSocket
             websocket: this.getWebSocketUrl(),
         };

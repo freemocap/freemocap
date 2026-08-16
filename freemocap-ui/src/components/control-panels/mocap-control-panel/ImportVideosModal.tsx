@@ -12,6 +12,7 @@ import {
 } from '@/store/slices/mocap';
 import {selectActivePipelines} from '@/store/slices/pipelines';
 import {activeRecordingSet, splitParentAndName} from '@/store/slices/active-recording/active-recording-slice';
+import {useFfmpeg} from '@/hooks/useFfmpeg';
 import ButtonSm from '@/components/ui-components/ButtonSm';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import Checkbox from '@/components/ui-components/Checkbox';
@@ -55,6 +56,9 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
     const [syncJobId, setSyncJobId] = useState<string | null>(null);
     const [syncError, setSyncError] = useState<string | null>(null);
 
+    const ffmpeg = useFfmpeg();
+    const ffmpegMissing = ffmpeg.found === false;
+
     const activePipelines = useAppSelector(selectActivePipelines);
     const syncProgress = syncJobId ? activePipelines[syncJobId] : undefined;
 
@@ -82,7 +86,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             .then((result) => {
                 if (!cancelled) {
                     setSyncCheck(result);
-                    if (!result.synchronized) setSyncEnabled(true);
+                    if (!result.synchronized && ffmpeg.found !== false) setSyncEnabled(true);
                 }
             })
             .catch((err) => {
@@ -199,8 +203,8 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             ? 'Select video files to import'
             : checkingSync
                 ? 'Checking synchronization…'
-                : (syncCheck && !syncCheck.synchronized && !syncEnabled)
-                    ? 'Selected videos are not synchronized'
+                : (syncCheck && !syncCheck.synchronized && (!syncEnabled || ffmpegMissing))
+                    ? (ffmpegMissing ? 'Selected videos are not synchronized and ffmpeg is required to synchronize them' : 'Selected videos are not synchronized')
                     : null;
 
     if (!open) return null;
@@ -282,6 +286,16 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                                 )}
                             </div>
 
+                            {ffmpegMissing && (
+                                <div className="toast-notification error">
+                                    <p className="text sm">
+                                        {ffmpeg.message ?? 'ffmpeg was not found on your system PATH.'} Video
+                                        synchronization requires ffmpeg - install it and restart FreeMoCap to
+                                        enable this option.
+                                    </p>
+                                </div>
+                            )}
+
                             {syncCheck && !syncCheck.synchronized && (
                                 <div className="flex flex-col gap-1">
                                     {syncCheck.videos.map((video) => (
@@ -295,9 +309,9 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
 
                             <Checkbox
                                 label="Synchronize videos on import"
-                                checked={syncEnabled}
+                                checked={syncEnabled && !ffmpegMissing}
                                 onChange={(e) => setSyncEnabled(e.target.checked)}
-                                disabled={busy || (syncCheck ? !syncCheck.synchronized : false)}
+                                disabled={busy || ffmpegMissing || (syncCheck ? !syncCheck.synchronized : false)}
                             />
 
                             {syncEnabled && (

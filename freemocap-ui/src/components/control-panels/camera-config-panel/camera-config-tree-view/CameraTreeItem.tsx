@@ -96,8 +96,8 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
               <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                 <p className="text-white text md">
                   {camera.selected
-                    ? "Remove from capture group"
-                    : "Add to capture group"}
+                    ? t("camera.removeFromCapture")
+                    : t("camera.addToCapture")}
                 </p>
               </div>
             </div>
@@ -118,7 +118,7 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
               className="text sm text-white text-nowrap"
               
             >
-              Camera {camera.index}
+              {t("camera.numbered", {index: camera.index})}
             </p>
             <p
               className="text sm text-gray text-nowrap"
@@ -150,8 +150,8 @@ export const CameraTreeItem: React.FC<CameraTreeItemProps> = ({ camera }) => {
                 <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
                   <p className="text-white text md">
                     {camera.realtimeEnabled
-                      ? "Remove from realtime pipeline"
-                      : "Add to realtime pipeline"}
+                      ? t("camera.removeFromRealtime")
+                      : t("camera.addToRealtime")}
                   </p>
                 </div>
               </div>

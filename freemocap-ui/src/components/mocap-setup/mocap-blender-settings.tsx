@@ -5,6 +5,7 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 import { useMocap } from "@/hooks/useMocap";
 import { useBlender } from "@/hooks/useBlender";
 import { useElectronIPC } from "@/services";
+import { useTranslation } from "react-i18next";
 
 interface MOCAPBlenderSettingsProps {
   open: boolean;
@@ -15,6 +16,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
   open,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
 
   const { mocapRecordingPath, detectorType } = useMocap();
@@ -101,20 +103,20 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
       <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Blender settings" />
+          <SubactionHeader text={t("blender.settings")} />
         </div>
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row items-center">
             <span className="icon icon-size-20 blender-icon"></span>
-            <p className="p-1 text-gray">Blender executable</p>
+            <p className="p-1 text-gray">{t("blender.executable")}</p>
           </div>
         <ButtonSm
-            text={isDetecting ? "Detecting..." : "Autodetect"}
+            text={isDetecting ? t("blender.detecting") : t("blender.autodetect")}
             onClick={redetectBlender}
             disabled={isDetecting}
             tooltip={true}
             tooltipPosition="pos-top-right"
-            tooltipText="Automatically find Blender installation on your system"
+            tooltipText={t("blender.autodetectHelp")}
           />
         </div>
 
@@ -123,7 +125,7 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
             onClick={handleSelectBlenderExe}
-            title="Click to select Blender executable"
+            title={t("blender.selectExecutableHelp")}
             disabled={!isElectron}
             style={{ minWidth: 0, overflow: "hidden" }}
           >
@@ -139,43 +141,42 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
                 className="text-gray flex-1 text md"
                 style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
               >
-                {isDetecting ? "Detecting…" : "Select Blender executable"}
+                {isDetecting ? t("blender.detecting") : t("blender.selectExecutable")}
               </p>
             )}
           </button>
         </div>
         <p className="text sm text-gray p-1 mb-3">
           {isUsingManualBlenderPath
-            ? "Using manually selected Blender"
+            ? t("blender.usingManual")
             : effectiveBlenderExePath
-              ? "Auto-detected Blender"
-              : "Click to browse for blender.exe"}
+              ? t("blender.autoDetected")
+              : t("blender.browseHint")}
         </p>
 
         {!blenderSupported && (
           <p className="text sm text-gray p-1">
-            Blender export only supports MediaPipe output right now - switch the detector
-            to MediaPipe to enable it.
+            {t("blender.mediapipeOnly")}
           </p>
         )}
 
         {/* Toggles */}
         <ToggleComponent
-          text="Export to Blender after mocap processing"
+          text={t("blender.exportAfterProcessing")}
           isToggled={exportToBlenderEnabled && blenderSupported}
           onToggle={setExportToBlenderEnabled}
           disabled={!blenderSupported}
         />
 
         <ToggleComponent
-          text="Auto-open .blend file in Blender when done"
+          text={t("blender.autoOpenBlend")}
           isToggled={autoOpenBlendFile && blenderSupported}
           onToggle={setAutoOpenBlendFile}
           disabled={!blenderSupported || !exportToBlenderEnabled}
         />
 
         <ButtonSm
-          text={isExporting ? "Exporting to Blender…" : "Process Recording with Blender"}
+          text={isExporting ? t("blender.exporting") : t("blender.processRecording")}
           onClick={handleProcessWithBlender}
           disabled={!canExport}
           className="full-width quaternary mt-3"
@@ -183,24 +184,24 @@ const MOCAPBlenderSettings: React.FC<MOCAPBlenderSettingsProps> = ({
           tooltipPosition="pos-bottom-left"
           tooltipText={
             blenderSupported
-              ? "Send your motion capture recording to Blender for further processing"
-              : "Blender export only supports MediaPipe output right now"
+              ? t("blender.processHelp")
+              : t("blender.mediapipeOnlyShort")
           }
         />
 
         <ButtonSm
-          text={isOpening ? "Opening…" : "Open .blend in Blender"}
+          text={isOpening ? t("blender.opening") : t("blender.openBlend")}
           onClick={handleOpenInBlender}
           disabled={!canOpen}
           className="full-width quaternary"
           tooltip={true}
           tooltipPosition="pos-bottom-left"
-          tooltipText="Launch Blender and open the .blend file"
+          tooltipText={t("blender.openBlendHelp")}
         />
 
         {lastBlendFilePath && (
           <p className="text sm text-gray p-1 mb-3">
-            Last export: {lastBlendFilePath}
+            {t("blender.lastExport")} {lastBlendFilePath}
           </p>
         )}
       </div>

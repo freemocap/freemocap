@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useMemo, useState} from "react";
+import {useTranslation} from "react-i18next";
 import {CollapsibleSidebarSection} from "@/components/common/CollapsibleSidebarSection";
 import {DirectoryStatusPanel} from "@/components/common/DirectoryStatusPanel";
 import {useMocap} from "@/hooks/useMocap";
@@ -9,6 +10,7 @@ import {useCalibration} from "@/hooks/useCalibration";
 import IconButton from "@/components/ui-components/IconButton";
 
 export const MocapTaskTreeItem: React.FC = () => {
+    const {t} = useTranslation();
     const [localError, setLocalError] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const {api, isElectron} = useElectronIPC();
@@ -65,7 +67,7 @@ export const MocapTaskTreeItem: React.FC = () => {
             }
         } catch (err) {
             console.error("Failed to select directory:", err);
-            setLocalError("Failed to select directory");
+            setLocalError(t("mocap.selectDirectoryFailed"));
         }
     };
 
@@ -116,16 +118,16 @@ export const MocapTaskTreeItem: React.FC = () => {
             }
         } catch (err) {
             console.error("Failed to select TOML file:", err);
-            setLocalError("Failed to select TOML file");
+            setLocalError(t("mocap.selectTomlFailed"));
         }
     };
 
     const displayError = error || localError || directoryInfo?.errorMessage;
 
     const pathHelperText = useMemo(() => {
-        if (isUsingManualPath) return "Using custom path";
-        return "Using default recording directory";
-    }, [isUsingManualPath]);
+        if (isUsingManualPath) return t("mocap.usingCustomPath");
+        return t("mocap.usingDefaultDirectory");
+    }, [isUsingManualPath, t]);
 
     // Effective calibration path (considers all sources)
     const effectiveCalibrationTomlPath = useMemo(() => {
@@ -145,24 +147,24 @@ export const MocapTaskTreeItem: React.FC = () => {
     const mocapStatusIcon = useMemo(() => {
         if (mocapStatus === "ok") {
             return (
-                <span title="Calibration file found — ready to process">
+                <span title={t("mocap.calibrationReady")}>
                     <span className="icon upToDate-icon icon-size-20" />
                 </span>
             );
         }
         if (mocapStatus === "bad") {
             return (
-                <span title="No calibration file found at this path">
+                <span title={t("mocap.noCalibrationAtPath")}>
                     <span className="icon close-icon icon-size-20" />
                 </span>
             );
         }
         return (
-            <span title="No mocap directory selected">
+            <span title={t("mocap.noDirectorySelected")}>
                 <span className="icon warning-icon icon-size-20" />
             </span>
         );
-    }, [mocapStatus]);
+    }, [mocapStatus, t]);
 
     const refreshButton = (
         <IconButton
@@ -172,33 +174,33 @@ export const MocapTaskTreeItem: React.FC = () => {
                 handleRefresh();
             }}
             disabled={!mocapRecordingPath || isLoading || isRefreshing}
-            title={mocapRecordingPath ? "Re-check mocap folder" : "No path set"}
+            title={mocapRecordingPath ? t("mocap.recheckFolder") : t("mocap.noPathSet")}
         />
     );
 
     // Derive status for collapsed summary
     const statusLabel = isRecording
-        ? `Recording ${recordingProgress.toFixed(0)}%`
+        ? t("mocap.recordingPercent", {progress: recordingProgress.toFixed(0)})
         : isLoading
-            ? "Processing..."
+            ? t("mocap.processing")
             : effectiveCalibrationTomlPath
-                ? "Ready"
-                : "Idle";
+                ? t("mocap.ready")
+                : t("mocap.idle");
 
     const processBlockedReason = useMemo((): string | null => {
         if (canProcessMocapRecording) return null;
-        if (isRecording) return "Stop recording before processing";
-        if (isLoading) return "Processing already in progress";
-        if (!mocapRecordingPath) return "Select a recording folder to process";
-        if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
+        if (isRecording) return t("mocap.blocked.stopRecording");
+        if (isLoading) return t("mocap.blocked.processing");
+        if (!mocapRecordingPath) return t("mocap.blocked.selectFolder");
+        if (!directoryInfo?.hasVideos) return t("mocap.blocked.noVideos");
         const hasAnyCalibration =
             directoryInfo?.cameraCount === 1 ||
             !!calibrationTomlPath ||
             !!directoryInfo?.cameraMocapTomlPath ||
             !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
-        if (!hasAnyCalibration) return "No calibration file found — select a calibration TOML or run calibration first";
-        return "Cannot process recording";
-    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
+        if (!hasAnyCalibration) return t("mocap.blocked.noCalibration");
+        return t("mocap.blocked.cannotProcess");
+    }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath, t]);
 
     // Primary controls: status icon + refresh + record start/stop
     const headerControls = (
@@ -214,7 +216,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         dispatchStopMocapRecording();
                     }}
                     disabled={isLoading}
-                    title="Stop mocap recording"
+                    title={t("mocap.stopRecording")}
                 />
             ) : (
                 <IconButton
@@ -224,7 +226,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         dispatchStartMocapRecording();
                     }}
                     disabled={!canStartRecording || isLoading}
-                    title={canStartRecording ? "Start mocap recording" : "Cannot record yet"}
+                    title={canStartRecording ? t("mocap.startRecording") : t("mocap.cannotRecordYet")}
                 />
             )}
         </div>
@@ -233,7 +235,7 @@ export const MocapTaskTreeItem: React.FC = () => {
     return (
         <CollapsibleSidebarSection
             icon={<span className="icon processmocap-icon icon-size-20" />}
-            title="Motion Capture"
+            title={t("mocap.title")}
             summaryContent={
                 <span className="tag text sm">{statusLabel}</span>
             }
@@ -247,7 +249,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         <div className="toast-notification error">
                             <div className="flex flex-row items-center justify-content-space-between">
                                 <p className="text sm">{displayError}</p>
-                                <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={handleClearError} title="Dismiss" />
+                                <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={handleClearError} title={t("dismiss")} />
                             </div>
                         </div>
                     )}
@@ -259,7 +261,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                             onClick={dispatchStartMocapRecording}
                             disabled={!canStartRecording || isLoading}
                         >
-                            <span className="icon play-icon icon-size-20" /> Start Mocap Recording
+                            <span className="icon play-icon icon-size-20" /> {t("mocap.startRecording")}
                         </button>
                         {isRecording && (
                             <button
@@ -267,7 +269,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                                 onClick={dispatchStopMocapRecording}
                                 disabled={isLoading}
                             >
-                                <span className="icon stopstreaming-icon icon-size-20" /> Stop Recording
+                                <span className="icon stopstreaming-icon icon-size-20" /> {t("stopRecording")}
                             </button>
                         )}
                     </div>
@@ -279,21 +281,21 @@ export const MocapTaskTreeItem: React.FC = () => {
                                 className="input-field text md"
                                 value={mocapRecordingPath ?? ''}
                                 onChange={handlePathInputChange}
-                                placeholder="Mocap Recording Path"
+                                placeholder={t("mocap.recordingPath")}
                             />
                             <div className="flex flex-row pos-abs right-4 top-50">
                                 {isUsingManualPath && (
                                     <IconButton
                                         icon="clear-icon"
                                         onClick={handleClearManualPath}
-                                        title="Clear manual path (revert to default)"
+                                        title={t("mocap.clearManualPath")}
                                     />
                                 )}
                                 <IconButton
                                     icon="load-icon"
                                     onClick={handleSelectDirectory}
                                     disabled={!isElectron}
-                                    title="Select directory"
+                                    title={t("mocap.selectDirectory")}
                                 />
                             </div>
                         </div>
@@ -302,8 +304,8 @@ export const MocapTaskTreeItem: React.FC = () => {
 
                     {/* Directory Status Info */}
                     <DirectoryStatusPanel
-                        title="Mocap Folder Status"
-                        tomlLabel="Has calibration TOML"
+                        title={t("mocap.folderStatus")}
+                        tomlLabel={t("mocap.hasCalibrationToml")}
                         directoryInfo={directoryInfo ? {
                             ...directoryInfo,
                             tomlPath: directoryInfo.cameraMocapTomlPath,
@@ -319,14 +321,14 @@ export const MocapTaskTreeItem: React.FC = () => {
                         <div className="flex flex-col gap-1">
                             <div className="flex flex-row items-center gap-1">
                                 <span className="icon file-icon icon-size-20" />
-                                <p className="text sm text-gray" style={{fontWeight: 500}}>Calibration TOML</p>
+                                <p className="text sm text-gray" style={{fontWeight: 500}}>{t("mocap.calibrationToml")}</p>
                             </div>
                             <p className="text sm text-gray">
                                 {calibrationTomlPath
-                                    ? "Using specified calibration file"
+                                    ? t("mocap.usingSpecifiedCalibration")
                                     : effectiveCalibrationTomlPath
-                                        ? "Using auto-detected calibration"
-                                        : "No calibration file found"}
+                                        ? t("mocap.usingAutoCalibration")
+                                        : t("mocap.noCalibrationFound")}
                             </p>
                             {effectiveCalibrationTomlPath && (
                                 <p className="text sm block" style={{
@@ -343,14 +345,14 @@ export const MocapTaskTreeItem: React.FC = () => {
                                     onClick={clearCalibrationTomlPath}
                                     disabled={!calibrationTomlPath}
                                 >
-                                    Use Most Recent
+                                    {t("mocap.useMostRecent")}
                                 </button>
                                 <button
                                     className={`button sm flex-1 ${calibrationTomlPath ? "primary" : "secondary"}`}
                                     onClick={handleSelectCalibrationToml}
                                     disabled={!isElectron}
                                 >
-                                    <span className="icon file-icon icon-size-20" /> Select TOML
+                                    <span className="icon file-icon icon-size-20" /> {t("mocap.selectToml")}
                                 </button>
                             </div>
                         </div>
@@ -360,7 +362,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                     {isRecording && (
                         <div className="w-full">
                             <p className="text sm text-gray">
-                                Recording in Progress: {recordingProgress.toFixed(0)}%
+                                {t("mocap.recordingInProgress", {progress: recordingProgress.toFixed(0)})}
                             </p>
                             <div className="update-progress-track">
                                 <div
@@ -384,7 +386,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         disabled={!canProcessMocapRecording || isLoading}
                         title={processBlockedReason ?? undefined}
                     >
-                        Process Selected Recording
+                        {t("mocap.processSelected")}
                     </button>
                     {processBlockedReason && (
                         <p className="text sm text-gray">{processBlockedReason}</p>

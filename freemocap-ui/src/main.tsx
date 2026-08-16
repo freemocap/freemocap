@@ -1,15 +1,20 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './app/App'
 
 import './index.css'
-import './i18n/i18n'
+import {initializeI18n} from './i18n'
 
+async function bootstrap(): Promise<void> {
+    await initializeI18n()
+    const {default: App} = await import('./app/App')
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-    <React.StrictMode>
-        <App/>
-    </React.StrictMode>,
-)
+    ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+        <React.StrictMode>
+            <App/>
+        </React.StrictMode>,
+    )
 
-postMessage({payload: 'removeLoading'}, '*')
+    postMessage({payload: 'removeLoading'}, '*')
+}
+
+void bootstrap()

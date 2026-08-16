@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
+import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
 import {useAppDispatch} from '@/store';
 import {checkVideoSync, importVideos, VideoSyncInfo} from '@/store/slices/mocap';
@@ -27,6 +28,7 @@ function generateDefaultRecordingName(): string {
 }
 
 export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose, onImported}) => {
+    const {t} = useTranslation();
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
 
@@ -65,7 +67,9 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             .catch((err) => {
                 if (!cancelled) {
                     setSyncCheck(null);
-                    setError(typeof err === 'string' ? err : 'Failed to check video synchronization');
+                    setError(t("importVideos.syncCheckFailedDetail", {
+                        message: err instanceof Error ? err.message : String(err),
+                    }));
                 }
             })
             .finally(() => {
@@ -74,7 +78,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         return () => {
             cancelled = true;
         };
-    }, [open, videoPaths, dispatch]);
+    }, [open, videoPaths, dispatch, t]);
 
     useEffect(() => {
         if (!open) return;
@@ -95,9 +99,9 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             }
         } catch (err) {
             console.error('Failed to select video files:', err);
-            setError('Failed to select video files');
+            setError(t("importVideos.selectFailed"));
         }
-    }, [isElectron, api]);
+    }, [isElectron, api, t]);
 
     const handleClearSelection = useCallback(() => {
         setVideoPaths([]);
@@ -124,20 +128,22 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             onImported?.();
             onClose();
         } catch (err) {
-            setError(typeof err === 'string' ? err : 'Failed to import videos');
+            setError(t("importVideos.importFailedDetail", {
+                message: err instanceof Error ? err.message : String(err),
+            }));
         } finally {
             setBusy(false);
         }
-    }, [videoPaths, recordingName, busy, dispatch, onClose, onImported]);
+    }, [videoPaths, recordingName, busy, dispatch, onClose, onImported, t]);
 
     const importDisabledReason = busy
-        ? 'Importing…'
+        ? t("importVideos.importing")
         : videoPaths.length === 0
-            ? 'Select video files to import'
+            ? t("importVideos.selectFilesFirst")
             : checkingSync
-                ? 'Checking synchronization…'
+                ? t("importVideos.checkingSync")
                 : (!syncCheck || !syncCheck.synchronized)
-                    ? 'Selected videos are not synchronized'
+                    ? t("importVideos.notSynchronizedShort")
                     : null;
 
     if (!open) return null;
@@ -151,30 +157,29 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
             <div className="settings-modal bg-primary border-1 border-black pos-fixed elevated-sharp p-1 flex flex-col br-2">
                 <div className="flex flex-col p-2 gap-2 bg-middark br-1">
                     <div className="flex justify-content-space-between items-center">
-                        <SubactionHeader text="Import Videos"/>
+                        <SubactionHeader text={t("importVideos.title")}/>
                     </div>
 
                     <p className="text sm text-gray">
-                        Select pre-synchronized video files recorded outside FreeMoCap. A new recording
-                        folder will be created and the videos copied into it.
+                        {t("importVideos.description")}
                     </p>
 
                     <div className="flex flex-col gap-2 bg-secondary p-2 br-1">
-                        <SubactionHeader text="Video files" className="text-gray"/>
+                        <SubactionHeader text={t("importVideos.videoFiles")} className="text-gray"/>
                         <div className="flex flex-row gap-2">
                             <ButtonSm
-                                text="Choose Video Files..."
+                                text={t("importVideos.chooseFiles")}
                                 buttonType="quaternary"
                                 onClick={handleChooseFiles}
                                 disabled={!isElectron || busy}
                             />
                             <ButtonSm
-                                text="Clear Selection"
+                                text={t("importVideos.clearSelection")}
                                 buttonType="quaternary"
                                 onClick={handleClearSelection}
                                 disabled={videoPaths.length === 0 || busy}
                                 tooltip={videoPaths.length === 0}
-                                tooltipText="No video files selected"
+                                tooltipText={t("importVideos.noFilesSelected")}
                                 tooltipPosition="pos-top"
                             />
                         </div>
@@ -188,12 +193,12 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                                 ))}
                             </div>
                         ) : (
-                            <p className="text sm text-darkgray">No video files selected</p>
+                            <p className="text sm text-darkgray">{t("importVideos.noFilesSelected")}</p>
                         )}
                     </div>
 
                     <div className="flex flex-col gap-1 bg-secondary p-2 br-1">
-                        <SubactionHeader text="Recording name" className="text-gray"/>
+                        <SubactionHeader text={t("importVideos.recordingName")} className="text-gray"/>
                         <input
                             className="input-field text md"
                             value={recordingName}
@@ -204,17 +209,22 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                     </div>
 
                     {checkingSync && (
-                        <p className="text sm text-gray">Checking synchronization…</p>
+                        <p className="text sm text-gray">{t("importVideos.checkingSync")}</p>
                     )}
 
                     {syncCheck && !syncCheck.synchronized && (
                         <div className="toast-notification error">
-                            <p className="text sm">Selected videos are not synchronized — they have different frame counts.</p>
+                            <p className="text sm">{t("importVideos.notSynchronized")}</p>
                             <div className="flex flex-col gap-1">
                                 {syncCheck.videos.map((video) => (
                                     <p key={video.filename} className="text sm"
                                        style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
-                                        {video.filename}: {video.frameCount} frames ({video.fps.toFixed(2)} fps, {video.durationSeconds.toFixed(2)}s)
+                                        {t("importVideos.videoStats", {
+                                            filename: video.filename,
+                                            frames: video.frameCount,
+                                            fps: video.fps.toFixed(2),
+                                            seconds: video.durationSeconds.toFixed(2),
+                                        })}
                                     </p>
                                 ))}
                             </div>
@@ -228,9 +238,9 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                     )}
 
                     <div className="flex flex-row gap-2" style={{justifyContent: 'flex-end'}}>
-                        <ButtonSm text="Cancel" buttonType="quaternary" onClick={onClose} disabled={busy}/>
+                        <ButtonSm text={t("cancel")} buttonType="quaternary" onClick={onClose} disabled={busy}/>
                         <ButtonSm
-                            text={busy ? 'Importing…' : 'Import'}
+                            text={busy ? t("importVideos.importing") : t("importVideos.import")}
                             textColor="text-white"
                             className="primary accent"
                             onClick={handleImport}

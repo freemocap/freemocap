@@ -6,19 +6,15 @@ import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useRealtimePipelineSync } from '@/hooks/useRealtimePipelineSync';
 import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS } from '@/store/slices/mocap';
 import { CameraNodeConfig } from '@/store/slices/realtime/realtime-types';
+import { useTranslation } from 'react-i18next';
 
 interface RTPSkeletonSetupProps {
     open: boolean;
     onClose: () => void;
 }
 
-const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
-    { label: "Lite", value: "lite" },
-    { label: "Full", value: "full" },
-    { label: "Heavy", value: "heavy" },
-];
-
 const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) => {
+    const { t } = useTranslation();
     const modalRef = useRef<HTMLDivElement>(null);
     const { pipelineConfig, cameraNodeConfig, applyOrUpdatePipelineConfig } = useRealtimePipelineSync();
 
@@ -67,13 +63,13 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
 
                 {/* Header */}
                 <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Skeleton Setup" />
+                    <SubactionHeader text={t("detector.skeletonSetup")} />
                     <IconButton icon="close-icon" onClick={onClose} />
                 </div>
 
                 {/* Detector toggle */}
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Detector</span>
+                    <span className="text-sm">{t("detector.detector")}</span>
                     <div className="flex flex-row gap-1">
                         <SegmentedControl
                             size="sm"
@@ -92,12 +88,12 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 {detectorType === "rtmpose" && (
                     <>
                         <p className="text-sm text-gray p-1">
-                            133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
+                            {t("detector.rtmposeRealtimeDescription")}
                         </p>
 
                         {/* Model */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Model</span>
+                            <span className="text-sm">{t("detector.model")}</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
                                     size="sm"
@@ -111,7 +107,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
 
                         {/* Confidence threshold */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Confidence threshold</span>
+                            <span className="text-sm">{t("detector.confidenceThreshold")}</span>
                             <ValueSelector
                                 value={cameraNodeConfig.rtmpose_confidence_threshold ?? 0.0025}
                                 min={0} max={1} step={0.0005} unit=""
@@ -125,18 +121,22 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
                 {detectorType === "mediapipe" && (
                     <>
                         <p className="text-sm text-gray p-1">
-                            Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.
+                            {t("detector.mediapipeRealtimeDescription")}
                         </p>
 
                         {/* Model size */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Model size</span>
+                            <span className="text-sm">{t("detector.modelSize")}</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
                                     size="sm"
                                     className="segmented-control-sm bg-darkgray"
                                     value={cameraNodeConfig.mediapipe_model_complexity ?? "lite"}
-                                    options={MEDIAPIPE_COMPLEXITIES}
+                                    options={[
+                                        { label: t("detector.lite"), value: "lite" },
+                                        { label: t("detector.full"), value: "full" },
+                                        { label: t("detector.heavy"), value: "heavy" },
+                                    ]}
                                     onChange={(value) => handleCameraNodeUpdate({ mediapipe_model_complexity: value as MediapipeModelComplexity })}
                                 />
                             </div>
@@ -144,7 +144,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
 
                         {/* Detection confidence */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Detection confidence</span>
+                            <span className="text-sm">{t("detector.detectionConfidence")}</span>
                             <ValueSelector
                                 value={cameraNodeConfig.mediapipe_detection_confidence ?? 0.5}
                                 min={0} max={1} step={0.05} unit=""
@@ -154,7 +154,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
 
                         {/* Presence confidence */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Presence confidence</span>
+                            <span className="text-sm">{t("detector.presenceConfidence")}</span>
                             <ValueSelector
                                 value={cameraNodeConfig.mediapipe_presence_confidence ?? 0.5}
                                 min={0} max={1} step={0.05} unit=""
@@ -164,7 +164,7 @@ const RTPSkeletonSetup: React.FC<RTPSkeletonSetupProps> = ({ open, onClose }) =>
 
                         {/* Tracking confidence */}
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Tracking confidence</span>
+                            <span className="text-sm">{t("detector.trackingConfidence")}</span>
                             <ValueSelector
                                 value={cameraNodeConfig.mediapipe_tracking_confidence ?? 0.5}
                                 min={0} max={1} step={0.05} unit=""

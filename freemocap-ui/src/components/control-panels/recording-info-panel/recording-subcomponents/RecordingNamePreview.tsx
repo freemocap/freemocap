@@ -17,7 +17,7 @@ export const RecordingNamePreview: React.FC<RecordingNamePreviewProps> = ({
     const { t } = useTranslation();
     return (
         <div className="flex flex-col gap-1">
-            <SubactionHeader text="Recording Name" />
+            <SubactionHeader text={t("recordingNameLabel")} />
             {!isRecording ? (
                 <TextSelector
                     value={name}

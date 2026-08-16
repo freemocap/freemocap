@@ -5,6 +5,7 @@ import {
     selectPipelineError,
     selectPipelineId,
 } from "@/store/slices/realtime";
+import { useTranslation } from "react-i18next";
 
 /**
  * Display-only status badge.
@@ -15,6 +16,7 @@ import {
  * calls, which created two independent power buttons fighting each other.
  */
 export const RealtimePipelineConnectionStatus = () => {
+    const { t } = useTranslation();
     const isConnected = useAppSelector(selectIsPipelineConnected);
     const pipelineId = useAppSelector(selectPipelineId);
     const isLoading = useAppSelector(selectIsPipelineLoading);
@@ -52,7 +54,11 @@ export const RealtimePipelineConnectionStatus = () => {
                 </div>
 
                 <p className="text md text-white">
-                    Pipeline: {isConnected ? `connected (id: ${pipelineId})` : 'disconnected'}
+                    {t("pipeline.connectionStatus", {
+                        status: isConnected
+                            ? t("pipeline.connectedWithId", { id: pipelineId })
+                            : t("pipeline.disconnected"),
+                    })}
                 </p>
 
                 {error && (

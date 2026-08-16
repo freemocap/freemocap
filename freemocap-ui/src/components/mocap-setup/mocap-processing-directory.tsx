@@ -3,6 +3,7 @@ import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
 import { useMocap } from "@/hooks/useMocap";
 import { useElectronIPC } from "@/services";
+import { useTranslation } from "react-i18next";
 
 interface ProcessDirectoryModuleProps {
   open: boolean;
@@ -13,6 +14,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
   open,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -78,7 +80,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
       <div className="gap-1 flex flex-col">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Process Directory" />
+          <SubactionHeader text={t("mocap.processingDirectory")} />
         </div>
 
         {/* Process directory selector */}
@@ -87,7 +89,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
           <button
             className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
             onClick={handleSelectDirectory}
-            title="Click to select Process directory"
+            title={t("mocap.selectDirectory")}
             disabled={!isElectron}
             style={{ minWidth: 0, overflow: "hidden" }}
           >
@@ -103,7 +105,7 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
                 className="text-gray flex-1 text md"
                 style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
               >
-                Select a folder where the mocap process will be saved.
+                {t("mocap.selectProcessingFolderHelp")}
               </p>
             )}
           </button>
@@ -112,34 +114,34 @@ const ProcessDirectoryModule: React.FC<ProcessDirectoryModuleProps> = ({
               <IconButton
                 icon="clear-icon"
                 onClick={clearManualRecordingPath}
-                title="Clear manual path (revert to default)"
+                title={t("mocap.clearManualPath")}
                 tooltip={true}
                 tooltipPosition="pos-top-right"
-                tooltipText="Clear manual path (revert to default)"
+                tooltipText={t("mocap.clearManualPath")}
               />
             )}
             <IconButton
               icon="checkUpdate-icon"
               onClick={() => mocapRecordingPath && validateDirectory(mocapRecordingPath)}
               disabled={!mocapRecordingPath || isLoading}
-              title="Re-check folder"
+              title={t("mocap.recheckFolder")}
               tooltip={true}
               tooltipPosition="pos-top-right"
-              tooltipText="Re-check folder"
+              tooltipText={t("mocap.recheckFolder")}
             />
             <IconButton
               icon="subfolder-icon"
               onClick={handleOpenFolder}
               disabled={!isElectron || !mocapRecordingPath}
-              title="Open folder in file explorer"
+              title={t("mocap.openFolderInExplorer")}
               tooltip={true}
               tooltipPosition="pos-top-right"
-              tooltipText="Open folder in file explorer"
+              tooltipText={t("mocap.openFolderInExplorer")}
             />
           </div>
         </div>
         <p className="text sm text-gray p-1">
-          {isUsingManualPath ? "Using custom path" : "Using default recording directory"}
+          {isUsingManualPath ? t("mocap.usingCustomPath") : t("mocap.usingDefaultDirectory")}
         </p>
       </div>
     </div>

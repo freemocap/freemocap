@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 import NameDropdownSelector from "@/components/ui-components/NameDropdownSelector";
 import ButtonSm from "@/components/ui-components/ButtonSm";
 import { serverUrls } from "@/services";
+import { useServer } from "@/services/server/ServerContextProvider";
 
 type MicrophoneSelectorProps = {
   selectedMicIndex: number;
@@ -12,8 +13,6 @@ type MicrophoneSelectorProps = {
 };
 
 type MicrophoneMap = Record<number, string>;
-
-const NO_MIC_LABEL = "No microphone";
 
 export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
   selectedMicIndex,
@@ -24,8 +23,10 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const { isConnected } = useServer();
+  const noMicLabel = t("noMicrophone");
 
-  const detectMicrophones = async (): Promise<void> => {
+  const detectMicrophones = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
@@ -40,26 +41,26 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    detectMicrophones();
-  }, []);
+    if (isConnected) void detectMicrophones();
+  }, [isConnected, detectMicrophones]);
 
   const micEntries = Object.entries(microphones).map(([id, name]) => ({
     id: Number(id),
     name: name as string,
   }));
 
-  const options = [NO_MIC_LABEL, ...micEntries.map((m) => m.name)];
+  const options = [noMicLabel, ...micEntries.map((m) => m.name)];
   const selectedName =
     selectedMicIndex >= 0
       ? (micEntries.find((m) => m.id === selectedMicIndex)?.name ??
-        NO_MIC_LABEL)
-      : NO_MIC_LABEL;
+        noMicLabel)
+      : noMicLabel;
 
   const handleChange = (name: string) => {
-    if (name === NO_MIC_LABEL) {
+    if (name === noMicLabel) {
       onMicSelected(-1);
       return;
     }
@@ -108,9 +109,9 @@ export const MicrophoneSelector: React.FC<MicrophoneSelectorProps> = ({
         <p
           className="error-message text-center text sm text-error text-nowrap overflow-hidden"
           style={{ textOverflow: "ellipsis" }}
-          title={error}
+          title={`${t("microphoneDetectionFailed")}: ${error}`}
         >
-          {error}
+          {t("microphoneDetectionFailed")}: {error}
         </p>
       )}
     </div>

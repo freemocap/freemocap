@@ -67,6 +67,7 @@ export interface MenuLabels {
     startRecording: string;
     stopRecording: string;
     language: string;
+    toggleLanguage: string;
 }
 
 // English fallback labels used until the renderer sends translated ones
@@ -103,6 +104,7 @@ const DEFAULT_LABELS: MenuLabels = {
     startRecording: 'Start Recording',
     stopRecording: 'Stop Recording',
     language: 'Language',
+    toggleLanguage: 'Toggle Language',
 };
 
 function sendMenuAction(action: MenuAction): void {
@@ -118,7 +120,7 @@ function buildLanguageSubmenu(t: MenuLabels, locales: LocaleEntry[], currentLoca
         label: t.language,
         submenu: [
             {
-                label: 'Toggle Language',
+                label: t.toggleLanguage,
                 accelerator: 'CmdOrCtrl+Shift+L',
                 click: () => sendMenuAction('toggle-locale'),
             },

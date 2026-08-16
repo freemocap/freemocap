@@ -9,10 +9,11 @@ import {selectVideoLoadFolder} from '@/store/slices/videos';
 import {activeRecordingCleared, activeRecordingSet} from '@/store/slices/active-recording';
 import {calibrationConfigUpdated} from '@/store/slices/calibration/calibration-slice';
 import {pipelineSnackbarShown} from '@/store/slices/pipelines';
-// import { localeChanged, selectLocale, localeToggled } from '@/store/slices/settings';
+import {localeChanged, localeToggled, selectLocale} from '@/store/slices/locale';
 import {isElectron, useElectronIPC} from '@/services/electron-ipc/electron-ipc';
 import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
 import {SUPPORTED_LOCALES} from '@/i18n';
+import type {SupportedLocale} from '@/i18n';
 import {useTutorial} from '@/components/tutorial';
 import type {MenuAction} from '../../electron/main/services/menu-builder';
 
@@ -46,10 +47,11 @@ const MENU_LABEL_KEYS = [
     'menuShowPipelineProgress',
     'home',
     'cameras',
-    'settings',
+    'settingsLabel',
     'startRecording',
     'stopRecording',
     'language',
+    'toggleLanguage',
 ] as const;
 
 // Build the locale entries array from the SUPPORTED_LOCALES config (once)
@@ -70,7 +72,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
     const { startTour } = useTutorial();
 
     const isRecording = useAppSelector((state) => state.recording.isRecording);
-    // const currentLocale = useAppSelector(selectLocale);
+    const currentLocale = useAppSelector(selectLocale);
 
     // Send translated menu labels + locale list to the main process whenever the language changes
     useEffect(() => {
@@ -83,9 +85,9 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
         window.electronAPI.sendMenuLabels({
             labels,
             locales: LOCALE_ENTRIES,
-            // currentLocale,
+            currentLocale,
         });
-    }, [t, i18n.language]);//, currentLocale]);
+    }, [t, i18n.language, currentLocale]);
 
     // Listen for menu actions dispatched from the native menu
     useEffect(() => {
@@ -95,9 +97,9 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
             // Handle locale change actions (dynamic pattern: "change-locale:xx")
             if (action.startsWith('change-locale:')) {
                 const localeCode = action.slice('change-locale:'.length);
-                // if (localeCode in SUPPORTED_LOCALES) {
-                //     dispatch(localeChanged(localeCode as SupportedLocale));
-                // }
+                if (localeCode in SUPPORTED_LOCALES) {
+                    dispatch(localeChanged(localeCode as SupportedLocale));
+                }
                 return;
             }
 
@@ -147,7 +149,7 @@ export function useMenuActions({ onToggleSidebar }: UseMenuActionsParams): void 
 
                 // Locale toggle
                 case 'toggle-locale':
-                    // dispatch(localeToggled());
+                    dispatch(localeToggled());
                     break;
 
                 // Recording actions

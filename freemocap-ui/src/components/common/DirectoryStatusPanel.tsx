@@ -1,4 +1,5 @@
 import React from "react";
+import {useTranslation} from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";
 
 export interface DirectoryStatus {
@@ -35,6 +36,7 @@ export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
     isRefreshing = false,
     status = "none",
 }) => {
+    const {t} = useTranslation();
     if (!directoryInfo) return null;
 
     const borderStyle = status === "ok"
@@ -56,23 +58,23 @@ export const DirectoryStatusPanel: React.FC<DirectoryStatusPanelProps> = ({
                         icon={isRefreshing ? "loader-icon" : "rotate-icon"}
                         onClick={onRefresh}
                         disabled={refreshDisabled}
-                        title="Re-check folder"
+                        title={t("directory.recheck")}
                     />
                 )}
             </div>
 
             {/* Status chips */}
             <div className="flex flex-row flex-wrap gap-1">
-                <StatusChip label={directoryInfo.exists ? "Directory exists" : "Directory will be created"} ok={directoryInfo.exists} />
-                <StatusChip label="Has videos" ok={directoryInfo.hasVideos} />
-                <StatusChip label="Has synchronized_videos" ok={directoryInfo.hasSynchronizedVideos} />
+                <StatusChip label={directoryInfo.exists ? t("directory.exists") : t("directory.willBeCreated")} ok={directoryInfo.exists} />
+                <StatusChip label={t("directory.hasVideos")} ok={directoryInfo.hasVideos} />
+                <StatusChip label={t("directory.hasSynchronizedVideos")} ok={directoryInfo.hasSynchronizedVideos} />
                 <StatusChip label={tomlLabel} ok={!!directoryInfo.tomlPath} />
             </div>
 
             {/* TOML path display */}
             {directoryInfo.tomlPath && (
                 <div>
-                    <p className="text sm text-gray">Found calibration file:</p>
+                    <p className="text sm text-gray">{t("directory.foundCalibrationFile")}</p>
                     <p className="text sm" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
                         {directoryInfo.tomlPath}
                     </p>

@@ -61,21 +61,21 @@ export const FramerateViewerPanel = ({ isCollapsed = false }: { isCollapsed?: bo
                         onClick={() => setShowStats(v => !v)}
                         title={t("statisticsView")}
                     >
-                        <p className="text sm">Stats</p>
+                        <p className="text sm">{t("framerate.stats")}</p>
                     </button>
                     <button
                         className={clsx("button sm br-1", showTimeseries && "isOn")}
                         onClick={() => setShowTimeseries(v => !v)}
                         title={t("timelineView")}
                     >
-                        <p className="text sm">Timeline</p>
+                        <p className="text sm">{t("framerate.timeline")}</p>
                     </button>
                     <button
                         className={clsx("button sm br-1", showHistogram && "isOn")}
                         onClick={() => setShowHistogram(v => !v)}
                         title={t("distributionView")}
                     >
-                        <p className="text sm">Distribution</p>
+                        <p className="text sm">{t("framerate.distribution")}</p>
                     </button>
                 </div>
             </div>

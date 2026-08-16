@@ -9,6 +9,7 @@ import MOCAPDetectorSettings from "@/components/mocap-setup/mocap-detector-setti
 import MOCAPBlenderSettings from "@/components/mocap-setup/mocap-blender-settings";
 import TriangulationSettings from "@/components/mocap-setup/mocap-triangulation-settings";
 import { useMocap } from "@/hooks/useMocap";
+import { useTranslation } from "react-i18next";
 
 type MocapMode = "recording" | "playback";
 
@@ -21,6 +22,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
   onClose,
   mode = "playback",
 }) => {
+  const { t } = useTranslation();
   const {
     canProcessMocapRecording,
     isLoading,
@@ -40,18 +42,18 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
 
   const processBlockedReason = useMemo((): string | null => {
     if (canProcessMocapRecording) return null;
-    if (isRecording) return "Stop recording before processing";
-    if (isLoading) return "Processing already in progress";
-    if (!mocapRecordingPath) return "Select a recording folder to process";
-    if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
+    if (isRecording) return t("mocap.blocked.stopRecording");
+    if (isLoading) return t("mocap.blocked.processing");
+    if (!mocapRecordingPath) return t("mocap.blocked.selectFolder");
+    if (!directoryInfo?.hasVideos) return t("mocap.blocked.noVideos");
     const hasAnyCalibration =
       directoryInfo?.cameraCount === 1 ||
       !!calibrationTomlPath ||
       !!directoryInfo?.cameraMocapTomlPath ||
       !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
-    if (!hasAnyCalibration) return "No calibration file found — select a calibration TOML or run calibration first";
-    return "Cannot process recording";
-  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
+    if (!hasAnyCalibration) return t("mocap.blocked.noCalibration");
+    return t("mocap.blocked.cannotProcess");
+  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath, t]);
   const [activeButton, setActiveButton] = useState<
     "button1" | "button2" | "button3" | "button4" | "button5" | "button6"
   >("button1");
@@ -135,41 +137,41 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
             className="left-section-actions br-1 p-2 bg-tertiary flex flex-col flex-1 gap-2"
             style={{ maxWidth: 146, flexShrink: 0 }}
           >
-            <SubactionHeader text="Mocap setup" className="text-gray" />
+            <SubactionHeader text={t("mocap.setup")} className="text-gray" />
             <ButtonSm
-              text="Processing Directory"
+              text={t("mocap.processingDirectory")}
               buttonType={activeButton === "button1" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(0)}
             />
             <ButtonSm
-              text="Calibration"
+              text={t("calibration.calibration")}
               buttonType={activeButton === "button2" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(1)}
             />
             <ButtonSm
-              text="Detector"
+              text={t("detector.detector")}
               buttonType={activeButton === "button3" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(2)}
             />
 
             <ButtonSm
-              text = "3D Triangulation"
+              text={t("triangulation.threeDimensional")}
               buttonType = {activeButton === "button4" ? "activated" : "idle"}
               className = "full-width quaternary"
               onClick = {() => scrollToPanel(3)}
             />
 
             <ButtonSm
-              text="Post Processing"
+              text={t("postprocess.postProcessing")}
               buttonType={activeButton === "button5" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(4)}
             />
             <ButtonSm
-              text="Blender"
+              text={t("blender.name")}
               buttonType={activeButton === "button6" ? "activated" : "idle"}
               className="full-width quaternary"
               onClick={() => scrollToPanel(5)}
@@ -252,14 +254,14 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
           {/* Column 1 - Two buttons */}
           <div className="flex flex-row gap-2 h-full">
             <ButtonSm
-              text="Cancel"
+              text={t("cancel")}
               buttonType="quaternary"
               className=""
               onClick={onClose}
             />
             {mode === "playback" ? (
               <ButtonSm
-                text="Process Mocap"
+                text={t("mocap.process")}
                 textColor="text-white"
                 iconClass="processmocap-icon"
                 buttonType=""
@@ -271,26 +273,25 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
                 disabled={!canProcessMocapRecording || isLoading}
                 tooltip={true}
                 tooltipPosition="pos-top"
-                tooltipText={processBlockedReason ?? "Start mocap processing"}
+                tooltipText={processBlockedReason ?? t("mocap.startProcessing")}
               />
             ) : (
               <ButtonSm
-                text="Save"
+                text={t("save")}
                 textColor="text-white"
                 buttonType=""
                 className="primary accent"
                 onClick={onClose}
                 tooltip={true}
                 tooltipPosition="pos-top"
-                tooltipText="Save mocap settings"
+                tooltipText={t("mocap.saveSettings")}
               />
             )}
           </div>
           {mode === "playback" && (
             <div className="flex flex-row gap-2 h-full">
               <p className="text sm text-gray">
-                Processing may take hours, depending on your system, ideally avoid
-                using your computer.
+                {t("mocap.longProcessingWarning")}
               </p>
             </div>
           )}

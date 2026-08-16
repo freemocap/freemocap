@@ -9,6 +9,7 @@ import IconButton from '@/components/ui-components/IconButton';
 import Checkbox from '@/components/ui-components/Checkbox';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import {useTutorial} from '@/components/tutorial';
+import {useTranslation} from 'react-i18next';
 
 interface SettingsModalProps {
     open: boolean;
@@ -20,6 +21,7 @@ interface SettingsModalProps {
  * Exposes the base data folder (change / reset-to-default / open) and the usage-pings toggle.
  */
 export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => {
+    const {t} = useTranslation();
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
     const isRecording = useAppSelector(selectIsAnyRecording);
@@ -83,38 +85,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
         });
         if (!selected) return; // user canceled the picker
         setBusy(true);
-        setStatus('Applying data folder…');
+        setStatus(t('settings.applyingDataFolder'));
         try {
             const {baseFolder: newBase, serverRestarted} = await api.fileSystem.setBaseDataFolder.mutate({path: selected});
             applyNewBaseFolder(newBase);
             setStatus(serverRestarted
-                ? 'Data folder updated and server restarted. Existing recordings were not moved.'
-                : 'Data folder saved. Restart the FreeMoCap server to apply it. Existing recordings were not moved.');
+                ? t('settings.folderUpdatedRestarted')
+                : t('settings.folderSavedRestartRequired'));
         } catch (err) {
             console.error('Failed to set base data folder:', err);
-            setStatus('Failed to update the data folder. See logs for details.');
+            setStatus(t('settings.folderUpdateFailed'));
         } finally {
             setBusy(false);
         }
-    }, [api, busy, isRecording, applyNewBaseFolder]);
+    }, [api, busy, isRecording, applyNewBaseFolder, t]);
 
     const handleReset = useCallback(async () => {
         if (!api || busy || isRecording) return;
         setBusy(true);
-        setStatus('Resetting data folder…');
+        setStatus(t('settings.resettingDataFolder'));
         try {
             const {baseFolder: newBase, serverRestarted} = await api.fileSystem.resetBaseDataFolder.mutate();
             applyNewBaseFolder(newBase);
             setStatus(serverRestarted
-                ? 'Reset to the default data folder and restarted the server.'
-                : 'Reset to the default data folder. Restart the FreeMoCap server to apply it.');
+                ? t('settings.folderResetRestarted')
+                : t('settings.folderResetRestartRequired'));
         } catch (err) {
             console.error('Failed to reset base data folder:', err);
-            setStatus('Failed to reset the data folder. See logs for details.');
+            setStatus(t('settings.folderResetFailed'));
         } finally {
             setBusy(false);
         }
-    }, [api, busy, isRecording, applyNewBaseFolder]);
+    }, [api, busy, isRecording, applyNewBaseFolder, t]);
 
     const handleOpenFolder = useCallback(async () => {
         if (!api || !baseFolder) return;
@@ -146,23 +148,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
             <div className="settings-modal bg-primary border-1 border-black pos-fixed elevated-sharp p-1 flex flex-col br-2">
                 <div className="flex flex-col p-2 gap-2 bg-middark br-1">
                     <div className="flex justify-content-space-between items-center">
-                        <SubactionHeader text="Settings"/>
+                        <SubactionHeader text={t('settings.title')}/>
                         <IconButton icon="close-icon" onClick={onClose}/>
                     </div>
 
                     {/* Data folder */}
                     <div className="flex flex-col gap-2 bg-secondary p-2 br-1">
-                        <SubactionHeader text="Data folder" className="text-gray"/>
+                        <SubactionHeader text={t('settings.dataFolder')} className="text-gray"/>
                         <p className="text sm text-gray">
-                            Where FreeMoCap stores recordings, calibrations, and logs.
+                            {t('settings.dataFolderDescription')}
                         </p>
                         <p className="text sm text-white"
                            style={{fontFamily: 'monospace', wordBreak: 'break-all'}}>
-                            {loaded ? (baseFolder || '—') : 'Loading…'}
+                            {loaded ? (baseFolder || '—') : t('loading')}
                         </p>
                         <div className="flex flex-row gap-2 flex-wrap">
                             <ButtonSm
-                                text={busy ? 'Applying…' : 'Change…'}
+                                text={busy ? t('settings.applying') : t('settings.change')}
                                 textColor="text-white"
                                 buttonType=""
                                 className="primary accent"
@@ -170,33 +172,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
                                 disabled={busy || isRecording}
                             />
                             <ButtonSm
-                                text="Reset to default"
+                                text={t('settings.resetToDefault')}
                                 buttonType="quaternary"
                                 onClick={handleReset}
                                 disabled={busy || isRecording}
                             />
                             <ButtonSm
-                                text="Open folder"
+                                text={t('openFolder')}
                                 buttonType="quaternary"
                                 onClick={handleOpenFolder}
                                 disabled={!baseFolder}
                             />
                         </div>
                         {isRecording && (
-                            <p className="text sm text-gray">Stop the active recording to change the data folder.</p>
+                            <p className="text sm text-gray">{t('settings.stopRecordingToChangeFolder')}</p>
                         )}
                         {status && <p className="text sm text-gray">{status}</p>}
                         <p className="text sm text-darkgray">
-                            Changing the folder restarts the server. Existing recordings are not moved.
+                            {t('settings.changeFolderWarning')}
                         </p>
                     </div>
 
                     {/* Privacy */}
                     <div className="flex flex-col gap-1 bg-secondary p-2 br-1">
-                        <SubactionHeader text="Privacy" className="text-gray"/>
+                        <SubactionHeader text={t('settings.privacy')} className="text-gray"/>
                         {loaded && (
                             <Checkbox
-                                label="Send anonymous usage pings to help improve FreeMoCap"
+                                label={t('settings.telemetry')}
                                 checked={telemetryEnabled}
                                 onChange={(e) => handleTelemetryToggle(e.target.checked)}
                             />
@@ -205,11 +207,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
 
                     {/* Getting started */}
                     <div className="flex flex-col gap-2 bg-secondary p-2 br-1">
-                        <SubactionHeader text="Getting started" className="text-gray"/>
-                        <p className="text sm text-gray">Replay the guided tour of the basics.</p>
+                        <SubactionHeader text={t('settings.gettingStarted')} className="text-gray"/>
+                        <p className="text sm text-gray">{t('settings.replayTourDescription')}</p>
                         <div className="flex flex-row">
                             <ButtonSm
-                                text="Replay tutorial"
+                                text={t('settings.replayTutorial')}
                                 buttonType="quaternary"
                                 onClick={handleReplayTour}
                             />
@@ -218,7 +220,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({open, onClose}) => 
 
                     {/* Bottom actions */}
                     <div className="flex flex-row gap-2" style={{justifyContent: 'flex-end'}}>
-                        <ButtonSm text="Close" buttonType="quaternary" onClick={onClose}/>
+                        <ButtonSm text={t('close')} buttonType="quaternary" onClick={onClose}/>
                     </div>
                 </div>
             </div>

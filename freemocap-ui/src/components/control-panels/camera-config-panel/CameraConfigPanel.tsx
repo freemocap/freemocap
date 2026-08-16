@@ -6,6 +6,7 @@ import {CameraConfig, ExposureMode, RotationValue} from "@/store/slices/cameras/
 import {useAppDispatch, useAppSelector} from "@/store";
 import {configCopiedToAll, selectCameras} from "@/store/slices/cameras";
 import IconButton from "@/components/ui-components/IconButton";
+import {useTranslation} from "react-i18next";
 
 interface CameraConfigPanelProps {
     config: CameraConfig;
@@ -18,6 +19,7 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
     onConfigChange,
     isExpanded,
 }) => {
+    const {t} = useTranslation();
     const dispatch = useAppDispatch();
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
@@ -82,8 +84,8 @@ export const CameraConfigPanel: React.FC<CameraConfigPanelProps> = ({
                     disabled={otherCamerasCount === 0}
                     title={
                         otherCamerasCount > 0
-                            ? `Copy settings to ${otherCamerasCount} other camera${otherCamerasCount > 1 ? "s" : ""}`
-                            : "No other cameras to copy to"
+                            ? t("camera.copyToOthers", {count: otherCamerasCount})
+                            : t("camera.noOtherCameras")
                     }
                     style={{
                         border: '1px solid var(--color-border-secondary)',

@@ -6,28 +6,31 @@ import {
   PipelineGroup,
   PipelinePhase,
   PipelineProgress,
-  PHASE_LABELS,
   PIPELINE_TYPE_CONFIG,
 } from "@/store/slices/pipelines";
 import { stopPipeline } from "@/store/slices/pipelines/pipelines-thunks";
 import IconButton from "@/components/ui-components/IconButton";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
-function formatTimeAgo(timestamp: number): string {
+function formatTimeAgo(timestamp: number, t: TFunction): string {
   const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 60) return t("pipeline.secondsAgo", { count: seconds });
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return t("pipeline.minutesAgo", { count: minutes });
   const hours = Math.floor(minutes / 60);
-  return `${hours}h ago`;
+  return t("pipeline.hoursAgo", { count: hours });
 }
 
 function SubProgressBar({
   pipeline,
   label,
+  t,
   isAggregator = false,
 }: {
   pipeline: PipelineProgress;
   label: string;
+  t: TFunction;
   isAggregator?: boolean;
 }) {
   const isFailed = pipeline.phase === PipelinePhase.FAILED;
@@ -38,9 +41,9 @@ function SubProgressBar({
 
   const rightText =
     isTerminal && pipeline.completedAt
-      ? formatTimeAgo(pipeline.completedAt)
+      ? formatTimeAgo(pipeline.completedAt, t)
       : isIndeterminate
-        ? pipeline.detail || PHASE_LABELS[pipeline.phase]
+        ? pipeline.detail || t(`pipeline.phase.${pipeline.phase}`)
         : `${pipeline.progress}%`;
 
   const progressColor = isFailed
@@ -96,6 +99,7 @@ export default function PipelineGroupCard({
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { api } = useElectronIPC();
+  const { t } = useTranslation();
 
   const overallProgress =
     group.aggregator?.progress ??
@@ -163,12 +167,12 @@ export default function PipelineGroupCard({
               className="flex flex-col gap-2 text md m-0 pipeline-group-card__type-badge-text"
               style={{ color: typeConfig.color }}
             >
-              {typeConfig.label}
+              {t(`pipeline.type.${group.pipelineType}`)}
             </p>
           </div>
         )}
         <p className="text md flex-1 flex min-w-0 m-0 truncate">
-          <span className="">Pipeline: </span>
+          <span className="">{t("pipeline.label")} </span>
           <span className="pipeline-group-card__bold">{pipelineId}</span>
         </p>
 
@@ -178,31 +182,31 @@ export default function PipelineGroupCard({
           {overallProgress}%
                 </p>
             <IconButton
-              title="Open folder"
+              title={t("openFolder")}
               icon="subfolder-icon"
               className="icon-size-25 p-01"
               onClick={handleOpenFolder}
               disabled={!fullPath}
               tooltip={true}
-              tooltipText="Open folder"
+              tooltipText={t("openFolder")}
             />
             <IconButton
-              title="Load in playback"
+              title={t("pipeline.loadInPlayback")}
               icon="play-icon"
               className="icon-size-25 p-01"
               onClick={handleLoadPlayback}
               tooltip={true}
-              tooltipText="Load in playback"
+              tooltipText={t("pipeline.loadInPlayback")}
             />
             {group.isActive && (
               <IconButton
-                title="Stop pipeline"
+                title={t("pipeline.stop")}
                 icon="stop-alert-icon"
                 className="icon-size-25 p-01"
                 onClick={() => dispatch(stopPipeline(group.basePipelineId))}
                 style={{ color: "var(--color-error)" }}
                 tooltip={true}
-                tooltipText="Stop pipeline"
+                tooltipText={t("pipeline.stop")}
               />
             )}
             {onDismiss && (
@@ -211,14 +215,14 @@ export default function PipelineGroupCard({
                 className="icon-size-25 p-01"
                 onClick={onDismiss}
                 tooltip={true}
-                tooltipText="Dismiss"
+                tooltipText={t("dismiss")}
               />
             )}
         </div>
       </div>
       <div title={fullPath}>
         <p className="text md flex-1 min-w-0 m-0 truncate">
-          <span className="">Recording: </span>
+          <span className="">{t("pipeline.recordingLabel")} </span>
           <span className="pipeline-group-card__bold">{recordingName}</span>
         </p>
       </div>
@@ -234,7 +238,8 @@ export default function PipelineGroupCard({
               <SubProgressBar
                 key={node.pipelineId}
                 pipeline={node}
-                label={`Camera: ${cameraId}`}
+                label={t("pipeline.cameraLabel", { cameraId })}
+                t={t}
               />
             );
           })}
@@ -246,14 +251,15 @@ export default function PipelineGroupCard({
           <SubProgressBar
             pipeline={group.aggregator}
             isAggregator={true}
+            t={t}
             label={
               group.aggregator.phase === PipelinePhase.COMPLETE
-                ? "Aggregation complete"
+                ? t("pipeline.aggregationComplete")
                 : group.aggregator.phase === PipelinePhase.FAILED
-                  ? "Aggregation failed"
+                  ? t("pipeline.aggregationFailed")
                   : group.videoNodes.length > 0
-                    ? `Aggregating ${group.videoNodes.length} camera${group.videoNodes.length !== 1 ? "s" : ""}`
-                    : PHASE_LABELS[group.aggregator.phase]
+                    ? t("pipeline.aggregatingCameras", { count: group.videoNodes.length })
+                    : t(`pipeline.phase.${group.aggregator.phase}`)
             }
           />
         </div>

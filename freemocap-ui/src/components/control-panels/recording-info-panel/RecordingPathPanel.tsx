@@ -93,14 +93,14 @@ export const RecordingPathPanel: React.FC = () => {
     <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1">
       <div className="file-directory-group justify-content-space-between flex flex-row items-center">
         <p className="text-nowrap text-left bg-md text-darkgray p-1">
-          Set folder directory
+          {t("recording.setFolderDirectory")}
         </p>
         
         <IconButton
           icon={tagInputVisible ? "tag-active-icon" : "tag-icon"}
           tooltip={true}
           tooltipPosition="pos-left"
-          tooltipText={tagInputVisible ? "Remove tag" : "Add tag"}
+          tooltipText={tagInputVisible ? t("recording.removeTag") : t("recording.addTag")}
           className={`icon-size-25 ${tagInputVisible ? "activate" : ""}`}
           onClick={() => {
             const newState = !tagInputVisible;
@@ -126,7 +126,7 @@ export const RecordingPathPanel: React.FC = () => {
 >
             <span className="icon icon-size-20 subfolder-icon" />
             <p className="text-gray text-nowrap text md text-align-left flex flex-end">
-              {displayPath || "Set recording path"}
+              {displayPath || t("recording.setPath")}
             </p>
           </div>
           <span className="icon icon-size-20 settings-icon"></span>

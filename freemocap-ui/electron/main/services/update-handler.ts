@@ -1,8 +1,8 @@
 import {app, BrowserWindow, ipcMain} from 'electron';
-import * as electronUpdater from 'electron-updater';
+import electronUpdater from 'electron-updater';
 
-// Access autoUpdater from the namespace import (ESM/CJS interop)
-const autoUpdater = electronUpdater.autoUpdater;
+// electron-updater is CommonJS; use the default import for ESM/CJS interop.
+const {autoUpdater} = electronUpdater;
 
 export class UpdateHandler {
     private mainWindow: BrowserWindow;

@@ -8,17 +8,19 @@ import {
 import ValueSelector from "../ui-components/ValueSelector";
 import ToggleComponent from "../ui-components/ToggleComponent";
 import SubactionHeader from "../ui-components/SubactionHeader";
+import { useTranslation } from "react-i18next";
 
 const TriangulationSettings: React.FC = () => {
+    const { t } = useTranslation();
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectMocapTriangulationConfig);
 
     return (
         <div className="flex flex-col gap-1">
-            <SubactionHeader text="Triangulation Settings" />
+            <SubactionHeader text={t("triangulation.settings")} />
 
             <ToggleComponent
-                text="Use outlier rejection"
+                text={t("triangulation.useOutlierRejection")}
                 isToggled={config.use_outlier_rejection}
                 onToggle={(checked) =>
                     dispatch(
@@ -32,7 +34,7 @@ const TriangulationSettings: React.FC = () => {
             <div className={`flex flex-row p-1 items-center justify-content-space-between ${config.use_outlier_rejection ? '' : 'disabled'}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                     <span className="icon icon-size-20 subcat-icon"></span>
-                    <span className="text sm"> Minimum Cameras for Triangulation </span>
+                    <span className="text sm">{t("triangulation.minimumCameras")}</span>
                 </div>
                 <ValueSelector
                     value={config.minimum_cameras_for_triangulation}
@@ -51,7 +53,7 @@ const TriangulationSettings: React.FC = () => {
             <div className={`flex flex-row p-1 items-center justify-content-space-between ${config.use_outlier_rejection ? '' : 'disabled'}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                     <span className="icon icon-size-20 subcat-icon"></span>
-                    <span className="text sm"> Maximum Cameras to Drop </span>
+                    <span className="text sm">{t("triangulation.maximumCamerasToDrop")}</span>
                 </div>
                 <ValueSelector
                     value={config.maximum_cameras_to_drop}
@@ -70,7 +72,7 @@ const TriangulationSettings: React.FC = () => {
             <div className={`flex flex-row p-1 items-center justify-content-space-between ${config.use_outlier_rejection ? '' : 'disabled'}`}>
                 <div className="flex items-center gap-1 flex-wrap">
                     <span className="icon icon-size-20 subcat-icon"></span>
-                    <span className="text sm"> Target Reprojection Error </span>
+                    <span className="text sm">{t("triangulation.targetReprojectionError")}</span>
                 </div>
                 <ValueSelector
                     value={config.target_reprojection_error}

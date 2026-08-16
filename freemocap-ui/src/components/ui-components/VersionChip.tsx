@@ -73,12 +73,12 @@ export const VersionChip: React.FC<VersionChipProps> = ({ variant = 'full', clas
                 )}
             />
             <ButtonSm
-                text="Releases"
+                text={t("releases")}
                 onClick={() => window.open(EXTERNAL_URLS.GITHUB_RELEASES, '_blank')}
                 textColor="text-gray"
                 className="externallink"
                 tooltip={true}
-                tooltipText="view all releases on GitHub"
+                tooltipText={t("viewAllReleases")}
                 tooltipPosition="pos-right"
             />
             {toast && (

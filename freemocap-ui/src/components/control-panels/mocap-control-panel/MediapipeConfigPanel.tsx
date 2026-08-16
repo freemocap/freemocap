@@ -1,4 +1,5 @@
 import React, {useCallback} from "react";
+import {useTranslation} from "react-i18next";
 import {useMocap} from "@/hooks/useMocap";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {
@@ -10,12 +11,6 @@ import {
     MediapipeDetectorConfig,
 } from "@/store/slices/mocap";
 
-const MODEL_COMPLEXITY_LABELS: Record<LegacyMediapipeModelComplexity, string> = {
-    0: "Lite (fastest)",
-    1: "Full (balanced)",
-    2: "Heavy (most accurate)",
-};
-
 interface MediapipeConfigPanelProps {
     updateDetectorConfig?: (updates: Partial<MediapipeDetectorConfig>) => void;
     replaceDetectorConfig?: (config: MediapipeDetectorConfig) => void;
@@ -25,6 +20,12 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
     updateDetectorConfig: updateDetectorConfigProp,
     replaceDetectorConfig: replaceDetectorConfigProp,
 }) => {
+    const {t} = useTranslation();
+    const modelComplexityLabels: Record<LegacyMediapipeModelComplexity, string> = {
+        0: t("detector.liteFastest"),
+        1: t("detector.fullBalanced"),
+        2: t("detector.heavyAccurate"),
+    };
     const {
         detectorConfig,
         updateDetectorConfig: updateDetectorConfigHook,
@@ -46,33 +47,33 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
 
     return (
         <div className="flex flex-col gap-2">
-            <p className="text sm text-gray" style={{fontWeight: 600}}>MediaPipe Detector</p>
+            <p className="text sm text-gray" style={{fontWeight: 600}}>{t("detector.mediapipeDetector")}</p>
 
             {/* Preset selector */}
             <div className="flex flex-row items-center gap-1">
-                <p className="text sm text-gray" style={{minWidth: 48}}>Preset</p>
+                <p className="text sm text-gray" style={{minWidth: 48}}>{t("detector.preset")}</p>
                 <button
                     className={`button sm ${currentPreset === "realtime" ? "primary" : "secondary"}`}
                     onClick={() => handlePresetChange("realtime")}
                     disabled={isLoading}
                 >
-                    Realtime
+                    {t("detector.realtime")}
                 </button>
                 <button
                     className={`button sm ${currentPreset === "posthoc" ? "primary" : "secondary"}`}
                     onClick={() => handlePresetChange("posthoc")}
                     disabled={isLoading}
                 >
-                    Posthoc
+                    {t("detector.posthoc")}
                 </button>
                 {currentPreset === "custom" && (
-                    <span className="tag text sm">Custom</span>
+                    <span className="tag text sm">{t("custom")}</span>
                 )}
             </div>
 
             {/* Model complexity */}
             <div className="flex flex-col gap-1">
-                <p className="text sm text-gray">Model Complexity</p>
+                <p className="text sm text-gray">{t("detector.modelComplexity")}</p>
                 <select
                     className="input-field text md"
                     value={detectorConfig.model_complexity}
@@ -83,16 +84,16 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
                     }
                     disabled={isLoading}
                 >
-                    <option value={0}>{MODEL_COMPLEXITY_LABELS[0]}</option>
-                    <option value={1}>{MODEL_COMPLEXITY_LABELS[1]}</option>
-                    <option value={2}>{MODEL_COMPLEXITY_LABELS[2]}</option>
+                    <option value={0}>{modelComplexityLabels[0]}</option>
+                    <option value={1}>{modelComplexityLabels[1]}</option>
+                    <option value={2}>{modelComplexityLabels[2]}</option>
                 </select>
             </div>
 
             {/* Confidence sliders */}
             <div>
                 <p className="text sm text-gray">
-                    Min Detection Confidence: {detectorConfig.min_detection_confidence.toFixed(2)}
+                    {t("detector.minDetectionConfidence")}: {detectorConfig.min_detection_confidence.toFixed(2)}
                 </p>
                 <input
                     type="range"
@@ -108,7 +109,7 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
 
             <div>
                 <p className="text sm text-gray">
-                    Min Tracking Confidence: {detectorConfig.min_tracking_confidence.toFixed(2)}
+                    {t("detector.minTrackingConfidence")}: {detectorConfig.min_tracking_confidence.toFixed(2)}
                 </p>
                 <input
                     type="range"
@@ -125,31 +126,31 @@ export const MediapipeConfigPanel: React.FC<MediapipeConfigPanelProps> = ({
             {/* Boolean toggles */}
             <div className="flex flex-col gap-1">
                 <ToggleComponent
-                    text="Smooth Landmarks"
+                    text={t("detector.smoothLandmarks")}
                     isToggled={detectorConfig.smooth_landmarks}
                     onToggle={(checked) => updateDetectorConfig({smooth_landmarks: checked})}
                     disabled={isLoading}
                 />
                 <ToggleComponent
-                    text="Enable Segmentation"
+                    text={t("detector.enableSegmentation")}
                     isToggled={detectorConfig.enable_segmentation}
                     onToggle={(checked) => updateDetectorConfig({enable_segmentation: checked})}
                     disabled={isLoading}
                 />
                 <ToggleComponent
-                    text="Smooth Segmentation"
+                    text={t("detector.smoothSegmentation")}
                     isToggled={detectorConfig.smooth_segmentation}
                     onToggle={(checked) => updateDetectorConfig({smooth_segmentation: checked})}
                     disabled={isLoading || !detectorConfig.enable_segmentation}
                 />
                 <ToggleComponent
-                    text="Refine Face Landmarks"
+                    text={t("detector.refineFaceLandmarks")}
                     isToggled={detectorConfig.refine_face_landmarks}
                     onToggle={(checked) => updateDetectorConfig({refine_face_landmarks: checked})}
                     disabled={isLoading}
                 />
                 <ToggleComponent
-                    text="Static Image Mode"
+                    text={t("detector.staticImageMode")}
                     isToggled={detectorConfig.static_image_mode}
                     onToggle={(checked) => updateDetectorConfig({static_image_mode: checked})}
                     disabled={isLoading}

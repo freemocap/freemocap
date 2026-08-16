@@ -1,4 +1,5 @@
 import React, {useCallback} from "react";
+import {useTranslation} from "react-i18next";
 import {RealtimePipelineStageTreeItem} from "./RealtimePipelineStageTreeItem";
 import {SkeletonFilterConfigPanel} from "@/components/control-panels/mocap-control-panel/SkeletonFilterConfigPanel";
 import {useMocap} from "@/hooks/useMocap";
@@ -40,6 +41,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
     rigidBodyEnabled,
     onRigidBodyToggle,
 }) => {
+    const {t} = useTranslation();
     const dispatch = useAppDispatch();
 
     // ── Realtime pipeline config (for context="realtime") ──────────────────────
@@ -144,28 +146,28 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             {/* ── 2D Tracking ── */}
             <RealtimePipelineStageTreeItem
                 itemId="2d-tracking"
-                label="2D Tracking"
+                label={t("pipeline.tracking2d")}
                 checked={tracking2dChecked}
                 indeterminate={tracking2dIndeterminate}
                 onToggle={handleToggle2dTracking}
 
                 summaryWhenCollapsed={
-                    [charucoEnabled && "Charuco", skeletonEnabled && "Skeleton"]
+                    [charucoEnabled && "ChArUco", skeletonEnabled && t("pipeline.skeleton")]
                         .filter(Boolean)
-                        .join(" + ") || "Off"
+                        .join(" + ") || t("off")
                 }
             >
                 {/* Charuco */}
                 <RealtimePipelineStageTreeItem
                     itemId="2d-charuco"
-                    label="Charuco"
+                    label="ChArUco"
                     checked={charucoEnabled}
                     onToggle={onCharucoToggle}
 
                 >
                     <div className="p-1 pl-4">
                         <p className="text sm text-gray">
-                            Settings from `Post Processing::Capture Volume Calibration` section
+                            {t("pipeline.charucoSettingsSource")}
                         </p>
                     </div>
                 </RealtimePipelineStageTreeItem>
@@ -173,7 +175,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 {/* Skeleton */}
                 <RealtimePipelineStageTreeItem
                     itemId="2d-skeleton"
-                    label="Skeleton"
+                    label={t("pipeline.skeleton")}
                     checked={skeletonEnabled}
                     onToggle={onSkeletonToggle}
                     summaryWhenCollapsed={activeDetectorType === "rtmpose" ? "RTMPose" : "MediaPipe"}
@@ -182,7 +184,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
 
                         {/* Detector toggle */}
                         <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Detector</span>
+                            <span className="text-sm">{t("detector.detector")}</span>
                             <div className="flex flex-row gap-1">
                                 {(["rtmpose", "mediapipe"] as DetectorType[]).map((type) => (
                                     <button
@@ -200,10 +202,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         {activeDetectorType === "rtmpose" && context === "posthoc" && (
                             <>
                                 <p className="text-sm text-gray">
-                                    133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation.
+                                    {t("detector.rtmposePosthocDescription")}
                                 </p>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Model</span>
+                                    <span className="text-sm">{t("detector.model")}</span>
                                     <div className="flex flex-row gap-1">
                                         {RTMPOSE_MODELS.map(({ label, value }) => (
                                             <button
@@ -217,7 +219,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                     </div>
                                 </div>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Confidence threshold</span>
+                                    <span className="text-sm">{t("detector.confidenceThreshold")}</span>
                                     <ValueSelector
                                         value={rtmPoseConfidenceThreshold ?? 0.004}
                                         min={0} max={1} step={0.001} unit=""
@@ -228,7 +230,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         )}
                         {activeDetectorType === "rtmpose" && context === "realtime" && (
                             <p className="text-sm text-gray">
-                                133 keypoints (body, hands, face) via YOLOX + RTMPose. Uses GPU batched inference when available.
+                                {t("detector.rtmposeRealtimeDescription")}
                             </p>
                         )}
 
@@ -236,10 +238,10 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         {activeDetectorType === "mediapipe" && (
                             <>
                                 <p className="text-sm text-gray">
-                                    Body + hands + face via MediaPipe. CPU-only; runs per-camera without GPU batching.
+                                    {t("detector.mediapipeDescription")}
                                 </p>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Model size</span>
+                                    <span className="text-sm">{t("detector.modelSize")}</span>
                                     <div className="flex flex-row gap-1">
                                         {(["lite", "full", "heavy"] as MediapipeModelComplexity[]).map((c) => {
                                             const activeComplexity = context === "realtime"
@@ -254,14 +256,14 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                                         : setMediapipeModelComplexity(c)
                                                     }
                                                 >
-                                                    {c.charAt(0).toUpperCase() + c.slice(1)}
+                                                    {t(`detector.${c}`)}
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 </div>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Detection confidence</span>
+                                    <span className="text-sm">{t("detector.detectionConfidence")}</span>
                                     <ValueSelector
                                         value={context === "realtime"
                                             ? (cameraNodeConfig.mediapipe_detection_confidence ?? 0.5)
@@ -274,7 +276,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                     />
                                 </div>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Presence confidence</span>
+                                    <span className="text-sm">{t("detector.presenceConfidence")}</span>
                                     <ValueSelector
                                         value={context === "realtime"
                                             ? (cameraNodeConfig.mediapipe_presence_confidence ?? 0.5)
@@ -287,7 +289,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                     />
                                 </div>
                                 <div className="flex flex-row gap-1 items-center justify-content-space-between">
-                                    <span className="text-sm">Tracking confidence</span>
+                                    <span className="text-sm">{t("detector.trackingConfidence")}</span>
                                     <ValueSelector
                                         value={context === "realtime"
                                             ? (cameraNodeConfig.mediapipe_tracking_confidence ?? 0.5)
@@ -308,43 +310,42 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
             {/* ── 3D Reconstruction ── */}
             <RealtimePipelineStageTreeItem
                 itemId="3d-reconstruction"
-                label="3D Reconstruction"
+                label={t("pipeline.reconstruction3d")}
                 checked={recon3dChecked}
                 indeterminate={recon3dIndeterminate}
                 onToggle={handleToggle3dReconstruction}
 
                 summaryWhenCollapsed={
-                    [triangulateEnabled && "Triangulate", filterEnabled && "Filter", rigidBodyEnabled && "Skeleton"]
+                    [triangulateEnabled && t("pipeline.triangulate"), filterEnabled && t("pipeline.filter"), rigidBodyEnabled && t("pipeline.skeleton")]
                         .filter(Boolean)
-                        .join(" + ") || "Off"
+                        .join(" + ") || t("off")
                 }
             >
                 {/* Triangulate */}
                 <RealtimePipelineStageTreeItem
                     itemId="3d-triangulate"
-                    label="Triangulate"
+                    label={t("pipeline.triangulate")}
                     checked={triangulateEnabled}
                     onToggle={onTriangulateToggle}
                     summaryWhenCollapsed={
                         pipelineConfig.aggregator_config.calibration_toml_path
-                            ? "Custom calibration"
+                            ? t("pipeline.customCalibration")
                             : calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
-                                ? "Auto (last calibration)"
-                                : "No calibration"
+                                ? t("pipeline.autoLastCalibration")
+                                : t("pipeline.noCalibration")
                     }
                 >
                     <div className="p-1 pl-4 flex flex-col gap-1" style={{borderLeft: '2px solid var(--color-border-secondary)'}}>
                         <p className="text-sm text-gray">
-                            Calibration TOML used for 3D triangulation.
-                            By default the most recent calibration is used automatically.
+                            {t("pipeline.calibrationDescription")}
                         </p>
                         <div className="flex flex-col gap-1">
                             <span className="text-sm" style={{wordBreak: 'break-all', color: 'var(--color-text-secondary)'}}>
                                 {pipelineConfig.aggregator_config.calibration_toml_path
-                                    ? `Override: ${pipelineConfig.aggregator_config.calibration_toml_path.split('/').pop()}`
+                                    ? t("pipeline.calibrationOverride", {file: pipelineConfig.aggregator_config.calibration_toml_path.split('/').pop()})
                                     : calibrationDirectoryInfo?.lastSuccessfulCalibrationTomlPath
-                                        ? `Auto: ${calibrationDirectoryInfo.lastSuccessfulCalibrationTomlPath.split('/').pop()}`
-                                        : "No calibration found — run calibration first"
+                                        ? t("pipeline.calibrationAuto", {file: calibrationDirectoryInfo.lastSuccessfulCalibrationTomlPath.split('/').pop()})
+                                        : t("pipeline.calibrationMissing")
                                 }
                             </span>
                             {pipelineConfig.aggregator_config.calibration_toml_path && (
@@ -361,7 +362,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                                         triggerRealtimeApply();
                                     }}
                                 >
-                                    Clear override (use latest)
+                                    {t("pipeline.clearCalibrationOverride")}
                                 </button>
                             )}
                         </div>
@@ -371,7 +372,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 {/* Filter */}
                 <RealtimePipelineStageTreeItem
                     itemId="3d-filter"
-                    label="Filter"
+                    label={t("pipeline.filter")}
                     checked={filterEnabled}
                     onToggle={onFilterToggle}
 
@@ -388,24 +389,22 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                 {/* Skeleton (rigid body) */}
                 <RealtimePipelineStageTreeItem
                     itemId="3d-skeleton"
-                    label="Skeleton"
+                    label={t("pipeline.skeleton")}
                     checked={rigidBodyEnabled}
                     onToggle={onRigidBodyToggle}
 
                 >
                     <div className="p-1 pl-4 flex flex-col gap-1">
                         <p className="text sm text-gray">
-                            Skeleton fitter holds each bone at the median length measured
-                            over the last ~10s. Reset clears that window, so it re-fits from
-                            anthropometric priors over the next few seconds.
+                            {t("pipeline.skeletonFitterDescription")}
                         </p>
                         <button
                             className="button sm"
                             onClick={handleResetSkeletonFitter}
                             disabled={!isConnected}
-                            title={isConnected ? "Forget learned bone lengths and re-fit from scratch" : "Connect a realtime pipeline first"}
+                            title={isConnected ? t("pipeline.resetFitterHelp") : t("pipeline.connectRealtimeFirst")}
                         >
-                            Reset Fitter
+                            {t("pipeline.resetFitter")}
                         </button>
                     </div>
                 </RealtimePipelineStageTreeItem>

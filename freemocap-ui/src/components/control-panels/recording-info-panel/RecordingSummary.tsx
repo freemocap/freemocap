@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from "react";
+import {useTranslation} from "react-i18next";
 
 function formatDuration(startedAt: string): string {
     const seconds = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
@@ -21,6 +22,7 @@ export const RecordingSummary: React.FC<RecordingSummaryProps> = ({
     isRecording,
     startedAt,
 }) => {
+    const {t} = useTranslation();
     const [recordingDuration, setRecordingDuration] = useState<string>("");
 
     useEffect(() => {
@@ -36,7 +38,7 @@ export const RecordingSummary: React.FC<RecordingSummaryProps> = ({
     if (!isRecording) {
         return (
             <span className="text sm text-gray text-nowrap" style={{fontWeight: 500}}>
-                Ready
+                {t("mocap.ready")}
             </span>
         );
     }
@@ -50,7 +52,7 @@ export const RecordingSummary: React.FC<RecordingSummaryProps> = ({
                 animation: 'pulse-record 2s infinite ease-in-out',
             }}
         >
-            {recordingDuration || "Recording..."}
+            {recordingDuration || t("recording.recording")}
         </span>
     );
 };

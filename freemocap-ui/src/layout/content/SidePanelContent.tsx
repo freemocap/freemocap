@@ -237,7 +237,7 @@ export const SidePanelContent = ({ isCollapsed = false, onToggleCollapse, onOpen
                             icon="home-icon"
                             onClick={onOpenWelcome}
                             tooltip={true}
-                            tooltipText="Home"
+                            tooltipText={t('home')}
                             tooltipPosition="pos-right"
                         />
                     )}

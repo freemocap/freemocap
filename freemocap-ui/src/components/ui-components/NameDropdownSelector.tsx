@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 
 interface NameDropdownSelectorProps {
   options?: string[];
@@ -18,6 +19,11 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
   const [selected, setSelected] = useState(initialValue);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    setSelected(initialValue);
+  }, [initialValue]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -42,7 +48,7 @@ const NameDropdownSelector: React.FC<NameDropdownSelectorProps> = ({
         onClick={() => setOpen((prev) => !prev)}
       >
         <p className="text-gray text md text-align-left text-nowrap">
-          {selected || "Select..."}
+          {selected || t("selectPlaceholder")}
         </p>
       </button>
 

@@ -18,6 +18,7 @@ import { useServer } from "@/services/server/ServerContextProvider";
 import { useAppSelector } from "@/store";
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
 import { useTutorial } from "@/components/tutorial";
+import { useTranslation } from "react-i18next";
 
 export const BasePanelLayout = ({
   children,
@@ -26,6 +27,7 @@ export const BasePanelLayout = ({
   children?: React.ReactNode;
   onOpenWelcome?: () => void;
 }) => {
+  const { t } = useTranslation();
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
   const bottomPanelRef = useRef<ImperativePanelHandle>(null);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -78,10 +80,10 @@ export const BasePanelLayout = ({
         <PromptTooltip
           className={isFailed ? "" : "loading"}
           show={!isConnected && !isTourActive}
-          title={isFailed ? "Service Unavailable" : "Connecting..."}
+          title={isFailed ? t("connection.serviceUnavailable") : t("connection.connecting")}
           text={isFailed
-            ? "Make sure you have the service running"
-            : "Websocket connecting, app functions will be available once connection is made"}
+            ? t("connection.startServiceHelp")
+            : t("connection.websocketConnecting")}
           position="pos-bottom"
           variant={isFailed ? "warning" : "default"}
           onClose={() => {}}
@@ -98,8 +100,8 @@ export const BasePanelLayout = ({
       !isCamerasLoading &&
       !isTourActive                  // <-- tour owns the stage while it runs
     }
-    title="Connect Cameras"
-    text="Make sure you have at least one camera plugged in, then hit Connect to start streaming."
+    title={t("connection.connectCameras")}
+    text={t("connection.connectCamerasHelp")}
     position="pos-right"
     variant="boarding"
     onClose={() => {}}

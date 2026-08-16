@@ -169,10 +169,10 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     />
 
                     <div className="playback-timeline-frame-counter pos-abs z-2 text-white gap-3 flex flex-row items-center">
-                        Frame {currentFrame} / {totalFrames}
+                        {t("playback.frameCounter", {current: currentFrame, total: totalFrames})}
                         {recordingFps != null && recordingFps > 0 && (
                             <span title={t("recordingCaptureFps")}>
-                                · Rec: {recordingFps} fps
+                                · {t("playback.recordingFpsShort")}: {recordingFps} fps
                             </span>
                         )}
                     </div>
@@ -263,7 +263,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     <IconButton
                         icon={isPlaying ? "pause-icon" : "play-icon"}
                         onClick={onPlayPause}
-                        title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+                        title={isPlaying ? t("pause") : t("play")}
                         className={clsx("playback-btn-play", "icon-size-25", isPlaying && "playing")}
                         tooltip={true}
                         tooltipText={isPlaying ? t("pause") : t("play")}
@@ -299,7 +299,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                                 onClick={() => onSourceChange(src)}
                                 style={{textTransform: "capitalize", fontSize: "0.7rem"}}
                             >
-                                {src}
+                                {t(`playback.source.${src}`)}
                             </button>
                         ))}
                     </div>
@@ -310,7 +310,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     <div className="flex pos-rel items-center onclick-tooltip-wrapper">
                         <PromptTooltip
                             show={syncInfoOpen}
-                            title="Recording Playback Timing Issue"
+                            title={t("playback.timingIssue")}
                             text={t("syncInfoTitle")}
                             position="pos-top"
                             variant="warning"
@@ -345,15 +345,15 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                                 className="reveal slide-up right-0 z-10 pos-abs bottom-36 playback-settings-popup border-1 border-solid bg-dark border-black br-2 elevated-sharp flex flex-col gap-2 p-1"
                             >
                                 <div className="bg-middark br-1 flex flex-col gap-2 p-2">
-                                    <SubactionHeader text="Display settings" />
+                                    <SubactionHeader text={t("playback.displaySettings")} />
                                     <ToggleComponent
-                                        text="Show frame overlays"
+                                        text={t("playback.showFrameOverlays")}
                                         isToggled={settings.showOverlays}
                                         onToggle={(state) => updateSetting("showOverlays", state)}
                                     />
                                     <div className="timestamp-format-section flex flex-col gap-2 p-1">
                                         <div className="flex items-center justify-between">
-                                            <p className="text sm text-gray">Timestamp format</p>
+                                            <p className="text sm text-gray">{t("playback.timestampFormat")}</p>
                                         </div>
                                         <SegmentedControl
                                             options={timestampOptions}

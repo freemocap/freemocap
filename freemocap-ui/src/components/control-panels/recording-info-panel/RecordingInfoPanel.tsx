@@ -211,13 +211,13 @@ export const RecordingInfoPanel: React.FC = () => {
         <div className="file-directory-group bg-middark br-2 p-1 flex flex-col gap-1 br-1 ">
         <div className="file-directory-group justify-content-space-between flex flex-row">
             <p className="text-nowrap text-left bg-md text-darkgray p-1">
-              File directory
+              {t("recording.fileDirectory")}
             </p>
             <IconButton
             icon={tagInputVisible ? "tag-active-icon" : "tag-icon"}
             tooltip={true}
             tooltipPosition="pos-left"
-            tooltipText={tagInputVisible ? "Remove tag" : "Add tag"}
+            tooltipText={tagInputVisible ? t("recording.removeTag") : t("recording.addTag")}
             className={`icon-size-25 ${tagInputVisible ? "activate" : ""}`}
             onClick={() => {
               const newState = !tagInputVisible;
@@ -239,7 +239,7 @@ export const RecordingInfoPanel: React.FC = () => {
           >
             <span className="icon icon-size-20 subfolder-icon" />
             <p className="text-gray text-nowrap text md text-align-left flex flex-end">
-              {displayPath || "Set recording path"}
+              {displayPath || t("recording.setPath")}
             </p>
           </button>
 
@@ -292,7 +292,7 @@ export const RecordingInfoPanel: React.FC = () => {
           {/* Auto-process */}
           <div className="flex flex-start flex-col items-center gap-1">
             <ToggleComponent
-              text="Auto Process Mocap"
+              text={t("recording.autoProcessMocap")}
               isToggled={autoProcess}
               onToggle={(v) => dispatch(autoProcessToggled(v))}
               disabled={recordingInfo.isRecording}
@@ -309,7 +309,7 @@ export const RecordingInfoPanel: React.FC = () => {
             <div className=" flex flex-row items-start items-center gap-1">
               <span className="icon subcat-icon icon-size-20" />
               <p className="text-gray text-nowrap text md text-align-left">
-                Mocap Settings
+                {t("recording.mocapSettings")}
               </p>
             </div>
             <div className="group-2 flex flex-row pos-rel items-center gap-1">

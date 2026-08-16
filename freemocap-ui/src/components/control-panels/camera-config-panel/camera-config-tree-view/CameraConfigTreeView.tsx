@@ -40,7 +40,7 @@ export const CameraConfigTreeView: React.FC = () => {
                 <p className="flex flex-row text md text-gray">{cameras.length} {t('cameras')}</p>
                 {connectedCameras.length > 0 && (
                     <span className="text md" style={{color: 'var(--color-success)'}}>
-                        {connectedCameras.length} Streaming
+                        {t("camera.streamingCount", {count: connectedCameras.length})}
                     </span>
                 )}
                 <div className="flex-1" />

@@ -30,7 +30,7 @@ export const DelayRecordingStartControl: React.FC<DelayStartControlProps> = ({
           <div className="flex flex-row justify-content-space-between items-center w-full px-2">
             <div className="flex items-center gap-1 flex-wrap">
               <span className="icon icon-size-20 subcat-icon"></span>
-              <p className="text-left text-white">{t("StartAfter")}</p>
+              <p className="text-left text-white">{t("startAfter")}</p>
             </div>
             <ValueSelector
               value={delaySeconds}

@@ -76,7 +76,9 @@ export function useServerPanel(): ServerPanelState {
     const [serverLoading, setServerLoading] = useState(false);
     const [currentExePath, setCurrentExePath] = useState<string | null>(null);
     const [candidates, setCandidates] = useState<ExecutableCandidate[]>([]);
-    const [candidatesLoading, setCandidatesLoading] = useState(false);
+    // Start in the loading state so auto-launch cannot reuse a persisted path
+    // before the packaged candidates have been validated for this app version.
+    const [candidatesLoading, setCandidatesLoading] = useState(true);
     const [processInfo, setProcessInfo] = useState<{ pid: number | undefined; killed: boolean } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -136,11 +138,11 @@ export function useServerPanel(): ServerPanelState {
             }
         } catch (err) {
             console.error('Failed to load executable candidates:', err);
-            setError(`Failed to load candidates: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverCandidatesLoadFailed', {message: err instanceof Error ? err.message : String(err)}));
         } finally {
             setCandidatesLoading(false);
         }
-    }, [isElectron, api, selectedExePath]);
+    }, [isElectron, api, selectedExePath, t]);
 
     const refreshCandidates = useCallback(async () => {
         if (!isElectron || !api) return;
@@ -154,11 +156,11 @@ export function useServerPanel(): ServerPanelState {
             if (firstValid) setSelectedExePath(firstValid.path);
         } catch (err) {
             console.error('Failed to refresh candidates:', err);
-            setError(`Failed to refresh: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverCandidatesRefreshFailed', {message: err instanceof Error ? err.message : String(err)}));
         } finally {
             setCandidatesLoading(false);
         }
-    }, [isElectron, api]);
+    }, [isElectron, api, t]);
 
     const browseForExecutable = useCallback(async () => {
         if (!isElectron || !api) return;
@@ -167,9 +169,9 @@ export function useServerPanel(): ServerPanelState {
             if (filePath) setSelectedExePath(filePath);
         } catch (err) {
             console.error('Failed to browse for executable:', err);
-            setError(`Browse failed: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverExecutableBrowseFailed', {message: err instanceof Error ? err.message : String(err)}));
         }
-    }, [isElectron, api]);
+    }, [isElectron, api, t]);
 
     // ── Server actions ──
 
@@ -184,12 +186,12 @@ export function useServerPanel(): ServerPanelState {
             await pollServerStatus();
         } catch (err) {
             console.error('Failed to start server:', err);
-            setError(`Start failed: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverStartFailed', {message: err instanceof Error ? err.message : String(err)}));
         } finally {
             setServerLoading(false);
             serverLaunchingRef.current = false;
         }
-    }, [isElectron, api, selectedExePath, pollServerStatus]);
+    }, [isElectron, api, selectedExePath, pollServerStatus, t]);
 
     const stopServer = useCallback(async () => {
         if (!isElectron || !api) return;
@@ -201,11 +203,11 @@ export function useServerPanel(): ServerPanelState {
             await pollServerStatus();
         } catch (err) {
             console.error('Failed to stop server:', err);
-            setError(`Stop failed: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverStopFailed', {message: err instanceof Error ? err.message : String(err)}));
         } finally {
             setServerLoading(false);
         }
-    }, [isElectron, api, pollServerStatus, disconnect]);
+    }, [isElectron, api, pollServerStatus, disconnect, t]);
 
     const resetServer = useCallback(async () => {
         if (!isElectron || !api) return;
@@ -219,11 +221,11 @@ export function useServerPanel(): ServerPanelState {
             await pollServerStatus();
         } catch (err) {
             console.error('Failed to reset server:', err);
-            setError(`Reset failed: ${err instanceof Error ? err.message : String(err)}`);
+            setError(t('serverResetFailed', {message: err instanceof Error ? err.message : String(err)}));
         } finally {
             setServerLoading(false);
         }
-    }, [isElectron, api, selectedExePath, pollServerStatus, disconnect]);
+    }, [isElectron, api, selectedExePath, pollServerStatus, disconnect, t]);
 
     // ── Initial load + polling ──
 

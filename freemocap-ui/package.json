@@ -17,6 +17,7 @@
     "build": "tsc && vite build && electron-builder",
     "build:dev": "tsc && vite build && electron-builder --config.mac.hardenedRuntime=false --config.mac.notarize=false",
     "preview": "vite preview",
+    "i18n:check": "node scripts/check-i18n.mjs",
     "pree2e": "vite build --mode=test",
     "e2e": "playwright test"
   },

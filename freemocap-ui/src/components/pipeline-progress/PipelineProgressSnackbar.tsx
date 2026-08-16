@@ -12,6 +12,7 @@ import {
 import {stopAllPipelines} from '@/store/slices/pipelines/pipelines-thunks';
 import PipelineGroupCard from './PipelineGroupCard';
 import IconButton from '@/components/ui-components/IconButton';
+import {useTranslation} from 'react-i18next';
 
 const DEFAULT_WIDTH = 360;
 const DEFAULT_HEIGHT = 420;
@@ -34,6 +35,7 @@ const HANDLE_CLASS: Record<ResizeHandle, string> = {
 const HANDLES: ResizeHandle[] = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'];
 
 export default function PipelineProgressSnackbar() {
+    const {t} = useTranslation();
     const dispatch = useAppDispatch();
     const groups = useAppSelector(selectGroupedPipelinesAll);
     const activeCount = useAppSelector(selectActiveBasePipelineCount);
@@ -139,7 +141,7 @@ export default function PipelineProgressSnackbar() {
         : 0;
     const summaryLabel = summaryGroup
         ? `${summaryGroup.recordingName || summaryGroup.basePipelineId}${visibleGroups.length > 1 ? ` +${visibleGroups.length - 1}` : ''}`
-        : 'No active pipelines';
+        : t('pipeline.noActive');
 
     if (!open) return null;
 
@@ -188,7 +190,7 @@ export default function PipelineProgressSnackbar() {
                             )}
                         </div>
                     ) : (
-                        <p className="text md text-white flex-1 m-0 ">Pipeline Progress</p>
+                        <p className="text md text-white flex-1 m-0 ">{t('pipeline.progress')}</p>
                     )}
 
                     {hasRunningVisible && (
@@ -204,7 +206,7 @@ export default function PipelineProgressSnackbar() {
                         onClick={() => dispatch(allPipelinesCleared())}
                         disabled={visibleGroups.length === 0}
                         tooltip={true}
-                        tooltipText="Clear all pipelines"
+                        tooltipText={t('pipeline.clearAll')}
                         tooltipPosition="pos-bottom"
                     />
                     <IconButton
@@ -213,7 +215,7 @@ export default function PipelineProgressSnackbar() {
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => setCollapsed(c => !c)}
                         tooltip={true}
-                        tooltipText={collapsed ? "Expand" : "Collapse"}
+                        tooltipText={collapsed ? t('expand') : t('collapse')}
                         tooltipPosition="pos-bottom"
                     />
 
@@ -224,7 +226,7 @@ export default function PipelineProgressSnackbar() {
                             onMouseDown={e => e.stopPropagation()}
                             onClick={() => dispatch(stopAllPipelines())}
                             tooltip={true}
-                            tooltipText="Stop all pipelines"
+                            tooltipText={t('pipeline.stopAll')}
                             tooltipPosition="pos-bottom"
                         />
                     )}
@@ -236,7 +238,7 @@ export default function PipelineProgressSnackbar() {
                         onMouseDown={e => e.stopPropagation()}
                         onClick={() => dispatch(pipelineSnackbarHidden())}
                         tooltip={true}
-                        tooltipText="Close"
+                        tooltipText={t('close')}
                         tooltipPosition="pos-bottom"
                     />
 
@@ -246,7 +248,7 @@ export default function PipelineProgressSnackbar() {
                     <div className="overflow-y flex-1 min-h-0 inner-content">
                         {visibleGroups.length === 0 ? (
                             <div className="flex justify-center py-4">
-                                <p className="text sm text-gray">No active pipelines</p>
+                                <p className="text sm text-gray">{t('pipeline.noActive')}</p>
                             </div>
                         ) : (
                             visibleGroups.map((group) => (

@@ -1,6 +1,5 @@
 import i18n from "i18next";
 import {initReactI18next} from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
 
 // Only eagerly load the fallback locale — all others are lazy-loaded on demand
 import en from "./locales/en-english.json";
@@ -52,6 +51,66 @@ export const SUPPORTED_LOCALES = {
 export type SupportedLocale = keyof typeof SUPPORTED_LOCALES;
 
 export const FALLBACK_LOCALE: SupportedLocale = "en";
+
+export const LOCALE_STORAGE_KEYS = {
+  LOCALE: "freemocap:locale",
+  PREVIOUS_LOCALE: "freemocap:previousLocale",
+  SHOW_TRANSLATION_INDICATOR: "freemocap:showTranslationIndicator",
+} as const;
+
+const LEGACY_LOCALE_STORAGE_KEYS = {
+  LOCALE: "skellycam:locale",
+  PREVIOUS_LOCALE: "skellycam:previousLocale",
+  SHOW_TRANSLATION_INDICATOR: "skellycam:showTranslationIndicator",
+} as const;
+
+export function isSupportedLocale(locale: string | null | undefined): locale is SupportedLocale {
+  return Boolean(locale && locale in SUPPORTED_LOCALES);
+}
+
+function readMigratedSetting(currentKey: string, legacyKey: string): string | null {
+  if (typeof window === "undefined") return null;
+
+  const current = localStorage.getItem(currentKey);
+  if (current !== null) return current;
+
+  const legacy = localStorage.getItem(legacyKey);
+  if (legacy !== null) {
+    localStorage.setItem(currentKey, legacy);
+    localStorage.removeItem(legacyKey);
+  }
+  return legacy;
+}
+
+export function getStoredLocale(): SupportedLocale {
+  const stored = readMigratedSetting(
+    LOCALE_STORAGE_KEYS.LOCALE,
+    LEGACY_LOCALE_STORAGE_KEYS.LOCALE
+  );
+  return isSupportedLocale(stored) ? stored : FALLBACK_LOCALE;
+}
+
+export function getStoredPreviousLocale(): SupportedLocale | null {
+  const stored = readMigratedSetting(
+    LOCALE_STORAGE_KEYS.PREVIOUS_LOCALE,
+    LEGACY_LOCALE_STORAGE_KEYS.PREVIOUS_LOCALE
+  );
+  return isSupportedLocale(stored) ? stored : null;
+}
+
+export function getStoredTranslationIndicator(): boolean {
+  const stored = readMigratedSetting(
+    LOCALE_STORAGE_KEYS.SHOW_TRANSLATION_INDICATOR,
+    LEGACY_LOCALE_STORAGE_KEYS.SHOW_TRANSLATION_INDICATOR
+  );
+  if (stored === null) return true;
+
+  try {
+    return JSON.parse(stored) === true;
+  } catch {
+    return true;
+  }
+}
 
 /**
  * Returns the text direction for the given locale.
@@ -111,30 +170,35 @@ const LOCALE_LOADERS: Record<string, () => Promise<{ default: Record<string, any
   yi: () => import("./locales/yi-yidish.json"),
 };
 
-/** Tracks which locales have already been loaded to avoid duplicate fetches. */
-const loadedLocales = new Set<string>(["en"]);
+/** Caches locale resources so each lazy chunk is imported at most once. */
+const localeResources = new Map<string, Record<string, any>>([["en", en]]);
+
+async function getLocaleResources(locale: SupportedLocale): Promise<Record<string, any>> {
+  const cached = localeResources.get(locale);
+  if (cached) return cached;
+
+  const loader = LOCALE_LOADERS[locale];
+  if (!loader) {
+    throw new Error(`No locale loader registered for "${locale}".`);
+  }
+
+  const module = await loader();
+  localeResources.set(locale, module.default);
+  return module.default;
+}
 
 /**
  * Load a locale's translations on demand. If already loaded, resolves immediately.
  * Called automatically by the languageChanged event and can be called manually.
  */
 export async function loadLocale(locale: string): Promise<void> {
-  if (loadedLocales.has(locale)) return;
-
-  const loader = LOCALE_LOADERS[locale];
-  if (!loader) {
-    throw new Error(`No locale loader registered for "${locale}". Supported: ${Object.keys(LOCALE_LOADERS).join(", ")}`);
+  if (!isSupportedLocale(locale)) {
+    throw new Error(`Unsupported locale "${locale}".`);
   }
 
-  const module = await loader();
-  const translations = module.default;
-  i18n.addResourceBundle(locale, "translation", translations, true, true);
-  loadedLocales.add(locale);
-
-  // Re-trigger changeLanguage after the bundle is loaded so react-i18next
-  // detects the new resources and re-renders all translated components.
-  if (i18n.language === locale) {
-    await i18n.changeLanguage(locale);
+  const translations = await getLocaleResources(locale);
+  if (i18n.isInitialized && !i18n.hasResourceBundle(locale, "translation")) {
+    i18n.addResourceBundle(locale, "translation", translations, true, true);
   }
 }
 
@@ -157,37 +221,51 @@ export function getTranslationSource(
   return "ai-generated";
 }
 
-i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
-  .init({
-    resources: {
-      en: { translation: en },
-    },
-    lng: FALLBACK_LOCALE,
-    fallbackLng: FALLBACK_LOCALE,
-    interpolation: {
-      escapeValue: false,
-    },
-    detection: {
-      order: ["localStorage"],
-      lookupLocalStorage: "freemocap:locale",
-      caches: ["localStorage"],
-    },
-  });
+let initializationPromise: Promise<void> | null = null;
 
-// When the language changes (via user selection or detection), load the locale on demand.
-// The UI briefly shows English keys until the async load completes, then re-renders.
-i18n.on("languageChanged", (lng: string) => {
-  if (lng !== FALLBACK_LOCALE) {
-    loadLocale(lng);
-  }
-});
+function applyDocumentLocale(locale: SupportedLocale): void {
+  if (typeof document === "undefined") return;
+  document.documentElement.dir = getLocaleDirection(locale);
+  document.documentElement.lang = locale;
+}
 
-// If the detected language on startup is not English, load it immediately
-const detectedLng = i18n.language;
-if (detectedLng && detectedLng !== FALLBACK_LOCALE && !loadedLocales.has(detectedLng)) {
-  loadLocale(detectedLng);
+export function initializeI18n(): Promise<void> {
+  if (i18n.isInitialized) return Promise.resolve();
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = (async () => {
+    const locale = getStoredLocale();
+    const resources: Record<string, {translation: Record<string, any>}> = {
+      en: {translation: en},
+    };
+
+    if (locale !== FALLBACK_LOCALE) {
+      resources[locale] = {translation: await getLocaleResources(locale)};
+    }
+
+    await i18n
+      .use(initReactI18next)
+      .init({
+        resources,
+        lng: locale,
+        fallbackLng: FALLBACK_LOCALE,
+        interpolation: {
+          escapeValue: false,
+        },
+      });
+
+    applyDocumentLocale(locale);
+  })();
+
+  return initializationPromise;
+}
+
+export async function changeLocale(locale: SupportedLocale): Promise<void> {
+  await initializeI18n();
+  await loadLocale(locale);
+  localStorage.setItem(LOCALE_STORAGE_KEYS.LOCALE, locale);
+  await i18n.changeLanguage(locale);
+  applyDocumentLocale(locale);
 }
 
 export default i18n;

@@ -1,42 +1,31 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 import type {LocaleState} from "./locale-types";
 import type {SupportedLocale} from "@/i18n";
-import {FALLBACK_LOCALE, getLocaleDirection} from "@/i18n";
-import i18n from "@/i18n/i18n";
-
-const STORAGE_KEYS = {
-  LOCALE: "skellycam:locale",
-  PREVIOUS_LOCALE: "skellycam:previousLocale",
-  SHOW_TRANSLATION_INDICATOR: "skellycam:showTranslationIndicator",
-} as const;
+import {
+  changeLocale,
+  getStoredLocale,
+  getStoredPreviousLocale,
+  getStoredTranslationIndicator,
+  LOCALE_STORAGE_KEYS,
+} from "@/i18n";
 
 function loadLocale(): SupportedLocale {
-  if (typeof window === "undefined") return FALLBACK_LOCALE;
-  const saved = localStorage.getItem(STORAGE_KEYS.LOCALE);
-  if (saved) return saved as SupportedLocale;
-  return (i18n.language as SupportedLocale) || FALLBACK_LOCALE;
+  return getStoredLocale();
 }
 
 function loadPreviousLocale(): SupportedLocale | null {
-  if (typeof window === "undefined") return null;
-  const saved = localStorage.getItem(STORAGE_KEYS.PREVIOUS_LOCALE);
-  return saved as SupportedLocale | null;
+  return getStoredPreviousLocale();
 }
 
 function loadShowTranslationIndicator(): boolean {
-  if (typeof window === "undefined") return true;
-  const saved = localStorage.getItem(STORAGE_KEYS.SHOW_TRANSLATION_INDICATOR);
-  if (saved !== null) return JSON.parse(saved) as boolean;
-  return true;
+  return getStoredTranslationIndicator();
 }
 
 /** Applies locale side-effects: syncs i18next, document dir, and localStorage. */
 function applyLocale(locale: SupportedLocale): void {
-  localStorage.setItem(STORAGE_KEYS.LOCALE, locale);
-  i18n.changeLanguage(locale);
-  const dir = getLocaleDirection(locale);
-  document.documentElement.dir = dir;
-  document.documentElement.lang = locale;
+  void changeLocale(locale).catch((error) => {
+    console.error("Failed to change locale:", error);
+  });
 }
 
 const initialState: LocaleState = {
@@ -55,7 +44,7 @@ export const localeSlice = createSlice({
 
       // Remember the outgoing locale so we can toggle back to it
       state.previousLocale = state.locale;
-      localStorage.setItem(STORAGE_KEYS.PREVIOUS_LOCALE, state.locale);
+      localStorage.setItem(LOCALE_STORAGE_KEYS.PREVIOUS_LOCALE, state.locale);
 
       state.locale = next;
       applyLocale(next);
@@ -69,14 +58,14 @@ export const localeSlice = createSlice({
       const outgoing = state.locale;
       state.locale = target;
       state.previousLocale = outgoing;
-      localStorage.setItem(STORAGE_KEYS.PREVIOUS_LOCALE, outgoing);
+      localStorage.setItem(LOCALE_STORAGE_KEYS.PREVIOUS_LOCALE, outgoing);
       applyLocale(target);
     },
 
     showTranslationIndicatorToggled: (state) => {
       state.showTranslationIndicator = !state.showTranslationIndicator;
       localStorage.setItem(
-        STORAGE_KEYS.SHOW_TRANSLATION_INDICATOR,
+        LOCALE_STORAGE_KEYS.SHOW_TRANSLATION_INDICATOR,
         JSON.stringify(state.showTranslationIndicator)
       );
     },

@@ -1,6 +1,6 @@
 // cameras-thunks.ts
 import {createAction, createAsyncThunk} from '@reduxjs/toolkit';
-import {RootState} from '../../types';
+import {RootState} from '../../root-state-types';
 import {serverUrls} from '@/services';
 import {
     Camera,

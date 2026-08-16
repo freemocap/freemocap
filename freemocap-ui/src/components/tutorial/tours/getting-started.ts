@@ -1,4 +1,4 @@
-import type {Tour} from '../types';
+import type {Tour} from '../tutorial-types';
 import {EXTERNAL_URLS} from '@/constants/external-urls';
 
 // v1 getting-started tour — the main "first touch" path a new user follows:

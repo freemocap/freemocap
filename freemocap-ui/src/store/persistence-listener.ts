@@ -1,5 +1,5 @@
 import {createListenerMiddleware} from '@reduxjs/toolkit';
-import {RootState} from './types';
+import {RootState} from './root-state-types';
 import {saveToStorage} from './persistence';
 
 export const persistenceListenerMiddleware = createListenerMiddleware();

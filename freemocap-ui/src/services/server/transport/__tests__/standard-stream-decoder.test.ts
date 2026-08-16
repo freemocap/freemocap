@@ -22,7 +22,7 @@ import { join } from "node:path";
 import { decodeSchema, decodeSample } from "../StandardStreamDecoder";
 import { createSchemaRegistry } from "../SchemaRegistry";
 import { RollingWindowStore } from "../RollingWindowStore";
-import { ChannelKind, DtypeCode, OverlayLayer, type StreamSchema } from "../types";
+import { ChannelKind, DtypeCode, OverlayLayer, type StreamSchema } from "../wire-types";
 
 // Tiny framework-free assert.
 function assert(cond: unknown, message: string): asserts cond {

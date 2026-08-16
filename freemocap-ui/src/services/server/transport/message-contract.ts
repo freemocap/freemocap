@@ -43,7 +43,7 @@ export const SubjectSchema = z.object({
   subject_id: z.number().int(),
   channels: z.array(ChannelBlockSchema),
 });
-export type Subject = z.infer<typeof SubjectSchema>;
+export type FrameSubject = z.infer<typeof SubjectSchema>;
 
 export const FrameMessageSchema = z.object({
   kind: z.literal("frame"),

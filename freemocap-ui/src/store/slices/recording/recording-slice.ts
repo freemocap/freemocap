@@ -1,5 +1,5 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
 import {loadFromStorage} from '@/store/persistence';

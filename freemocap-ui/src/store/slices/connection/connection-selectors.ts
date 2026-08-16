@@ -1,4 +1,4 @@
-import type { RootState } from '@/store/types';
+import type { RootState } from '@/store/root-state-types';
 
 export const selectIsServerConnected = (state: RootState) => state.connection.isConnected;
 export const selectServerPid = (state: RootState) => state.connection.serverPid;

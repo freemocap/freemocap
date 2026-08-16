@@ -1,6 +1,6 @@
 // cameras-selectors.ts
 import {createSelector} from '@reduxjs/toolkit';
-import {RootState} from '../../types';
+import {RootState} from '../../root-state-types';
 import {CameraConfig} from './cameras-types';
 
 // ========== Basic Selectors ==========

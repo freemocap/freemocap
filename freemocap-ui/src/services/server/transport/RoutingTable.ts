@@ -6,7 +6,7 @@
 // is a standard-stream sample (first byte 10); the camera images ride the
 // sample's IMAGE_JPEG block — there is no second image protocol.
 
-import { MessageType } from "./types";
+import { MessageType } from "./wire-types";
 import { isStandardStreamSample } from "./StandardStreamDecoder";
 
 export type JsonMessageHandler = (message: Record<string, any>) => void;

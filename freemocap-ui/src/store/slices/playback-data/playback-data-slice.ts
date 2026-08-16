@@ -1,5 +1,5 @@
 import {createAsyncThunk, createSlice} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
 import type {RecordingStatusSummary} from '@/types/recording-status';
 import type {LoadedCalibration} from '@/store/slices/calibration/calibration-slice';

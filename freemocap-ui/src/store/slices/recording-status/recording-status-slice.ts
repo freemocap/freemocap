@@ -1,5 +1,5 @@
 import {createSlice} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {RecordingStatus} from '@/types/recording-status';
 import {fetchRecordingStatus, fetchAllRecordings, RecordingListEntry} from './recording-status-thunks';
 

@@ -18,7 +18,7 @@
 // No THREE rendering loop is exercised — only the pure math. The React wiring
 // (RigidBodyBoneRenderer) stays untested, matching the rest of the viewport.
 
-import { ChannelKind, type StreamSchema } from "@/services/server/transport/types";
+import { ChannelKind, type StreamSchema } from "@/services/server/transport/wire-types";
 import {
     BONE_SIDE_COLORS,
     buildBoneInstances,

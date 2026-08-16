@@ -1,6 +1,6 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
 import {z} from 'zod';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {serverUrls} from "@/services";
 import {RecordingCompletionData, StopRecordingResponseSchema} from './recording-types';
 

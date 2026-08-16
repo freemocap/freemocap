@@ -1,5 +1,5 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {detectBlender, exportRecordingToBlender, openRecordingInBlender} from './blender-thunks';
 import {loadFromStorage} from '@/store/persistence';
 

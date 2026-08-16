@@ -2,7 +2,7 @@ import React, {useEffect, useRef} from 'react';
 import {useLocation, useNavigate} from 'react-router-dom';
 import {useTranslation} from 'react-i18next';
 import {useTutorial} from './TutorialContext';
-import type {TourAction} from './types';
+import type {TourAction} from './tutorial-types';
 import {TourOverlay} from './TourOverlay';
 import {TourSpotlight} from './TourSpotlight';
 import {TourPointerBubble} from './TourPointerBubble';

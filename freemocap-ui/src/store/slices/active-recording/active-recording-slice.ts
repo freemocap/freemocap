@@ -1,5 +1,5 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {startRecording, stopRecording} from '@/store/slices/recording/recording-thunks';
 import {buildRecordingStructure, RecordingStructure} from './recording-structure';
 import type {RecordingLayoutPresetName} from './layout-presets/layout-presets';

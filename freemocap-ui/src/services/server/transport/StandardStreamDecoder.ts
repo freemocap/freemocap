@@ -29,7 +29,7 @@ import {
   type DecodedSample,
   type StreamSchema,
   type TypedArrayBlock,
-} from "./types";
+} from "./wire-types";
 
 const CAMERA_ID_BYTES = 16;
 

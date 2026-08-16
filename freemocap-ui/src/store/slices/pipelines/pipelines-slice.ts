@@ -1,5 +1,5 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {RootState} from '../../types';
+import {RootState} from '../../root-state-types';
 import {stopAllPipelines, stopPipeline} from './pipelines-thunks';
 
 // ==================== Pipeline Types ====================

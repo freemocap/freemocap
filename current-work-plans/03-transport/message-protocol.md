@@ -1,8 +1,8 @@
 # The Message Protocol (self-describing; no schema, no samples)
 
-> **Status: PLANNED — design locked, not yet implemented.** The committed code still implements the
-> schema-then-samples model; this doc is the target for the swap. See the preservation inventory in
-> 04-ui/ui-integration.md and the decision in IMPLEMENTATION_PLAN.md.
+> **Status: IN PROGRESS — step 1 landed (contract + codec + parity test, additive).** The committed wire
+> still runs schema-then-samples; steps 2–5 below replace it. See the preservation inventory in
+> 04-ui/ui-integration.md.
 
 **Describes:** the wire behavior — one WebSocket carrying a stream of **self-describing messages**.
 There is no schema and no samples. Every message is typed, versioned, and carries everything needed to

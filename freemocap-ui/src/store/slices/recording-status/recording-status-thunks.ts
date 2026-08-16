@@ -1,5 +1,5 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {serverUrls} from '@/services';
 import {getDetailedErrorMessage} from '@/store/slices/thunk-helpers';
 import {RecordingStatus, RecordingStatusSummary} from '@/types/recording-status';

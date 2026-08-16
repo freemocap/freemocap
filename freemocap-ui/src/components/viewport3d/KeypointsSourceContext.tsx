@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useMemo} from "react";
 import {useServerOptional} from "@/services/server/server-context";
-import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/services/server/transport/types';
+import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/services/server/transport/wire-types';
 
 /**
  * Abstraction over "where do 3D keypoints come from". The Streaming panel

@@ -1,7 +1,7 @@
 import {createListenerMiddleware, ListenerEffectAPI} from '@reduxjs/toolkit';
 import {cameraDesiredConfigUpdated, configCopiedToAll, recommendExposureForAll} from './slices/cameras/cameras-slice';
 import {camerasConnectOrUpdate} from './slices/cameras/cameras-thunks';
-import {RootState} from './types';
+import {RootState} from './root-state-types';
 
 export const cameraConfigListenerMiddleware = createListenerMiddleware();
 

@@ -1,6 +1,6 @@
 import React from "react";
 import clsx from "clsx";
-import { TooltipPosition } from "./types";
+import { TooltipPosition } from "./ui-component-types";
 
 interface IconButtonProps {
   icon: string;

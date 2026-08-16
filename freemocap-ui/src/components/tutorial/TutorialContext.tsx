@@ -2,7 +2,7 @@ import React, {createContext, useCallback, useContext, useEffect, useMemo, useRe
 import {loadFromStorage, saveToStorage} from '@/store/persistence';
 import {TOURS} from './tours';
 import {emitTourEvent} from './telemetry';
-import type {Tour, TourStep} from './types';
+import type {Tour, TourStep} from './tutorial-types';
 
 // ─── Durable completion flag ──────────────────────────────────────────────────
 // One-shot flag persisted through the app's storage SSOT (store/persistence.ts,

@@ -1,4 +1,4 @@
-# Handoff — 2026-08-15 (evening): bones fixed + message-model plan locked
+# Handoff — 2026-08-15 (late): bones fixed + message-model step 1 landed
 
 **For a fresh agent (or the same one after compaction).** This is the entry point and the live state.
 Read the orientation protocol, then confirm your understanding with the user before touching anything.
@@ -15,8 +15,8 @@ best possible system and read whichever artifact was written most recently.
    mm · right-handed · +Z up · +X forward; quaternions **wxyz**; **identity == T-pose** (the solver's
    measurement frame — the *rest frame itself* is NOT identity); 60 segments / 76 landmarks.
 4. [03-transport/message-protocol.md](03-transport/message-protocol.md) — **THE plan for the wire**: a
-   self-describing CBOR **message** model (no schema, no samples). Status: PLANNED — design locked, not
-   yet implemented; the committed code still uses schema-then-samples.
+   self-describing CBOR **message** model (no schema, no samples). Status: IN PROGRESS — step 1
+   (contract + codec + parity test) landed; the committed wire still runs schema-then-samples.
 5. [01-data-model/message-contract.md](01-data-model/message-contract.md) — the message **types** (Zod
    union, envelope, frame shape, client homes).
 6. [03-transport/message-relay.md](03-transport/message-relay.md) (backend send path) +
@@ -44,11 +44,14 @@ frame instead of throwing.)
   (identity == T-pose), and that rest frame is not identity — a body segment +Y points toward its child
   (the spine +Y is world +Z, up). Fix: RestPose now carries orientations (per-segment rest-frame
   orientation, wxyz) and the renderer composes ROTATIONS_WORLD · rest_orientation · Q_permute · S.
-- **The message-model plan is locked** (docs written; not yet implemented). The committed code still uses
-  schema-then-samples; the swap is queue item 3.
+- **The message-model swap is underway** — step 1 landed: `message-contract.ts` (Zod union) +
+  `message_model.py` (Python frozen-slots dataclasses), `cbor-codec.ts` (cbor-x decode),
+  `regenerate_message_golden.py` (cbor2), and the parity harness `message-golden.test.ts` (green). Steps 2–5
+  (backend emit → frontend dispatch → delete+shrink → verify) remain; the committed wire still runs
+  schema-then-samples.
 
-The message-model docs + renames + this handoff are **uncommitted on disk**; the bones-fix code is
-committed (HEAD 6a24337c).
+The message-model docs + contract + cbor2/cbor-x deps are committed (HEAD 8eb26b3f "to msg stream");
+the step-1 codec, parity test, and golden fixtures are uncommitted on disk.
 
 ## Where the work stands per repo
 
@@ -56,16 +59,16 @@ committed (HEAD 6a24337c).
 |---|---|
 | skellyforge | committed+pushed (7863c0d skull stif) — rest basis + axis-agnostic math; nothing pending |
 | skellytracker | committed+pushed (4a7b390 re-add lost dots) — 234 green |
-| freemocap (+ freemocap-ui) | bones fix committed (6a24337c); message-model plan + doc renames uncommitted |
+| freemocap (+ freemocap-ui) | bones fix (6a24337c) + message-model docs + contract + cbor2/cbor-x deps committed (8eb26b3f "to msg stream"); step-1 codec + parity test + golden fixtures uncommitted |
 
 ## The queue (in order)
 
-1. **[USER] commit round** — the message-model docs + renames + this handoff. Never touch git.
+1. ~~**[USER] commit round**~~ — DONE (docs + contract + cbor2/cbor-x deps committed; deps installed).
 2. **F5 gate** — manual full-loop: T-pose, arm bend without pop, hidden-hand degradation, no drift,
    lockstep, correct orientation.
-3. **Message-model swap** — implement message-protocol.md (build order is in that doc), completing the
-   ServerContextProvider/WebsocketServer decomposition. Preserve every live path (inventory in
-   ui-integration.md).
+3. **Message-model swap** — step 1 DONE (contract + codec + parity test, green). Remaining: step 2 backend
+   emit → step 3 frontend dispatch → step 4 delete+shrink → step 5 verify preservation (inventory in
+   ui-integration.md). Completes the ServerContextProvider/WebsocketServer decomposition.
 4. **F5+1 — VMC adapter**, then the posthoc rebuild.
 
 ## Known gaps (flagged, deliberately not done)
@@ -74,7 +77,7 @@ committed (HEAD 6a24337c).
 - The 3D renderer reads schema-default segment_lengths — live per-frame SEGMENT_LENGTHS not merged yet.
 - Bone joint sphere + lit shading deferred.
 - Playback HTTP image path is outside the unified stream — revisit in the posthoc rebuild.
-- Dead tracker_schemas handshake + dead charuco renderer files — flagged, delete during the swap.
+- Dead tracker_schemas handshake (delete during the swap; the TrackedObjectDefinition TYPE stays for playback). The 2D charuco overlay is dead; charuco calibration is live. Precise deletion scope: the pre-swap audit in message-protocol.md.
 
 ## Locked decisions (do not re-litigate)
 
@@ -86,7 +89,8 @@ committed (HEAD 6a24337c).
 - **3D bones: world-quaternion orientation with a rest-derived frame**.
 - Landmark REVIVED; long_axis / twist_keypoint / from-to / "canonical" retired.
 - **Working rules:** never touch git; plan==code; fail loudly; no duplicated info; no backwards compat;
-  no restarts as a workflow requirement; expected cases log quietly.
+  no restarts as a workflow requirement; expected cases log quietly; no single-word file names or
+  single-word public class/function names (multi-word names only).
 
 ## Env
 
@@ -95,11 +99,13 @@ committed (HEAD 6a24337c).
   freemocap/tests/test_center_of_mass.py freemocap/tests/test_stream_sample_encoder.py
   freemocap/tests/test_send_serializer.py freemocap/tests/test_frame_relay.py
   freemocap/tests/test_full_loop.py freemocap/tests/kinematics/ -q`.
-- TS: `cd freemocap/freemocap-ui && npx tsc --noEmit` + three esbuild+node harnesses (NO Vitest):
+- TS: `cd freemocap/freemocap-ui && npx tsc --noEmit` + four esbuild+node harnesses (NO Vitest):
   `transport/__tests__/standard-stream-decoder.test.ts`,
   `viewport3d/renderers/__tests__/standard-stream-integration.test.ts`,
-  `viewport3d/renderers/__tests__/rigid-body-bone.test.ts` (run cmd in each file header).
-- Goldens: `uv run python -m freemocap.tests.streaming_fixtures.regenerate_golden` then copy
-  `schema_golden.json` + `sample_golden.bin` into `freemocap-ui/src/services/server/transport/__fixtures__/`.
+  `viewport3d/renderers/__tests__/rigid-body-bone.test.ts`,
+  `transport/__tests__/message-golden.test.ts` (run cmd in each file header). `cbor-x` is a dep now.
+- Goldens: `uv run python -m freemocap.tests.streaming_fixtures.regenerate_golden` (schema/sample) and
+  `uv run python -m freemocap.tests.streaming_fixtures.regenerate_message_golden` (message CBOR), then copy
+  the `*_golden.*` outputs into `freemocap-ui/src/services/server/transport/__fixtures__/`.
 - The user runs the gate (`python freemocap/__main__.py` + `npm run dev`); 4× USB cameras; TensorRT
   unavailable (nvinfer_10.dll missing → CUDA fallback is normal). The agent CANNOT run the cameras.

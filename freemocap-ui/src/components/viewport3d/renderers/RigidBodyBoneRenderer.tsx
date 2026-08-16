@@ -25,7 +25,7 @@ import {
     Vector3,
 } from "three";
 import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
-import type { RotationsFrame, StreamSchema } from "@/services/server/transport/types";
+import type { RotationsFrame, StreamSchema } from "@/services/server/transport/wire-types";
 import { createBoneMeshGeometry } from "./RigidBodyBoneGeometry";
 import {
     BONE_SIDE_COLORS,

@@ -1,4 +1,4 @@
-import type {Tour} from '../types';
+import type {Tour} from '../tutorial-types';
 import {gettingStartedTour} from './getting-started';
 
 // Registry of all tours. A new tour is one import + one entry here.

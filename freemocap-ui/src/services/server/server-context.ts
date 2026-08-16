@@ -4,7 +4,7 @@ import type { LogStore } from './server-helpers/log-store';
 import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
 import type { Point3d, BodyKinematics } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
-import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema } from './transport/types';
+import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema } from './transport/wire-types';
 
 export type CoMCallback = (point: Point3d | null) => void;
 export type RotationsCallback = (frame: RotationsFrame) => void;

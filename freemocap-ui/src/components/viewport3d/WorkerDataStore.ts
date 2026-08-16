@@ -10,7 +10,7 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import type { RotationsFrame, StreamSchema } from "@/services/server/transport/types";
+import type { RotationsFrame, StreamSchema } from "@/services/server/transport/wire-types";
 import { DEFAULT_VISIBILITY, type Point3d, type BodyKinematics, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 

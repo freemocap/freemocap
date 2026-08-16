@@ -1,5 +1,5 @@
 import {createSelector, createSlice, PayloadAction} from '@reduxjs/toolkit';
-import {RootState} from '../../types';
+import {RootState} from '../../root-state-types';
 import {loadFromStorage} from '@/store/persistence';
 import {
     processMocapRecording,

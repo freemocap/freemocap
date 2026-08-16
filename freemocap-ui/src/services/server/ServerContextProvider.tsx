@@ -38,8 +38,8 @@ import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/st
 import type {AppStateMessage} from "@/store/slices/connection/connection-types";
 import {loadCalibrationForRecording} from "@/store/slices/calibration";
 import {TransportService} from "@/services/server/transport/TransportService";
-import type {RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema} from "@/services/server/transport/types";
-import {OverlayLayer} from "@/services/server/transport/types";
+import type {RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema} from "@/services/server/transport/wire-types";
+import {OverlayLayer} from "@/services/server/transport/wire-types";
 import type {SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
 
 // Type guard for the server's authoritative APP_STATE snapshot

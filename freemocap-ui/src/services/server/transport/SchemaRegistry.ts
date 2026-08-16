@@ -17,7 +17,7 @@ import {
   type ResolvedSample,
   type StreamSchema,
   type TypedArrayBlock,
-} from "./types";
+} from "./wire-types";
 
 /** Narrow a decoded block to its Float32Array data, failing loud if it is not
  *  float32. Every kind resolved into a typed frame here is float32 by schema;

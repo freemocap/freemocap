@@ -1,5 +1,5 @@
 export { store } from './store';
-export type { RootState, AppDispatch, AppThunk } from './types';
+export type { RootState, AppDispatch, AppThunk } from './root-state-types';
 export { useAppDispatch, useAppSelector } from './hooks';
 
 

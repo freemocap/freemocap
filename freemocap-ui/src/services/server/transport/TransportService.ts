@@ -31,7 +31,7 @@ import {
   type RotationsFrame,
   type SegmentLengthsFrame,
   type StreamSchema,
-} from "./types";
+} from "./wire-types";
 
 export type RotationsCallback = (frame: RotationsFrame) => void;
 export type OverlayCallback = (frame: OverlayFrame) => void;

@@ -2,7 +2,7 @@ import React from 'react';
 import clsx from 'clsx';
 import {FloatingOnboarding} from '@/hooks/floatingOnboarding';
 import {TourNav} from './TourNav';
-import type {TourPosition} from './types';
+import type {TourPosition} from './tutorial-types';
 
 // The contextual callout for a pointer step. It reuses the exact class recipe
 // from PromptTooltip so it inherits the tooltip chrome from styles/tooltips.css:

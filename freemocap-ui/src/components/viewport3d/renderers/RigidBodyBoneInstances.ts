@@ -14,7 +14,7 @@
 //   D15 — per-instance color set ONCE at schema time at build (never in the
 //         hot path).
 
-import { ChannelKind, type StreamSchema } from "@/services/server/transport/types";
+import { ChannelKind, type StreamSchema } from "@/services/server/transport/wire-types";
 
 export type BoneSide = "left" | "right" | "center";
 

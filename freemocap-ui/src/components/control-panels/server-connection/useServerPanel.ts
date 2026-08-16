@@ -3,7 +3,7 @@ import {useServer} from '@/services/server/ServerContextProvider';
 import {useTranslation} from 'react-i18next';
 import {useElectronIPC} from '@/services';
 import {DEFAULT_HOST, DEFAULT_PORT} from '@/constants/server-urls';
-import {ExecutableCandidate, WS_RECONNECT_INTERVAL_MS} from './types';
+import {ExecutableCandidate, WS_RECONNECT_INTERVAL_MS} from './server-connection-types';
 import {STORAGE_KEYS, loadFromStorage, saveToStorage} from './storage';
 
 export interface ServerPanelState {

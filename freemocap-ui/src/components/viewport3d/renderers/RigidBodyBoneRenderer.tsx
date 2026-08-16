@@ -1,7 +1,7 @@
 // RigidBodyBoneRenderer.tsx
 //
 // F4 — the rigid-body segment renderer: a single THREE.InstancedMesh of the
-// canonical bone meshes, driven every frame by:
+// standard-human bone meshes, driven every frame by:
 //   SEGMENT_ORIGINS (via subscribeToSkeleton) + ROTATIONS_WORLD (via
 //   subscribeToRotations). Identity quaternion == T-pose.
 //

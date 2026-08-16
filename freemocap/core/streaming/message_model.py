@@ -173,13 +173,13 @@ class ModelMessage(MessageEnvelope):
         exact-axis names -> axes, length_ratio x nominal height -> lengths)."""
         from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM  # noqa: PLC0415
         from skellyforge.kinematics.quaternion_math import RotationQuaternion  # noqa: PLC0415
-        from skellyforge.skellymodels.standard_human.reference_geometry import build_reference_geometry  # noqa: PLC0415
+        from skellyforge.skellymodels.standard_human.reference_geometry import ReferenceGeometry  # noqa: PLC0415
 
         lengths = {
             segment.name: segment.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
             for segment in standard_human.segments
         }
-        geometry = build_reference_geometry(list(standard_human.segments), lengths)
+        geometry = ReferenceGeometry.from_segments(list(standard_human.segments), lengths)
 
         orientations: dict[str, tuple[float, float, float, float]] = {}
         for segment in standard_human.segments:

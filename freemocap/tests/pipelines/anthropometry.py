@@ -1,10 +1,10 @@
-"""Adapters that turn each pipeline's output into a canonical-named position
+"""Adapters that turn each pipeline's output into a standard-human-named position
 time series for the segment-length diagnostics in
 ``freemocap.core.kinematics.segment_lengths``.
 
 For the limb segments we validate (upper arm, forearm, thigh, shank), the joint
 landmark names are identical COCO names across mediapipe (posthoc) and RTMPose
-(realtime) and the canonical model — so no tracker→canonical remap is needed;
+(realtime) and the standard-human model — so no tracker→standard-human remap is needed;
 each adapter just collects ``{landmark_name: (n_frames, 3)}``.
 """
 from __future__ import annotations
@@ -42,7 +42,7 @@ def positions_from_aggregation_outputs(
     field
         Which named-point dict to read: ``"keypoints_arrays"`` (raw triangulated,
         the honest reconstruction — default) or ``"skeleton"`` (the rigidified
-        canonical skeleton; its bone lengths are the enforced rigid estimates, so
+        standard-human skeleton; its bone lengths are the enforced rigid estimates, so
         use it to check rigidity + posthoc equivalence, not as an independent
         measure of the raw reconstruction).
 

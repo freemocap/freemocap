@@ -7,7 +7,7 @@
 
 ## What this covers
 
-The canonical, VRM-1.0-aligned human as a composed set of rigid-body **segments**, each defined **from
+The standard-human, VRM-1.0-aligned human as a composed set of rigid-body **segments**, each defined **from
 hydrated landmarks** — origin + orientation + length. A segment is declared by its **landmarks** (the
 points rigid on it), an **origin landmark**, and **tagged axis declarations** built from those landmarks;
 the per-frame world positions of the landmarks (hydrated through the tracker mapping, or absent =
@@ -18,14 +18,14 @@ fitted-point stage. The precise landmark is alive and is the atom of the model, 
 ## Key facts (committed code)
 
 - **`SegmentDefinition`** = `name`, `parent`, `parent_attachment` (`ORIGIN`/`DISTAL`), `landmarks`,
-  `origin_landmark`, `axes`, `rest_rotation`, `length_ratio`, `rotation_limits?`, `rigid_with_parent?`.
+  `origin_landmark`, `axes`, `length_ratio`, `rotation_limits?`, `rigid_with_parent?`.
 - **`rigid_with_parent: bool = False`** — declares a **rigid child** (see the
   [glossary](../00-foundation/glossary.md)): the segment's pose is never solved from its own hydrated
   landmarks; it inherits the parent's solved pose composed with its authored rest local rotation.
   **Load-time validation (fail-loud):** every landmark of a rigid child must be a member of its parent's
   `landmarks` — a rigid child whose geometry escapes the parent's rigid set is an authoring error and
   raises. Declared, never inferred.
-- **`AxisDefinition(axis: Literal["x","y","z"], kind: EXACT|APPROXIMATE, target_landmark)`** — name-driven:
+- **`AxisDefinition(axis: Literal["x","y","z","-x","-y","-z"], kind: EXACT|APPROXIMATE, target_landmark, rest_direction=None)`** — name-driven (signed):
   the EXACT axis may sit on any of x/y/z (no positional rules); the direction is
   `positions[target_landmark] − positions[origin_landmark]`; **every axis target must be a member of the
   segment's own `landmarks`** (enforced at load — a segment's frame is a function of its own rigid

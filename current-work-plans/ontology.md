@@ -1,6 +1,6 @@
 # The FreeMoCap Kinematic Ontology
 
-The north-star architecture for how FreeMoCap turns measured points into a canonical human (and, later,
+The north-star architecture for how FreeMoCap turns measured points into a standard human (and, later,
 non-human) kinematic model. It exists so FreeMoCap can be a **boundary object** — one neutral core that
 biomechanics, robotics, and animation each consume in their own format — and so the work we do *now* is
 shaped to accept the sophisticated work we'll want *later*.

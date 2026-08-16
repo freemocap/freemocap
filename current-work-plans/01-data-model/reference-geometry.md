@@ -17,11 +17,11 @@ The **T-pose** each live pose is measured against — one build serves both the 
   solves are unaffected (they read live keypoints). Absolute rest *positions* of some points (finger
   origins, degenerate skull points) are schematic, not metric.
 - **`SegmentReferenceGeometry`** = `origin`, `basis` (rows [x̂, ŷ, ẑ]), `length`.
-- **Rest approximate axis:** an authored `_TWIST_OVERRIDES` entry is **authoritative** where the
+- **Rest approximate axis:** an authored `rest_direction` on the approximate axis is **authoritative** where the
   schematic geometry can't be trusted (off-chain / degenerate targets), taking precedence over the
   target-position branch — this is the 2026-08-14 fix that keeps the **head's forward axis anterior**
   (the shared off-chain `nose` slot is last-writer-wins and must not drive the head's frame).
-- `nose` is popped from the returned keypoints (off-chain, no single canonical rest position; the tracker
+- `nose` is popped from the returned keypoints (off-chain, no single standard rest position; the tracker
   supplies it live).
 
 ## Known, inert

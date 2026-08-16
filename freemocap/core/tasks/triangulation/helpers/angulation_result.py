@@ -9,7 +9,7 @@ class AngulationResult:
     """Output of `CalibrationStateTracker.try_angulate(...)` for one frame.
 
     points : dict[str, (3,) ndarray]
-        Triangulated 3D point positions (mm), keyed by canonical point name.
+        Triangulated 3D point positions (mm), keyed by standard-human point name.
         NaN-free — points that failed triangulation or the reprojection gate
         are absent, never NaN.
     errors_px : dict[str, float] | None

@@ -48,7 +48,7 @@ from skellyforge.kinematics.orientation_solver import (
     solve_frame_orientations,
 )
 from skellyforge.skellymodels.standard_human.reference_geometry import (
-    build_reference_geometry,
+    ReferenceGeometry,
 )
 from skellyforge.skellymodels.standard_human.standard_human_model import (
     StandardHuman,
@@ -163,7 +163,7 @@ def _solve(
     for i in range(n_frames):
         result = rig.rigidify_frame(pose, measured=pose, t=float(i) * dt)
     lengths = _measured_lengths(model, rig)
-    reference_geometry = build_reference_geometry(
+    reference_geometry = ReferenceGeometry.from_segments(
         list(model.segments), lengths
     ).segments
     return solve_frame_orientations(

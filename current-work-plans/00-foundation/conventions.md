@@ -3,7 +3,7 @@
 The coordinate, rotation, and framing conventions every other layer assumes. Single-source: if another
 doc needs one of these facts, it links here.
 
-## World / canonical space
+## World space
 
 - **Units:** millimetres (mm).
 - **Handedness:** right-handed.
@@ -19,8 +19,8 @@ doc needs one of these facts, it links here.
 - **`identity == T-pose`.** A segment whose live pose equals its T-pose reference solves to the
   identity quaternion — world **and** local. This is the contract every downstream consumer relies on.
 - **Composition:** `q_child_local = conj(q_parent) · q_child_world`. The root's local equals its world.
-- **Euler (authoring only):** `rest_rotation` is an extrinsic XYZ triple (radians) that extrudes a
-  segment's declared axis; every authored value is single-axis, so the convention only matters here.
+- **Rest direction (authoring):** each axis carries a `rest_direction` (a world-space unit vector at the
+  T-pose), authored directly as a vector — never an euler triple, no order convention.
 
 ## The VRM 1.0 local frame (per-segment)
 

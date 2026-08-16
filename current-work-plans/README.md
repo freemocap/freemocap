@@ -2,7 +2,7 @@
 
 Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
 message stream** — the two intertwined efforts that turn synchronized camera frames into a
-self-describing stream of a canonical, VRM-1.0-aligned human.
+self-describing stream of a standard-human, VRM-1.0-aligned human.
 
 > **Why this folder exists / how it's organized.** This started life as a single "streaming
 > compatibility" spec, then absorbed a full rebuild of the human data model (segments, kinematics,
@@ -18,7 +18,7 @@ self-describing stream of a canonical, VRM-1.0-aligned human.
 | # | Layer | Covers |
 |---|-------|--------|
 | **00** | [foundation/](00-foundation/) | Conventions (frames, units, quaternions), the keypoint/segment vocabulary, testing philosophy — the facts every other layer assumes. |
-| **01** | [data-model/](01-data-model/) | The canonical structures: the VRM segment model, T-pose reference geometry, tracker→standard-human mappings, and the message contract (envelope, kinds, self-describing channel block). |
+| **01** | [data-model/](01-data-model/) | The standard-human structures: the VRM segment model, T-pose reference geometry, tracker→standard-human mappings, and the message contract (envelope, kinds, self-describing channel block). |
 | **02** | [pipeline/](02-pipeline/) | The engine: kinematics (orientation solver, two-tier twist), segment-length estimation + fitting, the realtime loop, the posthoc path. |
 | **03** | [transport/](03-transport/) | The wire: the message protocol, the backend relay + WebSocket send-path, the streaming hub + LSL/VMC adapters, the HTTP control plane, on-disk serialization. |
 | **04** | [ui/](04-ui/) | The frontend: the message dispatcher (TransportService), the client homes, the rigid-body renderers. |
@@ -29,7 +29,7 @@ numbers, no "which doc-11 do you mean."
 
 ## Status (2026-08-15)
 
-The canonical human is **built and green**: skellyforge's 60-segment VRM 1.0 model (name-driven axes,
+The standard human is **built and green**: skellyforge's 60-segment VRM 1.0 model (name-driven axes,
 keypoint-driven solver, reference geometry, per-group rigid fit), the freemocap realtime backend, and
 the freemocap-ui decoder + rigid-body renderer. The transport is **one unified stream** (one
 frame carries images + overlays + reconstruction, newest-wins, no ack window); the 2D overlay

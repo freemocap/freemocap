@@ -48,7 +48,7 @@ What they cover:
 
 The "human-shaped" scoring lives in `freemocap/core/kinematics/segment_lengths.py`
 (reusable as a runtime diagnostic): it divides each measured segment length by the
-canonical `bone_length_ratios` to get a per-segment *implied height*; a genuinely
+`bone_length_ratios` to get a per-segment *implied height*; a genuinely
 human skeleton implies one consistent height across all segments, so the spread
 (CV) of implied heights is height-independent and is the core signal.
 

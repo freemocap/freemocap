@@ -115,7 +115,7 @@ export const BONE_SIDE_COLORS: Readonly<Record<BoneSide, readonly [number, numbe
     center: [0x00 / 255, 0xaa / 255, 0x00 / 255],
 };
 
-/** Classify a canonical segment name by its `left_` / `right_` prefix. */
+/** Classify a segment name by its `left_` / `right_` prefix. */
 export function classifyBone(name: string): BoneSide {
     if (name.startsWith("left_")) return "left";
     if (name.startsWith("right_")) return "right";

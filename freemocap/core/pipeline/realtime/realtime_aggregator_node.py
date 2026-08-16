@@ -63,7 +63,7 @@ from skellyforge.skellymodels.standard_human.tracker_contract import (
     validate_all_tracker_families,
 )
 from skellyforge.skellymodels.standard_human.reference_geometry import (
-    build_reference_geometry,
+    ReferenceGeometry,
 )
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
@@ -366,7 +366,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         # per-frame build (below) replaces this. The solver's reference
         # DIRECTIONS are unchanged by live lengths — the lengths only refine the
         # rest-pose map and model values; quaternions never depend on them.
-        reference_geometry = build_reference_geometry(
+        reference_geometry = ReferenceGeometry.from_segments(
             list(standard_human.segments),
             {
                 s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
@@ -784,7 +784,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 measured_lengths[seg.name] = (
                                     seg.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
                                 )
-                        reference_geometry = build_reference_geometry(
+                        reference_geometry = ReferenceGeometry.from_segments(
                             list(standard_human.segments), measured_lengths
                         ).segments
                     # The rigidifier hands back the hydrated standard-human

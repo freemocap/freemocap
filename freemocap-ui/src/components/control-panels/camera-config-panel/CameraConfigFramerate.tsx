@@ -28,17 +28,17 @@ export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({
         const numValue = parseFloat(value);
 
         if (value === '' || isNaN(numValue)) {
-            setError('Enter a valid number');
+            setError(t('validation.enterValidNumber'));
             return;
         }
 
         if (numValue < FRAMERATE_CONSTRAINTS.min) {
-            setError(`Min: ${FRAMERATE_CONSTRAINTS.min} FPS`);
+            setError(t('validation.minimumFps', {value: FRAMERATE_CONSTRAINTS.min}));
             return;
         }
 
         if (numValue > FRAMERATE_CONSTRAINTS.max) {
-            setError(`Max: ${FRAMERATE_CONSTRAINTS.max} FPS`);
+            setError(t('validation.maximumFps', {value: FRAMERATE_CONSTRAINTS.max}));
             return;
         }
 
@@ -91,7 +91,7 @@ export const CameraConfigFramerate: React.FC<CameraConfigFramerateProps> = ({
 
     return (
         <div>
-            <p className="text sm text-gray mb-1">{t("framerate")}</p>
+            <p className="text sm text-gray mb-1">{t("framerateLabel")}</p>
             <div className="flex flex-row gap-1" style={{marginBottom: mode === 'MANUAL' ? 4 : 0}} title={t("framerateControl")}>
                 {(['AUTO', 'MANUAL'] as const).map((m) => (
                     <button

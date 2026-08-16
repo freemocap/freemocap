@@ -13,6 +13,7 @@ import { useCalibration } from "@/hooks/useCalibration";
 import { CalibrationSolverMethod } from "@/store/slices/calibration";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import charucoSettingsImage from "@/assets/images/charuco_settings.webp";
+import { useTranslation } from "react-i18next";
 
 type BoardPreset = "5 x 3" | "7 x 5" | "Custom";
 
@@ -26,36 +27,35 @@ const BOARD_PRESETS: Record<Exclude<BoardPreset, "Custom">, BoardPresetDims> = {
   "7 x 5": { squares_x: 7, squares_y: 5 },
 };
 
-const PRESET_OPTIONS: BoardPreset[] = ["5 x 3", "7 x 5", "Custom"];
-
-const PRESET_OPTIONS_SOLVER = ["Anipose legacy", "Accurate"];
-
-const solverLabelToMethod: Record<string, CalibrationSolverMethod> = {
-  "Anipose legacy": "anipose",
-  Accurate: "pyceres",
-};
-
-const solverMethodToLabel: Record<CalibrationSolverMethod, string> = {
-  anipose: "Anipose legacy",
-  pyceres: "Accurate",
-};
-
 interface CalibrationSettingsProps {
   onClose?: () => void;
 }
 
 const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
   const { config, updateCalibrationConfig, pyceresAvailable } = useCalibration();
   const board = config.charucoBoard;
 
-  const solverOptions = useMemo(
-    () =>
-      pyceresAvailable === false
-        ? PRESET_OPTIONS_SOLVER.filter((label) => label !== "Accurate")
-        : PRESET_OPTIONS_SOLVER,
-    [pyceresAvailable],
+  const customPresetLabel = t("calibration.customPreset");
+  const solverLabelToMethod = useMemo<Record<string, CalibrationSolverMethod>>(
+    () => ({
+      [t("calibration.aniposeLegacy")]: "anipose",
+      [t("calibration.accurate")]: "pyceres",
+    }),
+    [t],
   );
+  const solverMethodToLabel = useMemo<Record<CalibrationSolverMethod, string>>(
+    () => ({
+      anipose: t("calibration.aniposeLegacy"),
+      pyceres: t("calibration.accurate"),
+    }),
+    [t],
+  );
+  const solverOptions = useMemo(() => {
+    const options = [t("calibration.aniposeLegacy"), t("calibration.accurate")];
+    return pyceresAvailable === false ? options.slice(0, 1) : options;
+  }, [pyceresAvailable, t]);
 
   const handleClose = useCallback(() => {
     if (onClose) onClose();
@@ -120,7 +120,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
   const handlePresetChange = useCallback(
     (value: string) => {
-      const preset = value as BoardPreset;
+      const preset: BoardPreset = value === customPresetLabel ? "Custom" : value as BoardPreset;
       if (preset === "Custom") {
         setForcedCustom(true);
         return;
@@ -130,7 +130,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
         charucoBoard: { ...board, ...BOARD_PRESETS[preset] },
       });
     },
-    [board, updateCalibrationConfig],
+    [board, updateCalibrationConfig, customPresetLabel],
   );
 
   const handleSolverChange = useCallback(
@@ -152,7 +152,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         <div className="flex flex-row justify-content-space-between items-center">
           <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
-            <SubactionHeader text="Charuco board settings" />
+            <SubactionHeader text={t("calibration.charucoBoardSettings")} />
             <div
               data-onboarding="calibration:charuco-settings"
               className="flex flex-row pos-rel gap-1 items-center"
@@ -162,17 +162,13 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
                 className="button sm"
                 onClick={toggleTooltip}
                 tooltip
-                tooltipText="Learn about ChArUco"
+                tooltipText={t("calibration.learnAboutCharuco")}
                 tooltipPosition="pos-left"
               />
               <PromptTooltip
                 show={showTooltip}
-                title="Understand board settings"
-                text={
-                  "Preset: The type of tile-based charuco board, either 3×5 or 7×5.\n" +
-                  "Square length: The exact dimension of each black square. Measure this square precisely in millimeters.\n" +
-                  "Solver method: There are two options. Select the appropriate one depending on the use case."
-                }
+                title={t("calibration.understandBoardSettings")}
+                text={t("calibration.boardSettingsHelp")}
                 image={true}
                 imageSrc={charucoSettingsImage}
                 position="pos-right"
@@ -185,11 +181,11 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* Preset dropdown */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Preset</span>
+          <span className="text-sm">{t("calibration.preset")}</span>
           <NameDropdownSelector
             key={displayedPreset}
-            options={PRESET_OPTIONS}
-            initialValue={displayedPreset}
+            options={["5 x 3", "7 x 5", customPresetLabel]}
+            initialValue={displayedPreset === "Custom" ? customPresetLabel : displayedPreset}
             onChange={handlePresetChange}
             className="flex flex-row"
           />
@@ -197,7 +193,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* X Square Size */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">X Square Size</span>
+          <span className="text-sm">{t("calibration.xSquareSize")}</span>
           <ValueSelector
             value={board.squares_x}
             min={2}
@@ -215,7 +211,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
 
         {/* Y Square Size */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Y Square Size</span>
+          <span className="text-sm">{t("calibration.ySquareSize")}</span>
           <ValueSelector
             value={board.squares_y}
             min={2}
@@ -231,11 +227,11 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           />
         </div>
 
-        <SubactionHeader text="Board Dimensions" />
+        <SubactionHeader text={t("calibration.boardDimensions")} />
 
         {/* Square length */}
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Square length</span>
+          <span className="text-sm">{t("calibration.squareLength")}</span>
           <ValueSelector
             value={board.square_length_mm}
             min={1}
@@ -250,12 +246,12 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           />
         </div>
 
-        <SubactionHeader text="Solver settings" />
+        <SubactionHeader text={t("calibration.solverSettings")} />
 
         {/* Method dropdown (only shown when there's a choice to make) */}
         {solverOptions.length > 1 ? (
           <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text-sm">Method</span>
+            <span className="text-sm">{t("calibration.method")}</span>
             <NameDropdownSelector
               key={config.solverMethod}
               options={solverOptions}
@@ -266,7 +262,7 @@ const CalibrationSettings = ({ onClose }: CalibrationSettingsProps) => {
           </div>
         ) : (
           <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-            <span className="text-sm">Method</span>
+            <span className="text-sm">{t("calibration.method")}</span>
             <span className="text-sm">{solverMethodToLabel[config.solverMethod]}</span>
           </div>
         )}

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import IconButton from "@/components/ui-components/IconButton";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import { Row } from "@/components/ui-components/Row";
@@ -36,6 +37,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
   isAutoApply,
 }) => {
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -62,13 +64,13 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
   const exposure = desiredConfig?.exposure ?? -7;
   const exposureMode = desiredConfig?.exposure_mode ?? "MANUAL";
 
-  const EXPOSURE_MODE_LABELS = { AUTO: "Auto", MANUAL: "Custom" };
+  const EXPOSURE_MODE_LABELS = { AUTO: t("auto"), MANUAL: t("custom") };
   const EXPOSURE_MODE_OPTIONS = Object.values(EXPOSURE_MODE_LABELS);
 
   const handleExposureModeChange = (label: string) => {
     const modeMap: Record<string, "AUTO" | "MANUAL"> = {
-      Auto: "AUTO",
-      Custom: "MANUAL",
+      [EXPOSURE_MODE_LABELS.AUTO]: "AUTO",
+      [EXPOSURE_MODE_LABELS.MANUAL]: "MANUAL",
     };
     dispatch(
       cameraDesiredConfigUpdated({
@@ -107,11 +109,11 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
         <IconButton
           icon="settings-icon"
           className="icon icon-size-25"
-          title={showSettings ? "Close settings" : "Open settings"}
+          title={showSettings ? t("closeSettings") : t("camera.openSettings")}
           onClick={() => setShowSettings((prev) => !prev)}
           tooltip={true}
           tooltipPosition="pos-left"
-          tooltipText="Camera settings"
+          tooltipText={t("camera.settings")}
         />
 
         {showSettings && (
@@ -120,12 +122,12 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
               {/* Header */}
               <div className="subaction-header-container justify-content-space-between gap-1 br-1 flex items-center h-25 p-1">
                 <p className="text-nowrap text-left bg-md text-darkgray">
-                  Camera settings
+                  {t("camera.settings")}
                 </p>
               </div>
 
               {/* Rotate */}
-              <Row label="Rotate">
+              <Row label={t("camera.rotate")}>
                 <SegmentedControl
                   options={ROTATION_OPTIONS.map((o: RotationValue) => ({
                     label: ROTATION_DEGREE_LABELS[o],
@@ -148,7 +150,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
 
               {/* Exposure mode dropdown */}
               <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                <span className="text-sm">Exposure Mode</span>
+                <span className="text-sm">{t("camera.exposureMode")}</span>
                 <NameDropdownSelector
                   key={exposureMode}
                   options={EXPOSURE_MODE_OPTIONS}
@@ -162,7 +164,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
                 <div className="manual-exposure-group flex flex-row gap-1  p-1 justify-content-space-between">
                   <div className="flex flex-row items-center gap-1">
                     <span className="icon subcat-icon icon-size-20" />
-                    <p className="text bg">Exposure</p>
+                    <p className="text bg">{t("exposure")}</p>
                   </div>
 
                   <ValueSelector
@@ -181,7 +183,7 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
               {/* Footer */}
               <div className="flex flex-col gap-1">
                 <ToggleComponent
-                  text="Auto-apply"
+                  text={t("camera.autoApply")}
                   
                   isToggled={isAutoApply}
                   onToggle={() => dispatch(autoApplyToggled())}
@@ -191,13 +193,13 @@ export const CameraViewWithOverlay: React.FC<CameraViewWithOverlayProps> = ({
 
                   onClick={handleApply}
                   disabled={isApplying || isAutoApply}
-                  title="Apply changes to camera"
+                  title={t("camera.applyChanges")}
                 >
                   <p
                     className="text md text-white"
                     
                   >
-                    {isApplying ? "Applying..." : "Apply"}
+                    {isApplying ? t("camera.applying") : t("camera.apply")}
                   </p>
                 </button>
               </div>

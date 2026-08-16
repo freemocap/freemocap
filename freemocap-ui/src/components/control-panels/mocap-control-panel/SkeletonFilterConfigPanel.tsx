@@ -1,4 +1,5 @@
 import React, {useCallback} from "react";
+import {useTranslation} from "react-i18next";
 import {useMocap} from "@/hooks/useMocap";
 import {DEFAULT_REALTIME_FILTER_CONFIG, RealtimeFilterConfig} from "@/store/slices/mocap";
 
@@ -14,6 +15,7 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
     updateSkeletonFilterConfig: updateSkeletonFilterConfigProp,
     replaceSkeletonFilterConfig: replaceSkeletonFilterConfigProp,
 }) => {
+    const {t} = useTranslation();
     const {
         skeletonFilterConfig,
         updateSkeletonFilterConfig: updateSkeletonFilterConfigHook,
@@ -30,23 +32,23 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
     return (
         <div className="flex flex-col gap-1">
             <div className="flex flex-row justify-content-space-between items-center">
-                <p className="text sm text-gray" style={{fontWeight: 600}}>Skeleton Filter</p>
+                <p className="text sm text-gray" style={{fontWeight: 600}}>{t("filter.skeletonFilter")}</p>
                 <button
                     className="button sm secondary"
                     onClick={handleResetDefaults}
                     disabled={isLoading}
                     style={{fontSize: 11}}
                 >
-                    Reset Defaults
+                    {t("filter.resetDefaults")}
                 </button>
             </div>
 
             {/* === Point Gate === */}
-            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>Point Gate</p>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>{t("filter.pointGate")}</p>
 
-            <div title="Reject triangulated points whose mean reprojection error exceeds this. Higher = keep more (noisier) points.">
+            <div title={t("filter.maxReprojectionHelp")}>
                 <p className="text sm text-gray">
-                    Max Reproj Error: {skeletonFilterConfig.max_reprojection_error_px.toFixed(0)} px
+                    {t("filter.maxReprojectionError")}: {skeletonFilterConfig.max_reprojection_error_px.toFixed(0)} px
                 </p>
                 <input
                     type="range"
@@ -58,9 +60,9 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                 />
             </div>
 
-            <div title="Reject points moving faster than this between frames. Catches teleportation spikes. Human limbs rarely exceed ~15 m/s.">
+            <div title={t("filter.maxVelocityHelp")}>
                 <p className="text sm text-gray">
-                    Max Velocity: {skeletonFilterConfig.max_velocity_m_per_s.toFixed(0)} m/s
+                    {t("filter.maxVelocity")}: {skeletonFilterConfig.max_velocity_m_per_s.toFixed(0)} m/s
                 </p>
                 <input
                     type="range"
@@ -72,9 +74,9 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                 />
             </div>
 
-            <div title="After this many consecutive velocity rejections, accept unconditionally to prevent permanent lockout.">
+            <div title={t("filter.maxRejectedStreakHelp")}>
                 <p className="text sm text-gray">
-                    Max Rejected Streak: {skeletonFilterConfig.max_rejected_streak}
+                    {t("filter.maxRejectedStreak")}: {skeletonFilterConfig.max_rejected_streak}
                 </p>
                 <input
                     type="range"
@@ -89,11 +91,11 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
 
             {/* === One Euro Filter === */}
-            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>One Euro Filter</p>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>{t("filter.oneEuro")}</p>
 
-            <div title="Minimum cutoff frequency (Hz) — controls how quickly the filter settles when motion stops. At 30 fps: 0.5 Hz ≈ 0.8 s settling, 1.0 Hz ≈ 0.4 s, 2.0 Hz ≈ 0.2 s. Raise if skeleton feels dragged; lower if it jitters at rest.">
+            <div title={t("filter.minCutoffHelp")}>
                 <p className="text sm text-gray">
-                    Min Cutoff: {skeletonFilterConfig.min_cutoff.toFixed(2)} Hz
+                    {t("filter.minCutoff")}: {skeletonFilterConfig.min_cutoff.toFixed(2)} Hz
                 </p>
                 <input
                     type="range"
@@ -105,9 +107,9 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                 />
             </div>
 
-            <div title="Speed coefficient (1/mm). Raises the cutoff during motion so fast movements pass through with less lag. Positions are in millimetres, so good values are 0.003–0.02. At 0.007: walking speed (500 mm/s) adds 3.5 Hz; a fast swing (2000 mm/s) adds 14 Hz. Zero = same smoothing at all speeds.">
+            <div title={t("filter.betaHelp")}>
                 <p className="text sm text-gray">
-                    Beta: {skeletonFilterConfig.beta.toFixed(3)} /mm
+                    {t("filter.beta")}: {skeletonFilterConfig.beta.toFixed(3)} /mm
                 </p>
                 <input
                     type="range"
@@ -119,9 +121,9 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                 />
             </div>
 
-            <div title="Cutoff frequency (Hz) for the internal velocity estimator. Controls how quickly the filter adapts to speed changes. 1.0 Hz is a safe default — lower to 0.3–0.5 if noisy triangulation causes the skeleton to over-react to speed spikes.">
+            <div title={t("filter.dCutoffHelp")}>
                 <p className="text sm text-gray">
-                    D Cutoff: {skeletonFilterConfig.d_cutoff.toFixed(2)} Hz
+                    {t("filter.dCutoff")}: {skeletonFilterConfig.d_cutoff.toFixed(2)} Hz
                 </p>
                 <input
                     type="range"
@@ -138,9 +140,9 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
             {/* === FABRIK === */}
             <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>FABRIK</p>
 
-            <div title="Max solver iterations per frame for bone length constraint enforcement. 10–30 is usually plenty.">
+            <div title={t("filter.maxIterationsHelp")}>
                 <p className="text sm text-gray">
-                    Max Iterations: {skeletonFilterConfig.fabrik_max_iterations}
+                    {t("filter.maxIterations")}: {skeletonFilterConfig.fabrik_max_iterations}
                 </p>
                 <input
                     type="range"
@@ -155,11 +157,11 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '4px 0'}} />
 
             {/* === Body Model === */}
-            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>Body Model</p>
+            <p className="text sm" style={{color: SECTION_COLOR, fontWeight: 600}}>{t("filter.bodyModel")}</p>
 
             <div
                 className="input-with-string"
-                title="Subject's approximate height. Scales the anthropometric bone length prior. Doesn't need to be exact."
+                title={t("filter.heightHelp")}
             >
                 <input
                     className="input-field text md"
@@ -173,13 +175,13 @@ export const SkeletonFilterConfigPanel: React.FC<SkeletonFilterConfigPanelProps>
                     }}
                     step={0.01} min={0.5} max={3.0}
                     disabled={isLoading}
-                    placeholder="Height (m)"
+                    placeholder={t("filter.heightMeters")}
                 />
             </div>
 
-            <div title="Expected measurement noise (meters). Higher = trust raw positions less, rely more on prior estimates.">
+            <div title={t("filter.noiseSigmaHelp")}>
                 <p className="text sm text-gray">
-                    Noise Sigma: {skeletonFilterConfig.noise_sigma.toFixed(4)} m
+                    {t("filter.noiseSigma")}: {skeletonFilterConfig.noise_sigma.toFixed(4)} m
                 </p>
                 <input
                     type="range"

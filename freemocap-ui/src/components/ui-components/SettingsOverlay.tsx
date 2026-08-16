@@ -138,7 +138,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={skeletonEnabled ? "twodtracking-active-icon" : "twodtracking-icon"}
               onClick={handleSkeletonToggle}
               tooltip
-              tooltipText="2D Tracking"
+              tooltipText={t("pipeline.tracking2d")}
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${skeletonEnabled ? "active" : ""}`}
@@ -148,7 +148,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={charucoEnabled ? "charuco-active-icon" : "charuco-icon"}
               onClick={handleCharucoToggle}
               tooltip
-              tooltipText="Charuco Board"
+              tooltipText={t("calibration.charucoBoard")}
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${charucoEnabled ? "active" : ""}`}
@@ -159,7 +159,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 icon={active.trackingSettings ? "skeleton-active-icon" : "skeleton-icon"}
                 onClick={() => toggleActive("trackingSettings")}
                 tooltip
-                tooltipText="Skeleton Setup"
+                tooltipText={t("detector.skeletonSetup")}
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`is-menu icon-size-25 ${active.trackingSettings ? "active" : ""}`}
@@ -179,7 +179,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={triangulateEnabled ? "threedtracking-active-icon" : "threedtracking-icon"}
               onClick={handleTriangulateToggle}
               tooltip
-              tooltipText="3D Tracking"
+              tooltipText={t("pipeline.reconstruction3d")}
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${triangulateEnabled ? "active" : ""}`}
@@ -189,7 +189,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               icon={filterEnabled ? "skeletonfilter-active-icon" : "skeletonfilter-icon"}
               onClick={handleFilterToggle}
               tooltip
-              tooltipText="Skeleton Filter"
+              tooltipText={t("filter.skeletonFilter")}
               tooltipPosition="pos-bottom"
               disabled={false}
               className={`icon-size-25 ${filterEnabled ? "active" : ""}`}
@@ -200,7 +200,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
                 icon={active.filterSettings ? "settings-icon" : "settings-icon"}
                 onClick={() => toggleActive("filterSettings")}
                 tooltip
-                tooltipText="Filter Settings"
+                tooltipText={t("filter.settings")}
                 tooltipPosition="pos-bottom"
                 disabled={false}
                 className={`is-menu icon-size-25 ${active.filterSettings ? "active" : ""}`}
@@ -222,10 +222,10 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               tooltip
               tooltipText={
                 isConnected
-                  ? "Disconnect pipeline"
+                  ? t("pipeline.disconnect")
                   : canConnect
-                    ? "Connect pipeline"
-                    : "Select cameras first"
+                    ? t("pipeline.connect")
+                    : t("pipeline.selectCamerasFirst")
               }
               tooltipPosition="pos-bottom-right"
               disabled={!liveClickable || isPipelineLoading}
@@ -242,7 +242,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
             onClick={() => setIsOpen(!isOpen)}
             title={isOpen ? t("closeSettings") : t("gridSettings")}
             tooltip
-            tooltipText="Grid Settings"
+            tooltipText={t("gridSettings")}
             tooltipPosition="pos-bottom-right"
           />
 
@@ -260,15 +260,15 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
           }}
         >
         <div className="flex flex-col right-0 p-1 gap-1 bg-middark br-1 z-1">
-              <Row label="Layout">
+              <Row label={t("layout.layout")}>
 
                 <SegmentedControl
                      size="sm"
                   className="segmented-control-sm bg-darkgray"
                   value={settings.layoutDirection}
                   options={[
-                    { label: "Horizontal", value: "horizontal" },
-                    { label: "Vertical", value: "vertical" },
+                    { label: t("layout.horizontal"), value: "horizontal" },
+                    { label: t("layout.vertical"), value: "vertical" },
                   ]}
                   onChange={(value) => handleLayoutDirectionChange(value as LayoutDirection)}
                 />
@@ -278,8 +278,8 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               <p className="text bg">{t("gridColumns")}</p>
               <p className="text sm text-gray">
               {isAuto
-                ? `Auto: ${autoColumns} Columns`
-                : "Enter any positive number"}
+                ? t("autoColumns", {count: autoColumns})
+                : t("enterPositiveNumber")}
             </p>
             </div>
           <div className="flex flex-col gap-2 align-end">
@@ -309,7 +309,7 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
 
           <div className="pt-3 flex flex-col gap-1">
             <ToggleComponent
-              text="3D Viewport"
+              text={t("viewport.threeDimensional")}
               iconClass=""
               isToggled={settings.show3dView}
               onToggle={handle3dViewToggle}

@@ -22,6 +22,7 @@ import {
 import { selectIsLoading } from "@/store/slices/cameras/cameras-selectors";
 import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import "@/styles/calibration.css";
+import { useTranslation } from "react-i18next";
 
 
 type CalibrationSource = "record" | "import-videos" | "import-toml";
@@ -46,6 +47,7 @@ const CalibrationModule = ({
   isCalibrated: isCalibratedProp,
   appModeOverride,
 }: CalibrationModuleProps) => {
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const { api, isElectron } = useElectronIPC();
   const { connectedCameraIds, isConnected, isFailed } = useServer();
@@ -109,9 +111,9 @@ const CalibrationModule = ({
 
   // Cycling calibration messages during recording
   const calibrationMessages = [
-    "Hold up the calibration board",
-    "Check all cameras have a clear view",
-    "Recording in progress",
+    t("calibration.holdUpBoard"),
+    t("calibration.checkCameraViews"),
+    t("calibration.recordingInProgress"),
   ];
   const [messageIndex, setMessageIndex] = useState(0);
 
@@ -250,7 +252,7 @@ const CalibrationModule = ({
       {shouldShowRecordAndCalibrate && (
         <ButtonSm
           iconClass="record-icon"
-          text="Record and Calibrate"
+          text={t("calibration.recordAndCalibrate")}
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
@@ -258,13 +260,13 @@ const CalibrationModule = ({
           tooltip={true}
           tooltipPosition="pos-right"
           tooltipText={
-            noCamerasConnected ? "Connect cameras to record" : undefined
+            noCamerasConnected ? t("connectCamerasToRecord") : undefined
           }
         />
       )}
       <ButtonSm
         iconClass="importVideos-icon"
-        text="Import Calibration videos"
+        text={t("calibration.importVideos")}
         className="full-width"
         textClass="text-align-left"
         onClick={handleImportVideos}
@@ -272,7 +274,7 @@ const CalibrationModule = ({
       />
       <ButtonSm
         iconClass="tomlfile-icon"
-        text="Import .toml file"
+        text={t("calibration.importToml")}
         className="full-width"
         textClass="text-align-left"
         onClick={handleImportToml}
@@ -300,7 +302,7 @@ const CalibrationModule = ({
                 <span className="icon icon-size-20 calibrating-icon"></span>
                 <SubactionHeader
                   className="text-white calibration-header-shimmer text-nowrap"
-                  text={isStopping ? "Stopping..." : calibrationMessages[messageIndex]}
+                  text={isStopping ? t("stopping") : calibrationMessages[messageIndex]}
                 />
               </div>
 
@@ -315,7 +317,7 @@ const CalibrationModule = ({
                   className="button sm"
                   onClick={() => {}} // shows onboarding tooltips
                   tooltip
-                  tooltipText="How to calibrate"
+                  tooltipText={t("calibration.howToCalibrate")}
                   tooltipPosition="pos-left"
                 />
               </div>
@@ -348,10 +350,10 @@ const CalibrationModule = ({
             iconClass=""
             text={
               isStopping 
-                ? "Stopping..." 
+                ? t("stopping")
                 : recordingStartTime 
-                  ? `Stop Recording & Calibrate ${formatElapsedTime(elapsedSeconds)}` 
-                  : "Stop Recording & Calibrate"
+                  ? t("calibration.stopAndCalibrateWithTime", {time: formatElapsedTime(elapsedSeconds)})
+                  : t("calibration.stopAndCalibrate")
             }
             className="accent button min-w-full full-width-text-center"
             onClick={() => {
@@ -359,7 +361,7 @@ const CalibrationModule = ({
               dispatchStopCalibrationRecording();
             }}
             tooltip={true}
-            tooltipText="Stop Recording & Calibrate"
+            tooltipText={t("calibration.stopAndCalibrate")}
             tooltipPosition="pos-top"
           />
         </div>
@@ -386,7 +388,7 @@ const CalibrationModule = ({
             >
               <div className="calibrate-icon-group flex flex-row items-center">
                 <span className="icon calibrated-icon icon-size-20" />
-                <p className="text md text-success p-1">Calibrated</p>
+                <p className="text md text-success p-1">{t("calibration.calibrated")}</p>
               </div>
               <div
                 className="recording-path-preview tooltip-wrapper pos-rel flex flex-row items-center flex-1 p-1"
@@ -428,7 +430,7 @@ const CalibrationModule = ({
                 className="button sm"
                 onClick={() => {}} // shows onboarding tooltips
                 tooltip
-                tooltipText="How to calibrate"
+                tooltipText={t("calibration.howToCalibrate")}
                 tooltipPosition="pos-left"
               />
             </div>
@@ -458,7 +460,7 @@ const CalibrationModule = ({
             className="button sm"
             onClick={handleClearCalibration}
             tooltip
-            tooltipText="Clear calibration"
+            tooltipText={t("calibration.clearCalibration")}
             tooltipPosition="pos-left"
           />
         </div>
@@ -472,14 +474,14 @@ const CalibrationModule = ({
       {errorBanner}
       <div className="flex flex-row items-center">
         <div className="flex flex-row flex-1 justify-content-space-between items-center w-100">
-          <SubactionHeader text="Calibration" />
+          <SubactionHeader text={t("calibration.calibration")} />
           <div data-onboarding="calibration:what-is-calibration" className="flex flex-row pos-rel gap-1 items-center">
             <IconButton
               icon="explainer-icon"
               className="button sm"
               onClick={() => setShowCharucoInfo(prev => !prev)}
               tooltip
-              tooltipText="How to calibrate"
+              tooltipText={t("calibration.howToCalibrate")}
               tooltipPosition="pos-left"
             />
             <FloatingOnboarding
@@ -487,14 +489,14 @@ const CalibrationModule = ({
             >
               <PromptTooltip
                 show={showCharucoInfo}
-                title="How to Calibrate your cameras"
-                text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
+                title={t("calibration.howToCalibrate")}
+                text={t("calibration.howToCalibrateHelp")}
                 image={true}
                 imageSrc={charucoBoardImage}
                 position="pos-right"
                 variant="default"
                 button={true}
-                buttonText="Download ChArUco Board"
+                buttonText={t("calibration.downloadBoard")}
                 onButtonClick={() =>
                   window.open(
                     "https://docs.freemocap.org/documentation/multi-camera-calibration.html",
@@ -513,7 +515,7 @@ const CalibrationModule = ({
       >
         <div className="group-1 flex flex-col items-start">
           <p className="text-gray text-nowrap text md text-align-left">
-            Charuco board
+            {t("calibration.charucoBoard")}
           </p>
         </div>
         
@@ -546,7 +548,7 @@ const CalibrationModule = ({
         */}
         <DropdownButton
           buttonProps={{
-            text: "Calibrate",
+            text: t("calibration.calibrate"),
             iconClass: "calibrate-icon",
             className: "button sm min-w-full justify-center",
             buttonType: "secondary",
@@ -557,7 +559,7 @@ const CalibrationModule = ({
       </div>
       
       <ToggleComponent
-        text="Align to initial Charuco ground plane"
+        text={t("calibration.alignGroundPlane")}
         iconClass="snaptogrid-icon"
         isToggled={config.useGroundplane}
         onToggle={(checked) =>

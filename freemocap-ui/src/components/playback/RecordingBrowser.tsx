@@ -32,6 +32,7 @@ import ButtonSm from "@/components/ui-components/ButtonSm";
 import SubactionHeader from "@/components/ui-components/SubactionHeader";
 import IconButton from "@/components/ui-components/IconButton";
 import {ImportVideosModal} from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
+import type {TFunction} from "i18next";
 
 export type RecordingEntry = RecordingListEntry;
 
@@ -100,17 +101,17 @@ function parseTimestampFromName(name: string): Date | null {
   return null;
 }
 
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(date: Date, t: TFunction): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffMin < 1) return t("time.justNow");
+  if (diffMin < 60) return t("time.minutesAgo", {count: diffMin});
   const diffHr = Math.floor(diffMin / 60);
-  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffHr < 24) return t("time.hoursAgo", {count: diffHr});
   const diffDays = Math.floor(diffHr / 24);
-  if (diffDays < 7) return `${diffDays}d ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+  if (diffDays < 7) return t("time.daysAgo", {count: diffDays});
+  if (diffDays < 30) return t("time.weeksAgo", {count: Math.floor(diffDays / 7)});
   return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -201,10 +202,10 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
       try {
         await dispatch(fetchAllRecordings()).unwrap();
       } catch (e) {
-        setError(e instanceof Error ? e.message : t("failedToFetch"));
+        setError(t("fetchRecordingsFailed", {message: e instanceof Error ? e.message : String(e)}));
       }
     },
-    [dispatch, recordingsFetchedAt],
+    [dispatch, recordingsFetchedAt, t],
   );
 
   useEffect(() => {
@@ -324,13 +325,13 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
 
         onRecordingLoaded(videos, recName, recFps, sources, preferred);
       } catch (e) {
-        setError(e instanceof Error ? e.message : "Failed to load recording");
+        setError(t("loadRecordingFailed", {message: e instanceof Error ? e.message : String(e)}));
       } finally {
         setIsLoadingRecording(false);
         setLoadingPath(null);
       }
     },
-    [onRecordingLoaded, recordings, dispatch],
+    [onRecordingLoaded, recordings, dispatch, t],
   );
 
   const handleBrowseDirectory = useCallback(async () => {
@@ -356,7 +357,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
           <div className="recording-list-header flex gap-1 flex-row flex-wrap justify-content-space-between w-full">
               <div className="folder-directory-title-group flex flex-row gap-1">
 
-              <SubactionHeader text="Folder Directory" />
+              <SubactionHeader text={t("recordingBrowser.folderDirectory")} />
               <div className="n-list-counter flex items-center flex-row">
                 {recordings.length > 0 && (
                   <p className="tag camera-status-badge">
@@ -370,11 +371,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
             </div>
             <div className="folder-directory-tool-bar flex flex-row flex-wrap gap-1 items-center">
               <IconButton
-                title={showFilter ? t("hideFilter") : t("filter")}
+                title={showFilter ? t("hideFilter") : t("filterLabel")}
                 icon={showFilter ? "filter-active-icon" : "filter-icon"}
                 className="icon-size-25"
                 tooltip={true}
-                tooltipText={showFilter ? t("hideFilter") : t("filter")}
+                tooltipText={showFilter ? t("hideFilter") : t("filterLabel")}
                 tooltipPosition="pos-bottom"
                 onClick={() => {
                   if (showFilter) {
@@ -415,11 +416,11 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
               </select>
 
               <ButtonSm
-                text="Import Videos"
+                text={t("importVideos.title")}
                 iconClass="download-icon"
                 onClick={() => setIsImportModalOpen(true)}
                 disabled={!isElectron}
-                title={!isElectron ? "Import is only available in the desktop app" : undefined}
+                title={!isElectron ? t("importVideos.desktopOnly") : undefined}
               />
               <ImportVideosModal
                 open={isImportModalOpen}
@@ -431,9 +432,9 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
           <div className="folder-path-selection-group flex gap-1 flex-row flex-nowrap items-center flex-row justify-content-space-between w-full">
             <ButtonSm
               iconClass="subfolder-icon"
-              text={manualPath || "Select recording folder"}
+              text={manualPath || t("recordingBrowser.selectFolder")}
               onClick={handleBrowseDirectory}
-              title="Click to select recording folder"
+              title={t("recordingBrowser.selectFolderHelp")}
               disabled={!isElectron}
               className="select-path bg-middark min-w-0 border-1 w-full border-mid-black"
               textClass="text-gray text-nowrap text md text-align-left flex flex-end"
@@ -464,7 +465,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
             <div className="flex flex-row input-with-string flex-1">
               <input
                 className="input-field"
-                placeholder={t("filter")}
+                placeholder={t("filterLabel")}
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 autoFocus
@@ -484,7 +485,7 @@ export const RecordingBrowser: React.FC<RecordingBrowserProps> = ({
             <p className="text md text-white text-center">
               {recordings.length === 0
                 ? t("noRecordingsFound")
-                : "No recordings match your filter."}
+                : t("recordingBrowser.noFilterMatches")}
             </p>
           </div>
         ) : (
@@ -602,8 +603,8 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                   <span
                     title={
                       ready
-                        ? "All pipeline stages complete — ready for Blender"
-                        : `${stagesComplete}/${stagesTotal} pipeline stages complete`
+                        ? t("recordingStatus.readyForBlenderDetail")
+                        : t("recordingStatus.stagesComplete", {complete: stagesComplete, total: stagesTotal})
                     }
                     className="stage-group text-nowrap text md mr-2 text-gray"
                     style={{
@@ -613,8 +614,8 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                     }}
                   >
                     {ready
-                      ? "Blender ready"
-                      : `${stagesComplete}/${stagesTotal} stages`}
+                      ? t("recordingStatus.readyForBlender")
+                      : t("recordingStatus.stagesComplete", {complete: stagesComplete, total: stagesTotal})}
                   </span>
                 )}
                 {parsedDate && (
@@ -622,7 +623,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                     title={parsedDate.toLocaleString()}
                     className="flex flex-row text-nowrap time-group text md text-gray"
                   >
-                    {formatRelativeTime(parsedDate)}
+                    {formatRelativeTime(parsedDate, t)}
                   </span>
                 )}
               </div>
@@ -635,7 +636,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                 {isLegacyLayout && (
                   <span
                     className="tag text sm"
-                    title={`Legacy folder layout (legacy_v1)${legacyMarkers.length > 0 ? ": " + legacyMarkers.join(", ") : ""}`}
+                    title={`${t("recordingBrowser.legacyLayout")} (legacy_v1)${legacyMarkers.length > 0 ? ": " + legacyMarkers.join(", ") : ""}`}
                     style={{
                       fontSize: "0.65rem",
                       backgroundColor: "rgba(255,167,38,0.18)",
@@ -643,19 +644,19 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                       border: "1px solid rgba(255,167,38,0.5)",
                     }}
                   >
-                    Legacy
+                    {t("recordingBrowser.legacy")}
                   </span>
                 )}
               </div>
               <div className="flex flex-row items-center gap-1 data-group-container flex-wrap">
                 <div className="flex flex-row items-center gap-1 data-group-1">
-                  <span className="text flex flex-row text-nowrap md text-gray tag" title="Camera streams">
-                    {`${rec.video_count} cam${rec.video_count !== 1 ? "s" : ""}`}
+                  <span className="text flex flex-row text-nowrap md text-gray tag" title={t("cameraStreams")}>
+                    {t("cameraCount", { count: rec.video_count })}
                   </span>
                   {rec.total_size_bytes != null && rec.total_size_bytes > 0 && (
                     <span
                       className="text md text-gray text-nowrap tag"
-                      title="Total size on disk"
+                      title={t("recordingBrowser.totalSizeOnDisk")}
                     >
                       {formatBytes(rec.total_size_bytes)}
                     </span>
@@ -663,7 +664,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
                   {rec.duration_seconds != null && rec.duration_seconds > 0 && (
                     <span
                       className="text md text-gray text-nowrap tag"
-                      title="Recording duration"
+                      title={t("recordingBrowser.recordingDuration")}
                     >
                       {formatDuration(rec.duration_seconds)}
                     </span>
@@ -708,7 +709,7 @@ const RecordingRow: React.FC<RecordingRowProps> = React.memo(
           </button>
 
           <IconButton
-            title={expanded ? "Hide folder detail" : "Show folder detail"}
+            title={expanded ? t("recordingBrowser.hideFolderDetail") : t("recordingBrowser.showFolderDetail")}
             icon="arrowdown-icon"
             className="pos-abs top-2 right-2 icon-size-25 br-100"
             onClick={toggleExpand}

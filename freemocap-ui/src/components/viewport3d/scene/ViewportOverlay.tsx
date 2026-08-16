@@ -4,6 +4,7 @@ import { useViewportState } from "./ViewportStateContext";
 import IconButton from "@/components/ui-components/IconButton";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { resetSkeletonFitter, selectIsPipelineConnected } from "@/store/slices/realtime";
+import { useTranslation } from "react-i18next";
 
 interface ViewportOverlayProps {
   onFitCamera: () => void;
@@ -14,6 +15,7 @@ export function ViewportOverlay({
   onFitCamera,
   onResetCamera,
 }: ViewportOverlayProps) {
+  const { t } = useTranslation();
   const { visibility, setVisibility, statsRef } = useViewportState();
   const [expanded, setExpanded] = useState(false);
   const dispatch = useAppDispatch();
@@ -85,7 +87,7 @@ export function ViewportOverlay({
       >
         <div className="flex flex-row items-center justify-content-space-between">
           <p className="text sm m-0" style={{ fontWeight: "bold" }}>
-            Viewport settings
+            {t("viewport.settings")}
           </p>
           <IconButton
             icon={expanded ? "arrowup-icon" : "arrowdown-icon"}
@@ -93,7 +95,7 @@ export function ViewportOverlay({
             onClick={() => setExpanded((e) => !e)}
             style={{ color: "#ccc" }}
             tooltip={true}
-            tooltipText="bodies & points"
+            tooltipText={t("viewport.bodiesAndPoints")}
             tooltipPosition="pos-left"
           />
         </div>
@@ -101,74 +103,74 @@ export function ViewportOverlay({
         {expanded && (
           <>
             <VisToggle
-              label="Environment"
+              label={t("viewport.environment")}
               checked={visibility.environment}
               onChange={toggleEnvironment}
             />
             <VisToggle
-              label="Keypoints"
+              label={t("viewport.keypoints")}
               countRef={keypointsCountRef}
               checked={visibility.keypoints}
               onChange={toggleKeypoints}
             />
             <VisToggle
-              label="Skeleton"
+              label={t("viewport.skeleton")}
               countRef={skeletonCountRef}
               checked={visibility.skeleton}
               onChange={toggleSkeleton}
             />
             <VisToggle
-              label="Face"
+              label={t("viewport.face")}
               countRef={facePointsCountRef}
               checked={visibility.face}
               onChange={toggleFace}
             />
             <VisToggle
-              label="Connections"
+              label={t("viewport.connections")}
               countRef={connectionsCountRef}
               checked={visibility.connections}
               onChange={toggleConnections}
             />
             <VisToggle
-              label="Cameras"
+              label={t("viewport.cameras")}
               countRef={camerasCountRef}
               checked={visibility.cameras}
               onChange={toggleCameras}
             />
             <CollapsibleVisibilityGroup
-              label="Center of Mass"
+              label={t("viewport.centerOfMass")}
               checked={visibility.centerOfMass}
               onToggle={toggleCenterOfMass}
               countRef={comCountRef}
             >
               <VisToggle
-                label="COM Sphere"
+                label={t("viewport.comSphere")}
                 checked={visibility.centerOfMassSphere}
                 onChange={toggleComSphere}
               />
               <VisToggle
-                label="Vertical Projection"
+                label={t("viewport.verticalProjection")}
                 checked={visibility.centerOfMassProjection}
                 onChange={toggleComProjection}
               />
               <VisToggle
-                label="COM-VP Connection"
+                label={t("viewport.comVpConnection")}
                 checked={visibility.centerOfMassConnection}
                 onChange={toggleComConnection}
               />
               <VisToggle
-                label="Extrapolated CoM"
+                label={t("viewport.extrapolatedCom")}
                 checked={visibility.centerOfMassXcom}
                 onChange={toggleXcom}
               />
               <VisToggle
-                label="VP-XCoM Connection"
+                label={t("viewport.vpXcomConnection")}
                 checked={visibility.centerOfMassXcomConnection}
                 onChange={toggleXcomConnection}
               />
             </CollapsibleVisibilityGroup>
             <p className="text sm mt-1 block" style={{ color: "#888" }}>
-              Total points: <span ref={totalPointsRef}>0</span>
+              {t("viewport.totalPoints")} <span ref={totalPointsRef}>0</span>
             </p>
           </>
         )}
@@ -189,8 +191,8 @@ export function ViewportOverlay({
           }
           tooltipText={
             isRealtimeConnected
-              ? "Re-fit skeleton from scratch"
-              : "Connect a realtime pipeline first"
+              ? t("viewport.refitSkeleton")
+              : t("pipeline.connectRealtimeFirst")
           }
           tooltipPosition="pos-top-right"
         />
@@ -198,14 +200,14 @@ export function ViewportOverlay({
           icon="frame-icon"
           onClick={onFitCamera}
           tooltip={true}
-          tooltipText="Fit to skeleton F"
+          tooltipText={t("viewport.fitToSkeleton")}
           tooltipPosition="pos-top"
         />
         <IconButton
           icon="rotate-icon"
           onClick={onResetCamera}
           tooltip={true}
-          tooltipText="Reset view"
+          tooltipText={t("viewport.resetView")}
           tooltipPosition="pos-top-right"
         />
       </div>
@@ -214,7 +216,7 @@ export function ViewportOverlay({
         className="text sm pos-abs bottom-8 left-8 m-0"
         style={{ color: "#666", pointerEvents: "none" }}
       >
-        Rotate: drag · Zoom: scroll · Pan: right-drag
+        {t("viewport.controls")}
       </p>
     </>
   );

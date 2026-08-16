@@ -1,5 +1,6 @@
 import React from "react";
 import IconButton from "@/components/ui-components/IconButton";
+import {useTranslation} from "react-i18next";
 
 interface RecordingHeaderButtonProps {
     isRecording: boolean;
@@ -14,6 +15,7 @@ export const RecordingHeaderButton: React.FC<RecordingHeaderButtonProps> = ({
     disabled,
     onClick,
 }) => {
+    const {t} = useTranslation();
     const handleClick = (e: React.MouseEvent): void => {
         e.stopPropagation();
         onClick();
@@ -25,7 +27,7 @@ export const RecordingHeaderButton: React.FC<RecordingHeaderButtonProps> = ({
             className="icon-size-25 p-1"
             onClick={handleClick}
             disabled={disabled || isPending}
-            title={isRecording ? "Stop Recording" : "Start Recording"}
+            title={isRecording ? t("stopRecording") : t("startRecording")}
             style={{
                 color: isRecording ? 'var(--color-danger)' : 'inherit',
                 opacity: disabled && !isRecording ? 0.4 : 1,

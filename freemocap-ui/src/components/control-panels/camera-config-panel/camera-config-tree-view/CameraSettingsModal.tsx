@@ -1,5 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import ReactDOM from 'react-dom';
+import {useTranslation} from 'react-i18next';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {cameraDesiredConfigUpdated, configCopiedToAll, savedSettingsCleared} from '@/store/slices/cameras/cameras-slice';
 import {camerasConnectOrUpdate} from '@/store/slices/cameras/cameras-thunks';
@@ -43,6 +44,7 @@ const resolutionLabel = (config: CameraConfig): string => {
 
 export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera, initialPos, onClose}) => {
     const dispatch = useAppDispatch();
+    const {t} = useTranslation();
     const allCameras = useAppSelector(selectCameras);
     const otherCamerasCount = allCameras.length - 1;
     const [pos, setPos] = useState(initialPos);
@@ -81,13 +83,13 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
             <div className="fit-content flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
                 {/* Header */}
                 <div className="subaction-header-container justify-content-space-between gap-1 br-1 flex items-center h-25 p-1">
-                    <p className="text-nowrap text-left bg-md text-darkgray">Camera settings</p>
+                    <p className="text-nowrap text-left bg-md text-darkgray">{t("camera.settings")}</p>
                     <div className="flex flex-row gap-1">
                         <ButtonSm
                             text={
                                 otherCamerasCount > 0
-                                    ? `Copy to ${otherCamerasCount} other${otherCamerasCount > 1 ? 's' : ''}`
-                                    : 'No other cameras'
+                                    ? t("camera.copyToOthers", {count: otherCamerasCount})
+                                    : t("camera.noOtherCameras")
                             }
                             iconClass="copyover-icon"
                             buttonType={otherCamerasCount === 0 ? 'disabled' : ''}
@@ -99,7 +101,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                 </div>
 
                 {/* Rotate */}
-                <Row label="Rotate">
+                <Row label={t("camera.rotate")}>
                     <SegmentedControl
                         options={ROTATION_OPTIONS.map((o: RotationValue) => ({
                             label: ROTATION_DEGREE_LABELS[o],
@@ -113,7 +115,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                 </Row>
 
                 {/* Resolution */}
-                <Row label="Resolution">
+                <Row label={t("resolution")}>
                     <NameDropdownSelector
                         options={PRESET_RESOLUTIONS.map(p => p.label)}
                         initialValue={resolutionLabel(config)}
@@ -125,18 +127,18 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                 </Row>
 
                 {/* Exposure mode */}
-                <Row label="Exposure">
+                <Row label={t("exposure")}>
                     <NameDropdownSelector
-                        options={['Manual', 'Auto', 'Recommend']}
+                        options={[t("manual"), t("auto"), t("recommend")]}
                         initialValue={
-                            config.exposure_mode === 'MANUAL' ? 'Manual' :
-                            config.exposure_mode === 'AUTO' ? 'Auto' : 'Recommend'
+                            config.exposure_mode === 'MANUAL' ? t("manual") :
+                            config.exposure_mode === 'AUTO' ? t("auto") : t("recommend")
                         }
                         onChange={v => {
                             const modeMap: Record<string, ExposureMode> = {
-                                Manual: 'MANUAL',
-                                Auto: 'AUTO',
-                                Recommend: 'RECOMMEND',
+                                [t("manual")]: 'MANUAL',
+                                [t("auto")]: 'AUTO',
+                                [t("recommend")]: 'RECOMMEND',
                             };
                             handleConfigChange({exposure_mode: modeMap[v]});
                         }}
@@ -145,7 +147,7 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
 
                 {/* Exposure value — only when manual */}
                 {isManual && (
-                    <Row label="Change exposure" indent>
+                    <Row label={t("camera.changeExposure")} indent>
                         <ValueSelector
                             value={Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, config.exposure ?? -7))}
                             min={EXPOSURE_MIN}
@@ -162,15 +164,15 @@ export const CameraSettingsModal: React.FC<CameraSettingsModalProps> = ({camera,
                         className="button sm br-1 flex-1"
                         style={{background: 'var(--color-text-primary)', color: 'var(--color-bg-primary)'}}
                         onClick={() => dispatch(camerasConnectOrUpdate())}
-                        title="Update camera settings"
+                        title={t("camera.updateSettings")}
                     >
-                        <p className="text md" style={{color: 'var(--color-bg-primary)'}}>Update Settings</p>
+                        <p className="text md" style={{color: 'var(--color-bg-primary)'}}>{t("camera.updateSettingsButton")}</p>
                     </button>
                     <IconButton
                         icon="clear-icon"
                         className="icon-size-25 gap-1 sm fit-content flex-inline text-left items-center"
                         onClick={() => dispatch(savedSettingsCleared())}
-                        title="Reset all cameras to default settings"
+                        title={t("camera.resetAllDefaults")}
                     />
                 </div>
             </div>

@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {useTranslation} from 'react-i18next';
 import {RecordingControlsSection} from "@/components/control-panels/recording-info-panel/RecordingControlsTreeSection";
 import {getTimestampString} from "@/store/slices/recording/getTimestampString";
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
@@ -49,6 +50,7 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
     onCreateSubfolderChange,
     onCustomSubfolderNameChange,
 }) => {
+    const {t} = useTranslation();
     const dispatch = useAppDispatch();
     const {api, isElectron} = useElectronIPC();
     const [previewTimestamp, setPreviewTimestamp] = useState<string>(() => getTimestampString());
@@ -79,14 +81,14 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
 
     return (
         <div className="file-directory-settings-item flex flex-col gap-1" onKeyDown={(e) => e.stopPropagation()}>
-            <SubactionHeader text="Recording Folder" />
+            <SubactionHeader text={t("recording.folder")} />
 
             {/* Base folder row */}
             <div className="flex items-center gap-1">
                 <button
                     className="select-path button sm bg-middark br-1 border-1 border-black flex items-center gap-1 text-left flex-1"
                     onClick={handleSelectDirectory}
-                    title="Click to select recording folder"
+                    title={t("recording.selectFolder")}
                     disabled={!isElectron}
                 >
                     <span className="icon subfolder-icon icon-size-20" />
@@ -100,9 +102,9 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                     className={`icon-size-25 ${createSubfolder ? 'invisible' : ''}`}
                     onClick={() => {
                         onCreateSubfolderChange(true);
-                        onCustomSubfolderNameChange('NewSubfolder');
+                        onCustomSubfolderNameChange(t("recording.defaultSubfolderName"));
                     }}
-                    title="Add subfolder"
+                    title={t("recording.addSubfolder")}
                 />
             </div>
 
@@ -113,7 +115,7 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                     <TextSelector
                         value={customSubfolderName}
                         onChange={onCustomSubfolderNameChange}
-                        placeholder="subfolder name"
+                        placeholder={t("subfolderPlaceholder")}
                         popupClassName="directory-input-popup"
                     />
                     <IconButton
@@ -122,13 +124,13 @@ export const RecordingPathTreeItem: React.FC<RecordingPathTreeItemProps> = ({
                             onCreateSubfolderChange(false);
                             onCustomSubfolderNameChange('');
                         }}
-                        title="Remove subfolder"
+                        title={t("recording.removeSubfolder")}
                     />
                 </div>
             )}
 
             {countdown !== null && (
-                <p className="recording-countdown">{`Starting in ${countdown}...`}</p>
+                <p className="recording-countdown">{t("startingIn", {countdown})}</p>
             )}
 
             <RecordingControlsSection

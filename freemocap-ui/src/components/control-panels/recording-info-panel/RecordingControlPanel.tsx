@@ -167,7 +167,7 @@ export const RecordingControlPanel: React.FC = () => {
         {/* Auto-process */}
         <div className="flex flex-start flex-col items-center gap-1">
           <ToggleComponent
-            text="Auto Process Mocap"
+            text={t("recording.autoProcessMocap")}
             isToggled={autoProcess}
             onToggle={(v) => dispatch(autoProcessToggled(v))}
             disabled={recordingInfo.isRecording}
@@ -185,7 +185,7 @@ export const RecordingControlPanel: React.FC = () => {
             <div className=" flex flex-row items-start items-center gap-1">
               <span className="icon subcat-icon icon-size-20" />
               <p className="text-gray text-nowrap text md text-align-left">
-                Mocap Settings
+                {t("recording.mocapSettings")}
               </p>
             </div>
             <div className="group-2 flex flex-row pos-rel items-center gap-1">

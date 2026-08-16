@@ -206,7 +206,7 @@ export default function FramerateStatisticsView({
                 <thead>
                     <tr>
                         <HeaderCellWithTooltip label={t("source")} shortInfo={tooltips.source.short} longInfo={tooltips.source.long} style={{...thStyle, width: '12%', color: 'var(--color-text-primary)', textAlign: 'left'}} align="left" />
-                        <HeaderCellWithTooltip label={t("Recent")} shortInfo={tooltips.recent.short} longInfo={tooltips.recent.long} style={{...thStyle, ...{backgroundColor: colorMap.recent + '22'}}} />
+                        <HeaderCellWithTooltip label={t("recent")} shortInfo={tooltips.recent.short} longInfo={tooltips.recent.long} style={{...thStyle, ...{backgroundColor: colorMap.recent + '22'}}} />
                         <HeaderCellWithTooltip label={t("mean")} shortInfo={tooltips.mean.short} longInfo={tooltips.mean.long} style={{...thStyle, ...{backgroundColor: colorMap.mean + '22'}}} />
                         <HeaderCellWithTooltip label={t("median")} shortInfo={tooltips.median.short} longInfo={tooltips.median.long} style={{...thStyle, ...{backgroundColor: colorMap.median + '22'}}} />
                         <HeaderCellWithTooltip label={t("stdDevCv")} shortInfo={tooltips.stdDev.short} longInfo={tooltips.stdDev.long} style={{...thStyle, ...{backgroundColor: colorMap.stdDev + '22'}}} />
@@ -220,7 +220,7 @@ export default function FramerateStatisticsView({
                     </tr>
                 </thead>
                 <tbody>
-                    {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), "Server represents the camera frame-grabbing performance. This is the true rate at which frames are pulled from the camera and saved during recording. This is the most important metric for recording quality and should remain stable even if display performance fluctuates.")}
+                    {renderRow("backend", backendColor, t("server"), t("capturesFramesFromCamera"), t("serverTooltipLong"))}
                     <tr>
                         <td colSpan={7} className="p-0">
                             <div style={{height: 1, backgroundColor: 'var(--color-border-secondary)', margin: '2px 0'}} />

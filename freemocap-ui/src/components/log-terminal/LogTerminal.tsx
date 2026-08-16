@@ -126,13 +126,13 @@ const LogEntryDetail = ({ log }: { log: LogRecord }) => {
     return (
         <div className="log-entry-detail" onClick={(e) => e.stopPropagation()}>
             <div className="log-entry-detail-message"><Linkify text={log.message} /></div>
-            <div>Location: {log.module}:{log.funcName}:Line#{log.lineno}</div>
+            <div>{t("log.location")}: {log.module}:{log.funcName}:{t("log.line")}#{log.lineno}</div>
             <div>{t("fileLabel")}: {log.filename}</div>
             <div>{t("timeDelta")}: {log.delta_t}</div>
             <div>{t("pathLabel")}: <Linkify text={log.pathname} /></div>
             {log.formatted_message && <div>{t("rawMessage")}: <Linkify text={log.formatted_message} /></div>}
-            <div>Thread: {log.threadName} (ID: {log.thread})</div>
-            <div>Process: {log.processName} (ID: {log.process})</div>
+            <div>{t("log.thread")}: {log.threadName} ({t("log.id")}: {log.thread})</div>
+            <div>{t("log.process")}: {log.processName} ({t("log.id")}: {log.process})</div>
             {(log.exc_info || log.exc_text) && (
                 <div>
                     <div>{t("exceptionDetails")}:</div>
@@ -414,7 +414,7 @@ const LogTerminalFull = ({
                         textColor="text-gray"
                         onClick={handleCopyToClipboard}
                         tooltip={true}
-                        tooltipText={copyFeedback ? "Copied!" : "Copy to clipboard"}
+                        tooltipText={copyFeedback ? t("copied") : t("copyToClipboard")}
                         tooltipPosition="pos-bottom"
                     />
                     <ButtonSm
@@ -423,7 +423,7 @@ const LogTerminalFull = ({
                         textColor="text-gray"
                         onClick={handleSaveToDisk}
                         tooltip={true}
-                        tooltipText="Save"
+                        tooltipText={t("save")}
                         tooltipPosition="pos-bottom"
                     />
                     <ButtonSm
@@ -432,7 +432,7 @@ const LogTerminalFull = ({
                         textColor="text-gray"
                         onClick={scrollToBottom}
                         tooltip={true}
-                        tooltipText="Scroll to bottom"
+                        tooltipText={t("scrollToBottom")}
                         tooltipPosition="pos-bottom"
                     />
                     <ButtonSm
@@ -442,7 +442,7 @@ const LogTerminalFull = ({
                         buttonType={showSearch ? "activated" : ""}
                         onClick={() => setShowSearch(!showSearch)}
                         tooltip={true}
-                        tooltipText="Search"
+                        tooltipText={t("search")}
                         tooltipPosition="pos-bottom"
                     />
                     <ButtonSm
@@ -451,7 +451,7 @@ const LogTerminalFull = ({
                         textColor={isPaused ? "text-warning" : "text-gray"}
                         onClick={() => setIsPaused(prev => !prev)}
                         tooltip={true}
-                        tooltipText={isPaused ? "Resume" : "Pause"}
+                        tooltipText={isPaused ? t("resume") : t("pause")}
                         tooltipPosition="pos-bottom"
                     />
                     <ButtonSm
@@ -460,7 +460,7 @@ const LogTerminalFull = ({
                         textColor="text-gray"
                         onClick={handleClear}
                         tooltip={true}
-                        tooltipText="Clear"
+                        tooltipText={t("clear")}
                         tooltipPosition="pos-bottom"
                     />
                 </div>

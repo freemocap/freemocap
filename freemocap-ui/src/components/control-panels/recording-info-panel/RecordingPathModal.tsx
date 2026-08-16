@@ -3,6 +3,7 @@ import useDraggableTooltips from '@/hooks/useDraggableTooltips';
 import SubactionHeader from '@/components/ui-components/SubactionHeader';
 import IconButton from '@/components/ui-components/IconButton';
 import {RecordingPathTreeItem} from './RecordingPathTreeItem';
+import {useTranslation} from 'react-i18next';
 
 interface RecordingPathModalProps {
     open: boolean;
@@ -28,6 +29,7 @@ interface RecordingPathModalProps {
 }
 
 export const RecordingPathModal: React.FC<RecordingPathModalProps> = ({open, onClose, ...itemProps}) => {
+    const {t} = useTranslation();
     useDraggableTooltips();
     
     const modalRef = useRef<HTMLDivElement>(null);
@@ -63,7 +65,7 @@ export const RecordingPathModal: React.FC<RecordingPathModalProps> = ({open, onC
         >
             <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
                 <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Recording Path &amp; Settings" />
+                    <SubactionHeader text={t("recording.pathAndSettings")} />
                     <IconButton icon="close-icon" onClick={onClose} />
                 </div>
                 <RecordingPathTreeItem {...itemProps} />

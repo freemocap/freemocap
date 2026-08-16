@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import {useTranslation} from "react-i18next";
 import { RecordingStatus } from "@/types/recording-status";
 import IconButton from "@/components/ui-components/IconButton";
 
@@ -65,6 +66,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
     folderExists = true,
     recordingFolderPath = null,
 }) => {
+    const {t} = useTranslation();
     const [expanded, setExpanded] = useState(defaultExpanded);
 
     const stagesComplete = status ? status.stages.filter((s) => s.complete).length : 0;
@@ -74,16 +76,16 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
     const exportReady = !!status?.blender_export_ready;
 
     const summaryLabel = !folderExists
-        ? "Folder not created yet"
+        ? t("recordingStatus.folderNotCreated")
         : status
             ? allStagesComplete && hasBlend
-                ? "Fully processed"
+                ? t("recordingStatus.fullyProcessed")
                 : exportReady && !hasBlend
-                    ? "Ready for Blender"
-                    : `${stagesComplete}/${stagesTotal} stages complete`
-            : isLoading ? "Checking…"
-            : error ? "Status unavailable"
-            : "No status";
+                    ? t("recordingStatus.readyForBlender")
+                    : t("recordingStatus.stagesComplete", {complete: stagesComplete, total: stagesTotal})
+            : isLoading ? t("recordingStatus.checking")
+            : error ? t("recordingStatus.unavailable")
+            : t("recordingStatus.noStatus");
 
     const summaryColor = !folderExists ? 'text-warning'
         : (allStagesComplete && hasBlend) ? 'text-white'
@@ -97,7 +99,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                 onClick={() => setExpanded(v => !v)}
             >
                 <span className="icon explainer-icon icon-size-20"/>
-                <span className="text md text-gray flex-1">Recording folder</span>
+                <span className="text md text-gray flex-1">{t("recordingStatus.folder")}</span>
                 <span className={`tag text md ${summaryColor}`}>{summaryLabel}</span>
                 {onRefresh && (
                     <IconButton
@@ -107,7 +109,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                         
                         tooltip={true}
                         tooltipPosition="pos-bottom-right"
-                        tooltipText="Re-check folder"
+                        tooltipText={t("directory.recheck")}
                         
                     />
                 )}
@@ -124,7 +126,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
 
                     {!folderExists && (
                         <div className="toast-notification">
-                            <p className="text md text-warning">Recording folder does not exist yet. It will be created when you start recording.</p>
+                            <p className="text md text-warning">{t("recordingStatus.folderMissingMessage")}</p>
                             {recordingFolderPath && (
                                 <p className="text md text-gray mt-1" style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                                     {recordingFolderPath}
@@ -135,7 +137,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
 
                     {activeCalibrationTomlPath && (
                         <div>
-                            <p className="text md text-gray">Active calibration TOML:</p>
+                            <p className="text md text-gray">{t("recordingStatus.activeCalibrationToml")}</p>
                             <p className="text md" style={{ fontFamily: 'monospace', color: 'var(--color-success)', wordBreak: 'break-all' }}>
                                 {activeCalibrationTomlPath}
                             </p>
@@ -143,7 +145,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                     )}
 
                     {!status && !isLoading && !error && (
-                        <p className="text md text-gray">No status loaded.</p>
+                        <p className="text md text-gray">{t("recordingStatus.noStatusLoaded")}</p>
                     )}
 
                     {status && (
@@ -157,7 +159,7 @@ export const RecordingStatusPanel: React.FC<RecordingStatusPanelProps> = ({
                                     total={stage.total_count}
                                 >
                                     {stage.files.length === 0 ? (
-                                        <p className="text md text-gray">No files found.</p>
+                                        <p className="text md text-gray">{t("recordingStatus.noFilesFound")}</p>
                                     ) : (
                                         <div className="flex flex-col gap-1">
                                             {stage.files.map((f) => (

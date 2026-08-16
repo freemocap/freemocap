@@ -104,7 +104,7 @@ export const CameraConfigTreeViewHeader: React.FC<CameraConfigTreeViewHeaderProp
                 <IconButton
                     icon={isAutoApply ? "sync-icon" : "sync-disabled-icon"}
                     onClick={() => dispatch(autoApplyToggled())}
-                    title={isAutoApply ? 'Auto-apply on — changes send automatically' : 'Auto-apply off — use apply button to send'}
+                    title={isAutoApply ? t('camera.autoApplyEnabledHelp') : t('camera.autoApplyDisabledHelp')}
                     style={{
                         color: isAutoApply ? 'var(--color-accent)' : 'inherit',
                         opacity: isAutoApply ? 1 : 0.5,

@@ -48,15 +48,15 @@ export const CameraConfigResolution: React.FC<CameraConfigResolutionProps> = ({
         const numValue = parseInt(value, 10);
 
         if (value === '' || isNaN(numValue)) {
-            return 'Enter a valid number';
+            return t('validation.enterValidNumber');
         }
 
         if (numValue < RESOLUTION_CONSTRAINTS.min) {
-            return `Min: ${RESOLUTION_CONSTRAINTS.min}px`;
+            return t('validation.minimumPixels', {value: RESOLUTION_CONSTRAINTS.min});
         }
 
         if (numValue > RESOLUTION_CONSTRAINTS.max) {
-            return `Max: ${RESOLUTION_CONSTRAINTS.max}px`;
+            return t('validation.maximumPixels', {value: RESOLUTION_CONSTRAINTS.max});
         }
 
         return '';

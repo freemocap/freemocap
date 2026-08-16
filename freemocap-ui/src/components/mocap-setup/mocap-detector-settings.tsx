@@ -4,21 +4,17 @@ import ValueSelector from '@/components/ui-components/ValueSelector';
 import SegmentedControl from '@/components/ui-components/SegmentedControl';
 import { useMocap } from '@/hooks/useMocap';
 import { DetectorType, MediapipeModelComplexity, RTMPOSE_MODELS, RTMPoseModelName } from '@/store/slices/mocap';
+import { useTranslation } from 'react-i18next';
 
 interface MOCAPDetectorSettingsProps {
     open: boolean;
     onClose: () => void;
 }
 
-const MEDIAPIPE_COMPLEXITIES: { label: string; value: MediapipeModelComplexity }[] = [
-    { label: "Heavy", value: "heavy" },
-    { label: "Full", value: "full" },
-    { label: "Lite", value: "lite" },
-];
-
 const MOCAPDetectorSettings: React.FC<
     MOCAPDetectorSettingsProps
 > = ({ open, onClose }) => {
+    const { t } = useTranslation();
     const modalRef = useRef<HTMLDivElement>(null);
 
     const {
@@ -63,12 +59,12 @@ const MOCAPDetectorSettings: React.FC<
 
                 {/* Header */}
                 <div className="flex justify-content-space-between items-center">
-                    <SubactionHeader text="Detector Settings" />
+                    <SubactionHeader text={t("detector.settings")} />
                 </div>
 
                 {/* Detector type toggle */}
                 <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                    <span className="text-sm">Detector</span>
+                    <span className="text-sm">{t("detector.detector")}</span>
                     <div className="flex flex-row gap-1">
                         <SegmentedControl
                             size="sm"
@@ -88,11 +84,11 @@ const MOCAPDetectorSettings: React.FC<
                     <>
                         <div className="flex p-1 flex-col gap-1">
                             <span className="text-sm text-gray">
-                                133 keypoints (body, hands, face) via YOLOX person detection + RTMPose estimation. Recommended for best accuracy.
+                                {t("detector.rtmposePosthocDescription")}
                             </span>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Model</span>
+                            <span className="text-sm">{t("detector.model")}</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
                                     size="sm"
@@ -106,7 +102,7 @@ const MOCAPDetectorSettings: React.FC<
                             </div>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Confidence threshold</span>
+                            <span className="text-sm">{t("detector.confidenceThreshold")}</span>
                             <ValueSelector
                                 value={rtmPoseConfidenceThreshold ?? 0.004}
                                 min={0} max={1} step={0.001} unit=""
@@ -121,31 +117,35 @@ const MOCAPDetectorSettings: React.FC<
                     <>
                         <div className="flex p-1 flex-col gap-1">
                             <span className="text-sm text-gray">
-                                Body (33 pts) + hands (21 pts each) + face (60 pts) in one pass. Faster on CPU, fewer total keypoints than RTMPose.
+                                {t("detector.mediapipeDescription")}
                             </span>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Pose model size</span>
+                            <span className="text-sm">{t("detector.modelSize")}</span>
                             <div className="flex flex-row gap-1">
                                 <SegmentedControl
                                     size="sm"
                                     className="segmented-control-sm bg-darkgray"
                                     value={mediapipeModelComplexity ?? "heavy"}
-                                    options={MEDIAPIPE_COMPLEXITIES}
+                                    options={[
+                                        { label: t("detector.heavy"), value: "heavy" },
+                                        { label: t("detector.full"), value: "full" },
+                                        { label: t("detector.lite"), value: "lite" },
+                                    ]}
                                     onChange={(value) => setMediapipeModelComplexity(value as MediapipeModelComplexity)}
                                 />
                             </div>
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Detection confidence</span>
+                            <span className="text-sm">{t("detector.detectionConfidence")}</span>
                             <ValueSelector value={mediapipeDetectionConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipeDetectionConfidence} />
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Presence confidence</span>
+                            <span className="text-sm">{t("detector.presenceConfidence")}</span>
                             <ValueSelector value={mediapipePresenceConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipePresenceConfidence} />
                         </div>
                         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-                            <span className="text-sm">Tracking confidence</span>
+                            <span className="text-sm">{t("detector.trackingConfidence")}</span>
                             <ValueSelector value={mediapipeTrackingConfidence ?? 0.5} min={0} max={1} step={0.05} unit="" onChange={setMediapipeTrackingConfidence} />
                         </div>
                     </>

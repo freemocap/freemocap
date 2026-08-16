@@ -40,12 +40,12 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     const getOverallStatus = () => {
         if (wsState === STATES.CONNECTED) return { text: t('connected'), iconClass: 'connected-icon' };
         if (wsState === STATES.CONNECTING) return { text: t('connecting'), iconClass: 'loader-icon' };
-        return { text: 'Not Connected', iconClass: 'warning-icon' };
+        return { text: t('notConnected'), iconClass: 'warning-icon' };
     };
 
     const overallStatus = getOverallStatus();
     const cameraCountSuffix = isConnected && connectedCameraIds.length > 0
-        ? ` (${connectedCameraIds.length} cam${connectedCameraIds.length !== 1 ? 's' : ''})`
+        ? ` (${t('cameraCount', {count: connectedCameraIds.length})})`
         : '';
 
     const rowIconClass = (state: string) => {
@@ -55,9 +55,9 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
     };
 
     const toggleConfig = {
-        connectConfig: { text: 'Connect', extraClasses: '' },
-        connectingConfig: { text: 'Connecting...', extraClasses: 'loading disabled' },
-        connectedConfig: { text: 'Connected', extraClasses: 'activated' },
+        connectConfig: { text: t('connect'), extraClasses: '' },
+        connectingConfig: { text: t('connecting'), extraClasses: 'loading disabled' },
+        connectedConfig: { text: t('connected'), extraClasses: 'activated' },
     };
 
     if (compact) {
@@ -96,7 +96,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                     </p>
                                 </div>
                                 <ButtonSm
-                                    text={serverRunning ? 'Stop server' : 'Launch server'}
+                                    text={serverRunning ? t('stopServer') : t('launchServer')}
                                     onClick={() => (serverRunning ? stopServer() : startServer())}
                                     disabled={serverLoading}
                                     className={serverRunning ? 'quaternary flex-shrink-0' : 'quaternary flex-shrink-0'}
@@ -123,7 +123,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                     {/* Advanced settings toggle */}
                     <div className="open-advanced-settings-button-container flex flex-row flex-wrap justify-content-center pl-1 pr-1">
                         <ButtonSm
-                            text={showAdvancedSettings ? 'Hide settings and preferences' : 'Show settings and preferences'}
+                            text={showAdvancedSettings ? t('hideAdvancedSettings') : t('showAdvancedSettings')}
                             onClick={() => setShowAdvancedSettings((prev) => !prev)}
                             iconClass="settings-icon"
                             className="full-width text-center"
@@ -137,7 +137,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                             {/* Server Process Section (Electron only) */}
                             {isElectron && (
                                 <div className="server-process-section bg-middark flex flex-col gap-1 br-1 p-2">
-                                    <SubactionHeader text="Server Process" />
+                                    <SubactionHeader text={t('serverProcess')} />
 
                                     <ToggleComponent
                                         text={t('autoLaunch')}
@@ -209,7 +209,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
                                             className="secondary flex-1"
                                         />
                                         <ButtonSm
-                                            text="Reset"
+                                            text={t('reset')}
                                             onClick={resetServer}
                                             disabled={!serverRunning || serverLoading}
                                             className="flex-1"
@@ -231,7 +231,7 @@ export const ServerConnectionStatus: React.FC<{ compact?: boolean }> = ({ compac
 
                             {/* WebSocket Section */}
                             <div className="websocket-section bg-middark flex flex-col gap-1 br-1 p-2">
-                                <SubactionHeader text="Websocket Connection" />
+                                <SubactionHeader text={t('websocketConnection')} />
 
                                 <ToggleComponent
                                     text={t('autoConnect')}

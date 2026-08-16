@@ -1,4 +1,5 @@
 import React from "react";
+import {useTranslation} from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { recordingCompletionDismissed } from "@/store/slices/recording/recording-slice";
@@ -20,11 +21,12 @@ interface TimingRow {
 }
 
 function TimingStatsTable({ data }: { data: RecordingCompletionData }) {
+  const {t} = useTranslation();
   const rows: TimingRow[] = [
-    { label: "Framerate / FPS (Hz)", stats: data.framerate_stats },
-    { label: "Frame Duration (ms)", stats: data.frame_duration_stats },
+    { label: t("completion.framerateMetric"), stats: data.framerate_stats },
+    { label: t("completion.frameDurationMetric"), stats: data.frame_duration_stats },
     {
-      label: "Inter-Camera Frame Grab Sync (ms)",
+      label: t("completion.cameraSyncMetric"),
       stats: data.inter_camera_grab_range_ms_stats,
     },
   ];
@@ -33,12 +35,12 @@ function TimingStatsTable({ data }: { data: RecordingCompletionData }) {
     <table className="w-full border-collapse">
       <thead>
         <tr>
-          <th className=" p-01  text-left border-b-secondary">Metric</th>
-          <th className=" p-01  text-right border-b-secondary">Median</th>
-          <th className=" p-01  text-right border-b-secondary">Mean</th>
-          <th className=" p-01  text-right border-b-secondary">Std</th>
-          <th className=" p-01  text-right border-b-secondary">Min</th>
-          <th className=" p-01  text-right border-b-secondary">Max</th>
+          <th className=" p-01  text-left border-b-secondary">{t("completion.metric")}</th>
+          <th className=" p-01  text-right border-b-secondary">{t("median")}</th>
+          <th className=" p-01  text-right border-b-secondary">{t("mean")}</th>
+          <th className=" p-01  text-right border-b-secondary">{t("completion.std")}</th>
+          <th className=" p-01  text-right border-b-secondary">{t("min")}</th>
+          <th className=" p-01  text-right border-b-secondary">{t("max")}</th>
         </tr>
       </thead>
       <tbody>
@@ -58,6 +60,7 @@ function TimingStatsTable({ data }: { data: RecordingCompletionData }) {
 }
 
 export const RecordingCompleteDialog: React.FC = () => {
+  const {t} = useTranslation();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { api } = useElectronIPC();
@@ -98,8 +101,8 @@ export const RecordingCompleteDialog: React.FC = () => {
       >
         <div className="flex flex-col right-0 p-2 gap-1 bg-middark br-1 z-1">
             <div className="flex flex-row items-center justify-content-space-between pb-2">
-              <p className="text text-white">Recording Complete!</p>
-              <IconButton icon="close-icon" onClick={handleClose} title="Close" tooltip={true} tooltipText="Close dialog" />
+              <p className="text text-white">{t("completion.title")}</p>
+              <IconButton icon="close-icon" onClick={handleClose} title={t("close")} tooltip={true} tooltipText={t("completion.closeDialog")} />
             </div>
             <div className="flex flex-row items-center gap-1 mb-2">
               <span className=" text-gray br-1 flex-1 overflow-hidden truncate bg-elevated p-01">
@@ -108,49 +111,48 @@ export const RecordingCompleteDialog: React.FC = () => {
               <IconButton
                 icon="copy-icon"
                 onClick={handleCopyPath}
-                title="Copy path"
+                title={t("completion.copyPath")}
                 tooltip={true}
-                tooltipText="Copy recording path to clipboard"
+                tooltipText={t("completion.copyPathHelp")}
               />
               <IconButton
                 icon="folder-icon"
                 onClick={handleOpenFolder}
-                title="Open folder"
+                title={t("openFolder")}
                 tooltip={true}
-                tooltipText="Open recording folder in file explorer"
+                tooltipText={t("completion.openFolderHelp")}
               />
             </div>
             <p className=" text-gray mb-2">
-              {completionData.number_of_cameras} camera
-              {completionData.number_of_cameras !== 1 ? "s" : ""}
-              {" · "}
-              {completionData.number_of_frames} frames
-              {" · "}
-              {completionData.total_duration_sec}s{" · "}
-              {completionData.mean_framerate} Hz avg
+              {t("completion.summary", {
+                cameras: completionData.number_of_cameras,
+                frames: completionData.number_of_frames,
+                seconds: completionData.total_duration_sec,
+                fps: completionData.mean_framerate,
+              })}
             </p>
             <div className="divider" />
             <p className=" text-white mb-2 font-semibold">
-              Frame Timing Statistics
+              {t("completion.frameTimingStatistics")}
             </p>
             <TimingStatsTable data={completionData} />
             <div className="flex flex-row gap-4 mt-3 flex-end">
                 <ButtonSm
-                text="Close"
+                text={t("close")}
                 buttonType="button sm quaternary"
                 className=""
                 onClick={handleClose}
                 tooltip={true}
-                tooltipText="Close this dialog"
+                tooltipText={t("completion.closeDialog")}
               />
               <ButtonSm
-                text="Open in Playback"
+                text={t("completion.openInPlayback")}
                 className=""
                 iconClass="play-icon"
                 buttonType="button sm secondary"
                 onClick={handleOpenInPlayback}
                 tooltip={true}
-                tooltipText="Open recording in playback view"
+                tooltipText={t("completion.openInPlaybackHelp")}
               />
             
             </div>

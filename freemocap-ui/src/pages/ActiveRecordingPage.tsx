@@ -21,11 +21,11 @@ import {MocapPanel} from '@/components/control-panels/mocap-control-panel/MocapP
 
 const MONO_FONT = '"JetBrains Mono", "Fira Code", "SF Mono", monospace';
 
-const ORIGIN_LABEL: Record<string, string> = {
-    'pending-capture': 'Pending capture',
-    'just-captured': 'Just captured',
-    'browsed': 'Browsed',
-    'auto-latest': 'Auto-loaded',
+const ORIGIN_LABEL_KEY: Record<string, string> = {
+    'pending-capture': 'activeRecording.origin.pendingCapture',
+    'just-captured': 'activeRecording.origin.justCaptured',
+    'browsed': 'activeRecording.origin.browsed',
+    'auto-latest': 'activeRecording.origin.autoLatest',
 };
 
 const ActiveRecordingPage: React.FC = () => {
@@ -72,14 +72,14 @@ const ActiveRecordingPage: React.FC = () => {
                         <div className="pl-4 pr-4" style={{paddingTop: 32}}>
                             <div className="flex flex-col gap-2">
                                 <p className="text sm text-gray" style={{fontStyle: 'italic'}}>
-                                    No active recording. This folder will be created when you start recording.
+                                    {t('activeRecording.none')}
                                 </p>
                                 <div className="flex flex-row gap-1 mt-1">
                                     <button className="button sm secondary" onClick={() => navigate('/streaming')}>
-                                        Go to Streaming
+                                        {t('activeRecording.goToStreaming')}
                                     </button>
                                     <button className="button sm secondary" onClick={() => navigate('/browse')}>
-                                        Browse recordings
+                                        {t('activeRecording.browseRecordings')}
                                     </button>
                                 </div>
                             </div>
@@ -95,7 +95,7 @@ const ActiveRecordingPage: React.FC = () => {
                                     </p>
                                     {origin && (
                                         <span className="tag text sm">
-                                            {ORIGIN_LABEL[origin] ?? origin}
+                                            {ORIGIN_LABEL_KEY[origin] ? t(ORIGIN_LABEL_KEY[origin]) : origin}
                                         </span>
                                     )}
                                 </div>
@@ -113,21 +113,21 @@ const ActiveRecordingPage: React.FC = () => {
                                     </button>
                                     <button className="button sm secondary" onClick={() => navigate('/playback')}>
                                         <span className="icon play-icon icon-size-20"/>
-                                        Open in Playback
+                                        {t('activeRecording.openInPlayback')}
                                     </button>
                                     <button className="button sm secondary" onClick={handleOpenInBlender}>
                                         <span className="icon expand-icon icon-size-20"/>
-                                        Open in Blender
+                                        {t('activeRecording.openInBlender')}
                                     </button>
                                     <button className="button sm secondary" onClick={() => navigate('/browse')}>
                                         <span className="icon load-icon icon-size-20"/>
-                                        Browse recordings
+                                        {t('activeRecording.browseRecordings')}
                                     </button>
                                 </div>
                             </div>
 
                             <div className="p-2 br-1 border-1 border-mid-black">
-                                <p className="text md text-white m-0" style={{fontWeight: 600}}>Pipeline stages</p>
+                                <p className="text md text-white m-0" style={{fontWeight: 600}}>{t('activeRecording.pipelineStages')}</p>
                                 <RecordingStatusPanel
                                     status={status}
                                     isLoading={statusLoading}

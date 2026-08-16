@@ -1,14 +1,16 @@
 import React, { useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 // Active-recording responsibilities were folded into the Playback tab, so only
 // these two top-level modes remain.
 const NAV_TABS = [
-    { path: '/streaming', label: 'Streaming', onboarding: 'nav:streaming' },
-    { path: '/playback', label: 'Playback', onboarding: 'nav:playback' },
+    { path: '/streaming', labelKey: 'nav.streaming', onboarding: 'nav:streaming' },
+    { path: '/playback', labelKey: 'nav.playback', onboarding: 'nav:playback' },
 ] as const;
 
 export const MainNavTabs = () => {
+    const { t } = useTranslation();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -34,7 +36,7 @@ export const MainNavTabs = () => {
                             onClick={() => handleClick(tab.path)}
                             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(tab.path); } }}
                         >
-                            <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{tab.label}</p>
+                            <p className={`text md text-center p-1 ${isActive ? ' text-white' : ' text-gray'}`}>{t(tab.labelKey)}</p>
                         </div>
                     );
                 })}

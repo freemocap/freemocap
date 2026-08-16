@@ -71,7 +71,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
               onClick={() => setIsOpen(!isOpen)}
               title={isOpen ? t("closeSettings") : t("gridSettings")}
               tooltip
-              tooltipText="Grid Settings"
+              tooltipText={t("gridSettings")}
               tooltipPosition="pos-bottom-right"
             />
           </div>
@@ -92,15 +92,15 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
               }}
             >
               <div className="flex flex-col right-0 p-1 gap-1 bg-middark br-1 z-1">
-                <Row label="Layout">
+                <Row label={t("layout.layout")}>
 
                   <SegmentedControl
                     size="sm"
                     className="segmented-control-sm bg-darkgray"
                     value={settings.layoutDirection}
                     options={[
-                      { label: "Horizontal", value: "horizontal" },
-                      { label: "Vertical", value: "vertical" },
+                      { label: t("layout.horizontal"), value: "horizontal" },
+                      { label: t("layout.vertical"), value: "vertical" },
                     ]}
                     onChange={(value) => handleLayoutDirectionChange(value as LayoutDirection)}
                   />
@@ -110,8 +110,8 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
                   <p className="text bg">{t("gridColumns")}</p>
                   <p className="text sm text-gray">
                     {isAuto
-                      ? `Auto: ${autoColumns} Columns`
-                      : "Enter any positive number"}
+                      ? t("autoColumns", {count: autoColumns})
+                      : t("enterPositiveNumber")}
                   </p>
                 </div>
                 <div className="flex flex-col gap-2 align-end">
@@ -140,7 +140,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
 
                 <div className="pt-3 flex flex-col gap-1">
                   <ToggleComponent
-                    text="3D Viewport"
+                    text={t("viewport.threeDimensional")}
                     iconClass=""
                     isToggled={settings.show3dView}
                     onToggle={handle3dViewToggle}

@@ -9,6 +9,7 @@ import {
   RealtimeFilterConfig,
 } from "@/store/slices/mocap";
 import IconButton from "@/components/ui-components/IconButton";
+import { useTranslation } from "react-i18next";
 interface RTPthreeDReconstructionSettingsProps {
   open: boolean;
   onClose: () => void;
@@ -17,6 +18,7 @@ interface RTPthreeDReconstructionSettingsProps {
 const RTPthreeDReconstructionSettings: React.FC<
   RTPthreeDReconstructionSettingsProps
 > = ({ open, onClose }) => {
+  const { t } = useTranslation();
   const modalRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -86,7 +88,7 @@ const RTPthreeDReconstructionSettings: React.FC<
       <div className="gap-1 flex flex-col right-0 p-2 bg-middark br-1 z-1">
         {/* Header */}
         <div className="flex justify-content-space-between items-center">
-          <SubactionHeader text="Point Gate settings" />
+          <SubactionHeader text={t("filter.pointGate")} />
           <div className="flex flex-row gap-1 items-center">
             <IconButton
               icon="clear-icon"
@@ -94,7 +96,7 @@ const RTPthreeDReconstructionSettings: React.FC<
               onClick={handleResetDefaults}
               disabled={isLoading}
               tooltip
-              tooltipText="Reset to defaults"
+              tooltipText={t("filter.resetDefaults")}
               tooltipPosition="pos-left"
             />
 
@@ -107,7 +109,7 @@ const RTPthreeDReconstructionSettings: React.FC<
         </div>
 
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Max Reproj Error</span>
+          <span className="text-sm">{t("filter.maxReprojectionError")}</span>
 
           <ValueSelector
             value={skeletonFilterConfig.max_reprojection_error_px}
@@ -121,7 +123,7 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Max Velocity</span>
+          <span className="text-sm">{t("filter.maxVelocity")}</span>
 
           <ValueSelector
             value={skeletonFilterConfig.max_velocity_m_per_s}
@@ -135,7 +137,7 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Max Rejected streaks</span>
+          <span className="text-sm">{t("filter.maxRejectedStreak")}</span>
 
           <ValueSelector
             value={skeletonFilterConfig.max_rejected_streak}
@@ -149,9 +151,9 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
 
-        <SubactionHeader text="One Euro Filter" />
+        <SubactionHeader text={t("filter.oneEuro")} />
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Min Cutoff</span>
+          <span className="text-sm">{t("filter.minCutoff")}</span>
           <ValueSelector
             value={skeletonFilterConfig.min_cutoff}
             min={0.0001}
@@ -164,7 +166,7 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Beta</span>
+          <span className="text-sm">{t("filter.beta")}</span>
           <ValueSelector
             value={skeletonFilterConfig.beta}
             min={0}
@@ -175,7 +177,7 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">D Cutoff</span>
+          <span className="text-sm">{t("filter.dCutoff")}</span>
           <ValueSelector
             value={skeletonFilterConfig.d_cutoff}
             min={0.1}
@@ -186,9 +188,9 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
 
-        <SubactionHeader text="Fabrik" />
+        <SubactionHeader text={t("filter.fabrik")} />
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Max iterations</span>
+          <span className="text-sm">{t("filter.maxIterations")}</span>
           <ValueSelector
             value={skeletonFilterConfig.fabrik_max_iterations}
             min={1}
@@ -201,9 +203,9 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
 
-        <SubactionHeader text="Body Model" />
+        <SubactionHeader text={t("filter.bodyModel")} />
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Height</span>
+          <span className="text-sm">{t("filter.height")}</span>
           <ValueSelector
             value={skeletonFilterConfig.height_meters}
             min={0.5}
@@ -216,7 +218,7 @@ const RTPthreeDReconstructionSettings: React.FC<
           />
         </div>
         <div className="flex p-1 flex-row gap-1 items-center justify-content-space-between">
-          <span className="text-sm">Noise sigma</span>
+          <span className="text-sm">{t("filter.noiseSigma")}</span>
           <ValueSelector
             value={skeletonFilterConfig.noise_sigma}
             min={0.001}
@@ -230,7 +232,7 @@ const RTPthreeDReconstructionSettings: React.FC<
         </div>
 
         <ToggleComponent
-          text="Skeleton"
+          text={t("viewport.skeleton")}
           isToggled={aggregatorConfig.skeleton_enabled}
           onToggle={handleSkeletonToggle}
           disabled={isLoading}

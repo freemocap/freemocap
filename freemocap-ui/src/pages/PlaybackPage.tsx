@@ -153,7 +153,7 @@ const PlaybackPage: React.FC = () => {
 
                             {recordingFps != null && recordingFps > 0 && (
                                 <span title={t('recordingCaptureFps')} className="tag text sm">
-                                    rec: {recordingFps} fps
+                                    {t('playback.recordingFps', { fps: recordingFps })}
                                 </span>
                             )}
                         </div>

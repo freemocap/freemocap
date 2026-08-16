@@ -1,4 +1,5 @@
 import React from 'react';
+import {useTranslation} from 'react-i18next';
 import {useBlender} from '@/hooks/useBlender';
 import {useElectronIPC} from '@/services';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
@@ -20,6 +21,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
     hasBlendFile,
     detectorType,
 }) => {
+    const {t} = useTranslation();
     const blenderSupported = detectorType === undefined || detectorType === 'mediapipe';
 
     const {api, isElectron} = useElectronIPC();
@@ -92,7 +94,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     <div className="toast-notification error">
                         <div className="flex flex-row items-center justify-content-space-between">
                             <p className="text sm">{error}</p>
-                            <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={clearError} title="Dismiss error" />
+                            <IconButton icon="clear-icon" iconSize="icon-size-12" onClick={clearError} title={t("dismissError")} />
                         </div>
                     </div>
                 )}
@@ -103,55 +105,54 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                             className="input-field text md"
                             value={effectiveBlenderExePath ?? ''}
                             onChange={(e) => setBlenderExePath(e.target.value || null)}
-                            placeholder={isDetecting ? 'Detecting…' : 'No Blender found — select manually'}
+                            placeholder={isDetecting ? t("blender.detecting") : t("blender.notFound")}
                         />
                         <div className="flex flex-row pos-abs right-4 top-50">
                             {isUsingManualBlenderPath && (
                                 <IconButton
                                     icon="clear-icon"
                                     onClick={clearBlenderExePath}
-                                    title="Clear manual path (revert to auto-detected)"
+                                    title={t("blender.clearManualPath")}
                                 />
                             )}
                             <IconButton
                                 icon="save-icon"
                                 onClick={redetectBlender}
                                 disabled={isDetecting}
-                                title="Re-detect Blender"
+                                title={t("blender.redetect")}
                             />
                             <IconButton
                                 icon="download-icon"
                                 onClick={handleSelectBlenderExe}
                                 disabled={!isElectron}
-                                title="Select Blender executable"
+                                title={t("blender.selectExecutable")}
                             />
                         </div>
                     </div>
                     <p className="text sm text-gray">
                         {isUsingManualBlenderPath
-                            ? 'Using manually selected Blender'
+                            ? t("blender.usingManual")
                             : effectiveBlenderExePath
-                                ? 'Auto-detected Blender'
-                                : 'Click the folder icon to browse for blender.exe'}
+                                ? t("blender.autoDetected")
+                                : t("blender.browseHint")}
                     </p>
                 </div>
 
                 {!blenderSupported && (
                     <p className="text sm text-gray">
-                        Blender export only supports MediaPipe output right now - switch the
-                        detector to MediaPipe to enable it.
+                        {t("blender.mediapipeOnly")}
                     </p>
                 )}
 
                 <div className="flex flex-col gap-1">
                     <ToggleComponent
-                        text="Export to Blender after mocap processing"
+                        text={t("blender.exportAfterProcessing")}
                         isToggled={exportToBlenderEnabled && blenderSupported}
                         onToggle={setExportToBlenderEnabled}
                         disabled={!blenderSupported}
                     />
                     <ToggleComponent
-                        text="Auto-open .blend file in Blender when done"
+                        text={t("blender.autoOpenBlend")}
                         isToggled={autoOpenBlendFile && blenderSupported}
                         onToggle={setAutoOpenBlendFile}
                         disabled={!blenderSupported || !exportToBlenderEnabled}
@@ -163,7 +164,7 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     onClick={handleProcessWithBlender}
                     disabled={!canExport}
                 >
-                    {isExporting ? 'Exporting to Blender…' : 'Process Recording with Blender'}
+                    {isExporting ? t("blender.exporting") : t("blender.processRecording")}
                 </button>
 
                 <button
@@ -171,12 +172,12 @@ export const BlenderSection: React.FC<BlenderSectionProps> = ({
                     onClick={handleOpenInBlender}
                     disabled={!canOpen}
                 >
-                    {isOpening ? 'Opening…' : 'Open .blend in Blender'}
+                    {isOpening ? t("blender.opening") : t("blender.openBlend")}
                 </button>
 
                 {lastBlendFilePath && (
                     <p className="text sm text-gray" style={{fontFamily: 'monospace'}}>
-                        Last export: {lastBlendFilePath}
+                        {t("blender.lastExport")} {lastBlendFilePath}
                     </p>
                 )}
             </div>

@@ -9,8 +9,10 @@ import {
 } from '@/store/slices/pipelines';
 import PipelineGroupCard from './PipelineGroupCard';
 import ToggleComponent from '@/components/ui-components/ToggleComponent';
+import {useTranslation} from 'react-i18next';
 
 export default function PipelineProgressPanel() {
+    const {t} = useTranslation();
     const groups = useAppSelector(selectGroupedPipelines);
     const hasCompleted = useAppSelector(selectHasCompletedPipelines);
     const showCompleted = useAppSelector(selectShowCompleted);
@@ -23,7 +25,7 @@ export default function PipelineProgressPanel() {
                 <div className="input-with-string">
                     <input
                         className="input-field text md"
-                        placeholder="Filter..."
+                        placeholder={t('pipeline.filterPlaceholder')}
                         value={filterText}
                         onChange={(e) => dispatch(filterTextChanged(e.target.value))}
                         style={{height: 28, fontSize: '0.75rem'}}
@@ -31,7 +33,7 @@ export default function PipelineProgressPanel() {
                 </div>
                 {hasCompleted && (
                     <ToggleComponent
-                        text="Show completed"
+                        text={t('pipeline.showCompleted')}
                         isToggled={showCompleted}
                         onToggle={() => dispatch(toggleShowCompleted())}
                     />
@@ -41,7 +43,7 @@ export default function PipelineProgressPanel() {
             <div className="flex-1 overflow-y">
                 {groups.length === 0 ? (
                     <div className="flex items-center justify-center h-full">
-                        <p className="text sm text-gray">No active pipelines</p>
+                        <p className="text sm text-gray">{t('pipeline.noActive')}</p>
                     </div>
                 ) : (
                     groups.map((group) => (

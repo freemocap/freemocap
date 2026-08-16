@@ -7,8 +7,10 @@ import {
 
 import ValueSelector from "@/components/ui-components/ValueSelector"
 import SubactionHeader from "../ui-components/SubactionHeader";
+import { useTranslation } from "react-i18next";
 
 const PosthocFilterSettings:React.FC = () => {
+    const { t } = useTranslation();
     const dispatch = useAppDispatch();
     const config = useAppSelector(selectPosthocFilterConfig)
     const maximumCutoff = Math.max(
@@ -18,14 +20,14 @@ const PosthocFilterSettings:React.FC = () => {
 
     return (
         <div className = "flex flex-col gap-1">
-            <SubactionHeader text = "Butterworth Low-Pass Filter" />
+            <SubactionHeader text={t("postprocess.butterworthLowPass")} />
 
             <p className = "text sm text-gray p-1">
-                Method: Butterworth low-pass
+                {t("postprocess.methodButterworth")}
             </p>
 
             <div className = "flex flex-row p-1 items-center justify-content-space-between">
-                <span className = "text sm"> Sampling Rate </span>
+                <span className = "text sm">{t("postprocess.samplingRate")}</span>
                 <ValueSelector
                     value = {config.sampling_rate}
                     min = {1.0}
@@ -52,7 +54,7 @@ const PosthocFilterSettings:React.FC = () => {
             </div>
 
             <div className = "flex flex-row p-1 items-center justify-content-space-between">
-                <span className = "text sm"> Cutoff (Hz)</span>
+                <span className = "text sm">{t("postprocess.cutoffHz")}</span>
 
                 <ValueSelector 
                     value = {config.cutoff}
@@ -69,7 +71,7 @@ const PosthocFilterSettings:React.FC = () => {
             </div>
 
             <div className="flex flex-row p-1 items-center justify-content-space-between">
-                <span className="text sm">Order</span>
+                <span className="text sm">{t("postprocess.order")}</span>
 
                 <ValueSelector
                     value={config.order}

@@ -56,7 +56,7 @@ from skellyforge.skellymodels.standard_human.standard_human_model import (
     StandardHuman,  # noqa: TC002 — beartype resolves this in the _reproject_segment_origins signature at runtime
     compose_standard_human,
 )
-from freemocap.core.streaming.standard_stream.sample_block_helpers import (
+from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
 )
 from skellyforge.skellymodels.standard_human.tracker_contract import (

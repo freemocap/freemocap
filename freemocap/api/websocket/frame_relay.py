@@ -1,17 +1,17 @@
-"""FrameRelay — the single standard-stream send loop.
+"""FrameRelay — the single frame-message send loop.
 
-Owns the conversion from a per-frame ``FrameContext`` to a ``StreamSample``
-(via the producer composition) and its serialization through the
-``SendSerializer``. It is the **one** consumer of the pipeline's aggregator
-output; the camera images ride the same sample as the ``IMAGE_JPEG`` block.
+Owns the conversion from a per-frame FrameContext to a self-describing
+FrameMessage (via the message composition) and its CBOR serialization through
+the SendSerializer. It is the ONE consumer of the pipeline's aggregator output;
+the camera images ride the frame message's image field.
 
-Flow control is newest-wins: the frame *source* returns the freshest context
-available (or ``None`` when nothing new). There is no ack window — a slow
-client sees fewer, newer frames.
+Flow control is newest-wins: the frame source returns the freshest context
+available (or None when nothing new). There is no ack window — a slow client
+sees fewer, newer frames.
 
-The frame *source* is an awaitable the supervisor injects
-(``wait_for_frame``), so the relay is testable against a synthetic queue while
-the real supervisor wires it to the app's aggregator + camera payloads.
+The frame source is an awaitable the supervisor injects (wait_for_frame), so
+the relay is testable against a synthetic queue while the real supervisor wires
+it to the app's aggregator + camera payloads.
 """
 from __future__ import annotations
 
@@ -19,25 +19,18 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 
-from freemocap.api.websocket.send_serializer import SendSerializer  # noqa: TC001 — beartype resolves this in the FrameRelay.__init__ signature at runtime
-from freemocap.core.streaming.standard_stream.producers import (
-    StreamComposition,
-    compose_sample,
-)
-from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
-    FrameContext,
-)
+from freemocap.api.websocket.send_serializer import SendSerializer  # noqa: TC001
+from freemocap.core.streaming.message_composer import MessageComposition  # noqa: TC001
+from freemocap.core.streaming.message_model import encode_message
+from freemocap.core.streaming.producers.producer_contexts import FrameContext  # noqa: TC001
 
 logger = logging.getLogger(__name__)
 
-# The source contract: return the next frame context (the frame to compose), or
-# None if no new frame is available yet. Raised CancelledError stops the relay;
-# any other exception is caught by the supervisor.
 FrameSource = Callable[[], Awaitable[FrameContext | None]]
 
 
 class FrameRelay:
-    """Compose + serialize the standard-stream sample path, newest-wins."""
+    """Compose + serialize the frame-message path, newest-wins."""
 
     def __init__(
         self,
@@ -49,15 +42,11 @@ class FrameRelay:
         self._serializer = serializer
         self._source = source
         self._should_continue = should_continue
-        self._composition: StreamComposition | None = None
+        self._composition: MessageComposition | None = None
         self._last_sent_frame_number: int = -1
 
     async def run(self) -> None:
-        """Relay frames until the supervisor's ``should_continue`` goes False.
-
-        The relay owns its exit condition — no reliance on task cancellation
-        from ``gather`` (A2).
-        """
+        """Relay frames until the supervisor's should_continue goes False."""
         while self._should_continue():
             frame_ctx = await self._source()
             if frame_ctx is None:
@@ -67,19 +56,17 @@ class FrameRelay:
 
     async def _send_frame(self, frame_ctx: FrameContext) -> None:
         if self._composition is None:
-            # No schema composed yet — a sample without its schema cannot be
-            # decoded. The supervisor composes before starting the relay.
             return
-        sample = compose_sample(self._composition, frame_ctx)
-        await self._serializer.send_sample(sample.to_bytes())
+        message = self._composition.compose_frame_message(frame_ctx)
+        await self._serializer.send_message(encode_message(message))
         self._last_sent_frame_number = frame_ctx.frame_number
 
-    def set_composition(self, composition: StreamComposition) -> None:
+    def set_composition(self, composition: MessageComposition) -> None:
         """Swap in a rebuilt composition (data-model change)."""
         self._composition = composition
 
     @property
-    def composition(self) -> StreamComposition | None:
+    def composition(self) -> MessageComposition | None:
         return self._composition
 
     @property

@@ -50,6 +50,7 @@ class ChannelKind(StrEnum):
     DERIVED_POINTS = "DERIVED_POINTS"
     OVERLAY_2D = "OVERLAY_2D"
     SEGMENT_LENGTHS = "SEGMENT_LENGTHS"
+    IMAGE_JPEG = "IMAGE_JPEG"  # producer tag; the frame routes it to the image field, not a channel
     OVERLAY_REPROJECTIONS = "OVERLAY_REPROJECTIONS"
 
 
@@ -153,18 +154,6 @@ class ConventionMessage(MessageEnvelope):
     forward_axis: Axis = Axis.PLUS_X
     rotation_frame: RotationFrame = RotationFrame.LOCAL
     rotation_form: RotationForm = RotationForm.QUATERNION
-
-    @classmethod
-    def from_coordinate_convention(cls, convention: Any) -> ConventionMessage:
-        """Build from the legacy CoordinateConvention (str enums, duck-typed)."""
-        return cls(
-            units=Units(convention.units.value),
-            handedness=Handedness(convention.handedness.value),
-            up_axis=Axis(convention.up_axis.value),
-            forward_axis=Axis(convention.forward_axis.value),
-            rotation_frame=RotationFrame(convention.rotation_frame.value),
-            rotation_form=RotationForm(convention.rotation_form.value),
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -280,6 +269,12 @@ class LogRecord:
     type: str = ""
     source: str = "server"
 
+    @classmethod
+    def from_logging_dict(cls, record: dict[str, Any]) -> LogRecord:
+        """Build from a skellylogs logging-record dict (unknown keys ignored)."""
+        known = {f.name for f in fields(cls)}
+        return cls(**{key: value for key, value in record.items() if key in known})
+
 
 @dataclass(frozen=True, slots=True)
 class LogMessage(MessageEnvelope):
@@ -299,6 +294,22 @@ class DetailedFramerate:
     frame_duration_coefficient_of_variation: float = 0.0
     calculation_window_size: int = 0
     framerate_source: str = ""
+
+    @classmethod
+    def from_current_framerate(cls, framerate: Any) -> DetailedFramerate:
+        """Build from skellycam's CurrentFramerate (pydantic, duck-typed)."""
+        return cls(
+            mean_frame_duration_ms=float(framerate.mean_frame_duration_ms),
+            mean_frames_per_second=float(framerate.mean_frames_per_second),
+            frame_duration_max=float(framerate.frame_duration_max),
+            frame_duration_min=float(framerate.frame_duration_min),
+            frame_duration_mean=float(framerate.frame_duration_mean),
+            frame_duration_stddev=float(framerate.frame_duration_stddev),
+            frame_duration_median=float(framerate.frame_duration_median),
+            frame_duration_coefficient_of_variation=float(framerate.frame_duration_coefficient_of_variation),
+            calculation_window_size=int(framerate.calculation_window_size),
+            framerate_source=str(framerate.framerate_source),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -332,12 +343,41 @@ class AppStateSnapshot:
     camera_groups: dict[str, CameraGroupSnapshot] = field(default_factory=dict)
     realtime_pipelines: tuple[RealtimePipelineSnapshot, ...] = ()
 
+    @classmethod
+    def from_state_dict(cls, state: dict[str, Any]) -> AppStateSnapshot:
+        """Build from FreemocapApplication.to_state_dict() (nested dicts)."""
+        camera_groups = {
+            group_id: CameraGroupSnapshot(
+                id=str(group.get("id", group_id)),
+                configs=dict(group.get("configs", {})),
+                cameras=dict(group.get("cameras", {})),
+                alive=bool(group.get("alive", False)),
+                recording_in_progress=bool(group.get("recording_in_progress", False)),
+                paused=bool(group.get("paused", False)),
+            )
+            for group_id, group in state.get("camera_groups", {}).items()
+        }
+        realtime_pipelines = tuple(
+            RealtimePipelineSnapshot(
+                id=str(pipeline.get("id", "")),
+                camera_group_id=str(pipeline.get("camera_group_id", "")),
+                camera_ids=tuple(pipeline.get("camera_ids", ())),
+                alive=bool(pipeline.get("alive", False)),
+            )
+            for pipeline in state.get("realtime_pipelines", [])
+        )
+        return cls(camera_groups=camera_groups, realtime_pipelines=realtime_pipelines)
+
 
 @dataclass(frozen=True, slots=True)
 class AppStateMessage(MessageEnvelope):
     kind: ClassVar[MessageKind] = MessageKind.APP_STATE
     server_pid: int = 0
     state: AppStateSnapshot = field(default_factory=AppStateSnapshot)
+
+    @classmethod
+    def from_state_dict(cls, *, server_pid: int, state: dict[str, Any]) -> AppStateMessage:
+        return cls(server_pid=server_pid, state=AppStateSnapshot.from_state_dict(state))
 
 
 @dataclass(frozen=True, slots=True)
@@ -351,6 +391,20 @@ class ProgressMessage(MessageEnvelope):
     recording_name: str = ""
     recording_path: str = ""
     camera_id: str | None = None  # optional (video-node progress only)
+
+    @classmethod
+    def from_pipeline_progress(cls, progress: Any) -> ProgressMessage:
+        """Build from PipelineProgressMessage (dataclass, duck-typed)."""
+        return cls(
+            pipeline_id=str(progress.pipeline_id),
+            pipeline_type=str(progress.pipeline_type),
+            phase=str(progress.phase),
+            progress_fraction=float(progress.progress_fraction),
+            detail=str(progress.detail),
+            recording_name=str(progress.recording_name),
+            recording_path=str(progress.recording_path),
+            camera_id=getattr(progress, "camera_id", None),
+        )
 
 
 # ── Serialization (dataclass -> CBOR map -> bytes) ──────────────────────

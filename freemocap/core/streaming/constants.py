@@ -1,11 +1,8 @@
-"""Streaming-wide constants — a leaf module OUTSIDE the ``standard_stream`` package.
+"""Streaming-wide constants — a dependency-free leaf module.
 
-Deliberately not inside ``standard_stream/``: importing anything from that
-package runs its ``__init__``, which pulls the pubsub tree — and the pubsub
-tree imports the realtime configs, which need this constant. Importing the
-package to get a constant is exactly the circular import
-(``pubsub_topics → realtime_pipeline_config → … → realtime_filter_config →
-standard_stream``).
+Kept free of package imports so modules that need the nominal subject height can
+import it without pulling the pubsub / realtime-config tree (which would
+circularly import this constant).
 """
 
 # Nominal subject height (mm) used to convert each segment's ``length_ratio``

@@ -19,10 +19,8 @@ import json
 import logging
 import os
 import time
-from dataclasses import asdict
 from queue import Empty
 
-import msgspec
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
 from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
@@ -34,14 +32,19 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 
 from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
-from freemocap.api.websocket.websocket_message_types import WebsocketMessageType
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
-from freemocap.core.streaming.standard_stream import encode_schema
-from freemocap.core.streaming.standard_stream.producers import (
-    compose,
-    signature_of,
+from freemocap.core.streaming.message_composer import compose_messages
+from freemocap.core.streaming.message_model import (
+    AppStateMessage,
+    DetailedFramerate,
+    FramerateMessage,
+    LogMessage,
+    LogRecord,
+    ProgressMessage,
+    encode_message,
 )
-from freemocap.core.streaming.standard_stream.producers.producer_contexts import (
+from freemocap.core.streaming.producers import signature_of
+from freemocap.core.streaming.producers.producer_contexts import (
     FrameContext,
     StreamContext,
 )
@@ -50,13 +53,6 @@ from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
 
 logger = logging.getLogger(__name__)
-
-
-class FramerateMessage(msgspec.Struct):
-    camera_group_id: CameraGroupIdString
-    backend_framerate: CurrentFramerate
-    frontend_framerate: CurrentFramerate
-    message_type: WebsocketMessageType = WebsocketMessageType.FRAMERATE_UPDATE
 
 
 class WebsocketServer:
@@ -110,12 +106,12 @@ class WebsocketServer:
         )
 
     def _compose_current(self):
-        ctx = self._build_stream_context()
-        return compose(
-            ctx,
-            stream_id=f"freemocap-{os.getpid()}",
-            stream_name="freemocap standard stream",
-        )
+        return compose_messages(self._build_stream_context())
+
+    async def _emit_replace_kinds(self, composition) -> None:
+        await self._serializer.send_message(encode_message(composition.convention))
+        await self._serializer.send_message(encode_message(composition.model))
+        await self._serializer.send_message(encode_message(composition.camera_layout))
 
     def _refresh_config_subscriptions(self) -> None:
         """Subscribe (once each, keyed) to the config-update topics of every
@@ -154,7 +150,7 @@ class WebsocketServer:
         return got
 
     async def _ensure_composition(self) -> None:
-        """Rebuild + resend the schema when the data model changed.
+        """Rebuild + re-emit the replace-kinds when the data model changed.
 
         Two triggers: (1) a config-update message on the pubsub network — a
         FULL rebuild, the event is authoritative; (2) the composite producer
@@ -171,7 +167,7 @@ class WebsocketServer:
                 return
         composition = self._compose_current()
         self._relay.set_composition(composition)
-        await self._serializer.send_schema_json(encode_schema(composition.schema))
+        await self._emit_replace_kinds(composition)
 
     def _current_camera_ids(self) -> tuple[str, ...]:
         """The sorted camera IDs across all live realtime pipelines."""
@@ -298,10 +294,6 @@ class WebsocketServer:
             image_payload=bytes(image_bytes),
         )
 
-    # ── JSON send helper (retained for non-sample messages) ────────────
-    async def _send_msgspec_json(self, data: object) -> None:
-        await self._serializer.send_json(data)
-
     async def __aenter__(self):
         logger.debug("Entering WebsocketRunner context manager...")
         self._websocket_should_continue = True
@@ -330,12 +322,12 @@ class WebsocketServer:
 
     async def run(self):
         logger.info("Starting websocket runner...")
-        # Schema first, on connect — the frontend indexes sample blocks by it.
+        # Replace-kinds first, on connect.
         composition = self._relay.composition
         if composition is not None:
-            await self._serializer.send_schema_json(encode_schema(composition.schema))
+            await self._emit_replace_kinds(composition)
         self.ws_tasks = [
-            asyncio.create_task(self._relay.run(), name="WebsocketStandardStreamRelay"),
+            asyncio.create_task(self._relay.run(), name="WebsocketMessageRelay"),
             asyncio.create_task(self._logs_relay(), name="WebsocketLogsRelay"),
             asyncio.create_task(self._client_message_handler(), name="WebsocketClientMessageHandler"),
             asyncio.create_task(self._app_state_sender(), name="WebsocketAppStateSender"),
@@ -363,11 +355,10 @@ class WebsocketServer:
             while self.should_continue:
                 state_dict = self._app.to_state_dict()
                 if previous_state is None or state_dict != previous_state:
-                    await self._send_msgspec_json({
-                        "message_type": WebsocketMessageType.APP_STATE,
-                        "server_pid": os.getpid(),
-                        "state": state_dict,
-                    })
+                    message = AppStateMessage.from_state_dict(
+                        server_pid=os.getpid(), state=state_dict
+                    )
+                    await self._serializer.send_message(encode_message(message))
                 await asyncio.sleep(1.0)
                 previous_state = state_dict
         except asyncio.CancelledError:
@@ -398,7 +389,8 @@ class WebsocketServer:
                     self._app.posthoc_pipeline_manager.evict_completed()
                 )
                 for update in updates:
-                    await self._send_msgspec_json(asdict(update))
+                    message = ProgressMessage.from_pipeline_progress(update)
+                    await self._serializer.send_message(encode_message(message))
                 await asyncio.sleep(0.5)
         except asyncio.CancelledError:
             pass
@@ -448,12 +440,12 @@ class WebsocketServer:
             server_framerate = server_calc.current_framerate
             display_tracker = self._display_framerate_trackers[camera_group_id]
             if server_framerate and display_tracker.has_data:
-                framerate_message = FramerateMessage(
+                message = FramerateMessage(
                     camera_group_id=camera_group_id,
-                    backend_framerate=server_framerate,
-                    frontend_framerate=display_tracker.current_framerate,
+                    backend_framerate=DetailedFramerate.from_current_framerate(server_framerate),
+                    frontend_framerate=DetailedFramerate.from_current_framerate(display_tracker.current_framerate),
                 )
-                await self._send_msgspec_json(framerate_message)
+                await self._serializer.send_message(encode_message(message))
                 server_calc.clear()
                 display_tracker.clear()
         self._last_framerate_send_time = now
@@ -475,7 +467,8 @@ class WebsocketServer:
                         continue
                     if log_entry.get("levelno", 0) < ws_log_level:
                         continue
-                    await self._serializer.send_json(log_entry)
+                    message = LogMessage(record=LogRecord.from_logging_dict(log_entry))
+                    await self._serializer.send_message(encode_message(message))
                 else:
                     await await_10ms()
         except asyncio.CancelledError:

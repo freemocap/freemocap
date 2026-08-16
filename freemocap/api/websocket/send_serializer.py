@@ -79,6 +79,10 @@ class SendSerializer:
         """Send one standard-stream sample (binary frame)."""
         await self.send_raw_bytes(sample_bytes)
 
+    async def send_message(self, message_bytes: bytes) -> None:
+        """Send one CBOR message (binary frame)."""
+        await self.send_raw_bytes(message_bytes)
+
     async def send_json(self, data: object) -> None:
         """Encode any msgspec-compatible object and send as a text frame."""
         await self.send_raw_text(_ws_json_encoder.encode(data).decode("utf-8"))

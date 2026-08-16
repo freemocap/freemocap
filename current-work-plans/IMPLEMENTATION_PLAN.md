@@ -155,6 +155,18 @@ freemocap test **collection** repaired this session (4 files repointed to
 
 ## Progress log
 
+- **2026-08-15 (the message-model swap — design locked, not yet implemented)** — Decided to replace the
+  LSL-style schema-then-samples wire with a **self-describing message model**: one WebSocket carrying
+  typed, versioned CBOR messages, each with an envelope (kind, version, timestamp, sequence — full names,
+  never abbreviated) plus a kind payload. No schema, no samples, no signature/resend. Kinds are flat and
+  split by source (frame, convention, model, camera_layout, calibration, log, framerate, app_state,
+  progress); each routes to a client home (RTK slice replace vs fast store append/emit) via a dispatcher
+  in TransportService. This folds into and completes the earlier ServerContextProvider/WebsocketServer
+  decomposition (archive specs 05/06, plan 04-ui-wedge) and preserves every live path (inventory in
+  04-ui/ui-integration.md); the only removal is the dead tracker_schemas handshake. Docs rewritten:
+  standard-stream-protocol, stream-contract, backend-encoder-ws, ui-integration, glossary, README. Hard
+  cutover when implemented (no dual format).
+
 - **2026-08-15 (the 3D bone orientation fix — rest-derived orientation landed)** — The 3D rigid-body
   bones were ~90° mis-oriented because the renderer oriented its unit geometry against the segment's
   *nominal* long-axis label (+Y body / +Z face) and applied `ROTATIONS_WORLD` directly — but

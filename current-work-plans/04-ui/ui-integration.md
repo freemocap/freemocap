@@ -1,29 +1,60 @@
-# UI Integration
+# UI Integration (the message dispatcher + the decomposition)
 
-> **Scaffold (2026-08-14) — needs a source-read pass before full prose.** The decoder + renderer are
-> landed and green (F3/F4), but I have not yet read the UI in depth; author fully after a read pass.
+**Describes:** freemocap-ui/src — TransportService (the dispatcher), ServerContextProvider (thin), and
+the client homes (RTK slices + fast stores). This completes the ServerContextProvider decomposition from
+the archived specs 05 and 04-ui-wedge, now with a single self-describing message model instead of the
+schema/sample model.
 
-**Describes:** `freemocap-ui/src/` — `services/server/` (`ServerContextProvider`, the `transport/`
-service, rolling-window stores) and `components/viewport3d/renderers/` (the rigid-body bone renderers,
-keypoint/connection renderers).
-**Salvage:** [`archive/streaming-compatibility-specs/05-ui-integration-and-refactor.md`](../archive/streaming-compatibility-specs/05-ui-integration-and-refactor.md),
-[`archive/phase-1-work-plans/04-ui-wedge.md`](../archive/phase-1-work-plans/04-ui-wedge.md),
-[`06-rigid-body-bone-renderer.md`](../archive/phase-1-work-plans/06-rigid-body-bone-renderer.md).
+## The dispatcher lives in TransportService
 
-## What this covers
-The frontend consumption of the standard stream: the transport service + standard-stream **decoder**
-(golden-byte parity with the Python fixtures), rolling-window Redux stores, and the Three.js **rigid-body
-bone renderer** driven by schema lengths + per-segment quaternions.
+TransportService owns the WebSocket and the dispatch: decode a CBOR message, validate it against the Zod
+discriminated union (01-data-model/stream-contract.md), then route by kind to its home.
 
-## Key facts (landed, green)
-- F3 — transport service + decoder + wedge; F4 — rigid-body bone renderer (schema-driven lengths).
-- 11 + 5 harness tests, `tsc` clean.
+| kind | home | pattern |
+|---|---|---|
+| frame | frame subscribers -> ServerContextProvider fan-out -> WorkerDataStore | fast (emit) |
+| convention | new RTK slice | replace |
+| model | new RTK slice | replace |
+| camera_layout | new RTK slice | replace |
+| calibration | calibration slice | replace |
+| log | LogStore | append |
+| framerate | FramerateStore | fast |
+| app_state | connection slice | replace |
+| progress | pipelines/mocap/calibration slices | replace |
 
-## To capture when authored
-- `ServerContextProvider` decomposition + the transport service boundary.
-- The rolling-window store shape (how samples index against the schema).
-- The renderer: `RigidBodyBoneGeometry` / `RigidBodyBoneInstances` / `RigidBodyBoneRenderer` — how bones
-  are placed from origin + quaternion + length.
+An unknown kind or version is logged once and skipped.
 
-## Reconciliation notes
-`wxyz`; schema-driven; keypoint/segment vocabulary. Confirm the in-flight renderer edits before finalizing.
+## ServerContextProvider becomes thin
+
+Today ServerContextProvider is ~599 lines and still owns the connection lifecycle, the frame decode/ack
+loop, the hand-rolled subscriber sets, and the JSON if/else chain (log, framerate, progress, app_state,
+tracker_schemas). The wedge (spec 05) extracted routing + connection into TransportService but only wired
+the standard-stream; the rest of the if/else chain never migrated. This plan finishes that migration:
+
+- The JSON if/else chain + hand-rolled isX guards are deleted; kinds route through the dispatcher.
+- The frame decode/ack loop and the FrameProcessor/CanvasManager wiring move to a rendering-orchestration
+  module (spec 05 step 2).
+- The subscriber sets stay as the fan-out to the viewport worker (unchanged consumer contract).
+- ServerContextProvider ends as a thin composition root (~200 lines) that wires kinds to homes.
+
+## Preservation inventory (nothing live is lost)
+
+| today (server -> client) | becomes | notes |
+|---|---|---|
+| schema: convention, rest-pose, axes, hierarchy, camera sizes | convention + model + camera_layout kinds | replaced schema |
+| sample: pose + overlays + images + lengths | frame kind | same payload, self-describing |
+| logs | log kind | same LogStore |
+| framerate_update | framerate kind | same FramerateStore |
+| app_state | app_state kind | same connection slice |
+| posthoc_progress | progress kind | same pipelines/mocap/calibration slices |
+| tracker_schemas | removed | dead — nothing sends it; the renderer uses connections |
+
+Inbound (client -> server): the frameAcknowledgment with displayImageSizes stays. HTTP/thunks (cameras,
+recording, videos, realtime apply, mocap, blender) are untouched.
+
+## Migration
+
+Hard cutover, no dual format. Order: (1) define the Zod union + CBOR decode; (2) backend emits the new
+messages; (3) dispatcher routes kinds to homes; (4) delete StreamSchema/ChannelGroup/SchemaRegistry, the
+isX guards, and the schema/sample decode path; (5) shrink ServerContextProvider. Each step is verifiable
+against the preservation table above.

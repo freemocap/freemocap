@@ -71,7 +71,10 @@ All of this is **uncommitted on disk** in freemocap (the orientation fix + docs 
 2. **F5 gate** — the manual full-loop checklist: T-pose at capture start, arm bend rotates the humerus
    mesh without pop, hidden-hand degradation, no schema drift, dots + landmark lines + bones in lockstep
    with the video, **correct bone orientation**.
-3. **F5+1 — the VMC adapter** (VRM 1.0→0.x name map + coordinate re-expression). Then **the posthoc
+3. **Message-model swap** — implement the self-describing message protocol
+   (03-transport/standard-stream-protocol.md), completing the ServerContextProvider/WebsocketServer
+   decomposition. Preserve every live path (inventory in 04-ui/ui-integration.md). Design locked.
+4. **F5+1 — the VMC adapter** (VRM 1.0→0.x name map + coordinate re-expression). Then **the posthoc
    rebuild** ([`02-pipeline/posthoc-rebuild.md`](02-pipeline/posthoc-rebuild.md)).
 
 ## Known gaps (flagged, deliberately not done)

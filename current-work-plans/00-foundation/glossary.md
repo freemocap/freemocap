@@ -47,6 +47,21 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
 > neighbours — is **future work** (see [ontology.md](../ontology.md)); do not describe it as current.
 > Twist today is own-geometry-or-damped.
 
+## Transport (the message model — see ../03-transport/standard-stream-protocol.md)
+
+- **message** — the unit of the stream: a typed, versioned, self-describing value with an envelope
+  (kind, version, timestamp, sequence) plus a kind payload. There is no schema and no sample.
+- **kind** — a message type tag, named by source (frame, convention, model, camera_layout, calibration,
+  log, framerate, app_state, progress). A new data type is a new kind.
+- **frame** — the per-frame kind: self-describing named column blocks (names inline) plus images.
+- **replace-kind** — a low-frequency kind whose payload replaces a client slice whole (idempotent:
+  applying it N times is the same as once). No deltas, no accumulation.
+- **self-describing** — a message carries everything needed to decode it; no external descriptor, no
+  cached schema to drift.
+- **idempotent** — an update whose effect is the same however many times it is applied (full-snapshot
+  replace, never a delta).
+- **envelope** — the kind/version/timestamp/sequence header every message carries.
+
 ## Retired (do not reintroduce outside `archive/`)
 The old **landmark *layer*** (a vague intermediate fitted-point stage) — but note **the *term* `landmark`
 is revived** above with a precise meaning. Also retired: `canonical` (mapping sense),

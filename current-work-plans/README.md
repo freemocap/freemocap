@@ -1,7 +1,7 @@
 # Current Work Plans
 
-Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **LSL-shaped
-streaming layer** — the two intertwined efforts that turn synchronized camera frames into a
+Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
+message stream** — the two intertwined efforts that turn synchronized camera frames into a
 self-describing stream of a canonical, VRM-1.0-aligned human.
 
 > **Why this folder exists / how it's organized.** This started life as a single "streaming
@@ -18,10 +18,10 @@ self-describing stream of a canonical, VRM-1.0-aligned human.
 | # | Layer | Covers |
 |---|-------|--------|
 | **00** | [foundation/](00-foundation/) | Conventions (frames, units, quaternions), the keypoint/segment vocabulary, testing philosophy — the facts every other layer assumes. |
-| **01** | [data-model/](01-data-model/) | The canonical structures: the VRM segment model, T-pose reference geometry, tracker→standard-human mappings, and the stream schema/sample **types**. |
+| **01** | [data-model/](01-data-model/) | The canonical structures: the VRM segment model, T-pose reference geometry, tracker→standard-human mappings, and the message contract (envelope, kinds, self-describing channel block). |
 | **02** | [pipeline/](02-pipeline/) | The engine: kinematics (orientation solver, two-tier twist), segment-length estimation + fitting, the realtime loop, the posthoc path. |
-| **03** | [transport/](03-transport/) | The wire: the standard-stream protocol, the backend encoder + WebSocket send-path, the streaming hub + LSL/VMC adapters, the HTTP control plane, on-disk serialization. |
-| **04** | [ui/](04-ui/) | The frontend: transport service, rolling-window stores, the rigid-body renderers. |
+| **03** | [transport/](03-transport/) | The wire: the message protocol, the backend relay + WebSocket send-path, the streaming hub + LSL/VMC adapters, the HTTP control plane, on-disk serialization. |
+| **04** | [ui/](04-ui/) | The frontend: the message dispatcher (TransportService), the client homes, the rigid-body renderers. |
 | — | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The one cross-cutting tracker: scope table + progress log. |
 
 Single `00–04` numbering, one folder per layer, descriptive filenames. No `phase-1/`, no duplicate
@@ -37,7 +37,7 @@ draws tracker keypoints as small dots plus reprojected segment-origin landmarks 
 The **3D rigid-body bones now render with correct orientation**: `rest_pose.orientations` (per-segment
 rest-frame orientation, VRM-1.0 rest frames) replaced the stale identity map, and the renderer composes
 `ROTATIONS_WORLD · rest_orientation · Q_permute · S`. Remaining: the **F5 full-loop gate** (the manual
-T-pose / arm-bend / hidden-hand checklist), the VMC adapter, then the posthoc rebuild. Live scope +
+T-pose / arm-bend / hidden-hand checklist), the VMC adapter, then the posthoc rebuild. The next planned refactor is the **message-model swap**: replace the schema-then-samples wire with typed, self-describing CBOR messages dispatched by kind in TransportService — design locked, not yet implemented. Live scope +
 progress: [HANDOFF.md](HANDOFF.md) (the queue + orientation protocol) +
 [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (historical log).
 

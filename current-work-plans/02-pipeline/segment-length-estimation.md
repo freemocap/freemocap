@@ -13,7 +13,7 @@
 Per-frame: map tracker keypoints → standard-human names, advance per-segment **length estimators** with
 the *measured* (non-extrapolated) keypoints, then a single forward pass that **holds the estimated
 lengths while following the observed direction**. ≥3-point segments (the skull) get the rigid-body
-template fit; 2-point segments keep the span/edge path. Lengths feed the stream schema.
+template fit; 2-point segments keep the span/edge path. Lengths feed the frame message.
 
 ## Key facts (committed code)
 - Per-group state (body / left hand / right hand); the head additionally gets a `RigidPointTemplate`

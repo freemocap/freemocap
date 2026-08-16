@@ -8,7 +8,7 @@
 
 ## What this covers
 The **T-pose** each live pose is measured against — one build serves both the orientation solver
-(`identity == T-pose`) and the stream schema's rest pose.
+(`identity == T-pose`) and the rest-pose message.
 
 ## Key facts (committed code)
 - Built from composed segments + per-subject measured lengths. Three passes: rest directions (right side

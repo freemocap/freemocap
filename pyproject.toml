@@ -18,6 +18,7 @@ dependencies = [
     "scipy-stubs~=1.17.1",
     "beartype>=0.19",
     "msgspec>=0.19",
+    "cbor2>=5.6.0",
     #sub-skellies
     "freemocap_blender_addon",
     "skellycam",

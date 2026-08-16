@@ -11,9 +11,9 @@ Migrating the recorded output to a **tidy long** schema (one row per (frame, sub
 channel)) so downstream analysis is uniform across keypoints, positions, and rotations.
 
 ## To capture when authored
-- The tidy-long column schema and how it maps from the stream sample groups.
+- The tidy-long column schema and how it maps from the frame channels.
 - The relationship to the posthoc rebuild ([../02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md)).
 
 ## Reconciliation notes
-Align channel names with [../01-data-model/stream-contract.md](../01-data-model/stream-contract.md);
+Align channel names with [../01-data-model/message-contract.md](../01-data-model/message-contract.md);
 60/76 counts; `wxyz`.

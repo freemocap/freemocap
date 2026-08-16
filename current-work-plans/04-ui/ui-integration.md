@@ -8,7 +8,7 @@ schema/sample model.
 ## The dispatcher lives in TransportService
 
 TransportService owns the WebSocket and the dispatch: decode a CBOR message, validate it against the Zod
-discriminated union (01-data-model/stream-contract.md), then route by kind to its home.
+discriminated union (01-data-model/message-contract.md), then route by kind to its home.
 
 | kind | home | pattern |
 |---|---|---|
@@ -28,8 +28,8 @@ An unknown kind or version is logged once and skipped.
 
 Today ServerContextProvider is ~599 lines and still owns the connection lifecycle, the frame decode/ack
 loop, the hand-rolled subscriber sets, and the JSON if/else chain (log, framerate, progress, app_state,
-tracker_schemas). The wedge (spec 05) extracted routing + connection into TransportService but only wired
-the standard-stream; the rest of the if/else chain never migrated. This plan finishes that migration:
+tracker_schemas). The wedge (spec 05) extracted routing + connection into TransportService but only wired the old
+standard-stream (schema/sample) path; the rest of the if/else chain never migrated. This plan finishes that migration:
 
 - The JSON if/else chain + hand-rolled isX guards are deleted; kinds route through the dispatcher.
 - The frame decode/ack loop and the FrameProcessor/CanvasManager wiring move to a rendering-orchestration
@@ -47,7 +47,7 @@ the standard-stream; the rest of the if/else chain never migrated. This plan fin
 | framerate_update | framerate kind | same FramerateStore |
 | app_state | app_state kind | same connection slice |
 | posthoc_progress | progress kind | same pipelines/mocap/calibration slices |
-| tracker_schemas | removed | dead — nothing sends it; the renderer uses connections |
+| tracker_schemas | removed (handshake only) | the websocket handshake is dead (backend source deleted). The `TrackedObjectDefinition` TYPE + `ConnectionRenderer` + `getActiveSchema` stay — they are the playback stick-figure's connection source, not this wire |
 
 Inbound (client -> server): the frameAcknowledgment with displayImageSizes stays. HTTP/thunks (cameras,
 recording, videos, realtime apply, mocap, blender) are untouched.

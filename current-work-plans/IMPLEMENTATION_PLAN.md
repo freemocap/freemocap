@@ -164,7 +164,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   in TransportService. This folds into and completes the earlier ServerContextProvider/WebsocketServer
   decomposition (archive specs 05/06, plan 04-ui-wedge) and preserves every live path (inventory in
   04-ui/ui-integration.md); the only removal is the dead tracker_schemas handshake. Docs rewritten:
-  standard-stream-protocol, stream-contract, backend-encoder-ws, ui-integration, glossary, README. Hard
+  message-protocol, message-contract, message-relay, ui-integration, glossary, README. Hard
   cutover when implemented (no dual format).
 
 - **2026-08-15 (the 3D bone orientation fix — rest-derived orientation landed)** — The 3D rigid-body

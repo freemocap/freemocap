@@ -2,8 +2,8 @@
 
 **Describes (types):** the message envelope, the kind list, the self-describing channel block, and each
 kind payload shape. The frontend holds these as a single Zod discriminated union keyed on kind. The wire
-framing/send-path lives in ../03-transport/standard-stream-protocol.md; the backend relay in
-../03-transport/backend-encoder-ws.md; the client dispatcher in ../04-ui/ui-integration.md.
+framing/send-path lives in ../03-transport/message-protocol.md; the backend relay in
+../03-transport/message-relay.md; the client dispatcher in ../04-ui/ui-integration.md.
 
 ## Envelope (every message)
 
@@ -15,7 +15,7 @@ abbreviated. The payload fields spread into each kind variant.
 
 | kind | payload fields | client home |
 |---|---|---|
-| frame | n, ch (channel array), img (jpeg bytes) | frame subscribers (fast) |
+| frame | frame_number, subjects (subject_id + channels), image | frame subscribers (fast) |
 | convention | units, handedness, up_axis, forward_axis, rotation_form | RTK slice (replace) |
 | model | orientations, axes, hierarchy, connections, rest_positions | RTK slice (replace) |
 | camera_layout | camera_ids, image_sizes | RTK slice (replace) |
@@ -31,9 +31,14 @@ union and is logged once + skipped.
 ## The channel block (inside frame)
 
 A frame channel is: kind (a string such as SEGMENT_ORIGINS or ROTATIONS_WORLD), names (the inline string
-list), cols (the column names), and data (packed float32 or uint8 bytes, cols by names, row-major).
-Self-describing: names inline, layout fixed by cols. The old ChannelGroup / block_kind / dtype_code are
-retired.
+list), columns (the column names), and data (packed float32 or uint8 bytes, columns by names, row-major).
+Self-describing: names inline, layout fixed by columns.
+
+A frame is decode-complete (names inline) but not render-complete — rendering bones joins names against
+the model slice (see ../03-transport/message-protocol.md). A frame carries a list of subjects
+(subject_id + channels) for multi-person headroom, plus an image byte string.
+
+The old ChannelGroup / block_kind / dtype_code are retired.
 
 ## Client homes (the two consumption shapes)
 

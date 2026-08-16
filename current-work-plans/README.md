@@ -31,8 +31,8 @@ numbers, no "which doc-11 do you mean."
 
 The canonical human is **built and green**: skellyforge's 60-segment VRM 1.0 model (name-driven axes,
 keypoint-driven solver, reference geometry, per-group rigid fit), the freemocap realtime backend, and
-the freemocap-ui decoder + rigid-body renderer. The transport is **one producer-composed stream** (one
-sample/frame carries images + overlays + reconstruction, newest-wins, no ack window); the 2D overlay
+the freemocap-ui decoder + rigid-body renderer. The transport is **one unified stream** (one
+frame carries images + overlays + reconstruction, newest-wins, no ack window); the 2D overlay
 draws tracker keypoints as small dots plus reprojected segment-origin landmarks as a connected skeleton.
 The **3D rigid-body bones now render with correct orientation**: `rest_pose.orientations` (per-segment
 rest-frame orientation, VRM-1.0 rest frames) replaced the stale identity map, and the renderer composes

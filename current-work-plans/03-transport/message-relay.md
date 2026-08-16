@@ -13,9 +13,9 @@ resend machinery.
 
 ### The frame message
 
-The relay builds the frame channels from the same sources the producers use today: keypoints, segments,
+The relay builds the frame channels from the same sources used today: keypoints, segments,
 overlays, derived points, and the camera image bytes. Each channel is a named column block (kind + names +
-cols + data). The image rides the frame as the opaque multi-camera JPEG blob.
+columns + data). The image rides the frame as the image field (the opaque multi-camera JPEG blob).
 
 ### The replace-kinds
 

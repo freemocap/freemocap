@@ -9,7 +9,7 @@
 
 ## What this covers
 The full live path: cameras → tracker (keypoints) → mapping → length estimation + fit → orientation solve
-→ stream schema/sample → transport. The `RealtimeAggregatorNode` is where per-frame reconstruction
+→ frame message → transport. The `RealtimeAggregatorNode` is where per-frame reconstruction
 happens and the aggregator output message is produced.
 
 ## Key facts (committed code)
@@ -34,7 +34,7 @@ See [the ontology](../ontology.md)'s constraint/solve section.
 ## Open
 - **F5 (the gate):** full-loop tests + a manual run close this loop before the posthoc rebuild.
 - **S2:** remove the per-frame old-model `StreamingSegmentLengthMonitor` from the aggregator.
-- Transport robustness (**A2/B1/B2**) lives in [../03-transport/backend-encoder-ws.md](../03-transport/backend-encoder-ws.md).
+- Transport robustness (**A2/B1/B2**) lives in [../03-transport/message-relay.md](../03-transport/message-relay.md).
 
 ## Reconciliation notes
 Describe the loop in terms of the current segment model + length estimation, not the old bootstrap /

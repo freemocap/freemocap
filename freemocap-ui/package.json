@@ -31,6 +31,7 @@
     "@reduxjs/toolkit": "^2.5.1",
     "@trpc/client": "^11.5.1",
     "@trpc/server": "^11.5.1",
+    "cbor-x": "^1.6.0",
     "clsx": "^2.1.1",
     "country-flag-icons": "^1.6.14",
     "d3": "^7.9.0",

@@ -11,13 +11,13 @@ adapters split.
 [`03-emitters.md`](../archive/streaming-compatibility-specs/03-emitters.md).
 
 ## What this covers
-Fanning the one standard stream out to third-party motion-capture protocols (LSL, VMC, …): the adapter
+Fanning the one message stream out to third-party motion-capture protocols (LSL, VMC, …): the adapter
 contract, the LSL route, the VMC adapter, and the "start idle / ephemeral" lifecycle.
 
 ## To capture when authored
 - Adapter contract (what an adapter declares it emits — positive definition only).
 - The LSL pass-through route + coordinate-convention handling per target.
-- Transports (carry the standard stream) vs. adapters (translate to a foreign protocol).
+- Transports (carry the message stream) vs. adapters (translate to a foreign protocol).
 
 ## Reconciliation notes
 "Adapter" not "emitter" (title drift in the archive). Convention-per-target single-sourced from

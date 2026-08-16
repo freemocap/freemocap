@@ -5,12 +5,22 @@ import os
 import signal
 import sys
 
-# Ensure sys.stdout/sys.stderr are valid — PyInstaller frozen subprocesses
-# may set them to None, which breaks libraries like tqdm that write to stderr.
-if sys.stdout is None:
-    sys.stdout = open(os.devnull, "w")
-if sys.stderr is None:
-    sys.stderr = open(os.devnull, "w")
+
+def _ensure_utf8_standard_stream(stream):
+    """Return a writable UTF-8 stream for frozen and Chinese Windows runs."""
+    if stream is None:
+        return open(os.devnull, "w", encoding="utf-8")
+
+    reconfigure = getattr(stream, "reconfigure", None)
+    if callable(reconfigure):
+        reconfigure(encoding="utf-8", errors="backslashreplace")
+    return stream
+
+
+# PyInstaller child processes may have no streams, while redirected Windows
+# streams otherwise inherit the active ANSI code page (commonly GBK).
+sys.stdout = _ensure_utf8_standard_stream(sys.stdout)
+sys.stderr = _ensure_utf8_standard_stream(sys.stderr)
 
 logger = logging.getLogger(__name__)
 

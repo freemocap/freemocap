@@ -13,7 +13,7 @@ export class WindowManager {
 
         const window = new BrowserWindow({
             title: 'FreeMoCap 💀📸',
-            icon: APP_PATHS.FREEMOCAP_ICON_PATH,
+            icon: APP_PATHS.FREEMOCAP_LOGO_PNG_RESOURCES_PATH,
             width: 1280,
             height: 720,
             minWidth: 800,

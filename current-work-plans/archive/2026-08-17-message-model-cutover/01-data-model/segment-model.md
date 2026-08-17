@@ -1,8 +1,9 @@
-
 # Segment Model
 
 **Describes:** `skellyforge/skellymodels/standard_human/` — `segment_definition.py`, `segment_parts.py`,
 `body_part.py`, `hand_part.py`, `face_part.py`, `standard_human_model.py`.
+**Salvage:** [`archive/phase-1-work-plans/09-segment-model.md`](../archive/phase-1-work-plans/09-segment-model.md),
+[`archive/streaming-compatibility-specs/12-standard-human-model.md`](../archive/streaming-compatibility-specs/12-standard-human-model.md).
 
 ## What this covers
 

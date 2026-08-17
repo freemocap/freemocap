@@ -1,24 +1,24 @@
 # Posthoc Rebuild
 
-> **Scaffold (2026-08-14) — SPEC / not started.** Gated behind the F5 realtime-loop close. Content is
-> carried from the archived spec until this phase begins (after the ontology discussion + F5).
-
 **Describes (target):** the offline path — recorded videos → calibration/mocap → the same segment model +
-kinematics as realtime, batch-optimized.
-**Salvage:** [`archive/phase-1-work-plans/12-posthoc-rebuild.md`](../archive/phase-1-work-plans/12-posthoc-rebuild.md)
-(the REVISIT notes).
+kinematics as realtime, batch-optimized. This is the **posthoc parity** workstream of the next iteration.
 
 ## What this covers
+
 Rebuilding the posthoc pipeline onto the new data model, so realtime and posthoc share one segment model,
-one solver, one length estimator (unbounded window for posthoc — never evicted).
+one solver, one length estimator (unbounded window for posthoc — never evicted). Realtime runs online
+(per-frame, damped); posthoc runs batch over the full recording — same architecture, different presets.
 
-## Known state / dependencies
-- The posthoc / calibration path **still imports the old skellyforge architecture** (`skellymodels.managers`,
-  `skellymodels.models`, `data_models.trajectory_3d`, `post_processing.*`, `kinematics.segment_lengths`) —
-  the coexistence is expected until this phase.
-- Blocked on: the **F5 gate** (realtime closed) and the ontology discussion.
-- `VideoNodeOutputTopic` has an unbounded-queue TODO (posthoc aggregation can't yet run concurrently with
-  video nodes) — capture here when this phase starts.
+## Current state
 
-## Reconciliation notes
-Author fresh from the settled realtime model; do not re-import the retired managers/models layer.
+The posthoc / calibration path **still imports the old skellyforge architecture** (`skellymodels.managers`,
+`skellymodels.models`, `data_models.trajectory_3d`, `post_processing.*`, `kinematics.segment_lengths`).
+That coexistence is the seam this workstream closes.
+
+## Workstream (see [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md))
+
+1. Enumerate every old-layer import in the posthoc/calibration path.
+2. Re-point each to the new segment model + kinematics (one model, one solver, one length estimator).
+3. Delete the old `managers`/`models` layer + the `tracker_info/canonical_*.yaml` files.
+4. Note: `VideoNodeOutputTopic` has an unbounded-queue TODO (posthoc aggregation can't yet run
+   concurrently with video nodes) — capture it here when the workstream starts.

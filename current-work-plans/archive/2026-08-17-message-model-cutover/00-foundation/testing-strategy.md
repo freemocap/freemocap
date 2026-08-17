@@ -34,4 +34,6 @@ input; every solved segment must return identity. The head specifically is exerc
 `uv run --group dev pytest freemocap/tests/…`. freemocap-ui: `npm test`.
 
 ## Sources
-Fresh from the suites above.
+Fresh from the suites above. Original prose:
+[`archive/streaming-compatibility-specs/08-testing-strategy.md`](../archive/streaming-compatibility-specs/08-testing-strategy.md)
++ [`14-engine-testing-strategy.md`](../archive/streaming-compatibility-specs/14-engine-testing-strategy.md).

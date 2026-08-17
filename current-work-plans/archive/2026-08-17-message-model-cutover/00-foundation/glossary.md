@@ -6,17 +6,16 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
 
 ## Data (the ontology stack — see [ontology.md](../ontology.md))
 
-- **keypoint** — a measured 3D world point, tracker-named. Pure measurement: exactly what the tracker
-  emits — never derived, never added to. Produced by **skellytracker**.
+- **keypoint** — a measured 3D world point, tracker-named. May be **derived** (a mean, or an
+  `anatomical_offset` from a tracked point — e.g. `head_vertex`, `foot_ball`, `jaw`). Produced by
+  **skellytracker**; pure measurement.
 - **mapping** — the one seam: hydrates a landmark from keypoints (direct / weighted / offset). The
   skellytracker ↔ skellyforge interface.
 - **landmark** — a **named point in a segment's local frame** (skellyforge). Two faces: a *static local
   definition* (rest shape) + a *per-frame world hydration* (or absent = occlusion). The atom of the model.
-  Hydrated from keypoints by the mapping — a landmark is a direct copy of a keypoint, or **built** from
-  keypoints (a mean, weighted sum, or `anatomical_offset`, e.g. `head_vertex` / `foot_ball` / `jaw`).
   *(The old vague "landmark **layer**" is retired; this precise sense is revived — standard biomech/rigging usage.)*
 - **segment** — an **oriented volume of space**: origin + orientation (+ length), solved from its
-  landmarks. We build the segments to be compatible with VRM-1.0 conventions. The model is
+  landmarks. VRM-1.0-aligned; *not* an anatomical bone (`HumanBone` is VRM's vocabulary). The model is
   **60 segments / 76 landmarks** (single-sourced here; composition per
   [01-data-model/segment-model.md](../01-data-model/segment-model.md)). 2 hydrated landmarks → simple
   (roll carried by the damped filter); 3+ non-collinear → full 6-DOF.

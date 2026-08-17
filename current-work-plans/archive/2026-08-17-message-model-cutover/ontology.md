@@ -131,9 +131,7 @@ differently serialized" — which *is* the boundary-object thesis:
 
 ---
 
-*Status (2026-08-17):* the measurement model is built and green end to end — skellyforge's segment model +
-rigid fit + length estimation, and freemocap's realtime stream, from cameras through the self-describing
-frame message to the 3D render. The now-work is making it **VMC-complete** and bringing charuco + the
-posthoc path onto the same architecture (see the README's next-iteration scope). The future
-constraint/solve layer is seams only. Scope: [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md); the segment
-model: [01-data-model/segment-model.md](01-data-model/segment-model.md).
+*Status (2026-08-14):* the measurement model is mostly built — skellyforge's segment model + rigid fit +
+length estimation, and freemocap's realtime stream. The now-work is making it **ontology-shaped and
+VMC-complete**. Scope + progress: [IMPLEMENTATION_PLAN](IMPLEMENTATION_PLAN.md); the layer this refactor
+touches: [01-data-model/segment-model.md](01-data-model/segment-model.md).

@@ -1,17 +1,21 @@
 # Reference Geometry
 
+> **Scaffold (2026-08-14) — pending ontology revision.** Current facts fixed; full prose after the
+> ontology discussion.
+
 **Describes:** `skellyforge/skellymodels/standard_human/reference_geometry.py`.
+**Salvage:** [`archive/streaming-compatibility-specs/12-standard-human-model.md`](../archive/streaming-compatibility-specs/12-standard-human-model.md).
 
 ## What this covers
 The **T-pose** each live pose is measured against — one build serves both the orientation solver
 (`identity == T-pose`) and the rest-pose message.
 
-## Key facts
+## Key facts (committed code)
 - Built from composed segments + per-subject measured lengths. Three passes: rest directions (right side
   mirrored via −Y) → origins + rest keypoint positions → per-segment bases.
 - **Schematic pose:** ORIGIN branches collapse to the parent's origin (no widths/fan geometry); live
   solves are unaffected (they read live keypoints). Absolute rest *positions* of some points (finger
-  origins) are schematic, not metric.
+  origins, degenerate skull points) are schematic, not metric.
 - **`SegmentReferenceGeometry`** = `origin`, `basis` (rows [x̂, ŷ, ẑ]), `length`.
 - **Rest approximate axis:** an authored `rest_direction` on the approximate axis is **authoritative** where the
   schematic geometry can't be trusted (off-chain / degenerate targets), taking precedence over the
@@ -20,13 +24,10 @@ The **T-pose** each live pose is measured against — one build serves both the 
 - `nose` is popped from the returned keypoints (off-chain, no single standard rest position; the tracker
   supplies it live).
 
-## Known defect (fix this iteration)
-
-The reference skull is currently **degenerate on disk** (eyes coincide with `head_center` at rest). This
-is a **bug to fix**, not an accepted "inert" quirk — a correctly-built skull is not degenerate. The
-degeneracy traces to the old convention still present in the posthoc code, not the latest reference
-geometry. Tracked in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) ("fix the reference-skull
-degeneracy").
+## Known, inert
+The reference "skull" is partly degenerate (eyes coincide with `head_center` at rest). Inert: the
+realtime **skull fit builds its template from measured pair-distances + observed positions, not the
+reference** (see [../02-pipeline/segment-length-estimation.md](../02-pipeline/segment-length-estimation.md)).
 
 ## Reconciliation notes
 Standardize on `basis[exact-axis-name]`, not "basis[0] = primary axis" (name-driven now).

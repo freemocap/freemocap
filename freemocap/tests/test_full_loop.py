@@ -244,9 +244,11 @@ def _frame_message(model, result, orientation, pose, lengths) -> dict:
 
 
 def _channel_by_kind(restored: dict, kind: str) -> dict:
-    for channel in restored["subjects"][0]["channels"]:
-        if channel["kind"] == kind:
-            return channel
+    homes = [*restored.get("instances", ()), *restored.get("trackers", ())]
+    for home in homes:
+        for channel in home["channels"]:
+            if channel["kind"] == kind:
+                return channel
     raise AssertionError(f"no {kind} channel in the frame")
 
 

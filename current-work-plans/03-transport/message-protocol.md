@@ -1,7 +1,13 @@
 # The Message Protocol (self-describing; no schema, no samples)
+> **Superseded (2026-08-16):** this doc describes the pre-cutover design. The wire was redesigned — the
+> frame is now a fully self-describing document (nested convention/cameras/models/instances/trackers/image;
+> 5 kinds). The authoritative current shape + WHY live in **HANDOFF.md** — read it first.
+>
 
-> **Status: step 2 DONE (backend emits CBOR messages, 74 backend tests green).** Step 3 (frontend
-> dispatch) is the remaining cutover work. See the preservation inventory in 04-ui/ui-integration.md.
+
+> **Status: BACKEND DONE — the frame is now a fully self-describing document** (convention + calibrated
+> cameras + model definitions + instances + trackers + image, all in one frame; 5 kinds). Step 3 (frontend
+> dispatcher) is the remaining work. The authoritative current shape + the WHY live in HANDOFF.md — read it first.
 
 **Describes:** the wire behavior — one WebSocket carrying a stream of **self-describing messages**.
 There is no schema and no samples. Every message is typed, versioned, and carries everything needed to

@@ -1,4 +1,9 @@
 # UI Integration (the message dispatcher + the decomposition)
+> **Superseded (2026-08-16):** this doc describes the pre-cutover design. The wire was redesigned — the
+> frame is now a fully self-describing document (nested convention/cameras/models/instances/trackers/image;
+> 5 kinds). The authoritative current shape + WHY live in **HANDOFF.md** — read it first.
+>
+
 
 **Describes:** freemocap-ui/src — TransportService (the dispatcher), ServerContextProvider (thin), and
 the client homes (RTK slices + fast stores). This completes the ServerContextProvider decomposition from

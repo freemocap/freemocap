@@ -1,4 +1,9 @@
 # The Message Contract (the message types)
+> **Superseded (2026-08-16):** this doc describes the pre-cutover design. The wire was redesigned — the
+> frame is now a fully self-describing document (nested convention/cameras/models/instances/trackers/image;
+> 5 kinds). The authoritative current shape + WHY live in **HANDOFF.md** — read it first.
+>
+
 
 **Describes (types):** the message envelope, the kind list, the self-describing channel block, and each
 kind payload shape. The frontend holds these as a single Zod discriminated union keyed on kind. The wire

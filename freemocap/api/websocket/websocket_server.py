@@ -3,18 +3,17 @@ WebSocket server — the per-connection supervisor of the self-describing messag
 stream.
 
 Thin supervisor for one WebSocket connection: composes the message send path
-(SendSerializer + FrameRelay) with the replace-kind emitters (convention, model,
-camera_layout), the log relay, the app-state sender, the posthoc-progress
-sender, and the inbound client-message handler (display sizes). The FrameRelay
+(SendSerializer + FrameRelay) with the log relay, the app-state sender, the
+posthoc-progress sender, and the inbound client-message handler (display sizes). The FrameRelay
 is the ONE consumer of the pipeline's aggregator output; the camera images ride
 each frame message's image field. Flow control is newest-wins — there is no ack
 window; the inbound frameAcknowledgment carries displayImageSizes only (they
 drive SkellyCam's JPEG downscaling).
 
-The replace-kinds are emitted on connect and re-emitted whole whenever the data
-model changes (pipeline start/stop, detector, camera set) — one composite
-signature, not per-cause checks. "Camera-only" vs "camera + reconstruction" is
-two message sets produced by one mechanism.
+The frame message is fully self-contained: convention, calibrated cameras,
+model definitions, instances, trackers, and the image all ride every frame. The
+composition is rebuilt only when the data model or calibration changes
+(pipeline start/stop, detector, camera set, calibration hot-reload).
 """
 import asyncio
 import json
@@ -25,7 +24,6 @@ from queue import Empty
 
 from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
-from skellycam.core.ipc.pubsub.pubsub_manager import TopicTypes
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
 from skellylogs import get_websocket_log_queue
@@ -38,6 +36,7 @@ from freemocap.app.freemocap_application import FreemocapApplication, get_freemo
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import (
     AppStateMessage,
+    CalibratedCamera,
     DetailedFramerate,
     FramerateMessage,
     LogMessage,
@@ -45,11 +44,11 @@ from freemocap.core.streaming.message_model import (
     ProgressMessage,
     encode_message,
 )
-from freemocap.core.streaming.producers import signature_of
 from freemocap.core.streaming.producers.producer_contexts import (
     FrameContext,
     StreamContext,
 )
+from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
@@ -80,17 +79,16 @@ class WebsocketServer:
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
         self._standard_human = compose_standard_human()
-        # Config-update subscriptions (one each, keyed) — the replace-kinds
-        # re-emit on ANY config change riding the pubsub network.
-        self._config_subscriptions: dict[tuple[str, str], object] = {}
+        # Calibration hot-reload source (feeds the frame's cameras field).
+        self._calibration_state = CalibrationStateTracker.create_and_try_load()
         # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
             serializer=self._serializer,
             source=self._await_next_frame,
             should_continue=lambda: self.should_continue,
         )
-        # The initial composition (may be image-only — the replace-kinds re-emit
-        # when the data model changes, e.g. a pipeline starts).
+        # The initial composition (may be image-only — rebuilt when the data
+        # model changes, e.g. a pipeline starts).
         self._relay.set_composition(self._compose_current())
 
     # ── Composition lifecycle ──────────────────────────────────────────
@@ -101,7 +99,7 @@ class WebsocketServer:
         return StreamContext(
             standard_human=self._standard_human,
             camera_ids=camera_ids,
-            camera_image_sizes=self._camera_image_sizes(),
+            calibrated_cameras=self._calibrated_cameras(),
             tracker_keypoint_names=tuple(tracker_keypoint_names(detector_type)),
             detector_type=detector_type,
             pipeline_live=bool(camera_ids),
@@ -110,66 +108,31 @@ class WebsocketServer:
     def _compose_current(self):
         return compose_messages(self._build_stream_context())
 
-    async def _emit_replace_kinds(self, composition) -> None:
-        await self._serializer.send_message(encode_message(composition.convention))
-        await self._serializer.send_message(encode_message(composition.model))
-        await self._serializer.send_message(encode_message(composition.camera_layout))
-
-    def _refresh_config_subscriptions(self) -> None:
-        """Subscribe (once each, keyed) to the config-update topics of every
-        live pipeline + its camera group.
-
-        The replace-kinds re-emit on ANY config change riding the existing pubsub
-        network: freemocap's ``PipelineConfigUpdateTopic`` (per pipeline) and
-        skellycam's ``UPDATE_CAMERA_SETTINGS`` / ``EXTRACTED_CONFIG`` (per
-        camera group — the camera workers publish the extracted config when
-        they apply a settings change, e.g. a rotation).
-        """
-        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
-            if not pipeline.alive:
-                continue
-            pipeline_key = (pipeline.id, "pipeline")
-            if pipeline_key not in self._config_subscriptions:
-                self._config_subscriptions[pipeline_key] = (
-                    pipeline.pipeline_config_subscription
-                )
-            group_pubsub = pipeline.camera_group.ipc.pubsub
-            for topic in (TopicTypes.UPDATE_CAMERA_SETTINGS, TopicTypes.EXTRACTED_CONFIG):
-                key = (pipeline.camera_group.id, topic.name)
-                if key not in self._config_subscriptions:
-                    self._config_subscriptions[key] = group_pubsub.get_subscription(topic)
-
-    def _drain_config_updates(self) -> bool:
-        """True if any config-update message arrived since the last drain."""
-        got = False
-        for subscription in self._config_subscriptions.values():
-            while True:
-                try:
-                    subscription.get_nowait()
-                    got = True
-                except Empty:
-                    break
-        return got
-
     async def _ensure_composition(self) -> None:
-        """Rebuild + re-emit the replace-kinds when the data model changed.
+        """Rebuild the composition when the data model or calibration changed.
 
-        Two triggers: (1) a config-update message on the pubsub network — a
-        FULL rebuild, the event is authoritative; (2) the composite producer
-        signature changing for reasons that don't ride a config topic (a
-        pipeline starting / stopping).
+        The calibration hot-reloads on a file-mtime check; the data model is a
+        simple signature (camera set, detector type, pipeline liveness, and the
+        resolved calibrated cameras). The frame message is self-contained, so a
+        rebuild just swaps the composition — nothing is re-emitted separately.
         """
-        self._refresh_config_subscriptions()
-        config_changed = self._drain_config_updates()
-
+        self._calibration_state.check_for_update()
         current = self._relay.composition
-        if current is not None and not config_changed:
-            signature = signature_of(self._build_stream_context())
-            if signature == signature_of(current.context):
-                return
-        composition = self._compose_current()
-        self._relay.set_composition(composition)
-        await self._emit_replace_kinds(composition)
+        new_ctx = self._build_stream_context()
+        if current is not None and self._context_signature(new_ctx) == self._context_signature(current.context):
+            return
+        self._relay.set_composition(compose_messages(new_ctx))
+
+    def _calibrated_cameras(self) -> tuple[CalibratedCamera, ...]:
+        """The current calibration's cameras, as CalibratedCamera message records."""
+        calibration = self._calibration_state.calibration
+        if calibration is None:
+            return ()
+        return tuple(CalibratedCamera.from_camera_model(cm) for cm in calibration.cameras)
+
+    @staticmethod
+    def _context_signature(ctx: StreamContext) -> tuple:
+        return (ctx.camera_ids, ctx.detector_type, ctx.pipeline_live, ctx.calibrated_cameras)
 
     def _current_camera_ids(self) -> tuple[str, ...]:
         """The sorted camera IDs across all live realtime pipelines."""
@@ -178,22 +141,6 @@ class WebsocketServer:
             if pipeline.alive:
                 ids.update(pipeline.camera_ids)
         return tuple(sorted(ids))
-
-    def _camera_image_sizes(self) -> dict[str, tuple[int, int]]:
-        """Per-camera capture-resolution image size (width, height) in px.
-
-        The coordinate space of the OVERLAY_2D values; the camera_layout message carries it so
-        consumers can scale overlay points to their own display size. Sourced
-        from the live pipelines' camera configs (rotation-aware width/height).
-        """
-        sizes: dict[str, tuple[int, int]] = {}
-        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
-            if not pipeline.alive:
-                continue
-            for camera_id in pipeline.camera_ids:
-                config = pipeline.camera_configs[camera_id]
-                sizes[camera_id] = (int(config.width), int(config.height))
-        return sizes
 
     def _current_detector_type(self) -> str:
         """The configured detector type from the live realtime pipelines.
@@ -324,10 +271,6 @@ class WebsocketServer:
 
     async def run(self):
         logger.info("Starting websocket runner...")
-        # Replace-kinds first, on connect.
-        composition = self._relay.composition
-        if composition is not None:
-            await self._emit_replace_kinds(composition)
         self.ws_tasks = [
             asyncio.create_task(self._relay.run(), name="WebsocketMessageRelay"),
             asyncio.create_task(self._logs_relay(), name="WebsocketLogsRelay"),

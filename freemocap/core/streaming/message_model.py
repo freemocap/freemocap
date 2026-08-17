@@ -1,38 +1,41 @@
 """The self-describing message model (frozen slots dataclasses + CBOR codec).
 
-Every message is a frozen slots dataclass: a ClassVar "kind" (a MessageKind
-StrEnum), the envelope fields (version, timestamp, sequence), and a kind payload.
-Each message is self-describing — it carries everything needed to decode it.
-Serialization is encode_message, which walks the dataclass fields
-in declaration order (the documented field order: kind, version, timestamp,
-sequence, then the payload) and omits None-valued optional fields.
+Every wire message is a frozen-slots dataclass that COMPOSES a MessageEnvelope
+(version / timestamp / sequence) and declares a ClassVar "kind" discriminator.
+There is no base class: the Message Protocol is the structural contract, and
+encode_message is the single serialization gate (composition over inheritance).
 
-This module is a pure leaf (stdlib + cbor2 only) so the golden-fixture generator
-and the backend can import it without the freemocap eager-logging init. Factory
-classmethods that need skellyforge (ModelMessage.from_standard_human) import
-lazily inside the method.
+The frame message is a fully self-contained document: convention, calibrated
+cameras, model definitions, per-frame model instances, tracker observations,
+and the image - a single frame decodes with zero prior state. Rendering bones
+joins channel rows by index against the model's ordered symbol tables.
 
-See current-work-plans/03-transport/message-protocol.md.
+to_cbor_message() returns plain CBOR-encodable types (dict/list/scalar) - no
+cbor2 import. Only encode_message touches cbor2.
 """
 from __future__ import annotations
 
 import struct
 from dataclasses import dataclass, field, fields, is_dataclass
 from enum import Enum, StrEnum
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import cbor2
+from skellycam.core.types.type_overloads import (
+    CameraGroupIdString,
+    CameraIdString,
+    CameraIndexInt,
+)
+from skellyforge.skellymodels.standard_human.rest_pose import (
+    RestLandmark,
+    RestSegment,
+)
 
 CURRENT_VERSION: int = 0
 
 
 class MessageKind(StrEnum):
-    """The message kind (the envelope discriminator), split by source."""
-
     FRAME = "frame"
-    CONVENTION = "convention"
-    MODEL = "model"
-    CAMERA_LAYOUT = "camera_layout"
     LOG = "log"
     FRAMERATE = "framerate"
     APP_STATE = "app_state"
@@ -40,8 +43,6 @@ class MessageKind(StrEnum):
 
 
 class ChannelKind(StrEnum):
-    """The frame channel kind (a named column block)."""
-
     KEYPOINTS_3D = "KEYPOINTS_3D"
     LANDMARKS_3D = "LANDMARKS_3D"
     SEGMENT_ORIGINS = "SEGMENT_ORIGINS"
@@ -50,7 +51,6 @@ class ChannelKind(StrEnum):
     DERIVED_POINTS = "DERIVED_POINTS"
     OVERLAY_2D = "OVERLAY_2D"
     SEGMENT_LENGTHS = "SEGMENT_LENGTHS"
-    IMAGE_JPEG = "IMAGE_JPEG"  # producer tag; the frame routes it to the image field, not a channel
     OVERLAY_REPROJECTIONS = "OVERLAY_REPROJECTIONS"
 
 
@@ -84,69 +84,32 @@ class RotationForm(StrEnum):
     EULER = "euler"
 
 
-# ── Frame payload dataclasses ───────────────────────────────────────────
-
-@dataclass(frozen=True, slots=True)
-class ChannelBlock:
-    """One named column block: kind + names + columns + data (a byte string of
-    packed float32 little-endian, columns by names, row-major). camera_id is
-    present only on the per-camera overlay channels (OVERLAY_2D /
-    OVERLAY_REPROJECTIONS)."""
-
-    kind: ChannelKind
-    names: tuple[str, ...]
-    columns: tuple[str, ...]
-    data: bytes
-    camera_id: str | None = None
-
-    @classmethod
-    def from_float32_rows(
-        cls,
-        *,
-        kind: ChannelKind,
-        names: tuple[str, ...],
-        columns: tuple[str, ...],
-        rows: list[list[float]],
-        camera_id: str | None = None,
-    ) -> ChannelBlock:
-        """Pack row-major float32 little-endian rows into a ChannelBlock."""
-        packed = bytearray()
-        for row in rows:
-            packed += struct.pack(f"<{len(row)}f", *row)
-        return cls(
-            kind=kind,
-            names=tuple(names),
-            columns=tuple(columns),
-            data=bytes(packed),
-            camera_id=camera_id,
-        )
-
-
-@dataclass(frozen=True, slots=True)
-class Subject:
-    """One subject's channels inside a frame (multi-person headroom)."""
-
-    subject_id: int
-    channels: tuple[ChannelBlock, ...]
-
-
-# ── Envelope base ───────────────────────────────────────────────────────
+# - Envelope (composed, not inherited) -
 
 @dataclass(frozen=True, slots=True)
 class MessageEnvelope:
-    """The shared envelope fields (version, timestamp, sequence). Each concrete
-    message subclass declares its own ClassVar kind."""
+    """The shared identity/ordering metadata every message composes."""
 
     version: int = CURRENT_VERSION
     timestamp: float = 0.0
     sequence: int = 0
 
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {"version": self.version, "timestamp": self.timestamp, "sequence": self.sequence}
 
-# ── Replace kinds (low-frequency, idempotent, latest-wins) ──────────────
+
+@runtime_checkable
+class Message(Protocol):
+    """The structural contract every wire message satisfies (no inheritance)."""
+
+    kind: ClassVar[MessageKind]
+    envelope: MessageEnvelope
+
+
+# - Frame payload dataclasses -
 
 @dataclass(frozen=True, slots=True)
-class ConventionMessage(MessageEnvelope):
-    kind: ClassVar[MessageKind] = MessageKind.CONVENTION
+class CoordinateConvention:
     units: Units = Units.MILLIMETERS
     handedness: Handedness = Handedness.RIGHT
     up_axis: Axis = Axis.PLUS_Z
@@ -154,93 +117,199 @@ class ConventionMessage(MessageEnvelope):
     rotation_frame: RotationFrame = RotationFrame.LOCAL
     rotation_form: RotationForm = RotationForm.QUATERNION
 
+    def to_cbor_message(self) -> dict[str, str]:
+        return {
+            "units": self.units.value,
+            "handedness": self.handedness.value,
+            "up_axis": self.up_axis.value,
+            "forward_axis": self.forward_axis.value,
+            "rotation_frame": self.rotation_frame.value,
+            "rotation_form": self.rotation_form.value,
+        }
+
 
 @dataclass(frozen=True, slots=True)
-class ModelMessage(MessageEnvelope):
-    kind: ClassVar[MessageKind] = MessageKind.MODEL
-    segments: tuple[str, ...] = ()
-    orientations: dict[str, tuple[float, float, float, float]] = field(default_factory=dict)
-    axes: dict[str, str] = field(default_factory=dict)
-    lengths: dict[str, float] = field(default_factory=dict)
-    connections: tuple[tuple[str, str], ...] = ()
-    hierarchy: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    parents: dict[str, str | None] = field(default_factory=dict)
-    rest_positions: dict[str, tuple[float, float, float]] = field(default_factory=dict)
+class CameraIntrinsicsMessage:
+    fx: float
+    fy: float
+    cx: float
+    cy: float
+    k1: float = 0.0
+    k2: float = 0.0
+    p1: float = 0.0
+    p2: float = 0.0
 
     @classmethod
-    def from_standard_human(cls, standard_human: Any) -> ModelMessage:
-        """Build from skellyforge's StandardHuman (rest basis -> orientations,
-        exact-axis names -> axes, length_ratio x nominal height -> lengths)."""
-        from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM  # noqa: PLC0415
-        from skellyforge.kinematics.quaternion_math import RotationQuaternion  # noqa: PLC0415
-        from skellyforge.skellymodels.standard_human.reference_geometry import ReferenceGeometry  # noqa: PLC0415
-
-        lengths = {
-            segment.name: segment.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
-            for segment in standard_human.segments
-        }
-        geometry = ReferenceGeometry.from_segments(list(standard_human.segments), lengths)
-
-        orientations: dict[str, tuple[float, float, float, float]] = {}
-        for segment in standard_human.segments:
-            quaternion = RotationQuaternion.from_rotation_matrix(
-                geometry.segments[segment.name].basis.T
-            )
-            orientations[segment.name] = (
-                float(quaternion.w),
-                float(quaternion.x),
-                float(quaternion.y),
-                float(quaternion.z),
-            )
-
-        rest_positions = {
-            name: (float(pos[0]), float(pos[1]), float(pos[2]))
-            for name, pos in geometry.landmarks.items()
-        }
-        axes = {segment.name: segment.exact_axis.axis for segment in standard_human.segments}
-        connections = tuple(
-            (segment.name, child.name)
-            for segment in standard_human.segments
-            for child in standard_human.get_children(segment.name)
-        )
-        hierarchy = {key: tuple(value) for key, value in standard_human.joint_hierarchy.items()}
-        parents = dict(standard_human.segment_parents)
-
+    def from_camera_intrinsics(cls, intrinsics: Any) -> "CameraIntrinsicsMessage":
         return cls(
-            segments=tuple(standard_human.segment_names),
-            orientations=orientations,
-            axes=axes,
-            lengths=lengths,
-            connections=connections,
-            hierarchy=hierarchy,
-            parents=parents,
-            rest_positions=rest_positions,
+            fx=float(intrinsics.fx),
+            fy=float(intrinsics.fy),
+            cx=float(intrinsics.cx),
+            cy=float(intrinsics.cy),
+            k1=float(intrinsics.k1),
+            k2=float(intrinsics.k2),
+            p1=float(intrinsics.p1),
+            p2=float(intrinsics.p2),
         )
 
+    def to_cbor_message(self) -> dict[str, float]:
+        return {f.name: getattr(self, f.name) for f in fields(self)}
+
 
 @dataclass(frozen=True, slots=True)
-class CameraLayoutMessage(MessageEnvelope):
-    kind: ClassVar[MessageKind] = MessageKind.CAMERA_LAYOUT
-    camera_ids: tuple[str, ...] = ()
-    image_sizes: dict[str, tuple[int, int]] = field(default_factory=dict)
+class CameraExtrinsicsMessage:
+    quaternion_wxyz: tuple[float, float, float, float]
+    translation: tuple[float, float, float]
 
+    @classmethod
+    def from_camera_extrinsics(cls, extrinsics: Any) -> "CameraExtrinsicsMessage":
+        return cls(
+            quaternion_wxyz=tuple(float(c) for c in extrinsics.quaternion_wxyz),
+            translation=tuple(float(c) for c in extrinsics.translation),
+        )
 
-# ── Frame kind ──────────────────────────────────────────────────────────
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {"quaternion_wxyz": list(self.quaternion_wxyz), "translation": list(self.translation)}
+
 
 @dataclass(frozen=True, slots=True)
-class FrameMessage(MessageEnvelope):
+class CalibratedCamera:
+    id: CameraIdString
+    index: CameraIndexInt
+    image_size: tuple[int, int]
+    intrinsics: CameraIntrinsicsMessage
+    extrinsics: CameraExtrinsicsMessage
+    world_position: tuple[float, float, float] = (0.0, 0.0, 0.0)
+    world_orientation: tuple[tuple[float, float, float], ...] = ()
+
+    @classmethod
+    def from_camera_model(cls, camera_model: Any) -> "CalibratedCamera":
+        return cls(
+            id=CameraIdString(camera_model.id),
+            index=CameraIndexInt(camera_model.index),
+            image_size=(int(camera_model.image_size[0]), int(camera_model.image_size[1])),
+            intrinsics=CameraIntrinsicsMessage.from_camera_intrinsics(camera_model.intrinsics),
+            extrinsics=CameraExtrinsicsMessage.from_camera_extrinsics(camera_model.extrinsics),
+            world_position=tuple(float(c) for c in camera_model.world_position),
+            world_orientation=tuple(tuple(float(v) for v in row) for row in camera_model.world_orientation),
+        )
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {
+            "id": self.id,
+            "index": self.index,
+            "image_size": list(self.image_size),
+            "intrinsics": self.intrinsics.to_cbor_message(),
+            "extrinsics": self.extrinsics.to_cbor_message(),
+            "world_position": list(self.world_position),
+            "world_orientation": [list(row) for row in self.world_orientation],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ModelDefinition:
+    """One model definition (the standard human), shared by its instances."""
+
+    model_id: str
+    segments: tuple[RestSegment, ...]
+    landmarks: tuple[RestLandmark, ...]
+
+    @classmethod
+    def from_standard_human(cls, standard_human: Any) -> "ModelDefinition":
+        from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM  # noqa: PLC0415
+        from skellyforge.skellymodels.standard_human.reference_geometry import ReferenceGeometry  # noqa: PLC0415
+        lengths = {s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM for s in standard_human.segments}
+        geometry = ReferenceGeometry.from_segments(list(standard_human.segments), lengths)
+        return cls(
+            model_id="standard_human",
+            segments=tuple(RestSegment.from_geometry(s, geometry.segments[s.name]) for s in standard_human.segments),
+            landmarks=tuple(
+                RestLandmark.from_position(n, geometry.landmarks[n])
+                if n in geometry.landmarks
+                else RestLandmark(name=n)
+                for n in sorted(standard_human.required_landmarks())
+            ),
+        )
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {
+            "model_id": self.model_id,
+            "segments": [s.to_cbor_message() for s in self.segments],
+            "landmarks": [l.to_cbor_message() for l in self.landmarks],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ChannelBlock:
+    """One index-keyed column block: kind + columns + data (packed float32
+    little-endian bytes, columns by names, row-major). Row labels are the
+    model's ordered segments/landmarks (index-keyed); tracker-keypoint channels
+    carry their tracker names inline via names. camera_id is present
+    only on per-camera overlay channels."""
+
+    kind: ChannelKind
+    columns: tuple[str, ...]
+    data: bytes
+    camera_id: CameraIdString | None = None
+    names: tuple[str, ...] | None = None
+
+    @classmethod
+    def from_float32_rows(
+        cls,
+        *,
+        kind: ChannelKind,
+        columns: tuple[str, ...],
+        rows: list[list[float]],
+        camera_id: CameraIdString | None = None,
+        names: tuple[str, ...] | None = None,
+    ) -> "ChannelBlock":
+        packed = bytearray()
+        for row in rows:
+            packed += struct.pack(f"<{len(row)}f", *row)
+        return cls(kind=kind, columns=tuple(columns), data=bytes(packed), camera_id=camera_id, names=names)
+
+
+@dataclass(frozen=True, slots=True)
+class ModelInstance:
+    """One per-frame instance of a model definition."""
+
+    instance_id: int
+    model_id: str
+    channels: tuple[ChannelBlock, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TrackerObservation:
+    """One tracker's per-frame observation: its keypoint channels. model_id names
+    the model whose landmarks this tracker's keypoints hydrate; the keypoint->landmark
+    mapping is deferred (the client already receives pre-hydrated landmarks)."""
+
+    tracker_id: str
+    detector_type: str
+    model_id: str
+    channels: tuple[ChannelBlock, ...]
+
+
+# - Frame kind -
+
+@dataclass(frozen=True, slots=True)
+class FrameMessage:
     kind: ClassVar[MessageKind] = MessageKind.FRAME
+    envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
     frame_number: int = 0
-    subjects: tuple[Subject, ...] = ()
-    image: bytes | None = None  # optional — the opaque multi-camera JPEG blob
+    model_sequence: int = 0
+    convention: CoordinateConvention = field(default_factory=CoordinateConvention)
+    cameras: tuple[CalibratedCamera, ...] = ()
+    models: tuple[ModelDefinition, ...] = ()
+    instances: tuple[ModelInstance, ...] = ()
+    trackers: tuple[TrackerObservation, ...] = ()
+    image: bytes | None = None
 
 
-# ── Append / telemetry kinds ────────────────────────────────────────────
+# - Append / telemetry kinds -
 
 @dataclass(frozen=True, slots=True)
 class LogRecord:
-    """The skellylogs logging record (mirrors the TS LogRecordSchema)."""
-
     name: str = ""
     msg: str | None = ""
     args: tuple[Any, ...] = ()
@@ -269,15 +338,15 @@ class LogRecord:
     source: str = "server"
 
     @classmethod
-    def from_logging_dict(cls, record: dict[str, Any]) -> LogRecord:
-        """Build from a skellylogs logging-record dict (unknown keys ignored)."""
+    def from_logging_dict(cls, record: dict[str, Any]) -> "LogRecord":
         known = {f.name for f in fields(cls)}
         return cls(**{key: value for key, value in record.items() if key in known})
 
 
 @dataclass(frozen=True, slots=True)
-class LogMessage(MessageEnvelope):
+class LogMessage:
     kind: ClassVar[MessageKind] = MessageKind.LOG
+    envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
     record: LogRecord = field(default_factory=LogRecord)
 
 
@@ -295,8 +364,7 @@ class DetailedFramerate:
     framerate_source: str = ""
 
     @classmethod
-    def from_current_framerate(cls, framerate: Any) -> DetailedFramerate:
-        """Build from skellycam's CurrentFramerate (pydantic, duck-typed)."""
+    def from_current_framerate(cls, framerate: Any) -> "DetailedFramerate":
         return cls(
             mean_frame_duration_ms=float(framerate.mean_frame_duration_ms),
             mean_frames_per_second=float(framerate.mean_frames_per_second),
@@ -312,18 +380,19 @@ class DetailedFramerate:
 
 
 @dataclass(frozen=True, slots=True)
-class FramerateMessage(MessageEnvelope):
+class FramerateMessage:
     kind: ClassVar[MessageKind] = MessageKind.FRAMERATE
-    camera_group_id: str = ""
+    envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
+    camera_group_id: CameraGroupIdString = ""
     backend_framerate: DetailedFramerate = field(default_factory=DetailedFramerate)
     frontend_framerate: DetailedFramerate = field(default_factory=DetailedFramerate)
 
 
 @dataclass(frozen=True, slots=True)
 class CameraGroupSnapshot:
-    id: str = ""
+    id: CameraGroupIdString = ""
     configs: dict[str, Any] = field(default_factory=dict)
-    cameras: dict[str, Any] = field(default_factory=dict)
+    cameras: dict[CameraIdString, Any] = field(default_factory=dict)
     alive: bool = False
     recording_in_progress: bool = False
     paused: bool = False
@@ -332,22 +401,21 @@ class CameraGroupSnapshot:
 @dataclass(frozen=True, slots=True)
 class RealtimePipelineSnapshot:
     id: str = ""
-    camera_group_id: str = ""
-    camera_ids: tuple[str, ...] = ()
+    camera_group_id: CameraGroupIdString = ""
+    camera_ids: tuple[CameraIdString, ...] = ()
     alive: bool = False
 
 
 @dataclass(frozen=True, slots=True)
 class AppStateSnapshot:
-    camera_groups: dict[str, CameraGroupSnapshot] = field(default_factory=dict)
+    camera_groups: dict[CameraGroupIdString, CameraGroupSnapshot] = field(default_factory=dict)
     realtime_pipelines: tuple[RealtimePipelineSnapshot, ...] = ()
 
     @classmethod
-    def from_state_dict(cls, state: dict[str, Any]) -> AppStateSnapshot:
-        """Build from FreemocapApplication.to_state_dict() (nested dicts)."""
+    def from_state_dict(cls, state: dict[str, Any]) -> "AppStateSnapshot":
         camera_groups = {
-            group_id: CameraGroupSnapshot(
-                id=str(group.get("id", group_id)),
+            CameraGroupIdString(group_id): CameraGroupSnapshot(
+                id=CameraGroupIdString(group.get("id", group_id)),
                 configs=dict(group.get("configs", {})),
                 cameras=dict(group.get("cameras", {})),
                 alive=bool(group.get("alive", False)),
@@ -359,8 +427,8 @@ class AppStateSnapshot:
         realtime_pipelines = tuple(
             RealtimePipelineSnapshot(
                 id=str(pipeline.get("id", "")),
-                camera_group_id=str(pipeline.get("camera_group_id", "")),
-                camera_ids=tuple(pipeline.get("camera_ids", ())),
+                camera_group_id=CameraGroupIdString(pipeline.get("camera_group_id", "")),
+                camera_ids=tuple(CameraIdString(c) for c in pipeline.get("camera_ids", ())),
                 alive=bool(pipeline.get("alive", False)),
             )
             for pipeline in state.get("realtime_pipelines", [])
@@ -369,19 +437,21 @@ class AppStateSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
-class AppStateMessage(MessageEnvelope):
+class AppStateMessage:
     kind: ClassVar[MessageKind] = MessageKind.APP_STATE
+    envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
     server_pid: int = 0
     state: AppStateSnapshot = field(default_factory=AppStateSnapshot)
 
     @classmethod
-    def from_state_dict(cls, *, server_pid: int, state: dict[str, Any]) -> AppStateMessage:
+    def from_state_dict(cls, *, server_pid: int, state: dict[str, Any]) -> "AppStateMessage":
         return cls(server_pid=server_pid, state=AppStateSnapshot.from_state_dict(state))
 
 
 @dataclass(frozen=True, slots=True)
-class ProgressMessage(MessageEnvelope):
+class ProgressMessage:
     kind: ClassVar[MessageKind] = MessageKind.PROGRESS
+    envelope: MessageEnvelope = field(default_factory=MessageEnvelope)
     pipeline_id: str = ""
     pipeline_type: str = ""
     phase: str = ""
@@ -389,11 +459,10 @@ class ProgressMessage(MessageEnvelope):
     detail: str = ""
     recording_name: str = ""
     recording_path: str = ""
-    camera_id: str | None = None  # optional (video-node progress only)
+    camera_id: CameraIdString | None = None
 
     @classmethod
-    def from_pipeline_progress(cls, progress: Any) -> ProgressMessage:
-        """Build from PipelineProgressMessage (dataclass, duck-typed)."""
+    def from_pipeline_progress(cls, progress: Any) -> "ProgressMessage":
         return cls(
             pipeline_id=str(progress.pipeline_id),
             pipeline_type=str(progress.pipeline_type),
@@ -406,10 +475,11 @@ class ProgressMessage(MessageEnvelope):
         )
 
 
-# ── Serialization (dataclass -> CBOR map -> bytes) ──────────────────────
+# - Serialization -
 
 def _cbor_value(value: Any) -> Any:
-    """Convert a dataclass field value to a cbor2-encodable value."""
+    """Recursively convert a value to its CBOR-encodable form, respecting each
+    dataclass's to_cbor_message() method where present."""
     if value is None:
         return None
     if isinstance(value, Enum):
@@ -421,29 +491,29 @@ def _cbor_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _cbor_value(v) for key, v in value.items()}
     if is_dataclass(value):
-        return _dataclass_cbor_map(value)
+        serializer = getattr(value, "to_cbor_message", None)
+        if callable(serializer):
+            return _cbor_value(serializer())
+        result: dict[str, Any] = {}
+        for f in fields(value):
+            v = getattr(value, f.name)
+            if v is not None:
+                result[f.name] = _cbor_value(v)
+        return result
     raise TypeError(f"cannot encode {type(value).__name__}")
 
 
-def _dataclass_cbor_map(obj: Any) -> dict[str, Any]:
-    """Walk a dataclass's fields in declaration order; omit None-valued
-    optional fields. A MessageEnvelope prepends its ClassVar kind."""
-    result: dict[str, Any] = {}
-    if isinstance(obj, MessageEnvelope):
-        result["kind"] = obj.kind
-    for f in fields(obj):
-        value = getattr(obj, f.name)
-        if value is None:
+def encode_message(message: Message) -> bytes:
+    """Serialize one message to CBOR bytes. Flattens the composed envelope
+    (kind + version + timestamp + sequence) before the payload fields."""
+    if not isinstance(message, Message):
+        raise TypeError(f"{type(message).__name__} is not a Message (missing kind/envelope)")
+    result: dict[str, Any] = {"kind": message.kind.value}
+    result.update(message.envelope.to_cbor_message())
+    for f in fields(message):
+        if f.name in ("kind", "envelope"):
             continue
-        result[f.name] = _cbor_value(value)
-    return result
-
-
-def to_cbor_map(message: MessageEnvelope) -> dict[str, Any]:
-    """The cbor2-encodable map for one message, in documented field order."""
-    return _dataclass_cbor_map(message)
-
-
-def encode_message(message: MessageEnvelope) -> bytes:
-    """Serialize one message to CBOR bytes (one message per socket write)."""
-    return cbor2.dumps(to_cbor_map(message))
+        value = getattr(message, f.name)
+        if value is not None:
+            result[f.name] = _cbor_value(value)
+    return cbor2.dumps(result)

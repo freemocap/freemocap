@@ -4,8 +4,8 @@ Run from project/freemocap::
 
     uv run python -m freemocap.tests.streaming_fixtures.regenerate_message_golden
 
-These fixtures are the step-1 cross-language parity anchors: the TS codec must
-decode each .bin to the same values this script pinned (freemocap-ui
+These fixtures are the cross-language parity anchors: the TS codec must decode
+each .bin to the same values this script pinned (freemocap-ui
 .../message-golden.test.ts). They are built from synthetic pinned values — do
 not change them without re-running this script and the TS parity check.
 
@@ -15,60 +15,78 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import cbor2
+
 from freemocap.core.streaming.message_model import (
     ChannelBlock,
     ChannelKind,
-    ConventionMessage,
+    CoordinateConvention,
     FrameMessage,
-    ModelMessage,
-    Subject,
+    MessageEnvelope,
+    ModelDefinition,
+    ModelInstance,
     encode_message,
+)
+from skellyforge.skellymodels.standard_human.rest_pose import (
+    LongitudinalAxis,
+    RestLandmark,
+    RestSegment,
 )
 
 FIXTURE_DIR = Path(__file__).parent
 
 
 def build_convention_message() -> bytes:
-    return encode_message(ConventionMessage())
+    return cbor2.dumps(CoordinateConvention().to_cbor_message())
 
 
 def build_model_message() -> bytes:
     # A synthetic 2-segment model; the spine orientation is a non-exact unit
     # quaternion (90 deg about z) — it pins "no float16 downcast" on scalar
     # floats in the TS parity test.
-    model = ModelMessage(
-        segments=("hips", "spine"),
-        orientations={
-            "hips": (1.0, 0.0, 0.0, 0.0),
-            "spine": (0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
-        },
-        axes={"hips": "y", "spine": "y"},
-        lengths={"hips": 100.0, "spine": 200.0},
-        connections=(("hips", "spine"),),
-        hierarchy={"hips": ("spine",), "spine": ()},
-        parents={"hips": None, "spine": "hips"},
-        rest_positions={"hips": (0.0, 0.0, 0.0), "spine": (0.0, 0.0, 100.0)},
+    model = ModelDefinition(
+        model_id="standard_human",
+        segments=(
+            RestSegment(
+                name="hips",
+                parent=None,
+                longitudinal_axis=LongitudinalAxis.from_axis("y"),
+                rest_orientation=(1.0, 0.0, 0.0, 0.0),
+                length_mm=100.0,
+            ),
+            RestSegment(
+                name="spine",
+                parent="hips",
+                longitudinal_axis=LongitudinalAxis.from_axis("y"),
+                rest_orientation=(0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
+                length_mm=200.0,
+            ),
+        ),
+        landmarks=(
+            RestLandmark(name="hips_center", rest_position=(0.0, 0.0, 0.0)),
+            RestLandmark(name="neck_center", rest_position=(0.0, 0.0, 200.0)),
+        ),
     )
-    return encode_message(model)
+    return cbor2.dumps(model.to_cbor_message())
 
 
 def build_frame_message() -> bytes:
     segment_origins = ChannelBlock.from_float32_rows(
         kind=ChannelKind.SEGMENT_ORIGINS,
-        names=("hips", "spine"),
         columns=("x", "y", "z"),
         rows=[[0.0, 0.0, 0.0], [0.0, 0.0, 100.0]],
     )
     rotations_world = ChannelBlock.from_float32_rows(
         kind=ChannelKind.ROTATIONS_WORLD,
-        names=("hips", "spine"),
         columns=("w", "x", "y", "z"),
         rows=[[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
     )
     frame = FrameMessage(
+        envelope=MessageEnvelope(timestamp=1.5),
         frame_number=99,
-        timestamp=1.5,
-        subjects=(Subject(subject_id=0, channels=(segment_origins, rotations_world)),),
+        instances=(
+            ModelInstance(instance_id=0, model_id="standard_human", channels=(segment_origins, rotations_world)),
+        ),
         image=b"\xff\xd8\xffgolden-fake-jpeg",
     )
     return encode_message(frame)

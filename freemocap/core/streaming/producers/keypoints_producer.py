@@ -7,7 +7,6 @@ dropped block.
 """
 from __future__ import annotations
 
-from collections.abc import Hashable
 
 from freemocap.core.streaming.channel_helpers import assemble_channel_bytes
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
@@ -18,9 +17,6 @@ from freemocap.core.streaming.producers.producer_contexts import FrameContext, S
 class KeypointsProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
-
-    def signature(self, ctx: StreamContext) -> Hashable:
-        return ("keypoints", tuple(ctx.tracker_keypoint_names))
 
     def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output
@@ -38,7 +34,6 @@ class KeypointsProducer(ChannelProducer):
             ),
             ChannelBlock(
                 kind=ChannelKind.LANDMARKS_3D,
-                names=landmark_names,
                 columns=("x", "y", "z", "reprojection_error"),
                 data=assemble_channel_bytes(names=landmark_names, positions=message.standard_skeleton or {}, n_cols=4),
             ),

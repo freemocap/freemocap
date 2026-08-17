@@ -6,9 +6,10 @@ FrameContext is the per-frame payload passed to fill().
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Any
 
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001
+from freemocap.core.streaming.message_model import CalibratedCamera  # noqa: TC001
 from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman  # noqa: TC002
 
 
@@ -18,7 +19,7 @@ class StreamContext:
 
     standard_human: StandardHuman
     camera_ids: tuple[str, ...] = ()
-    camera_image_sizes: dict[str, tuple[int, int]] = field(default_factory=dict)
+    calibrated_cameras: tuple[CalibratedCamera, ...] = ()
     tracker_keypoint_names: tuple[str, ...] = ()
     detector_type: str = "rtmpose"
     pipeline_live: bool = False
@@ -30,6 +31,6 @@ class FrameContext:
 
     frame_number: int
     timestamp: float
-    aggregator_output: AggregationNodeOutputMessage | None = None
+    aggregator_output: Any | None = None  # duck-typed: the concrete type pulls skellytracker/mediapipe
     image_payload: bytes | None = None
     stream_context: StreamContext | None = None

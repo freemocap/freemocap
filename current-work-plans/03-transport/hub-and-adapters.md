@@ -4,7 +4,7 @@
 > adapter/bridge code in depth; the key facts below are from the archived spec + the `standard_stream`
 > module list. Author fully after reading the sources.
 
-**Describes (target):** `freemocap/core/streaming/standard_stream/` — `lsl_bridge.py`,
+**Describes (target):** ~~`freemocap/core/streaming/standard_stream/`~~ (DELETED 2026-08-16 — the LSL schema/sample bridge is gone with the message-model cutover),
 `coordinate_convention.py`, and the (planned) `StreamingManager` + adapter contract; the transports vs.
 adapters split.
 **Salvage:** [`archive/streaming-compatibility-specs/02-streaming-hub.md`](../archive/streaming-compatibility-specs/02-streaming-hub.md),

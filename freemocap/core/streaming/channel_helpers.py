@@ -6,9 +6,10 @@ import cycle.
 """
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 
-from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage  # noqa: TC001
 from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman  # noqa: TC002
 
 
@@ -34,7 +35,7 @@ def assemble_channel_bytes(
 
 
 def camera_2d_detections(
-    message: AggregationNodeOutputMessage,
+    message: Any,  # duck-typed: the concrete type pulls skellytracker/mediapipe
     camera_id: str,
 ) -> dict[str, np.ndarray]:
     """The per-camera tracker 2D detections (name -> (x, y, visibility))."""

@@ -1,4 +1,9 @@
 # Backend Message Relay + WebSocket Send-Path
+> **Superseded (2026-08-16):** this doc describes the pre-cutover design. The wire was redesigned — the
+> frame is now a fully self-describing document (nested convention/cameras/models/instances/trackers/image;
+> 5 kinds). The authoritative current shape + WHY live in **HANDOFF.md** — read it first.
+>
+
 
 > **Status: IMPLEMENTED** — the backend now matches this doc (see HANDOFF.md for the verified green state).
 

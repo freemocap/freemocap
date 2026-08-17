@@ -485,7 +485,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.3" },
     { name = "scikit-learn", specifier = ">=1.7.2" },
     { name = "scipy-stubs", specifier = "~=1.17.1" },
-    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=main" },
+    { name = "skellycam", git = "https://github.com/freemocap/skellycam?branch=development-streaming" },
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=development-streaming" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
@@ -1976,7 +1976,7 @@ wheels = [
 [[package]]
 name = "skellycam"
 version = "2.0.0a6"
-source = { git = "https://github.com/freemocap/skellycam?branch=main#d091ecef176a83bb1bc648bdf5f2ee702e2612da" }
+source = { git = "https://github.com/freemocap/skellycam?branch=development-streaming#7a52305bbe38b41dee83659c0b55854066bf653c" }
 dependencies = [
     { name = "av", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -2006,7 +2006,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#d3d5e1e6d5d5703ac4df25344ed26e5f81b6b393" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#133e6ebcba8f499035ae86729e72ccf7af8b3c5c" }
 dependencies = [
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "pandas", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

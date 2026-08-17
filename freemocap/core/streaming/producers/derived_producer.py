@@ -6,7 +6,6 @@ only places them.
 """
 from __future__ import annotations
 
-from collections.abc import Hashable
 
 import numpy as np
 
@@ -20,9 +19,6 @@ _DERIVED_POINT_NAMES = ("center_of_mass", "xcom")
 class DerivedProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
-
-    def signature(self, ctx: StreamContext) -> Hashable:
-        return ("derived",)
 
     def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output

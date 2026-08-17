@@ -35,7 +35,7 @@ segment's shape at rest) and a *per-frame world hydration* (or absent = occlusio
 
 **Segment** — an **oriented volume of space**: origin + orientation, solved from its hydrated landmarks.
 Graded by how its pose is determined:
-- **2 landmarks (simple):** origin + long axis directly; the roll is **not resolved** by the segment's
+- **2 landmarks (simple):** origin + exact axis directly; the roll is **not resolved** by the segment's
   own geometry — the critically-damped minimal roll carries it (see the glossary's twist tiers).
 - **3+ non-collinear (complex):** full 6-DOF by best-fit (Kabsch) of the local↔world landmark clouds.
 - **Rigid child (declared, not inferred):** a segment authored `rigid_with_parent` — every one of its

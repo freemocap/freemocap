@@ -6,7 +6,6 @@ landmarks projected back into the camera) — one block per camera.
 """
 from __future__ import annotations
 
-from collections.abc import Hashable
 
 import numpy as np
 
@@ -19,9 +18,6 @@ from freemocap.core.streaming.producers.producer_contexts import FrameContext, S
 class OverlayProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
-
-    def signature(self, ctx: StreamContext) -> Hashable:
-        return ("overlay", tuple(sorted(ctx.camera_ids)))
 
     def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output
@@ -49,8 +45,7 @@ class OverlayProducer(ChannelProducer):
             blocks.append(
                 ChannelBlock(
                     kind=ChannelKind.OVERLAY_REPROJECTIONS,
-                    names=segment_names,
-                    columns=("x", "y", "visibility"),
+            columns=("x", "y", "visibility"),
                     data=assemble_channel_bytes(names=segment_names, positions=reprojections, n_cols=3),
                     camera_id=camera_id,
                 )

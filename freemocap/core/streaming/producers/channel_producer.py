@@ -5,7 +5,6 @@ frame as self-describing ChannelBlocks (kind + names + columns + data inline).
 """
 from __future__ import annotations
 
-from collections.abc import Hashable
 from typing import Protocol, runtime_checkable
 
 from freemocap.core.streaming.message_model import ChannelBlock
@@ -21,10 +20,6 @@ class ChannelProducer(Protocol):
     """
 
     def is_active(self, ctx: StreamContext) -> bool: ...
-
-    def signature(self, ctx: StreamContext) -> Hashable:
-        """A structural fingerprint for change detection (not per-frame values)."""
-        ...
 
     def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
         """The self-describing channel block(s) for this frame; an empty list

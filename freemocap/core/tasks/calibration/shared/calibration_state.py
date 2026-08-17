@@ -128,6 +128,11 @@ class CalibrationStateTracker:
     def calibration_path(self) -> Path | None:
         return self._calibration_path
 
+    @property
+    def calibration(self) -> CalibrationResult | None:
+        """The loaded calibration, or None when there is no valid calibration."""
+        return self._calibration
+
     def check_for_update(self) -> bool:
         """Check if the calibration file on disk has changed, and reload if so.
 

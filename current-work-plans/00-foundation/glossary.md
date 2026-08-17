@@ -54,8 +54,9 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
 - **kind** — a message type tag, named by source (frame, convention, model, camera_layout, calibration,
   log, framerate, app_state, progress). A new data type is a new kind.
 - **frame** — the per-frame kind: self-describing named column blocks (names inline) plus images.
-- **replace-kind** — a low-frequency kind whose payload replaces a client slice whole (idempotent:
-  applying it N times is the same as once). No deltas, no accumulation.
+- **replace-kind** — RETIRED (2026-08-16): the old "convention/model/camera_layout as low-frequency
+  replace kinds" model. The frame now carries them inline every frame (self-describing). Kept only to
+  document the retired design.
 - **self-describing** — a message carries everything needed to *decode* it (decode-complete); no
   external descriptor, no cached schema to drift. Rendering may still need a held slice (e.g. the model for
   bone orientations) — that boundary is render-completeness, which we do not claim.

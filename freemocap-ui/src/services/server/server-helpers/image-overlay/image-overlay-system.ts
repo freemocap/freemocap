@@ -43,6 +43,8 @@ export interface DrawStyle {
     showLabels: boolean;
     /** False = stroke-only (open circle); default true = filled (closed) circle. */
     fillPoint?: boolean;
+    /** False = draw the filled circle only (no stroke outline); default true. */
+    drawStroke?: boolean;
 }
 
 export abstract class BaseOverlayRenderer {
@@ -138,12 +140,15 @@ export abstract class BaseOverlayRenderer {
                 this.ctx.fill();
             }
 
-            // Draw stroke
-            this.ctx.strokeStyle = style.pointStroke;
-            this.ctx.lineWidth = 2;
-            this.ctx.beginPath();
-            this.ctx.arc(point.x, point.y, style.pointRadius, 0, Math.PI * 2);
-            this.ctx.stroke();
+            // Draw stroke (the outline for a filled dot, or the circle itself
+            // for an open marker). Skipped when the style says no stroke.
+            if (style.drawStroke !== false) {
+                this.ctx.strokeStyle = style.pointStroke;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(point.x, point.y, style.pointRadius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
 
             // Draw label if enabled
             if (style.showLabels && point.id !== undefined) {

@@ -43,9 +43,9 @@ import {
 const MAX_BONES = 256;
 const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
-// Fixed transverse cross-section (mm). D6: a 1 mm segment renders the SAME
-// radius as a 500 mm one — the segment length only scales its primary-axis span.
-const BONE_CROSS_SECTION = 15;
+// Per-region transverse cross-section radius (mm), resolved at model time and
+// stored on the table (face < hand < body). D6: the radius is independent of a
+// segment's LENGTH — a 1 mm and a 500 mm bone in the same region match.
 
 // Scratch (zero per-frame allocation).
 const DUMMY = new Object3D();
@@ -177,7 +177,7 @@ export function RigidBodyBoneRenderer() {
                     table.byNameRestOrientation.get(name)!,
                     table.byNamePrimaryAxis.get(name)!,
                     table.byNameLength.get(name) ?? 1.0,
-                    BONE_CROSS_SECTION,
+                    table.byNameCrossSection.get(name) ?? 12,
                 );
                 if (matrix !== null) {
                     mesh.setMatrixAt(slot, _matrix4.fromArray(matrix));

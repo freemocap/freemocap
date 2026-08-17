@@ -28,14 +28,19 @@ function classifySide(name: string): Side {
 
 function classifyHand(name: string): 'left_hand' | 'right_hand' | null {
     const lc = name.toLowerCase();
-    if (lc.startsWith('left_hand') || lc.includes('left_hand_')) return 'left_hand';
-    if (lc.startsWith('right_hand') || lc.includes('right_hand_')) return 'right_hand';
+    // The hand segment + the finger segments (thumb/index/middle/ring/little)
+    // are all hand parts; the tracker's hand keypoints carry `left_hand_` too.
+    if (!/hand|thumb|index|middle|ring|little/.test(lc)) return null;
+    if (lc.startsWith('left_')) return 'left_hand';
+    if (lc.startsWith('right_')) return 'right_hand';
     return null;
 }
 
 function classifyFace(name: string): boolean {
     const lc = name.toLowerCase();
-    return lc.startsWith('face') || lc.startsWith('face_') || lc.startsWith('face.');
+    // Face segment names (eyes / ears / nose / jaw / mouth) + the tracker's
+    // face_* keypoint prefix.
+    return /eye|ear|nose|jaw|mouth/.test(lc) || lc.startsWith('face');
 }
 
 export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
@@ -80,9 +85,9 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
     private readonly rightHandStyle: DrawStyle = {
         pointColor: '#FF6400',
         pointStroke: '#AA4400',
-        pointRadius: 3,
+        pointRadius: 2,
         lineColor: '#FF6400',
-        lineWidth: 1.5,
+        lineWidth: 1,
         labelColor: '#FF6400',
         labelStroke: this.TEXT_STROKE,
         labelFontSize: 8,
@@ -92,9 +97,9 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
     private readonly leftHandStyle: DrawStyle = {
         pointColor: '#00AAFF',
         pointStroke: '#0066AA',
-        pointRadius: 3,
+        pointRadius: 2,
         lineColor: '#00AAFF',
-        lineWidth: 1.5,
+        lineWidth: 1,
         labelColor: '#00AAFF',
         labelStroke: this.TEXT_STROKE,
         labelFontSize: 8,
@@ -245,8 +250,8 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
     }
 
     /** The landmark markers: open circles (stroke only, nothing in the middle),
-     *  slightly larger than the keypoint dots, so the fitted skeleton reads
-     *  above the keypoint scatter without covering it. */
+     *  colored like their segment and slightly larger than the keypoint dot, so
+     *  a zero-error reprojection puts the dot inside the circle. */
     private drawLandmarkPoints(pointMap: Map<string, Point2D>): void {
         const buckets = new Map<DrawStyle, Point2D[]>();
         for (const point of pointMap.values()) {
@@ -256,14 +261,19 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
             else buckets.set(style, [point]);
         }
         for (const [style, points] of buckets) {
-            this.drawPoints(points, {...style, pointRadius: 5, fillPoint: false, pointColor: '#FFFFFF', pointStroke: '#FFFFFF'});
+            this.drawPoints(points, {
+                ...style,
+                pointRadius: style.pointRadius,
+                fillPoint: false,
+                pointColor: style.pointColor,
+                pointStroke: style.pointColor,
+            });
         }
     }
 
-    /** The always-on stats block — a two-line legend mirroring the drawing
-     *  convention: line 1 = a filled dot = "keypoints" + an open circle =
-     *  "landmarks" (full words, no abbreviations), line 2 = the frame number.
-     *  Stacked so it fits narrow (portrait) camera feeds. */
+    /** The always-on stats block — a vertical column: a filled dot =
+     *  "N keypoints", an open circle = "N landmarks", then the frame number.
+     *  Stacked so it reads cleanly and fits narrow (portrait) camera feeds. */
     private drawStats(observation: SkeletonObservation): void {
         const finite = (points: SkeletonPoint[]): number =>
             points.reduce((n, p) => n + (Number.isFinite(p.x) && Number.isFinite(p.y) ? 1 : 0), 0);
@@ -271,43 +281,44 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         const lm = finite(observation.landmarks ?? []);
 
         const fontSize = 11;
-        const lineHeight = 17;
-        const textWidth = (s: string): number => s.length * (fontSize * 0.62);
-        const kpLabel = `${kp} keypoints`;
-        const lmLabel = `${lm} landmarks`;
-        const frameText = `frame ${observation.frame_number}`;
+        const lineHeight = 16;
+        const pad = 8;
+        const glyphRadius = 3;
+        const glyphX = 6 + pad + glyphRadius;
+        const textX = glyphX + glyphRadius + 6;
 
-        const legendWidth = 16 + (9 + textWidth(kpLabel) + 14)
-            + (9 + textWidth(lmLabel)) + 8;
-        const bgWidth = Math.max(legendWidth, 16 + textWidth(frameText) + 8);
+        const rows: { glyph: 'dot' | 'ring' | null; label: string }[] = [
+            { glyph: 'dot', label: `${kp} keypoints` },
+            { glyph: 'ring', label: `${lm} landmarks` },
+            { glyph: null, label: `frame ${observation.frame_number}` },
+        ];
+
+        const textWidth = (s: string): number => s.length * (fontSize * 0.6);
+        const maxLabelWidth = Math.max(...rows.map((r) => textWidth(r.label)));
+        const bgWidth = textX + maxLabelWidth + pad;
+        const bgHeight = pad * 2 + rows.length * lineHeight;
 
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-        this.ctx.fillRect(6, 6, bgWidth, 8 + lineHeight * 2);
+        this.ctx.fillRect(6, 6, bgWidth, bgHeight);
 
-        const glyphY = 6 + lineHeight - 5;   // glyph center on line 1
-        const line1Y = 6 + lineHeight;       // text baseline on line 1
-        const line2Y = 6 + lineHeight * 2;   // text baseline on line 2
+        rows.forEach((row, i) => {
+            const rowY = 6 + pad + i * lineHeight + lineHeight / 2;
 
-        let x = 14;
+            if (row.glyph === 'dot') {
+                this.ctx.fillStyle = '#FFFFFF';
+                this.ctx.beginPath();
+                this.ctx.arc(glyphX, rowY, glyphRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+            } else if (row.glyph === 'ring') {
+                this.ctx.strokeStyle = '#FFFFFF';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(glyphX, rowY, glyphRadius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
 
-        // Filled dot glyph + "N keypoints".
-        this.ctx.fillStyle = '#FFFFFF';
-        this.ctx.beginPath();
-        this.ctx.arc(x, glyphY, 3.5, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.drawText(kpLabel, x + 9, line1Y, fontSize, '#DDDDDD', '#111111', 2);
-        x += 9 + textWidth(kpLabel) + 14;
-
-        // Open circle glyph + "N landmarks".
-        this.ctx.strokeStyle = '#FFFFFF';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(x, glyphY, 3.5, 0, Math.PI * 2);
-        this.ctx.stroke();
-        this.drawText(lmLabel, x + 9, line1Y, fontSize, '#DDDDDD', '#111111', 2);
-
-        // Line 2: frame number.
-        this.drawText(frameText, 14, line2Y, fontSize, '#DDDDDD', '#111111', 2);
+            this.drawText(row.label, textX, rowY, fontSize, '#DDDDDD', '#111111', 2);
+        });
     }
 
     private drawAllPoints(pointMap: Map<string, Point2D>): void {
@@ -320,7 +331,7 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
             else buckets.set(style, [point]);
         }
         for (const [style, points] of buckets) {
-            this.drawPoints(points, style);
+            this.drawPoints(points, {...style, drawStroke: false});
         }
     }
 }

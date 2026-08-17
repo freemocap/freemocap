@@ -22,6 +22,23 @@ import type { ModelDefinition, PrimaryAxis } from "@/services/server/transport/m
 
 export type BoneSide = "left" | "right" | "center";
 
+export type BoneRegion = "body" | "hand" | "face";
+
+/** Classify a segment by name into a coarse region for cross-section sizing. */
+export function classifyRegion(name: string): BoneRegion {
+    const lc = name.toLowerCase();
+    if (/eye|ear|nose|jaw|mouth/.test(lc)) return "face";
+    if (/hand|thumb|index|middle|ring|little/.test(lc)) return "hand";
+    return "body";
+}
+
+/** Transverse cross-section radius (mm) per region: face < hand < body. */
+export const REGION_CROSS_SECTION: Readonly<Record<BoneRegion, number>> = {
+    body: 12,
+    hand: 5,
+    face: 3,
+};
+
 /** A single rigid body segment, resolved once at model time. */
 export interface BoneInstance {
     /** Stable instance-slot index into the InstancedMesh (name → index, D5/D14). */
@@ -48,6 +65,8 @@ export interface BoneInstanceTable {
     /** name → rest-frame orientation [w, x, y, z]: the rotation mapping the
      *  segment's LOCAL frame to its world T-pose. Composed before ROTATIONS_WORLD. */
     byNameRestOrientation: ReadonlyMap<string, readonly [number, number, number, number]>;
+    /** name → transverse cross-section radius (mm), sized by region. */
+    byNameCrossSection: ReadonlyMap<string, number>;
 }
 
 /** Fallback rest length (mm) for a segment with a missing/non-finite length. */
@@ -172,6 +191,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
             byNameLength: new Map(),
             byNamePrimaryAxis: new Map(),
             byNameRestOrientation: new Map(),
+            byNameCrossSection: new Map(),
         };
     }
 
@@ -181,6 +201,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
     const byNameLength = new Map<string, number>();
     const byNamePrimaryAxis = new Map<string, PrimaryAxis>();
     const byNameRestOrientation = new Map<string, readonly [number, number, number, number]>();
+    const byNameCrossSection = new Map<string, number>();
 
     segments.forEach((segment, i) => {
         nameToIndex.set(segment.name, i);
@@ -194,9 +215,10 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
         );
         byNamePrimaryAxis.set(segment.name, segment.primary_axis);
         byNameRestOrientation.set(segment.name, segment.rest_orientation);
+        byNameCrossSection.set(segment.name, REGION_CROSS_SECTION[classifyRegion(segment.name)]);
     });
 
-    return { nameToIndex, byName, instances, byNameLength, byNamePrimaryAxis, byNameRestOrientation };
+    return { nameToIndex, byName, instances, byNameLength, byNamePrimaryAxis, byNameRestOrientation, byNameCrossSection };
 }
 
 /**

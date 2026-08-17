@@ -20,12 +20,14 @@ import Checkbox from '@/components/ui-components/Checkbox';
 interface ImportVideosModalProps {
     open: boolean;
     onClose: () => void;
-    onImported?: () => void;
+    onImported?: (result: { recordingPath: string; recordingName: string }) => void;
+    /** Suffix appended to the auto-generated recording name. Defaults to "imported". */
+    defaultNameTag?: string;
 }
 
 // Mirrors the backend's `default_recording_name` (freemocap/system/default_paths.py) —
-// a filename-friendly ISO-8601 timestamp with GMT offset, tagged "imported".
-function generateDefaultRecordingName(): string {
+// a filename-friendly ISO-8601 timestamp with GMT offset, tagged with the given suffix.
+function generateDefaultRecordingName(tag: string): string {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, '0');
     const isoTimestamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
@@ -34,10 +36,10 @@ function generateDefaultRecordingName(): string {
     const offsetHours = -now.getTimezoneOffset() / 60;
     const gmtOffset = `${offsetHours >= 0 ? '+' : '-'}${Math.abs(offsetHours)}`;
 
-    return `${isoTimestamp}_gmt${gmtOffset}`.replace(/:/g, '_') + '_imported';
+    return `${isoTimestamp}_gmt${gmtOffset}`.replace(/:/g, '_') + `_${tag}`;
 }
 
-export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose, onImported}) => {
+export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClose, onImported, defaultNameTag = 'imported'}) => {
     const {isElectron, api} = useElectronIPC();
     const dispatch = useAppDispatch();
 
@@ -66,12 +68,12 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         if (!open) return;
         setVideoPaths([]);
         setRecordingName('');
-        setDefaultRecordingName(generateDefaultRecordingName());
+        setDefaultRecordingName(generateDefaultRecordingName(defaultNameTag));
         setBusy(false);
         setError(null);
         setCheckingSync(false);
         setSyncCheck(null);
-    }, [open]);
+    }, [open, defaultNameTag]);
 
     useEffect(() => {
         if (!open) return;
@@ -177,7 +179,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
 
             const result = await dispatch(importVideos({
                 videoPaths,
-                recordingName: recordingName.trim() || undefined,
+                recordingName: recordingName.trim() || defaultRecordingName,
                 syncJobId: jobId,
             })).unwrap();
 
@@ -187,7 +189,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                 baseDirectory: parsed?.baseDirectory,
                 origin: 'browsed',
             }));
-            onImported?.();
+            onImported?.(result);
             onClose();
         } catch (err) {
             setError(err instanceof Error ? err.message : typeof err === 'string' ? err : 'Failed to import videos');
@@ -195,7 +197,7 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
         } finally {
             setBusy(false);
         }
-    }, [videoPaths, recordingName, busy, syncEnabled, syncMethod, brightnessRatioThreshold, pollSyncResult, dispatch, onClose, onImported]);
+    }, [videoPaths, recordingName, defaultRecordingName, busy, syncEnabled, syncMethod, brightnessRatioThreshold, pollSyncResult, dispatch, onClose, onImported]);
 
     const importDisabledReason = busy
         ? (syncing ? 'Synchronizing…' : 'Importing…')

@@ -1,9 +1,7 @@
-import cv2
 import numpy as np
 from freemocap.utilities.toml_mixin import TomlMixin
 from numpy._typing import NDArray
 from pydantic import BaseModel, ConfigDict, field_validator
-from scipy.spatial.transform import Rotation
 
 
 class CameraExtrinsics(BaseModel, TomlMixin):
@@ -33,12 +31,16 @@ class CameraExtrinsics(BaseModel, TomlMixin):
     @property
     def rotation_matrix(self) -> NDArray[np.float64]:
         """3x3 rotation matrix from quaternion."""
+        from scipy.spatial.transform import Rotation  # noqa: PLC0415 — heavy scipy import stays out of module scope
+
         w, x, y, z = self.quaternion_wxyz
         return Rotation.from_quat([x, y, z, w]).as_matrix()
 
     @property
     def rodrigues_vector(self) -> NDArray[np.float64]:
         """3-element Rodrigues rotation vector (for OpenCV compatibility)."""
+        import cv2  # noqa: PLC0415 — heavy cv2 import stays out of module scope
+
         rvec, _ = cv2.Rodrigues(self.rotation_matrix)
         return rvec.ravel()
 
@@ -60,6 +62,9 @@ class CameraExtrinsics(BaseModel, TomlMixin):
             tvec: NDArray[np.float64],
     ) -> "CameraExtrinsics":
         """Construct from Rodrigues rotation vector + translation."""
+        import cv2  # noqa: PLC0415 — heavy cv2 import stays out of module scope
+        from scipy.spatial.transform import Rotation  # noqa: PLC0415 — heavy scipy import stays out of module scope
+
         rmat, _ = cv2.Rodrigues(np.asarray(rvec, dtype=np.float64).ravel())
         quat_xyzw = Rotation.from_matrix(rmat).as_quat()
         quat_wxyz = np.array(

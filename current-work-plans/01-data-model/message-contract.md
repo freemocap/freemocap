@@ -1,61 +1,57 @@
 # The Message Contract (the message types)
-> **Superseded (2026-08-16):** this doc describes the pre-cutover design. The wire was redesigned — the
-> frame is now a fully self-describing document (nested convention/cameras/models/instances/trackers/image;
-> 5 kinds). The authoritative current shape + WHY live in **HANDOFF.md** — read it first.
->
 
-
-**Describes (types):** the message envelope, the kind list, the self-describing channel block, and each
-kind payload shape. The frontend holds these as a single Zod discriminated union keyed on kind. The wire
-framing/send-path lives in ../03-transport/message-protocol.md; the backend relay in
-../03-transport/message-relay.md; the client dispatcher in ../04-ui/ui-integration.md.
+**Describes:** the five message kinds and their payload shapes — the single self-describing wire contract.
+The backend encodes to it (`freemocap/core/streaming/message_model.py`, cbor2) and the frontend validates
+against it (`freemocap-ui/.../transport/message-contract.ts`, cbor-x + Zod). Framing / send-path lives in
+[../03-transport/message-protocol.md](../03-transport/message-protocol.md); the backend relay in
+[../03-transport/message-relay.md](../03-transport/message-relay.md); the client dispatcher in
+[../04-ui/ui-integration.md](../04-ui/ui-integration.md).
 
 ## Envelope (every message)
 
-Every message carries: kind (which handler), version (shape version, 0 for now), timestamp (monotonic
-seconds), sequence (monotonic within a kind, per connection), then the kind payload. Full names, never
+Every message carries `kind` (which handler), `version` (shape version, 0), `timestamp` (monotonic
+seconds), `sequence` (monotonic within a kind, per connection), then the kind payload. Full names, never
 abbreviated. The payload fields spread into each kind variant.
 
-## Kinds (the discriminated union)
+## Kinds (the five kinds)
 
-| kind | payload fields | client home |
+| kind | payload | client home |
 |---|---|---|
-| frame | frame_number, subjects (subject_id + channels), image | frame subscribers (fast) |
-| convention | units, handedness, up_axis, forward_axis, rotation_form | RTK slice (replace) |
-| model | orientations, axes, hierarchy, connections, rest_positions | RTK slice (replace) |
-| camera_layout | camera_ids, image_sizes | RTK slice (replace) |
-| calibration | camera intrinsics/extrinsics | RTK slice (replace) |
-| log | log records | LogStore (append) |
-| framerate | backend/frontend framerate telemetry, camera_group_id | FramerateStore (fast) |
-| app_state | server_pid, state | RTK slice (replace) |
-| progress | pipeline_id, pipeline_type, phase, progress_fraction, detail | RTK slices (replace) |
+| frame | frame_number, model_sequence, convention, cameras, models, instances, trackers, image | frame subscribers (fast) |
+| log | record (a logging record) | LogStore (append) |
+| framerate | camera_group_id, backend_framerate, frontend_framerate | FramerateStore (fast) |
+| app_state | server_pid, state (camera groups + realtime pipelines) | connection slice (replace) |
+| progress | pipeline_id, pipeline_type, phase, progress_fraction, detail, recording_name, recording_path, camera_id | pipelines/mocap/calibration slices (replace) |
 
-Adding a kind = adding one variant + one handler entry. An unknown kind or unsupported version fails the
-union and is logged once + skipped.
+Adding a kind = one variant + one handler entry. An unknown kind or unsupported version is skipped +
+logged (fail soft — inbound data).
 
-## The channel block (inside frame)
+## The frame message (fully self-describing)
 
-A frame channel is: kind (a string such as SEGMENT_ORIGINS or ROTATIONS_WORLD), names (the inline string
-list), columns (the column names), and data (packed float32 or uint8 bytes, columns by names, row-major).
-Self-describing: names inline, layout fixed by columns.
+A frame is a complete document — one frame decodes AND renders with zero prior state (there is no
+decode-vs-render split and no held descriptor). It carries:
 
-A frame is decode-complete (names inline) but not render-complete — rendering bones joins names against
-the model slice (see ../03-transport/message-protocol.md). A frame carries a list of subjects
-(subject_id + channels) for multi-person headroom, plus an image byte string.
+- `convention` — `CoordinateConvention` (units, handedness, up_axis, forward_axis, rotation_frame,
+  rotation_form).
+- `cameras` — one `CalibratedCamera` per camera: id, index, rotation, image_size, intrinsics,
+  extrinsics, world_position, world_orientation. `rotation` + `image_size` define the ROTATED
+  overlay/JPEG coordinate space.
+- `models` — `ModelDefinition`: model_id, ordered `segments` (name, parent, primary_axis,
+  rest_orientation wxyz, length_mm, rigid_with_parent), ordered `landmarks` (name, rest_position).
+- `instances` — `ModelInstance`: instance_id, model_id, channels.
+- `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels.
+- `image` — the camera image bytes.
 
-The old ChannelGroup / block_kind / dtype_code are retired.
+## The channel block
 
-## Client homes (the two consumption shapes)
-
-| home | pattern | kinds |
-|---|---|---|
-| RTK slice | replace (idempotent, last-wins) | convention, model, camera_layout, calibration, app_state, progress |
-| fast store | append, or latest + ring buffer (no re-render) | log, framerate, frame |
-
-The dispatcher in TransportService routes each kind to its home. The homes themselves are unchanged from
-today: LogStore, FramerateStore, the frame subscribers, and the existing RTK slices.
+A frame channel is a `ChannelBlock`: `kind` + `columns` + `data` (packed float32 little-endian
+bytes, columns by names, row-major), plus `camera_id` (per-camera overlay channels only) and `names`
+(inline, on tracker-keypoint channels). Segment/landmark channels are **index-keyed** — row order is the
+model's ordered segments/landmarks, so those names are dropped. Channel kinds: KEYPOINTS_3D,
+LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D,
+SEGMENT_LENGTHS, OVERLAY_REPROJECTIONS.
 
 ## Retired types
 
-StreamSchema, ChannelGroup, RestPose-as-schema, DecodedSample/TypedArrayBlock (the schema-resolved sample),
-SchemaRegistry, and the hand-rolled isX type guards. Replaced by the union above.
+StreamSchema, ChannelGroup, SchemaRegistry, DecodedSample/TypedArrayBlock (the schema-resolved sample),
+and the hand-rolled isX type guards — replaced by the self-describing frame document above.

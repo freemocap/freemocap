@@ -15,7 +15,6 @@
 
 import { OverlayManager } from "@/services/server/server-helpers/image-overlay/overlay-renderer-factory";
 import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
-import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 // tsconfig uses the DOM lib (no WebWorker lib); cast self for postMessage.
 const workerScope = self as unknown as Worker;
@@ -41,12 +40,7 @@ interface FrameMessage {
     skeleton: SkeletonObservation | null;
 }
 interface VisibilityMessage { type: "visibility"; charuco: boolean; skeleton: boolean; }
-interface SchemaMessage {
-    type: "schema";
-    schemas: Record<string, TrackedObjectDefinition>;
-    activeId: string | null;
-}
-type InboundMessage = InitMessage | FrameMessage | VisibilityMessage | SchemaMessage;
+type InboundMessage = InitMessage | FrameMessage | VisibilityMessage;
 
 self.addEventListener("message", (event: MessageEvent) => {
     const msg = event.data as InboundMessage;
@@ -62,9 +56,6 @@ self.addEventListener("message", (event: MessageEvent) => {
         case "visibility":
             skeletonEnabled = msg.skeleton;
             if (!skeletonEnabled) latestSkeleton = null;
-            break;
-        case "schema":
-            overlayManager.setTrackerSchemas(msg.schemas, msg.activeId ?? undefined);
             break;
     }
 });
@@ -96,7 +87,7 @@ function handleFrame(
     createImageBitmap(imageData).then((rawBitmap) => {
         if (skeletonObs) {
             overlayManager
-                .processFrame("", rawBitmap, null, skeletonObs)
+                .processFrame(rawBitmap, null, skeletonObs)
                 .then((composite) => setPending(composite))
                 .catch((err) => {
                     rawBitmap.close();

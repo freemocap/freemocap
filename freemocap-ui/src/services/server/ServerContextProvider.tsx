@@ -1,14 +1,11 @@
 // ServerContextProvider.tsx
 //
-// Thin consumer of TransportService. The socket ownership, binary first-byte
-// demux, standard-stream schema/sample decode, and rolling-window stores live
-// in TransportService. One sample per frame carries the pose, the overlays,
-// AND the IMAGE_JPEG camera images — this provider feeds the image bytes into
-// the FrameProcessor (decode) and the CanvasManager (per-camera display +
-// overlay composite), and retains:
-//   - the inbound/redux JSON routing (settings, framerate, posthoc progress,
-//     app_state, logs) — the server still routes these over the WS;
-//   - the subscriber-hook surface (now backed by TransportService subscribers).
+// Thin consumer of TransportService. TransportService owns the WebSocket, the
+// CBOR decode, and the kind-keyed dispatch; this provider subscribes to it and
+// owns the Redux dispatch + frame/image rendering. It retains:
+//   - the inbound frameAcknowledgment (displayImageSizes) send loop;
+//   - the FrameProcessor / CanvasManager wiring (per-camera image + overlay);
+//   - the subscriber-hook surface (now backed by TransportService subscribers);
 
 import React, {ReactNode, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import { ServerContext, type ServerContextValue } from './server-context';
@@ -20,13 +17,6 @@ import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
-import {
-    isFramerateUpdate,
-    isLogRecord,
-    isPosthocProgress,
-    isTrackerSchemas,
-} from "@/services/server/server-helpers/websocket-message-types";
-import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
 import {Point3d, BodyKinematics} from "@/components/viewport3d";
 import {
     KeypointsCallback,
@@ -35,24 +25,23 @@ import {
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
 import {serverStateReceived, wsConnectionChanged, serverDisconnected} from "@/store/slices/connection/connection-slice";
-import type {AppStateMessage} from "@/store/slices/connection/connection-types";
+import {modelsReceived} from "@/store/slices/model";
+import {conventionReceived} from "@/store/slices/convention";
+import {camerasReceived} from "@/store/slices/camera-layout";
 import {loadCalibrationForRecording} from "@/store/slices/calibration";
 import {TransportService} from "@/services/server/transport/TransportService";
-import type {RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema} from "@/services/server/transport/wire-types";
-import {OverlayLayer} from "@/services/server/transport/wire-types";
+import {
+    OverlayLayer,
+    type RotationsFrame,
+    type RollingChannelName,
+    type SegmentLengthsFrame,
+} from "@/services/server/transport/frame-types";
+import type {
+    CalibratedCamera,
+    ModelDefinition,
+    ProgressMessage,
+} from "@/services/server/transport/message-contract";
 import type {SkeletonObservation} from "@/services/server/server-helpers/image-overlay";
-
-// Type guard for the server's authoritative APP_STATE snapshot
-function isAppState(data: any): data is AppStateMessage {
-    return (
-        data &&
-        typeof data === 'object' &&
-        data.message_type === 'app_state' &&
-        typeof data.server_pid === 'number' &&
-        data.state &&
-        typeof data.state === 'object'
-    );
-}
 
 // Compare two already-sorted string arrays without allocating
 function sortedArraysEqual(a: string[], b: string[]): boolean {
@@ -63,17 +52,22 @@ function sortedArraysEqual(a: string[], b: string[]): boolean {
     return true;
 }
 
+/** Parent→child name pairs from the model's segment hierarchy (the 2D skeleton
+ *  overlay's connection source). */
+function modelConnections(models: ModelDefinition[] | null): [string, string][] {
+    const model = models?.[0];
+    if (!model) return [];
+    const out: [string, string][] = [];
+    for (const segment of model.segments) {
+        if (segment.parent !== null) out.push([segment.parent, segment.name]);
+    }
+    return out;
+}
+
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
-    // Reactive state - only updates when camera list actually changes
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [isFailed, setIsFailed] = useState<boolean>(false);
     const [connectedCameraIds, setConnectedCameraIds] = useState<string[]>([]);
-
-    // Tracker schemas — shipped by the backend on WS connect/reconfigure.
-    const trackerSchemasRef = useRef<Record<string, TrackedObjectDefinition>>({});
-    const activeTrackerIdRef = useRef<string | null>(null);
-    const [trackerSchemas, setTrackerSchemas] = useState<Record<string, TrackedObjectDefinition>>({});
-    const [activeTrackerId, setActiveTrackerId] = useState<string | null>(null);
 
     // Service instances
     const transportRef = useRef<TransportService | null>(null);
@@ -82,11 +76,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const framerateStoreRef = useRef<FramerateStore>(new FramerateStore());
     const logStoreRef = useRef<LogStore>(new LogStore());
 
-    // Latest server-side (backend) FPS stored in a ref for non-reactive access
     const serverFpsRef = useRef<number | null>(null);
-
-    // Last-dispatched progress per pipeline — skip dispatch when value is unchanged
     const lastPipelineProgressRef = useRef<Record<string, string>>({});
+
+    // Held model/cameras (for overlay image sizes + connections).
+    const modelsRef = useRef<ModelDefinition[] | null>(null);
+    const camerasRef = useRef<CalibratedCamera[] | null>(null);
 
     // 3D data refs and subscriber sets (backed by TransportService below).
     const keypointsRef = useRef<KeypointsFrame | null>(null);
@@ -100,17 +95,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
     const segmentLengthsRef = useRef<SegmentLengthsFrame | null>(null);
 
-    // Holds the latest binary JPEG payload received from the WebSocket.
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
     const pendingAckFrameNumberRef = useRef<number | null>(null);
     const frameLoopRef = useRef<number | null>(null);
-    // Overlay observations keyed by frame number, then camera id — the image
-    // and its overlay for frame N arrive in the same sample, and the decode is
-    // async, so the observation is matched to the frame by number.
     const pendingOverlaysRef = useRef<Map<number, Map<string, SkeletonObservation>>>(new Map());
 
-    // Cached sorted camera IDs from the last frame
     const lastCameraIdsRef = useRef<string[]>([]);
 
     // Initialize services once
@@ -122,9 +112,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
 
-        // Fan standard-stream sample subscribers out to the legacy subscriber sets.
         const subs: (() => void)[] = [];
         const transport = transportRef.current;
+
         subs.push(transport.subscribeToKeypoints((frame) => {
             const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
             keypointsRef.current = kf;
@@ -150,22 +140,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             for (const cb of rotationsSubscribersRef.current) cb(frame);
         }));
         subs.push(transport.subscribeToOverlay((overlay) => {
-            // Per-camera 2D overlays, in capture-resolution px (the schema
-            // carries each camera's capture size so the renderer scales to
-            // the display bitmap). DETECTIONS = tracker keypoints (small
-            // dots); REPROJECTIONS = the fitted skeleton's segment-origin
-            // landmarks (larger dots + segment connections). Both layers of
-            // one sample merge into ONE observation, keyed by frame number —
-            // dispatchFrames pairs the decoded frame with its own sample.
             if (overlay.layer !== OverlayLayer.DETECTIONS && overlay.layer !== OverlayLayer.REPROJECTIONS) return;
-            const dims = transport.getSchema()?.camera_image_sizes[overlay.cameraId];
+            const dims = camerasRef.current?.find((c) => c.id === overlay.cameraId)?.image_size;
             const frameOverlays = pendingOverlaysRef.current.get(overlay.frameNumber)
                 ?? new Map<string, SkeletonObservation>();
             const observation: SkeletonObservation = frameOverlays.get(overlay.cameraId) ?? {
-                message_type: 'skeleton_overlay',
                 camera_id: overlay.cameraId,
                 frame_number: overlay.frameNumber,
-                tracker_id: activeTrackerIdRef.current ?? 'RTMPoseTracker',
                 image_width: dims?.[0] ?? 0,
                 image_height: dims?.[1] ?? 0,
                 points: [],
@@ -181,7 +162,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 observation.points = points;
             } else {
                 observation.landmarks = points;
-                observation.connections = transport.getSchema()?.connections ?? [];
+                observation.connections = modelConnections(modelsRef.current);
             }
             frameOverlays.set(overlay.cameraId, observation);
             pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);
@@ -189,6 +170,30 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToSegmentLengths((frame) => {
             segmentLengthsRef.current = frame;
         }));
+
+        // Static-model + kind subscribers → Redux (change-detected on the transport).
+        subs.push(transport.subscribeToModels((models) => {
+            modelsRef.current = models;
+            store.dispatch(modelsReceived(models));
+        }));
+        subs.push(transport.subscribeToConvention((convention) => {
+            store.dispatch(conventionReceived(convention));
+        }));
+        subs.push(transport.subscribeToCameras((cameras) => {
+            camerasRef.current = cameras;
+            store.dispatch(camerasReceived(cameras));
+        }));
+        subs.push(transport.subscribeToLog((record) => {
+            logStoreRef.current.add(record);
+        }));
+        subs.push(transport.subscribeToFramerate((message) => {
+            serverFpsRef.current = message.backend_framerate.mean_frames_per_second;
+            framerateStoreRef.current.updateBackend(message.backend_framerate);
+        }));
+        subs.push(transport.subscribeToAppState((message) => {
+            store.dispatch(serverStateReceived(message));
+        }));
+        subs.push(transport.subscribeToProgress((message) => handleProgress(message, lastPipelineProgressRef)));
 
         const handleBeforeUnload = (): void => {
             logStoreRef.current?.persistNow();
@@ -212,7 +217,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         };
     }, []);
 
-    // Wire connection state + message routing to the transport service.
+    // Wire connection state + frame/image rendering.
     useEffect(() => {
         const transport = transportRef.current;
         if (!transport) return;
@@ -237,10 +242,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 skeletonRef.current = null;
                 rotationsRef.current = null;
                 segmentLengthsRef.current = null;
-                trackerSchemasRef.current = {};
-                activeTrackerIdRef.current = null;
-                setTrackerSchemas({});
-                setActiveTrackerId(null);
+                modelsRef.current = null;
+                camerasRef.current = null;
                 setConnectedCameraIds([]);
                 transport.reset();
                 store.dispatch(serverDisconnected());
@@ -283,8 +286,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
             for (const frameData of frames) {
                 const overlay = pendingOverlaysRef.current.get(frameData.frameNumber)?.get(frameData.cameraId) ?? null;
-                // Prune overlay entries older than a few frames — they are
-                // consumed at most once and the map must not grow.
                 for (const key of pendingOverlaysRef.current.keys()) {
                     if (key < frameData.frameNumber - 5) pendingOverlaysRef.current.delete(key);
                 }
@@ -298,105 +299,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             }
         };
 
-        // JSON messages that aren't the standard-stream schema still route here.
-        transport.on('message', (event: MessageEvent) => {
-            if (typeof event.data !== 'string') return undefined;
-            if (event.data === 'pong') return undefined;
-
-            let jsonData: any;
-            try {
-                jsonData = JSON.parse(event.data);
-            } catch {
-                return undefined;
-            }
-
-            if (isLogRecord(jsonData)) {
-                logStoreRef.current.add(jsonData);
-            } else if (isTrackerSchemas(jsonData)) {
-                const schemas = jsonData.schemas;
-                trackerSchemasRef.current = schemas;
-                const keys = Object.keys(schemas);
-                const firstId = keys.length > 0 ? keys[0] : null;
-                activeTrackerIdRef.current = firstId;
-                setTrackerSchemas(schemas);
-                setActiveTrackerId(firstId);
-                canvasManagerRef.current?.setSchema(schemas, firstId);
-            } else if (isFramerateUpdate(jsonData)) {
-                serverFpsRef.current = jsonData.backend_framerate.mean_frames_per_second;
-                framerateStoreRef.current.updateBackend(jsonData.backend_framerate);
-            } else if (isPosthocProgress(jsonData)) {
-                const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
-                    calibration: PipelineType.CALIBRATION,
-                    mocap: PipelineType.MOCAP,
-                };
-                const pipelineType = PIPELINE_TYPE_MAP[jsonData.pipeline_type];
-                if (!pipelineType) {
-                    console.error('[WS] Unknown pipeline_type in progress message:', jsonData.pipeline_type, jsonData);
-                } else {
-                    const progress = Math.round(jsonData.progress_fraction * 100);
-                    const dedupeKey = `${jsonData.phase}:${progress}`;
-                    if (lastPipelineProgressRef.current[jsonData.pipeline_id] !== dedupeKey) {
-                        lastPipelineProgressRef.current[jsonData.pipeline_id] = dedupeKey;
-                        const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
-                            queued: PipelinePhase.QUEUED,
-                            setting_up: PipelinePhase.SETTING_UP,
-                            processing_images: PipelinePhase.PROCESSING_VIDEOS,
-                            collecting_camera_output: PipelinePhase.SETTING_UP,
-                            building_recorders: PipelinePhase.AGGREGATING,
-                            triangulating: PipelinePhase.AGGREGATING,
-                            exporting_blender: PipelinePhase.FINALIZING,
-                            validating_observations: PipelinePhase.AGGREGATING,
-                            running_solver: PipelinePhase.AGGREGATING,
-                            saving_calibration: PipelinePhase.FINALIZING,
-                            complete: PipelinePhase.COMPLETE,
-                            failed: PipelinePhase.FAILED,
-                        };
-                        store.dispatch(pipelineProgressUpdated({
-                            pipelineId: jsonData.pipeline_id,
-                            pipelineType,
-                            phase: BACKEND_PHASE_MAP[jsonData.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
-                            progress,
-                            detail: jsonData.detail,
-                            recordingName: jsonData.recording_name,
-                            recordingPath: jsonData.recording_path,
-                        }));
-                        if (!jsonData.pipeline_id.includes(':')) {
-                            if (pipelineType === PipelineType.MOCAP) {
-                                store.dispatch({
-                                    type: 'mocap/posthocProgressReceived',
-                                    payload: {phase: jsonData.phase, progress_fraction: jsonData.progress_fraction, detail: jsonData.detail},
-                                });
-                            } else {
-                                store.dispatch({
-                                    type: 'calibration/calibrationPipelineProgressReceived',
-                                    payload: {phase: jsonData.phase},
-                                });
-                                if (jsonData.phase === 'complete' && jsonData.recording_name) {
-                                    const recordingPath: string = jsonData.recording_path ?? '';
-                                    const recordingName: string = jsonData.recording_name;
-                                    const parentDir = recordingPath.endsWith(recordingName)
-                                        ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
-                                        : null;
-                                    store.dispatch(loadCalibrationForRecording({
-                                        recordingId: recordingName,
-                                        recordingParentDirectory: parentDir,
-                                    }));
-                                }
-                            }
-                        }
-                    }
-                }
-            } else if (isAppState(jsonData)) {
-                store.dispatch(serverStateReceived(jsonData));
-            } else if (jsonData.message_type !== 'stream_schema') {
-                console.warn('[WS] unhandled JSON message:', jsonData.message_type ?? '(no message_type)', jsonData);
-            }
-            return undefined;
-        });
-
-        // The IMAGE_JPEG block bytes for frame N arrive in the same sample as
-        // frame N's overlays — feed them to the frame processor and ack with
-        // the sample's own frame number.
         transport.subscribeToImages((buf, frameNumber) => {
             pendingAckFrameNumberRef.current = frameNumber;
             pendingPayloadRef.current = buf;
@@ -483,38 +385,30 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const subscribeToCenterOfMass = useCallback((cb: (point: Point3d | null) => void): () => void => {
         centerOfMassSubscribersRef.current.add(cb);
-        return () => {
-            centerOfMassSubscribersRef.current.delete(cb);
-        };
+        return () => { centerOfMassSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToXcom = useCallback((cb: (point: Point3d | null) => void): () => void => {
         xcomSubscribersRef.current.add(cb);
-        return () => {
-            xcomSubscribersRef.current.delete(cb);
-        };
+        return () => { xcomSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToBodyKinematics = useCallback((cb: (bk: BodyKinematics | null) => void): () => void => {
         bodyKinematicsSubscribersRef.current.add(cb);
-        return () => {
-            bodyKinematicsSubscribersRef.current.delete(cb);
-        };
+        return () => { bodyKinematicsSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToRotations = useCallback((cb: (frame: RotationsFrame) => void): () => void => {
         rotationsSubscribersRef.current.add(cb);
-        return () => {
-            rotationsSubscribersRef.current.delete(cb);
-        };
+        return () => { rotationsSubscribersRef.current.delete(cb); };
     }, []);
 
-    const subscribeToSchema = useCallback((cb: (schema: StreamSchema) => void): () => void => {
-        return transportRef.current?.subscribeToSchema(cb) ?? (() => {});
+    const subscribeToModels = useCallback((cb: (models: ModelDefinition[]) => void): () => void => {
+        return transportRef.current?.subscribeToModels(cb) ?? (() => {});
     }, []);
 
-    const getStreamSchema = useCallback((): StreamSchema | null => {
-        return transportRef.current?.getSchema() ?? null;
+    const getModels = useCallback((): ModelDefinition[] | null => {
+        return transportRef.current?.getModels() ?? null;
     }, []);
 
     const getLatestKeypoints = useCallback((): KeypointsFrame | null => {
@@ -539,12 +433,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
         canvasManagerRef.current?.setOverlayVisibility(charuco, skeleton);
-    }, []);
-
-    const getActiveSchema = useCallback((): TrackedObjectDefinition | null => {
-        const id = activeTrackerIdRef.current;
-        if (!id) return null;
-        return trackerSchemasRef.current[id] ?? null;
     }, []);
 
     const updateServerConnection = useCallback((host: string, port: number): void => {
@@ -580,16 +468,13 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getLatestKeypoints,
         getLatestSkeleton,
         setOverlayVisibility,
-        trackerSchemas,
-        activeTrackerId,
-        getActiveSchema,
         subscribeToRotations,
         getLatestRotations,
         getLatestSegmentLengths,
         getRollingWindow,
-        subscribeToSchema,
-        getStreamSchema,
-    }), [isConnected, isFailed, connectedCameraIds, trackerSchemas, activeTrackerId, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, getActiveSchema, subscribeToRotations, getLatestRotations, getLatestSegmentLengths, getRollingWindow, subscribeToSchema, getStreamSchema]);
+        subscribeToModels,
+        getModels,
+    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations, getLatestRotations, getLatestSegmentLengths, getRollingWindow, subscribeToModels, getModels]);
 
     return (
         <ServerContext.Provider value={contextValue}>
@@ -597,3 +482,70 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         </ServerContext.Provider>
     );
 };
+
+// Progress → pipeline slices (moved here from the old JSON if/else chain).
+function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<string, string> }): void {
+    const PIPELINE_TYPE_MAP: Record<string, PipelineType> = {
+        calibration: PipelineType.CALIBRATION,
+        mocap: PipelineType.MOCAP,
+    };
+    const pipelineType = PIPELINE_TYPE_MAP[message.pipeline_type];
+    if (!pipelineType) {
+        console.error('[WS] Unknown pipeline_type in progress message:', message.pipeline_type, message);
+        return;
+    }
+    const progress = Math.round(message.progress_fraction * 100);
+    const dedupeKey = message.phase + ':' + progress;
+    if (dedupeRef.current[message.pipeline_id] === dedupeKey) return;
+    dedupeRef.current[message.pipeline_id] = dedupeKey;
+
+    const BACKEND_PHASE_MAP: Record<string, PipelinePhase> = {
+        queued: PipelinePhase.QUEUED,
+        setting_up: PipelinePhase.SETTING_UP,
+        processing_images: PipelinePhase.PROCESSING_VIDEOS,
+        collecting_camera_output: PipelinePhase.SETTING_UP,
+        building_recorders: PipelinePhase.AGGREGATING,
+        triangulating: PipelinePhase.AGGREGATING,
+        exporting_blender: PipelinePhase.FINALIZING,
+        validating_observations: PipelinePhase.AGGREGATING,
+        running_solver: PipelinePhase.AGGREGATING,
+        saving_calibration: PipelinePhase.FINALIZING,
+        complete: PipelinePhase.COMPLETE,
+        failed: PipelinePhase.FAILED,
+    };
+    store.dispatch(pipelineProgressUpdated({
+        pipelineId: message.pipeline_id,
+        pipelineType,
+        phase: BACKEND_PHASE_MAP[message.phase] ?? PipelinePhase.PROCESSING_VIDEOS,
+        progress,
+        detail: message.detail,
+        recordingName: message.recording_name,
+        recordingPath: message.recording_path,
+    }));
+    if (!message.pipeline_id.includes(':')) {
+        if (pipelineType === PipelineType.MOCAP) {
+            store.dispatch({
+                type: 'mocap/posthocProgressReceived',
+                payload: {phase: message.phase, progress_fraction: message.progress_fraction, detail: message.detail},
+            });
+        } else {
+            store.dispatch({
+                type: 'calibration/calibrationPipelineProgressReceived',
+                payload: {phase: message.phase},
+            });
+            if (message.phase === 'complete' && message.recording_name) {
+                const recordingPath: string = message.recording_path ?? '';
+                const recordingName: string = message.recording_name;
+                const parentDir = recordingPath.endsWith(recordingName)
+                    ? recordingPath.slice(0, recordingPath.length - recordingName.length - 1)
+                    : null;
+                store.dispatch(loadCalibrationForRecording({
+                    recordingId: recordingName,
+                    recordingParentDirectory: parentDir,
+                }));
+            }
+        }
+    }
+}
+
+

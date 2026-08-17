@@ -13,3 +13,6 @@ export * from './slices/mocap';
 export * from './slices/pipelines';
 export * from './slices/blender';
 export * from './slices/active-recording';
+export * from './slices/model';
+export * from './slices/convention';
+export * from './slices/camera-layout';

@@ -1,9 +1,9 @@
 // RigidBodyBoneGeometry.ts
 //
 // F4 — the unit-length elliptical cone + sphere mesh shared by every rigid-body
-// bone instance. One geometry, scaled per-instance to the segment's long-axis
+// bone instance. One geometry, scaled per-instance to the segment's primary-axis
 // length. The elliptical (X-squished) cross-section makes ROLL/twist visible: a
-// circular cone rotated about its long axis is identical at every roll angle.
+// circular cone rotated about its primary axis is identical at every roll angle.
 //
 // All THREE imports here are safe in any runtime (node/jsdom/build) — this
 // module builds only a BufferGeometry, no scene, no renderer, no cleanup.
@@ -25,13 +25,13 @@ export const CONE_HEIGHT = 1.0;         // unit height along +Z (origin → dist
 /**
  * A unit tapered cone whose LONG AXIS is +Z, spanning Z∈[0, 1]: the WIDE
  * (proximal) end sits at the origin (Z=0, the joint), the NARROW tip at Z=1
- * (the distal end). Built from a THREE cylinder (whose long axis is +Y) and
+ * (the distal end). Built from a THREE cylinder (whose axis is +Y) and
  * re-oriented onto +Z, so per-instance scaling of Z by the segment length grows
  * the bone in ONE direction from its origin — never a double-ended spike.
  */
 function makeConeAlongZ(): BufferGeometry {
     const n = 12; // radial segments
-    // CylinderGeometry(radiusTop@+Y, radiusBottom@-Y, height): long axis +Y in
+    // CylinderGeometry(radiusTop@+Y, radiusBottom@-Y, height): axis +Y in
     // [-0.5, 0.5], wide end (radiusBottom) at -Y.
     const cone = new CylinderGeometry(
         CONE_RADIUS_TOP,

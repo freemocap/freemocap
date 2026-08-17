@@ -8,9 +8,7 @@ export * from './overlay-renderer-factory';
 export {
     SkeletonPointSchema,
     SkeletonOverlaySchema,
-    SkeletonOverlayDataMessageSchema,
     type SkeletonPoint,
     type SkeletonObservation,
-    type SkeletonOverlayDataMessage,
 } from './skeleton-types';
 export { SkeletonOverlayRenderer } from './skeleton-overlay-renderer';

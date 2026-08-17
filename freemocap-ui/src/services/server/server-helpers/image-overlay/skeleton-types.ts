@@ -1,6 +1,6 @@
 import z from "zod";
 
-// Individual tracked point (name matches an entry in the active tracker's schema)
+// Individual tracked point — the name rides the overlay inline (self-describing).
 export const SkeletonPointSchema = z.object({
     name: z.string(),
     x: z.number(),
@@ -14,10 +14,8 @@ export const SkeletonPointSchema = z.object({
 // segment-origin landmarks projected back into the camera (larger dots), with
 // `connections` = the segment parent→child name pairs to draw between them.
 export const SkeletonOverlaySchema = z.object({
-    message_type: z.literal("skeleton_overlay"),
     camera_id: z.string(),
     frame_number: z.number(),
-    tracker_id: z.string(),
     image_width: z.number(),
     image_height: z.number(),
     points: z.array(SkeletonPointSchema),
@@ -31,9 +29,5 @@ export const SkeletonOverlaySchema = z.object({
     bbox_from_detector: z.boolean().optional(),
 });
 
-// Multi-camera message shape (matches CharucoOverlayDataMessage structure)
-export const SkeletonOverlayDataMessageSchema = z.record(z.string(), SkeletonOverlaySchema);
-
 export type SkeletonPoint = z.infer<typeof SkeletonPointSchema>;
 export type SkeletonObservation = z.infer<typeof SkeletonOverlaySchema>;
-export type SkeletonOverlayDataMessage = z.infer<typeof SkeletonOverlayDataMessageSchema>;

@@ -83,7 +83,7 @@ export function FaceRenderer() {
                 // Match both face_0000 (RTMPose) and face.lips_61 (MediaPipe)
                 // — consistent with classifyPointName() in skeleton-config.ts
                 if (!/^face[._]/.test(pointNames[i])) continue;
-                // The keypoints frame is 3-interleaved xyz (SchemaRegistry
+                // The keypoints frame is 3-interleaved xyz (frame-resolution
                 // re-packs KEYPOINTS_3D — no 4th column here).
                 const off = i * 3;
                 const x = interleaved[off];

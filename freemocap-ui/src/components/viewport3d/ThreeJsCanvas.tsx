@@ -164,8 +164,8 @@ export function ThreeJsCanvas() {
     subscribeToKeypoints,
     subscribeToSkeleton,
     getLatestSkeleton,
-    subscribeToSchema,
-    getStreamSchema,
+    subscribeToModels,
+    getModels,
     subscribeToRotations,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
@@ -236,29 +236,18 @@ export function ThreeJsCanvas() {
     });
   }, [subscribeToRotations]);
 
+  // The model must reach the worker: the rigid-body renderer builds its
+  // name→slot table from it (segment names, primary axes, lengths, rest orientations).
   useEffect(() => {
     if (isPlayback) return;
-    VIEWPORT_WORKER.postMessage({
-      type: "schemaState",
-      data: {
-        activeTrackerId: server.activeTrackerId,
-        trackerSchemas: server.trackerSchemas,
-      },
-    });
-  }, [isPlayback, server.activeTrackerId, server.trackerSchemas]);
-
-  // The standard-stream schema must reach the worker: the rigid-body renderer
-  // builds its name→slot table from it (segment names, lengths, long axes).
-  useEffect(() => {
-    if (isPlayback) return;
-    const existing = getStreamSchema?.();
+    const existing = getModels?.();
     if (existing) {
-      VIEWPORT_WORKER.postMessage({ type: "streamSchema", data: existing });
+      VIEWPORT_WORKER.postMessage({ type: "models", data: existing });
     }
-    return subscribeToSchema?.((schema) => {
-      VIEWPORT_WORKER.postMessage({ type: "streamSchema", data: schema });
+    return subscribeToModels?.((models) => {
+      VIEWPORT_WORKER.postMessage({ type: "models", data: models });
     });
-  }, [isPlayback, getStreamSchema, subscribeToSchema]);
+  }, [isPlayback, getModels, subscribeToModels]);
 
   useEffect(() => {
     VIEWPORT_WORKER.postMessage({

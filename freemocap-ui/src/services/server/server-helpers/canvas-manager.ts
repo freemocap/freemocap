@@ -1,5 +1,4 @@
 import type { SkeletonObservation } from "@/services/server/server-helpers/image-overlay/skeleton-types";
-import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 
 export interface CanvasWorker {
     worker: Worker;
@@ -13,10 +12,9 @@ export class CanvasManager {
     private pendingCanvases: Map<string, HTMLCanvasElement> = new Map();
     private readonly maxWorkerErrors: number = 3;
 
-    // Overlay visibility + schema apply to ALL camera workers. Stored so a worker
+    // Overlay visibility applies to ALL camera workers. Stored so a worker
     // created mid-stream (camera added) gets current state right after init.
     private visibility: { charuco: boolean; skeleton: boolean } = { charuco: true, skeleton: true };
-    private schema: { schemas: Record<string, TrackedObjectDefinition>; activeId: string | null } | null = null;
 
     /**
      * Set or update the canvas for a camera.
@@ -50,9 +48,6 @@ export class CanvasManager {
             // Give the freshly-created worker the current overlay state so a camera
             // added mid-stream composites correctly without waiting for the next toggle.
             worker.postMessage({ type: 'visibility', charuco: this.visibility.charuco, skeleton: this.visibility.skeleton });
-            if (this.schema) {
-                worker.postMessage({ type: 'schema', schemas: this.schema.schemas, activeId: this.schema.activeId });
-            }
 
             this.workers.set(cameraId, {
                 worker,
@@ -80,7 +75,7 @@ export class CanvasManager {
      * happens in the per-camera worker so GPU uploads are independent.
      *
      * ``skeleton`` is the SAME sample's overlay observation for this camera
-     * (the standard stream carries images + overlays in one sample), so the
+     * (the frame message carries images + overlays together), so the
      * worker composites the frame's own overlay — no cross-stream timing.
      */
     public sendFrameToWorker(
@@ -208,14 +203,6 @@ export class CanvasManager {
         this.visibility = { charuco, skeleton };
         for (const { worker, initialized } of this.workers.values()) {
             if (initialized) worker.postMessage({ type: "visibility", charuco, skeleton });
-        }
-    }
-
-    /** Push the active tracker schema (skeleton connections) to every camera worker. */
-    public setSchema(schemas: Record<string, TrackedObjectDefinition>, activeId: string | null): void {
-        this.schema = { schemas, activeId };
-        for (const { worker, initialized } of this.workers.values()) {
-            if (initialized) worker.postMessage({ type: "schema", schemas, activeId });
         }
     }
 

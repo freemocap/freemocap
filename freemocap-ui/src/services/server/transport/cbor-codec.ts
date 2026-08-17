@@ -6,7 +6,7 @@
 // an owned Uint8Array (not a view over the input buffer, which the WebSocket
 // layer may reuse).
 //
-// Status: step 1 of the cutover. Nothing consumes this yet.
+// Status: consumed by TransportService (the kind-keyed dispatcher).
 
 import { decode } from "cbor-x";
 import { parseMessage, type Message } from "./message-contract";

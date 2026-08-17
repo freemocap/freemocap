@@ -71,7 +71,7 @@ interface KeypointLayerProps {
     statsKey: "keypoints" | "skeleton";
     colorMode?: "uniform" | "byBodyPart";
     /** Values per point in the interleaved frame data. Every PointsFrame is
-     *  3-interleaved xyz: SchemaRegistry.resolvePoints strips the 4th column
+     *  3-interleaved xyz: frame-resolution strips the 4th column
      *  (reprojection_error) from KEYPOINTS_3D and SEGMENT_ORIGINS is natively
      *  3-column. */
     stride: 3 | 4;

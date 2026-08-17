@@ -1,7 +1,7 @@
 # Implementation Plan & Progress
 
 > **Historical (frozen 2026-08-14).** The scope table, phases, and dependencies below are **frozen at the
-> docs reorg** — the live queue lives in [HANDOFF.md](HANDOFF.md) + the layer docs
+> docs reorg** — live scope lives in the layer docs
 > ([README.md](README.md)); this tracker gets a fresh rewrite after the F5 gate. The dated Progress log
 > is **history**, not current instruction. The old spec set (`00–14`, `phase-1/`) is archived verbatim
 > under [`archive/`](archive/).
@@ -10,7 +10,7 @@
 
 - The scope table + phases are **frozen** as of the reorg (2026-08-14); `[IN]`/`[LATER]`/`[FUTURE]` tags
   in the archived specs refer to this table's state at freeze time.
-- Live scope + the queue: [HANDOFF.md](HANDOFF.md); live design per layer: [README.md](README.md).
+- Live scope lives in the layer docs ([README.md](README.md) + the 00–04 layers); this tracker is frozen history.
 - The Progress log below is history.
 
 ## Scope table (frozen at the 2026-08-14 reorg)

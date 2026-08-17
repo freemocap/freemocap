@@ -8,8 +8,8 @@ self-describing stream of a standard-human, VRM-1.0-aligned human.
 > compatibility" spec, then absorbed a full rebuild of the human data model (segments, kinematics,
 > tracker mappings). The two are now split **by architectural layer** (below). The old, jumbled,
 > dual-numbered spec set (`00–14` + `phase-1/`) is preserved verbatim under [`archive/`](archive/) — it
-> is history, not guidance. These docs are **built fresh from the committed code**; where they and the
-> code disagree, the code wins and the doc is a bug.
+> is history, not guidance. These docs and the code are two faces of one design conversation — neither
+> is authoritative on its own; where they disagree, reconcile (see House rules below).
 
 ## Layers (read in order)
 
@@ -27,7 +27,7 @@ self-describing stream of a standard-human, VRM-1.0-aligned human.
 Single `00–04` numbering, one folder per layer, descriptive filenames. No `phase-1/`, no duplicate
 numbers, no "which doc-11 do you mean."
 
-## Status (2026-08-15)
+## Status (2026-08-16)
 
 The standard human is **built and green**: skellyforge's 60-segment VRM 1.0 model (name-driven axes,
 keypoint-driven solver, reference geometry, per-group rigid fit), the freemocap realtime backend, and
@@ -36,12 +36,15 @@ frame carries images + overlays + reconstruction, newest-wins, no ack window); t
 draws tracker keypoints as small dots plus reprojected segment-origin landmarks as a connected skeleton.
 The **3D rigid-body bones now render with correct orientation**: `rest_pose.orientations` (per-segment
 rest-frame orientation, VRM-1.0 rest frames) replaced the stale identity map, and the renderer composes
-`ROTATIONS_WORLD · rest_orientation · Q_permute · S`. Remaining: the **F5 full-loop gate** (the manual
-T-pose / arm-bend / hidden-hand checklist), the VMC adapter, then the posthoc rebuild. The next planned refactor is the **message-model swap**: replace the schema-then-samples wire with typed, self-describing CBOR messages dispatched by kind in TransportService — design locked, not yet implemented. Live scope +
-progress: [HANDOFF.md](HANDOFF.md) (the queue + orientation protocol) +
-[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) (historical log).
+`ROTATIONS_WORLD · rest_orientation · Q_permute · S`. The **message-model swap has landed**: the wire is now
+a self-describing CBOR stream of five kinds (`frame` / `log` / `framerate` / `app_state` / `progress`),
+with the frame a fully self-describing document (convention + cameras + models + instances + trackers +
+image) — the schema-then-samples wire and its replace-kinds are retired. Remaining: the **F5 full-loop
+gate** (the manual T-pose / arm-bend / hidden-hand checklist), the **VMC adapter**, then the **posthoc
+rebuild**. Live scope lives in the layer docs; [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) is the
+historical log.
 
-## Canonical conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
+## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
 **mm · right-handed · +Z up · +X forward**, quaternions **wxyz**, **identity == T-pose**,
 `q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the model composition is
@@ -49,10 +52,11 @@ progress: [HANDOFF.md](HANDOFF.md) (the queue + orientation protocol) +
 
 ## House rules for these docs
 
-- **Single source of truth** — each fact lives in exactly one doc, cross-linked from the others. A fact
-  stated twice is a bug.
+- **Single source** — each fact lives in exactly one doc, cross-linked from the others. A fact stated
+  twice is a bug.
 - **Positive definitions** — a doc says what a thing *is*, not the infinite set of what it isn't.
 - **Vocabulary** — keypoint (measured) · landmark (segment-local point) · segment (oriented volume), per
   [ontology.md](ontology.md). "Canonical" as a *mapping layer* stays retired; the old vague "landmark
   *layer*" is retired, but the *term* `landmark` is **revived** with a precise meaning.
-- **Code is truth** — these plans describe the committed code. Drift is a defect to fix, in the doc.
+- **Reconcile, don't defer** — no single artifact (code, docs, conversation) is authoritative. Where they
+  disagree, resolve what is *right* and fix whichever one is stale; never treat one as gospel.

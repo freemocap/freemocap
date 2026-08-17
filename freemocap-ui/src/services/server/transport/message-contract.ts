@@ -1,18 +1,20 @@
 // transport/message-contract.ts
 //
-// The message-model contract: one Zod discriminated union over every kind of
-// self-describing message. Single source of truth for the wire's message
-// shapes — the backend encodes to it (cbor2) and the frontend validates against
-// it (cbor-x + Zod). Replaces the schema-then-samples wire (StreamSchema /
-// ChannelGroup / sample), per current-work-plans/03-transport/message-protocol.md.
+// The message-model contract: one Zod discriminated union over the five message
+// kinds of the self-describing CBOR wire. Single source of truth for the wire's
+// message shapes — the backend encodes to it (cbor2, message_model.py) and the
+// frontend validates against it (cbor-x + Zod).
+//
+// The frame is a fully self-describing document: it carries the coordinate
+// convention, the calibrated cameras, the model definitions (segments +
+// landmarks), the per-frame model instances, the tracker observations, and the
+// image — all in ONE message. A single frame decodes AND renders with zero
+// prior state (there is no decode-vs-render split and no held descriptor).
 //
 // Envelope (every message): kind, version, timestamp, sequence — full names,
 // never abbreviated. 'kind' is the discriminator. An unknown kind or an
 // unsupported version is skipped + logged (fail soft — inbound data); a malformed
 // payload for a KNOWN kind at a SUPPORTED version is a defect and throws.
-//
-// Status: step 1 of the cutover — additive. Nothing consumes this yet; the
-// committed code still runs schema-then-samples.
 
 import { z } from "zod";
 import { LogRecordSchema } from "../server-helpers/log-store";
@@ -24,42 +26,18 @@ export const ENVELOPE = {
   sequence: z.number().int().nonnegative(),
 } as const;
 
-// ── Frame: the per-frame kind ───────────────────────────────────────────
-// One channel is a named column block: kind + names + columns + data (a byte
-// string of packed float32 little-endian, columns by names, row-major). The
-// old overlay_layer byte folds into the two distinct channel kinds
-// (OVERLAY_2D = detections, OVERLAY_REPROJECTIONS = reprojections); camera_id
-// is present only on those per-camera overlay channels.
-export const ChannelBlockSchema = z.object({
-  kind: z.string(),
-  names: z.array(z.string()),
-  columns: z.array(z.string()),
-  data: z.instanceof(Uint8Array),
-  camera_id: z.string().optional(),
-});
-export type ChannelBlock = z.infer<typeof ChannelBlockSchema>;
+// ── Frame payload primitives ────────────────────────────────────────────
 
-export const SubjectSchema = z.object({
-  subject_id: z.number().int(),
-  channels: z.array(ChannelBlockSchema),
-});
-export type FrameSubject = z.infer<typeof SubjectSchema>;
+/** A segment's primary axis: the axis from its origin to its distal point
+ *  (where the child connects, or the tip for a leaf). A signed basis axis name,
+ *  or a normalized 3-vector. */
+export const PrimaryAxisSchema = z.union([
+  z.enum(["x", "y", "z", "-x", "-y", "-z"]),
+  z.tuple([z.number(), z.number(), z.number()]),
+]);
+export type PrimaryAxis = z.infer<typeof PrimaryAxisSchema>;
 
-export const FrameMessageSchema = z.object({
-  kind: z.literal("frame"),
-  ...ENVELOPE,
-  frame_number: z.number().int(),
-  subjects: z.array(SubjectSchema),
-  // Opaque multi-camera JPEG blob (the SkellyCam frontend payload). Absent on
-  // an image-less frame. Per-camera blocks are the documented future shape.
-  image: z.instanceof(Uint8Array).optional(),
-});
-
-// ── Replace kinds (low-frequency, idempotent, latest-wins) ──────────────
-
-export const ConventionMessageSchema = z.object({
-  kind: z.literal("convention"),
-  ...ENVELOPE,
+export const CoordinateConventionSchema = z.object({
   units: z.string(),
   handedness: z.string(),
   up_axis: z.string(),
@@ -68,39 +46,102 @@ export const ConventionMessageSchema = z.object({
   rotation_form: z.string(),
 });
 
-export const ModelMessageSchema = z.object({
-  kind: z.literal("model"),
-  ...ENVELOPE,
-  // Ordered segment names — the name→index authority for the bone renderer.
-  segments: z.array(z.string()),
-  // Per-segment rest-frame orientation (wxyz): local frame → world T-pose.
-  orientations: z.record(
-    z.string(),
-    z.tuple([z.number(), z.number(), z.number(), z.number()]),
-  ),
-  // Per-segment long-axis basis name ("x" | "y" | "z").
-  axes: z.record(z.string(), z.enum(["x", "y", "z"])),
-  // Anthropometric default rest lengths (mm) — the bone renderer's schema-time
-  // length source. Live measured lengths ride the frame's SEGMENT_LENGTHS channel.
-  lengths: z.record(z.string(), z.number()),
-  // Parent→child name pairs (the skeleton connections, for 2D/3D drawing).
-  connections: z.array(z.tuple([z.string(), z.string()])),
-  hierarchy: z.record(z.string(), z.array(z.string())),
-  parents: z.record(z.string(), z.string().nullable()),
-  // Rest landmark positions (mm), keyed by landmark name.
-  rest_positions: z.record(
-    z.string(),
-    z.tuple([z.number(), z.number(), z.number()]),
-  ),
+export const CameraIntrinsicsSchema = z.object({
+  fx: z.number(),
+  fy: z.number(),
+  cx: z.number(),
+  cy: z.number(),
+  k1: z.number(),
+  k2: z.number(),
+  p1: z.number(),
+  p2: z.number(),
 });
 
-export const CameraLayoutMessageSchema = z.object({
-  kind: z.literal("camera_layout"),
-  ...ENVELOPE,
-  camera_ids: z.array(z.string()),
-  // capture-resolution [width, height] px per camera — the overlay coordinate space.
-  image_sizes: z.record(z.string(), z.tuple([z.number().int(), z.number().int()])),
+export const CameraExtrinsicsSchema = z.object({
+  quaternion_wxyz: z.tuple([z.number(), z.number(), z.number(), z.number()]),
+  translation: z.tuple([z.number(), z.number(), z.number()]),
 });
+
+export const CalibratedCameraSchema = z.object({
+  id: z.string(),
+  index: z.number().int(),
+  rotation: z.enum(["none", "clockwise_90", "rotate_180", "counterclockwise_90"]),
+  image_size: z.tuple([z.number().int(), z.number().int()]),
+  intrinsics: CameraIntrinsicsSchema,
+  extrinsics: CameraExtrinsicsSchema,
+  world_position: z.tuple([z.number(), z.number(), z.number()]),
+  world_orientation: z.array(z.tuple([z.number(), z.number(), z.number()])),
+});
+
+export const RestSegmentSchema = z.object({
+  name: z.string(),
+  parent: z.string().nullable(),
+  primary_axis: PrimaryAxisSchema,
+  rest_orientation: z.tuple([z.number(), z.number(), z.number(), z.number()]), // wxyz
+  length_mm: z.number(),
+  rigid_with_parent: z.boolean(),
+});
+export type RestSegment = z.infer<typeof RestSegmentSchema>;
+
+export const RestLandmarkSchema = z.object({
+  name: z.string(),
+  rest_position: z.tuple([z.number(), z.number(), z.number()]).optional(),
+});
+export type RestLandmark = z.infer<typeof RestLandmarkSchema>;
+
+export const ModelDefinitionSchema = z.object({
+  model_id: z.string(),
+  segments: z.array(RestSegmentSchema),
+  landmarks: z.array(RestLandmarkSchema),
+});
+export type ModelDefinition = z.infer<typeof ModelDefinitionSchema>;
+
+/** One index-keyed column block: kind + columns + data (packed float32
+ *  little-endian bytes, columns by names, row-major). Segment/landmark channels
+ *  are index-keyed against the model's ordered symbol tables (names omitted);
+ *  tracker-keypoint + derived channels carry their names inline. camera_id is
+ *  present only on per-camera overlay channels. */
+export const ChannelBlockSchema = z.object({
+  kind: z.string(),
+  columns: z.array(z.string()),
+  data: z.instanceof(Uint8Array),
+  camera_id: z.string().optional(),
+  names: z.array(z.string()).optional(),
+});
+export type ChannelBlock = z.infer<typeof ChannelBlockSchema>;
+
+export const ModelInstanceSchema = z.object({
+  instance_id: z.number().int(),
+  model_id: z.string(),
+  channels: z.array(ChannelBlockSchema),
+});
+export type ModelInstance = z.infer<typeof ModelInstanceSchema>;
+
+export const TrackerObservationSchema = z.object({
+  tracker_id: z.string(),
+  detector_type: z.string(),
+  model_id: z.string(),
+  channels: z.array(ChannelBlockSchema),
+});
+export type TrackerObservation = z.infer<typeof TrackerObservationSchema>;
+
+// ── Frame kind ──────────────────────────────────────────────────────────
+
+export const FrameMessageSchema = z.object({
+  kind: z.literal("frame"),
+  ...ENVELOPE,
+  frame_number: z.number().int(),
+  model_sequence: z.number().int(),
+  convention: CoordinateConventionSchema,
+  cameras: z.array(CalibratedCameraSchema),
+  models: z.array(ModelDefinitionSchema),
+  instances: z.array(ModelInstanceSchema),
+  trackers: z.array(TrackerObservationSchema),
+  // Opaque multi-camera JPEG blob (the SkellyCam frontend payload). Absent on
+  // an image-less frame.
+  image: z.instanceof(Uint8Array).optional(),
+});
+export type FrameMessage = z.infer<typeof FrameMessageSchema>;
 
 // ── Append / telemetry kinds ────────────────────────────────────────────
 
@@ -171,15 +212,20 @@ export const ProgressMessageSchema = z.object({
   camera_id: z.string().optional(),
 });
 
+export type CoordinateConvention = z.infer<typeof CoordinateConventionSchema>;
+export type CameraIntrinsics = z.infer<typeof CameraIntrinsicsSchema>;
+export type CameraExtrinsics = z.infer<typeof CameraExtrinsicsSchema>;
+export type CalibratedCamera = z.infer<typeof CalibratedCameraSchema>;
+export type LogMessage = z.infer<typeof LogMessageSchema>;
+export type DetailedFramerate = z.infer<typeof DetailedFramerateSchema>;
+export type FramerateMessage = z.infer<typeof FramerateMessageSchema>;
+export type AppStateMessage = z.infer<typeof AppStateMessageSchema>;
+export type ProgressMessage = z.infer<typeof ProgressMessageSchema>;
+
 // ── The union ───────────────────────────────────────────────────────────
-// 'calibration' is RESERVED (see message-protocol.md "Pre-swap audit"): today
-// the frontend loads calibration over HTTP; the kind is added to this union when
-// a live-push need exists. Until then a calibration message is an "unknown kind".
+
 export const MessageSchema = z.discriminatedUnion("kind", [
   FrameMessageSchema,
-  ConventionMessageSchema,
-  ModelMessageSchema,
-  CameraLayoutMessageSchema,
   LogMessageSchema,
   FramerateMessageSchema,
   AppStateMessageSchema,
@@ -190,9 +236,6 @@ export type MessageKind = Message["kind"];
 
 export const KNOWN_KINDS = [
   "frame",
-  "convention",
-  "model",
-  "camera_layout",
   "log",
   "framerate",
   "app_state",

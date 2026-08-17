@@ -1,6 +1,7 @@
 import React, {createContext, useContext, useMemo} from "react";
 import {useServerOptional} from "@/services/server/server-context";
-import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/services/server/transport/wire-types';
+import type { RotationsFrame, RollingChannelName } from '@/services/server/transport/frame-types';
+import type { ModelDefinition } from '@/services/server/transport/message-contract';
 
 /**
  * Abstraction over "where do 3D keypoints come from". The Streaming panel
@@ -17,20 +18,17 @@ import type { RotationsFrame, RollingChannelName, StreamSchema } from '@/service
  *
  * `interleaved` is a Float32Array whose layout depends on which stream produced
  * it. Every PointsFrame delivered to consumers is 3-interleaved `x, y, z`:
- * SchemaRegistry.resolvePoints strips KEYPOINTS_3D's 4th column
- * (reprojection_error) and SEGMENT_ORIGINS is natively 3-column:
+ * frame-resolution strips KEYPOINTS_3D's 4th column (reprojection_error) and
+ * SEGMENT_ORIGINS is natively 3-column:
  *
  *   keypoints: [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3
- *   skeleton:  [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3
+ *   skeleton:  [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3  (model segment order)
  *
  * Missing / untriangulated points have NaN coords.
- *
- * The array is dense and schema-ordered when the binary websocket path is
- * active; it may be sparse (only present points) when falling back to JSON.
  */
 export interface KeypointsFrame {
     pointNames: readonly string[];
-    interleaved: Float32Array;   // length = pointNames.length * 4 (keypoints) or * 3 (skeleton)
+    interleaved: Float32Array;
 }
 
 export type KeypointsCallback = (frame: KeypointsFrame) => void;
@@ -40,13 +38,12 @@ export interface KeypointsSource {
     subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
     getLatestSkeleton: () => KeypointsFrame | null;
-    // Standard-stream (F3) additions — optional, for renderers (F4) to consume.
     subscribeToRotations?: (cb: (frame: RotationsFrame) => void) => () => void;
     getLatestRotations?: () => RotationsFrame | null;
     getRollingWindow?: (channelName: RollingChannelName) => unknown[];
-    // Standard-stream schema access (F4 — the rigid-body renderer's name→index map).
-    subscribeToSchema?: (cb: (schema: StreamSchema) => void) => () => void;
-    getStreamSchema?: () => StreamSchema | null;
+    // The model that rides every frame (the rigid-body renderer's name→index map).
+    subscribeToModels?: (cb: (models: ModelDefinition[]) => void) => () => void;
+    getModels?: () => ModelDefinition[] | null;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -74,11 +71,8 @@ export function useHasKeypointsSourceProvider(): boolean {
  */
 export function useKeypointsSource(): KeypointsSource {
     const ctx = useContext(KeypointsSourceContext);
-    // useServerOptional returns null when called outside ServerContextProvider
-    // (e.g. inside a Web Worker where only WorkerDataStore provides keypoints).
     const server = useServerOptional();
 
-    // Build the live adapter lazily so it doesn't allocate when a provider is present.
     const liveAdapter = useMemo<KeypointsSource | null>(() => {
         if (!server) return null;
         return {
@@ -89,8 +83,8 @@ export function useKeypointsSource(): KeypointsSource {
             subscribeToRotations: server.subscribeToRotations,
             getLatestRotations: server.getLatestRotations,
             getRollingWindow: server.getRollingWindow,
-            subscribeToSchema: server.subscribeToSchema,
-            getStreamSchema: server.getStreamSchema,
+            subscribeToModels: server.subscribeToModels,
+            getModels: server.getModels,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
@@ -101,8 +95,8 @@ export function useKeypointsSource(): KeypointsSource {
         server?.subscribeToRotations,
         server?.getLatestRotations,
         server?.getRollingWindow,
-        server?.subscribeToSchema,
-        server?.getStreamSchema,
+        server?.subscribeToModels,
+        server?.getModels,
     ]);
 
     const source = ctx ?? liveAdapter;

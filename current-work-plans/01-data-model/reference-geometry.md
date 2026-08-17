@@ -30,4 +30,4 @@ realtime **skull fit builds its template from measured pair-distances + observed
 reference** (see [../02-pipeline/segment-length-estimation.md](../02-pipeline/segment-length-estimation.md)).
 
 ## Reconciliation notes
-Standardize on `basis[exact-axis-name]`, not "basis[0] = long axis" (name-driven now).
+Standardize on `basis[exact-axis-name]`, not "basis[0] = primary axis" (name-driven now).

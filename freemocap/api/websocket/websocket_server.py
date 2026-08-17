@@ -26,6 +26,8 @@ from fastapi import FastAPI
 from skellycam.api.websocket.websocket_server import ServerFramerateCalculator
 from skellycam.core.recorders.framerate_tracker import FramerateTracker, CurrentFramerate
 from skellycam.core.types.type_overloads import CameraGroupIdString, FrameNumberInt
+from skellycam.core.camera.config.image_rotation_types import RotationTypes
+from skellycam.core.camera.config.camera_config import CameraConfigs
 from skellylogs import get_websocket_log_queue
 from skellylogs.handlers.websocket_log_queue_handler import MIN_LOG_LEVEL_FOR_WEBSOCKET
 from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
@@ -37,6 +39,7 @@ from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import (
     AppStateMessage,
     CalibratedCamera,
+    CameraRotation,
     DetailedFramerate,
     FramerateMessage,
     LogMessage,
@@ -54,6 +57,14 @@ from freemocap.utilities.wait_functions import await_10ms
 from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
 
 logger = logging.getLogger(__name__)
+
+
+_CAMERA_ROTATION_BY_CONFIG = {
+    RotationTypes.NO_ROTATION: CameraRotation.NONE,
+    RotationTypes.CLOCKWISE_90: CameraRotation.CLOCKWISE_90,
+    RotationTypes.ROTATE_180: CameraRotation.ROTATE_180,
+    RotationTypes.COUNTERCLOCKWISE_90: CameraRotation.COUNTERCLOCKWISE_90,
+}
 
 
 class WebsocketServer:
@@ -124,11 +135,43 @@ class WebsocketServer:
         self._relay.set_composition(compose_messages(new_ctx))
 
     def _calibrated_cameras(self) -> tuple[CalibratedCamera, ...]:
-        """The current calibration's cameras, as CalibratedCamera message records."""
+        """The current calibration's cameras, merged with the live camera config's
+
+        rotation + rotated image size. The overlay points and the JPEG both live in
+        the rotated image space, so their dimensions must come from the LIVE camera
+        config (which owns the rotation), not the stale calibration recording."""
         calibration = self._calibration_state.calibration
         if calibration is None:
             return ()
-        return tuple(CalibratedCamera.from_camera_model(cm) for cm in calibration.cameras)
+        configs = self._live_camera_configs()
+        calibration_by_id = {cm.id: cm for cm in calibration.cameras}
+        calibration_by_index = {cm.index: cm for cm in calibration.cameras}
+        cameras = []
+        for live_id, config in configs.items():
+            # Match the calibration camera by id; fall back to its (stable) index
+            # when the camera was re-enumerated and its id drifted (e.g. d441 -> fa5a).
+            camera_model = calibration_by_id.get(live_id) or calibration_by_index.get(config.camera_index)
+            if camera_model is None:
+                continue
+            cameras.append(
+                CalibratedCamera.from_camera_model(
+                    camera_model,
+                    camera_id=live_id,
+                    rotation=_CAMERA_ROTATION_BY_CONFIG.get(config.rotation, CameraRotation.NONE),
+                    image_size=(config.width, config.height),
+                )
+            )
+        return tuple(cameras)
+
+    def _live_camera_configs(self) -> CameraConfigs:
+        """The live camera configs (keyed by camera id) across every alive realtime
+
+        pipeline — the source of the rotation + rotated image size."""
+        configs: CameraConfigs = {}
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                configs.update(pipeline.camera_configs)
+        return configs
 
     @staticmethod
     def _context_signature(ctx: StreamContext) -> tuple:

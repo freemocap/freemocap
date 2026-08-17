@@ -30,6 +30,12 @@ from skellyforge.skellymodels.standard_human.rest_pose import (
     RestLandmark,
     RestSegment,
 )
+from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
+from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
+from skellycam.core.recorders.framerate_tracker import CurrentFramerate
+from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman
+from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 CURRENT_VERSION: int = 0
 
@@ -82,6 +88,13 @@ class RotationFrame(StrEnum):
 class RotationForm(StrEnum):
     QUATERNION = "quaternion"
     EULER = "euler"
+
+
+class CameraRotation(StrEnum):
+    NONE = "none"
+    CLOCKWISE_90 = "clockwise_90"
+    ROTATE_180 = "rotate_180"
+    COUNTERCLOCKWISE_90 = "counterclockwise_90"
 
 
 # - Envelope (composed, not inherited) -
@@ -140,7 +153,7 @@ class CameraIntrinsicsMessage:
     p2: float = 0.0
 
     @classmethod
-    def from_camera_intrinsics(cls, intrinsics: Any) -> "CameraIntrinsicsMessage":
+    def from_camera_intrinsics(cls, intrinsics: CameraIntrinsics) -> "CameraIntrinsicsMessage":
         return cls(
             fx=float(intrinsics.fx),
             fy=float(intrinsics.fy),
@@ -162,7 +175,7 @@ class CameraExtrinsicsMessage:
     translation: tuple[float, float, float]
 
     @classmethod
-    def from_camera_extrinsics(cls, extrinsics: Any) -> "CameraExtrinsicsMessage":
+    def from_camera_extrinsics(cls, extrinsics: CameraExtrinsics) -> "CameraExtrinsicsMessage":
         return cls(
             quaternion_wxyz=tuple(float(c) for c in extrinsics.quaternion_wxyz),
             translation=tuple(float(c) for c in extrinsics.translation),
@@ -174,8 +187,18 @@ class CameraExtrinsicsMessage:
 
 @dataclass(frozen=True, slots=True)
 class CalibratedCamera:
+    """One calibrated camera on the wire.
+
+    ``rotation`` + ``image_size`` define the ROTATED image coordinate space: the
+    2D overlay points and the JPEG both live in this space (the backend rotates
+    the image once, per the live camera config, before tracking and encoding), so
+    a consumer scales overlays by ``image_size`` and needs no separate rotation.
+    ``intrinsics``/``extrinsics`` are the calibration for that same rotated space.
+    """
+
     id: CameraIdString
     index: CameraIndexInt
+    rotation: CameraRotation
     image_size: tuple[int, int]
     intrinsics: CameraIntrinsicsMessage
     extrinsics: CameraExtrinsicsMessage
@@ -183,11 +206,19 @@ class CalibratedCamera:
     world_orientation: tuple[tuple[float, float, float], ...] = ()
 
     @classmethod
-    def from_camera_model(cls, camera_model: Any) -> "CalibratedCamera":
+    def from_camera_model(
+        cls,
+        camera_model: CameraModel,
+        *,
+        camera_id: CameraIdString,
+        rotation: CameraRotation,
+        image_size: tuple[int, int],
+    ) -> "CalibratedCamera":
         return cls(
-            id=CameraIdString(camera_model.id),
+            id=CameraIdString(camera_id),
             index=CameraIndexInt(camera_model.index),
-            image_size=(int(camera_model.image_size[0]), int(camera_model.image_size[1])),
+            rotation=rotation,
+            image_size=(int(image_size[0]), int(image_size[1])),
             intrinsics=CameraIntrinsicsMessage.from_camera_intrinsics(camera_model.intrinsics),
             extrinsics=CameraExtrinsicsMessage.from_camera_extrinsics(camera_model.extrinsics),
             world_position=tuple(float(c) for c in camera_model.world_position),
@@ -198,6 +229,7 @@ class CalibratedCamera:
         return {
             "id": self.id,
             "index": self.index,
+            "rotation": self.rotation.value,
             "image_size": list(self.image_size),
             "intrinsics": self.intrinsics.to_cbor_message(),
             "extrinsics": self.extrinsics.to_cbor_message(),
@@ -215,7 +247,7 @@ class ModelDefinition:
     landmarks: tuple[RestLandmark, ...]
 
     @classmethod
-    def from_standard_human(cls, standard_human: Any) -> "ModelDefinition":
+    def from_standard_human(cls, standard_human: StandardHuman) -> "ModelDefinition":
         from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM  # noqa: PLC0415
         from skellyforge.skellymodels.standard_human.reference_geometry import ReferenceGeometry  # noqa: PLC0415
         lengths = {s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM for s in standard_human.segments}
@@ -340,7 +372,13 @@ class LogRecord:
     @classmethod
     def from_logging_dict(cls, record: dict[str, Any]) -> "LogRecord":
         known = {f.name for f in fields(cls)}
-        return cls(**{key: value for key, value in record.items() if key in known})
+        kwargs = {key: value for key, value in record.items() if key in known}
+        # The websocket log queue emits ``args`` as a list (the args are already
+        # baked into the message); the frozen dataclass declares a tuple and
+        # beartype enforces the hint strictly, so coerce it here.
+        if "args" in kwargs and not isinstance(kwargs["args"], tuple):
+            kwargs["args"] = tuple(kwargs["args"])
+        return cls(**kwargs)
 
 
 @dataclass(frozen=True, slots=True)
@@ -364,7 +402,7 @@ class DetailedFramerate:
     framerate_source: str = ""
 
     @classmethod
-    def from_current_framerate(cls, framerate: Any) -> "DetailedFramerate":
+    def from_current_framerate(cls, framerate: CurrentFramerate) -> "DetailedFramerate":
         return cls(
             mean_frame_duration_ms=float(framerate.mean_frame_duration_ms),
             mean_frames_per_second=float(framerate.mean_frames_per_second),
@@ -462,7 +500,7 @@ class ProgressMessage:
     camera_id: CameraIdString | None = None
 
     @classmethod
-    def from_pipeline_progress(cls, progress: Any) -> "ProgressMessage":
+    def from_pipeline_progress(cls, progress: PipelineProgressMessage) -> "ProgressMessage":
         return cls(
             pipeline_id=str(progress.pipeline_id),
             pipeline_type=str(progress.pipeline_type),

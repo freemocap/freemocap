@@ -32,4 +32,4 @@ The **linkage/chain layer** that would resolve an under-determined segment's twi
 only. `compute_live_bone_basis` is the orphaned breadcrumb (do not delete yet).
 
 ## Reconciliation notes
-Name-driven everywhere (no "basis[0] = long axis"); two tiers, not three.
+Name-driven everywhere (no "basis[0] = primary axis"); two tiers, not three.

@@ -576,38 +576,3 @@ class Triangulator(BaseModel):
         denom = np.sum(valid, axis=0).astype(np.float64)
         denom[denom < 1.5] = np.nan
         return np.sum(norm_zeroed, axis=0) / denom
-
-
-
-
-frame = {
-  kind, version, timestamp, sequence, frame_number, model_sequence,
-
-  convention: { units, handedness, up_axis, forward_axis, rotation_frame, rotation_form },
-
-  cameras: [                     # full camera model (calibration), when available
-    { id, index, image_size, intrinsics: {fx,fy,cx,cy,k1,k2,p1,p2},
-      extrinsics: { quaternion_wxyz, translation }, world_position, world_orientation },
-  ],
-  board: { squares_x, squares_y, square_length_mm, marker_length_mm, aruco_dictionary_enum },  # if calibrated
-  calibration_quality: { reprojection_error_px, n_observations_used, groundplane_aligned, ... }, # if calibrated
-
-  models: [                      # definitions — today one
-    { model_id: "standard_human",
-      segments: [ { name, parent, exact_axis, rest_orientation: [w,x,y,z], length_mm } ],   # 60, ordered
-      landmarks: [ { name, rest_position: [x,y,z] } ],                                       # 76, ordered
-    },
-  ],
-
-  instances: [                   # the data-bearing list (one per tracked thing)
-    { instance_id: 0, model_id: "standard_human",
-      channels: [ SEGMENT_ORIGINS, ROTATIONS_WORLD, ROTATIONS_LOCAL, SEGMENT_LENGTHS, LANDMARKS_3D, DERIVED_POINTS ],
-    },
-  ],
-
-  trackers: [                    # observation sources — keypoints + mapping live here
-    { tracker_id, detector_type, model_id: "standard_human", keypoints: [...], mapping: ... },
-  ],
-
-  image: <jpeg>,
-}

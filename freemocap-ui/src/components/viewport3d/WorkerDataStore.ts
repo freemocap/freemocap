@@ -10,7 +10,8 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import type { RotationsFrame, StreamSchema } from "@/services/server/transport/wire-types";
+import type { RotationsFrame } from "@/services/server/transport/frame-types";
+import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type Point3d, type BodyKinematics, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
@@ -56,7 +57,7 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
 const keypointsChan = makeChannel<KeypointsFrame | null>(null);
 const skeletonChan = makeChannel<KeypointsFrame | null>(null);
 const rotationsChan = makeChannel<RotationsFrame | null>(null);
-const streamSchemaChan = makeChannel<StreamSchema | null>(null);
+const modelsChan = makeChannel<ModelDefinition[] | null>(null);
 const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} });
 const calibChan = makeChannel<LoadedCalibration | null>(null);
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
@@ -108,14 +109,14 @@ export const workerDataStore: KeypointsSource & {
     getLatestKeypoints: keypointsChan.getLatest,
     getLatestSkeleton: skeletonChan.getLatest,
 
-    // Standard-stream schema (the rigid-body renderer's name→slot source)
-    subscribeToSchema: (cb) => {
-        const unsub = streamSchemaChan.subscribe((s) => { if (s) cb(s); });
-        const latest = streamSchemaChan.getLatest();
+    // The model that rides every frame (the rigid-body renderer's name→slot source)
+    subscribeToModels: (cb) => {
+        const unsub = modelsChan.subscribe((m) => { if (m) cb(m); });
+        const latest = modelsChan.getLatest();
         if (latest) cb(latest);
         return unsub;
     },
-    getStreamSchema: streamSchemaChan.getLatest,
+    getModels: modelsChan.getLatest,
 
     // World rotations (ROTATIONS_WORLD) — the rigid-body renderer's orientation source
     subscribeToRotations: (cb) => {
@@ -166,8 +167,8 @@ export const workerDataStore: KeypointsSource & {
             case "skeleton":
                 skeletonChan.dispatch(data as KeypointsFrame);
                 break;
-            case "streamSchema":
-                streamSchemaChan.dispatch(data as StreamSchema);
+            case "models":
+                modelsChan.dispatch(data as ModelDefinition[]);
                 break;
             case "rotations":
                 rotationsChan.dispatch(data as RotationsFrame);

@@ -57,9 +57,8 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
 - **replace-kind** — RETIRED (2026-08-16): the old "convention/model/camera_layout as low-frequency
   replace kinds" model. The frame now carries them inline every frame (self-describing). Kept only to
   document the retired design.
-- **self-describing** — a message carries everything needed to *decode* it (decode-complete); no
-  external descriptor, no cached schema to drift. Rendering may still need a held slice (e.g. the model for
-  bone orientations) — that boundary is render-completeness, which we do not claim.
+- **self-describing** — a message carries everything needed to *decode* and *render* it — the full model rides
+  every frame; no external descriptor, no cached schema to drift, and no decode-vs-render split.
 - **idempotent** — an update whose effect is the same however many times it is applied (full-snapshot
   replace, never a delta).
 - **envelope** — the kind/version/timestamp/sequence header every message carries.

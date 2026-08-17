@@ -253,7 +253,9 @@ def _channel_by_kind(restored: dict, kind: str) -> dict:
 
 
 def _channel_data(channel: dict, cols: int) -> np.ndarray:
-    return np.frombuffer(channel["data"], dtype="<f4").reshape(len(channel["names"]), cols)
+    # Segment/landmark channels are index-keyed (names dropped); the row count
+    # is derivable from the packed float32 byte length alone.
+    return np.frombuffer(channel["data"], dtype="<f4").reshape(-1, cols)
 
 
 def _quat_angle_rad(a: np.ndarray, b: np.ndarray) -> float:
@@ -287,7 +289,8 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     # ROTATIONS_WORLD rows equal the solver's quaternions (float32 wire).
     world_channel = _channel_by_kind(restored, "ROTATIONS_WORLD")
     world_data = _channel_data(world_channel, 4)
-    name_to_idx = {n: i for i, n in enumerate(world_channel["names"])}
+    # ROTATIONS_WORLD is index-keyed against the model's segment order.
+    name_to_idx = {n: i for i, n in enumerate(model.segment_names)}
     for name, q in world.items():
         np.testing.assert_allclose(
             world_data[name_to_idx[name]], np.asarray(q, dtype=np.float32), atol=1e-6
@@ -296,7 +299,8 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     # LANDMARKS_3D carries the rigidified hips_center.
     lm_channel = _channel_by_kind(restored, "LANDMARKS_3D")
     lm_data = _channel_data(lm_channel, 4)
-    hips_idx = lm_channel["names"].index("hips_center")
+    # LANDMARKS_3D is index-keyed against the sorted landmark order.
+    hips_idx = sorted(model.required_landmarks()).index("hips_center")
     np.testing.assert_allclose(
         lm_data[hips_idx, :3], result.body_positions["hips_center"], atol=1e-4
     )

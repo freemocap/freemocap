@@ -206,7 +206,7 @@ def test_segment_length_is_rigid_to_pose_change(rigidifier):
 
 def test_left_hip_anchored_at_observed(rigidifier):
     # ``left_upper_leg`` is ORIGIN-attached (origin ``left_hip`` ≠ ``hips``'s
-    # long axis ``trunk_center``), so it is a root anchored at its observed
+    # primary axis ``trunk_center``), so it is a root anchored at its observed
     # position — ``left_hip`` is not displaced by the tree.
     pose = _upright_rtmpose_pose()
     out = _frame(rigidifier, pose, t=0.0)
@@ -286,7 +286,7 @@ def test_articulated_face_points_stay_observed(rigidifier):
 def test_orphan_anchor_emits_approximate_axis_keypoints(rigidifier):
     # The foot/toes segments' approximate (twist) axis keypoints — left_heel /
     # right_heel (foot twist) and left_small_toe / right_small_toe (toes twist) —
-    # are not the segment origin or long-axis endpoint, so the tree leaves them
+    # are not the segment origin or primary-axis endpoint, so the tree leaves them
     # out. The orphan-anchor rule must still emit them at their observed
     # positions, or those segments silently lose their twist direction every
     # frame and fall to the damped fallback.

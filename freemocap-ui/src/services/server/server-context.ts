@@ -1,10 +1,10 @@
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
-import type { TrackedObjectDefinition } from './server-helpers/tracked-object-definition';
 import type { Point3d, BodyKinematics } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
-import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame, StreamSchema } from './transport/wire-types';
+import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame } from './transport/frame-types';
+import type { ModelDefinition } from './transport/message-contract';
 
 export type CoMCallback = (point: Point3d | null) => void;
 export type RotationsCallback = (frame: RotationsFrame) => void;
@@ -30,17 +30,13 @@ export interface ServerContextValue {
     getLatestKeypoints: () => KeypointsFrame | null;
     getLatestSkeleton: () => KeypointsFrame | null;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
-    trackerSchemas: Record<string, TrackedObjectDefinition>;
-    activeTrackerId: string | null;
-    getActiveSchema: () => TrackedObjectDefinition | null;
-    // Standard-stream (F3) additions
     subscribeToRotations: (cb: RotationsCallback) => () => void;
     getLatestRotations: () => RotationsFrame | null;
     getLatestSegmentLengths: () => SegmentLengthsFrame | null;
     getRollingWindow: (channelName: RollingChannelName) => unknown[];
-    // Standard-stream schema access (F4 — the rigid-body renderer needs it).
-    subscribeToSchema: (cb: (schema: StreamSchema) => void) => () => void;
-    getStreamSchema: () => StreamSchema | null;
+    // The model that rides every frame (the bone renderer's name→index authority).
+    subscribeToModels: (cb: (models: ModelDefinition[]) => void) => () => void;
+    getModels: () => ModelDefinition[] | null;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);

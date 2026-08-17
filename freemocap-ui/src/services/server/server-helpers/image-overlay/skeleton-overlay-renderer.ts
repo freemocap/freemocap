@@ -1,45 +1,19 @@
 // skeleton-overlay-renderer.ts
 //
-// Schema-driven 2D skeleton overlay. Point names and connections come from a
-// `TrackedObjectDefinition` pushed over the `tracker_schemas` handshake
-// message. The renderer knows nothing about RTMPose, MediaPipe, or any
-// specific landmark layout — it draws whatever the active schema advertises.
+// Self-describing 2D skeleton overlay. Point names and connections ride the
+// observation itself (overlay channels carry names inline; connections are the
+// model's parent→child edges), so the renderer knows nothing about RTMPose,
+// MediaPipe, or any specific tracker layout.
 
 import {
     BaseOverlayRenderer,
     DrawStyle,
     Point2D,
 } from "@/services/server/server-helpers/image-overlay/image-overlay-system";
-import {TrackedObjectDefinition} from "@/services/server/server-helpers/tracked-object-definition";
-
-export interface SkeletonPoint {
-    name: string;
-    x: number;
-    y: number;
-    z?: number;
-    visibility?: number;
-}
-
-export interface SkeletonObservation {
-    message_type: 'skeleton_overlay';
-    camera_id: string;
-    frame_number: number;
-    tracker_id: string;
-    image_width: number;
-    image_height: number;
-    points: SkeletonPoint[];
-    /** The fitted skeleton's segment-origin landmarks projected into this
-     * camera — drawn as larger dots with the segment connections between. */
-    landmarks?: SkeletonPoint[];
-    /** Segment parent→child name pairs, drawn between the landmarks. */
-    connections?: [string, string][];
-    // Debug: person bounding box in image pixel coords (xyxy). NaN = absent.
-    bbox_x1?: number;
-    bbox_y1?: number;
-    bbox_x2?: number;
-    bbox_y2?: number;
-    bbox_from_detector?: boolean;
-}
+import type {
+    SkeletonObservation,
+    SkeletonPoint,
+} from "@/services/server/server-helpers/image-overlay/skeleton-types";
 
 // Classification used for colour routing. Kept deliberately loose — any name
 // containing "left" / "right" is treated as a side, otherwise center.
@@ -65,8 +39,6 @@ function classifyFace(name: string): boolean {
 }
 
 export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
-    private schema: TrackedObjectDefinition | null = null;
-
     // --- Styles keyed by classification ---
 
     private readonly bodyStyleCenter: DrawStyle = {
@@ -141,14 +113,9 @@ export class SkeletonOverlayRenderer extends BaseOverlayRenderer {
         showLabels: false,
     };
 
-    /** Provide or update the tracker schema that drives connection lookup. */
-    public setSchema(schema: TrackedObjectDefinition | null): void {
-        this.schema = schema;
-    }
-
     /**
-     * Composite skeleton overlay onto frame. Points come from the observation;
-     * connections come from `this.schema` (resolved by name).
+     * Composite skeleton overlay onto frame. Points AND connections ride the
+     * observation itself — it is fully self-describing.
      */
     public async compositeFrame(
         sourceBitmap: ImageBitmap,

@@ -45,11 +45,6 @@ export interface DrawStyle {
     fillPoint?: boolean;
 }
 
-export interface ObservationMetadata {
-    frame_number: number;
-    [key: string]: any;  // Allow additional metadata
-}
-
 export abstract class BaseOverlayRenderer {
     protected offscreenCanvas: OffscreenCanvas;
     protected ctx: OffscreenCanvasRenderingContext2D;
@@ -264,35 +259,6 @@ export abstract class BaseOverlayRenderer {
         // Draw fill
         this.ctx.fillStyle = fillColor;
         this.ctx.fillText(text, x, y);
-    }
-
-    /**
-     * Draw info overlay with metadata
-     */
-    protected drawInfoOverlay(
-        metadata: ObservationMetadata,
-        additionalInfo?: string[]
-    ): void {
-        const lines: string[] = [
-            `Frame: ${metadata.frame_number}`,
-            ...(additionalInfo || [])
-        ];
-
-        // Calculate background size
-        const lineHeight = 25;
-        const bgHeight = lines.length * lineHeight + 10;
-        const bgWidth = 500;
-
-        // Draw background
-        this.ctx.fillStyle = this.INFO_BG;
-        this.ctx.fillRect(5, 5, bgWidth, bgHeight);
-
-        // Draw lines
-        let y = 25;
-        for (const line of lines) {
-            this.drawText(line, 10, y, 14, this.TEXT_COLOR, this.TEXT_STROKE, 2);
-            y += lineHeight;
-        }
     }
 
     /**

@@ -1,7 +1,7 @@
-// transport/index.ts — barrel for the F3 transport/decoder layer.
-export * from "./wire-types";
-export * from "./StandardStreamDecoder";
-export * from "./SchemaRegistry";
+// transport/index.ts — barrel for the self-describing message transport.
+export * from "./message-contract";
+export * from "./frame-types";
+export * from "./frame-resolution";
+export * from "./cbor-codec";
 export * from "./RollingWindowStore";
-export * from "./RoutingTable";
 export * from "./TransportService";

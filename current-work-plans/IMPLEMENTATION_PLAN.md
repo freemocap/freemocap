@@ -20,7 +20,7 @@ port the solve onto it and delete the old system.
   `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit
   blendshapes). DONE.
 - **YAML definitions** — flat part files (pelvis, axial, arm, hand, leg, foot, face) with sidedness +
-  Y-mirroring + `$include` composability. DONE (50 segments authored).
+  Y-mirroring + `$include` composability. DONE (49 segments authored).
 - **Solve/hydration port** — port `orientation_solver.py` + `reference_geometry.py` onto the new
   classes: hydrate landmarks from keypoints, solve the rigid body (Kabsch for 3+ landmarks), derive
   lengths from `rest_position`. The detailed design:
@@ -55,7 +55,7 @@ port the solve onto it and delete the old system.
   `JointLinkage` / `KinematicChain` / `HumanSkeleton` / `FaceBlendShapes` with `from_yaml`
   loaders, typed config (`cls(**data)`, no string-key indexing), `$include` composability, and
   sidedness via `sided: true` parts instantiated left/right with Y-mirroring. Authored the full
-  standard human as flat part files (pelvis, axial, arm, hand, leg, foot, face) — 50 segments / 49
+  standard human as flat part files (pelvis, axial, arm, hand, leg, foot, face) — 49 segments / 48
   linkages / 15 chains, audited green (one root, unique names, linkages == segments − 1, right-side
   mirrored, shared landmarks resolved by name agreement, lengths derived from `rest_position`). The face
   is 52 ARKit blendshapes (eyes/ears/nose are LANDMARKS on the skull, not segments). NEXT: the

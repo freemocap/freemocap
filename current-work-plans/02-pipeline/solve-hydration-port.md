@@ -2,8 +2,8 @@
 
 **Status: the plan for the next skellyforge work.** The new ontology classes
 (`AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
-`HumanSkeleton` / `FaceBlendShapes`) and the flat YAML definitions are **landed** (50 segments,
-49 linkages, 15 chains — audited green). The next step wires them into the solve: build the T-pose,
+`HumanSkeleton` / `FaceBlendShapes`) and the flat YAML definitions are **landed** (49 segments,
+48 linkages, 15 chains — audited green). The next step wires them into the solve: build the T-pose,
 hydrate landmarks from keypoints, solve segment poses, derive lengths, then delete the old system.
 
 ## Why this, why now

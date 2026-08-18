@@ -38,7 +38,7 @@ into typed objects (references are objects, not strings):
 1. **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
    `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
 2. **YAML definitions** — the standard human split into flat part files (pelvis, axial, arm, hand, leg,
-   foot, face) with sidedness + Y-mirroring + `$include` composability. Done (50 segments authored).
+   foot, face) with sidedness + Y-mirroring + `$include` composability. Done (49 segments authored).
 3. **Solve/hydration port** — port `orientation_solver.py` + `reference_geometry.py` onto the new
    classes: hydrate landmarks from keypoints, solve the rigid body (Kabsch for 3+ landmarks), and derive
    lengths from `rest_position`. The detailed design:
@@ -53,7 +53,7 @@ test suite — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 **mm · right-handed · +Z up · +X forward**, quaternions **wxyz**, **identity == T-pose**,
 `q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the standard human is
-**50 segments**, composed from YAML parts (single-sourced in the [glossary](00-foundation/glossary.md)).
+**49 segments**, composed from YAML parts (single-sourced in the [glossary](00-foundation/glossary.md)).
 
 ## House rules for these docs
 

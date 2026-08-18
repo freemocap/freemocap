@@ -13,7 +13,7 @@ classical MDS for rigid templates.
 - **3+ landmarks (full rigid body)** — solve the rotation by **Kabsch** over the whole landmark cloud
   (reference rest positions → live positions). The head is the 7-point skull rigid body; hips, feet, toes
   are likewise full rigid bodies.
-- **2 landmarks (simple)** — swing + damped minimal roll (the exact axis + the critically-damped filter).
+- **2 landmarks (simple)** — swing + damped minimal roll (the primary direction + the critically-damped filter).
 - **linkage / chain** — a linkage computes the joint angle `conj(q_parent)·q_child`; a chain is the IK /
   FABRIK unit (future).
 

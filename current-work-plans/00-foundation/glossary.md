@@ -44,15 +44,16 @@ are **keypoint → mapping → landmark → segment → linkage → chain → sk
   basis vector it defines), a **kind**, and a **`target_landmark`** (in the segment's `landmarks`). Its
   direction is `positions[target_landmark] − positions[origin_landmark]` — the segment's own geometry
   only.
-  - **EXACT** — the segment's defining direction, resolved directly every frame.
-  - **APPROXIMATE** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
-    exact axis; when absent, the segment's roll falls to the damped minimal-roll tier.
+  - **primary direction** — the segment's defining direction (the frame's hard seed), resolved directly
+    every frame.
+  - **twist direction** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
+    primary direction; when absent, the segment's roll falls to the damped minimal-roll tier.
 - **standard human** — the composed `HumanSkeleton` (body midline + limbs ×2 + hands ×2 + face),
   defined in YAML and loaded by `HumanSkeleton.from_yaml`.
 
 ## Twist tiers (a *consequence* of the declaration, not a separate policy)
 
-1. **Resolved** — an APPROXIMATE axis is declared and usable this frame → the roll resolves from the
+1. **Resolved** — a twist direction is declared and usable this frame → the roll resolves from the
    segment's own geometry.
 2. **Damped-minimal** — otherwise → swing-only, roll carried by the critically-damped filter.
 

@@ -1,11 +1,11 @@
 # Segment Lengths (derived, not estimated)
 
 **Describes:** how a segment's length is obtained. In the new ontology, length is **derived** from the
-segment's exact-axis target landmark's `rest_position`.
+segment's primary direction's target landmark `rest_position`.
 
 ## What this covers
 
-`RigidBodySegment.length` = `|distal.rest_position|` (the exact-axis target, authored in the segment's
+`RigidBodySegment.length` = `|distal.rest_position|` (the primary direction's target, authored in the segment's
 own local frame). Subject scaling is a uniform scale of every `rest_position`.
 
 ## Status

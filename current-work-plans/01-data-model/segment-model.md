@@ -16,7 +16,6 @@ class AnatomicalLandmark:
 @dataclass(frozen=True, slots=True)
 class AxisDefinition:
     axis: Literal["x","y","z","-x","-y","-z"]
-    kind: Literal["exact","approximate"]
     target_landmark: str
     rest_direction: tuple[float, float, float] | None = None
 
@@ -105,27 +104,27 @@ segments:
     origin_landmark: hips_center
     landmarks: [hips_center, trunk_center, left_hip, right_hip]
     axes:
-      - {axis: y, kind: exact,       target_landmark: trunk_center, rest_direction: [0,0,1]}
-      - {axis: x, kind: approximate, target_landmark: right_hip,    rest_direction: [1,0,0]}
+      - {axis: y, target_landmark: trunk_center, rest_direction: [0,0,1]}
+      - {axis: x, target_landmark: right_hip, rest_direction: [1,0,0]}
   left_upper_leg:
     parent: hips
     origin_landmark: left_hip
     landmarks: [left_hip, left_knee]
     axes:
-      - {axis: y, kind: exact, target_landmark: left_knee, rest_direction: [0,0,-1]}
+      - {axis: y, target_landmark: left_knee, rest_direction: [0,0,-1]}
   left_lower_leg:
     parent: left_upper_leg
     origin_landmark: left_knee
     landmarks: [left_knee, left_ankle]
     axes:
-      - {axis: y, kind: exact, target_landmark: left_ankle, rest_direction: [0,0,-1]}
+      - {axis: y, target_landmark: left_ankle, rest_direction: [0,0,-1]}
   left_foot:
     parent: left_lower_leg
     origin_landmark: left_ankle
     landmarks: [left_ankle, left_foot_ball, left_heel]
     axes:
-      - {axis: y, kind: exact,       target_landmark: left_foot_ball, rest_direction: [1,0,0]}
-      - {axis: z, kind: approximate, target_landmark: left_heel,      rest_direction: [0,0,-1]}
+      - {axis: y, target_landmark: left_foot_ball, rest_direction: [1,0,0]}
+      - {axis: z, target_landmark: left_heel, rest_direction: [0,0,-1]}
 
 chains:
   left_leg: {start: hips, end: left_toes}

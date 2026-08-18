@@ -26,12 +26,12 @@ doc needs one of these facts, it links here.
 
 Each segment's rest frame is right-handed and declared by **name**, not slot:
 
-- **Body / hand segments:** the EXACT axis is declared on **`y`**, with **+Y toward the child bone**
-  (the VRM 1.0 humanoid rule).
-- **Face bones:** the EXACT axis is declared on **`z`**, with **+Z = the gaze direction** (VRM's
+- **Body / hand segments:** the primary direction is declared on **`y`**, with **+Y toward the child
+  bone** (the VRM 1.0 humanoid rule).
+- **Face bones:** the primary direction is declared on **`z`**, with **+Z = the gaze direction** (VRM's
   face-bone rule).
 - The remaining basis axes come from the segment's own declared direction reference (Gram-Schmidt'd
-  against the exact axis) plus the T-pose geometry — never a fixed global axis.
+  against the primary direction) plus the T-pose geometry — never a fixed global axis.
 
 See [../01-data-model/segment-model.md](../01-data-model/segment-model.md) for how axes are declared and
 resolved.

@@ -118,11 +118,11 @@ Port `reference_geometry.py` onto the new classes. For each `RigidBodySegment`, 
 geometry** (the per-segment origin/basis/length — a part of the segment):
 
 - **origin** = the `origin_landmark`'s rest position (authored in the parent's local frame).
-- **distal** = the exact-axis `target_landmark`'s rest position (authored in the segment's own frame).
+- **distal** = the primary direction's `target_landmark` rest position (authored in the segment's own frame).
 - **length** = `|distal − origin|` — **derived from the rest positions** (subject scaling = a uniform
   scale of every `rest_position`).
-- **basis** = the rest frame: Gram-Schmidt the exact `rest_direction` + the approximate `rest_direction`
-  (`coordinate_frame_ops.assemble_named_basis` / `build_segment_frame`).
+- **basis** = the rest frame: Gram-Schmidt the primary direction (hard seed) + the twist direction (soft
+  hint) (`coordinate_frame_ops.assemble_named_basis` / `build_segment_frame`).
 
 Then compose the segment transforms root→leaf to get every landmark's **rest-world position**. That whole
 structure is `StandardHumanTPose` — the thing the orientation solver measures against, and the thing that
@@ -151,7 +151,7 @@ For each segment, in hierarchy order:
   (`coordinate_frame_ops.align_point_sets_kabsch`): align the segment's rest landmark cloud → its live
   landmark cloud. Over-determined, so **no twist ambiguity, no damping**. The head is the 7-point skull;
   hips / feet / toes are likewise full rigid bodies.
-- **2 landmarks (simple)** — swing (`rotation_between_vectors` on the exact axis) + the
+- **2 landmarks (simple)** — swing (`rotation_between_vectors` on the primary direction) + the
   critically-damped minimal roll (`critically_damped_orientation.py`).
 - **rigid child** (`rigid_with_parent`) — inherit the parent's world rotation; no independent solve.
 - **local** = `conj(q_parent) · q_child` (the D1 convention, [conventions.md](../00-foundation/conventions.md)).

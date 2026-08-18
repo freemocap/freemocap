@@ -56,9 +56,6 @@ from skellyforge.skellymodels.standard_human.human_skeleton import (
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
 )
-from skellyforge.skellymodels.standard_human.tracker_contract import (
-    validate_all_tracker_families,
-)
 from skellyforge.kinematics.skeleton_rigidifier import rigidify_landmarks
 from skellyforge.kinematics.tpose import build_standard_human_tpose
 
@@ -111,7 +108,7 @@ CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 def _reproject_segment_origins(
         *,
         calibration,
-        standard_human: StandardHuman,
+        standard_human: HumanSkeleton,
         solver_landmarks: dict[str, np.ndarray],
 ) -> dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]]:
     """Project the fitted skeleton's segment origins into every camera.
@@ -279,20 +276,15 @@ class RealtimeAggregatorNode(AggregatorNode):
         # Validated once at init via skellyforge's validate_all_tracker_families —
         # no Pydantic in the hot loop.
         detector_type = pipeline_config.camera_node_config.detector_type
-        biomechanics = (
-            load_body_biomechanics(detector_type)
-            if aggregator_config.center_of_mass_enabled
-            else None
-        )
+        # The body biomechanics carries the tracker->standard-human mapping —
+        # needed by the rigidifier + solver regardless of center-of-mass.
+        biomechanics = load_body_biomechanics(detector_type)
 
         # Composed standard human — shared by the skeleton rigidifier (segment
         # trees) and the orientation solver (reference geometry). Built once per
         # run (D16): the model is cheap to build, and every recording gets a
         # fresh instance — no module globals.
         standard_human = HumanSkeleton.standard_human()
-        # Fail loud at load: a tracker-family mapping gap must raise before the
-        # pipeline starts, not mid-run when a required keypoint goes missing.
-        validate_all_tracker_families(standard_human)
 
         # Skeleton fitting is stateless: rigidify_landmarks runs per frame from
         # the loaded model + T-pose. Nothing is created or recreated.
@@ -392,15 +384,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                     detector_type_changed = new_detector_type != detector_type
                     detector_type = new_detector_type
 
-                    if aggregator_config.center_of_mass_enabled:
-                        if biomechanics is None or detector_type_changed:
-                            biomechanics = load_body_biomechanics(detector_type)
-                            logger.info(
-                                f"RealtimeAggregationNode [{camera_group_id}] "
-                                f"(re)loaded body biomechanics for detector_type={detector_type}"
-                            )
-                    else:
-                        biomechanics = None
+                    if biomechanics is None or detector_type_changed:
+                        biomechanics = load_body_biomechanics(detector_type)
+                        logger.info(
+                            f"RealtimeAggregationNode [{camera_group_id}] "
+                            f"(re)loaded body biomechanics for detector_type={detector_type}"
+                        )
 
                     # Skeleton fitting is stateless — nothing to recreate.
                     skeleton_fitting_enabled = aggregator_config.skeleton_fitting_enabled
@@ -691,7 +680,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         rigid_result = rigidify_landmarks(
                             standard_human,
                             reference_geometry,
-                            filtered_keypoints,
+                            biomechanics.tracker_mapping.apply(filtered_keypoints),
                         )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)

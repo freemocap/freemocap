@@ -19,5 +19,5 @@ classical MDS for rigid templates.
 
 ## Status
 
-The new ontology classes are landed; `solve_frame_orientations` (the old swing+twist solver) is being
-ported onto `RigidBodySegment` / `AnatomicalLandmark`, with the Kabsch path for 3+ landmark segments.
+The solve is landed: `solve_frame_orientations` takes `HumanSkeleton` + `StandardHumanTPose` + hydrated
+landmarks and returns `(FrameOrientationResult, SolveState)` (Kabsch for 3+ landmarks, swing+twist for 2).

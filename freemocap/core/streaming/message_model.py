@@ -257,7 +257,7 @@ class ModelDefinition:
                 RestLandmark.from_position(n, tpose.landmarks[n])
                 if n in tpose.landmarks
                 else RestLandmark(name=n)
-                for n in sorted(standard_human.required_landmarks())
+                for n in standard_human.landmark_names
             ),
         )
 

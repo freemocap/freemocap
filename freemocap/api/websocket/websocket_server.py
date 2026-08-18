@@ -153,11 +153,14 @@ class WebsocketServer:
             camera_model = calibration_by_id.get(live_id) or calibration_by_index.get(config.camera_index)
             if camera_model is None:
                 continue
+            rotation = _CAMERA_ROTATION_BY_CONFIG.get(config.rotation, CameraRotation.NONE)
+            # config.width / config.height are ALREADY the rotated dimensions
+            # (CameraConfig.width/height swap for PORTRAIT orientation).
             cameras.append(
                 CalibratedCamera.from_camera_model(
                     camera_model,
                     camera_id=live_id,
-                    rotation=_CAMERA_ROTATION_BY_CONFIG.get(config.rotation, CameraRotation.NONE),
+                    rotation=rotation,
                     image_size=(config.width, config.height),
                 )
             )

@@ -1,5 +1,8 @@
 # Current Work Plans
 
+> **New here? Start with [`HANDOFF.md`](HANDOFF.md)** — a one-file orientation on the current state,
+> the decisions already made, and the next work.
+
 Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
 message stream** — the two intertwined efforts that turn synchronized camera frames into a
 self-describing stream of a standard-human, VRM-1.0-aligned human.
@@ -39,15 +42,18 @@ into typed objects (references are objects, not strings):
    `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
 2. **YAML definitions** — the standard human split into flat part files (pelvis, axial, arm, hand, leg,
    foot, face) with sidedness + Y-mirroring + `$include` composability. Done (49 segments authored).
-3. **Solve/hydration port** — port `orientation_solver.py` + `reference_geometry.py` onto the new
-   classes: hydrate landmarks from keypoints, solve the rigid body (Kabsch for 3+ landmarks), and derive
-   lengths from `rest_position`. The detailed design:
-   [solve-hydration-port.md](02-pipeline/solve-hydration-port.md). Next.
-4. **Delete the old system** — after the port, excise `segment_definition.py` / `reference_geometry.py` /
-   the old `StandardHuman` / `rest_pose.py` machinery.
+3. **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
+   (Kabsch for 3+ landmarks, swing+twist for 2, `(result, state)` split) + the stateless
+   `rigidify_landmarks`. Done.
+4. **Realtime re-point** — the aggregator, message model, producers, and websocket now load
+   `HumanSkeleton.standard_human()` + the new solve; the old freemocap `RealtimeSkeletonRigidifier` and
+   `tracker_contract.py` were deleted. Done (the live loop runs + overlays match).
+5. **Delete the old skellyforge system** — after charuco + posthoc migrate: excise `segment_definition.py` /
+   `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
+   `standard_human_model.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
 
-Then: charuco revival + posthoc parity (the app's prior functionality), the VMC adapter, and the frontend
-test suite — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+Then: charuco re-implementation + posthoc alignment (the remaining two consumers), the VMC adapter, and
+the frontend test suite — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 

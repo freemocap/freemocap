@@ -28,9 +28,11 @@ handled** (damped vs. batch).
   Y-mirroring + `$include` composability. DONE (49 segments / 48 linkages / 15 chains).
 - **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
   (Kabsch for 3+ landmarks, swing+twist for 2, result/state split). DONE (identity-at-T-pose green).
-- **Realtime re-point** — re-point the realtime path (`realtime_aggregator_node.py`, `message_model.py`,
-  `skeleton_rigidifier.py`, `channel_helpers.py` + producers) to the new API; fix the frontend renderers
-  for the renamed segments (49 not 60, `pelvis`, `clavicle`, no `toes`/face segments). NEXT.
+- **Realtime re-point** — the aggregator loads `HumanSkeleton.standard_human()` + `build_standard_human_tpose` +
+  `rigidify_landmarks` + the new `solve_frame_orientations` (mapping tracker keypoints → standard-human
+  landmarks first); the message model + producers emit the 49-segment `RestSegment`/`RestLandmark` (derived
+  `length_mm`); the old freemocap `RealtimeSkeletonRigidifier` wrapper was deleted (rigidification now lives
+  in skellyforge's `rigidify_landmarks`). DONE (the live loop runs + overlays match).
 - **Charuco re-implementation** — author the board as a YAML skeleton (one rigid segment + marker-corner
   landmarks, `sided: false`) + re-point the charuco path (`charuco_model_from_observations.py`, the
   `Board` actor). Tests the extensibility: the core serves a non-human rigid body.
@@ -62,11 +64,22 @@ human and the board are two instances of the same neutral core.
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Realtime re-point | delete the old system | Re-point the realtime path + confirm the live 3D looks correct |
 | Charuco + posthoc migration | delete the old system | Both paths load + solve via the new core |
 
 ## Progress log
 
+- **2026-08-18 (solve port + realtime re-point landed — the live loop runs on the new core).** The
+  solve/hydration port landed: `StandardHumanTPose` + `build_standard_human_tpose` + the re-pointed
+  `solve_frame_orientations` (Kabsch for 3+ landmarks, swing+twist for 2, `(result, state)` split) + the
+  stateless `rigidify_landmarks` action. Re-pointed the realtime path (aggregator, message model, producers,
+  websocket) to the new API; deleted the old freemocap `RealtimeSkeletonRigidifier` + `tracker_contract.py`
+  (the "every landmark must be produced" completeness contract was wrong for an articulated model).
+  Re-authored every `rest_position` into its segment's LOCAL frame (primary/twist direction, left == right
+  local geometry, only `rest_direction` mirrors Y); dropped `upper_chest` (49 segments / 48 linkages / 15
+  chains); replaced `exact`/`approximate` with primary/twist (the seed/hint of the Gram-Schmidt build).
+  Two debugging fixes on the way: map tracker keypoints → standard-human landmarks BEFORE `rigidify_landmarks`
+  (the old rigidifier did the mapping internally), and do NOT swap `config.width`/`config.height` (they are
+  already the rotated dimensions).
 - **2026-08-17 (standard-human ontology rebuild — classes + YAML landed).** Rebuilt the skellyforge
   standard human onto the seven-layer ontology: `AnatomicalLandmark` / `RigidBodySegment` /
   `JointLinkage` / `KinematicChain` / `HumanSkeleton` / `FaceBlendShapes` with `from_yaml`

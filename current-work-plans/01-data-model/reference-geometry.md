@@ -22,5 +22,5 @@ position, at identity. One build serves both the orientation solver and the rest
 
 ## Status
 
-The new ontology (classes + YAML) is landed; the T-pose build (`StandardHumanTPose`) is the next step of
-the solve/hydration port. The old `reference_geometry.py` stays on disk until that port lands.
+The T-pose build (`build_standard_human_tpose` → `StandardHumanTPose`) is landed. The old
+`reference_geometry.py` is slated for deletion (see IMPLEMENTATION_PLAN.md).

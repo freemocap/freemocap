@@ -1,10 +1,9 @@
 # Solve + Hydration Port
 
-**Status: the plan for the next skellyforge work.** The new ontology classes
-(`AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
-`HumanSkeleton` / `FaceBlendShapes`) and the flat YAML definitions are **landed** (49 segments,
-48 linkages, 15 chains — audited green). The next step wires them into the solve: build the T-pose,
-hydrate landmarks from keypoints, solve segment poses, derive lengths, then delete the old system.
+**Status: DONE (2026-08-18).** The solve/hydration port landed: `build_standard_human_tpose` +
+`StandardHumanTPose` + the re-pointed `solve_frame_orientations` (Kabsch for 3+ landmarks, swing+twist
+for 2, `(result, state)` split) + the stateless `rigidify_landmarks`. The realtime path was re-pointed to
+it and the live loop runs. This doc remains as the design record.
 
 ## Why this, why now
 

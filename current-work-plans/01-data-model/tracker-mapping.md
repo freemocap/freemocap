@@ -1,8 +1,9 @@
 # Tracker → Standard-Human Mapping
 
 **Describes:** skellytracker's `*_to_standard_human_mapping.yaml` + `core.io` mapping machinery;
-skellyforge's load-time completeness contract (`skellymodels/standard_human/tracker_contract.py`);
-freemocap's mapping-path SSOT (`freemocap/core/tasks/mocap/tracker_mappings.py`).
+freemocap's mapping-path SSOT (`freemocap/core/tasks/mocap/tracker_mappings.py`). The model is
+**articulated**: a tracker hydrates the landmarks it can see (body + hand keypoints + `anatomical_offset`
+derived points); the remaining landmarks (toes, condyles, deep points) ride the segment's rigid solve.
 
 ## What this covers
 The **one interface** between skellytracker (keypoints) and skellyforge (segments): the mapping YAMLs.
@@ -13,14 +14,11 @@ skellyforge's output identical regardless of which tracker fed it.
 ## Key facts 
 - Mapping forms: string / list (mean) / dict / **`anatomical_offset`** (a landmark built at an offset from
   tracked keypoints — e.g. `head_vertex`, `foot_ball`, `jaw`, mouth corners for RTMPose).
-- **Completeness contract:** skellyforge validates at load that a tracker mapping produces the full
-  landmark set; a gap **raises** (the sanctioned lateral skellyforge→skellytracker import,
-  base install only — see the workspace `CLAUDE.md` import rules).
-- **Boundary rule (decided 2026-08-14):** the rest-pose/model side never imports skellytracker at
-  runtime; the ONE sanctioned import is `tracker_contract.py` (the load-time completeness contract —
-  base install, no detector extras). Shared anatomical ratios (face/mouth) are owned on the human side
-  and pinned against the mappings by a **test**, not shared — see
-  [`ontology.md`](../ontology.md)'s boundary section.
+- **Boundary rule:** skellyforge **never imports skellytracker or freemocap**. The mapping is applied
+  in freemocap (e.g. `biomechanics.tracker_mapping.apply(filtered_keypoints)` in the realtime
+  aggregator) to turn tracker keypoints into standard-human landmarks before the rigidifier + solver.
+  The old load-time "every landmark must be produced" completeness contract was removed — an articulated
+  model is driven by the AVAILABLE tracker information, not a fixed full landmark set.
 
 ## Reconciliation notes
 Files are `*_to_standard_human_mapping.yaml`; detector method `standard_human_mapping_path()`. The old

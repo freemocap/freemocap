@@ -24,7 +24,7 @@ class KeypointsProducer(ChannelProducer):
         if message is None or stream_ctx is None:
             return []
         tracker_names = tuple(stream_ctx.tracker_keypoint_names)
-        landmark_names = tuple(sorted(stream_ctx.standard_human.required_landmarks()))
+        landmark_names = tuple(stream_ctx.standard_human.landmark_names)
         return [
             ChannelBlock(
                 kind=ChannelKind.KEYPOINTS_3D,

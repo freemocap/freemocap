@@ -1,30 +1,42 @@
 # Glossary
 
-The vocabulary shared across every layer, grounded in [the ontology](../ontology.md). The data nouns are
-**keypoint** (measured), **landmark** (segment-local named point), and **segment** (oriented volume).
-"Canonical" as a *mapping layer* stays retired; **the term "landmark" is revived** with a precise meaning.
+The vocabulary shared across every layer, grounded in [the ontology](../ontology.md). The seven layers
+are **keypoint → mapping → landmark → segment → linkage → chain → skeleton**; the data nouns are
+**keypoint** (measured), **landmark** (segment-local anatomical point), and **segment** (rigid body).
 
-## Data (the ontology stack — see [ontology.md](../ontology.md))
+## Data (the seven layers — see [ontology.md](../ontology.md))
 
 - **keypoint** — a measured 3D world point, tracker-named. Pure measurement: exactly what the tracker
   emits — never derived, never added to. Produced by **skellytracker**.
 - **mapping** — the one seam: hydrates a landmark from keypoints (direct / weighted / offset). The
   skellytracker ↔ skellyforge interface.
-- **landmark** — a **named point in a segment's local frame** (skellyforge). Two faces: a *static local
-  definition* (rest shape) + a *per-frame world hydration* (or absent = occlusion). The atom of the model.
-  Hydrated from keypoints by the mapping — a landmark is a direct copy of a keypoint, or **built** from
-  keypoints (a mean, weighted sum, or `anatomical_offset`, e.g. `head_vertex` / `foot_ball` / `jaw`).
-  *(The old vague "landmark **layer**" is retired; this precise sense is revived — standard biomech/rigging usage.)*
-- **segment** — an **oriented volume of space**: origin + orientation (+ length), solved from its
-  landmarks. We build the segments to be compatible with VRM-1.0 conventions. The model is
-  **60 segments / 76 landmarks** (single-sourced here; composition per
-  [01-data-model/segment-model.md](../01-data-model/segment-model.md)). 2 hydrated landmarks → simple
-  (roll carried by the damped filter); 3+ non-collinear → full 6-DOF.
-- **rigid child** — a segment authored `rigid_with_parent` whose landmarks are all members of its
-  parent's landmark set: no independent solve, it inherits the parent's pose composed with its rest
-  local rotation. Declared, never inferred. (The head's eye / ear / nose segments.)
-- **skeleton** — the rooted parent→child tree of segments; a joint angle is the *derived* relative
-  orientation, not a modeled constraint.
+- **landmark** (`AnatomicalLandmark`) — a **named point defined in the local frame of a segment**.
+  Static face: `name` + a precise `anatomical_definition` (medical language, e.g. "midpoint of the
+  intercondylar fossa") + `rest_position` (a 3-vector, in the local frame named by
+  `reference_frame`). Hydrated face: a per-frame world position (a trajectory). A landmark is a direct
+  copy of a keypoint, or **built** from keypoints (mean / weighted sum / `anatomical_offset`, e.g.
+  `head_vertex` / `foot_ball` / `jaw`).
+- **segment** (`RigidBodySegment`) — a **rigid body**: origin + orientation + length, solved from its
+  landmarks. **Fully specified** with 3+ non-collinear landmarks; **partially specified** with only 2
+  (roll carried by the damped minimal-roll tier). Its `length` is **derived** from its landmarks'
+  `rest_position` values.
+- **linkage** (`JointLinkage`) — **two segments that share a point** (upper arm + lower arm at the
+  elbow). Derived from the `parent` edges; the shared point is the child's `origin_landmark`.
+- **chain** (`KinematicChain`) — **three or more linked segments**: a `start` → `end` path in the
+  tree. Straight (a limb) or branching (the wrist fan = several chains sharing a start). The unit
+  IK/FABRIK solves.
+- **skeleton** (`HumanSkeleton`) — **a collection of chains** composing one standard human.
+- **rigid child** — a segment authored `rigid_with_parent` that inherits its parent's pose instead of
+  solving independently (declared, never inferred). Not used for the face: the eyes / ears / nose are
+  LANDMARKS on the skull, not segments.
+
+## The T-pose
+
+- **standard human T-pose** (`StandardHumanTPose`) — the **whole** built reference pose: every
+  segment's resolved reference geometry + every landmark's rest position, at `identity == T-pose`.
+  Keyed to the standard human (other model families will each have their own T-pose).
+- **reference geometry** — the **per-segment** resolved rest math: `origin` (3-vector), `basis` (3×3
+  rest frame), `length`. A *part of* the segment, built from its landmarks + axes.
 
 ## Frame construction
 
@@ -35,8 +47,8 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
   - **EXACT** — the segment's defining direction, resolved directly every frame.
   - **APPROXIMATE** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
     exact axis; when absent, the segment's roll falls to the damped minimal-roll tier.
-- **reference geometry** — the T-pose each live pose is measured against (`identity == T-pose`).
-- **standard human** — the composed 60-segment model (body midline + limbs ×2 + hands ×2 + face).
+- **standard human** — the composed `HumanSkeleton` (body midline + limbs ×2 + hands ×2 + face),
+  defined in YAML and loaded by `HumanSkeleton.from_yaml`.
 
 ## Twist tiers (a *consequence* of the declaration, not a separate policy)
 
@@ -44,28 +56,17 @@ The vocabulary shared across every layer, grounded in [the ontology](../ontology
    segment's own geometry.
 2. **Damped-minimal** — otherwise → swing-only, roll carried by the critically-damped filter.
 
-> The **linkage/chain (constraint/solve) layer** — resolving an under-determined segment's twist from its
-> neighbours — is **future work** (see [ontology.md](../ontology.md)); do not describe it as current.
-> Twist today is own-geometry-or-damped.
+> The linkage/chain layers now own the constraint/solve math (joint angles, IK, twist-backfill) — see
+> [ontology.md](../ontology.md). Twist at the *segment* level is still own-geometry-or-damped.
 
 ## Transport (the message model — see ../03-transport/message-protocol.md)
 
 - **message** — the unit of the stream: a typed, versioned, self-describing value with an envelope
   (kind, version, timestamp, sequence) plus a kind payload. There is no schema and no sample.
-- **kind** — a message type tag, named by source (frame, convention, model, camera_layout, calibration,
-  log, framerate, app_state, progress). A new data type is a new kind.
+- **kind** — a message type tag (frame, log, framerate, app_state, progress). A new data type is a new kind.
 - **frame** — the per-frame kind: self-describing named column blocks (names inline) plus images.
-- **replace-kind** — RETIRED (2026-08-16): the old "convention/model/camera_layout as low-frequency
-  replace kinds" model. The frame now carries them inline every frame (self-describing). Kept only to
-  document the retired design.
-- **self-describing** — a message carries everything needed to *decode* and *render* it — the full model rides
-  every frame; no external descriptor, no cached schema to drift, and no decode-vs-render split.
+- **self-describing** — a message carries everything needed to *decode* and *render* it — the full model
+  rides every frame; no external descriptor, no cached schema to drift, and no decode-vs-render split.
 - **idempotent** — an update whose effect is the same however many times it is applied (full-snapshot
   replace, never a delta).
 - **envelope** — the kind/version/timestamp/sequence header every message carries.
-
-## Retired (do not reintroduce outside `archive/`)
-The old **landmark *layer*** (a vague intermediate fitted-point stage) — but note **the *term* `landmark`
-is revived** above with a precise meaning. Also retired: `canonical` (mapping sense),
-`long_axis_keypoint`/`twist_keypoint`, `from_keypoint`/`to_keypoint`. (MediaPipe's own `PoseLandmarker`
-*product* name is the sole exception.)

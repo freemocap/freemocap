@@ -1,68 +1,198 @@
+# The Standard-Human Definition (YAML + classes)
 
-# Segment Model
+The standard human is defined in **YAML** and compiled into first-class objects whose references are
+objects, not strings. This is the worked example behind [the ontology](../ontology.md).
 
-**Describes:** `skellyforge/skellymodels/standard_human/` — `segment_definition.py`, `segment_parts.py`,
-`body_part.py`, `hand_part.py`, `face_part.py`, `standard_human_model.py`.
+## The classes
 
-## What this covers
+```python
+@dataclass(frozen=True, slots=True)
+class AnatomicalLandmark:
+    name: str
+    anatomical_definition: str
+    rest_position: tuple[float, float, float]      # in reference_frame's local frame
+    reference_frame: str                            # the OWNING segment name
 
-The standard-human, VRM-1.0-aligned human as a composed set of rigid-body **segments**, each defined **from
-hydrated landmarks** — origin + orientation + length. A segment is declared by its **landmarks** (the
-points rigid on it), an **origin landmark**, and **tagged axis declarations** built from those landmarks;
-the per-frame world positions of the landmarks (hydrated through the tracker mapping, or absent =
-occlusion) drive the solve. *(The retired thing was the old vague "landmark **layer**" — a separate
-fitted-point stage. The precise landmark is alive and is the atom of the model, per
-[the ontology](../ontology.md).)*
+@dataclass(frozen=True, slots=True)
+class AxisDefinition:
+    axis: Literal["x","y","z","-x","-y","-z"]
+    kind: Literal["exact","approximate"]
+    target_landmark: str
+    rest_direction: tuple[float, float, float] | None = None
 
-## Key facts (committed code)
+@dataclass(frozen=True, slots=True)
+class RigidBodySegment:
+    name: str
+    parent: "RigidBodySegment | None"              # object after load
+    landmarks: tuple[AnatomicalLandmark, ...]      # objects after load
+    origin_landmark: AnatomicalLandmark            # object after load
+    axes: tuple[AxisDefinition, ...]
+    rigid_with_parent: bool = False
 
-- **`SegmentDefinition`** = `name`, `parent`, `parent_attachment` (`ORIGIN`/`DISTAL`), `landmarks`,
-  `origin_landmark`, `axes`, `length_ratio`, `rotation_limits?`, `rigid_with_parent?`.
-- **`rigid_with_parent: bool = False`** — declares a **rigid child** (see the
-  [glossary](../00-foundation/glossary.md)): the segment's pose is never solved from its own hydrated
-  landmarks; it inherits the parent's solved pose composed with its authored rest local rotation.
-  **Load-time validation (fail-loud):** every landmark of a rigid child must be a member of its parent's
-  `landmarks` — a rigid child whose geometry escapes the parent's rigid set is an authoring error and
-  raises. Declared, never inferred.
-- **`AxisDefinition(axis: Literal["x","y","z","-x","-y","-z"], kind: EXACT|APPROXIMATE, target_landmark, rest_direction=None)`** — name-driven (signed):
-  the EXACT axis may sit on any of x/y/z (no positional rules); the direction is
-  `positions[target_landmark] − positions[origin_landmark]`; **every axis target must be a member of the
-  segment's own `landmarks`** (enforced at load — a segment's frame is a function of its own rigid
-  geometry only, never an external reference).
-- **Authoring convention (VRM 1.0):** body/hand segments declare the EXACT axis on **y** (+Y toward the
-  child bone); face segments on **z** (+Z = gaze). The machinery is axis-name-agnostic; the convention
-  lives in the authored data.
-- **Composition:** midline (6) + limb ×2 (7 each = 14) + hand ×2 (16 each = 32) + face (8) = **60
-  segments**; `required_landmarks()` = **76**. Counts are single-sourced in the
-  [glossary](../../current-work-plans/00-foundation/glossary.md).
-- **Head** = the 7-point skull clique (`head_center`, `head_vertex`, `nose`, left/right eyes, left/right
-  ears); `jaw` + the mouth corners articulate (not in the clique). The face-detail segments split the
-  same way: **eyes / ears / nose are rigid children of the head** (their landmarks are all skull-clique
-  members); **jaw / mouth corners articulate** and anchor at observed.
-- Frozen dataclasses, fail-loud `__post_init__` validators (origin ∈ landmarks, every axis target ∈
-  landmarks, distinct names, finite `length_ratio`); dict-backed name→segment + parent→children indices
-  built once.
-- `rotation_limits` is **declared, not yet enforced** (the future constraint layer will read it).
+    @property
+    def length(self) -> float:
+        # origin_landmark is (0,0,0) in THIS segment's frame by construction,
+        # so length is the distal landmark's |rest_position|.
+        ...
 
-## Graded capability
+@dataclass(frozen=True, slots=True)
+class JointLinkage:                                # derived, not authored
+    name: str                                      # the shared landmark's name
+    parent_segment: RigidBodySegment
+    child_segment: RigidBodySegment
+    shared_landmark: AnatomicalLandmark
 
-A rigid body is a point set with fixed pairwise distances; a 2-point segment is the degenerate case.
+@dataclass(frozen=True, slots=True)
+class KinematicChain:
+    name: str
+    start_segment: RigidBodySegment
+    end_segment: RigidBodySegment
 
-- **2 landmarks (simple):** origin + exact axis directly; the roll is **not resolved** by the segment's
-  own geometry — the critically-damped minimal roll carries it.
-- **3+ landmarks (complex):** full 6-DOF via the MDS-template + rotation-only Procrustes fit (see
-  [02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md)).
-- **Rigid child (declared):** no independent solve — inherits the parent's solved pose composed with its
-  rest local rotation. The grade is authored, not derived: `rigid_with_parent` with the landmark-
-  containment validation above.
+    @property
+    def segments(self) -> tuple[RigidBodySegment, ...]:
+        # walk parent edges from end_segment back up to start_segment, reversed
 
-*(Decision 2026-08-14: the per-segment observed/unobserved-DOF **flag** was dropped — the grade is the
-seam and is visible directly from the hydrated-landmark count on the stream. See the
-[ontology](../ontology.md) constitution.)*
+@dataclass(frozen=True, slots=True)
+class HumanSkeleton:
+    name: str
+    segments: tuple[RigidBodySegment, ...]
+    chains: tuple[KinematicChain, ...]
 
-## Reconciliation notes
+@dataclass(frozen=True, slots=True)
+class StandardHumanTPose:                          # the WHOLE built reference
+    segments: dict[str, <per-segment reference geometry>]  # origin/basis/length
+    landmarks: dict[str, tuple[float, float, float]]
 
-Kill any `long_axis_keypoint`/`twist_keypoint`/`from_keypoint`/`to_keypoint`, `rigid_points`,
-`origin_keypoint`, `target_keypoint`, `required_keypoints()` — all renamed by the landmark sweep
-(`landmarks`, `origin_landmark`, `target_landmark`, `required_landmarks()`). `rest_roll` is removed
-(dead field — authored 0.0 everywhere, read nowhere).
+class FaceBlendShapes:                              # 52 ARKit blendshapes (NOT segments)
+    name: str
+    blendshapes: dict[str, float]
+```
+
+## Parts + sidedness
+
+The real definitions are split into **flat part files** (`pelvis.yaml`, `axial.yaml`, `arm.yaml`,
+`hand.yaml`, `leg.yaml`, `foot.yaml`, `face.yaml`), listed by the top-level `standard_human.yaml`:
+
+```yaml
+parts:
+  pelvis: {$include: pelvis.yaml}
+  axial:  {$include: axial.yaml}
+  arm:    {$include: arm.yaml}   # sided: true -> instantiated left_ + right_
+  ...
+```
+
+A **midline** part is used once; a **sided** part (`sided: true`) is authored with generic names and
+instantiated `left_* + right_*`, the right side Y-mirrored. Shared joints (`hip`, `knee`, `wrist`) are
+defined once with explicit `left_/`right_` names in the midline/parent part and referenced by generic name
+in the sided part (name agreement).
+
+## The leg, in YAML (simplified, pre-parts)
+
+```yaml
+landmarks:
+  hips_center:  {definition: "midpoint of the two hip joint centers", reference_frame: hips,            rest_position: [0, 0, 0]}
+  trunk_center: {definition: "midpoint of the two hip joint centers at the iliac crest", reference_frame: hips, rest_position: [0, 0, 254]}
+  left_hip:     {definition: "left femoral head center",                reference_frame: hips,            rest_position: [0, 88, 0]}
+  right_hip:    {definition: "right femoral head center",               reference_frame: hips,            rest_position: [0, -88, 0]}
+  left_knee:    {definition: "midpoint of the intercondylar fossa",     reference_frame: left_upper_leg,   rest_position: [0, 0, -429]}
+  left_ankle:   {definition: "talocrural joint center",                 reference_frame: left_lower_leg,   rest_position: [0, 0, -430]}
+  left_foot_ball: {definition: "first metatarsophalangeal joint",       reference_frame: left_foot,        rest_position: [45, 0, 0]}
+  left_heel:    {definition: "posterior calcaneal tuberosity",          reference_frame: left_foot,        rest_position: [0, 0, 0]}
+
+segments:
+  hips:
+    parent: null
+    origin_landmark: hips_center
+    landmarks: [hips_center, trunk_center, left_hip, right_hip]
+    axes:
+      - {axis: y, kind: exact,       target_landmark: trunk_center, rest_direction: [0,0,1]}
+      - {axis: x, kind: approximate, target_landmark: right_hip,    rest_direction: [1,0,0]}
+  left_upper_leg:
+    parent: hips
+    origin_landmark: left_hip
+    landmarks: [left_hip, left_knee]
+    axes:
+      - {axis: y, kind: exact, target_landmark: left_knee, rest_direction: [0,0,-1]}
+  left_lower_leg:
+    parent: left_upper_leg
+    origin_landmark: left_knee
+    landmarks: [left_knee, left_ankle]
+    axes:
+      - {axis: y, kind: exact, target_landmark: left_ankle, rest_direction: [0,0,-1]}
+  left_foot:
+    parent: left_lower_leg
+    origin_landmark: left_ankle
+    landmarks: [left_ankle, left_foot_ball, left_heel]
+    axes:
+      - {axis: y, kind: exact,       target_landmark: left_foot_ball, rest_direction: [1,0,0]}
+      - {axis: z, kind: approximate, target_landmark: left_heel,      rest_direction: [0,0,-1]}
+
+chains:
+  left_leg: {start: hips, end: left_toes}
+```
+
+> Note: `rest_position` values are **mm in the local frame of `reference_frame`**, authored once.
+> `left_knee` is `[0,0,-429]` in `left_upper_leg`'s frame; `left_lower_leg` references it as its
+> `origin_landmark` and inherits it as its local `(0,0,0)` **by construction** — no duplication.
+
+## Loading (three passes, fail-loud)
+
+```python
+def load_config(node, base: Path):
+    # $include: a dict with the single key "$include" loads that file in place
+    if isinstance(node, dict) and set(node) == {"$include"}:
+        p = base / node["$include"]
+        return load_config(yaml.safe_load(p.read_text()), p.parent)
+    if isinstance(node, list):  return [load_config(v, base) for v in node]
+    if isinstance(node, dict):  return {k: load_config(v, base) for k, v in node.items()}
+    return node
+
+@classmethod
+def from_yaml(cls, path: Path) -> "HumanSkeleton":
+    cfg = load_config(yaml.safe_load(path.read_text()), path.parent)
+    # pass 1: landmarks (objects)
+    landmarks = {n: AnatomicalLandmark(name=n, **c) for n, c in cfg["landmarks"].items()}
+    # pass 2: segments — resolve parent / landmarks / origin_landmark names → objects
+    #         (KeyError on an unknown name = the typo's exact line)
+    segments = resolve_segments(cfg["segments"], landmarks)
+    # pass 3: linkages derived from parent edges; chains = start→end paths
+    linkages = derive_linkages(segments)          # child.origin_landmark IS the shared point
+    chains = tuple(KinematicChain(n, segs[c["start"]], segs[c["end"]])
+                   for n, c in cfg.get("chains", {}).items())
+    return cls(cfg["name"], tuple(segments.values()), chains)
+```
+
+## The compiled objects
+
+```python
+>>> skeleton = HumanSkeleton.from_yaml("standard_human.yaml")
+>>> upper_leg = skeleton.segment("left_upper_leg")
+>>> upper_leg.parent                    # → <RigidBodySegment "hips">          (object)
+>>> upper_leg.origin_landmark           # → <AnatomicalLandmark "left_hip">     (object)
+>>> upper_leg.origin_landmark.reference_frame  # → "hips"
+>>> upper_leg.length                    # → 429.0  (‖[0,0,-429]‖)
+
+>>> linkage = skeleton.linkage("left_knee")
+>>> linkage.parent_segment              # → <RigidBodySegment "left_upper_leg">
+>>> linkage.child_segment               # → <RigidBodySegment "left_lower_leg">
+>>> linkage.shared_landmark             # → <AnatomicalLandmark "left_knee">
+
+>>> leg = skeleton.chain("left_leg")
+>>> leg.segments   # → (hips, left_upper_leg, left_lower_leg, left_foot, left_toes)
+```
+
+## Branching: the wrist fan
+
+A branch is several chains sharing a `start`:
+
+```yaml
+chains:
+  left_thumb:  {start: left_hand, end: left_thumb_distal}
+  left_index:  {start: left_hand, end: left_index_distal}
+  left_middle: {start: left_hand, end: left_middle_distal}
+  left_ring:   {start: left_hand, end: left_ring_distal}
+  left_little: {start: left_hand, end: left_little_distal}
+```
+
+Each `KinematicChain.segments` is the path `left_hand → … → fingertip`; the five chains share the
+`left_hand` segment, which is exactly the branching structure FABRIK reconciles.

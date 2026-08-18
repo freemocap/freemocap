@@ -21,8 +21,8 @@ An unknown kind or version is logged once and skipped.
 
 ## ServerContextProvider becomes thin
 
-ServerContextProvider no longer owns the frame decode/ack loop or the JSON if/else chain; kinds route
-through TransportService. The subscriber sets remain as the fan-out to the viewport worker. The frame's
+TransportService owns the frame decode + kind dispatch; ServerContextProvider wires the subscriber sets
+and the canvas/worker rendering. The subscriber sets remain as the fan-out to the viewport worker. The frame's
 overlay + image are handled by the canvas workers; the 3D rigid-body renderer reads the frame's
 self-describing model + rotations directly.
 

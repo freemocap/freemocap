@@ -1,32 +1,25 @@
-# Reference Geometry
+# Reference Geometry (the standard-human T-pose)
 
-**Describes:** `skellyforge/skellymodels/standard_human/reference_geometry.py`.
+**Describes:** the **T-pose** each live pose is measured against (`identity == T-pose`). In the new
+ontology this is **`StandardHumanTPose`**, built from `RigidBodySegment` + `AnatomicalLandmark` —
+length derived from `rest_position`.
 
 ## What this covers
-The **T-pose** each live pose is measured against — one build serves both the orientation solver
-(`identity == T-pose`) and the rest-pose message.
+
+The built T-pose: every segment's reference geometry (origin / basis / length) + every landmark's rest
+position, at identity. One build serves both the orientation solver and the rest-pose message.
 
 ## Key facts
-- Built from composed segments + per-subject measured lengths. Three passes: rest directions (right side
-  mirrored via −Y) → origins + rest keypoint positions → per-segment bases.
-- **Schematic pose:** ORIGIN branches collapse to the parent's origin (no widths/fan geometry); live
-  solves are unaffected (they read live keypoints). Absolute rest *positions* of some points (finger
-  origins) are schematic, not metric.
-- **`SegmentReferenceGeometry`** = `origin`, `basis` (rows [x̂, ŷ, ẑ]), `length`.
-- **Rest approximate axis:** an authored `rest_direction` on the approximate axis is **authoritative** where the
-  schematic geometry can't be trusted (off-chain / degenerate targets), taking precedence over the
-  target-position branch — this is the 2026-08-14 fix that keeps the **head's forward axis anterior**
-  (the shared off-chain `nose` slot is last-writer-wins and must not drive the head's frame).
-- `nose` is popped from the returned keypoints (off-chain, no single standard rest position; the tracker
-  supplies it live).
 
-## Known defect (fix this iteration)
+- Each landmark's `rest_position` is authored **once**, in its `reference_frame`'s local frame (see
+  [segment-model.md](segment-model.md)).
+- A segment's `length` is **derived** from its exact-axis target's `rest_position`.
+- The rest frame (basis) is built from the segment's axes — exact + approximate, Gram-Schmidt'd.
+- The **skull is non-degenerate by construction**: the eyes / ears / nose are authored as distinct
+  anterior / lateral landmarks on the head, so the head is a full 7-point rigid body.
+- The **face is not part of the segment tree** — it is 52 ARKit blendshapes (`FaceBlendShapes`).
 
-The reference skull is currently **degenerate on disk** (eyes coincide with `head_center` at rest). This
-is a **bug to fix**, not an accepted "inert" quirk — a correctly-built skull is not degenerate. The
-degeneracy traces to the old convention still present in the posthoc code, not the latest reference
-geometry. Tracked in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md) ("fix the reference-skull
-degeneracy").
+## Status
 
-## Reconciliation notes
-Standardize on `basis[exact-axis-name]`, not "basis[0] = primary axis" (name-driven now).
+The new ontology (classes + YAML) is landed; the T-pose build (`StandardHumanTPose`) is the next step of
+the solve/hydration port. The old `reference_geometry.py` stays on disk until that port lands.

@@ -29,29 +29,31 @@ The **first milestone is reached**: the full end-to-end pipeline works — camer
 length estimation + fit → orientation solve → self-describing frame message → transport → decode → 3D
 rigid-body render. The wire is a self-describing CBOR stream of five kinds (`frame` / `log` /
 `framerate` / `app_state` / `progress`); the frame is a fully self-describing document (convention +
-cameras + models + instances + trackers + image). The schema-then-samples wire and its replace-kinds are
-retired.
+cameras + models + instances + trackers + image).
 
-**The next iteration** returns the app to its prior functionality inside the new architecture, so the old
-system can be removed entirely:
+**The current iteration** rebuilds the skellyforge standard human onto the full seven-layer ontology —
+keypoint → mapping → landmark → segment → linkage → chain → skeleton — defined in **YAML** and compiled
+into typed objects (references are objects, not strings):
 
-1. **Charuco revival** — bring charuco board tracking back up: skellytracker's charuco data → the
-   standard-human model → display (2D overlay + 3D). Convert the dormant charuco overlay renderer +
-   calibration to the self-describing system.
-2. **Posthoc parity** — rebuild the posthoc mocap pipeline onto the new segment model + kinematics, so
-   realtime (online, per-frame, damped) and posthoc (batch, unbounded window) share one model, one
-   solver, one length estimator.
-3. **Remove the old system** — with charuco + posthoc on the new architecture, excise the old skellyforge
-   `managers`/`models` layer + the old posthoc imports.
+1. **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
+   `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
+2. **YAML definitions** — the standard human split into flat part files (pelvis, axial, arm, hand, leg,
+   foot, face) with sidedness + Y-mirroring + `$include` composability. Done (50 segments authored).
+3. **Solve/hydration port** — port `orientation_solver.py` + `reference_geometry.py` onto the new
+   classes: hydrate landmarks from keypoints, solve the rigid body (Kabsch for 3+ landmarks), and derive
+   lengths from `rest_position`. The detailed design:
+   [solve-hydration-port.md](02-pipeline/solve-hydration-port.md). Next.
+4. **Delete the old system** — after the port, excise `segment_definition.py` / `reference_geometry.py` /
+   the old `StandardHuman` / `rest_pose.py` machinery.
 
-Supporting workstreams (see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)): the VMC adapter, the
-frontend test suite (planned specifically), the rotate-once-at-capture consolidation, and polish items.
+Then: charuco revival + posthoc parity (the app's prior functionality), the VMC adapter, and the frontend
+test suite — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
 **mm · right-handed · +Z up · +X forward**, quaternions **wxyz**, **identity == T-pose**,
-`q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the model composition is
-**60 segments / 76 landmarks** (single-sourced in the [glossary](00-foundation/glossary.md)).
+`q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the standard human is
+**50 segments**, composed from YAML parts (single-sourced in the [glossary](00-foundation/glossary.md)).
 
 ## House rules for these docs
 
@@ -59,8 +61,7 @@ frontend test suite (planned specifically), the rotate-once-at-capture consolida
   twice is a bug.
 - **Positive definitions** — a doc says what a thing *is*, not the infinite set of what it isn't.
 - **Vocabulary** — keypoint (measured) · landmark (segment-local point) · segment (oriented volume), per
-  [ontology.md](ontology.md). "Canonical" as a *mapping layer* stays retired; the old vague "landmark
-  *layer*" is retired, but the *term* `landmark` is **revived** with a precise meaning.
+  [ontology.md](ontology.md).
 - **Reconcile, don't defer** — no single artifact (code, docs, conversation) is authoritative. Where they
   disagree, resolve what is *right* and fix whichever one is stale; never treat one as gospel.
 - **Scope lives here, not in history** — the current iteration's scope is this README +

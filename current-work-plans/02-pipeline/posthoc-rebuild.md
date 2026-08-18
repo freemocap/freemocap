@@ -19,6 +19,6 @@ That coexistence is the seam this workstream closes.
 
 1. Enumerate every old-layer import in the posthoc/calibration path.
 2. Re-point each to the new segment model + kinematics (one model, one solver, one length estimator).
-3. Delete the old `managers`/`models` layer + the `tracker_info/canonical_*.yaml` files.
+3. Delete the old `managers`/`models` layer + the `tracker_info/*.yaml` files.
 4. Note: `VideoNodeOutputTopic` has an unbounded-queue TODO (posthoc aggregation can't yet run
    concurrently with video nodes) — capture it here when the workstream starts.

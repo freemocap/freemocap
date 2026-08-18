@@ -16,7 +16,8 @@ How the two efforts are verified, and the two runtime invariants the tests defen
 |-------|--------------|-------|
 | **Unit — model** | Segment/axis validation, composition, reference geometry (right-handed, mirroring, scales linearly), `identity == T-pose` (world + local). | skellyforge `tests/` |
 | **Unit — kinematics** | Quaternion algebra, Kabsch/Umeyama, the orientation solver's two tiers, the damped filter, the rigid-fit (MDS + Procrustes). | skellyforge `tests/` |
-| **Completeness contract** | Every tracker mapping produces the full 76 landmarks; a gap raises at load. | skellyforge `tracker_contract.py` + tests |
+| **Completeness contract** | Every tracker mapping produces the full landmark set; a gap raises at load. | skellyforge `tracker_contract.py` + tests |
+| **YAML definition loader** | `HumanSkeleton.from_yaml` composes parts, resolves references to objects, mirrors the right side, and derives lengths; a bad reference fails at load. | skellyforge `tests/test_lower_body_skeleton.py` |
 | **Wire contract** | message **golden bytes**; Python encoder ↔ TS decoder parity. | freemocap `tests/` + freemocap-ui harness |
 | **Backend integration** | frame message build, WebSocket send-path (serializer / relay / backpressure). | freemocap `tests/` |
 | **Full loop (F5 — the gate)** | Cameras → tracker → map → estimate → solve → encode → transport → decode → render, end to end. Landed: the backend loop test (`test_full_loop.py`) + the TS integration harness. **The manual full-loop run is the user's gate** (T-pose at start, arm bend without pop, hidden-hand degradation, no schema drift). Gates the posthoc rebuild. | backend `test_full_loop.py` (2) + TS integration harness (3) |

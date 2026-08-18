@@ -51,7 +51,3 @@ model's ordered segments/landmarks, so those names are dropped. Channel kinds: K
 LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D,
 SEGMENT_LENGTHS, OVERLAY_REPROJECTIONS.
 
-## Retired types
-
-StreamSchema, ChannelGroup, SchemaRegistry, DecodedSample/TypedArrayBlock (the schema-resolved sample),
-and the hand-rolled isX type guards — replaced by the self-describing frame document above.

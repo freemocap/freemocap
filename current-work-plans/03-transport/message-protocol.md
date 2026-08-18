@@ -7,13 +7,9 @@ stale descriptor.
 
 ## Why
 
-The old schema-then-samples wire made the client's ability to decode depend on a separately-held
-descriptor — a **stateful coupling**: the descriptor and the data can fall out of sync *silently*, because
-nothing in a sample says which descriptor it assumes. Two processes that start, stop, and reconnect
-independently (browser + server) make that desync a permanent liability. Self-describing messages remove
-the coupling: any message can be interpreted on its own terms. The second-order win is surface-area
-reduction — no held descriptor, no change-detection, no resend lifecycle, no schema-before-samples
-ordering guarantee; just the single invariant a one-writer lock already gives us (send order).
+Messages are **self-describing**: each carries its own descriptor inline, so any message can be
+interpreted on its own terms. The only shared invariant is the send order a one-writer lock already
+guarantees.
 
 CBOR (not JSON / MessagePack / Protobuf) because it is the standards-track self-describing *binary* format:
 native byte strings carry the JPEG payload and the packed Float32 arrays directly (no base64, no
@@ -100,9 +96,5 @@ timestamp + per-kind sequence let a client detect drops, reordering, and cadence
 kind with a declared payload shape + a client handler — no changes to the envelope, framing, relay, or
 existing kinds.
 
-## Retired (the schema/sample model)
-
-StreamSchema, ChannelGroup, block_kind/dtype_code, the producer-composed schema, the composite signature +
-schema-resend machinery, the frontend SchemaRegistry, the LSL-style schema-then-samples wire, and the
-`tracker_schemas` handshake. `TrackedObjectDefinition` (the TYPE) survives — it is the playback
-stick-figure's connection source, not part of this wire.
+`TrackedObjectDefinition` (the TYPE) is the playback stick-figure's connection source — it belongs to the
+playback path, not this wire.

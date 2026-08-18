@@ -5,7 +5,7 @@
 
 ## What this covers
 
-The full live path: cameras → tracker (keypoints) → mapping → length estimation + fit → orientation solve
+The full live path: cameras → tracker (keypoints) → mapping → length + rigid fit → orientation solve
 → frame message → transport. The `RealtimeAggregatorNode` is where per-frame reconstruction happens and the
 aggregator output message is produced.
 
@@ -28,6 +28,7 @@ needed for it:
 
 ## Status
 
-**Closed end to end (2026-08-17).** The full loop works (cameras → … → 3D render) and is the milestone the
-posthoc rebuild is gated on. Remaining plan item: remove the per-frame old-model
-`StreamingSegmentLengthMonitor` from the aggregator (folded into the "remove the old system" workstream).
+**Closed end to end (2026-08-17).** The full loop works (cameras → … → 3D render). The solve is being
+ported onto the new ontology classes (`RigidBodySegment`/`AnatomicalLandmark` — see
+[kinematics-engine.md](kinematics-engine.md)); the old `SegmentLengthEstimator` /
+`StreamingSegmentLengthMonitor` retire with that port.

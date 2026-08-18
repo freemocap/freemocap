@@ -1,29 +1,23 @@
 # Kinematics Engine
 
-**Describes:** `skellyforge/kinematics/` — `orientation_solver.py`, `coordinate_frame_ops.py`,
-`quaternion_math.py`, `critically_damped_orientation.py`, `rigid_point_set.py`.
+**Describes:** `skellyforge/kinematics/` — the math kernel that solves segment poses from landmarks.
 
 ## What this covers
-Declared keypoints → per-segment world + local quaternions, `identity == T-pose`. The math kernel
-(verified sound in the 2026-08-14 audit): `R = liveᵀ·ref`, Gram-Schmidt frame build, Kabsch/Umeyama
-(det=+1), classical MDS for rigid templates.
 
-## Key facts (committed code)
-- **`build_segment_frame(axes, positions, origin_landmark)`** — the ONE frame builder. Name-driven: each
-  axis fills its declared basis slot (x/y/z); the exact axis seeds, the approximate is Gram-Schmidt'd,
-  the third is the cross product. Collinearity gate degrades a bad approximate to `(None, False)`.
-- **`solve_frame_orientations`** — walks segments in hierarchy order; per segment: swing
-  (`rotation_between_vectors(ref.basis[exact], live_exact)`), then **two-tier twist** — resolved from the
-  live frame, else damped-minimal via `critically_damped_orientation`. Local = `conj(parent)·child` (D1).
-  A **rigid child** skips the frame build entirely: `q_world = q_parent_world ⊗ q_rest_local`, no damping
-  (the parent's rotation is already damped) — the child inherits the parent's stability by construction.
-- **`rigid_point_set.py`** — MDS template + rotation-only Procrustes fit for ≥3-point rigid bodies (the
-  skull); consumed by the segment-length/fitting stage.
+Hydrated landmarks → per-segment world + local quaternions, `identity == T-pose`. The math kernel
+(verified in the 2026-08-14 audit): `R = liveᵀ·ref`, Gram-Schmidt frame build, Kabsch/Umeyama (det=+1),
+classical MDS for rigid templates.
 
-## Future work (not current)
-The **linkage/chain layer** that would resolve an under-determined segment's twist from its neighbours
-(the retired "chain-resolved" tier) — the constraint/solve layer of [the ontology](../ontology.md), seams
-only. `compute_live_bone_basis` is the orphaned breadcrumb (do not delete yet).
+## The solve (new ontology)
 
-## Reconciliation notes
-Name-driven everywhere (no "basis[0] = primary axis"); two tiers, not three.
+- **3+ landmarks (full rigid body)** — solve the rotation by **Kabsch** over the whole landmark cloud
+  (reference rest positions → live positions). The head is the 7-point skull rigid body; hips, feet, toes
+  are likewise full rigid bodies.
+- **2 landmarks (simple)** — swing + damped minimal roll (the exact axis + the critically-damped filter).
+- **linkage / chain** — a linkage computes the joint angle `conj(q_parent)·q_child`; a chain is the IK /
+  FABRIK unit (future).
+
+## Status
+
+The new ontology classes are landed; `solve_frame_orientations` (the old swing+twist solver) is being
+ported onto `RigidBodySegment` / `AnatomicalLandmark`, with the Kabsch path for 3+ landmark segments.

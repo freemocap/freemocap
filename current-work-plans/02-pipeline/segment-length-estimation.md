@@ -1,27 +1,13 @@
-# Segment-Length Estimation (+ enforcement / rigid fit)
+# Segment Lengths (derived, not estimated)
 
-> The task is **segment-length estimation** — holding the estimated lengths while following the observed
-> pose — *not* "skeleton rigidifying" (the old framing). The wrapper module keeps the file name
-> `skeleton_rigidifier.py` for now; a rename is a mechanical item if wanted. The stabilization story is
-> settled — see [realtime-loop.md](realtime-loop.md).
-
-**Describes:** `freemocap/core/tasks/mocap/rigid_body/skeleton_rigidifier.py` (the freemocap wrapper) +
-`skellyforge/kinematics/online_segment_lengths.py` (`SegmentLengthEstimator`),
-`skellyforge/kinematics/skeleton_rigidifier.py` (`TreeRigidifier`), `rigid_point_set.py` (skull fit).
+**Describes:** how a segment's length is obtained. In the new ontology, length is **derived** from the
+segment's exact-axis target landmark's `rest_position`.
 
 ## What this covers
-Per-frame: map tracker keypoints → standard-human names, advance per-segment **length estimators** with
-the *measured* (non-extrapolated) keypoints, then a single forward pass that **holds the estimated
-lengths while following the observed direction**. ≥3-point segments (the skull) get the rigid-body
-template fit; 2-point segments keep the span/edge path. Lengths feed the frame message.
 
-## Key facts (committed code)
-- Per-group state (body / left hand / right hand); the head additionally gets a `RigidPointTemplate`
-  (21 skull pair-distances, rebuilt ~every 30 frames, chirality-stabilized).
-- The skull template is built from **measured pair-medians + observed positions**, not the reference
-  geometry — which is why the reference skull's degeneracy is inert.
-- **S2 (plan):** the old per-frame `StreamingSegmentLengthMonitor` (retired `canonical_body.yaml` model)
-  still runs in the aggregator and is redundant with this estimator — slated for removal.
+`RigidBodySegment.length` = `|distal.rest_position|` (the exact-axis target, authored in the segment's
+own local frame). Subject scaling is a uniform scale of every `rest_position`.
 
-## Reconciliation notes
-Reframe away from "rigidify" toward "estimate + hold lengths." Kill the old-model residue (S2).
+## Status
+
+Length is derived from position (see [segment-model.md](../01-data-model/segment-model.md)).

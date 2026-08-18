@@ -14,7 +14,7 @@ skellyforge's output identical regardless of which tracker fed it.
 - Mapping forms: string / list (mean) / dict / **`anatomical_offset`** (a landmark built at an offset from
   tracked keypoints — e.g. `head_vertex`, `foot_ball`, `jaw`, mouth corners for RTMPose).
 - **Completeness contract:** skellyforge validates at load that a tracker mapping produces the full
-  **76** landmarks; a gap **raises** (the sanctioned lateral skellyforge→skellytracker import,
+  landmark set; a gap **raises** (the sanctioned lateral skellyforge→skellytracker import,
   base install only — see the workspace `CLAUDE.md` import rules).
 - **Boundary rule (decided 2026-08-14):** the rest-pose/model side never imports skellytracker at
   runtime; the ONE sanctioned import is `tracker_contract.py` (the load-time completeness contract —
@@ -24,6 +24,6 @@ skellyforge's output identical regardless of which tracker fed it.
 
 ## Reconciliation notes
 Files are `*_to_standard_human_mapping.yaml`; detector method `standard_human_mapping_path()`. The old
-`tracker_info/canonical_*.yaml` files are retired (still on disk, consumed only by the old model layer —
-they die with it in the posthoc rebuild, see [02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md)).
-"Canonical mapping" as a phrase stays retired; the mapping's output is a **landmark**.
+`tracker_info/*.yaml` files (still on disk, consumed only by the old model layer) die with it in the
+posthoc rebuild, see [02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md). The mapping's
+output is a **landmark**.

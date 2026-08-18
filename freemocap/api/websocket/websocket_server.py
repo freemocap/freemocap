@@ -54,7 +54,7 @@ from freemocap.core.streaming.producers.producer_contexts import (
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.utilities.wait_functions import await_10ms
-from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
+from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +89,7 @@ class WebsocketServer:
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
-        self._standard_human = compose_standard_human()
+        self._standard_human = HumanSkeleton.standard_human()
         # Calibration hot-reload source (feeds the frame's cameras field).
         self._calibration_state = CalibrationStateTracker.create_and_try_load()
         # The relay consumes raw frame contexts via the injected source.

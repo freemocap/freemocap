@@ -4,7 +4,7 @@ Tunable configuration for the realtime filtering + skeleton-fitting stage.
 Consumed by the realtime aggregator node, which wires these values into:
     - ``RealtimeKeypointFilter``  (One Euro smoothing of raw 3D keypoints)
     - ``RealtimePointGate``       (velocity teleportation rejection)
-    - ``RealtimeSkeletonRigidifier``  (rigid-body skeleton correction)
+    - ``rigidify_landmarks``          (rigid-body skeleton correction)
     - triangulation               (reprojection-error gating)
 """
 

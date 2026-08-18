@@ -178,8 +178,7 @@ class SkeletonFitterResetMessage(TopicMessageABC):
     """Clear the rolling bone-length windows on every live pipeline.
 
     Presence of this message in the subscription queue signals the aggregator to
-    call ``RealtimeSkeletonRigidifier.reset()`` — dropping the learned lengths so
-    the next ~window seconds re-fit from fresh observations.
+    reset its temporal state (the keypoint filter + velocity gate).
     """
 
 

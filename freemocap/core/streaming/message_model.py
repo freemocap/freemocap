@@ -34,7 +34,7 @@ from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtr
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from skellycam.core.recorders.framerate_tracker import CurrentFramerate
-from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman
+from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 CURRENT_VERSION: int = 0
@@ -247,17 +247,15 @@ class ModelDefinition:
     landmarks: tuple[RestLandmark, ...]
 
     @classmethod
-    def from_standard_human(cls, standard_human: StandardHuman) -> "ModelDefinition":
-        from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM  # noqa: PLC0415
-        from skellyforge.skellymodels.standard_human.reference_geometry import ReferenceGeometry  # noqa: PLC0415
-        lengths = {s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM for s in standard_human.segments}
-        geometry = ReferenceGeometry.from_segments(list(standard_human.segments), lengths)
+    def from_standard_human(cls, standard_human: HumanSkeleton) -> "ModelDefinition":
+        from skellyforge.kinematics.tpose import build_standard_human_tpose  # noqa: PLC0415
+        tpose = build_standard_human_tpose(standard_human)
         return cls(
             model_id="standard_human",
-            segments=tuple(RestSegment.from_geometry(s, geometry.segments[s.name]) for s in standard_human.segments),
+            segments=tuple(RestSegment.from_geometry(s, tpose.segments[s.name]) for s in standard_human.segments),
             landmarks=tuple(
-                RestLandmark.from_position(n, geometry.landmarks[n])
-                if n in geometry.landmarks
+                RestLandmark.from_position(n, tpose.landmarks[n])
+                if n in tpose.landmarks
                 else RestLandmark(name=n)
                 for n in sorted(standard_human.required_landmarks())
             ),

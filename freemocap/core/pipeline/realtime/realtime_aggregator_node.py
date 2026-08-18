@@ -12,9 +12,10 @@ Calibration hot-reload: the node polls the calibration file on disk once per
 second. If the file has changed (e.g. after posthoc calibration completes),
 the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
-Rigid-body correction (``RealtimeSkeletonRigidifier``) runs on the triangulated
-3D points: each bone's length is the median of its measured lengths over a
-rolling time window (seeded from anthropometry until the window fills) and
+Rigid-body correction (``rigidify_landmarks``) runs on the triangulated 3D
+points: each bone enforces its derived rest length while keeping the observed
+direction, and the 3+-landmark rigid bodies fit their rest shape by a
+rotation-pinned Procrustes. The corrected landmarks then feed the solver.
 enforced by a single closed-form forward pass. Only real (non-extrapolated)
 keypoints teach lengths. The reset signal clears the rolling window so the next
 ~window seconds re-fit from scratch.
@@ -37,10 +38,6 @@ from freemocap.core.tasks.mocap.center_of_mass import (
     calculate_xcom,
 )
 from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
-from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import (
-    RealtimeSkeletonRigidifier,
-    RigidifyResult,
-)
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
@@ -50,11 +47,11 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellyforge.kinematics.orientation_solver import (
     FrameOrientationResult,
+    SolveState,
     solve_frame_orientations,
 )
-from skellyforge.skellymodels.standard_human.standard_human_model import (
-    StandardHuman,  # noqa: TC002 — beartype resolves this in the _reproject_segment_origins signature at runtime
-    compose_standard_human,
+from skellyforge.skellymodels.standard_human.human_skeleton import (
+    HumanSkeleton,  # noqa: TC002 — beartype resolves this in the _reproject_segment_origins signature at runtime
 )
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
@@ -62,9 +59,8 @@ from freemocap.core.streaming.channel_helpers import (
 from skellyforge.skellymodels.standard_human.tracker_contract import (
     validate_all_tracker_families,
 )
-from skellyforge.skellymodels.standard_human.reference_geometry import (
-    ReferenceGeometry,
-)
+from skellyforge.kinematics.skeleton_rigidifier import rigidify_landmarks
+from skellyforge.kinematics.tpose import build_standard_human_tpose
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -111,12 +107,6 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
-
-# The solver's reference geometry needs only correct DIRECTIONS (lengths do not
-# affect solved quaternions), so nominal anthropometric seeds are the honest
-# v1; live measured lengths refine the geometry when the estimator feeds it.
-# Shared SSOT with the model's rest-pose build.
-from freemocap.core.streaming.constants import NOMINAL_SUBJECT_HEIGHT_MM
 
 def _reproject_segment_origins(
         *,
@@ -299,29 +289,14 @@ class RealtimeAggregatorNode(AggregatorNode):
         # trees) and the orientation solver (reference geometry). Built once per
         # run (D16): the model is cheap to build, and every recording gets a
         # fresh instance — no module globals.
-        standard_human = compose_standard_human()
+        standard_human = HumanSkeleton.standard_human()
         # Fail loud at load: a tracker-family mapping gap must raise before the
         # pipeline starts, not mid-run when a required keypoint goes missing.
         validate_all_tracker_families(standard_human)
 
-        # Create the skeleton rigidifier (segment trees + per-segment online
-        # length estimators + forward-pass tree rigidifiers). Loaded once at
-        # init; the per-frame hot path is pure numpy.
-        skeleton_rigidifier: RealtimeSkeletonRigidifier | None = None
-        rigidifier_filter_config: RealtimeFilterConfig | None = None
-        if aggregator_config.skeleton_fitting_enabled:
-            skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
-                standard_human=standard_human,
-                detector_type=detector_type,
-                height_mm=filter_config.height_mm,
-                window_s=filter_config.segment_length_window_s,
-            )
-            rigidifier_filter_config = filter_config
-            logger.debug(
-                f"RealtimeAggregationNode [{camera_group_id}] skeleton rigidifier created "
-                f"(body segments: {len(skeleton_rigidifier.body_segment_lengths)}, "
-                f"hand segments: {len(skeleton_rigidifier.right_hand_segment_lengths)})"
-            )
+        # Skeleton fitting is stateless: rigidify_landmarks runs per frame from
+        # the loaded model + T-pose. Nothing is created or recreated.
+        skeleton_fitting_enabled: bool = aggregator_config.skeleton_fitting_enabled
 
         # One Euro filter: smooths raw keypoints and gap-fills brief occlusions
         keypoint_filter = RealtimeKeypointFilter(
@@ -359,20 +334,14 @@ class RealtimeAggregatorNode(AggregatorNode):
         # state and the timestamp the next frame's dt is measured against. Scoped
         # to this run — at module scope, concurrent pipelines would share
         # smoothing state and damping would persist across recordings.
-        previous_orientation_result: FrameOrientationResult | None = None
+        previous_orientation_result: SolveState = SolveState()
         # Nominal per-run reference geometry (anthropometric seeds, including
         # the face's nominal spans) — the fallback BEFORE the first rigidify
         # result lands. Once the estimator has live measured lengths, the
         # per-frame build (below) replaces this. The solver's reference
         # DIRECTIONS are unchanged by live lengths — the lengths only refine the
         # rest-pose map and model values; quaternions never depend on them.
-        reference_geometry = ReferenceGeometry.from_segments(
-            list(standard_human.segments),
-            {
-                s.name: s.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
-                for s in standard_human.segments
-            },
-        ).segments
+        reference_geometry = build_standard_human_tpose(standard_human)
         # Centroidal kinematics (inertia ellipsoid + ground references) per frame.
         streaming_kinematics = StreamingKinematics()
 
@@ -433,33 +402,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                     else:
                         biomechanics = None
 
-                    # Recreate the rigidifier when the detector naming changes or
-                    # any fit parameter changed — silently stale fit params are
-                    # worse than a one-time model reload.
-                    filter_config_changed = (
-                        rigidifier_filter_config is not None
-                        and filter_config != rigidifier_filter_config
-                    )
-                    if aggregator_config.skeleton_fitting_enabled:
-                        if (
-                            skeleton_rigidifier is None
-                            or detector_type_changed
-                            or filter_config_changed
-                        ):
-                            skeleton_rigidifier = RealtimeSkeletonRigidifier.create(
-                                standard_human=standard_human,
-                                detector_type=detector_type,
-                                height_mm=filter_config.height_mm,
-                                window_s=filter_config.segment_length_window_s,
-                            )
-                            rigidifier_filter_config = filter_config
-                            logger.info(
-                                f"RealtimeAggregationNode [{camera_group_id}] "
-                                f"(re)created skeleton rigidifier for detector_type={detector_type}"
-                            )
-                    else:
-                        skeleton_rigidifier = None
-                        rigidifier_filter_config = None
+                    # Skeleton fitting is stateless — nothing to recreate.
+                    skeleton_fitting_enabled = aggregator_config.skeleton_fitting_enabled
 
                 # ---- Handle skeleton fitter reset signals ----
                 # Drain unconditionally so the queue can't grow while skeleton
@@ -471,11 +415,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                     except queue.Empty:
                         break
                     reset_requested = True
-                if reset_requested and skeleton_rigidifier is not None:
-                    skeleton_rigidifier.reset()
+                if reset_requested:
                     logger.info(
-                        f"RealtimeAggregationNode [{camera_group_id}] skeleton fit "
-                        f"reset — rolling length window cleared"
+                        f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
 
                 # ---- Periodically check if calibration file changed on disk ----
@@ -493,11 +435,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # New calibration → clear the learned lengths: they were
-                        # measured under the old calibration, so re-fit fresh
-                        # ones under the new one.
-                        if skeleton_rigidifier is not None:
-                            skeleton_rigidifier.reset()
+                        # (Skeleton fitting is stateless — nothing to reset.)
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -666,7 +604,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 com_result: CenterOfMassResult | None = None
                 xcom: Point3d | None = None
                 body_kinematics = None
-                rigid_result: RigidifyResult | None = None
+                rigid_result: dict[str, np.ndarray] | None = None
                 reprojected_segment_origins: dict[
                     CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
                 ] = {}
@@ -748,71 +686,34 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
                     # ---- Rigid-body skeleton correction ----
-                    if (
-                        skeleton_rigidifier is not None
-                        and filtered_keypoints
-                    ):
+                    if skeleton_fitting_enabled and filtered_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        rigid_result = skeleton_rigidifier.rigidify_frame(
+                        rigid_result = rigidify_landmarks(
+                            standard_human,
+                            reference_geometry,
                             filtered_keypoints,
-                            measured=measured_keypoints,
-                            t=frame_time,
                         )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
-                    # ---- Per-frame reference geometry ----
-                    # Lengths are now live: rebuild the solver's rest-pose map
-                    # from the rigidifier's measured segment lengths instead of
-                    # the once-per-run nominal seeds. The face's eight segments
-                    # are excluded from the rigidifier's length ESTIMATOR, so
-                    # keep their nominal ``length_ratio × height`` spans to leave
-                    # the geometry map complete. The reference DIRECTIONS are
-                    # unchanged — only the rest-pose map and model values follow
-                    # the measurements (quaternions never depend on length).
-                    if (
-                        skeleton_rigidifier is not None
-                        and rigid_result is not None
-                    ):
-                        measured_lengths = {
-                            **skeleton_rigidifier.body_segment_lengths,
-                            **skeleton_rigidifier.left_hand_segment_lengths,
-                            **skeleton_rigidifier.right_hand_segment_lengths,
-                        }
-                        for seg in standard_human.segments:
-                            if seg.name not in measured_lengths:
-                                measured_lengths[seg.name] = (
-                                    seg.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
-                                )
-                        reference_geometry = ReferenceGeometry.from_segments(
-                            list(standard_human.segments), measured_lengths
-                        ).segments
                     # The rigidifier hands back the hydrated standard-human
                     # landmarks (body + standard-named hands); the solver
                     # consumes them straight through — no bone-keyed map, the
                     # standard human already names every landmark it needs.
                     segment_rotations_world: dict[str, np.ndarray] | None = None
                     segment_rotations_local: dict[str, np.ndarray] | None = None
-                    if (
-                        rigid_result is not None
-                        and rigid_result.body_positions
-                    ):
+                    if rigid_result is not None:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        solver_landmarks = {
-                            **rigid_result.body_positions,
-                            **rigid_result.left_hand_standard_positions,
-                            **rigid_result.right_hand_standard_positions,
-                        }
-                        orientation_result = solve_frame_orientations(
-                            standard_human=standard_human,
-                            reference_geometry=reference_geometry,
+                        solver_landmarks = rigid_result
+                        orientation_result, previous_orientation_result = solve_frame_orientations(
+                            skeleton=standard_human,
+                            tpose=reference_geometry,
                             landmarks=solver_landmarks,
                             timestamp_seconds=frame_time,
-                            previous_result=previous_orientation_result,
+                            state=previous_orientation_result,
                         )
                         segment_rotations_world = orientation_result.world_quaternions
                         segment_rotations_local = orientation_result.local_quaternions
-                        previous_orientation_result = orientation_result
                         if timer is not None:
                             timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
 
@@ -838,24 +739,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if (
                         biomechanics is not None
                         and aggregator_config.center_of_mass_enabled
-                        and (
-                            (rigid_result is not None and rigid_result.body_positions)
-                            or filtered_keypoints
-                        )
+                        and (rigid_result is not None or filtered_keypoints)
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        if rigid_result is not None and rigid_result.body_positions:
-                            # CoM's de Leva spans need the DERIVED endpoints
-                            # (mid_sternum, head_vertex, foot_ball) and the hand
-                            # finger tips, which rigid_result.body_positions
-                            # alone lacks. Merge, later wins: rigidified values
-                            # override the mapping for shared names; derived-only
-                            # names come from the mapping.
+                        if rigid_result is not None:
+                            # Merge, later wins: rigidified values override the
+                            # mapping for shared names; derived-only names come
+                            # from the mapping.
                             standard_human_positions = {
                                 **biomechanics.tracker_mapping.apply(filtered_keypoints),
-                                **rigid_result.body_positions,
-                                **rigid_result.left_hand_standard_positions,
-                                **rigid_result.right_hand_standard_positions,
+                                **rigid_result,
                             }
                             com_result = calculate_center_of_mass(
                                 standard_human_positions,
@@ -924,18 +817,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # at their nominal spans (the estimator does not cover them).
                 # The same merge the model build does, so the wire lengths and
                 # the rest pose stay consistent with the per-frame geometry.
-                segment_lengths: dict[str, float] = {}
-                if skeleton_rigidifier is not None:
-                    segment_lengths = {
-                        **skeleton_rigidifier.body_segment_lengths,
-                        **skeleton_rigidifier.left_hand_segment_lengths,
-                        **skeleton_rigidifier.right_hand_segment_lengths,
-                    }
-                    for seg in standard_human.segments:
-                        if seg.name not in segment_lengths:
-                            segment_lengths[seg.name] = (
-                                seg.length_ratio * NOMINAL_SUBJECT_HEIGHT_MM
-                            )
+                segment_lengths: dict[str, float] = {
+                    seg.name: seg.length for seg in standard_human.segments
+                }
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,
@@ -946,24 +830,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         keypoints_arrays=filtered_keypoints,
                         center_of_mass_result=com_result,
                         xcom=xcom,
-                        skeleton=(
-                            {
-                                **rigid_result.body_positions,
-                                **rigid_result.left_hand_positions,
-                                **rigid_result.right_hand_positions,
-                            }
-                            if rigid_result is not None
-                            else None
-                        ),
-                        standard_skeleton=(
-                            {
-                                **rigid_result.body_positions,
-                                **rigid_result.left_hand_standard_positions,
-                                **rigid_result.right_hand_standard_positions,
-                            }
-                            if rigid_result is not None
-                            else None
-                        ),
+                        skeleton=(rigid_result if rigid_result is not None else None),
+                        standard_skeleton=(rigid_result if rigid_result is not None else None),
                         segment_rotations_world=segment_rotations_world,
                         segment_rotations_local=segment_rotations_local,
                         body_kinematics=body_kinematics,

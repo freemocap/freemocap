@@ -442,8 +442,8 @@ def calculate_center_of_mass(
 ) -> CenterOfMassResult:
     """Compute center of mass from already standard-human-named positions for one frame.
 
-    Use this with the rigidified skeleton (``RealtimeSkeletonRigidifier`` output),
-    whose positions are already standard-human-named and include the derived span
+    Use this with the rigidified skeleton (``rigidify_landmarks`` output), whose
+    positions are already standard-human-named and include the derived span
     endpoints. The input is still augmented per-frame by the tracker mapping at
     the *aggregator call site* (so it carries mid_sternum / head_vertex /
     foot_ball and the hand finger tips that ``body_positions`` alone lacks), but

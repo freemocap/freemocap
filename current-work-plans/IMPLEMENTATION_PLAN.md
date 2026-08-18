@@ -8,33 +8,43 @@
 - The scope table is the live queue for this iteration.
 - The progress log records what lands; it is history — current scope lives in the table.
 
-## Scope table — "standard-human ontology rebuild" iteration
+## Scope table — "serve all three consumers" iteration
 
-The goal: rebuild the skellyforge standard human onto the full seven-layer ontology (keypoint → mapping →
-landmark → segment → linkage → chain → skeleton), defined in YAML and compiled into typed objects, then
-port the solve onto it and delete the old system.
+The new core is a **boundary object**: one YAML-defined skeleton + one T-pose + one solve, consumed by
+three paths. All three must migrate before the old skellyforge system can be deleted:
+
+1. **Realtime** — the live loop. Online, per-frame, damped.
+2. **Charuco** — a **non-human rigid body** (the calibration board). The first extension test.
+3. **Posthoc** — the recorded loop. Batch, offline, undamped.
+
+They share the model + solver; they differ only in **which model** (human vs. board) and **how time is
+handled** (damped vs. batch).
 
 ### `[IN]` — this iteration
 
 - **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` /
-  `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit
-  blendshapes). DONE.
+  `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes`). DONE.
 - **YAML definitions** — flat part files (pelvis, axial, arm, hand, leg, foot, face) with sidedness +
-  Y-mirroring + `$include` composability. DONE (49 segments authored).
-- **Solve/hydration port** — port `orientation_solver.py` + `reference_geometry.py` onto the new
-  classes: hydrate landmarks from keypoints, solve the rigid body (Kabsch for 3+ landmarks), derive
-  lengths from `rest_position`. The detailed design:
-  [solve-hydration-port.md](02-pipeline/solve-hydration-port.md). NEXT.
-- **Delete the old system** — after the port, excise `segment_definition.py` / `reference_geometry.py` /
-  the old `StandardHuman` / `rest_pose.py` machinery.
+  Y-mirroring + `$include` composability. DONE (49 segments / 48 linkages / 15 chains).
+- **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
+  (Kabsch for 3+ landmarks, swing+twist for 2, result/state split). DONE (identity-at-T-pose green).
+- **Realtime re-point** — re-point the realtime path (`realtime_aggregator_node.py`, `message_model.py`,
+  `skeleton_rigidifier.py`, `channel_helpers.py` + producers) to the new API; fix the frontend renderers
+  for the renamed segments (49 not 60, `pelvis`, `clavicle`, no `toes`/face segments). NEXT.
+- **Charuco re-implementation** — author the board as a YAML skeleton (one rigid segment + marker-corner
+  landmarks, `sided: false`) + re-point the charuco path (`charuco_model_from_observations.py`, the
+  `Board` actor). Tests the extensibility: the core serves a non-human rigid body.
+- **Posthoc alignment** — re-point the posthoc path (`skeleton_from_mediapipe_observations.py`, the
+  `Human` actor) to the new loader + solve; share the model + solver with realtime (realtime = damped,
+  posthoc = batch).
+- **Delete the old system** — only after all three consumers are migrated: excise `segment_definition.py` /
+  `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
+  `standard_human_model.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
 
 ### `[LATER]`
 
-- **Charuco revival** — charuco board tracking → the standard-human model → display (2D + 3D).
-- **Posthoc parity** — rebuild the posthoc mocap pipeline onto the new model (realtime + posthoc share one
-  model / solver).
 - **VMC adapter** — project the skeleton outward over VMC.
-- **Frontend test suite** — plan + build specifically for the current system (not a vestigial holdover).
+- **Frontend test suite** — plan + build specifically for the current system.
 - LSL adapter; URDF / OpenSim / blendshape exports; VRChat OSC.
 
 ### `[FUTURE]`
@@ -42,11 +52,18 @@ port the solve onto it and delete the old system.
 - The constraint/solve layer — typed joints, chains/IK, twist-backfill — seams only, per
   [ontology.md](ontology.md).
 
+### Reconsideration the charuco target forces
+
+The core is named human-specific (`HumanSkeleton`, `StandardHumanTPose`), but the board is not a human.
+Decide, when charuco lands, whether to neutralize the core names (`Skeleton` / a general rest-pose) so the
+human and the board are two instances of the same neutral core.
+
 ## Dependencies & blockers
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Solve/hydration port | delete the old system | Port `orientation_solver.py` + `reference_geometry.py` onto `RigidBodySegment`/\`AnatomicalLandmark` |
+| Realtime re-point | delete the old system | Re-point the realtime path + confirm the live 3D looks correct |
+| Charuco + posthoc migration | delete the old system | Both paths load + solve via the new core |
 
 ## Progress log
 

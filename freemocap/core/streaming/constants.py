@@ -5,9 +5,6 @@ import it without pulling the pubsub / realtime-config tree (which would
 circularly import this constant).
 """
 
-# Nominal subject height (mm) used to convert each segment's ``length_ratio``
-# (a fraction of standing height) into an absolute rest length. Single source
-# shared by the model's rest-pose build, the realtime aggregator, the
-# RealtimeFilterConfig ``height_mm`` default, and the skeleton rigidifier's
-# length seeds.
+# Nominal subject height (mm) — the anthropometric seed for subject scaling
+# (RealtimeFilterConfig's ``height_mm`` default).
 NOMINAL_SUBJECT_HEIGHT_MM = 1750.0

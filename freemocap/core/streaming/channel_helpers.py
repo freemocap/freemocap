@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 
-from skellyforge.skellymodels.standard_human.standard_human_model import StandardHuman  # noqa: TC002
+from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton  # noqa: TC002
 
 
 def assemble_channel_bytes(
@@ -56,6 +56,6 @@ def camera_2d_detections(
     return detections
 
 
-def origin_landmark_names(standard_human: StandardHuman) -> dict[str, str]:
+def origin_landmark_names(standard_human: HumanSkeleton) -> dict[str, str]:
     """segment name -> origin landmark name (from the standard human model)."""
-    return {segment.name: segment.origin_landmark for segment in standard_human.segments}
+    return {segment.name: segment.origin_landmark.name for segment in standard_human.segments}

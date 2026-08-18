@@ -9,7 +9,7 @@ momentarily missing joint is gap-filled rather than collapsing.
 import numpy as np
 import pytest
 
-from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import TreeRigidifier
+from skellyforge.kinematics.skeleton_rigidifier import TreeRigidifier
 
 
 def _chain() -> TreeRigidifier:

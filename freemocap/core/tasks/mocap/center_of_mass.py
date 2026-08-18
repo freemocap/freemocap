@@ -63,6 +63,7 @@ from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 from freemocap.core.tasks.mocap.tracker_mappings import (
     body_mapping_yaml_path,
+    hand_mapping_yaml_path,
 )
 
 
@@ -195,10 +196,25 @@ class BodyBiomechanics(BaseModel):
     """
 
     tracker_mapping: TrackerMapping
+    hand_mapping: TrackerMapping
     de_leva: dict[str, SegmentInertialParameters]
     sex: Literal["mean", "female", "male"] = "mean"
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def apply_tracker_mapping(
+        self, keypoints: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
+        """Hydrate the full standard-human landmark set (body + hands) from keypoints.
+
+        The body mapping produces the body and foot-span landmarks; the hand
+        mapping produces the sided hand landmarks (left_hand_*/right_hand_*).
+        Their name sets are disjoint, so the merge is a plain union.
+        """
+        return {
+            **self.tracker_mapping.apply(keypoints),
+            **self.hand_mapping.apply(keypoints),
+        }
 
 
 @dataclass(slots=True)
@@ -246,6 +262,7 @@ def load_body_biomechanics(
     """
     return BodyBiomechanics(
         tracker_mapping=TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type)),
+        hand_mapping=TrackerMapping.from_yaml(hand_mapping_yaml_path(detector_type)),
         de_leva=segment_inertial_parameters(sex),
         sex=sex,
     )

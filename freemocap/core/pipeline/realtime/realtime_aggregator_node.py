@@ -680,7 +680,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         rigid_result = rigidify_landmarks(
                             standard_human,
                             reference_geometry,
-                            biomechanics.tracker_mapping.apply(filtered_keypoints),
+                            biomechanics.apply_tracker_mapping(filtered_keypoints),
                         )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
@@ -736,7 +736,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             # mapping for shared names; derived-only names come
                             # from the mapping.
                             standard_human_positions = {
-                                **biomechanics.tracker_mapping.apply(filtered_keypoints),
+                                **biomechanics.apply_tracker_mapping(filtered_keypoints),
                                 **rigid_result,
                             }
                             com_result = calculate_center_of_mass(

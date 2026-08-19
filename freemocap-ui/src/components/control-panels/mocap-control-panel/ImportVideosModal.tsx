@@ -263,13 +263,15 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
 
                     <div className="flex flex-col gap-1 bg-secondary p-2 br-1">
                         <SubactionHeader text="Recording name" className="text-gray"/>
-                        <input
-                            className="input-field text md"
-                            value={recordingName}
-                            onChange={(e) => setRecordingName(e.target.value)}
-                            placeholder={defaultRecordingName}
-                            disabled={busy}
-                        />
+                        <div className="input-with-string" style={{width: '100%'}}>
+                            <input
+                                className="input-field text md w-full"
+                                value={recordingName}
+                                onChange={(e) => setRecordingName(e.target.value)}
+                                placeholder={defaultRecordingName}
+                                disabled={busy}
+                            />
+                        </div>
                     </div>
 
                     {checkingSync && (
@@ -338,16 +340,17 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                             {syncEnabled && syncMethod === SyncMethod.BRIGHTNESS && (
                                 <div className="flex flex-row gap-2 items-center">
                                     <p className="text sm text-gray">Brightness ratio threshold</p>
-                                    <input
-                                        className="input-field text md"
-                                        style={{width: '6rem'}}
-                                        type="number"
-                                        min={0}
-                                        step={100}
-                                        value={brightnessRatioThreshold}
-                                        onChange={(e) => setBrightnessRatioThreshold(e.target.value)}
-                                        disabled={busy}
-                                    />
+                                    <div className="input-with-unit" style={{width: '6rem'}}>
+                                        <input
+                                            className="input-field text md w-full text-center"
+                                            type="number"
+                                            min={0}
+                                            step={100}
+                                            value={brightnessRatioThreshold}
+                                            onChange={(e) => setBrightnessRatioThreshold(e.target.value)}
+                                            disabled={busy}
+                                        />
+                                    </div>
                                 </div>
                             )}
 

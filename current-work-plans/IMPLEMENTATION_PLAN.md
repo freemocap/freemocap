@@ -25,23 +25,34 @@ handled** (damped vs. batch).
 - **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` /
   `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes`). DONE.
 - **YAML definitions** — flat part files (pelvis, axial, arm, hand, leg, foot, face) with sidedness +
-  Y-mirroring + `$include` composability. DONE (49 segments / 48 linkages / 15 chains).
+  Y-mirroring + `$include` composability; the full hand (8 carpals + 5 metacarpals + 14 phalanges ×2)
+  and foot (7 tarsals + 5 metatarsals + 14 phalanges ×2) anatomy is authored. DONE (95 segments / 94
+  linkages / 25 chains).
 - **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
   (Kabsch for 3+ landmarks, swing+twist for 2, result/state split). DONE (identity-at-T-pose green).
+- **Per-segment length estimation** — `estimate_segment_lengths` (a pure `(result, state)` rolling-median
+  action) adapts each segment to the live subject independently — no uniform scaling. DONE.
 - **Realtime re-point** — the aggregator loads `HumanSkeleton.standard_human()` + `build_standard_human_tpose` +
-  `rigidify_landmarks` + the new `solve_frame_orientations` (mapping tracker keypoints → standard-human
-  landmarks first); the message model + producers emit the 49-segment `RestSegment`/`RestLandmark` (derived
-  `length_mm`); the old freemocap `RealtimeSkeletonRigidifier` wrapper was deleted (rigidification now lives
-  in skellyforge's `rigidify_landmarks`). DONE (the live loop runs + overlays match).
+  `estimate_segment_lengths` + `rigidify_landmarks` + the new `solve_frame_orientations` (mapping
+  tracker keypoints → standard-human landmarks first); the message model + producers emit the 95-segment
+  `RestSegment`/`RestLandmark` (derived `length_mm`); the old freemocap `RealtimeSkeletonRigidifier`
+  wrapper was deleted (rigidification now lives in skellyforge's `rigidify_landmarks`). DONE (the live
+  loop runs + overlays match).
+- **Lazy heavy-dependency imports** — `mediapipe` + `onnxruntime` moved inside their detector/session
+  functions so multiprocessing sub-process startup stays cheap. DONE.
+- **Validate the realtime loop** — confirm the live loop runs the new core end to end (T-pose identity at
+  start, arm bend without pop, hidden-hand degradation, overlay match).
 - **Charuco re-implementation** — author the board as a YAML skeleton (one rigid segment + marker-corner
   landmarks, `sided: false`) + re-point the charuco path (`charuco_model_from_observations.py`, the
   `Board` actor). Tests the extensibility: the core serves a non-human rigid body.
 - **Posthoc alignment** — re-point the posthoc path (`skeleton_from_mediapipe_observations.py`, the
   `Human` actor) to the new loader + solve; share the model + solver with realtime (realtime = damped,
   posthoc = batch).
+- **Unhydrated-segment fallback** — an unhydrated segment follows its parent at its own T-pose rest
+  direction (not the hardcoded `[0,1,0]`), so a hidden hand doesn't stick out sideways.
 - **Delete the old system** — only after all three consumers are migrated: excise `segment_definition.py` /
   `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
-  `standard_human_model.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
+  `standard_human_model.py` / `segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
 
 ### `[LATER]`
 
@@ -68,6 +79,17 @@ human and the board are two instances of the same neutral core.
 
 ## Progress log
 
+- **2026-08-18 (hand + foot full anatomy, per-segment lengths, heavy-dep lazy imports landed).** Re-authored
+  `hand.yaml` + `foot.yaml` to the full bone-by-bone anatomy with no abbreviations — 8 carpals + 5
+  metacarpals + 14 phalanges per hand, 7 tarsals + 5 metatarsals + 14 phalanges per foot (95 segments / 94
+  linkages / 25 chains / 146 landmarks). Finger chains now carry `finger` (`index_finger` /
+  `middle_finger` / `ring_finger` / `pinky_finger`); foot toe chains carry `toe`. Added
+  `estimate_segment_lengths` (a pure `(result, state)` per-segment rolling median) replacing uniform
+  scaling, wired into the realtime loop (`estimate → build_standard_human_tpose(lengths) →
+  rigidify_landmarks → solve_frame_orientations`). Renamed the mediapipe mapping's `small_toe` keys to
+  `foot_pinky_toe_tip` (they had never been renamed with the rest of the foot). Moved `mediapipe` +
+  `onnxruntime` imports inside their detector/session functions so multiprocessing sub-process startup
+  stays cheap.
 - **2026-08-18 (solve port + realtime re-point landed — the live loop runs on the new core).** The
   solve/hydration port landed: `StandardHumanTPose` + `build_standard_human_tpose` + the re-pointed
   `solve_frame_orientations` (Kabsch for 3+ landmarks, swing+twist for 2, `(result, state)` split) + the

@@ -15,7 +15,7 @@ How the two efforts are verified, and the two runtime invariants the tests defen
 | Layer | What it pins | Where |
 |-------|--------------|-------|
 | **Unit — model** | Segment/axis validation, composition, reference geometry (right-handed, mirroring, scales linearly), `identity == T-pose` (world + local). | skellyforge `tests/` |
-| **Unit — kinematics** | Quaternion algebra, Kabsch/Umeyama, the orientation solver's two tiers, the damped filter, the rigid-fit (MDS + Procrustes). | skellyforge `tests/` |
+| **Unit — kinematics** | Quaternion algebra, Kabsch/Umeyama, the orientation solver's two tiers, the damped filter, the rigid-fit (rotation-pinned Procrustes). | skellyforge `tests/` |
 | **YAML definition loader** | `HumanSkeleton.from_yaml` composes parts, resolves references to objects, mirrors the right side, and derives lengths; a bad reference fails at load. | skellyforge `tests/test_lower_body_skeleton.py` |
 | **Wire contract** | message **golden bytes**; Python encoder ↔ TS decoder parity. | freemocap `tests/` + freemocap-ui harness |
 | **Backend integration** | frame message build, WebSocket send-path (serializer / relay / backpressure). | freemocap `tests/` |
@@ -23,9 +23,10 @@ How the two efforts are verified, and the two runtime invariants the tests defen
 
 ## Identity-at-T-pose
 
-The load-bearing model test: feed the reference geometry (± a realistic off-chain `nose`) back as live
-input; every solved segment must return identity. The head specifically is exercised with an anterior
-`nose` so a corrupted reference forward-axis can't hide in the damped tier (regression added 2026-08-14).
+The load-bearing model test: feed the reference geometry (including the anterior `nose` landmark on the
+head) back as live input; every solved segment must return identity. The head specifically is exercised
+with its anterior `nose` so a corrupted reference forward-axis can't hide in the damped tier (regression
+added 2026-08-14).
 
 ## Running
 

@@ -44,13 +44,15 @@ skellyforge/
     ├── critically_damped_orientation.py
     ├── tpose.py                   #   build_standard_human_tpose(...)
     ├── orientation_solver.py      #   solve_frame_orientations(...)
+    ├── skeleton_rigidifier.py     #   rigidify_landmarks(...)
+    ├── segment_length_estimation.py  # estimate_segment_lengths(...)
     └── (later) chain_ik.py, twist_resolution.py, fk.py
 ```
 
 ### Function signatures
 
 ```python
-def build_standard_human_tpose(skeleton: HumanSkeleton) -> StandardHumanTPose: ...
+def build_standard_human_tpose(skeleton: HumanSkeleton, lengths: dict[str, float] | None = None) -> StandardHumanTPose: ...
 
 def solve_frame_orientations(
     skeleton: HumanSkeleton,
@@ -118,8 +120,8 @@ geometry** (the per-segment origin/basis/length — a part of the segment):
 
 - **origin** = the `origin_landmark`'s rest position (authored in the parent's local frame).
 - **distal** = the primary direction's `target_landmark` rest position (authored in the segment's own frame).
-- **length** = `|distal − origin|` — **derived from the rest positions** (subject scaling = a uniform
-  scale of every `rest_position`).
+- **length** = `|distal − origin|` — **derived from the rest positions**; live subject adaptation is
+  per-segment (each segment's own rolling median), not a uniform scale.
 - **basis** = the rest frame: Gram-Schmidt the primary direction (hard seed) + the twist direction (soft
   hint) (`coordinate_frame_ops.assemble_named_basis` / `build_segment_frame`).
 
@@ -134,13 +136,14 @@ feeds the rest-pose message.
 
 The **mapping** (skellytracker, see
 [tracker-mapping.md](../01-data-model/tracker-mapping.md)) produces landmark world positions from keypoints
-(direct / mean / weighted / `anatomical_offset`). The **rigidifier** (freemocap
-`skeleton_rigidifier.py`, see [realtime-loop.md](realtime-loop.md)) rigidifies them — the MDS template +
-rotation-only Procrustes for the skull, the 2-landmark tree pass elsewhere. The result is the per-frame
-**hydrated** landmark world positions.
+(direct / mean / weighted / `anatomical_offset`). The **rigidifier** (skellyforge
+`kinematics/skeleton_rigidifier.py`, see [realtime-loop.md](realtime-loop.md)) rigidifies them — a
+forward-pass tree that enforces rest lengths, plus a rotation-pinned Procrustes fit for each 3+-landmark
+rigid body. The result is the per-frame **hydrated** landmark world positions.
 
-This step already runs; the port re-points its output onto the new landmark **objects** (and the new
-`pelvis`/`trunk_center` names) rather than changing its math.
+This step already runs; the port re-points its output onto the new landmark **objects** (the `pelvis` /
+`spine` / `chest` / `neck` / `head` midline and the sided limb / hand / foot parts) rather than
+changing its math.
 
 ## Step 3 — the solve (`solve_frame_orientations` port)
 
@@ -149,7 +152,7 @@ For each segment, in hierarchy order:
 - **3+ landmarks (full rigid body)** — solve the world rotation by **Kabsch**
   (`coordinate_frame_ops.align_point_sets_kabsch`): align the segment's rest landmark cloud → its live
   landmark cloud. Over-determined, so **no twist ambiguity, no damping**. The head is the 7-point skull;
-  hips / feet / toes are likewise full rigid bodies.
+  the pelvis, chest, hand carpus, foot tarsus, and thigh/shin are likewise full rigid bodies.
 - **2 landmarks (simple)** — swing (`rotation_between_vectors` on the primary direction) + the
   critically-damped minimal roll (`critically_damped_orientation.py`).
 - **rigid child** (`rigid_with_parent`) — inherit the parent's world rotation; no independent solve.
@@ -162,7 +165,8 @@ rigid body from all its pairwise landmark geometry" decision, and it is what kil
 ## Step 4 — delete the old system
 
 After the port lands and tests are green, excise: `segment_definition.py`, `reference_geometry.py`,
-`rest_pose.py`, `body_part.py` / `hand_part.py` / `face_part.py` / `standard_human_model.py`, plus
+`rest_pose.py`, `body_part.py` / `hand_part.py` / `face_part.py` / `standard_human_model.py` /
+`segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py`, plus
 `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
 
 **Careful:** the wire projection (`RestSegment` / `RestLandmark` in `rest_pose.py`) is consumed by the

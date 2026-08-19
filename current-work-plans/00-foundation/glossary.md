@@ -41,9 +41,10 @@ are **keypoint → mapping → landmark → segment → linkage → chain → sk
 ## Frame construction
 
 - **axis (declaration)** — one of a segment's tagged local-frame axes: a **name** (`x`/`y`/`z`, which
-  basis vector it defines), a **kind**, and a **`target_landmark`** (in the segment's `landmarks`). Its
-  direction is `positions[target_landmark] − positions[origin_landmark]` — the segment's own geometry
-  only.
+  basis vector it defines) and a **`target_landmark`** (in the segment's `landmarks`). Its direction is
+  `positions[target_landmark] − positions[origin_landmark]` — the segment's own geometry only. The axes
+  tuple is a **construction recipe in order**: the first axis is the primary direction, the second (if
+  present) is the twist direction.
   - **primary direction** — the segment's defining direction (the frame's hard seed), resolved directly
     every frame.
   - **twist direction** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the

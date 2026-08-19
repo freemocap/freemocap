@@ -13,7 +13,7 @@ which the old skellyforge system is deleted.
 The seven layers: **keypoint → mapping → landmark → segment → linkage → chain → skeleton** (see
 `ontology.md`). Each layer is a typed object with a static (authored) face + a hydrated (per-frame) face.
 
-## What is landed (all committed in skellyforge; freemocap re-point is in the working tree)
+## What is landed (committed across skellyforge + skellytracker + freemocap)
 
 **skellyforge (`skellymodels/standard_human/` + `kinematics/`):**
 - The entities: `AnatomicalLandmark`, `RigidBodySegment` (+ `AxisDefinition`), `JointLinkage`,
@@ -21,11 +21,14 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
   dataclasses. References are **objects**, not strings.
 - The YAML definitions in `definitions/` (flat files: `standard_human`, `pelvis`, `axial`, `arm`,
   `hand`, `leg`, `foot`, `face`). `$include: path` composes them. `sided: true` parts instantiate
-  `left_* + right_*` (the right side mirrors only `rest_direction`, not `rest_position`).
+  `left_* + right_*` (the right side mirrors only `rest_direction`, not `rest_position`). The full
+  hand (8 carpals + 5 metacarpals + 14 phalanges ×2) and foot (7 tarsals + 5 metatarsals + 14 phalanges
+  ×2) anatomy is authored: 95 segments / 94 linkages / 25 chains / 146 landmarks.
 - The actions in `kinematics/`: `build_standard_human_tpose`, `solve_frame_orientations`
   (Kabsch for 3+ landmarks, swing+twist for 2, returns `(FrameOrientationResult, SolveState)`),
-  `rigidify_landmarks`. **Entities carry pure accessors (`length`, `segments`, `segment_names`);
-  anything that mutates/solves is a separate typed function** — no state-carrying solver classes.
+  `rigidify_landmarks`, `estimate_segment_lengths` (per-segment rolling median). **Entities carry
+  pure accessors (`length`, `segments`, `segment_names`); anything that mutates/solves is a separate
+  typed function** — no state-carrying solver classes.
 
 **freemocap (the realtime path, re-pointed):**
 - `realtime_aggregator_node.py` loads `HumanSkeleton.standard_human()`, builds the T-pose once, maps
@@ -50,10 +53,16 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
    hand keypoints + `anatomical_offset`); the rest (toes, condyles, deep points) ride the segment's rigid
    solve. There is **no load-time "every landmark must be produced" completeness contract** — that was
    removed (`tracker_contract.py`).
-5. **No `upper_chest`.** The axial chain is pelvis → spine → chest → neck → head (49 segments / 48
-   linkages / 15 chains); the sternoclavicular joints are landmarks on `chest`.
+5. **No `upper_chest`.** The axial chain is pelvis → spine → chest → neck → head; the
+   sternoclavicular joints are landmarks on `chest`. The full skeleton is 95 segments / 94 linkages /
+   25 chains / 146 landmarks.
 6. **The face** is 52 ARKit blendshapes (`FaceBlendShapes`), all 0.0 for now. Eyes/ears/nose are LANDMARKS
    on the head, not segments.
+7. **Full-word hand/foot anatomy, no abbreviations.** Every hand landmark carries `hand_`, every foot
+   landmark `foot_`, every finger landmark `_finger_`, every toe landmark `_toe_`. Joints are written
+   out (`metacarpophalangeal_joint`, `proximal_interphalangeal_joint`, `distal_interphalangeal_joint`,
+   `interphalangeal_joint`) — no `mcp`/`pip`/`dip`/`ip`. Finger chains carry `finger`; toe chains
+   carry `toe`. The pinky is `pinky` (never `little`).
 
 ## The gotchas that bit us (do not repeat)
 
@@ -70,15 +79,19 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
 
 ## Next work (in order)
 
-1. **Charuco re-implementation** — author the calibration board as a YAML skeleton (one rigid segment +
+1. **Validate the realtime loop** — confirm the live loop runs the new core end to end (T-pose identity at
+   start, arm bend without pop, hidden-hand degradation, overlay match).
+2. **Charuco re-implementation** — author the calibration board as a YAML skeleton (one rigid segment +
    marker-corner landmarks, `sided: false`) + re-point the charuco path. This tests the extensibility and
-   likely forces a rename (`HumanSkeleton` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
+   forces the rename (`HumanSkeleton` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
    rest-pose) so the human + board are two instances of one core.
-2. **Posthoc alignment** — re-point `skeleton_from_mediapipe_observations.py` + the `Human` actor to the
+3. **Posthoc alignment** — re-point `skeleton_from_mediapipe_observations.py` + the `Human` actor to the
    new loader + solve; share the model + solver with realtime (realtime = damped, posthoc = batch).
-3. **Delete the old skellyforge system** — only after charuco + posthoc migrate: `segment_definition.py`,
+4. **Unhydrated-segment fallback** — an unhydrated segment must follow its parent at its own T-pose rest
+   direction (not the hardcoded `[0,1,0]`), so a hidden hand doesn't stick out sideways.
+5. **Delete the old skellyforge system** — only after charuco + posthoc migrate: `segment_definition.py`,
    `reference_geometry.py`, `rest_pose.py`, `body_part.py`, `hand_part.py`, `face_part.py`,
-   `standard_human_model.py`, `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
-4. Then: the VMC adapter, the frontend test suite.
+   `standard_human_model.py`, `segment_parts.py`, `human_bone_aliases.py`, `human_blendshapes.py`, `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
+6. Then: the VMC adapter, the frontend test suite.
 
 See `IMPLEMENTATION_PLAN.md` for the live scope table + progress log.

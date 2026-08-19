@@ -26,7 +26,7 @@ self-describing stream of a standard-human, VRM-1.0-aligned human.
 | **04** | [ui/](04-ui/) | The frontend: the message dispatcher (TransportService), the client homes, the renderers, the test-suite plan. |
 | — | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The one cross-cutting tracker: scope table + progress log. |
 
-## Status (2026-08-17)
+## Status
 
 The **first milestone is reached**: the full end-to-end pipeline works — cameras → keypoints → mapping →
 length estimation + fit → orientation solve → self-describing frame message → transport → decode → 3D
@@ -41,25 +41,45 @@ into typed objects (references are objects, not strings):
 1. **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
    `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
 2. **YAML definitions** — the standard human split into flat part files (pelvis, axial, arm, hand, leg,
-   foot, face) with sidedness + Y-mirroring + `$include` composability. Done (49 segments authored).
+   foot, face) with sidedness + Y-mirroring + `$include` composability. The full hand (8 carpals + 5
+   metacarpals + 14 phalanges ×2 sides) and foot (7 tarsals + 5 metatarsals + 14 phalanges ×2 sides)
+   anatomy is authored. Done — 95 segments / 94 linkages / 25 chains / 146 landmarks.
 3. **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
    (Kabsch for 3+ landmarks, swing+twist for 2, `(result, state)` split) + the stateless
    `rigidify_landmarks`. Done.
-4. **Realtime re-point** — the aggregator, message model, producers, and websocket now load
+4. **Per-segment length estimation** — `estimate_segment_lengths` (a pure `(result, state)`
+   rolling-median action) adapts each segment to the live subject independently — no uniform scaling.
+   Done.
+5. **Realtime re-point** — the aggregator, message model, producers, and websocket now load
    `HumanSkeleton.standard_human()` + the new solve; the old freemocap `RealtimeSkeletonRigidifier` and
    `tracker_contract.py` were deleted. Done (the live loop runs + overlays match).
-5. **Delete the old skellyforge system** — after charuco + posthoc migrate: excise `segment_definition.py` /
-   `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
-   `standard_human_model.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
+6. **Lazy heavy-dependency imports** — `mediapipe` + `onnxruntime` are imported inside their detector /
+   session functions, not at module scope, so sub-process startup stays cheap. Done.
 
-Then: charuco re-implementation + posthoc alignment (the remaining two consumers), the VMC adapter, and
-the frontend test suite — see [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md).
+## Next work (in order)
+
+1. **Validate the realtime loop** — confirm the live loop runs the new core end to end (T-pose identity at
+   start, arm bend without pop, hidden-hand degradation, overlay match).
+2. **Charuco re-implementation** — author the calibration board as a YAML skeleton (one rigid segment +
+   marker-corner landmarks, `sided: false`) + re-point the charuco path. This tests extensibility and
+   forces the rename (`HumanSkeleton` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
+   rest-pose).
+3. **Posthoc alignment** — re-point `skeleton_from_mediapipe_observations.py` + the `Human` actor to the
+   new loader + solve; share the model + solver with realtime (realtime = damped, posthoc = batch).
+4. **Unhydrated-segment fallback** — an unhydrated segment must follow its parent at its own T-pose rest
+   direction (not the hardcoded `[0,1,0]`), so a hidden hand doesn't stick out sideways.
+5. **Delete the old skellyforge system** — only after charuco + posthoc migrate: `segment_definition.py` /
+   `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
+   `standard_human_model.py` / `segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
+6. Then: the VMC adapter, the frontend test suite.
+
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the live scope table + progress log.
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
 **mm · right-handed · +Z up · +X forward**, quaternions **wxyz**, **identity == T-pose**,
 `q_local = conj(q_parent) · q_child`. Segments are VRM 1.0 rigid bodies; the standard human is
-**49 segments**, composed from YAML parts (single-sourced in the [glossary](00-foundation/glossary.md)).
+**95 segments**, composed from YAML parts (single-sourced in the [glossary](00-foundation/glossary.md)).
 
 ## House rules for these docs
 

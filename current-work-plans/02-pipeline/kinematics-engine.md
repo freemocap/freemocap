@@ -4,16 +4,18 @@
 
 ## What this covers
 
-Hydrated landmarks → per-segment world + local quaternions, `identity == T-pose`. The math kernel
-(verified in the 2026-08-14 audit): `R = liveᵀ·ref`, Gram-Schmidt frame build, Kabsch/Umeyama (det=+1),
-classical MDS for rigid templates.
+Hydrated landmarks → per-segment world + local quaternions, `identity == T-pose`. The math kernel:
+Gram-Schmidt frame build, Kabsch/Umeyama (det=+1), `rotation_between_vectors` (swing), the
+critically-damped filter, and rotation-pinned Procrustes for the rigid-fit.
 
 ## The solve (new ontology)
 
 - **3+ landmarks (full rigid body)** — solve the rotation by **Kabsch** over the whole landmark cloud
-  (reference rest positions → live positions). The head is the 7-point skull rigid body; hips, feet, toes
-  are likewise full rigid bodies.
-- **2 landmarks (simple)** — swing + damped minimal roll (the primary direction + the critically-damped filter).
+  (reference rest positions → live positions): the skull (7 points), pelvis (7), hand carpus (14), foot
+  tarsus (13), chest (4), and each thigh / shin (5).
+- **2 landmarks (simple)** — swing + damped minimal roll (the primary direction + the critically-damped
+  filter): the spine, neck, clavicle, upper/lower arm, and every metacarpal / phalanx / metatarsal /
+  toe-phalanx.
 - **linkage / chain** — a linkage computes the joint angle `conj(q_parent)·q_child`; a chain is the IK /
   FABRIK unit (future).
 

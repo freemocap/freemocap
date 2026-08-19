@@ -87,7 +87,10 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
   (batch, unbounded window).
 - **Adapters project the one skeleton outward:** VMC now; URDF / VRM / OpenSim / BVH later.
 
-*Status (2026-08-17):* the full seven-layer ontology — including linkage + chain — is now defined. The next work is porting skellyforge to it: `AnatomicalLandmark` / `RigidBodySegment` /
-`JointLinkage` / `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose`, each with
-`from_yaml`, and the YAML-based standard-human definition. See
+*Status:* the full seven-layer ontology — including linkage + chain — is defined and the port landed:
+`AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` / `HumanSkeleton` /
+`StandardHumanTPose`, each with `from_yaml`, and the YAML-based standard-human definition (95 segments /
+94 linkages / 25 chains / 146 landmarks). The solve (`build_standard_human_tpose` +
+`solve_frame_orientations` + `rigidify_landmarks`) and the per-segment length estimator
+(`estimate_segment_lengths`) run in the realtime loop. See
 [01-data-model/segment-model.md](01-data-model/segment-model.md) for the worked example.

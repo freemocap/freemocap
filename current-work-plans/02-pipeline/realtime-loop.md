@@ -21,14 +21,15 @@ The stream is stabilized by the measurement stack alone; the future constraint/s
 needed for it:
 
 1. **Euro filter** (skellycam) on the keypoints.
-2. **Tree/fit rigidification** — enforced segment lengths/shapes: the 2-landmark tree pass **is** the old
-   skeleton-rigidifier (same stabilizing effect, same math home); the 3+ per-group rigid fits (head 7 /
-   hips 4 / feet 3 / toes 3, MDS template + rotation-only Procrustes) are strictly stronger.
-3. **Critically-damped orientation solve** — per-segment, framerate-independent, tangent-space.
+2. **Rigidification** — `rigidify_landmarks` enforces each segment's rest length along the observed
+   direction (a forward-pass tree), and fits each 3+-landmark rigid body (skull, pelvis, hand carpus,
+   foot tarsus, chest, thigh, shin) to its rest shape by a rotation-pinned Procrustes.
+3. **Critically-damped orientation solve** — `solve_frame_orientations` (Kabsch for 3+, swing+twist for
+   2), per-segment, framerate-independent, tangent-space for the damped-minimal-roll tier.
 
 ## Status
 
-**Closed end to end (2026-08-18).** The loop now runs on the new core — `rigidify_landmarks` + the
-re-pointed `solve_frame_orientations` (see [kinematics-engine.md](kinematics-engine.md)). The old
-`SegmentLengthEstimator` / `StreamingSegmentLengthMonitor` were retired; the realtime loop now runs `estimate_segment_lengths` (a pure `(result, state)` per-segment rolling-median action) to adapt lengths to the live subject.
-wrapper.
+**Closed end to end (2026-08-18).** The loop now runs on the new core — `estimate_segment_lengths` →
+`build_standard_human_tpose(lengths)` → `rigidify_landmarks` → `solve_frame_orientations` (see
+[kinematics-engine.md](kinematics-engine.md)). The old `SegmentLengthEstimator` /
+`StreamingSegmentLengthMonitor` and the freemocap `RealtimeSkeletonRigidifier` wrapper were retired.

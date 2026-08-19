@@ -277,8 +277,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         # Load body biomechanics for per-frame center of mass calculation, using
         # the tracker→standard-human mapping that matches the configured detector
         # (RTMPose and MediaPipe use different keypoint naming conventions).
-        # Validated once at init via skellyforge's validate_all_tracker_families —
-        # no Pydantic in the hot loop.
+        # No Pydantic in the hot loop — the mapping is a plain dict applied per frame.
         detector_type = pipeline_config.camera_node_config.detector_type
         # The body biomechanics carries the tracker->standard-human mapping —
         # needed by the rigidifier + solver regardless of center-of-mass.
@@ -819,11 +818,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Publish aggregated output ----
-                # The model's segment_lengths field: the rigidifier's measured
-                # body + both-hand lengths, with the face's eight segments kept
-                # at their nominal spans (the estimator does not cover them).
-                # The same merge the model build does, so the wire lengths and
-                # the rest pose stay consistent with the per-frame geometry.
+                # The model's segment_lengths field: the estimator's measured
+                # per-segment lengths — falling back to each segment's derived
+                # nominal length when skeleton fitting is off — so the wire
+                # lengths and the rest pose stay consistent with the per-frame
+                # geometry.
                 segment_lengths: dict[str, float] = (
                     measured_lengths
                     if measured_lengths is not None

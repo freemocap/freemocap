@@ -43,8 +43,9 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
    Left and right are **identical local geometry** — only the world `rest_direction` mirrors Y.
 2. **Primary/twist, not exact/approximate.** The axes tuple is the Gram-Schmidt recipe: the FIRST axis is
    the primary direction (hard seed), the SECOND is the twist direction (soft hint). No `kind` field.
-3. **Lengths are derived**, not authored. `RigidBodySegment.length = |primary target's rest_position|`.
-   No `length_ratio`, no `SegmentLengthEstimator`.
+3. **Lengths are derived, then estimated per-segment.** `RigidBodySegment.length = |primary target's
+   rest_position|` is the empty-window seed; `estimate_segment_lengths` refines it per frame by a
+   per-segment rolling median (window 2.5 s), adapting each segment to the live subject independently.
 4. **Derived landmarks.** The model is **articulated**: a tracker hydrates the landmarks it can see (body +
    hand keypoints + `anatomical_offset`); the rest (toes, condyles, deep points) ride the segment's rigid
    solve. There is **no load-time "every landmark must be produced" completeness contract** — that was

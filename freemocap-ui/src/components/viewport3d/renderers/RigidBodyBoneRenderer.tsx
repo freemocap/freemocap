@@ -60,7 +60,7 @@ const SIDE_COLORS: Record<string, Color> = {
 const HIDDEN_COLOR = new Color("#000000");
 
 export function RigidBodyBoneRenderer() {
-    const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels } =
+    const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels, getLatestSegmentLengths } =
         useKeypointsSource();
 
     const meshRef = useRef<InstancedMesh>(null);
@@ -153,6 +153,7 @@ export function RigidBodyBoneRenderer() {
         const skeleton = skeletonRef.current;
         const rotations = rotationsRef.current;
         if (!skeleton || !rotations) return;
+        const liveLengths = getLatestSegmentLengths ? getLatestSegmentLengths() : null;
 
         for (const [name, slot] of table.nameToIndex) {
             const o = slot * 3;
@@ -176,7 +177,9 @@ export function RigidBodyBoneRenderer() {
                     [qw, qx, qy, qz],
                     table.byNameRestOrientation.get(name)!,
                     table.byNamePrimaryAxis.get(name)!,
-                    table.byNameLength.get(name) ?? 1.0,
+                    (liveLengths && Number.isFinite(liveLengths.data[slot]) && liveLengths.data[slot] > 0)
+                        ? liveLengths.data[slot]
+                        : (table.byNameLength.get(name) ?? 1.0),
                     table.byNameCrossSection.get(name) ?? 12,
                 );
                 if (matrix !== null) {

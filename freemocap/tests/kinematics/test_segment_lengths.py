@@ -6,7 +6,6 @@ no pipeline or test data needed.
 import numpy as np
 
 from skellyforge.kinematics.segment_lengths import (
-    StreamingSegmentLengthMonitor,
     build_segment_length_report,
     canonical_bone_length_ratios,
 )
@@ -70,24 +69,3 @@ def test_implausible_scale_is_flagged():
     report = build_segment_length_report(_synthetic_body_positions(height_mm=50.0))
     violations = report.human_shape_violations()
     assert any("plausible" in v or "height" in v for v in violations), violations
-
-
-def test_streaming_monitor_matches_batch():
-    positions = _synthetic_body_positions(n_frames=120)
-    monitor = StreamingSegmentLengthMonitor(window=120)
-    for frame in range(120):
-        monitor.update({name: arr[frame] for name, arr in positions.items()})
-
-    assert monitor.n_seen == 120
-    report = monitor.report()
-    assert report.human_shape_violations() == [], report.summary()
-    assert abs(report.implied_height_median_mm - _HEIGHT_MM) < 1.0
-
-
-def test_streaming_monitor_handles_empty_frames():
-    # No triangulation this frame → empty dict → NaN buffers, no crash, not assessable.
-    monitor = StreamingSegmentLengthMonitor(window=30)
-    for _ in range(30):
-        monitor.update({})
-    report = monitor.report()
-    assert len(report.assessable()) == 0

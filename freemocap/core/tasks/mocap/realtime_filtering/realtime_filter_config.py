@@ -83,7 +83,7 @@ class RealtimeFilterConfig(BaseModel):
     # Rolling-window duration (seconds) over which each bone's median length is
     # taken. Larger = steadier lengths, slower to adapt to a new subject.
     # "Reset skeleton fit" clears the window so the next ~window seconds re-fit.
-    segment_length_window_s: float = 10.0
+    segment_length_window_s: float = 2.5
 
     # ---- Subject scale ----
     # Subject standing height in keypoint-coordinate units (mm). The charuco

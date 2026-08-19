@@ -1,13 +1,19 @@
-# Segment Lengths (derived, not estimated)
+# Segment Lengths (derived nominal, then estimated per-segment per frame)
 
-**Describes:** how a segment's length is obtained. In the new ontology, length is **derived** from the
-segment's primary direction's target landmark `rest_position`.
+**Describes:** how a segment length is obtained. Each segment has a **derived nominal** length (from
+its primary direction target `rest_position`) that is then **refined per frame** by a per-segment
+rolling-median estimator over the live landmarks.
 
 ## What this covers
 
-`RigidBodySegment.length` = `|distal.rest_position|` (the primary direction's target, authored in the segment's
-own local frame). Subject scaling is a uniform scale of every `rest_position`.
+`RigidBodySegment.length` = `|distal.rest_position|` (the primary direction target, authored in the
+segment own local frame) is the **empty-window seed**. `estimate_segment_lengths` (a pure
+`(result, state)` action in skellyforge kinematics) measures each segment origin-to-distal distance
+from the hydrated landmarks, holds a rolling window (`window_seconds`: 2.5 s realtime, unbounded
+posthoc), and returns the per-segment median. Each segment adapts to the live subject true
+proportions **independently** — no single uniform scale — falling back to the seed while unobserved.
 
 ## Status
 
-Length is derived from position (see [segment-model.md](../01-data-model/segment-model.md)).
+`estimate_segment_lengths` feeds the T-pose build (`build_standard_human_tpose(..., lengths=...)`)
+and the rigidifier in the realtime loop; the frontend renders from the live `SEGMENT_LENGTHS` channel.

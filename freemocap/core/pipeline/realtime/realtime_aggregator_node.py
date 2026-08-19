@@ -56,6 +56,10 @@ from skellyforge.skellymodels.standard_human.human_skeleton import (
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
 )
+from skellyforge.kinematics.segment_length_estimation import (
+    SegmentLengthState,
+    estimate_segment_lengths,
+)
 from skellyforge.kinematics.skeleton_rigidifier import rigidify_landmarks
 from skellyforge.kinematics.tpose import build_standard_human_tpose
 
@@ -327,6 +331,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         # to this run — at module scope, concurrent pipelines would share
         # smoothing state and damping would persist across recordings.
         previous_orientation_result: SolveState = SolveState()
+        previous_length_state: SegmentLengthState = SegmentLengthState.empty()
         # Nominal per-run reference geometry (anthropometric seeds, including
         # the face's nominal spans) — the fallback BEFORE the first rigidify
         # result lands. Once the estimator has live measured lengths, the
@@ -408,6 +413,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
+                    previous_length_state = SegmentLengthState.empty()
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()
@@ -424,7 +430,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         streaming_kinematics.reset()
-                        # (Skeleton fitting is stateless — nothing to reset.)
+                        previous_length_state = SegmentLengthState.empty()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -594,6 +600,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                 xcom: Point3d | None = None
                 body_kinematics = None
                 rigid_result: dict[str, np.ndarray] | None = None
+                measured_lengths: dict[str, float] | None = None
+                solver_tpose = reference_geometry
                 reprojected_segment_origins: dict[
                     CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
                 ] = {}
@@ -677,10 +685,20 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # ---- Rigid-body skeleton correction ----
                     if skeleton_fitting_enabled and filtered_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
+                        mapped_landmarks = biomechanics.apply_tracker_mapping(filtered_keypoints)
+                        length_result, previous_length_state = estimate_segment_lengths(
+                            skeleton=standard_human,
+                            landmarks=mapped_landmarks,
+                            timestamp_seconds=frame_time,
+                            window_seconds=filter_config.segment_length_window_s,
+                            state=previous_length_state,
+                        )
+                        measured_lengths = length_result.lengths
+                        solver_tpose = build_standard_human_tpose(standard_human, measured_lengths)
                         rigid_result = rigidify_landmarks(
                             standard_human,
-                            reference_geometry,
-                            biomechanics.apply_tracker_mapping(filtered_keypoints),
+                            solver_tpose,
+                            mapped_landmarks,
                         )
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
@@ -696,7 +714,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         solver_landmarks = rigid_result
                         orientation_result, previous_orientation_result = solve_frame_orientations(
                             skeleton=standard_human,
-                            tpose=reference_geometry,
+                            tpose=solver_tpose,
                             landmarks=solver_landmarks,
                             timestamp_seconds=frame_time,
                             state=previous_orientation_result,
@@ -806,9 +824,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # at their nominal spans (the estimator does not cover them).
                 # The same merge the model build does, so the wire lengths and
                 # the rest pose stay consistent with the per-frame geometry.
-                segment_lengths: dict[str, float] = {
-                    seg.name: seg.length for seg in standard_human.segments
-                }
+                segment_lengths: dict[str, float] = (
+                    measured_lengths
+                    if measured_lengths is not None
+                    else {seg.name: seg.length for seg in standard_human.segments}
+                )
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,

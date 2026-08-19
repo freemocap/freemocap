@@ -1,6 +1,6 @@
 import React, {createContext, useContext, useMemo} from "react";
 import {useServerOptional} from "@/services/server/server-context";
-import type { RotationsFrame, RollingChannelName } from '@/services/server/transport/frame-types';
+import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame } from '@/services/server/transport/frame-types';
 import type { ModelDefinition } from '@/services/server/transport/message-contract';
 
 /**
@@ -40,6 +40,7 @@ export interface KeypointsSource {
     getLatestSkeleton: () => KeypointsFrame | null;
     subscribeToRotations?: (cb: (frame: RotationsFrame) => void) => () => void;
     getLatestRotations?: () => RotationsFrame | null;
+    getLatestSegmentLengths?: () => SegmentLengthsFrame | null;
     getRollingWindow?: (channelName: RollingChannelName) => unknown[];
     // The model that rides every frame (the rigid-body renderer's name→index map).
     subscribeToModels?: (cb: (models: ModelDefinition[]) => void) => () => void;
@@ -82,6 +83,7 @@ export function useKeypointsSource(): KeypointsSource {
             getLatestSkeleton: server.getLatestSkeleton,
             subscribeToRotations: server.subscribeToRotations,
             getLatestRotations: server.getLatestRotations,
+            getLatestSegmentLengths: server.getLatestSegmentLengths,
             getRollingWindow: server.getRollingWindow,
             subscribeToModels: server.subscribeToModels,
             getModels: server.getModels,
@@ -94,6 +96,7 @@ export function useKeypointsSource(): KeypointsSource {
         server?.getLatestSkeleton,
         server?.subscribeToRotations,
         server?.getLatestRotations,
+        server?.getLatestSegmentLengths,
         server?.getRollingWindow,
         server?.subscribeToModels,
         server?.getModels,

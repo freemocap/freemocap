@@ -62,8 +62,8 @@ carry only structure, validation, and the per-layer math. Every *reference* in t
   nested files.
 - **Ownership** — a landmark declares its `reference_frame` explicitly (the segment whose local frame
   its `rest_position` is in). No ordering convention.
-- **Length** — derived from `rest_position`, not authored as a ratio. Subject scaling is a uniform
-  scale of every `rest_position`.
+- **Length** — derived from `rest_position`, not authored as a ratio. Live subject adaptation is
+  per-segment (a rolling median of each segment observed length), not a single uniform scale.
 
 ## The constitution — invariants at every layer
 

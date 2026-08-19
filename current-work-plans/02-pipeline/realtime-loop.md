@@ -30,5 +30,5 @@ needed for it:
 
 **Closed end to end (2026-08-18).** The loop now runs on the new core — `rigidify_landmarks` + the
 re-pointed `solve_frame_orientations` (see [kinematics-engine.md](kinematics-engine.md)). The old
-`SegmentLengthEstimator` / `StreamingSegmentLengthMonitor` were deleted with the freemocap rigidifier
+`SegmentLengthEstimator` / `StreamingSegmentLengthMonitor` were retired; the realtime loop now runs `estimate_segment_lengths` (a pure `(result, state)` per-segment rolling-median action) to adapt lengths to the live subject.
 wrapper.

@@ -22,13 +22,14 @@ import type { ModelDefinition, PrimaryAxis } from "@/services/server/transport/m
 
 export type BoneSide = "left" | "right" | "center";
 
-export type BoneRegion = "body" | "hand" | "face";
+export type BoneRegion = "body" | "hand" | "face" | "foot";
 
 /** Classify a segment by name into a coarse region for cross-section sizing. */
 export function classifyRegion(name: string): BoneRegion {
     const lc = name.toLowerCase();
     if (/eye|ear|nose|jaw|mouth/.test(lc)) return "face";
-    if (/hand|thumb|index|middle|ring|little/.test(lc)) return "hand";
+    if (/hand|thumb|index|middle|ring|pinky|finger/.test(lc)) return "hand";
+    if (/foot|toe|metatarsal|tarsal|calcaneus|talus|navicular|cuboid|cuneiform|ankle/.test(lc)) return "foot";
     return "body";
 }
 
@@ -37,6 +38,7 @@ export const REGION_CROSS_SECTION: Readonly<Record<BoneRegion, number>> = {
     body: 12,
     hand: 5,
     face: 3,
+    foot: 5,
 };
 
 /** A single rigid body segment, resolved once at model time. */

@@ -134,6 +134,7 @@ async function initRoot(
         frameloop: "demand",
         // No event manager — pointer events are dispatched directly to the
         // canvas EventTarget, where CameraControls listens via addEventListener.
+        // (Hover/click picking is done manually by ViewportPicker, not R3F.)
         events: undefined,
     });
 
@@ -219,6 +220,18 @@ function WorkerStatsForwarder() {
 // Root scene component
 // ---------------------------------------------------------------------------
 
+function WorkerInspectionForwarder() {
+    const { hovered, pinned } = useViewportState();
+    useEffect(() => {
+        if (pinned) console.log("[worker] posting pinned:", pinned.kind + ":" + pinned.name);
+        (self as unknown as Worker).postMessage({
+            type: "inspection",
+            data: { hovered, pinned },
+        });
+    }, [hovered, pinned]);
+    return null;
+}
+
 function WorkerScene() {
     const controlsRef = useRef<CameraControlsImpl>(null!);
 
@@ -241,6 +254,7 @@ function WorkerScene() {
             <ViewportStateProvider>
                 <WorkerVisibilitySync />
                 <WorkerStatsForwarder />
+                <WorkerInspectionForwarder />
                 <WorkerDataProvider>
                     <ThreeJsScene cameraControlsRef={controlsRef} />
                 </WorkerDataProvider>

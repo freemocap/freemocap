@@ -115,3 +115,4 @@ export function WorkerVisibilitySync() {
 
     return null;
 }
+

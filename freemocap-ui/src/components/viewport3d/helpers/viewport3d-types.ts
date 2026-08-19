@@ -74,3 +74,18 @@ export interface ViewportStats {
     cameras: number;
     centerOfMass: number;
 }
+
+// ---------------------------------------------------------------------------
+// Inspection (hover / click-to-pin a named point or bone).
+// ---------------------------------------------------------------------------
+
+/** The three inspectable entity kinds in the 3D viewport. */
+export type InspectionKind = "keypoint" | "landmark" | "segment";
+
+/** A hovered or pinned inspectable entity. */
+export interface InspectionTarget {
+    kind: InspectionKind;
+    name: string;
+}
+
+

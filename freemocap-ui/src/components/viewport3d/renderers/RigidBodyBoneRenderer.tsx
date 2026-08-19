@@ -27,9 +27,9 @@ import {
     Matrix4,
     MeshBasicMaterial,
     Object3D,
-    Vector3,
 } from "three";
 import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
+import { registerPickingMesh, unregisterPickingMesh } from "./PickingRegistry";
 import type { RotationsFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { createBoneMeshGeometry } from "./RigidBodyBoneGeometry";
@@ -41,7 +41,6 @@ import {
 } from "./RigidBodyBoneInstances";
 
 const MAX_BONES = 256;
-const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
 // Per-region transverse cross-section radius (mm), resolved at model time and
 // stored on the table (face < hand < body). D6: the radius is independent of a
@@ -62,8 +61,8 @@ const HIDDEN_COLOR = new Color("#000000");
 export function RigidBodyBoneRenderer() {
     const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels, getLatestSegmentLengths } =
         useKeypointsSource();
-
     const meshRef = useRef<InstancedMesh>(null);
+    const idxToNameRef = useRef<Map<number, string>>(new Map());
 
     const skeletonRef = useRef<KeypointsFrame | null>(null);
     const rotationsRef = useRef<RotationsFrame | null>(null);
@@ -87,7 +86,7 @@ export function RigidBodyBoneRenderer() {
         if (!mesh || !table || tableAppliedRef.current) return;
 
         for (let i = 0; i < MAX_BONES; i++) {
-            DUMMY.position.copy(FAR_AWAY);
+            DUMMY.position.set(0, 0, 0);
             DUMMY.scale.set(0, 0, 0);
             DUMMY.updateMatrix();
             mesh.setMatrixAt(i, DUMMY.matrix);
@@ -107,6 +106,10 @@ export function RigidBodyBoneRenderer() {
     // Build the name→slot table ONCE per model arrival (D14).
     const rebuild = useCallback((model: ModelDefinition) => {
         tableRef.current = buildBoneInstances(model);
+        idxToNameRef.current.clear();
+        for (const inst of tableRef.current.instances) {
+            idxToNameRef.current.set(inst.instanceIdx, inst.name);
+        }
         tableAppliedRef.current = false;
         applyTable();
     }, [applyTable]);
@@ -189,7 +192,7 @@ export function RigidBodyBoneRenderer() {
             }
 
             if (!visible) {
-                DUMMY.position.copy(FAR_AWAY);
+                DUMMY.position.set(0, 0, 0);
                 DUMMY.scale.set(0, 0, 0);
                 DUMMY.updateMatrix();
                 mesh.setMatrixAt(slot, DUMMY.matrix);
@@ -199,6 +202,14 @@ export function RigidBodyBoneRenderer() {
         mesh.instanceMatrix.needsUpdate = true;
         dirtyRef.current = false;
     });
+
+    // Register with the manual raycast picker (ViewportPicker).
+    useEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh) return;
+        registerPickingMesh(mesh, { kind: "segment", instanceIdToName: idxToNameRef.current });
+        return () => unregisterPickingMesh(mesh);
+    }, []);
 
     return (
         <instancedMesh

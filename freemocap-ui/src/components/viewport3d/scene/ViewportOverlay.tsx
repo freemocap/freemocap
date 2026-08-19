@@ -141,6 +141,9 @@ export function ViewportOverlay({
               checked={visibility.rigidBodyBones}
               onChange={toggleRigidBodyBones}
             />
+            <p className="text sm mt-1 mb-0" style={{ color: "#888" }}>
+              Hover a point or bone for its name · click to pin its numbers.
+            </p>
             <CollapsibleVisibilityGroup
               label="Center of Mass"
               checked={visibility.centerOfMass}

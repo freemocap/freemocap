@@ -5,18 +5,17 @@ import {
     MeshBasicMaterial,
     Object3D,
     SphereGeometry,
-    Vector3,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useWorkerData } from "../WorkerDataContext";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
+import { registerPickingMesh, unregisterPickingMesh } from "./PickingRegistry";
 import { useKeypointsSource, type KeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 
 const MAX_POINTS = 1024;
 const DUMMY = new Object3D();
-const FAR_AWAY = new Vector3(1e5, 1e5, 1e5);
 
 // ---------------------------------------------------------------------------
 // Per‑category keypoint radii.
@@ -75,9 +74,11 @@ interface KeypointLayerProps {
      *  (reprojection_error) from KEYPOINTS_3D and SEGMENT_ORIGINS is natively
      *  3-column. */
     stride: 3 | 4;
+    /** The inspection kind reported when this layer's points are hovered/clicked. */
+    inspectionKind: "keypoint" | "landmark";
 }
 
-function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform", stride }: KeypointLayerProps) {
+function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform", stride, inspectionKind }: KeypointLayerProps) {
     const workerData = useWorkerData();
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
@@ -86,6 +87,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
     const frameRef = useRef<KeypointsFrame | null>(null);
     const dirtyRef = useRef(false);
     const nameToInstanceIdx = useRef<Map<string, number>>(new Map());
+    const instanceIdxToName = useRef<Map<number, string>>(new Map());
     const frameIdxByName = useRef<Map<string, number>>(new Map());
     const lastPointNamesRef = useRef<readonly string[] | null>(null);
     const nextIdx = useRef(0);
@@ -131,7 +133,9 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
                     if (!nameToInstanceIdx.current.has(name)
                         && nextIdx.current < MAX_POINTS
                         && classifyPointName(name) !== 'face') {
-                        nameToInstanceIdx.current.set(name, nextIdx.current++);
+                        const idx = nextIdx.current++;
+                        nameToInstanceIdx.current.set(name, idx);
+                        instanceIdxToName.current.set(idx, name);
                     }
                 }
             }
@@ -142,7 +146,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         const mesh = meshRef.current;
         if (!mesh) return;
         for (let i = 0; i < MAX_POINTS; i++) {
-            DUMMY.position.copy(FAR_AWAY);
+            DUMMY.position.set(0, 0, 0);
             DUMMY.scale.set(0, 0, 0);
             DUMMY.updateMatrix();
             mesh.setMatrixAt(i, DUMMY.matrix);
@@ -190,7 +194,7 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
                 mesh.setColorAt(instanceIdx, pointColor);
                 count++;
             } else {
-                DUMMY.position.copy(FAR_AWAY);
+                DUMMY.position.set(0, 0, 0);
                 DUMMY.scale.set(0, 0, 0);
                 mesh.setColorAt(instanceIdx, COLORS.hidden);
             }
@@ -206,8 +210,21 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
         if (elapsed > 8) console.warn(`KeypointLayer (${statsKey}) useFrame: ${elapsed.toFixed(1)}ms`);
     });
 
+    // Register this mesh with the manual raycast picker (the worker has no R3F
+    // pointer event manager, so hover/click is done by ViewportPicker).
+    useEffect(() => {
+        const mesh = meshRef.current;
+        if (!mesh) return;
+        registerPickingMesh(mesh, { kind: inspectionKind, instanceIdToName: instanceIdxToName.current });
+        return () => unregisterPickingMesh(mesh);
+    }, [inspectionKind]);
+
     return (
-        <instancedMesh ref={meshRef} args={[geo, mat, MAX_POINTS]} frustumCulled={false} />
+        <instancedMesh
+            ref={meshRef}
+            args={[geo, mat, MAX_POINTS]}
+            frustumCulled={false}
+        />
     );
 }
 
@@ -224,6 +241,7 @@ export function KeypointsRenderer() {
                     statsKey="keypoints"
                     colorMode="byBodyPart"
                     stride={3}
+                    inspectionKind="keypoint"
                 />
             )}
             {visibility.skeleton && (
@@ -234,6 +252,7 @@ export function KeypointsRenderer() {
                     statsKey="skeleton"
                     colorMode="byBodyPart"
                     stride={3}
+                    inspectionKind="landmark"
                 />
             )}
         </>

@@ -5,6 +5,7 @@ import {
   useViewportState,
 } from "./scene/ViewportStateContext";
 import { ViewportOverlay } from "./scene/ViewportOverlay";
+import { ViewportInspection } from "./scene/ViewportInspection";
 import {
   useHasKeypointsSourceProvider,
   useKeypointsSource,
@@ -16,7 +17,7 @@ import {
   selectLoadedCalibration,
 } from "@/store/slices/calibration/calibration-slice";
 import { useCalibrationTomlLoader } from "./hooks/useCalibrationTomlLoader";
-import { type ViewportStats } from "./helpers/viewport3d-types";
+import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
@@ -92,6 +93,25 @@ function VisibilityForwarder() {
   useEffect(() => {
     VIEWPORT_WORKER.postMessage({ type: "visibility", data: visibility });
   }, [visibility]);
+  return null;
+}
+
+
+function InspectionReceiver() {
+  const { setHovered, setPinned } = useViewportState();
+  useEffect(() => {
+    const handler = (
+      e: MessageEvent<{ type?: string; data?: { hovered: InspectionTarget | null; pinned: InspectionTarget | null } }>,
+    ) => {
+      if (e.data?.type === "inspection" && e.data.data) {
+        if (e.data.data.pinned) console.log("[main] received pinned:", e.data.data.pinned.kind + ":" + e.data.data.pinned.name);
+        setHovered(e.data.data.hovered);
+        setPinned(e.data.data.pinned);
+      }
+    };
+    VIEWPORT_WORKER.addEventListener("message", handler);
+    return () => VIEWPORT_WORKER.removeEventListener("message", handler);
+  }, [setHovered, setPinned]);
   return null;
 }
 
@@ -320,6 +340,7 @@ export function ThreeJsCanvas() {
 
     const onPointer = (e: PointerEvent) => {
       if (e.type === "pointerdown") {
+        console.log("[main] forwarding pointerdown to worker");
         try {
           canvas.setPointerCapture(e.pointerId);
         } catch {
@@ -387,6 +408,7 @@ export function ThreeJsCanvas() {
       <XcomForwarder />
       <BodyKinematicsForwarder />
       <WorkerStatsReceiver />
+      <InspectionReceiver />
       <div
         ref={containerRef}
         tabIndex={0}
@@ -404,6 +426,7 @@ export function ThreeJsCanvas() {
       
         />
         <ViewportOverlay onFitCamera={handleFit} onResetCamera={handleReset} />
+        <ViewportInspection />
       </div>
     </ViewportStateProvider>
   );

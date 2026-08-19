@@ -1,7 +1,7 @@
 """KeypointsProducer — the measured keypoints + hydrated landmarks.
 
 Active while a realtime pipeline is live. Fills KEYPOINTS_3D (tracker-named
-measured keypoints) and LANDMARKS_3D (the 76 hydrated standard-human landmarks)
+measured keypoints) and LANDMARKS_3D (the 146 hydrated standard-human landmarks)
 as self-describing ChannelBlocks. A missing point is a NaN row — never a
 dropped block.
 """

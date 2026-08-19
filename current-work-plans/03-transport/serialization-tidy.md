@@ -13,4 +13,4 @@ channel)) so downstream analysis is uniform across keypoints, positions, and rot
 - The tidy-long column schema and how it maps from the frame channels.
 - The relationship to the posthoc rebuild ([../02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md)).
 - Align channel names with [../01-data-model/message-contract.md](../01-data-model/message-contract.md);
-  60/76 counts; `wxyz`.
+  95/146 segment/landmark counts; `wxyz`.

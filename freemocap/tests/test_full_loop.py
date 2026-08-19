@@ -1,11 +1,10 @@
 """F5a — the full realtime loop, backend half of the gate (message path).
 
-Synthetic rtmpose keypoints -> the real rigidifier -> the real orientation solver
--> a real aggregator message -> a self-describing frame message -> CBOR -> the
-wire rotations equal the solver's, and a mock-camera standing run yields non-NaN
-ROTATIONS_WORLD for every solved segment. An arm-abduction frame set then shows
-the change lands where it should: the humerus rotates ~90° while the spine stays
-put.
+Synthetic rtmpose keypoints -> the real tracker mapping + rigidifier -> the real
+orientation solver -> a real aggregator message -> a self-describing frame message ->
+CBOR -> the wire rotations equal the solver's, and a mock-camera standing run yields
+non-NaN ROTATIONS_WORLD for every solved segment. An arm-abduction frame set then shows
+the change lands where it should: the humerus rotates ~90° while the spine stays put.
 
 This is the backend half of F5; the frontend integration test and the user's
 manual run are the other halves.
@@ -23,44 +22,36 @@ import numpy as np
 # mid-init, the re-import finds it partially initialized).
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import ChannelKind, encode_message
-from freemocap.core.streaming.producers.producer_contexts import (
-    FrameContext,
-    StreamContext,
-)
+from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 from freemocap.core.tasks.mocap.center_of_mass import (
     CoMConfidence,
     CenterOfMassResult,
+    load_body_biomechanics,
 )
-from freemocap.core.pipeline.realtime.realtime_pipeline_config import (
-    RealtimePipelineConfig,
-)
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
     CameraNodeOutputMessage,
-)
-from freemocap.core.tasks.mocap.rigid_body.skeleton_rigidifier import (
-    RealtimeSkeletonRigidifier,
 )
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellyforge.kinematics.orientation_solver import (
     FrameOrientationResult,
+    SolveState,
     solve_frame_orientations,
 )
-from skellyforge.skellymodels.standard_human.reference_geometry import (
-    ReferenceGeometry,
+from skellyforge.kinematics.segment_length_estimation import (
+    SegmentLengthState,
+    estimate_segment_lengths,
 )
-from skellyforge.skellymodels.standard_human.standard_human_model import (
-    StandardHuman,
-    compose_standard_human,
-)
+from skellyforge.kinematics.skeleton_rigidifier import rigidify_landmarks
+from skellyforge.kinematics.tpose import build_standard_human_tpose
+from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton
 from skellytracker.core.data_primitives.keypoints import Keypoints
 from skellytracker.core.data_primitives.observation import (
     Observation,
     StageObservation,
 )
-
-NOMINAL_HEIGHT_MM = 1750.0
 
 
 def _standing_pose() -> dict[str, np.ndarray]:
@@ -126,58 +117,53 @@ def _observation(
     )
 
 
-def _solver_input(result) -> dict[str, np.ndarray]:
-    """The exact keypoint merge the aggregator feeds the solver."""
-    return {
-        **result.body_positions,
-        **result.left_hand_standard_positions,
-        **result.right_hand_standard_positions,
-    }
-
-
-def _measured_lengths(
-    model: StandardHuman, rig: RealtimeSkeletonRigidifier
-) -> dict[str, float]:
-    """The aggregator's segment-length merge: measured + nominal face fallback."""
-    lengths: dict[str, float] = {
-        **rig.body_segment_lengths,
-        **rig.left_hand_segment_lengths,
-        **rig.right_hand_segment_lengths,
-    }
-    for seg in model.segments:
-        if seg.name not in lengths:
-            lengths[seg.name] = seg.length_ratio * NOMINAL_HEIGHT_MM
-    return lengths
-
-
 def _solve(
-    model: StandardHuman,
-    rig: RealtimeSkeletonRigidifier,
+    skeleton: HumanSkeleton,
     pose: dict[str, np.ndarray],
     *,
     n_frames: int = 30,
     dt: float = 1.0,
-) -> FrameOrientationResult:
-    """Feed n identical frames, then solve the last frame (damped)."""
-    result = None
+) -> tuple[FrameOrientationResult, dict[str, np.ndarray], dict[str, float]]:
+    """The aggregator's exact reconstruction order, run n identical frames.
+
+    tracker mapping -> estimate lengths -> build T-pose -> rigidify -> solve,
+    threading the solve + length state across frames so the damped tier settles.
+    """
+    biomechanics = load_body_biomechanics("rtmpose")
+    mapped = biomechanics.apply_tracker_mapping(pose)
+
+    orientation_state = SolveState()
+    length_state = SegmentLengthState.empty()
+    orientation: FrameOrientationResult | None = None
+    rigid: dict[str, np.ndarray] | None = None
+    lengths: dict[str, float] = {}
+
     for i in range(n_frames):
-        result = rig.rigidify_frame(pose, measured=pose, t=float(i) * dt)
-    lengths = _measured_lengths(model, rig)
-    reference_geometry = ReferenceGeometry.from_segments(
-        list(model.segments), lengths
-    ).segments
-    return solve_frame_orientations(
-        standard_human=model,
-        reference_geometry=reference_geometry,
-        landmarks=_solver_input(result),
-        timestamp_seconds=float(n_frames - 1) * dt,
-        previous_result=None,
-    )
+        length_result, length_state = estimate_segment_lengths(
+            skeleton,
+            mapped,
+            timestamp_seconds=float(i) * dt,
+            window_seconds=2.5,
+            state=length_state,
+        )
+        lengths = length_result.lengths
+        tpose = build_standard_human_tpose(skeleton, lengths)
+        rigid = rigidify_landmarks(skeleton, tpose, mapped)
+        orientation, orientation_state = solve_frame_orientations(
+            skeleton,
+            tpose,
+            rigid,
+            timestamp_seconds=float(i) * dt,
+            state=orientation_state,
+        )
+
+    assert orientation is not None and rigid is not None
+    return orientation, rigid, lengths
 
 
 def _message(
-    model: StandardHuman,
-    result,
+    model: HumanSkeleton,
+    result: dict[str, np.ndarray],
     orientation: FrameOrientationResult,
     pose: dict[str, np.ndarray],
     lengths: dict[str, float],
@@ -215,8 +201,8 @@ def _message(
         keypoints_arrays=pose,
         center_of_mass_result=com,
         xcom=Point3d(x=0.0, y=0.0, z=0.0),
-        skeleton=None,
-        standard_skeleton=_solver_input(result),
+        skeleton=result,
+        standard_skeleton=result,
         segment_rotations_world=orientation.world_quaternions,
         segment_rotations_local=orientation.local_quaternions,
         segment_lengths=lengths,
@@ -230,6 +216,7 @@ def _frame_message(model, result, orientation, pose, lengths) -> dict:
             standard_human=model,
             camera_ids=("cam-0", "cam-1"),
             tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
+            detector_type="rtmpose",
             pipeline_live=True,
         )
     )
@@ -269,12 +256,9 @@ def _quat_angle_rad(a: np.ndarray, b: np.ndarray) -> float:
 
 def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     """aggregator -> frame message -> CBOR -> decode: rotations identical + non-NaN."""
-    model = compose_standard_human()
-    rig = RealtimeSkeletonRigidifier.create(
-        standard_human=model, detector_type="rtmpose", height_mm=NOMINAL_HEIGHT_MM
-    )
+    model = HumanSkeleton.standard_human()
     pose = _standing_pose()
-    orientation = _solve(model, rig, pose)
+    orientation, result, lengths = _solve(model, pose)
 
     world = orientation.world_quaternions
     assert world, "the standing pose must solve segments"
@@ -282,8 +266,6 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
         assert np.all(np.isfinite(q)), f"ROTATIONS_WORLD non-finite for {name}"
         assert abs(float(np.linalg.norm(q)) - 1.0) < 1e-6, f"non-unit quaternion for {name}"
 
-    result = rig.rigidify_frame(pose, measured=pose, t=100.0)
-    lengths = _measured_lengths(model, rig)
     restored = _frame_message(model, result, orientation, pose, lengths)
 
     # ROTATIONS_WORLD rows equal the solver's quaternions (float32 wire).
@@ -300,9 +282,9 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     lm_channel = _channel_by_kind(restored, "LANDMARKS_3D")
     lm_data = _channel_data(lm_channel, 4)
     # LANDMARKS_3D is index-keyed against the sorted landmark order.
-    hips_idx = sorted(model.required_landmarks()).index("hips_center")
+    hips_idx = model.landmark_names.index("hips_center")
     np.testing.assert_allclose(
-        lm_data[hips_idx, :3], result.body_positions["hips_center"], atol=1e-4
+        lm_data[hips_idx, :3], result["hips_center"], atol=1e-4
     )
 
     # KEYPOINTS_3D carries the tracker-named nose measurement.
@@ -314,12 +296,9 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
 
 def test_arm_abduction_rotates_humerus_and_leaves_spine():
     """The change lands where it should: ~90° on the humerus, ~0° on the spine."""
-    model = compose_standard_human()
-    rig = RealtimeSkeletonRigidifier.create(
-        standard_human=model, detector_type="rtmpose", height_mm=NOMINAL_HEIGHT_MM
-    )
-    standing = _solve(model, rig, _standing_pose())
-    bent = _solve(model, rig, _abducted_left_arm(_standing_pose()))
+    model = HumanSkeleton.standard_human()
+    standing = _solve(model, _standing_pose())[0]
+    bent = _solve(model, _abducted_left_arm(_standing_pose()))[0]
 
     standing_humerus = standing.world_quaternions["left_upper_arm"]
     bent_humerus = bent.world_quaternions["left_upper_arm"]

@@ -331,6 +331,8 @@ class RealtimeAggregatorNode(AggregatorNode):
         # smoothing state and damping would persist across recordings.
         previous_orientation_result: SolveState = SolveState()
         previous_length_state: SegmentLengthState = SegmentLengthState.empty()
+        # Observability: log each skeleton-failure class ONCE per run, not per frame.
+        skeleton_observability_logged: set[str] = set()
         # Nominal per-run reference geometry (anthropometric seeds, including
         # the face's nominal spans) — the fallback BEFORE the first rigidify
         # result lands. Once the estimator has live measured lengths, the
@@ -720,6 +722,20 @@ class RealtimeAggregatorNode(AggregatorNode):
                         )
                         segment_rotations_world = orientation_result.world_quaternions
                         segment_rotations_local = orientation_result.local_quaternions
+                        if not segment_rotations_world and "empty_orientations" not in skeleton_observability_logged:
+                            skeleton_observability_logged.add("empty_orientations")
+                            logger.error(
+                                "Skeleton solve produced ZERO segment orientations — "
+                                "the 3D bones will not render. Rigidified landmarks are "
+                                "present, but the solver hydrated no segments."
+                            )
+                        elif segment_rotations_world and len(segment_rotations_world) < len(standard_human.segments) and "partial_orientations" not in skeleton_observability_logged:
+                            skeleton_observability_logged.add("partial_orientations")
+                            missing = sorted(set(standard_human.segment_names) - set(segment_rotations_world))
+                            logger.warning(
+                                f"Skeleton solve produced {len(segment_rotations_world)}/"
+                                f"{len(standard_human.segments)} orientations — unsolved segments: {missing}"
+                            )
                         if timer is not None:
                             timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
 
@@ -828,6 +844,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                     if measured_lengths is not None
                     else {seg.name: seg.length for seg in standard_human.segments}
                 )
+                if segment_lengths and all(v <= 0.0 for v in segment_lengths.values()) and "zero_lengths" not in skeleton_observability_logged:
+                    skeleton_observability_logged.add("zero_lengths")
+                    logger.error("All segment lengths are ZERO — the 3D bones will have zero length")
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,

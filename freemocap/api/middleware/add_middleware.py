@@ -26,13 +26,21 @@ def add_middleware(app: FastAPI) -> None:
                     body_str = body_bytes.decode("utf-8")
                 except UnicodeDecodeError:
                     body_str = f"<binary data, {len(body_bytes)} bytes>"
-            logger.api(f"Received request: {request.method} {request.url}. Body:\n{body_str}")
+            received_log = f"Received request: {request.method} {request.url}. Body:\n{body_str}"
         else:
-            logger.api(f"Received request: {request.method} {request.url}. No body.")
+            received_log = f"Received request: {request.method} {request.url}. No body."
 
         try:
             response: Response = await call_next(request)
             process_time = time.perf_counter() - start_time
+
+            # 425 is used by polling endpoints (e.g. sync-job status) as a deliberate
+            # "not ready yet" signal, not a failure — suppress it entirely so it doesn't
+            # drown out real logs when the frontend polls every few hundred ms.
+            if response.status_code == 425:
+                return response
+
+            logger.api(received_log)
 
             # For error responses, consume the body to log it
             if response.status_code >= 400:
@@ -41,24 +49,17 @@ def add_middleware(app: FastAPI) -> None:
                 async for chunk in response.body_iterator:
                     response_body += chunk
 
-                # 425 is used by polling endpoints (e.g. sync-job status) as a deliberate
-                # "not ready yet" signal, not a failure — log it quietly so it doesn't
-                # drown out real errors when the frontend polls every few hundred ms.
-                is_expected_pending = response.status_code == 425
-                log = logger.debug if is_expected_pending else logger.error
-                label = "Request pending" if is_expected_pending else "Request FAILED"
-
                 # Try to decode and log the error
                 try:
                     error_content = response_body.decode("utf-8")
-                    log(
-                        f"{label}: {request.method} {request.url} "
+                    logger.error(
+                        f"Request FAILED: {request.method} {request.url} "
                         f"[{response.status_code}] in {process_time:.6f}s - "
                         f"Error: {error_content}"
                     )
                 except UnicodeDecodeError:
-                    log(
-                        f"{label}: {request.method} {request.url} "
+                    logger.error(
+                        f"Request FAILED: {request.method} {request.url} "
                         f"[{response.status_code}] in {process_time:.6f}s - "
                         f"Error body could not be decoded (length: {len(response_body)} bytes)"
                     )

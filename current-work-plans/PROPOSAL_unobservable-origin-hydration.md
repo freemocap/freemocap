@@ -1,9 +1,17 @@
 # Proposal — hydrating the structurally-unobservable segment origins
 
-**Status:** proposal, awaiting sign-off (jon). Nothing authored yet.
+**Status: pelvis LANDED (2026-08-19); hands resolved by the rigidifier rework; foot deferred.**
+Signed off by jon. See "Outcome" per section.
 **Decision it implements:** AUDIT §8.2 — *"Build mappings for the unobservable origins.
 Hydrate `hand_trapezoid` / `hand_capitate` / `hand_hamate` (and the tarsals, and
 `lumbosacral_junction`) from the keypoints the tracker does emit."*
+
+> **What changed the scope:** `skeleton_rigidifier.py` was reworked to fit multi-point rigid bodies
+> (3+ landmarks) by Procrustes **first**, off the raw hydrated landmarks, so a rigid body's *derived*
+> landmarks (carpals, knuckles) are correct before anything hangs off them. That makes the **hand
+> carpus** self-correcting (7 observed points: wrist + trapezium + 5 MCPs → the deep carpals ride the
+> fit). Only the **pelvis** remains genuinely unfittable (3 *collinear* observed points), so §8.2's real
+> job is the pelvis — done below.
 
 ## The problem, precisely
 
@@ -112,15 +120,21 @@ recipe (a Gram-Schmidt seed + hint for building the offset frame), not a segment
 words are defensible, but the collision deserves a one-line glossary note. **Confirm** (a) keep the
 words with a glossary note, or (b) rename to `primary`/`twist` here too for one vocabulary.
 
-## What I need from you
+## Outcome (2026-08-19)
 
-1. **Pelvis:** OK to author `lumbosacral_junction` + iliac crests + pubis as above? (or minimal:
-   just `lumbosacral_junction`?)
-2. **Carpals/tarsals:** OK with the on-line weighted-blend approach, or do you want the palmar/z
-   term (full `anatomical_offset`) from the start?
-3. **Foot / tracker split:** one shared tarsal mapping, or RTMPose-specific richer version?
-4. **§8.1 vocabulary:** glossary note vs. rename.
-
-Once you sign off, authoring is straightforward: add the entries to the four
-`*_to_standard_human_mapping.yaml` files, verify each hydrated point lands on its rest position at
-the T-pose (identity), and confirm the pelvis Kabsch is non-degenerate.
+1. **Pelvis — DONE.** `lumbosacral_junction` + both iliac crests + `pubic_symphysis` authored as
+   `anatomical_offset` in **both** body mappings (`mediapipe_body_…` + `rtmpose_body_…`). Verified:
+   each lands on its `pelvis.yaml` rest position at the T-pose (`test_pelvis_hydration.py`), and the
+   hydrated cloud's 2nd singular value is a healthy fraction of the 1st (non-degenerate). The root now
+   Kabsch-fits instead of degrading to swing+twist.
+2. **Hand carpals — NOT NEEDED.** The Procrustes-first rigidifier rework derives the deep carpals from
+   the carpus's 7 observed points. No carpal mappings authored (they would be redundant, and the on-line
+   blend couldn't reproduce the off-line carpals exactly anyway). The hands solve correctly today.
+3. **Foot tarsals — DEFERRED (tracker-limited).** The tarsus has only `ankle` + `heel` observed under
+   MediaPipe (one collapsed toe point), so a shared hydration buys only foot *pitch*, not *roll*;
+   RTMPose's `big_toe` + `small_toe` would buy roll, but tracker-specific foot mappings break the
+   "every tracker produces the full set" boundary. The foot rides the (now correct) rest-forward
+   fallback — an acceptable default for a secondary segment. Revisit if foot orientation becomes a
+   requirement, driven by the RTMPose toe pair.
+4. **§8.1 vocabulary — RESOLVED.** Kept `exact`/`approximate` for the mapping's construction frame; added
+   a glossary note distinguishing it from a segment's primary/twist (`00-foundation/glossary.md`).

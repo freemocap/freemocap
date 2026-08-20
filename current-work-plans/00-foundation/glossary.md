@@ -49,6 +49,12 @@ are **keypoint → mapping → landmark → segment → linkage → chain → sk
     every frame.
   - **twist direction** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
     primary direction; when absent, the segment's roll falls to the damped minimal-roll tier.
+- **`exact` / `approximate` (the mapping's frame, NOT a segment's)** — the tracker→landmark
+  `anatomical_offset` (skellytracker) builds its *own* construction frame from keypoints; its two seed
+  axes are tagged `exact` (hard seed) and `approximate` (Gram-Schmidt'd hint). Same Gram-Schmidt recipe
+  as a segment's primary/twist, but a *different object*: the mapping's keypoint frame that places a
+  landmark, not a segment's local frame. The older words are kept deliberately here — don't conflate the
+  two vocabularies (this resolves AUDIT §8.1).
 - **standard human** — the composed `HumanSkeleton` (body midline + limbs ×2 + hands ×2 + face),
   defined in YAML and loaded by `HumanSkeleton.from_yaml`.
 

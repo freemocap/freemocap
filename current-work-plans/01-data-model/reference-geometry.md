@@ -23,4 +23,4 @@ position, at identity. One build serves both the orientation solver and the rest
 ## Status
 
 The T-pose build (`build_standard_human_tpose` → `StandardHumanTPose`) is landed. The old
-`reference_geometry.py` is slated for deletion (see IMPLEMENTATION_PLAN.md).
+`dead_reference_geometry.py` is slated for deletion (see IMPLEMENTATION_PLAN.md).

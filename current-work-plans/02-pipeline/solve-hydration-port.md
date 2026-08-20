@@ -7,7 +7,7 @@ it and the live loop runs. This doc remains as the design record.
 
 ## Why this, why now
 
-`orientation_solver.py` + `reference_geometry.py` are written against the old `SegmentDefinition` +
+`orientation_solver.py` + `dead_reference_geometry.py` are written against the old `SegmentDefinition` +
 swing+twist. The new model is a cleaner shape: **positions**, **objects**, and the **full rigid-body
 skull**. The port is what makes the new model *actually solve* — until it lands, the YAML is inert data. This is the keystone: everything downstream
 (realtime, posthoc, VMC, adapters) consumes this solve.
@@ -115,7 +115,7 @@ The solve maps static → hydrated, per frame, with `identity == T-pose`.
 
 ## Step 1 — the T-pose build (`StandardHumanTPose`)
 
-Port `reference_geometry.py` onto the new classes. For each `RigidBodySegment`, build its **reference
+Port `dead_reference_geometry.py` onto the new classes. For each `RigidBodySegment`, build its **reference
 geometry** (the per-segment origin/basis/length — a part of the segment):
 
 - **origin** = the `origin_landmark`'s rest position (authored in the parent's local frame).
@@ -164,7 +164,7 @@ rigid body from all its pairwise landmark geometry" decision, and it is what kil
 
 ## Step 4 — delete the old system
 
-After the port lands and tests are green, excise: `segment_definition.py`, `reference_geometry.py`,
+After the port lands and tests are green, excise: `segment_definition.py`, `dead_reference_geometry.py`,
 `rest_pose.py`, `body_part.py` / `hand_part.py` / `face_part.py` / `standard_human_model.py` /
 `segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py`, plus
 `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.

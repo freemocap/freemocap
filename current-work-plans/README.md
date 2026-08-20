@@ -69,7 +69,7 @@ into typed objects (references are objects, not strings):
 4. **Unhydrated-segment fallback** — an unhydrated segment must follow its parent at its own T-pose rest
    direction (not the hardcoded `[0,1,0]`), so a hidden hand doesn't stick out sideways.
 5. **Delete the old skellyforge system** — only after charuco + posthoc migrate: `segment_definition.py` /
-   `reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
+   `dead_reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
    `standard_human_model.py` / `segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
 6. Then: the VMC adapter, the frontend test suite.
 

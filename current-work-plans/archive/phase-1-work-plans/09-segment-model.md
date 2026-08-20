@@ -152,7 +152,7 @@ the retired "canonical" vocabulary — `{tracker}_to_standard_human_mapping.yaml
 | `hand_part.py` | the hand part: 16 segments, authored once, instantiated twice |
 | `face_part.py` | eyes + jaw segments (driven, VRM 1.0 face bones) + the 52 blendshape channels |
 | `standard_human_model.py` | **[rewrite]** `StandardHuman` — composed parts → flat indexed segment list |
-| `reference_geometry.py` | `SegmentReferenceGeometry` (origin + basis + length) + `build_reference_geometry()` |
+| `dead_reference_geometry.py` | `SegmentReferenceGeometry` (origin + basis + length) + `build_reference_geometry()` |
 
 **Modify:**
 

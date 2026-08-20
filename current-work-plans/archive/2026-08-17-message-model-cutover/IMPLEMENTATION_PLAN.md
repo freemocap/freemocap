@@ -347,7 +347,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   angles from the addon's magnitudes + canonical signs, Buryanov & Kotiuk ratios), the face part (3
   declared-undriven segments + the 52 blendshape channels), the `StandardHuman` rewrite (composed frozen
   dataclass, dict-backed indices — D13's O(n²) is gone — 55 segments matching `BONE_ALIASES`, 69 driven
-  required keypoints), `reference_geometry.py` (T-pose build: extrinsic-XYZ `rest_rotation`, right-side
+  required keypoints), `dead_reference_geometry.py` (T-pose build: extrinsic-XYZ `rest_rotation`, right-side
   mirroring with frames rebuilt right-handed, twist-override table for rest-collinear/off-chain twist
   references, name-agreement ORIGIN attachment), and the solver rewrite (keypoint-declared two-tier
   twist, singularity gate, D3/D4 damping kept, `_get_distal_position`/`TwistPolicy`/`HumanBone` deleted —

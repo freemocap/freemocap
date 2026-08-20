@@ -43,6 +43,6 @@ rebuilding the frame right-handed** — a basis is never reflected (a reflected 
 `det = -1` and silently mirror the model).
 
 ## Sources
-Fresh from `skellyforge` (`segment_definition.py` authoring-convention docstring, `reference_geometry.py`,
+Fresh from `skellyforge` (`segment_definition.py` authoring-convention docstring, `dead_reference_geometry.py`,
 `orientation_solver.py`) + the workspace `CLAUDE.md`. Original prose:
 [`archive/streaming-compatibility-specs/07-coordinate-conventions.md`](../archive/streaming-compatibility-specs/07-coordinate-conventions.md).

@@ -2006,7 +2006,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#edbb1172442c02acaedc6dfd5c2e62f5beaabf08" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#30be37ea7053975be9c044e37ff6843943a3f821" }
 dependencies = [
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "pandas", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

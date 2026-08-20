@@ -21,8 +21,8 @@ type Side = 'left' | 'right' | 'center';
 
 function classifySide(name: string): Side {
     const lc = name.toLowerCase();
-    if (lc.includes('left')) return 'left';
-    if (lc.includes('right')) return 'right';
+    if (lc.includes('left') || lc.endsWith('.l')) return 'left';
+    if (lc.includes('right') || lc.endsWith('.r')) return 'right';
     return 'center';
 }
 
@@ -30,9 +30,9 @@ function classifyHand(name: string): 'left_hand' | 'right_hand' | null {
     const lc = name.toLowerCase();
     // The hand segment + the finger segments (thumb/index/middle/ring/little)
     // are all hand parts; the tracker's hand keypoints carry `left_hand_` too.
-    if (!/hand|thumb|index|middle|ring|pinky|finger/.test(lc)) return null;
-    if (lc.startsWith('left_')) return 'left_hand';
-    if (lc.startsWith('right_')) return 'right_hand';
+    if (!/hand|thumb|index|middle|ring|pinky|finger|little/.test(lc)) return null;
+    if (lc.startsWith('left_') || lc.endsWith('.l')) return 'left_hand';
+    if (lc.startsWith('right_') || lc.endsWith('.r')) return 'right_hand';
     return null;
 }
 

@@ -17,7 +17,7 @@ from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from freemocap.core.tasks.mocap.center_of_mass import CoMConfidence, CenterOfMassResult
+from skellyforge.kinematics.inertial.center_of_mass import CoMConfidence, CenterOfMassResult
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage

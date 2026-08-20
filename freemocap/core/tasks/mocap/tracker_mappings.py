@@ -31,6 +31,7 @@ from skellytracker.core.io.mapping_paths import (
     RTMPOSE_BODY_MAPPING,
     RTMPOSE_HAND_MAPPING,
 )
+from skellytracker.core.io.tracker_mapping import TrackerMapping
 
 # The keypoint-detector schema YAMLs (the tracker emitted point names) live
 # under the same keypoint_detectors/ tree as the mapping YAMLs. Derive that tree
@@ -97,3 +98,21 @@ def tracker_keypoint_names(detector_type: str) -> tuple[str, ...]:
         return tuple(sorted(names))
     else:
         raise ValueError(f"unknown detector_type {detector_type!r} (rtmpose | mediapipe)")
+
+
+def load_standard_human_mapping(detector_type: str):
+    """Load the merged body + hand tracker->standard-human mapping as one callable.
+
+    Returns a function ``keypoints -> {landmark_name: position}`` that applies the body
+    and hand mappings and merges them (their name sets are disjoint). This is the one
+    seam that turns raw tracker keypoints into the hydrated standard-human segment
+    layer the rigidifier / solver / center-of-mass consume. Lives here (freemocap)
+    because it needs skellytracker, which skellyforge never imports.
+    """
+    body_mapping = TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type))
+    hand_mapping = TrackerMapping.from_yaml(hand_mapping_yaml_path(detector_type))
+
+    def apply(keypoints: dict) -> dict:
+        return {**body_mapping.apply(keypoints), **hand_mapping.apply(keypoints)}
+
+    return apply

@@ -30,14 +30,13 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import numpy as np
-from freemocap.core.tasks.mocap.center_of_mass import (
-    load_body_biomechanics,
+from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
+from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
+from skellyforge.kinematics.inertial.center_of_mass import (
     CenterOfMassResult,
     calculate_center_of_mass,
-    calculate_center_of_mass_per_frame,
-    calculate_xcom,
 )
-from freemocap.core.tasks.mocap.streaming_kinematics import StreamingKinematics
+from skellyforge.kinematics.inertial.ground_reference import extrapolated_center_of_mass
 from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemory,
@@ -281,7 +280,7 @@ class RealtimeAggregatorNode(AggregatorNode):
         detector_type = pipeline_config.camera_node_config.detector_type
         # The body biomechanics carries the tracker->standard-human mapping —
         # needed by the rigidifier + solver regardless of center-of-mass.
-        biomechanics = load_body_biomechanics(detector_type)
+        standard_human_mapping = load_standard_human_mapping(detector_type)
 
         # Composed standard human — shared by the skeleton rigidifier (segment
         # trees) and the orientation solver (reference geometry). Built once per
@@ -390,8 +389,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                     detector_type_changed = new_detector_type != detector_type
                     detector_type = new_detector_type
 
-                    if biomechanics is None or detector_type_changed:
-                        biomechanics = load_body_biomechanics(detector_type)
+                    if standard_human_mapping is None or detector_type_changed:
+                        standard_human_mapping = load_standard_human_mapping(detector_type)
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"(re)loaded body biomechanics for detector_type={detector_type}"
@@ -686,7 +685,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # ---- Rigid-body skeleton correction ----
                     if skeleton_fitting_enabled and filtered_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        mapped_landmarks = biomechanics.apply_tracker_mapping(filtered_keypoints)
+                        mapped_landmarks = standard_human_mapping(filtered_keypoints)
                         length_result, previous_length_state = estimate_segment_lengths(
                             skeleton=standard_human,
                             landmarks=mapped_landmarks,
@@ -759,7 +758,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # computes CoM on rigid_xyz); fall back to raw keypoints when
                     # the rigidifier is disabled.
                     if (
-                        biomechanics is not None
+                        standard_human_mapping is not None
                         and aggregator_config.center_of_mass_enabled
                         and (rigid_result is not None or filtered_keypoints)
                     ):
@@ -769,17 +768,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                             # mapping for shared names; derived-only names come
                             # from the mapping.
                             standard_human_positions = {
-                                **biomechanics.apply_tracker_mapping(filtered_keypoints),
+                                **standard_human_mapping(filtered_keypoints),
                                 **rigid_result,
                             }
                             com_result = calculate_center_of_mass(
+                                standard_human,
                                 standard_human_positions,
-                                biomechanics,
                             )
                         else:
-                            com_result = calculate_center_of_mass_per_frame(
-                                keypoints=filtered_keypoints,
-                                biomechanics=biomechanics,
+                            com_result = calculate_center_of_mass(
+                                standard_human,
+                                standard_human_mapping(filtered_keypoints),
                             )
                         if timer is not None:
                             timer.record("center_of_mass", (time.perf_counter() - t0) * 1e3)
@@ -798,10 +797,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         ):
                             dt = now_com - prev_com_time
                             if dt > 0:
-                                xcom_arr = calculate_xcom(
+                                com_velocity = (com_result.total_body_com - prev_com) / dt
+                                xcom_arr = extrapolated_center_of_mass(
                                     com=com_result.total_body_com,
-                                    prev_com=prev_com,
-                                    dt=dt,
+                                    com_velocity=com_velocity,
                                 )
                                 xcom = Point3d(
                                     x=float(xcom_arr[0]),

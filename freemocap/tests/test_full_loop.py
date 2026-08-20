@@ -23,11 +23,11 @@ import numpy as np
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import ChannelKind, encode_message
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from freemocap.core.tasks.mocap.center_of_mass import (
-    CoMConfidence,
+from skellyforge.kinematics.inertial.center_of_mass import (
     CenterOfMassResult,
-    load_body_biomechanics,
+    CoMConfidence,
 )
+from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import (
     AggregationNodeOutputMessage,
@@ -129,8 +129,8 @@ def _solve(
     tracker mapping -> estimate lengths -> build T-pose -> rigidify -> solve,
     threading the solve + length state across frames so the damped tier settles.
     """
-    biomechanics = load_body_biomechanics("rtmpose")
-    mapped = biomechanics.apply_tracker_mapping(pose)
+    mapping = load_standard_human_mapping("rtmpose")
+    mapped = mapping(pose)
 
     orientation_state = SolveState()
     length_state = SegmentLengthState.empty()

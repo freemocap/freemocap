@@ -70,8 +70,8 @@ class FaceBlendShapes:                              # 52 ARKit blendshapes (NOT 
 
 ## Parts + sidedness
 
-The real definitions are split into **flat part files** (`pelvis.yaml`, `axial.yaml`, `arm.yaml`,
-`hand.yaml`, `leg.yaml`, `foot.yaml`), listed by the top-level `standard_human.yaml`:
+The real definitions are split into **flat part files** (`pelvis.yaml`, `spine.yaml`, `arm.yaml`,
+`hand.yaml`, `leg.yaml`, `foot.yaml`), listed by the top-level `human_skeleton.yaml`:
 
 ```yaml
 name: standard_human
@@ -126,12 +126,12 @@ chains:
   leg: {start: pelvis, end: foot}     # pelvis → upper_leg → lower_leg → foot
 ```
 
-> `rest_position` is authored **once**, in its `reference_frame`'s LOCAL frame. The primary direction
+> `local_position` is authored **once**, in its `segment`'s LOCAL frame. The primary direction
 > (`axes[0]`) sits on `y` with `+Y` toward the child; `rest_direction` is that axis's WORLD unit
 > direction at the T-pose (legs point down: `[0,0,-1]`). `left_knee` is `[0,429,0]` in
 > `left_upper_leg`'s frame; `left_lower_leg` references it as `origin_landmark` and inherits it as its
 > local `(0,0,0)` **by construction** — no duplication. Sidedness turns `knee` → `left_knee` /
-> `right_knee`; the right side negates only `rest_direction`'s Y, never `rest_position`.
+> `right_knee`; the right side negates only `rest_direction`'s Y, never `local_position`.
 
 ## Loading (three passes, fail-loud)
 
@@ -165,20 +165,20 @@ def from_yaml(cls, path: Path) -> "HumanSkeleton":
 ## The compiled objects
 
 ```python
->>> skeleton = HumanSkeleton.standard_human()       # 95 segments / 94 linkages / 25 chains
->>> upper_leg = skeleton.segment("left_upper_leg")
->>> upper_leg.parent                    # → <RigidBodySegment "pelvis">          (object)
->>> upper_leg.origin_landmark           # → <AnatomicalLandmark "left_hip">       (object)
->>> upper_leg.origin_landmark.reference_frame  # → "pelvis"
->>> upper_leg.length                    # → 429.0  (‖[0,429,0]‖)
+>> > skeleton = HumanSkeleton.standard_human()  # 95 segments / 94 linkages / 25 chains
+>> > upper_leg = skeleton.segment("left_upper_leg")
+>> > upper_leg.parent  # → <RigidBodySegment "pelvis">          (object)
+>> > upper_leg.origin_landmark  # → <AnatomicalLandmark "left_hip">       (object)
+>> > upper_leg.origin_landmark.segment  # → "pelvis"
+>> > upper_leg.length  # → 429.0  (‖[0,429,0]‖)
 
->>> linkage = next(l for l in skeleton.linkages if l.name == "left_knee")
->>> linkage.parent_segment              # → <RigidBodySegment "left_upper_leg">
->>> linkage.child_segment               # → <RigidBodySegment "left_lower_leg">
->>> linkage.shared_landmark             # → <AnatomicalLandmark "left_knee">
+>> > linkage = next(l for l in skeleton.linkages if l.name == "left_knee")
+>> > linkage.parent_segment  # → <RigidBodySegment "left_upper_leg">
+>> > linkage.child_segment  # → <RigidBodySegment "left_lower_leg">
+>> > linkage.shared_landmark  # → <AnatomicalLandmark "left_knee">
 
->>> leg = skeleton.chain("left_leg")
->>> leg.segments   # → (pelvis, left_upper_leg, left_lower_leg, left_foot)
+>> > leg = skeleton.chain("left_leg")
+>> > leg.segments  # → (pelvis, left_upper_leg, left_lower_leg, left_foot)
 ```
 
 ## Branching: the wrist fan

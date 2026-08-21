@@ -36,7 +36,7 @@ genuinely-hidden ride the rigid solve.
 An `anatomical_offset` builds a local frame from keypoints and places a landmark at a
 subject-scaled offset along that frame. **All offsets are ratios of a `reference_length`** (never
 mm constants), so they scale with the subject. Ratios below are chosen to reproduce each
-landmark's authored `rest_position` at the T-pose, so `identity == T-pose` is preserved.
+landmark's authored `local_position` at the T-pose, so `identity == T-pose` is preserved.
 
 ---
 

@@ -107,7 +107,7 @@ resumable, and testable, and it never hides mutable state on the entity or a "so
 
 Every layer has a **static face** (authored once, in YAML) and a **hydrated face** (computed per frame):
 
-- **landmark** — static: `rest_position` in its `reference_frame`; hydrated: a world position.
+- **landmark** — static: `local_position` in its `segment`; hydrated: a world position.
 - **segment** — static: rest geometry (origin / basis / length); hydrated: the pose (origin + orientation).
 - **linkage / chain / skeleton** — static: the tree / paths; hydrated: joint angles / chain poses.
 
@@ -129,7 +129,7 @@ Then compose the segment transforms root→leaf to get every landmark's **rest-w
 structure is `StandardHumanTPose` — the thing the orientation solver measures against, and the thing that
 feeds the rest-pose message.
 
-**Why positions:** the landmark's `rest_position` *is* the anatomical fact; the length is a
+**Why positions:** the landmark's `local_position` *is* the anatomical fact; the length is a
 *consequence* of it.
 
 ## Step 2 — landmark hydration (mostly unchanged, re-pointed)

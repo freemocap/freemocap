@@ -39,7 +39,7 @@ keypoint → mapping → landmark → segment → linkage → chain → skeleton
 into typed objects (references are objects, not strings):
 
 1. **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` /
-   `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
+   `SkeletonDefinition` / `StandardHumanTPose` (+ `FaceBlendShapes` for the 52 ARKit blendshapes). Done.
 2. **YAML definitions** — the standard human split into flat part files (pelvis, axial, arm, hand, leg,
    foot, face) with sidedness + Y-mirroring + `$include` composability. The full hand (8 carpals + 5
    metacarpals + 14 phalanges ×2 sides) and foot (7 tarsals + 5 metatarsals + 14 phalanges ×2 sides)
@@ -62,7 +62,7 @@ into typed objects (references are objects, not strings):
    start, arm bend without pop, hidden-hand degradation, overlay match).
 2. **Charuco re-implementation** — author the calibration board as a YAML skeleton (one rigid segment +
    marker-corner landmarks, `sided: false`) + re-point the charuco path. This tests extensibility and
-   forces the rename (`HumanSkeleton` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
+   forces the rename (`SkeletonDefinition` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
    rest-pose).
 3. **Posthoc alignment** — re-point `skeleton_from_mediapipe_observations.py` + the `Human` actor to the
    new loader + solve; share the model + solver with realtime (realtime = damped, posthoc = batch).

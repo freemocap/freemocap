@@ -85,7 +85,7 @@ export type RestSegment = z.infer<typeof RestSegmentSchema>;
 
 export const RestLandmarkSchema = z.object({
   name: z.string(),
-  rest_position: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  local_position: z.tuple([z.number(), z.number(), z.number()]).optional(),
 });
 export type RestLandmark = z.infer<typeof RestLandmarkSchema>;
 

@@ -50,4 +50,3 @@ bytes, columns by names, row-major), plus `camera_id` (per-camera overlay channe
 model's ordered segments/landmarks, so those names are dropped. Channel kinds: KEYPOINTS_3D,
 LANDMARKS_3D, SEGMENT_ORIGINS, ROTATIONS_LOCAL, ROTATIONS_WORLD, DERIVED_POINTS, OVERLAY_2D,
 SEGMENT_LENGTHS, OVERLAY_REPROJECTIONS.
-

@@ -2,7 +2,7 @@
 
 **Describes:** the **T-pose** each live pose is measured against (`identity == T-pose`). In the new
 ontology this is **`StandardHumanTPose`**, built from `RigidBodySegment` + `AnatomicalLandmark` —
-length derived from `rest_position`.
+length derived from `local_position`.
 
 ## What this covers
 
@@ -11,9 +11,9 @@ position, at identity. One build serves both the orientation solver and the rest
 
 ## Key facts
 
-- Each landmark's `rest_position` is authored **once**, in its `reference_frame`'s local frame (see
+- Each landmark's `local_position` is authored **once**, in its `segment`'s local frame (see
   [segment-model.md](segment-model.md)).
-- A segment's `length` is **derived** from its primary direction's target `rest_position`.
+- A segment's `length` is **derived** from its primary direction's target `local_position`.
 - The rest frame (basis) is built from the segment's axes — the primary direction (hard seed) + the
   twist direction (soft hint), Gram-Schmidt'd.
 - The **skull is non-degenerate by construction**: the eyes / ears / nose are authored as distinct

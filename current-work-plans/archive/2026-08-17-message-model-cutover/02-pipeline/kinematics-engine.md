@@ -4,7 +4,7 @@
 > (the twist tiers touch the segment model).
 
 **Describes:** `skellyforge/kinematics/` — `orientation_solver.py`, `coordinate_frame_ops.py`,
-`quaternion_math.py`, `critically_damped_orientation.py`, `rigid_point_set.py`.
+`rotation_quaternion.py`, `critically_damped_orientation.py`, `rigid_point_set.py`.
 **Salvage:** [`archive/streaming-compatibility-specs/11-kinematics-fold-in.md`](../archive/streaming-compatibility-specs/11-kinematics-fold-in.md),
 [`14-engine-testing-strategy.md`](../archive/streaming-compatibility-specs/14-engine-testing-strategy.md),
 [`archive/phase-1-work-plans/05-kinematics-foldin-rotations.md`](../archive/phase-1-work-plans/05-kinematics-foldin-rotations.md).

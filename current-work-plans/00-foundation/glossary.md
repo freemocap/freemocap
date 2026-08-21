@@ -12,20 +12,20 @@ are **keypoint → mapping → landmark → segment → linkage → chain → sk
   skellytracker ↔ skellyforge interface.
 - **landmark** (`AnatomicalLandmark`) — a **named point defined in the local frame of a segment**.
   Static face: `name` + a precise `anatomical_definition` (medical language, e.g. "midpoint of the
-  intercondylar fossa") + `rest_position` (a 3-vector, in the local frame named by
-  `reference_frame`). Hydrated face: a per-frame world position (a trajectory). A landmark is a direct
+  intercondylar fossa") + `local_position` (a 3-vector, in the local frame named by
+  `segment`). Hydrated face: a per-frame world position (a trajectory). A landmark is a direct
   copy of a keypoint, or **built** from keypoints (mean / weighted sum / `anatomical_offset`, e.g.
   `head_vertex` / `foot_ball` / `jaw`).
 - **segment** (`RigidBodySegment`) — a **rigid body**: origin + orientation + length, solved from its
   landmarks. **Fully specified** with 3+ non-collinear landmarks; **partially specified** with only 2
   (roll carried by the damped minimal-roll tier). Its `length` is **derived** from its landmarks'
-  `rest_position` values.
+  `local_position` values.
 - **linkage** (`JointLinkage`) — **two segments that share a point** (upper arm + lower arm at the
   elbow). Derived from the `parent` edges; the shared point is the child's `origin_landmark`.
 - **chain** (`KinematicChain`) — **three or more linked segments**: a `start` → `end` path in the
   tree. Straight (a limb) or branching (the wrist fan = several chains sharing a start). The unit
   IK/FABRIK solves.
-- **skeleton** (`HumanSkeleton`) — **a collection of chains** composing one standard human.
+- **skeleton** (`SkeletonDefinition`) — **a collection of chains** composing one standard human.
 - **rigid child** — a segment authored `rigid_with_parent` that inherits its parent's pose instead of
   solving independently (declared, never inferred). Not used for the face: the eyes / ears / nose are
   LANDMARKS on the skull, not segments.
@@ -55,7 +55,7 @@ are **keypoint → mapping → landmark → segment → linkage → chain → sk
   as a segment's primary/twist, but a *different object*: the mapping's keypoint frame that places a
   landmark, not a segment's local frame. The older words are kept deliberately here — don't conflate the
   two vocabularies (this resolves AUDIT §8.1).
-- **standard human** — the composed `HumanSkeleton` (body midline + limbs ×2 + hands ×2 + face),
+- **standard human** — the composed `SkeletonDefinition` (body midline + limbs ×2 + hands ×2 + face),
   defined in YAML and loaded by `HumanSkeleton.from_yaml`.
 
 ## Twist tiers (a *consequence* of the declaration, not a separate policy)

@@ -10,11 +10,11 @@ The ontology is **seven layers**, and each layer is an object with two faces and
 |---|-------|-------|------------------------------|---------------------------|--------------|
 | 1 | keypoint | *(skellytracker)* | name | tracked position | — (measurement) |
 | 2 | mapping | *(skellytracker)* | rule (keypoints → weights/offset) | the computation | weighted sum / offset |
-| 3 | landmark | `AnatomicalLandmark` | name + anatomical definition + `rest_position` + `reference_frame` | world position | trajectory |
+| 3 | landmark | `AnatomicalLandmark` | name + anatomical definition + `local_position` + `segment` | world position | trajectory |
 | 4 | segment | `RigidBodySegment` | name + parent + landmarks + axes | pose (origin + orientation) | rigid-body math (Gram-Schmidt, Kabsch) |
 | 5 | linkage | `JointLinkage` | parent + child segments + shared landmark | joint angle | relative orientation `conj(q_parent)·q_child` |
 | 6 | chain | `KinematicChain` | `start` → `end` segment | chain pose | IK / FABRIK / twist-backfill |
-| 7 | skeleton | `HumanSkeleton` | its chains + segments | whole pose | the composition |
+| 7 | skeleton | `SkeletonDefinition` | its chains + segments | whole pose | the composition |
 
 ## The layers
 
@@ -26,13 +26,13 @@ weighted / `anatomical_offset`). It converts measurement into an observation of 
 *not* define landmarks. *(the skellytracker ↔ skellyforge interface)*
 
 **landmark** — a **named point defined in the local frame of a segment**. Its static face is a precise
-**anatomical definition** plus a `rest_position` in a named segment's local frame (`reference_frame` —
+**anatomical definition** plus a `local_position` in a named segment's local frame (`segment` —
 explicit ownership, never "whoever declares it first"). Its hydrated face is a per-frame world position.
 *(skellyforge)*
 
 **segment** — a **rigid body**: origin + orientation + length, solved from its landmarks. **Fully
 specified** with 3+ non-collinear landmarks; **partially specified** with only 2 (roll is then carried
-by the damped minimal-roll tier). Its `length` is **derived** from its landmarks' `rest_position`
+by the damped minimal-roll tier). Its `length` is **derived** from its landmarks' `local_position`
 values. *(skellyforge)*
 
 **linkage** — **two segments that share a point** (e.g. upper arm + lower arm at the elbow). Derived
@@ -60,9 +60,9 @@ carry only structure, validation, and the per-layer math. Every *reference* in t
 - **Composability** — a dict with a single `$include: path` key loads that file in place; anything else
   is a plain value (a bare string is always a string, never a path). A model can be one file or many
   nested files.
-- **Ownership** — a landmark declares its `reference_frame` explicitly (the segment whose local frame
-  its `rest_position` is in). No ordering convention.
-- **Length** — derived from `rest_position`, not authored as a ratio. Live subject adaptation is
+- **Ownership** — a landmark declares its `segment` explicitly (the segment whose local frame
+  its `local_position` is in). No ordering convention.
+- **Length** — derived from `local_position`, not authored as a ratio. Live subject adaptation is
   per-segment (a rolling median of each segment observed length), not a single uniform scale.
 
 ## The constitution — invariants at every layer
@@ -88,7 +88,7 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 - **Adapters project the one skeleton outward:** VMC now; URDF / VRM / OpenSim / BVH later.
 
 *Status:* the full seven-layer ontology — including linkage + chain — is defined and the port landed:
-`AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` / `HumanSkeleton` /
+`AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` / `KinematicChain` / `SkeletonDefinition` /
 `StandardHumanTPose`, each with `from_yaml`, and the YAML-based standard-human definition (95 segments /
 94 linkages / 25 chains / 146 landmarks). The solve (`build_standard_human_tpose` +
 `solve_frame_orientations` + `rigidify_landmarks`) and the per-segment length estimator

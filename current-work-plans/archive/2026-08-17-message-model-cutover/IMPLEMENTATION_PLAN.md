@@ -459,7 +459,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   [07 § Segment rotation conventions](archive/streaming-compatibility-specs/07-coordinate-conventions.md#segment-rotation-conventions).
   **22/22 green** in skellyforge (was 18/22). The `FrameOrientationResult` docstring stated the reversed
   form and was corrected with it. Swept the engine for the same pattern: the only other `conj` composition
-  is the angular-velocity finite difference in `quaternion_math.py` (`q_next * conj(q_curr)`), which is the
+  is the angular-velocity finite difference in `rotation_quaternion.py` (`q_next * conj(q_curr)`), which is the
   **spatial** angular velocity of one body between frames — not a hierarchy composition — and is correct.
   This is the bug doc [07 § the local-rotation trap](archive/streaming-compatibility-specs/07-coordinate-conventions.md#the-local-rotation-trap-vmc-and-unreal)
   warned about; it is now closed before any VMC work begins.
@@ -528,7 +528,7 @@ freemocap test **collection** repaired this session (4 files repointed to
   (Z->Y), singularity gate (chain-resolved degrades to damped-minimal when parallel).
   **Next: ST-SH-2 (tracker->canonical mappings + anatomical_offset) in skellytracker.**
 - **2026-08-11 (SF-SH-3 implemented)** — Kinematics engine built in `skellyforge/kinematics/`.
-  Three modules, zero Pydantic, all hot-path safe (dataclasses + numpy): `quaternion_math.py`
+  Three modules, zero Pydantic, all hot-path safe (dataclasses + numpy): `rotation_quaternion.py`
   (``Quaternion`` with ``__slots__`` + 12 vectorized numpy fns — single home for Hamilton product,
   SLERP, rotation matrix, Euler, angular velocity, composition, collapsing 3–5 duplicate copies from
   bs/); `coordinate_frame_ops.py` (``build_orthonormal_basis``, ``rotation_between_vectors`` for

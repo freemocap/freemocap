@@ -17,11 +17,11 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
 
 **skellyforge (`skellymodels/standard_human/` + `kinematics/`):**
 - The entities: `AnatomicalLandmark`, `RigidBodySegment` (+ `AxisDefinition`), `JointLinkage`,
-  `KinematicChain`, `HumanSkeleton`, `StandardHumanTPose`, `FaceBlendShapes`. Frozen `slots=True`
+  `KinematicChain`, `SkeletonDefinition`, `StandardHumanTPose`, `FaceBlendShapes`. Frozen `slots=True`
   dataclasses. References are **objects**, not strings.
 - The YAML definitions in `definitions/` (flat files: `standard_human`, `pelvis`, `axial`, `arm`,
   `hand`, `leg`, `foot`, `face`). `$include: path` composes them. `sided: true` parts instantiate
-  `left_* + right_*` (the right side mirrors only `rest_direction`, not `rest_position`). The full
+  `left_* + right_*` (the right side mirrors only `rest_direction`, not `local_position`). The full
   hand (8 carpals + 5 metacarpals + 14 phalanges ×2) and foot (7 tarsals + 5 metatarsals + 14 phalanges
   ×2) anatomy is authored: 95 segments / 94 linkages / 25 chains / 146 landmarks.
 - The actions in `kinematics/`: `build_standard_human_tpose`, `solve_frame_orientations`
@@ -35,13 +35,13 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
   tracker keypoints → standard-human landmarks (`biomechanics.tracker_mapping.apply(...)`), runs
   `rigidify_landmarks` → `solve_frame_orientations`.
 - `message_model.py`, `channel_helpers.py`, `producer_contexts.py`, `keypoints_producer.py`,
-  `websocket_server.py` re-pointed to `HumanSkeleton` + the new accessors.
+  `websocket_server.py` re-pointed to `SkeletonDefinition` + the new accessors.
 - Deleted: the old freemocap `RealtimeSkeletonRigidifier` wrapper (rigidification is now skellyforge's
   `rigidify_landmarks`) and skellyforge's `tracker_contract.py` (see "Decisions" below).
 
 ## The decisions already made (do NOT re-litigate without the user)
 
-1. **Local-frame authoring.** Every landmark's `rest_position` is in its `reference_frame` segment's LOCAL
+1. **Local-frame authoring.** Every landmark's `local_position` is in its `segment` segment's LOCAL
    frame. The primary direction's target sits at `+Y` (body) / `+Z` (face); the twist target at `+X`.
    Left and right are **identical local geometry** — only the world `rest_direction` mirrors Y.
 2. **Primary/twist, not exact/approximate.** The axes tuple is the Gram-Schmidt recipe: the FIRST axis is
@@ -83,7 +83,7 @@ The seven layers: **keypoint → mapping → landmark → segment → linkage �
    start, arm bend without pop, hidden-hand degradation, overlay match).
 2. **Charuco re-implementation** — author the calibration board as a YAML skeleton (one rigid segment +
    marker-corner landmarks, `sided: false`) + re-point the charuco path. This tests the extensibility and
-   forces the rename (`HumanSkeleton` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
+   forces the rename (`SkeletonDefinition` → a neutral `Skeleton`; `StandardHumanTPose` → a neutral
    rest-pose) so the human + board are two instances of one core.
 3. **Posthoc alignment** — re-point `skeleton_from_mediapipe_observations.py` + the `Human` actor to the
    new loader + solve; share the model + solver with realtime (realtime = damped, posthoc = batch).

@@ -1,7 +1,7 @@
 # Segment Lengths (derived nominal, then estimated per-segment per frame)
 
 **Describes:** how a segment length is obtained. Each segment has a **derived nominal** length (from
-its primary direction target `rest_position`) that is then **refined per frame** by a per-segment
+its primary direction target `local_position`) that is then **refined per frame** by a per-segment
 rolling-median estimator over the live landmarks.
 
 ## What this covers

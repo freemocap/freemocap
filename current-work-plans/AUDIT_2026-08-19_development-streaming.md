@@ -23,7 +23,7 @@ Every claim below is one of:
 - **[READ]** — I read the source and am reporting what it says.
 - **[QUESTION]** — I don't know your intent; see §8.
 
-I built the actual `HumanSkeleton`, built the actual T-pose, ran the actual
+I built the actual `SkeletonDefinition`, built the actual T-pose, ran the actual
 `rigidify_landmarks` and `solve_frame_orientations`, and ran the test suites.
 The load is green: **95 segments / 94 linkages / 25 chains / 146 landmarks**, one
 root (`pelvis`) — exactly what the docs claim.
@@ -52,19 +52,19 @@ below is wrong.
    skellytracker; `.apply()` is called in freemocap so skellyforge never imports
    skellytracker).
 3. **landmark** (`AnatomicalLandmark`) — a named point **defined in the local
-   frame of a segment**. Static: name + anatomical definition + `rest_position` +
-   `reference_frame` (explicit ownership). Hydrated: a world position per frame —
+   frame of a segment**. Static: name + anatomical definition + `local_position` +
+   `segment` (explicit ownership). Hydrated: a world position per frame —
    i.e. a trajectory. **Owner: skellyforge.**
 4. **segment** (`RigidBodySegment`) — a **rigid body**: origin + orientation +
    length, solved from its landmarks. Fully specified at 3+ non-collinear
    landmarks (Kabsch); partially specified at 2 (swing + damped minimal roll).
-   `length` is **derived** from `rest_position`, never authored as a ratio.
+   `length` is **derived** from `local_position`, never authored as a ratio.
 5. **linkage** (`JointLinkage`) — **two segments that share a point**. Derived
    from parent edges; the child's `origin_landmark` *is* the shared point. Math:
    `q_local = conj(q_parent) · q_child`.
 6. **chain** (`KinematicChain`) — **3+ linked segments**, a `start`→`end` path in
    the tree. Straight (a limb) or branching (the wrist fan). The IK/FABRIK unit.
-7. **skeleton** (`HumanSkeleton`) — a collection of chains composing one standard
+7. **skeleton** (`SkeletonDefinition`) — a collection of chains composing one standard
    human.
 
 **Responsibility split:**
@@ -333,7 +333,7 @@ below correctly uses `geometries[lm.reference_frame]`.
 Today the assumption holds for all 94 non-root segments [MEASURED, 0 violations].
 But nothing enforces it. Author one segment whose `origin_landmark.reference_frame`
 isn't its parent and the T-pose silently deforms. Same class of gap for
-`RigidBodySegment.length`, which assumes the primary target's `reference_frame`
+`RigidBodySegment.length`, which assumes the primary target's `segment`
 is the segment itself (also 0 violations today, also unchecked).
 
 ### 3.7 Nothing checks that a segment's `rest_direction` agrees with its parent [READ]
@@ -347,7 +347,7 @@ anatomically continuous.
 
 ### 3.8 Quaternion math: clean [MEASURED]
 
-I hammered `quaternion_math.py` with 2000 random rotations each:
+I hammered `rotation_quaternion.py` with 2000 random rotations each:
 
 ```
 from_rotation_matrix ∘ to_rotation_matrix   max error 1.3e-15
@@ -388,7 +388,7 @@ plans are dated **2026-08-18**; there are ~8 commits after that (`lenths`,
 | D4 | Progress log — "Lazy heavy-dependency imports — mediapipe **+ onnxruntime** … DONE" | mediapipe: done (3 function-scope imports). **onnxruntime: still module-scope** in `onnx_session.py:35` and `ort_session_utils.py:18-19`; `onnx` module-scope in `_yolox_dynamic_batch.py:36`. |
 | D5 | `mapping_paths.py` — "IMPORT-LIGHT BY DESIGN … Only pathlib"; `tracker_mappings.py` — "must NOT drag the … trees in at startup" | Importing `skellytracker.core.io.mapping_paths` pulls **847 modules** including `cv2` and `tqdm` [MEASURED], because `skellytracker/core/__init__.py` eagerly imports `core.io` → `process_video`. onnxruntime/mediapipe do stay out; the stated guarantee is otherwise unenforced. |
 | D6 | CLAUDE.md — "skellyforge **never imports** skellytracker … `tracker_contract.py` was deleted together with that contract" | `skellyforge/pyproject.toml` still declares **`skellytracker` as a runtime dependency**, with a comment justifying it by the load-time mapping contract *that no longer exists*. The only remaining import is `tests/test_face_mapping_consistency.py:30`. Stale dependency + stale justification + reintroduced boundary crossing. |
-| D7 | HANDOFF #5 — "No `upper_chest`"; #6 — eyes/ears/nose are landmarks, not segments | `center_of_mass.py`'s module docstring still maps de Leva onto `upper_chest`, `shoulder`, `eyes`, `jaw`, "the four finger segments", `toes` — all retired names. `standard_human/__init__.py:3` still says "the composed **60-segment** human" (it's 95) and its `__all__` exports **only** old-architecture symbols — `HumanSkeleton`, `AnatomicalLandmark`, `RigidBodySegment`, `JointLinkage`, `KinematicChain` are not exported from their own package. |
+| D7 | HANDOFF #5 — "No `upper_chest`"; #6 — eyes/ears/nose are landmarks, not segments | `center_of_mass.py`'s module docstring still maps de Leva onto `upper_chest`, `shoulder`, `eyes`, `jaw`, "the four finger segments", `toes` — all retired names. `standard_human/__init__.py:3` still says "the composed **60-segment** human" (it's 95) and its `__all__` exports **only** old-architecture symbols — `SkeletonDefinition`, `AnatomicalLandmark`, `RigidBodySegment`, `JointLinkage`, `KinematicChain` are not exported from their own package. |
 | D8 | Ontology decision #2 — "Primary/twist, not exact/approximate. **No `kind` field.**" | skellytracker's `anatomical_offset` frames still use `kind: exact \| approximate` (and hard-require exactly one of each). `coordinate_frame_ops.build_segment_frame` still dispatches on `AxisKind.EXACT/APPROXIMATE` imported from the retired `segment_definition.py` — it would `AttributeError` on a new `AxisDefinition`. **[QUESTION §8.1]** |
 | D9 | Realtime loop docstring — "Only real (non-extrapolated) keypoints teach lengths" | `measured_keypoints` is built at `realtime_aggregator_node.py:664` and **never read**. `estimate_segment_lengths` is fed `mapped_landmarks`, derived from `filtered_keypoints`, which **includes** the Euro filter's gap-filled predictions. The stated invariant is not implemented. |
 | D10 | `mapping's output is a landmark` (tracker-mapping.md) | Both body mappings emit **6 names the skeleton does not declare**: `jaw`, `mid_sternum`, `left_mouth`, `right_mouth`, `left_foot_ball`, `right_foot_ball`. Computed every frame, discarded. Their comments reference "Task 3"/"Task 4" and "the jaw segment's rest direction" — a jaw segment that no longer exists. |
@@ -460,7 +460,7 @@ design in the wiring):
 - `standard_human/__init__.py` **eagerly imports the whole old architecture** —
   so `body_part`, `hand_part`, `face_part`, `standard_human_model`,
   `segment_parts`, `segment_definition`, `reference_geometry`,
-  `human_bone_aliases`, `human_blendshapes` all load on every `HumanSkeleton`
+  `human_bone_aliases`, `human_blendshapes` all load on every `SkeletonDefinition`
   import. The old system is not dormant; it's resident.
 - The mapping — **the one seam of the ontology** — is applied by
   `BodyBiomechanics.apply_tracker_mapping` in a module named `center_of_mass.py`.

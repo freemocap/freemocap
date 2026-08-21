@@ -23,7 +23,7 @@ handled** (damped vs. batch).
 ### `[IN]` — this iteration
 
 - **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` /
-  `KinematicChain` / `HumanSkeleton` / `StandardHumanTPose` (+ `FaceBlendShapes`). DONE.
+  `KinematicChain` / `SkeletonDefinition` / `StandardHumanTPose` (+ `FaceBlendShapes`). DONE.
 - **YAML definitions** — flat part files (pelvis, axial, arm, hand, leg, foot, face) with sidedness +
   Y-mirroring + `$include` composability; the full hand (8 carpals + 5 metacarpals + 14 phalanges ×2)
   and foot (7 tarsals + 5 metatarsals + 14 phalanges ×2) anatomy is authored. DONE (95 segments / 94
@@ -67,7 +67,7 @@ handled** (damped vs. batch).
 
 ### Reconsideration the charuco target forces
 
-The core is named human-specific (`HumanSkeleton`, `StandardHumanTPose`), but the board is not a human.
+The core is named human-specific (`SkeletonDefinition`, `StandardHumanTPose`), but the board is not a human.
 Decide, when charuco lands, whether to neutralize the core names (`Skeleton` / a general rest-pose) so the
 human and the board are two instances of the same neutral core.
 
@@ -96,7 +96,7 @@ human and the board are two instances of the same neutral core.
   stateless `rigidify_landmarks` action. Re-pointed the realtime path (aggregator, message model, producers,
   websocket) to the new API; deleted the old freemocap `RealtimeSkeletonRigidifier` + `tracker_contract.py`
   (the "every landmark must be produced" completeness contract was wrong for an articulated model).
-  Re-authored every `rest_position` into its segment's LOCAL frame (primary/twist direction, left == right
+  Re-authored every `local_position` into its segment's LOCAL frame (primary/twist direction, left == right
   local geometry, only `rest_direction` mirrors Y); dropped `upper_chest` (49 segments / 48 linkages / 15
   chains); replaced `exact`/`approximate` with primary/twist (the seed/hint of the Gram-Schmidt build).
   Two debugging fixes on the way: map tracker keypoints → standard-human landmarks BEFORE `rigidify_landmarks`
@@ -104,12 +104,12 @@ human and the board are two instances of the same neutral core.
   already the rotated dimensions).
 - **2026-08-17 (standard-human ontology rebuild — classes + YAML landed).** Rebuilt the skellyforge
   standard human onto the seven-layer ontology: `AnatomicalLandmark` / `RigidBodySegment` /
-  `JointLinkage` / `KinematicChain` / `HumanSkeleton` / `FaceBlendShapes` with `from_yaml`
+  `JointLinkage` / `KinematicChain` / `SkeletonDefinition` / `FaceBlendShapes` with `from_yaml`
   loaders, typed config (`cls(**data)`, no string-key indexing), `$include` composability, and
   sidedness via `sided: true` parts instantiated left/right with Y-mirroring. Authored the full
   standard human as flat part files (pelvis, axial, arm, hand, leg, foot, face) — 49 segments / 48
   linkages / 15 chains, audited green (one root, unique names, linkages == segments − 1, right-side
-  mirrored, shared landmarks resolved by name agreement, lengths derived from `rest_position`). The face
+  mirrored, shared landmarks resolved by name agreement, lengths derived from `local_position`). The face
   is 52 ARKit blendshapes (eyes/ears/nose are LANDMARKS on the skull, not segments). NEXT: the
   solve/hydration port, then delete the old system.
 - **2026-08-17 (milestone — the full end-to-end loop works).** Cameras → keypoints → mapping → length +

@@ -21,5 +21,5 @@ critically-damped filter, and rotation-pinned Procrustes for the rigid-fit.
 
 ## Status
 
-The solve is landed: `solve_frame_orientations` takes `HumanSkeleton` + `StandardHumanTPose` + hydrated
+The solve is landed: `solve_frame_orientations` takes `SkeletonDefinition` + `StandardHumanTPose` + hydrated
 landmarks and returns `(FrameOrientationResult, SolveState)` (Kabsch for 3+ landmarks, swing+twist for 2).

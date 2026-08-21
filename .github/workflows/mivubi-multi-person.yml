@@ -1,0 +1,27 @@
+name: Mivubi multi-person regression
+
+on:
+  push:
+    branches: [feature/mivubi-multi-person]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.5"
+          enable-cache: true
+      - run: uv sync --frozen --no-default-groups --group cpu --group dev
+      - run: uv run --no-sync ruff check freemocap/
+      - run: >-
+          uv run --no-sync pytest -q
+          freemocap/tests/test_binary_keypoints_protocol.py
+          freemocap/tests/test_multi_person_association.py
+          freemocap/tests/triangulation/test_outlier_rejection.py

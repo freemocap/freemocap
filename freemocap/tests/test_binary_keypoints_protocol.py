@@ -188,3 +188,35 @@ def test_tracker_id_truncates_safely_on_overlong_input():
         dtype=KEYPOINTS_BLOCK_HEADER_DTYPE,
     )[0]
     assert block_header["tracker_id"] == b"x" * 32
+
+
+def test_multi_person_skeleton_blocks_keep_stable_performer_ids():
+    performers = {
+        "performer-1": {"left_hip": np.array([-1.0, 2.0, 3.0])},
+        "performer-2": {"left_hip": np.array([1.0, 2.0, 3.0])},
+    }
+    blob = build_keypoints_payload(
+        frame_number=12,
+        tracker_id="rtmpose_wholebody",
+        point_names=POINT_NAMES,
+        keypoints_arrays={},
+        performer_skeleton_arrays=performers,
+    )
+    buf = bytes(blob)
+    header = np.frombuffer(
+        buf[:PAYLOAD_HEADER_SIZE], dtype=KEYPOINTS_PAYLOAD_HEADER_FOOTER_DTYPE
+    )[0]
+    assert int(header["num_blocks"]) == 3
+
+    cursor = PAYLOAD_HEADER_SIZE
+    performer_ids = []
+    for block_index in range(3):
+        block = np.frombuffer(
+            buf[cursor:cursor + BLOCK_HEADER_SIZE], dtype=KEYPOINTS_BLOCK_HEADER_DTYPE
+        )[0]
+        if block_index > 0:
+            assert int(block["block_kind"]) == int(BlockKind.SKELETON_3D)
+            performer_ids.append(block["camera_id"].decode("ascii").rstrip("\x00"))
+        cursor += BLOCK_HEADER_SIZE + int(block["data_byte_length"])
+
+    assert performer_ids == ["performer-1", "performer-2"]

@@ -486,6 +486,7 @@ class RealtimePipeline:
                     point_names=list(aggregation_output.keypoints_arrays.keys()),
                     keypoints_arrays=aggregation_output.keypoints_arrays,
                     skeleton_arrays=aggregation_output.keypoints_arrays,
+                    performer_skeleton_arrays=aggregation_output.performer_skeletons,
                     embed_keypoint_names=True,
                 )
             else:
@@ -502,6 +503,7 @@ class RealtimePipeline:
                     point_names=RTMPOSE_WHOLEBODY_DEFINITION.tracked_points,
                     keypoints_arrays=aggregation_output.keypoints_arrays,
                     skeleton_arrays=rtm_skeleton,
+                    performer_skeleton_arrays=aggregation_output.performer_skeletons,
                 )
             return FrontendImagePacket(
                 images_bytearray=frames_bytearray,

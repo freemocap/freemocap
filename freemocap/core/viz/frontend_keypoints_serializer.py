@@ -118,7 +118,8 @@ def build_keypoints_payload(
         tracker_id: str,
         point_names: tuple[str, ...] | list[str],
         keypoints_arrays: dict[str, np.ndarray],
-        skeleton_arrays: dict[str, np.ndarray] | None = None,
+    skeleton_arrays: dict[str, np.ndarray] | None = None,
+    performer_skeleton_arrays: dict[str, dict[str, np.ndarray]] | None = None,
         embed_keypoint_names: bool = False,
 ) -> bytearray:
     """Serialize the per-frame 3D keypoints + skeleton into the binary wire format.
@@ -172,6 +173,24 @@ def build_keypoints_payload(
                 tracker_id="skeleton3d",
                 point_names=skeleton_names,
                 sparse_arrays=skeleton_arrays,
+                embed_names=True,
+            )
+        )
+
+    # Multi-person extension: each performer uses the existing self-describing
+    # SKELETON_3D block layout. The stable performer id rides in camera_id,
+    # which older readers already know how to skip, so single-person payloads
+    # and the block header remain byte-for-byte compatible.
+    for performer_id, performer_skeleton in (performer_skeleton_arrays or {}).items():
+        if not performer_skeleton:
+            continue
+        blocks.append(
+            _build_block(
+                kind=BlockKind.SKELETON_3D,
+                tracker_id="skeleton3d",
+                camera_id=performer_id,
+                point_names=list(performer_skeleton.keys()),
+                sparse_arrays=performer_skeleton,
                 embed_names=True,
             )
         )

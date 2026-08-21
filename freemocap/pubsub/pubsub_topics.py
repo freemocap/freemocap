@@ -118,6 +118,7 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     center_of_mass_result: CenterOfMassResult | None = None
     xcom: Point3d | None = None
     skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
+    performer_skeletons: dict[str, dict[TrackedPointNameString, np.ndarray]] = field(default_factory=dict)
     body_kinematics: BodyKinematicsState | None = None
 
     def __post_init__(self) -> None:

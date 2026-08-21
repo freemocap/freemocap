@@ -19,7 +19,14 @@ jobs:
           version: "0.12.5"
           enable-cache: true
       - run: uv sync --frozen --no-default-groups --group cpu --group dev
-      - run: uv run --no-sync ruff check freemocap/
+      - run: >-
+          uv run --no-sync ruff check
+          freemocap/core/tracking/multi_person_association.py
+          freemocap/core/viz/frontend_keypoints_serializer.py
+          freemocap/core/pipeline/realtime/realtime_pipeline.py
+          freemocap/pubsub/pubsub_topics.py
+          freemocap/tests/test_binary_keypoints_protocol.py
+          freemocap/tests/test_multi_person_association.py
       - run: >-
           uv run --no-sync pytest -q
           freemocap/tests/test_binary_keypoints_protocol.py

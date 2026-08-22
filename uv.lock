@@ -3,10 +3,10 @@ revision = 3
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.12' and sys_platform == 'darwin'",
-    "python_full_version < '3.12' and sys_platform == 'darwin'",
     "python_full_version >= '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
-    "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version >= '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
+    "python_full_version < '3.12' and sys_platform == 'darwin'",
+    "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'linux'",
     "python_full_version < '3.12' and platform_machine == 'AMD64' and sys_platform == 'win32'",
 ]
 supported-markers = [
@@ -371,7 +371,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a20"
+version = "2.0.0a21"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -446,15 +446,15 @@ requires-dist = [
     { name = "skellyforge", git = "https://github.com/freemocap/skellyforge?branch=main" },
     { name = "skellylogs", git = "https://github.com/freemocap/skellylogs" },
     { name = "skellypings", git = "https://github.com/freemocap/skellypings" },
-    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/freemocap/skellytracker?branch=main" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "extra == 'cpu'", git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "extra == 'cuda'", git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" },
     { name = "tomli-w", specifier = ">=1.2.0" },
 ]
 provides-extras = ["cuda", "cpu"]
 
 [package.metadata.requires-dev]
-cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
-cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/freemocap/skellytracker?branch=main" }]
+cpu = [{ name = "skellytracker", extras = ["all-cpu"], git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" }]
+cuda = [{ name = "skellytracker", extras = ["all-cuda"], git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" }]
 dev = [
     { name = "bumpver" },
     { name = "httpx", specifier = ">=0.28.0" },
@@ -468,8 +468,8 @@ dev = [
 ]
 pyceres = [{ name = "pyceres", specifier = ">=2.5" }]
 tracker-default = [
-    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
-    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/freemocap/skellytracker?branch=main" },
+    { name = "skellytracker", extras = ["all-cpu"], marker = "sys_platform == 'darwin'", git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" },
+    { name = "skellytracker", extras = ["all-cuda"], marker = "sys_platform != 'darwin'", git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a" },
 ]
 
 [[package]]
@@ -1988,7 +1988,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=main#7a8f80ce3d59ceccd01a215add72c2e6e26e767b" }
+source = { git = "https://github.com/achmadawdi/skellytracker?rev=950c08f34540d92d38869ddcf102029f0105740a#950c08f34540d92d38869ddcf102029f0105740a" }
 dependencies = [
     { name = "beartype" },
     { name = "numpy" },

@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import logging
+import os
 from copy import deepcopy
 from pathlib import Path
 
@@ -10,16 +11,24 @@ from skellycam.core.recorders.videos.parse_video_filename import VIDEO_EXTENSION
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 
 from freemocap.app.freemocap_application import get_freemocap_app
-from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
+from freemocap.core.tasks.calibration.calibration_task_config import (
+    PosthocCalibrationPipelineConfig,
+)
 from freemocap.pubsub.pubsub_topics import (
     CalibrationRecordingStateMessage,
     CalibrationRecordingStateTopic,
 )
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
+from freemocap.core.tasks.calibration.shared.calibration_paths import (
+    get_last_successful_calibration_toml_path,
+)
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 
 logger = logging.getLogger(__name__)
 
-calibration_router = APIRouter(prefix="/calibration", tags=["Capture Volume Calibration"])
+calibration_router = APIRouter(
+    prefix="/calibration", tags=["Capture Volume Calibration"]
+)
 
 
 # ==================== Request/Response Models ====================
@@ -35,7 +44,9 @@ class CalibrationConfigResponse(BaseModel):
 
 
 def _calibrate_request_schema_extra(schema: dict) -> None:
-    schema["examples"] = [CalibrateRecordingRequest.create_test_data_request().model_dump(by_alias=True)]
+    schema["examples"] = [
+        CalibrateRecordingRequest.create_test_data_request().model_dump(by_alias=True)
+    ]
 
 
 class CalibrateRecordingRequest(BaseModel):
@@ -49,11 +60,14 @@ class CalibrateRecordingRequest(BaseModel):
     )
     calibration_recording_directory: str | None = Field(
         alias="calibrationRecordingDirectory",
-        description="Optional directory for calibration recording, if None/null use most recent successful recording", )
+        description="Optional directory for calibration recording, if None/null use most recent successful recording",
+    )
 
     def to_recording_info(self) -> RecordingInfo:
         if self.calibration_recording_directory is None:
-            raise RuntimeError("CalibrationConfig.calibration_recording_directory not set")
+            raise RuntimeError(
+                "CalibrationConfig.calibration_recording_directory not set"
+            )
         recording_dir = Path(self.calibration_recording_directory).expanduser()
         return RecordingInfo(
             recording_directory=str(recording_dir.parent),
@@ -68,12 +82,16 @@ class CalibrateRecordingRequest(BaseModel):
         config.charuco_board.squares_x = 7
         config.charuco_board.squares_y = 5
         config.charuco_board.square_length_mm = 54
-        return cls(calibration_config=config,
-                   calibration_recording_directory=FREEMOCAP_TEST_DATA_PATH)
+        return cls(
+            calibration_config=config,
+            calibration_recording_directory=FREEMOCAP_TEST_DATA_PATH,
+        )
 
 
 class StopCalibrationRecordingRequest(BaseModel):
-    calibration_config: PosthocCalibrationPipelineConfig = Field(alias="calibrationTaskConfig")
+    calibration_config: PosthocCalibrationPipelineConfig = Field(
+        alias="calibrationTaskConfig"
+    )
 
 
 class StartCalibrationRecordingResponse(BaseModel):
@@ -91,6 +109,16 @@ class CalibrateRecordingResponse(BaseModel):
 class PyceresAvailabilityResponse(BaseModel):
     available: bool
     message: str | None = None
+
+
+class CalibrationStatusResponse(BaseModel):
+    state: str
+    path: str | None = None
+    camera_ids: list[str] = Field(default_factory=list)
+    reprojection_error_px: float | None = None
+    accepted: bool = False
+    updated_at_ms: int | None = None
+    error: str | None = None
 
 
 # ==================== Helpers ====================
@@ -116,7 +144,8 @@ def _reject_if_recording_directory_not_empty(recording_info: RecordingInfo) -> N
     if not videos_dir.is_dir():
         return
     existing_videos = sorted(
-        p for p in videos_dir.iterdir()
+        p
+        for p in videos_dir.iterdir()
         if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
     )
     if existing_videos:
@@ -135,9 +164,32 @@ def _reject_if_recording_directory_not_empty(recording_info: RecordingInfo) -> N
 # ==================== Endpoints ====================
 
 
+@calibration_router.get("/status")
+def get_calibration_status() -> CalibrationStatusResponse:
+    path = get_last_successful_calibration_toml_path()
+    if not path.is_file():
+        return CalibrationStatusResponse(state="missing")
+    try:
+        calibration = CalibrationResult.load_anipose_toml(path)
+        error_px = float(calibration.reprojection_error_px)
+        return CalibrationStatusResponse(
+            state="ready",
+            path=str(path),
+            camera_ids=calibration.camera_ids,
+            reprojection_error_px=error_px,
+            accepted=error_px <= 2.0,
+            updated_at_ms=int(os.path.getmtime(path) * 1000),
+        )
+    except Exception as error:
+        logger.exception("Unable to load last successful calibration")
+        return CalibrationStatusResponse(
+            state="invalid", path=str(path), error=str(error)
+        )
+
+
 @calibration_router.post("/recording/start")
 async def start_calibration_recording(
-        request: CalibrateRecordingRequest,
+    request: CalibrateRecordingRequest,
 ) -> StartCalibrationRecordingResponse:
     """Start calibration recording with given config."""
     try:
@@ -174,7 +226,9 @@ async def start_calibration_recording(
                         f"[{pipeline.id}] — continuing with skeleton inference on"
                     )
 
-        return StartCalibrationRecordingResponse(success=True, message="Recording started")
+        return StartCalibrationRecordingResponse(
+            success=True, message="Recording started"
+        )
     except HTTPException:
         raise
     except Exception as e:
@@ -184,7 +238,7 @@ async def start_calibration_recording(
 
 @calibration_router.post("/recording/stop")
 async def stop_calibration_recording(
-        request: StopCalibrationRecordingRequest,
+    request: StopCalibrationRecordingRequest,
 ) -> dict:
     """Stop current calibration recording and launch posthoc calibration pipeline."""
     app = get_freemocap_app()
@@ -218,12 +272,16 @@ async def stop_calibration_recording(
                         f"[{pipeline.id}]"
                     )
 
-        logger.info(f"Recording stopped - saved to: {recording_info.full_recording_path}")
+        logger.info(
+            f"Recording stopped - saved to: {recording_info.full_recording_path}"
+        )
         pipeline = await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=request.calibration_config,
         )
-        logger.info("Calibration recording stopped, posthoc calibration pipeline launched")
+        logger.info(
+            "Calibration recording stopped, posthoc calibration pipeline launched"
+        )
         return {
             "success": True,
             "pipeline_id": pipeline.id,
@@ -247,17 +305,20 @@ def get_pyceres_availability() -> PyceresAvailabilityResponse:
 
 
 @calibration_router.post("/recording/calibrate")
-async def calibrate_recording(request: CalibrateRecordingRequest) -> CalibrateRecordingResponse:
+async def calibrate_recording(
+    request: CalibrateRecordingRequest,
+) -> CalibrateRecordingResponse:
     """Process and calibrate a previously recorded session."""
     app = get_freemocap_app()
     try:
-
         recording_info = request.to_recording_info()
         pipeline = await app.create_posthoc_calibration_pipeline(
             recording_info=recording_info,
             calibration_config=request.calibration_config,
         )
-        logger.info(f"Calibrating recording at: {recording_info.full_recording_path} with calibration config:\n {request.calibration_config.model_dump_json(indent=2)}")
+        logger.info(
+            f"Calibrating recording at: {recording_info.full_recording_path} with calibration config:\n {request.calibration_config.model_dump_json(indent=2)}"
+        )
         return CalibrateRecordingResponse(
             success=True,
             message="Calibration pipeline launched",

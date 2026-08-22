@@ -4,18 +4,25 @@ PubSub topic definitions for the pipeline system.
 Each Message + Topic pair defines a typed channel. Topics auto-register
 via __init_subclass__ so the PubSubTopicManager discovers them at startup.
 """
+
 import logging
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
+from skellycam.core.types.type_overloads import (
+    CameraGroupIdString,
+    CameraIdString,
+    MultiframeTimestampFloat,
+)
 from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.kinematics.body_kinematics_state import BodyKinematicsState
-from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import (
+    RealtimePipelineConfig,
+)
 from freemocap.core.tasks.mocap.center_of_mass import CenterOfMassResult
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
@@ -26,7 +33,9 @@ from freemocap.pubsub.pubsub_abcs import TopicMessageABC, create_topic
 
 if TYPE_CHECKING:
     from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
-    from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
+    from freemocap.core.viz.image_overlay.skeleton_overlay_data import (
+        SkeletonOverlayData,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +43,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Frame processing
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ProcessFrameNumberMessage(TopicMessageABC):
@@ -48,6 +58,7 @@ class ProcessFrameNumberMessage(TopicMessageABC):
 # Config updates
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class PipelineConfigUpdateMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
@@ -57,12 +68,14 @@ class PipelineConfigUpdateMessage(TopicMessageABC):
 # Realtime node outputs
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CameraNodeOutputMessage(TopicMessageABC):
     camera_id: CameraIdString = ""
     frame_number: FrameNumberInt = 0
     charuco_observation: Observation | None = None
     skeleton_observation: Observation | None = None
+    skeleton_observations: dict[str, Observation] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -78,10 +91,16 @@ class CameraNodeOutputMessage(TopicMessageABC):
 # CameraNodeOutputMessage (which carries charuco only in this mode) by
 # (frame_number).
 
+
 @dataclass
 class SkeletonInferenceResultMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
-    per_camera_skeleton: dict[CameraIdString, Observation | None] = field(default_factory=dict)
+    per_camera_skeleton: dict[CameraIdString, Observation | None] = field(
+        default_factory=dict
+    )
+    per_camera_people: dict[CameraIdString, dict[str, Observation]] = field(
+        default_factory=dict
+    )
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:
@@ -91,6 +110,7 @@ class SkeletonInferenceResultMessage(TopicMessageABC):
 # ---------------------------------------------------------------------------
 # Video (posthoc) node outputs
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class VideoNodeOutputMessage(TopicMessageABC):
@@ -107,18 +127,28 @@ class VideoNodeOutputMessage(TopicMessageABC):
 # Aggregation output (realtime)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
     pipeline_id: PipelineIdString = ""
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""
-    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
-    keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
+    camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(
+        default_factory=dict
+    )
+    keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(
+        default_factory=dict
+    )
     center_of_mass_result: CenterOfMassResult | None = None
     xcom: Point3d | None = None
     skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
-    performer_skeletons: dict[str, dict[TrackedPointNameString, np.ndarray]] = field(default_factory=dict)
+    performer_skeletons: dict[str, dict[TrackedPointNameString, np.ndarray]] = field(
+        default_factory=dict
+    )
+    performer_camera_observations: dict[str, dict[CameraIdString, Observation]] = field(
+        default_factory=dict
+    )
     body_kinematics: BodyKinematicsState | None = None
 
     def __post_init__(self) -> None:
@@ -134,7 +164,9 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @property
     def charuco_overlay_data(self) -> dict:
-        from freemocap.core.viz.image_overlay.charuco_overlay_data import CharucoOverlayData
+        from freemocap.core.viz.image_overlay.charuco_overlay_data import (
+            CharucoOverlayData,
+        )
 
         overlay_data: dict[CameraIdString, CharucoOverlayData] = {}
         for camera_id, cam_output in self.camera_node_outputs.items():
@@ -147,8 +179,13 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 
     @property
     def skeleton_overlay_data(self) -> dict:
-        from freemocap.core.viz.image_overlay.skeleton_overlay_data import SkeletonOverlayData
-        from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION, MEDIAPIPE_WHOLEBODY_DEFINITION
+        from freemocap.core.viz.image_overlay.skeleton_overlay_data import (
+            SkeletonOverlayData,
+        )
+        from freemocap.core.tracking.tracker_definitions import (
+            RTMPOSE_WHOLEBODY_DEFINITION,
+            MEDIAPIPE_WHOLEBODY_DEFINITION,
+        )
 
         detector_type = (
             self.pipeline_config.camera_node_config.detector_type
@@ -171,6 +208,26 @@ class AggregationNodeOutputMessage(TopicMessageABC):
                 )
         return overlay_data
 
+    @property
+    def multi_person_skeleton_overlay_data(self) -> dict:
+        from freemocap.core.viz.image_overlay.skeleton_overlay_data import (
+            SkeletonOverlayData,
+        )
+        from freemocap.core.tracking.tracker_definitions import (
+            RTMPOSE_WHOLEBODY_DEFINITION,
+        )
+
+        overlays: dict[CameraIdString, dict[str, SkeletonOverlayData]] = {}
+        for performer_id, observations in self.performer_camera_observations.items():
+            for camera_id, observation in observations.items():
+                overlays.setdefault(camera_id, {})[performer_id] = (
+                    SkeletonOverlayData.from_observation(
+                        camera_id=camera_id,
+                        observation=observation,
+                        tracker_definition_name=RTMPOSE_WHOLEBODY_DEFINITION.name,
+                    )
+                )
+        return overlays
 
     @property
     def camera_ids(self) -> list[CameraIdString]:
@@ -186,12 +243,15 @@ class AggregationNodeOutputMessage(TopicMessageABC):
 # report. Camera-node samples for the same stage collapse across camera_id
 # into ensemble statistics so adding cameras doesn't multiply log volume.
 
+
 @dataclass
 class PipelineTimingMessage(TopicMessageABC):
-    node_kind: str = ""              # "camera" | "skeleton_inference" | "aggregator"
-    node_label: str = ""             # human-readable label for log section headers
+    node_kind: str = ""  # "camera" | "skeleton_inference" | "aggregator"
+    node_label: str = ""  # human-readable label for log section headers
     camera_id: CameraIdString | None = None  # set only for camera nodes
-    samples: dict[str, list[float]] = field(default_factory=dict)  # stage -> elapsed_ms batch
+    samples: dict[str, list[float]] = field(
+        default_factory=dict
+    )  # stage -> elapsed_ms batch
 
 
 # ---------------------------------------------------------------------------
@@ -200,10 +260,12 @@ class PipelineTimingMessage(TopicMessageABC):
 # Published by the calibration HTTP endpoint when a calibration recording
 # starts or stops. The CharucoRecorderNode subscribes to toggle buffering.
 
+
 @dataclass
 class CalibrationRecordingStateMessage(TopicMessageABC):
     recording_info: RecordingInfo | None = None
     is_active: bool = False
+
 
 @dataclass
 class SkeletonFitterResetMessage(TopicMessageABC):
@@ -223,10 +285,10 @@ ProcessFrameNumberTopic = create_topic(ProcessFrameNumberMessage)
 PipelineConfigUpdateTopic = create_topic(PipelineConfigUpdateMessage)
 CameraNodeOutputTopic = create_topic(CameraNodeOutputMessage)
 SkeletonInferenceResultTopic = create_topic(SkeletonInferenceResultMessage)
-VideoNodeOutputTopic = create_topic(VideoNodeOutputMessage, queue_maxsize=0)  # unbounded: posthoc video nodes finish before aggregation node starts , #TODO - shouldnt thouh, agg node should run concurrently w/ video nodes
+VideoNodeOutputTopic = create_topic(
+    VideoNodeOutputMessage, queue_maxsize=0
+)  # unbounded: posthoc video nodes finish before aggregation node starts , #TODO - shouldnt thouh, agg node should run concurrently w/ video nodes
 AggregationNodeOutputTopic = create_topic(AggregationNodeOutputMessage)
 PipelineTimingTopic = create_topic(PipelineTimingMessage)
 CalibrationRecordingStateTopic = create_topic(CalibrationRecordingStateMessage)
 SkeletonFitterResetTopic = create_topic(SkeletonFitterResetMessage)
-
-

@@ -28,6 +28,7 @@ Backpressure:
   messages are dropped rather than queued. If inference falls behind the camera
   group's frame rate, we lose frames instead of accumulating lag.
 """
+
 import gc
 import logging
 import time
@@ -55,11 +56,18 @@ from skellycam.utilities.wait_functions import wait_1ms
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState  # noqa: TC002
+from skellytracker.core.tracker.multi_person_tracker import MultiPersonTracker
+from skellytracker.core.tracker.person_track import PersonTrackState  # noqa: TC002
+from skellytracker.core.temporal_processing.multi_person_config import (
+    MultiPersonTrackingConfig,
+)
 from skellytracker.core.sessions.onnx_session import OnnxSession
 
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
-from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.pipeline.realtime.realtime_pipeline_config import (
+    RealtimePipelineConfig,
+)
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.types.type_overloads import TopicPublicationQueue
 from freemocap.pubsub.pubsub_manager import PubSubTopicManager
@@ -82,15 +90,15 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
     @classmethod
     def create(
-            cls,
-            *,
-            camera_group_id: CameraGroupIdString,
-            camera_ids: list[CameraIdString],
-            worker_registry: WorkerRegistry,
-            camera_group_shm_dto: CameraGroupSharedMemoryDTO,
-            config: RealtimePipelineConfig,
-            ipc: PipelineIPC,
-            pubsub: PubSubTopicManager,
+        cls,
+        *,
+        camera_group_id: CameraGroupIdString,
+        camera_ids: list[CameraIdString],
+        worker_registry: WorkerRegistry,
+        camera_group_shm_dto: CameraGroupSharedMemoryDTO,
+        config: RealtimePipelineConfig,
+        ipc: PipelineIPC,
+        pubsub: PubSubTopicManager,
     ) -> "RealtimeSkeletonInferenceNode":
         shutdown_self_flag, worker = cls._create_worker(
             target=cls._run,
@@ -103,9 +111,13 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 pipeline_config=config,
                 ipc=ipc,
                 camera_group_shm_dto=camera_group_shm_dto,
-                process_frame_number_sub=pubsub.get_subscription(ProcessFrameNumberTopic),
+                process_frame_number_sub=pubsub.get_subscription(
+                    ProcessFrameNumberTopic
+                ),
                 pipeline_config_sub=pubsub.get_subscription(PipelineConfigUpdateTopic),
-                skeleton_result_pub=pubsub.get_publication_queue(SkeletonInferenceResultTopic),
+                skeleton_result_pub=pubsub.get_publication_queue(
+                    SkeletonInferenceResultTopic
+                ),
                 timing_pub=pubsub.get_publication_queue(PipelineTimingTopic),
             ),
         )
@@ -116,17 +128,17 @@ class RealtimeSkeletonInferenceNode(SourceNode):
 
     @staticmethod
     def _run(
-            *,
-            camera_group_id: CameraGroupIdString,
-            camera_ids: list[CameraIdString],
-            pipeline_config: RealtimePipelineConfig,
-            ipc: PipelineIPC,
-            shutdown_self_flag: Synchronized,
-            camera_group_shm_dto: CameraGroupSharedMemoryDTO,
-            process_frame_number_sub: TopicSubscriptionQueue,
-            pipeline_config_sub: TopicSubscriptionQueue,
-            skeleton_result_pub: TopicPublicationQueue,
-            timing_pub: TopicPublicationQueue,
+        *,
+        camera_group_id: CameraGroupIdString,
+        camera_ids: list[CameraIdString],
+        pipeline_config: RealtimePipelineConfig,
+        ipc: PipelineIPC,
+        shutdown_self_flag: Synchronized,
+        camera_group_shm_dto: CameraGroupSharedMemoryDTO,
+        process_frame_number_sub: TopicSubscriptionQueue,
+        pipeline_config_sub: TopicSubscriptionQueue,
+        skeleton_result_pub: TopicPublicationQueue,
+        timing_pub: TopicPublicationQueue,
     ) -> None:
         logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] initializing")
 
@@ -142,7 +154,9 @@ class RealtimeSkeletonInferenceNode(SourceNode):
             for camera_id in camera_ids
         }
 
-        tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+        tracker, session = _build_session_and_tracker(
+            pipeline_config, num_cameras=len(camera_ids)
+        )
         if tracker is None:
             logger.error(
                 f"RealtimeSkeletonInferenceNode [{camera_group_id}] could not "
@@ -154,7 +168,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         log_pipeline_times = pipeline_config.log_pipeline_times
         timer = (
             PipelineStageTimer(name=f"SkeletonInferenceNode-{camera_group_id}")
-            if log_pipeline_times else None
+            if log_pipeline_times
+            else None
         )
         _MAX_SESSION_RESTARTS = 3
         session_restart_count = 0
@@ -164,6 +179,14 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         }
         # Per-camera temporal state; empty dict means first frame auto-inits.
         tracker_states: dict[CameraIdString, TrackerState] = {}
+        multi_trackers: dict[CameraIdString, MultiPersonTracker] = {}
+        multi_track_states: dict[CameraIdString, dict[int, PersonTrackState]] = {}
+        if pipeline_config.camera_node_config.multi_person_enabled:
+            multi_trackers = _build_multi_person_trackers(
+                pipeline_config=pipeline_config,
+                camera_ids=camera_ids,
+                session=session,
+            )
 
         try:
             logger.debug(
@@ -175,7 +198,9 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 # ---- Handle config updates ----
                 while True:
                     try:
-                        msg: PipelineConfigUpdateMessage = pipeline_config_sub.get_nowait()
+                        msg: PipelineConfigUpdateMessage = (
+                            pipeline_config_sub.get_nowait()
+                        )
                     except Empty:
                         break
                     pipeline_config = msg.pipeline_config
@@ -232,13 +257,37 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 # ---- Batched skeleton inference ----
                 t_inf = time.perf_counter() if timer is not None else 0.0
                 images_dict = {
-                    cam_id: img
-                    for cam_id, img in zip(ordered_camera_ids, images)
+                    cam_id: img for cam_id, img in zip(ordered_camera_ids, images)
                 }
                 try:
-                    observations, tracker_states = tracker.process_batch(
-                        images_dict, requested_frame_number, tracker_states
-                    )
+                    per_camera_people: dict[CameraIdString, dict[str, Observation]] = {}
+                    if pipeline_config.camera_node_config.multi_person_enabled:
+                        observations = {}
+                        for camera_id, image in images_dict.items():
+                            observation, states = multi_trackers[
+                                camera_id
+                            ].process_image(
+                                image=image,
+                                frame_number=requested_frame_number,
+                                tracks=multi_track_states.get(camera_id, {}),
+                            )
+                            multi_track_states[camera_id] = states
+                            people = {
+                                str(track_id): person
+                                for track_id, person in observation.people.items()
+                            }
+                            per_camera_people[camera_id] = people
+                            observations[camera_id] = next(iter(people.values()), None)
+                    else:
+                        observations, tracker_states = tracker.process_batch(
+                            images_dict, requested_frame_number, tracker_states
+                        )
+                        per_camera_people = {
+                            camera_id: (
+                                {"0": observation} if observation is not None else {}
+                            )
+                            for camera_id, observation in observations.items()
+                        }
                 except Exception as mem_err:
                     if not (
                         isinstance(mem_err, MemoryError)
@@ -259,8 +308,12 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         ipc.kill_everything()
                         return
                     tracker.close()
+                    for multi_tracker in multi_trackers.values():
+                        multi_tracker.close()
                     gc.collect()
-                    tracker, session = _build_session_and_tracker(pipeline_config, num_cameras=len(camera_ids))
+                    tracker, session = _build_session_and_tracker(
+                        pipeline_config, num_cameras=len(camera_ids)
+                    )
                     if tracker is None:
                         logger.error(
                             f"RealtimeSkeletonInferenceNode [{camera_group_id}] failed to rebuild "
@@ -269,6 +322,16 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         ipc.kill_everything()
                         return
                     tracker_states = {}
+                    multi_track_states = {}
+                    multi_trackers = (
+                        _build_multi_person_trackers(
+                            pipeline_config=pipeline_config,
+                            camera_ids=camera_ids,
+                            session=session,
+                        )
+                        if pipeline_config.camera_node_config.multi_person_enabled
+                        else {}
+                    )
                     session_restart_count += 1
                     logger.info(
                         f"RealtimeSkeletonInferenceNode [{camera_group_id}] tracker rebuilt "
@@ -285,6 +348,9 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                 conf_threshold = pipeline_config.camera_node_config.confidence_threshold
                 per_camera_skeleton: dict[CameraIdString, Observation | None] = {}
                 for camera_id, obs in observations.items():
+                    if obs is None:
+                        per_camera_skeleton[camera_id] = None
+                        continue
                     body_stage = obs.stages.get("body")
                     if body_stage is not None and body_stage.keypoints is not None:
                         kpts = body_stage.keypoints
@@ -292,6 +358,15 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                         if low_conf.any():
                             kpts.xyz[low_conf, :2] = np.nan
                     per_camera_skeleton[camera_id] = obs
+
+                for people in per_camera_people.values():
+                    for obs in people.values():
+                        body_stage = obs.stages.get("body")
+                        if body_stage is not None and body_stage.keypoints is not None:
+                            kpts = body_stage.keypoints
+                            low_conf = kpts.visibility < conf_threshold
+                            if low_conf.any():
+                                kpts.xyz[low_conf, :2] = np.nan
 
                 # Cameras whose frame we couldn't read get None.
                 for camera_id in camera_ids:
@@ -301,6 +376,7 @@ class RealtimeSkeletonInferenceNode(SourceNode):
                     SkeletonInferenceResultMessage(
                         frame_number=requested_frame_number,
                         per_camera_skeleton=per_camera_skeleton,
+                        per_camera_people=per_camera_people,
                     ),
                 )
                 if timer is not None:
@@ -319,6 +395,8 @@ class RealtimeSkeletonInferenceNode(SourceNode):
         finally:
             if tracker is not None:
                 tracker.close()
+            for multi_tracker in multi_trackers.values():
+                multi_tracker.close()
             logger.debug(f"RealtimeSkeletonInferenceNode [{camera_group_id}] exiting")
 
 
@@ -339,6 +417,7 @@ def _build_session_and_tracker(
 
     if camera_node_config.detector_type == "mediapipe":
         from freemocap.core.tracking.tracker_factory import build_mediapipe_tracker
+
         try:
             tracker, session = build_mediapipe_tracker(
                 model_complexity=camera_node_config.mediapipe_model_complexity,
@@ -384,12 +463,33 @@ def _build_session_and_tracker(
         return None, None
 
 
+def _build_multi_person_trackers(
+    *,
+    pipeline_config: RealtimePipelineConfig,
+    camera_ids: list[CameraIdString],
+    session: object,
+) -> dict[CameraIdString, MultiPersonTracker]:
+    config = pipeline_config.camera_node_config.skeleton_tracker_config
+    if config is None:
+        raise RuntimeError("Multi-person tracking requires a skeleton_tracker_config.")
+    max_persons = pipeline_config.camera_node_config.max_persons
+    return {
+        camera_id: MultiPersonTracker.create(
+            config=config,
+            sessions={"onnx": session},
+            multi_person_config=MultiPersonTrackingConfig(max_persons=max_persons),
+            owns_sessions=False,
+        )
+        for camera_id in camera_ids
+    }
+
+
 def _read_frames(
-        *,
-        camera_ids: list[CameraIdString],
-        camera_shms: dict[CameraIdString, CameraSharedMemoryRingBuffer],
-        frame_recarrays: dict[CameraIdString, np.recarray | None],
-        requested_frame_number: int,
+    *,
+    camera_ids: list[CameraIdString],
+    camera_shms: dict[CameraIdString, CameraSharedMemoryRingBuffer],
+    frame_recarrays: dict[CameraIdString, np.recarray | None],
+    requested_frame_number: int,
 ) -> tuple[list[NDArray[np.uint8]], list[CameraIdString]]:
     """Read frame `requested_frame_number` from each camera's ring buffer."""
     images: list[NDArray[np.uint8]] = []

@@ -22,13 +22,20 @@ jobs:
       - run: >-
           uv run --no-sync ruff check
           freemocap/core/tracking/multi_person_association.py
+          freemocap/core/pipeline/realtime/camera_node_config.py
+          freemocap/core/pipeline/realtime/realtime_aggregator_node.py
+          freemocap/core/pipeline/realtime/realtime_skeleton_inference_node.py
           freemocap/core/viz/frontend_keypoints_serializer.py
+          freemocap/core/viz/frontend_payload.py
+          freemocap/api/http/calibration/calibration_router.py
           freemocap/core/pipeline/realtime/realtime_pipeline.py
           freemocap/pubsub/pubsub_topics.py
           freemocap/tests/test_binary_keypoints_protocol.py
           freemocap/tests/test_multi_person_association.py
+          freemocap/tests/http/test_calibration_router_recording_state.py
       - run: >-
           uv run --no-sync pytest -q
           freemocap/tests/test_binary_keypoints_protocol.py
           freemocap/tests/test_multi_person_association.py
+          freemocap/tests/http/test_calibration_router_recording_state.py
           freemocap/tests/triangulation/test_outlier_rejection.py

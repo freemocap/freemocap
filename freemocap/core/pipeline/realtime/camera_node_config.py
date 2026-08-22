@@ -10,8 +10,12 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 from skellytracker.core.detectors.keypoint_detectors.mediapipe.mediapipe_model_manager import (
     MediapipePoseModelComplexity,
 )
-from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
-from skellytracker.core.detectors.object_detectors.yolox import YoloxPersonDetectorConfig
+from skellytracker.core.detectors.keypoint_detectors.rtmpose import (
+    RTMPoseDetectorConfig,
+)
+from skellytracker.core.detectors.object_detectors.yolox import (
+    YoloxPersonDetectorConfig,
+)
 from skellytracker.core.temporal_processing.temporal_processing_config import (
     BBoxPolicyConfig,
     BBoxSmoothingConfig,
@@ -23,7 +27,10 @@ _REDETECT_SECONDS = 5.0
 _ASSUMED_CAMERA_FPS = 30.0
 
 
-def _default_skeleton_tracker_config() -> TrackerConfig:
+def _skeleton_tracker_config(
+    model_name: str = "rtmw-x-l_256x192",
+    confidence_threshold: float = 0.0025,
+) -> TrackerConfig:
     redetect_interval = max(1, round(_REDETECT_SECONDS * _ASSUMED_CAMERA_FPS))
     return TrackerConfig(
         stages=[
@@ -32,8 +39,8 @@ def _default_skeleton_tracker_config() -> TrackerConfig:
                 object_detector=YoloxPersonDetectorConfig(),
                 keypoint_detectors=[
                     RTMPoseDetectorConfig(
-                        model_name="rtmw-x-l_256x192",
-                        confidence_threshold=0.0025,
+                        model_name=model_name,
+                        confidence_threshold=confidence_threshold,
                     )
                 ],
                 bbox_policy=BBoxPolicyConfig(
@@ -47,6 +54,10 @@ def _default_skeleton_tracker_config() -> TrackerConfig:
             )
         ]
     )
+
+
+def _default_skeleton_tracker_config() -> TrackerConfig:
+    return _skeleton_tracker_config()
 
 
 def _charuco_tracker_config_for_board(board: CharucoBoardDefinition) -> TrackerConfig:
@@ -64,12 +75,18 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
+    multi_person_enabled: bool = False
+    max_persons: int = Field(default=2, ge=1, le=2)
     detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose"
     # RTMPose config (only used when detector_type="rtmpose")
-    rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
+    rtmpose_model_name: Literal[
+        "rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"
+    ] = "rtmw-x-l_256x192"
     rtmpose_confidence_threshold: float = 0.0025
     # MediaPipe config (only used when detector_type="mediapipe")
-    mediapipe_model_complexity: MediapipePoseModelComplexity = MediapipePoseModelComplexity.LITE
+    mediapipe_model_complexity: MediapipePoseModelComplexity = (
+        MediapipePoseModelComplexity.LITE
+    )
     mediapipe_detection_confidence: float = 0.5
     mediapipe_presence_confidence: float = 0.5
     mediapipe_tracking_confidence: float = 0.5
@@ -119,5 +136,16 @@ class CameraNodeConfig(BaseModel):
         RealtimePipeline, posthoc video_node reprocessing) reads the board out
         of via stages[0].keypoint_detectors[0].board.
         """
-        self.charuco_tracker_config = _charuco_tracker_config_for_board(self.charuco_board)
+        self.charuco_tracker_config = _charuco_tracker_config_for_board(
+            self.charuco_board
+        )
+        if self.multi_person_enabled and self.detector_type != "rtmpose":
+            raise ValueError(
+                "Multi-person realtime tracking currently requires detector_type='rtmpose'."
+            )
+        if self.multi_person_enabled:
+            self.skeleton_tracker_config = _skeleton_tracker_config(
+                model_name=self.rtmpose_model_name,
+                confidence_threshold=self.rtmpose_confidence_threshold,
+            )
         return self

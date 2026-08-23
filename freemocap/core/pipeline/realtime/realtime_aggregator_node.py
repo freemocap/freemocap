@@ -714,6 +714,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         resolved_pose = roll_resolver.resolve_pose(pose=hydrated_pose)
                         hydrated_landmarks = dict(mapped_landmarks)
                         for segment in standard_human.segments.values():
+                            if segment.name not in resolved_pose.segment_poses:
+                                # Partial hydration: a segment whose landmarks weren't
+                                # observed this frame is absent from the pose — skip its
+                                # origin rather than indexing a missing segment.
+                                continue
                             origin_name = segment.frame_definition.origin_point_name
                             hydrated_landmarks[origin_name] = resolved_pose.segment_poses[segment.name].origin.array
                         if timer is not None:
@@ -734,7 +739,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                         segment_rotations_local = {}
                         for name, segment_pose in resolved_pose.segment_poses.items():
                             parent_name = rest_pose.parents[name]
-                            if parent_name is None:
+                            if (
+                                parent_name is None
+                                or parent_name not in resolved_pose.segment_poses
+                            ):
+                                # Root, or a segment whose parent was skipped by partial
+                                # hydration — fall back to the world orientation.
                                 local = segment_pose.orientation
                             else:
                                 local = (
@@ -794,23 +804,24 @@ class RealtimeAggregatorNode(AggregatorNode):
                             timer.record("center_of_mass", (time.perf_counter() - t0) * 1e3)
 
                         # ---- XCoM (extrapolated center of mass) ----
-                        now_com = time.perf_counter()
-                        com_z = float(total_body_com[2])
-                        if (
-                            com_z > 0.0
-                            and prev_com is not None
-                            and prev_com_time is not None
-                        ):
-                            dt = now_com - prev_com_time
-                            if dt > 0:
-                                com_velocity = (total_body_com - prev_com) / dt
-                                xcom = extrapolated_center_of_mass(
-                                    com=total_body_com,
-                                    com_velocity=com_velocity,
-                                    gravity=GRAVITY_ACCELERATION,
-                                )
-                        prev_com = total_body_com.copy()
-                        prev_com_time = now_com
+                        if total_body_com is not None:
+                            now_com = time.perf_counter()
+                            com_z = float(total_body_com[2])
+                            if (
+                                com_z > 0.0
+                                and prev_com is not None
+                                and prev_com_time is not None
+                            ):
+                                dt = now_com - prev_com_time
+                                if dt > 0:
+                                    com_velocity = (total_body_com - prev_com) / dt
+                                    xcom = extrapolated_center_of_mass(
+                                        com=total_body_com,
+                                        com_velocity=com_velocity,
+                                        gravity=GRAVITY_ACCELERATION,
+                                    )
+                            prev_com = total_body_com.copy()
+                            prev_com_time = now_com
                         #
                         # # ---- Centroidal kinematics (inertia ellipsoid + ground refs) ----
                         # if not np.any(np.isnan(com_result.total_body_com)):

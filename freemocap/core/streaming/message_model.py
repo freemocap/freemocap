@@ -302,6 +302,10 @@ class ChannelBlock:
     data: bytes
     camera_id: CameraIdString | None = None
     names: tuple[str, ...] | None = None
+    # Full-resolution (rotated) image size of the channel's coordinate space,
+    # carried on per-camera overlay channels so the consumer can scale overlay
+    # points without depending on a calibration entry existing for the camera.
+    image_size: tuple[int, int] | None = None
 
     @classmethod
     def from_float32_rows(

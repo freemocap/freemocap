@@ -18,7 +18,7 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 
-import toml
+import tomllib
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -758,7 +758,7 @@ def get_recording_calibration(
 
     try:
         raw = toml_path.read_text(encoding="utf-8")
-        parsed = toml.loads(raw)
+        parsed = tomllib.loads(raw)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to parse calibration TOML: {e}")
 
@@ -1020,7 +1020,7 @@ def get_recording_bundle(
     if toml_path is not None:
         try:
             raw = toml_path.read_text(encoding="utf-8")
-            parsed = toml.loads(raw)
+            parsed = tomllib.loads(raw)
             mtime_ms = toml_path.stat().st_mtime * 1000
             cameras = []
             for key, val in parsed.items():

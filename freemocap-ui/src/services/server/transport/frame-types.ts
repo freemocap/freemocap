@@ -42,6 +42,9 @@ export interface OverlayFrame {
     names: readonly string[];
     /** interleaved [x,y,visibility, …] — length names.length * 3. */
     data: Float32Array;
+    /** Full-resolution (rotated) image size this overlay is in, when the wire
+     *  carries it on the channel (independent of calibration). */
+    imageSize?: [number, number];
 }
 
 /** Rolling-window channel keys accepted by TransportService.getRollingWindow. */

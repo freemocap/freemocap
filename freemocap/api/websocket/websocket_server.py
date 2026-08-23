@@ -117,6 +117,10 @@ class WebsocketServer:
             tracker_keypoint_names=tuple(tracker_keypoint_names(detector_type)),
             detector_type=detector_type,
             pipeline_live=bool(camera_ids),
+            live_image_sizes={
+                cam_id: (config.width, config.height)
+                for cam_id, config in self._live_camera_configs().items()
+            },
         )
 
     def _compose_current(self):

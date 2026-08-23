@@ -107,6 +107,9 @@ export const ChannelBlockSchema = z.object({
   data: z.instanceof(Uint8Array),
   camera_id: z.string().optional(),
   names: z.array(z.string()).optional(),
+  // Full-resolution (rotated) image size of this channel's coordinate space,
+  // present on per-camera overlay channels (independent of calibration).
+  image_size: z.tuple([z.number().int(), z.number().int()]).optional(),
 });
 export type ChannelBlock = z.infer<typeof ChannelBlockSchema>;
 

@@ -122,6 +122,7 @@ export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels
                     frameNumber: frame.frame_number,
                     names: c.names,
                     data: float32(c.data),
+                    imageSize: c.image_size,
                 });
             }
         }
@@ -135,6 +136,7 @@ export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels
                     frameNumber: frame.frame_number,
                     names: segmentNames,
                     data: float32(c.data),
+                    imageSize: c.image_size,
                 });
             }
         }

@@ -6,7 +6,7 @@ FrameContext is the per-frame payload passed to fill().
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from freemocap.core.streaming.message_model import CalibratedCamera  # noqa: TC001
@@ -25,6 +25,9 @@ class StreamContext:
     tracker_keypoint_names: tuple[str, ...] = ()
     detector_type: str = "rtmpose"
     pipeline_live: bool = False
+    # camera_id -> full-resolution (rotated) image size from the LIVE SkellyCam
+    # config (every live camera, calibrated or not) — the overlay's scale source.
+    live_image_sizes: dict[str, tuple[int, int]] = field(default_factory=dict)
 
 
 @dataclass

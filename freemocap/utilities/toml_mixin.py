@@ -3,14 +3,15 @@
 Provides model_dump_toml / model_validate_toml methods that mirror
 the Pydantic model_dump_json / model_validate_json interface.
 
-Uses the ``toml`` package for reading and writing.
+Uses stdlib ``tomllib`` for reading and ``tomli_w`` for writing.
 """
 
 from pathlib import Path
 from typing import Self
 
 import numpy as np
-import toml
+import tomli_w
+import tomllib
 from pydantic import BaseModel
 
 
@@ -42,7 +43,7 @@ class TomlMixin:
         """Serialize model to a TOML string."""
         data = self.model_dump(mode="python")
         data = numpy_to_python(data)
-        return toml.dumps(data)
+        return tomli_w.dumps(data)
 
     def model_dump_toml_file(self: BaseModel, path: Path) -> None:
         """Serialize model to a TOML file."""
@@ -53,7 +54,7 @@ class TomlMixin:
     @classmethod
     def model_validate_toml(cls, toml_string: str) -> Self:
         """Deserialize model from a TOML string."""
-        data = toml.loads(toml_string)
+        data = tomllib.loads(toml_string)
         return cls.model_validate(data)
 
     @classmethod
@@ -62,5 +63,5 @@ class TomlMixin:
         path = Path(path)
         if not path.is_file():
             raise FileNotFoundError(f"TOML file not found: {path}")
-        data = toml.load(path)
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
         return cls.model_validate(data)

@@ -36,6 +36,7 @@ class OverlayProducer(ChannelProducer):
                     columns=("x", "y", "visibility"),
                     data=assemble_channel_bytes(names=kp_names, positions=detections, n_cols=3),
                     camera_id=camera_id,
+                    image_size=stream_ctx.live_image_sizes.get(camera_id),
                 )
             )
             reprojections = {
@@ -48,6 +49,7 @@ class OverlayProducer(ChannelProducer):
             columns=("x", "y", "visibility"),
                     data=assemble_channel_bytes(names=segment_names, positions=reprojections, n_cols=3),
                     camera_id=camera_id,
+                    image_size=stream_ctx.live_image_sizes.get(camera_id),
                 )
             )
         return blocks

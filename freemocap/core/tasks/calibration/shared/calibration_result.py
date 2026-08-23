@@ -1,7 +1,8 @@
 from pathlib import Path
 
 import numpy as np
-import toml
+import tomli_w
+import tomllib
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtrinsics
@@ -84,7 +85,7 @@ class CalibrationResult(BaseModel, TomlMixin):
 
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(toml.dumps(cameras_dict))
+        path.write_text(tomli_w.dumps(cameras_dict))
 
     @classmethod
     def load_anipose_toml(cls, path: Path) -> "CalibrationResult":
@@ -93,7 +94,7 @@ class CalibrationResult(BaseModel, TomlMixin):
         if not path.is_file():
             raise FileNotFoundError(f"Calibration file not found: {path}")
 
-        toml_data = toml.load(path)
+        toml_data = tomllib.loads(path.read_text(encoding="utf-8"))
         metadata = toml_data.pop("metadata", {})
 
         cameras: list[CameraModel] = []

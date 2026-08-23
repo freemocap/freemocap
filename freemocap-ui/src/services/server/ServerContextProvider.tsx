@@ -141,7 +141,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         }));
         subs.push(transport.subscribeToOverlay((overlay) => {
             if (overlay.layer !== OverlayLayer.DETECTIONS && overlay.layer !== OverlayLayer.REPROJECTIONS) return;
-            const dims = camerasRef.current?.find((c) => c.id === overlay.cameraId)?.image_size;
+            const dims = overlay.imageSize
+                ?? camerasRef.current?.find((c) => c.id === overlay.cameraId)?.image_size;
             const frameOverlays = pendingOverlaysRef.current.get(overlay.frameNumber)
                 ?? new Map<string, SkeletonObservation>();
             const observation: SkeletonObservation = frameOverlays.get(overlay.cameraId) ?? {

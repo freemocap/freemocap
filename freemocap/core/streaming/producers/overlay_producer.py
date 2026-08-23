@@ -25,7 +25,7 @@ class OverlayProducer(ChannelProducer):
         if message is None or stream_ctx is None:
             return []
         kp_names = tuple(stream_ctx.tracker_keypoint_names)
-        segment_names = tuple(stream_ctx.standard_human.segment_names)
+        segment_names = tuple(stream_ctx.standard_human.segments)
         blocks: list[ChannelBlock] = []
         for camera_id in stream_ctx.camera_ids:
             detections = camera_2d_detections(message, camera_id)

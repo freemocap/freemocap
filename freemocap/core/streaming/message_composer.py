@@ -81,5 +81,5 @@ def compose_messages(ctx: StreamContext) -> MessageComposition:
         producers=active,
         convention=CoordinateConvention(),
         cameras=ctx.calibrated_cameras,
-        models=(ModelDefinition.from_standard_human(ctx.standard_human),),
+        models=(ModelDefinition.from_standard_human(skeleton=ctx.standard_human, rest_pose=ctx.rest_pose),),
     )

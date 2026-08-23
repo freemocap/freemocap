@@ -3,6 +3,15 @@
 > **New here? Start with [`HANDOFF.md`](HANDOFF.md)** — a one-file orientation on the current state,
 > the decisions already made, and the next work.
 
+> **STATUS — the real-time realignment is DONE and verified.** The realtime pipeline now runs on the
+> re-authored SkellyForge: 61 segments / 124 landmarks / 52 blendshapes, built by
+> `SkeletonDefinition.from_default_yaml()` + `RestPose` + `hydrate_skeleton` + `ContinuousRollResolver`,
+> in the Blender convention (+X right, +Y forward, +Z up) with one conversion at the skellycam ingest.
+> The wire is self-describing CBOR and the frontend consumes it data-driven. The `HumanSkeleton` /
+> `build_standard_human_tpose` / `solve_frame_orientations` / `rigidify_landmarks` (95-segment) model
+> described below is the PREVIOUS generation — superseded by `REALTIME_REALIGNMENT_PROPOSAL.md`.
+> Remaining: the posthoc path (charuco + mediapipe skeleton re-build), which is deferred.
+
 Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
 message stream** — the two intertwined efforts that turn synchronized camera frames into a
 self-describing stream of a standard-human, VRM-1.0-aligned human.

@@ -79,13 +79,13 @@ export const RestSegmentSchema = z.object({
   primary_axis: PrimaryAxisSchema,
   rest_orientation: z.tuple([z.number(), z.number(), z.number(), z.number()]), // wxyz
   length_mm: z.number(),
-  rigid_with_parent: z.boolean(),
+  is_fully_specified: z.boolean(),
 });
 export type RestSegment = z.infer<typeof RestSegmentSchema>;
 
 export const RestLandmarkSchema = z.object({
   name: z.string(),
-  local_position: z.tuple([z.number(), z.number(), z.number()]).optional(),
+  rest_position: z.tuple([z.number(), z.number(), z.number()]).optional(),
 });
 export type RestLandmark = z.infer<typeof RestLandmarkSchema>;
 

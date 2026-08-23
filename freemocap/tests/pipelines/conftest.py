@@ -25,10 +25,6 @@ from skellycam.core.ipc.process_management.worker_registry import WorkerRegistry
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
 
-from skellyforge.kinematics.segment_lengths import (
-    SegmentLengthReport,
-    build_segment_length_report,
-)
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
 from freemocap.core.tasks.calibration.calibration_task_config import (
     PosthocCalibrationPipelineConfig,
@@ -39,7 +35,6 @@ from freemocap.core.tasks.calibration.shared.calibration_paths import (
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.system.default_paths import FREEMOCAP_TEST_DATA_PATH
 
-from freemocap.tests.pipelines.anthropometry import load_posthoc_body_positions
 from freemocap.tests.pipelines.helpers import wait_for_pipeline
 
 logger = logging.getLogger(__name__)
@@ -363,18 +358,3 @@ def posthoc_mocap_output_dir(
         logger.info(f"  {f.name}  ({f.stat().st_size / 1024:.1f} KB)")
     return output_dir
 
-
-@pytest.fixture(scope="session")
-def posthoc_segment_report(posthoc_mocap_output_dir: Path) -> SegmentLengthReport:
-    """Anthropometric segment-length report built from the trusted posthoc output."""
-    logger.info(f"Building segment-length report from: {posthoc_mocap_output_dir}")
-    positions = load_posthoc_body_positions(posthoc_mocap_output_dir)
-    logger.info(f"Loaded {len(positions)} landmarks from posthoc body CSV")
-    report = build_segment_length_report(positions)
-    logger.info(
-        f"Segment report built: {len(report.stats)} segments  |  "
-        f"implied height={report.implied_height_median_mm:.0f}mm  |  "
-        f"cv={report.implied_height_cv:.3f}"
-    )
-    logger.info("\n" + report.summary())
-    return report

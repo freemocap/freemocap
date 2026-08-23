@@ -25,13 +25,13 @@ class DerivedProducer(ChannelProducer):
         if message is None:
             return []
         com_row = np.full(3, np.nan, dtype=np.float32)
-        if message.center_of_mass_result is not None and not np.any(
-            np.isnan(message.center_of_mass_result.total_body_com)
+        if message.total_body_com is not None and not np.any(
+            np.isnan(message.total_body_com)
         ):
-            com_row = message.center_of_mass_result.total_body_com.astype(np.float32)
+            com_row = np.asarray(message.total_body_com, dtype=np.float32)
         xcom_row = np.full(3, np.nan, dtype=np.float32)
         if message.xcom is not None:
-            xcom_row = np.array([message.xcom.x, message.xcom.y, message.xcom.z], dtype=np.float32)
+            xcom_row = np.asarray(message.xcom, dtype=np.float32)
         derived = np.stack([com_row, xcom_row])
         return [
             ChannelBlock(

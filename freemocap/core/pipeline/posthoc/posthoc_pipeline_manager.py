@@ -24,7 +24,6 @@ from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.tasks.calibration.calibration_task_config import PosthocCalibrationPipelineConfig
 from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
-from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task
 from freemocap.core.types.type_overloads import PipelineIdString
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
@@ -137,6 +136,9 @@ class PosthocPipelineManager(PipelineManagerABC):
         mocap_config: PosthocMocapPipelineConfig,
         start_pipeline: bool = True,
     ) -> PosthocPipeline:
+        # Lazy import: the posthoc mocap task drags in the (still-deferred) skellyforge
+        # Human/filter/interpolation modules, so it must not be imported at module load.
+        from freemocap.core.tasks.mocap.posthoc_mocap_task import run_posthoc_mocap_aggregator_task
         mocap_task_fn = functools.partial(
             run_posthoc_mocap_aggregator_task,
             task_config=mocap_config,

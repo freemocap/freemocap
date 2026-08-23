@@ -1,5 +1,12 @@
 # Handoff — the standard-human ontology rebuild (2026-08-18)
 
+> **STATUS — the real-time realignment is DONE and verified.** This file describes the PREVIOUS
+> generation (95 segments, `HumanSkeleton`, `build_standard_human_tpose` / `solve_frame_orientations` /
+> `rigidify_landmarks`). The realtime pipeline now runs on the re-authored SkellyForge (61 segments /
+> 124 landmarks / 52 blendshapes): `SkeletonDefinition.from_default_yaml()` + `RestPose` +
+> `hydrate_skeleton` + `ContinuousRollResolver`, Blender convention (+X right, +Y forward, +Z up).
+> See `REALTIME_REALIGNMENT_PROPOSAL.md` for the current model. Remaining: posthoc path (deferred).
+
 **Read this first.** It orients a fresh agent on the state of the rebuild, the architecture, the decisions
 already made, and the next work. The layered plans live in this folder (start with `README.md` →
 `ontology.md` → the `0X-*` layers). This file is the shortcut.

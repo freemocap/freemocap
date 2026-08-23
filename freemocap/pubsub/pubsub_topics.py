@@ -11,12 +11,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
-from skellyforge.data_models.trajectory_3d import Point3d
 from skellytracker.core.data_primitives.observation import Observation
 
-from freemocap.core.tasks.mocap.body_kinematics_state import BodyKinematicsState
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
-from skellyforge.kinematics.inertial.center_of_mass import CenterOfMassResult
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -111,13 +108,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     camera_group_id: CameraGroupIdString = ""
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
     keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    center_of_mass_result: CenterOfMassResult | None = None
-    xcom: Point3d | None = None
+    total_body_com: np.ndarray | None = None
+    xcom: np.ndarray | None = None
     skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
     standard_skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
-    body_kinematics: BodyKinematicsState | None = None
     # Per-segment measured rest lengths (mm), keyed by segment name — the
     # rigidifier's current estimates (body + both hands). Feeds the model's
     # ``segment_lengths`` default-then-update lifecycle.

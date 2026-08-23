@@ -22,7 +22,6 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
     KeypointsWithinBBoxRatioConfig,
 )
 
-from skellyforge.post_processing.filters.filter_config import FilterConfig
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
 
 
@@ -108,11 +107,6 @@ class PosthocMocapPipelineConfig(BaseModel):
         description="Configuration for the triangulation step of the mocap pipeline.",
     )
 
-    filter_config: FilterConfig = Field(
-        default_factory=FilterConfig,
-        alias="filterConfig",
-        description="Configuration for the post-processing filter applied to the mocap data.",
-    )
 
     export_to_blender: bool = Field(
         default=True,

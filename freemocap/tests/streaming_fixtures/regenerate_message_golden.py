@@ -27,7 +27,7 @@ from freemocap.core.streaming.message_model import (
     ModelInstance,
     encode_message,
 )
-from skellyforge.skellymodels.standard_human.rest_pose import (
+from freemocap.core.streaming.rest_geometry import (
     PrimaryAxis,
     RestLandmark,
     RestSegment,
@@ -50,14 +50,14 @@ def build_model_message() -> bytes:
             RestSegment(
                 name="hips",
                 parent=None,
-                primary_axis=PrimaryAxis.from_axis("y"),
+                primary_axis=PrimaryAxis(value="y"),
                 rest_orientation=(1.0, 0.0, 0.0, 0.0),
                 length_mm=100.0,
             ),
             RestSegment(
                 name="spine",
                 parent="hips",
-                primary_axis=PrimaryAxis.from_axis("y"),
+                primary_axis=PrimaryAxis(value="y"),
                 rest_orientation=(0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
                 length_mm=200.0,
             ),

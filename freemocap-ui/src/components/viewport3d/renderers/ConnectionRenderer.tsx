@@ -58,7 +58,7 @@ interface ConnectionLayer {
  */
 export function ConnectionRenderer() {
     const { activeTrackerId, trackerSchemas, calibrationConfig } = useWorkerData();
-    const { subscribeToKeypoints, subscribeToSkeleton } = useKeypointsSource();
+    const { subscribeToKeypoints } = useKeypointsSource();
 
     // Precompute charuco grid segment name-pairs — the grid topology depends
     // only on board dimensions, so this memoizes it and avoids recomputing
@@ -236,11 +236,11 @@ export function ConnectionRenderer() {
         invalidate();
     }, [activeSchema, invalidate]);
 
-    // Skeleton: FABRIK-fitted standard-human body + hand keypoints. These drive
-    // the stick-figure connections. Each frame replaces the body/hand entries
-    // in pointsRef.
+    // Keypoints: tracker body + hand keypoints drive the stick-figure connections
+    // (the connection schema names tracker keypoints). Each frame replaces the
+    // body/hand entries in pointsRef, leaving calibration points untouched.
     useEffect(() => {
-        return subscribeToSkeleton((frame: KeypointsFrame) => {
+        return subscribeToKeypoints((frame: KeypointsFrame) => {
             const m = pointsRef.current;
             // Remove only body/hand entries (keep calibration points).
             for (const name of m.keys()) {
@@ -250,7 +250,7 @@ export function ConnectionRenderer() {
             dirtyRef.current = true;
             invalidate();
         });
-    }, [subscribeToSkeleton, invalidate]);
+    }, [subscribeToKeypoints, invalidate]);
 
     // Keypoints: calibration markers (charuco corners, aruco marker corners)
     // are the only points from the keypoints stream that contribute to

@@ -26,7 +26,8 @@ from skellycam.core.types.type_overloads import (
     CameraIdString,
     CameraIndexInt,
 )
-from skellyforge.skellymodels.standard_human.rest_pose import (
+from freemocap.core.streaming.rest_geometry import (
+    PrimaryAxis,
     RestLandmark,
     RestSegment,
 )
@@ -34,7 +35,8 @@ from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtr
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from skellycam.core.recorders.framerate_tracker import CurrentFramerate
-from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton
+from skellyforge.core.skeleton.pose.rest_pose import RestPose
+from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
 
 CURRENT_VERSION: int = 0
@@ -126,7 +128,7 @@ class CoordinateConvention:
     units: Units = Units.MILLIMETERS
     handedness: Handedness = Handedness.RIGHT
     up_axis: Axis = Axis.PLUS_Z
-    forward_axis: Axis = Axis.PLUS_X
+    forward_axis: Axis = Axis.PLUS_Y
     rotation_frame: RotationFrame = RotationFrame.LOCAL
     rotation_form: RotationForm = RotationForm.QUATERNION
 
@@ -247,17 +249,35 @@ class ModelDefinition:
     landmarks: tuple[RestLandmark, ...]
 
     @classmethod
-    def from_standard_human(cls, standard_human: HumanSkeleton) -> "ModelDefinition":
-        from skellyforge.kinematics.tpose import build_standard_human_tpose  # noqa: PLC0415
-        tpose = build_standard_human_tpose(standard_human)
+    def from_standard_human(
+        cls, skeleton: SkeletonDefinition, rest_pose: RestPose
+    ) -> "ModelDefinition":
         return cls(
             model_id="standard_human",
-            segments=tuple(RestSegment.from_geometry(s, tpose.segments[s.name]) for s in standard_human.segments),
+            segments=tuple(
+                RestSegment(
+                    name=segment.name,
+                    parent=rest_pose.parents[segment.name],
+                    primary_axis=PrimaryAxis.from_spatial_axis(
+                        segment.frame_definition.primary_axis
+                    ),
+                    rest_orientation=tuple(
+                        float(c)
+                        for c in rest_pose.segment_orientations[segment.name].as_array()
+                    ),
+                    length_mm=float(segment.length),
+                    is_fully_specified=segment.is_fully_specified,
+                )
+                for segment in skeleton.segments.values()
+            ),
             landmarks=tuple(
-                RestLandmark.from_position(n, tpose.landmarks[n])
-                if n in tpose.landmarks
-                else RestLandmark(name=n)
-                for n in standard_human.landmark_names
+                RestLandmark(
+                    name=name,
+                    rest_position=tuple(
+                        float(c) for c in rest_pose.landmark_positions[name].array
+                    ),
+                )
+                for name in skeleton.landmarks
             ),
         )
 

@@ -34,7 +34,6 @@ from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_s
 from freemocap.core.tasks.calibration.shared.calibration_save import save_calibration_copies
 from freemocap.core.tasks.calibration.shared.compare_calibrations import compute_calibration_health
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
-from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import charuco_model_from_observations
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.utilities.toml_mixin import numpy_to_python
 
@@ -328,20 +327,33 @@ def run_posthoc_calibration_task(
     )
     logger.info(f"\n{health.summary}")
 
-    # ---- Build charuco board model from observations ----
-    observation_buffers: dict[CameraIdString, ObservationBuffer] = {
-        camera_id: ObservationBuffer() for camera_id in camera_ids
-    }
-    for charuco_obs_by_camera in charuco_observations_by_frame:
-        for camera_id, buf in observation_buffers.items():
-            buf.add_observation(charuco_obs_by_camera[camera_id])
+    # ---- Build charuco board model from observations (deferred) ----
+    # The charuco board-model builder is part of the posthoc path that still needs
+    # re-implementation against the re-authored SkellyForge. Until it lands, skip it
+    # instead of failing a calibration whose solve + save already succeeded.
+    try:
+        from freemocap.core.tasks.mocap.mocap_helpers.charuco_model_from_observations import (
+            charuco_model_from_observations,
+        )
+    except ImportError:
+        logger.warning(
+            "charuco board-model builder unavailable (posthoc charuco model deferred); "
+            "skipping the charuco board-model output"
+        )
+    else:
+        observation_buffers: dict[CameraIdString, ObservationBuffer] = {
+            camera_id: ObservationBuffer() for camera_id in camera_ids
+        }
+        for charuco_obs_by_camera in charuco_observations_by_frame:
+            for camera_id, buf in observation_buffers.items():
+                buf.add_observation(charuco_obs_by_camera[camera_id])
 
-    charuco_model_from_observations(
-        observation_buffers=observation_buffers,
-        board_def=board,
-        calibration_toml_path=get_last_successful_calibration_toml_path(),
-        output_data_folder=Path(recording_info.full_recording_path) / "output_data",
-    )
+        charuco_model_from_observations(
+            observation_buffers=observation_buffers,
+            board_def=board,
+            calibration_toml_path=get_last_successful_calibration_toml_path(),
+            output_data_folder=Path(recording_info.full_recording_path) / "output_data",
+        )
 
     logger.info(
         f"Posthoc calibration complete! Output saved to {recording_info.full_recording_path}"

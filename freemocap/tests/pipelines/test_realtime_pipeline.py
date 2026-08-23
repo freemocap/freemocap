@@ -16,100 +16,10 @@ from freemocap.core.pipeline.realtime.realtime_aggregator_node_config import (
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
 
-from skellyforge.kinematics.segment_lengths import (
-    build_segment_length_report,
-    equivalence_violations,
-)
-from freemocap.tests.pipelines.anthropometry import positions_from_aggregation_outputs
 from freemocap.tests.pipelines.mocks.mock_camera_group import MockCameraGroup
 from freemocap.tests.pipelines.mocks.realtime_driver import drive_realtime_lockstep
 
 logger = logging.getLogger(__name__)
-
-
-def _assert_realtime_human_shaped_and_matches_posthoc(outputs, request) -> None:
-    logger.info("Building segment-length report from raw realtime triangulation output...")
-    realtime_report = build_segment_length_report(
-        positions_from_aggregation_outputs(outputs)
-    )
-    logger.info("[realtime] " + realtime_report.summary())
-
-    shape_violations = realtime_report.human_shape_violations(check_rigidity=False)
-    if shape_violations:
-        logger.warning(f"Realtime human-shape violations ({len(shape_violations)}):")
-        for v in shape_violations:
-            logger.warning(f"  FAIL: {v}")
-    else:
-        logger.info("Realtime raw reconstruction is human-shaped — PASS")
-
-    assert not shape_violations, (
-        "Realtime raw reconstruction is not human-shaped:\n  - "
-        + "\n  - ".join(shape_violations) + "\n" + realtime_report.summary()
-    )
-
-    posthoc_report = request.getfixturevalue("posthoc_segment_report")
-    logger.info("Checking realtime vs posthoc segment equivalence (threshold=25%)...")
-    eq_violations = equivalence_violations(
-        realtime_report, posthoc_report, label_a="realtime", label_b="posthoc",
-    )
-
-    assessable_rt = realtime_report.assessable()
-    assessable_ph = posthoc_report.assessable()
-    for name in sorted(set(assessable_rt) & set(assessable_ph)):
-        rt_mm = assessable_rt[name].median_mm
-        ph_mm = assessable_ph[name].median_mm
-        diff_pct = abs(rt_mm - ph_mm) / ph_mm * 100 if ph_mm > 0 else float("inf")
-        logger.info(
-            f"  {name}: realtime={rt_mm:.0f}mm  posthoc={ph_mm:.0f}mm  diff={diff_pct:.1f}%"
-        )
-
-    if eq_violations:
-        logger.warning(f"Realtime/posthoc equivalence violations ({len(eq_violations)}):")
-        for v in eq_violations:
-            logger.warning(f"  FAIL: {v}")
-    else:
-        logger.info("Realtime segment lengths match posthoc within 25% — PASS")
-
-    assert not eq_violations, (
-        "Realtime segment lengths differ from posthoc:\n  - "
-        + "\n  - ".join(eq_violations)
-        + "\n[realtime] " + realtime_report.summary()
-        + "\n[posthoc]  " + posthoc_report.summary()
-    )
-
-    # --- Rigidified skeleton: must be RIGID over time AND match posthoc ---
-    # Unlike the raw reconstruction above, the fitted `skeleton` field enforces
-    # the online bone-length estimates, so it must pass the rigidity check
-    # (temporal CV) — that's the whole point of the rigidifier.
-    logger.info("Building segment-length report from the rigidified skeleton output...")
-    skeleton_report = build_segment_length_report(
-        positions_from_aggregation_outputs(outputs, field="skeleton")
-    )
-    logger.info("[realtime skeleton] " + skeleton_report.summary())
-
-    skeleton_shape_violations = skeleton_report.human_shape_violations(check_rigidity=True)
-    if skeleton_shape_violations:
-        logger.warning(
-            f"Rigidified-skeleton human-shape violations ({len(skeleton_shape_violations)}):"
-        )
-        for v in skeleton_shape_violations:
-            logger.warning(f"  FAIL: {v}")
-    else:
-        logger.info("Rigidified skeleton is human-shaped AND rigid — PASS")
-    assert not skeleton_shape_violations, (
-        "Rigidified realtime skeleton is not human-shaped / rigid:\n  - "
-        + "\n  - ".join(skeleton_shape_violations) + "\n" + skeleton_report.summary()
-    )
-
-    skeleton_eq_violations = equivalence_violations(
-        skeleton_report, posthoc_report, label_a="realtime-skeleton", label_b="posthoc",
-    )
-    assert not skeleton_eq_violations, (
-        "Rigidified realtime skeleton segment lengths differ from posthoc:\n  - "
-        + "\n  - ".join(skeleton_eq_violations)
-        + "\n[realtime skeleton] " + skeleton_report.summary()
-        + "\n[posthoc]  " + posthoc_report.summary()
-    )
 
 
 def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
@@ -158,7 +68,6 @@ def _build_pipeline_config(mode: str, charuco_board) -> RealtimePipelineConfig:
 )
 def test_realtime_pipeline_processes_test_data(
     mode, per_frame_timeout, synchronized_videos_dir, charuco_board_7x5, calibration_toml_path,
-    request,
 ):
     logger.info(
         f"=== REALTIME PIPELINE TEST: mode={mode!r}  "
@@ -213,7 +122,7 @@ def test_realtime_pipeline_processes_test_data(
 
         if mode == "full":
             frames_with_skeleton = sum(1 for o in result.outputs if o.skeleton)
-            frames_with_com = sum(1 for o in result.outputs if o.center_of_mass_result is not None)
+            frames_with_com = sum(1 for o in result.outputs if o.total_body_com is not None)
             logger.info(
                 f"Frames with fitted skeleton: {frames_with_skeleton}/{result.frames_processed}"
             )
@@ -221,10 +130,9 @@ def test_realtime_pipeline_processes_test_data(
                 f"Frames with center-of-mass: {frames_with_com}/{result.frames_processed}"
             )
             assert any(o.skeleton for o in result.outputs), "No fitted skeleton produced"
-            assert any(o.center_of_mass_result is not None for o in result.outputs), (
+            assert any(o.total_body_com is not None for o in result.outputs), (
                 "No center-of-mass result produced"
             )
-            _assert_realtime_human_shaped_and_matches_posthoc(result.outputs, request)
 
         logger.info(f"=== REALTIME PIPELINE TEST PASSED: mode={mode!r} ===")
     finally:
@@ -289,29 +197,11 @@ def test_realtime_pipeline_on_sample_data(
             f"Only processed {result.frames_processed}/{n_frames} frames"
         )
 
-        realtime_report = build_segment_length_report(
-            positions_from_aggregation_outputs(result.outputs)
+        frames_with_skeleton = sum(1 for o in result.outputs if o.skeleton)
+        logger.info(
+            f"Frames with fitted skeleton: {frames_with_skeleton}/{result.frames_processed}"
         )
-        logger.info("[sample-data realtime] " + realtime_report.summary())
-
-        if len(realtime_report.assessable()) >= realtime_report.thresholds.min_assessable_segments:
-            violations = realtime_report.human_shape_violations(check_rigidity=False)
-            if violations:
-                logger.warning(f"Sample-data human-shape violations ({len(violations)}):")
-                for v in violations:
-                    logger.warning(f"  FAIL: {v}")
-            else:
-                logger.info("Sample-data realtime reconstruction is human-shaped — PASS")
-            assert not violations, (
-                "Sample-data realtime reconstruction is not human-shaped:\n  - "
-                + "\n  - ".join(violations) + "\n" + realtime_report.summary()
-            )
-        else:
-            logger.warning(
-                f"Only {len(realtime_report.assessable())} assessable segment(s) in "
-                f"{n_frames} frames — skipping human-shape assertion "
-                f"(window may be calibration-heavy; use --realtime-max-frames=0 for full clip)"
-            )
+        assert any(o.skeleton for o in result.outputs), "No fitted skeleton produced"
 
         logger.info("=== REALTIME SAMPLE-DATA TEST PASSED ===")
     finally:

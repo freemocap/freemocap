@@ -7,11 +7,11 @@ doc needs one of these facts, it links here.
 
 - **Units:** millimetres (mm).
 - **Handedness:** right-handed.
-- **Axes:** **+Z up**, **+X forward** (anterior), **+Y = the subject's left** (so a T-pose subject's
-  left arm points +Y).
-- **Origin:** the reference pose places the root segment (`pelvis`, origin `hips_center`) at the world
-  origin; it is a *schematic* identity frame of orientations × lengths, not a metric scan (see
-  [../01-data-model/reference-geometry.md](../01-data-model/reference-geometry.md)).
+- **Axes:** **Blender's** — **+X right**, **+Y forward** (anterior), **+Z up** (ground plane at `z = 0`).
+  SkellyForge authors everything in this frame. The tracker keypoints enter in FreeMoCap's older
+  **+X forward / +Y left / +Z up** frame and are rotated once, at ingest, into Blender (a 90-degree
+  rotation about Z); nothing downstream converts again.
+- **Origin:** the reference pose places the root segment (`pelvis`) at the world origin.
 
 ## Rotations
 

@@ -57,11 +57,11 @@ def test_frame_message_round_trips_cbor():
     assert decoded["image"] == b"\xff\xd8\xff"
 
 
-def test_coordinate_convention_defaults_to_freemocap_convention():
+def test_coordinate_convention_defaults_to_blender_convention():
     message = CoordinateConvention()
     assert message.units.value == "mm"
     assert message.handedness.value == "right"
     assert message.up_axis.value == "+z"
-    assert message.forward_axis.value == "+x"
+    assert message.forward_axis.value == "+y"
     assert message.rotation_frame.value == "local"
     assert message.rotation_form.value == "quaternion"

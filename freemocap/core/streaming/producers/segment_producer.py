@@ -24,7 +24,7 @@ class SegmentProducer(ChannelProducer):
         stream_ctx = frame_ctx.stream_context
         if message is None or stream_ctx is None:
             return []
-        segment_names = tuple(stream_ctx.standard_human.segment_names)
+        segment_names = tuple(stream_ctx.standard_human.segments)
         origin_names = origin_landmark_names(stream_ctx.standard_human)
         positions = message.standard_skeleton or {}
         origin_positions = {name: positions.get(origin_names[name]) for name in segment_names}

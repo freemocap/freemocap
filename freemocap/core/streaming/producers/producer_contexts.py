@@ -10,14 +10,16 @@ from dataclasses import dataclass
 from typing import Any
 
 from freemocap.core.streaming.message_model import CalibratedCamera  # noqa: TC001
-from skellyforge.skellymodels.standard_human.human_skeleton import HumanSkeleton  # noqa: TC002
+from skellyforge.core.skeleton.pose.rest_pose import RestPose
+from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition  # noqa: TC002
 
 
 @dataclass
 class StreamContext:
     """Structural only, no per-frame data."""
 
-    standard_human: HumanSkeleton
+    standard_human: SkeletonDefinition
+    rest_pose: RestPose
     camera_ids: tuple[str, ...] = ()
     calibrated_cameras: tuple[CalibratedCamera, ...] = ()
     tracker_keypoint_names: tuple[str, ...] = ()

@@ -17,12 +17,11 @@ from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from skellyforge.kinematics.inertial.center_of_mass import CoMConfidence, CenterOfMassResult
 from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from skellyforge.data_models.trajectory_3d import Point3d
-from skellyforge.skellymodels.standard_human.standard_human_model import compose_standard_human
+from skellyforge.core.skeleton.pose.rest_pose import RestPose
+from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
 
 class FakeWebSocket:
@@ -42,9 +41,12 @@ class FakeWebSocket:
 
 
 def _composition():
+    skeleton = SkeletonDefinition.from_default_yaml()
+    rest_pose = RestPose.from_default_yaml(skeleton=skeleton)
     return compose_messages(
         StreamContext(
-            standard_human=compose_standard_human(),
+            standard_human=skeleton,
+            rest_pose=rest_pose,
             camera_ids=("cam-0",),
             tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
             pipeline_live=True,
@@ -68,14 +70,9 @@ def _message(frame_number: int) -> AggregationNodeOutputMessage:
         pipeline_config=RealtimePipelineConfig(),
         camera_group_id="cg-0",
         camera_node_outputs={},
-        center_of_mass_result=CenterOfMassResult(
-            total_body_com=np.array([0.0, 0.0, 900.0]),
-            segment_coms={},
-            directly_observed_mass=1.0,
-            confidence=CoMConfidence.high,
-        ),
-        xcom=Point3d(x=1.0, y=0.0, z=0.0),
-        standard_skeleton={"hips_center": np.array([0.0, 0.0, 900.0])},
+        total_body_com=np.array([0.0, 0.0, 900.0]),
+        xcom=np.array([1.0, 0.0, 0.0]),
+        standard_skeleton={"pelvis_origin": np.array([0.0, 0.0, 900.0])},
         segment_rotations_world={},
         segment_rotations_local={},
     )

@@ -1,80 +1,70 @@
 # Glossary
 
-The vocabulary shared across every layer, grounded in [the ontology](../ontology.md). The seven layers
-are **keypoint → mapping → landmark → segment → linkage → chain → skeleton**; the data nouns are
-**keypoint** (measured), **landmark** (segment-local anatomical point), and **segment** (rigid body).
+The shared vocabulary, defined once here — every other doc links.
 
-## Data (the seven layers — see [ontology.md](../ontology.md))
+## The model nouns (the ontology layers that exist in code)
 
-- **keypoint** — a measured 3D world point, tracker-named. Pure measurement: exactly what the tracker
-  emits — never derived, never added to. Produced by **skellytracker**.
-- **mapping** — the one seam: hydrates a landmark from keypoints (direct / weighted / offset). The
-  skellytracker ↔ skellyforge interface.
-- **landmark** (`AnatomicalLandmark`) — a **named point defined in the local frame of a segment**.
-  Static face: `name` + a precise `anatomical_definition` (medical language, e.g. "midpoint of the
-  intercondylar fossa") + `local_position` (a 3-vector, in the local frame named by
-  `segment`). Hydrated face: a per-frame world position (a trajectory). A landmark is a direct
-  copy of a keypoint, or **built** from keypoints (mean / weighted sum / `anatomical_offset`, e.g.
-  `head_vertex` / `foot_ball` / `jaw`).
-- **segment** (`RigidBodySegment`) — a **rigid body**: origin + orientation + length, solved from its
-  landmarks. **Fully specified** with 3+ non-collinear landmarks; **partially specified** with only 2
-  (roll carried by the damped minimal-roll tier). Its `length` is **derived** from its landmarks'
-  `local_position` values.
-- **linkage** (`JointLinkage`) — **two segments that share a point** (upper arm + lower arm at the
-  elbow). Derived from the `parent` edges; the shared point is the child's `origin_landmark`.
-- **chain** (`KinematicChain`) — **three or more linked segments**: a `start` → `end` path in the
-  tree. Straight (a limb) or branching (the wrist fan = several chains sharing a start). The unit
-  IK/FABRIK solves.
-- **skeleton** (`SkeletonDefinition`) — **a collection of chains** composing one standard human.
-- **rigid child** — a segment authored `rigid_with_parent` that inherits its parent's pose instead of
-  solving independently (declared, never inferred). Not used for the face: the eyes / ears / nose are
-  LANDMARKS on the skull, not segments.
+- **keypoint** — a tracker-measured 3D world point, tracker-named (e.g. `left_shoulder` as mediapipe
+  emits it). Pure measurement; no body meaning. *(skellytracker)*
+- **landmark** — a named point declared in a segment's local frame: anatomical `definition`, owning
+  `reference_frame` (= segment), `local_position` in millimetres. Its per-frame world hydration is a
+  trajectory. Aliases (e.g. `femur` → `upper_leg`) resolve to canonical lowercase names once at load.
+  *(skellyforge)*
+- **segment** — a VRM-1.0-aligned rigid body: origin landmark at `[0, 0, 0]`, orientation, length.
+  Local `+z` runs proximal → distal. **Fully specified** when its `reference_geometry` pins three
+  non-collinear points (roll measured); otherwise **direction-only** (origin + primary direction,
+  roll supplied by transport). Exactly three segments are fully specified today: `pelvis`, `chest`,
+  `skull`. *(skellyforge)*
+- **linkage** — two segments sharing a point: the child's rest-pose `connect_at` is a parent-owned
+  joint landmark. Layer pending (`SegmentLinkage` placeholder) — see
+  [../01-data-model/segment-model.md](../01-data-model/segment-model.md).
+- **chain** — a path of linked segments from a `start` to an `end`; the future unit of IK/FABRIK.
+  Layer pending (`KinematicChain` placeholder). No chains are declared yet.
+- **skeleton** — every landmark + segment of one model, loaded and validated as one unit
+  (`SkeletonDefinition`). The standard human is 61 segments / 124 landmarks (+52 face blendshapes,
+  which are not skeleton components).
 
-## The T-pose
+## Pose vocabulary
 
-- **standard human T-pose** (`StandardHumanTPose`) — the **whole** built reference pose: every
-  segment's resolved reference geometry + every landmark's rest position, at `identity == T-pose`.
-  Keyed to the standard human (other model families will each have their own T-pose).
-- **reference geometry** — the **per-segment** resolved rest math: `origin` (3-vector), `basis` (3×3
-  rest frame), `length`. A *part of* the segment, built from its landmarks + axes.
+- **rest pose (T-pose)** — the authored reference pose (`RestPose`): per segment a `parent`, an optional
+  `connect_at` (a parent-owned landmark the origin sits on), and an optional parent-relative `[w, x, y, z]`
+  quaternion; walking the tree yields world transforms + landmark positions. Identity orientation means
+  "continues straight on from the parent". Authored in `rest_pose.yaml`, derived against a VRM humanoid —
+  see [../01-data-model/reference-geometry.md](../01-data-model/reference-geometry.md).
+- **hydration** — recovering each segment's pose for one frame from observed landmark world positions:
+  **rigid fit** (closed-form Kabsch over ≥3 observed landmarks) or **direction fit** (shortest-arc
+  rotation taking the origin→primary-direction ray onto its observed ray). Output is a `SkeletonPose`
+  of frozen `SegmentPose`s, each tagged with how it was solved.
+- **`PoseSolution`** — `{RIGID_FIT | DIRECTION | TRANSPORTED_ROLL}`; read it before trusting a pose's roll.
+- **roll resolution** — supplying the roll direction-only segments cannot measure:
+  `ContinuousRollResolver` parallel-transports each such segment's basis frame-to-frame within a take
+  (stateful per take; `reset()` starts a new one; rigid-fit poses pass through untouched and output is
+   tagged `TRANSPORTED_ROLL`). There is no damping anywhere in the engine.
+- **partial hydration** — `hydrate_skeleton(..., require_all=False)` skips segments whose landmarks are
+  absent or degenerate this frame (occlusion is data); callers must tolerate missing segments rather
+  than fake them.
+- **connections** — the `(parent_segment, child_segment)` name pairs derived once from the rest-pose
+  parent tree and shipped inside `ModelDefinition`; no client ever re-derives hierarchy from `parent`
+  fields.
 
-## Frame construction
+## Mapping vocabulary
 
-- **axis (declaration)** — one of a segment's tagged local-frame axes: a **name** (`x`/`y`/`z`, which
-  basis vector it defines) and a **`target_landmark`** (in the segment's `landmarks`). Its direction is
-  `positions[target_landmark] − positions[origin_landmark]` — the segment's own geometry only. The axes
-  tuple is a **construction recipe in order**: the first axis is the primary direction, the second (if
-  present) is the twist direction.
-  - **primary direction** — the segment's defining direction (the frame's hard seed), resolved directly
-    every frame.
-  - **twist direction** — a soft direction reference for a second basis axis, Gram-Schmidt'd against the
-    primary direction; when absent, the segment's roll falls to the damped minimal-roll tier.
-- **`exact` / `approximate` (the mapping's frame, NOT a segment's)** — the tracker→landmark
-  `anatomical_offset` (skellytracker) builds its *own* construction frame from keypoints; its two seed
-  axes are tagged `exact` (hard seed) and `approximate` (Gram-Schmidt'd hint). Same Gram-Schmidt recipe
-  as a segment's primary/twist, but a *different object*: the mapping's keypoint frame that places a
-  landmark, not a segment's local frame. The older words are kept deliberately here — don't conflate the
-  two vocabularies (this resolves AUDIT §8.1).
-- **standard human** — the composed `SkeletonDefinition` (body midline + limbs ×2 + hands ×2 + face),
-  defined in YAML and loaded by `HumanSkeleton.from_yaml`.
+- **mapping** — the skellytracker-owned rule turning tracker keypoints into standard-human landmark
+  observations (direct / mean / weighted / `anatomical_offset`). Applied in freemocap *before*
+  hydration — see [../01-data-model/tracker-mapping.md](../01-data-model/tracker-mapping.md).
+- **articulated model** — driven by whatever landmarks the tracker can observe this frame; there is no
+  load-time "every landmark must be produced" contract.
 
-## Twist tiers (a *consequence* of the declaration, not a separate policy)
-
-1. **Resolved** — a twist direction is declared and usable this frame → the roll resolves from the
-   segment's own geometry.
-2. **Damped-minimal** — otherwise → swing-only, roll carried by the critically-damped filter.
-
-> The linkage/chain layers now own the constraint/solve math (joint angles, IK, twist-backfill) — see
-> [ontology.md](../ontology.md). Twist at the *segment* level is still own-geometry-or-damped.
-
-## Transport (the message model — see ../03-transport/message-protocol.md)
+## Transport nouns (see ../03-transport/message-protocol.md)
 
 - **message** — the unit of the stream: a typed, versioned, self-describing value with an envelope
   (kind, version, timestamp, sequence) plus a kind payload. There is no schema and no sample.
-- **kind** — a message type tag (frame, log, framerate, app_state, progress). A new data type is a new kind.
-- **frame** — the per-frame kind: self-describing named column blocks (names inline) plus images.
-- **self-describing** — a message carries everything needed to *decode* and *render* it — the full model
-  rides every frame; no external descriptor, no cached schema to drift, and no decode-vs-render split.
+- **kind** — a message-type tag (`frame`, `log`, `framerate`, `app_state`, `progress`). A new data type
+  is a new kind.
+- **frame** — the per-frame kind: convention + cameras + models + instances + trackers + image, with
+  index-keyed channel blocks.
+- **self-describing** — a message carries everything needed to decode AND render it — the full model
+  rides every frame; no external descriptor, no cached schema to drift, no decode-vs-render split.
 - **idempotent** — an update whose effect is the same however many times it is applied (full-snapshot
   replace, never a delta).
 - **envelope** — the kind/version/timestamp/sequence header every message carries.

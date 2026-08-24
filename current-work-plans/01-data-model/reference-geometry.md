@@ -1,26 +1,60 @@
-# Reference Geometry (the standard-human T-pose)
+# Reference Geometry (the rest pose)
 
-**Describes:** the **T-pose** each live pose is measured against (`identity == T-pose`). In the new
-ontology this is **`StandardHumanTPose`**, built from `RigidBodySegment` + `AnatomicalLandmark` —
-length derived from `local_position`.
+**Describes:** `RestPose` + `rest_pose.yaml` — the authored T-pose every live pose is measured
+against. Model/authoring format lives in [segment-model.md](segment-model.md); vocabulary in
+[../00-foundation/glossary.md](../00-foundation/glossary.md).
 
-## What this covers
+## What it is
 
-The built T-pose: every segment's reference geometry (origin / basis / length) + every landmark's rest
-position, at identity. One build serves both the orientation solver and the rest-pose message.
+`RestPose` (`core/skeleton/pose/rest_pose.py`) is the standard human's reference pose: per segment
+a **parent**, an optional **`connect_at`** (a parent-owned landmark the child's origin sits on,
+defaulting to the segment's own origin landmark), and an optional **parent-relative `[w, x, y, z]`
+quaternion** (defaulting to identity). `build_rest_pose` walks the tree (cycle-detecting) and
+composes world orientations, world origins, and landmark positions. Every segment's local `+z`
+runs proximal → distal, so identity orientation means "continues straight on from its parent".
 
-## Key facts
+## Provenance
 
-- Each landmark's `local_position` is authored **once**, in its `segment`'s local frame (see
-  [segment-model.md](segment-model.md)).
-- A segment's `length` is **derived** from its primary direction's target `local_position`.
-- The rest frame (basis) is built from the segment's axes — the primary direction (hard seed) + the
-  twist direction (soft hint), Gram-Schmidt'd.
-- The **skull is non-degenerate by construction**: the eyes / ears / nose are authored as distinct
-  anterior / lateral landmarks on the head, so the head is a full 7-point rigid body.
-- The **face is not part of the segment tree** — it is 52 ARKit blendshapes (`FaceBlendShapes`).
+The pose was derived against a concrete VRM humanoid: `definitions/human_skeleton/default-vrm.gltf.json5`,
+exported from Blender's VRM extension. That file is what to check any change here against — the
+orientations are derived from real anatomy positions, not dialled in by eye:
 
-## Status
+- `clavicle` rotates ~28° posteriorly so the bone runs sternoclavicular → acromion; its child
+  compensates so the arm still reaches straight out.
+- `upper_arm` maps local `+z` onto world `∓x` (arms out to the sides); the right side is the left
+  mirrored across the sagittal plane — for a quaternion, `(w, x, -y, -z)`.
+- `upper_leg` is a half turn about x (local `+z`, toward the knee, becomes world `-z`); self-mirroring.
+- `foot` −63.86° / `heel` +31.34° about x compose with the leg's half turn so both the ball AND the
+  calcaneus sit at the same height — the feet stand on one flat ground plane.
+- `toes` a half turn landing them flat and forward; self-mirroring.
 
-The T-pose build (`build_standard_human_tpose` → `StandardHumanTPose`) is landed. The old
-`dead_reference_geometry.py` is slated for deletion (see IMPLEMENTATION_PLAN.md).
+## Invariants (`RestPose.from_yaml` enforces all of these)
+
+- An entry exists for **every** segment of the skeleton, and there is exactly **one root** (`pelvis`).
+- A `connect_at` must be owned by the named parent.
+- Unknown keys are rejected; nothing is inferred silently.
+- The composed geometry satisfies the ground-plane test:
+  `test_both_feet_stand_on_one_flat_ground_plane` ties heel orientation, heel length, and foot
+  orientation together so none can drift alone.
+
+## Identity-at-T-pose, precisely stated
+
+The old "world AND local identity for every segment" contract does not survive this authoring —
+only 3 of 61 segments are fully specified (roll measured). The invariant that replaces it:
+
+> **A fully-specified segment solves to its own authoring frame from its own rest positions**
+> (`test_every_fully_specified_segment_solves_to_its_own_authoring_frame`). This keeps the
+> Gram-Schmidt reference geometry and the Kabsch/FK local positions one answer to "which way does
+> this segment face", not two.
+
+Direction-only segments get their roll from `ContinuousRollResolver`
+([../02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md)), not from measurement —
+their live orientation at T-pose equals their transported reference only after roll resolution has
+seeded from the rest pose.
+
+## On the wire
+
+`ModelDefinition.from_standard_human(skeleton=..., rest_pose=...)` serializes the rest pose into
+every frame message: per-segment `rest_orientation` (wxyz world quats), `length_mm`, plus
+`connections` — the `(parent, child)` name pairs of this tree. See
+[message-contract.md](message-contract.md).

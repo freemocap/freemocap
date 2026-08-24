@@ -37,7 +37,10 @@ decode-vs-render split and no held descriptor). It carries:
   extrinsics, world_position, world_orientation. `rotation` + `image_size` define the ROTATED
   overlay/JPEG coordinate space.
 - `models` — `ModelDefinition`: model_id, ordered `segments` (name, parent, primary_axis,
-  rest_orientation wxyz, length_mm, rigid_with_parent), ordered `landmarks` (name, rest_position).
+  rest_orientation wxyz, length_mm, is_fully_specified), ordered `landmarks` (name, rest_position),
+  and `connections` — the `(parent_segment, child_segment)` name pairs derived once from the rest-pose
+  parent tree. The model is the single source of truth for hierarchy: clients draw these edges directly
+  (3D joint lines + the 2D overlay) and never re-derive connections from the `parent` fields.
 - `instances` — `ModelInstance`: instance_id, model_id, channels.
 - `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels.
 - `image` — the camera image bytes.

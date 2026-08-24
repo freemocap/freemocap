@@ -6,10 +6,20 @@ is a thin supervisor over focused emitters.
 
 ## Architecture
 
-One relay, one consumer of the aggregator output. Each tick it composes the frame message from the
-channel sources (keypoints, segments, overlays, derived points, image); the state/telemetry kinds (log,
-framerate, app_state, progress) are emitted as they occur, each with its own sequence. There is no schema
-build and no signature/resend machinery — every message is self-describing.
+One relay, one consumer of the aggregator output (`AggregationNodeOutputMessage`). `websocket_server.py`
+holds its own `SkeletonDefinition` + `RestPose` in a `StreamContext` — recomposed when its signature
+(cameras, detector type, live state) changes — and hands each frame to `message_composer.compose_messages`:
+
+- **Static rows** (once per composition): `CoordinateConvention`, one `CalibratedCamera` per camera,
+  `ModelDefinition.from_standard_human(skeleton=..., rest_pose=...)` (segments, landmarks, connections).
+- **Per-frame producers**, each filling its channel blocks: `KeypointsProducer` (KEYPOINTS_3D
+  tracker-named + LANDMARKS_3D standard-human-named), `SegmentProducer` (SEGMENT_ORIGINS,
+  ROTATIONS_LOCAL/WORLD, SEGMENT_LENGTHS), `DerivedProducer` (DERIVED_POINTS:
+  `center_of_mass`, `xcom`), `OverlayProducer` (OVERLAY_2D + OVERLAY_REPROJECTIONS per camera).
+
+The state/telemetry kinds (log, framerate, app_state, progress) are emitted as they occur, each with its
+own sequence. There is no schema build and no signature/resend machinery — every message is
+self-describing.
 
 ## The frame message
 

@@ -25,6 +25,7 @@ import multiprocessing.synchronize
 import queue
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
@@ -102,6 +103,9 @@ logger = logging.getLogger(__name__)
 
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
+
+# Rolling window (frames) over which per-segment lengths are median-estimated.
+LENGTH_WINDOW_FRAMES: int = 30
 
 def _to_blender(position: np.ndarray) -> np.ndarray:
     """FreeMoCap (+X forward, +Y left, +Z up) -> Blender (+X right, +Y forward, +Z up).
@@ -346,6 +350,12 @@ class RealtimeAggregatorNode(AggregatorNode):
                 segment_masses[full_name] = mass
         # Observability: log each skeleton-failure class ONCE per run, not per frame.
         skeleton_observability_logged: set[str] = set()
+        # Rolling per-segment origin->primary distances: the median over the window
+        # is the live measured bone length (mirrors skellyforge's
+        # estimate_segment_lengths, adapted for streaming partial data). Keyed by
+        # segment name; a segment with no measurements yet falls back to its
+        # authored length.
+        length_distances: dict[str, deque] = {}
         # Nominal per-run reference geometry (anthropometric seeds, including
         # the face's nominal spans) — the fallback BEFORE the first rigidify
         # result lands. Once the estimator has live measured lengths, the
@@ -427,6 +437,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
                     roll_resolver.reset()
+                    length_distances.clear()
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()
@@ -443,6 +454,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         prev_com = None
                         prev_com_time = None
                         roll_resolver.reset()
+                        length_distances.clear()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -721,6 +733,22 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 continue
                             origin_name = segment.frame_definition.origin_point_name
                             hydrated_landmarks[origin_name] = resolved_pose.segment_poses[segment.name].origin.array
+                        # Teach per-segment lengths from observed origin->primary
+                        # distances (median over the rolling window). Only frames
+                        # where BOTH landmarks are finite contribute.
+                        for seg in standard_human.segments.values():
+                            origin = hydrated_landmarks.get(seg.frame_definition.origin_point_name)
+                            primary = hydrated_landmarks.get(seg.frame_definition.primary_point_name)
+                            if origin is None or primary is None:
+                                continue
+                            o = np.asarray(origin, dtype=np.float64)
+                            p = np.asarray(primary, dtype=np.float64)
+                            if np.any(np.isnan(o)) or np.any(np.isnan(p)):
+                                continue
+                            distance = float(np.linalg.norm(p - o))
+                            if distance <= 0.0:
+                                continue
+                            length_distances.setdefault(seg.name, deque(maxlen=LENGTH_WINDOW_FRAMES)).append(distance)
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
@@ -846,13 +874,17 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Publish aggregated output ----
-                # The model's segment_lengths field: the estimator's measured
-                # per-segment lengths — falling back to each segment's derived
-                # nominal length when skeleton fitting is off — so the wire
-                # lengths and the rest pose stay consistent with the per-frame
-                # geometry.
+                # Live measured per-segment lengths: the median observed
+                # origin->primary distance over the rolling window, falling back
+                # to each segment's authored nominal length until a measurement
+                # has been accumulated.
                 segment_lengths: dict[str, float] = {
-                    seg.name: seg.length for seg in standard_human.segments.values()
+                    seg.name: (
+                        float(np.median(list(length_distances[seg.name])))
+                        if length_distances.get(seg.name)
+                        else seg.length
+                    )
+                    for seg in standard_human.segments.values()
                 }
                 if segment_lengths and all(v <= 0.0 for v in segment_lengths.values()) and "zero_lengths" not in skeleton_observability_logged:
                     skeleton_observability_logged.add("zero_lengths")

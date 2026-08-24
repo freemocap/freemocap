@@ -247,6 +247,10 @@ class ModelDefinition:
     model_id: str
     segments: tuple[RestSegment, ...]
     landmarks: tuple[RestLandmark, ...]
+    # Segment-origin connection edges: (parent_segment, child_segment) name pairs,
+    # derived from the rest pose's parent tree. The frontend draws these edges
+    # directly - the model is the single source of truth, never re-derived client-side.
+    connections: tuple[tuple[str, str], ...]
 
     @classmethod
     def from_standard_human(
@@ -279,6 +283,11 @@ class ModelDefinition:
                 )
                 for name in skeleton.landmarks
             ),
+            connections=tuple(
+                (str(rest_pose.parents[segment.name]), str(segment.name))
+                for segment in skeleton.segments.values()
+                if rest_pose.parents[segment.name] is not None
+            ),
         )
 
     def to_cbor_message(self) -> dict[str, Any]:
@@ -286,6 +295,7 @@ class ModelDefinition:
             "model_id": self.model_id,
             "segments": [s.to_cbor_message() for s in self.segments],
             "landmarks": [l.to_cbor_message() for l in self.landmarks],
+            "connections": [list(edge) for edge in self.connections],
         }
 
 

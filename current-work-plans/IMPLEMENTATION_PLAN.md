@@ -1,119 +1,64 @@
 # Implementation Plan & Progress
 
-> **Live (2026-08-17).** The scope table below is the current iteration's queue. The dated progress log
-> is history (newest first). Older trackers + specs live under [`archive/`](archive/).
+> **Live (2026-08-24).** Re-created slim after the Aug 20–24 skellyforge rebuild made the previous
+> tracker obsolete; that generation's records live in [`archive/`](archive/). The scope table below
+> is the live queue — the progress log is history, newest first.
 
-## How to use this document
+## Scope table
 
-- The scope table is the live queue for this iteration.
-- The progress log records what lands; it is history — current scope lives in the table.
+### `[IN]`
 
-## Scope table — "serve all three consumers" iteration
-
-The new core is a **boundary object**: one YAML-defined skeleton + one T-pose + one solve, consumed by
-three paths. All three must migrate before the old skellyforge system can be deleted:
-
-1. **Realtime** — the live loop. Online, per-frame, damped.
-2. **Charuco** — a **non-human rigid body** (the calibration board). The first extension test.
-3. **Posthoc** — the recorded loop. Batch, offline, undamped.
-
-They share the model + solver; they differ only in **which model** (human vs. board) and **how time is
-handled** (damped vs. batch).
-
-### `[IN]` — this iteration
-
-- **Ontology classes** — `AnatomicalLandmark` / `RigidBodySegment` / `JointLinkage` /
-  `KinematicChain` / `SkeletonDefinition` / `StandardHumanTPose` (+ `FaceBlendShapes`). DONE.
-- **YAML definitions** — flat part files (pelvis, axial, arm, hand, leg, foot, face) with sidedness +
-  Y-mirroring + `$include` composability; the full hand (8 carpals + 5 metacarpals + 14 phalanges ×2)
-  and foot (7 tarsals + 5 metatarsals + 14 phalanges ×2) anatomy is authored. DONE (95 segments / 94
-  linkages / 25 chains).
-- **Solve/hydration port** — `build_standard_human_tpose` + the re-pointed `solve_frame_orientations`
-  (Kabsch for 3+ landmarks, swing+twist for 2, result/state split). DONE (identity-at-T-pose green).
-- **Per-segment length estimation** — `estimate_segment_lengths` (a pure `(result, state)` rolling-median
-  action) adapts each segment to the live subject independently — no uniform scaling. DONE.
-- **Realtime re-point** — the aggregator loads `HumanSkeleton.standard_human()` + `build_standard_human_tpose` +
-  `estimate_segment_lengths` + `rigidify_landmarks` + the new `solve_frame_orientations` (mapping
-  tracker keypoints → standard-human landmarks first); the message model + producers emit the 95-segment
-  `RestSegment`/`RestLandmark` (derived `length_mm`); the old freemocap `RealtimeSkeletonRigidifier`
-  wrapper was deleted (rigidification now lives in skellyforge's `rigidify_landmarks`). DONE (the live
-  loop runs + overlays match).
-- **Lazy heavy-dependency imports** — `mediapipe` + `onnxruntime` moved inside their detector/session
-  functions so multiprocessing sub-process startup stays cheap. DONE.
-- **Validate the realtime loop** — confirm the live loop runs the new core end to end (T-pose identity at
-  start, arm bend without pop, hidden-hand degradation, overlay match).
-- **Charuco re-implementation** — author the board as a YAML skeleton (one rigid segment + marker-corner
-  landmarks, `sided: false`) + re-point the charuco path (`charuco_model_from_observations.py`, the
-  `Board` actor). Tests the extensibility: the core serves a non-human rigid body.
-- **Posthoc alignment** — re-point the posthoc path (`skeleton_from_mediapipe_observations.py`, the
-  `Human` actor) to the new loader + solve; share the model + solver with realtime (realtime = damped,
-  posthoc = batch).
-- **Unhydrated-segment fallback** — an unhydrated segment follows its parent at its own T-pose rest
-  direction (not the hardcoded `[0,1,0]`), so a hidden hand doesn't stick out sideways.
-- **Delete the old system** — only after all three consumers are migrated: excise `segment_definition.py` /
-  `dead_reference_geometry.py` / `rest_pose.py` / `body_part.py` / `hand_part.py` / `face_part.py` /
-  `standard_human_model.py` / `segment_parts.py` / `human_bone_aliases.py` / `human_blendshapes.py` + `skellymodels/models/` + `managers/` + `tracker_info/*.yaml`.
+- **Linkage/chain layer** — reconcile the hierarchy currently living in `rest_pose.yaml`'s
+  `parent`/`connect_at` fields with the placeholder `SegmentLinkage`/`KinematicChain` classes;
+  joint angles come with it; IK seams stay future.
+- **Length-estimation cleanup** — live rolling-median lengths are wired in the aggregator (landed
+  2026-08-24); owed: delete-or-drive the dead `segment_length_window_s` config field and decide
+  inline-mirror vs. calling skellyforge's `estimate_segment_lengths` directly
+  ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
+- **Face component implementation** — currently commented out of the composition (`#TODO`);
+  `FaceBlendShapes` plumbing exists, the component does not load.
+- **Posthoc rebuild** — **deferred by decision**; the offline mocap/calibration paths are
+  broken-if-invoked against installed skellyforge (scope +
+  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). Carries the neutral-naming
+  decision (`SkeletonDefinition` → a name a non-human board can wear).
 
 ### `[LATER]`
 
-- **VMC adapter** — project the skeleton outward over VMC.
-- **Frontend test suite** — plan + build specifically for the current system.
-- LSL adapter; URDF / OpenSim / blendshape exports; VRChat OSC.
+VMC adapter · frontend test suite · HTTP control plane ([03-transport/http-control-plane.md](03-transport/http-control-plane.md)) ·
+on-disk tidy serialization ([03-transport/serialization-tidy.md](03-transport/serialization-tidy.md)) ·
+LSL / URDF / OpenSim exports.
 
 ### `[FUTURE]`
 
-- The constraint/solve layer — typed joints, chains/IK, twist-backfill — seams only, per
-  [ontology.md](ontology.md).
-
-### Reconsideration the charuco target forces
-
-The core is named human-specific (`SkeletonDefinition`, `StandardHumanTPose`), but the board is not a human.
-Decide, when charuco lands, whether to neutralize the core names (`Skeleton` / a general rest-pose) so the
-human and the board are two instances of the same neutral core.
+The constraint/solve layer — typed joints, chains/IK, twist-backfill — seams only.
 
 ## Dependencies & blockers
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Charuco + posthoc migration | delete the old system | Both paths load + solve via the new core |
+| Linkage layer | IK / constraint work | hierarchy reconciled out of `rest_pose.yaml` |
+| Posthoc rebuild | tidy serialization | both offline paths run on the new core |
 
 ## Progress log
 
-- **2026-08-18 (hand + foot full anatomy, per-segment lengths, heavy-dep lazy imports landed).** Re-authored
-  `hand.yaml` + `foot.yaml` to the full bone-by-bone anatomy with no abbreviations — 8 carpals + 5
-  metacarpals + 14 phalanges per hand, 7 tarsals + 5 metatarsals + 14 phalanges per foot (95 segments / 94
-  linkages / 25 chains / 146 landmarks). Finger chains now carry `finger` (`index_finger` /
-  `middle_finger` / `ring_finger` / `pinky_finger`); foot toe chains carry `toe`. Added
-  `estimate_segment_lengths` (a pure `(result, state)` per-segment rolling median) replacing uniform
-  scaling, wired into the realtime loop (`estimate → build_standard_human_tpose(lengths) →
-  rigidify_landmarks → solve_frame_orientations`). Renamed the mediapipe mapping's `small_toe` keys to
-  `foot_pinky_toe_tip` (they had never been renamed with the rest of the foot). Moved `mediapipe` +
-  `onnxruntime` imports inside their detector/session functions so multiprocessing sub-process startup
-  stays cheap.
-- **2026-08-18 (solve port + realtime re-point landed — the live loop runs on the new core).** The
-  solve/hydration port landed: `StandardHumanTPose` + `build_standard_human_tpose` + the re-pointed
-  `solve_frame_orientations` (Kabsch for 3+ landmarks, swing+twist for 2, `(result, state)` split) + the
-  stateless `rigidify_landmarks` action. Re-pointed the realtime path (aggregator, message model, producers,
-  websocket) to the new API; deleted the old freemocap `RealtimeSkeletonRigidifier` + `tracker_contract.py`
-  (the "every landmark must be produced" completeness contract was wrong for an articulated model).
-  Re-authored every `local_position` into its segment's LOCAL frame (primary/twist direction, left == right
-  local geometry, only `rest_direction` mirrors Y); dropped `upper_chest` (49 segments / 48 linkages / 15
-  chains); replaced `exact`/`approximate` with primary/twist (the seed/hint of the Gram-Schmidt build).
-  Two debugging fixes on the way: map tracker keypoints → standard-human landmarks BEFORE `rigidify_landmarks`
-  (the old rigidifier did the mapping internally), and do NOT swap `config.width`/`config.height` (they are
-  already the rotated dimensions).
-- **2026-08-17 (standard-human ontology rebuild — classes + YAML landed).** Rebuilt the skellyforge
-  standard human onto the seven-layer ontology: `AnatomicalLandmark` / `RigidBodySegment` /
-  `JointLinkage` / `KinematicChain` / `SkeletonDefinition` / `FaceBlendShapes` with `from_yaml`
-  loaders, typed config (`cls(**data)`, no string-key indexing), `$include` composability, and
-  sidedness via `sided: true` parts instantiated left/right with Y-mirroring. Authored the full
-  standard human as flat part files (pelvis, axial, arm, hand, leg, foot, face) — 49 segments / 48
-  linkages / 15 chains, audited green (one root, unique names, linkages == segments − 1, right-side
-  mirrored, shared landmarks resolved by name agreement, lengths derived from `local_position`). The face
-  is 52 ARKit blendshapes (eyes/ears/nose are LANDMARKS on the skull, not segments). NEXT: the
-  solve/hydration port, then delete the old system.
-- **2026-08-17 (milestone — the full end-to-end loop works).** Cameras → keypoints → mapping → length +
-  fit → orientation solve → self-describing frame message → transport → decode → 3D rigid-body render.
-  The message-model swap landed (five kinds, fully self-describing frame).
-  Docs reconciled; prior spec set archived under
-  `archive/2026-08-17-message-model-cutover/`.
+- **2026-08-24 (docs)** — Plan folder reconciled to code: dead-generation docs archived under
+  [`archive/2026-08-24-skellyforge-rebuild/`](archive/2026-08-24-skellyforge-rebuild/) and rewritten
+  against the current core (segment-model, reference-geometry, kinematics-engine, realtime-loop,
+  segment-length-estimation, glossary); conventions/testing/tracker-mapping/posthoc patches;
+  `ModelDefinition.connections` + `SegmentConnectionRenderer` documented; new biomechanics-layer doc;
+  this tracker recreated slim. HANDOFF / AUDIT / the two proposals deleted intentionally by the user.
+- **2026-08-24 (code, same day)** — live per-subject segment lengths wired: the aggregator records
+  observed origin→primary distances in a 30-frame rolling window per segment and publishes the
+  median (authored-length fallback until measured); window clears on calibration reload/reset.
+  Owed cleanup tracked as `[IN]`: dead `segment_length_window_s` field; inline-mirror vs. direct
+  call into skellyforge's estimator.
+- **2026-08-20 → 2026-08-24 (code)** — skellyforge rebuilt again: VRM-aligned re-authoring (**61
+  segments / 124 landmarks / 52 blendshapes**; `rest_pose.yaml` parent tree + relative quats derived
+  against `default-vrm.gltf.json5`), closed-form hydration (`hydrate_skeleton` Kabsch ≥3 pts /
+  shortest-arc direction fit) + `ContinuousRollResolver` per-take parallel transport replacing the
+  swing+twist/damped tiers; `core/biomechanics/` revived (de Leva parameters, partial-CoM-aware
+  segment CoMs, inertia, ground reference); old `skellymodels`/`post_processing`/`data_models`
+  deleted upstream; tracker mapping YAMLs moved into skellytracker. freemocap's realtime loop
+  re-pointed end to end — ingest conversion, One Euro filter, point gate, mapping-before-hydration,
+  roll resolution, reprojection overlay, CoM/XCoM streaming via `DERIVED_POINTS`, `connections` on
+  the wire — with the frontend consuming it data-driven (`SegmentConnectionRenderer`).

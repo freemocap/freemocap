@@ -93,6 +93,7 @@ export const ModelDefinitionSchema = z.object({
   model_id: z.string(),
   segments: z.array(RestSegmentSchema),
   landmarks: z.array(RestLandmarkSchema),
+  connections: z.array(z.tuple([z.string(), z.string()])),
 });
 export type ModelDefinition = z.infer<typeof ModelDefinitionSchema>;
 

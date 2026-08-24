@@ -24,7 +24,17 @@ An unknown kind or version is logged once and skipped.
 TransportService owns the frame decode + kind dispatch; ServerContextProvider wires the subscriber sets
 and the canvas/worker rendering. The subscriber sets remain as the fan-out to the viewport worker. The frame's
 overlay + image are handled by the canvas workers; the 3D rigid-body renderer reads the frame's
-self-describing model + rotations directly.
+self-describing model + rotations directly. Overlay observations take their `connections` straight from
+the model (`models[0].connections`) — nothing client-side derives parent→child pairs anymore.
+
+## Renderers are model-driven
+
+The viewport renders from the frame document: `RigidBodyBoneRenderer` draws oriented cylinders from
+segment rotations/lengths; `SegmentConnectionRenderer` draws the overlay-green origin→origin joint lines
+from `ModelDefinition.connections`, resolving each edge through a name→index map built once at model
+arrival against SEGMENT_ORIGINS (NaN-safe per frame); `CenterOfMassRenderer` consumes the
+`DERIVED_POINTS` rows; keypoints render tracker-named channels. Adding a channel kind or model field is
+a renderer concern, never a recompute-the-model concern.
 
 ## Preservation inventory (nothing live is lost)
 

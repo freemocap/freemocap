@@ -52,18 +52,6 @@ function sortedArraysEqual(a: string[], b: string[]): boolean {
     return true;
 }
 
-/** Parent→child name pairs from the model's segment hierarchy (the 2D skeleton
- *  overlay's connection source). */
-function modelConnections(models: ModelDefinition[] | null): [string, string][] {
-    const model = models?.[0];
-    if (!model) return [];
-    const out: [string, string][] = [];
-    for (const segment of model.segments) {
-        if (segment.parent !== null) out.push([segment.parent, segment.name]);
-    }
-    return out;
-}
-
 export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({children}) => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [isFailed, setIsFailed] = useState<boolean>(false);
@@ -163,7 +151,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 observation.points = points;
             } else {
                 observation.landmarks = points;
-                observation.connections = modelConnections(modelsRef.current);
+                observation.connections = modelsRef.current?.[0]?.connections ?? [];
             }
             frameOverlays.set(overlay.cameraId, observation);
             pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);

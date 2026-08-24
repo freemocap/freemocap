@@ -226,17 +226,15 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
 /**
  * Per-frame instance transform (pure — the only per-frame math, unit-tested).
  *
- * Composition: world = R_world · R_rest · Q · S, where
+ * Composition: world = R_world · Q · S, where
  *   Q        rotationOntoPrimaryAxis(primaryAxis) — geometry +Z onto the bone's
  *            primary-axis direction (origin→distal),
- *   R_rest   rotationMatrixFromQuaternion(restOrientation) — local → world T-pose,
- *   R_world  rotationMatrixFromQuaternion(quatWXYZ) — world-rest → world-live.
- * At T-pose R_world is identity, so geometry +Z lands on the segment's rest
- * primary-axis direction (a spine's +Y → world +Z, up).
+ *   R_world  rotationMatrixFromQuaternion(quatWXYZ) — the segment's absolute
+ *            world orientation (local → world), already inclusive of the rest pose.
  *
  * @param origin          proximal joint (segment origin), mm
  * @param quatWXYZ        world-frame quaternion [w, x, y, z] (ROTATIONS_WORLD)
- * @param restOrientation per-segment rest-frame orientation [w, x, y, z]
+ * @param _restOrientation unused (kept for the legacy call signature)
  * @param primaryAxis     the segment's primary axis (signed axis or 3-vector)
  * @param length          segment length; NaN/0 hides the instance
  * @param crossSection    transverse radius (mm) — same for 1 mm and 500 mm bones
@@ -245,7 +243,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
 export function computeBoneMatrix(
     origin: readonly [number, number, number],
     quatWXYZ: readonly [number, number, number, number],
-    restOrientation: readonly [number, number, number, number],
+    _restOrientation: readonly [number, number, number, number],
     primaryAxis: PrimaryAxis,
     length: number,
     crossSection: number,
@@ -253,12 +251,10 @@ export function computeBoneMatrix(
     if (!Number.isFinite(length) || length <= 0) return null;
     for (let i = 0; i < 3; i++) if (!Number.isFinite(origin[i])) return null;
     for (let i = 0; i < 4; i++) if (!Number.isFinite(quatWXYZ[i])) return null;
-    for (let i = 0; i < 4; i++) if (!Number.isFinite(restOrientation[i])) return null;
 
     const R = rotationMatrixFromQuaternion(quatWXYZ);
-    const Rrest = rotationMatrixFromQuaternion(restOrientation);
     const Q = rotationOntoPrimaryAxis(primaryAxis);
-    const Rtotal = multiply3x3(R, multiply3x3(Rrest, Q));
+    const Rtotal = multiply3x3(R, Q);
 
     // Column-major storage: m[col*4 + row] = (Rtotal · S)[row][col], S diagonal.
     const m = new Array<number>(16);

@@ -30,6 +30,12 @@ body, mediapipe hand, rtmpose body, rtmpose hand.
 
 ## Reconciliation notes
 
-The old skellyforge-side `tracker_info/*.yaml` files are **deleted** (they died with the old system).
+The offset ratios are generated against the rest pose, not hand-maintained:
+`skellyforge/scripts/generate_tracker_mapping_ratios.py` regenerates them, and
+`skellyforge/tests/test_tracker_mapping_offset_round_trip.py` fails when the YAML and the model
+drift apart (a few frame-unreachable points carry explicit documented allowances).
+`craniocervical_junction` hydrates from the ear mean — it authors at exactly `head_center`, so
+the cervical segment follows the tracked head. The old skellyforge-side `tracker_info/*.yaml`
+files are **deleted** (they died with the old system).
 skellyforge's `test_tracker_mapping_boundary.py` validates every mapping-YAML key against the live
 landmark set, so renames fail on the skellyforge side too. The mapping's output is a **landmark**.

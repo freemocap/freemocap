@@ -41,6 +41,19 @@ The constraint/solve layer — typed joints, chains/IK, twist-backfill — seams
 
 ## Progress log
 
+- **2026-08-24 (spine audit + mapping/model fixes)** — Root-caused the fluffy-spine viewer
+  artifact: SkellyTracker's `anatomical_offset` ratios were stale against the shipped rest pose
+  (junction errors 16–46mm growing up the chain), two definitions of each junction reached
+  consumers (raw mapped vs fitted origin), and `craniocervical_junction` was pinned to the
+  trunk frame while the skull tracked the real head. Fixed where each lives: ratios regenerated
+  programmatically (`skellyforge/scripts/generate_tracker_mapping_ratios.py`) into both body
+  mappings; `craniocervical_junction` re-anchored to the ear mean so the cervical segment
+  follows the head; skull ears made symmetric about the origin (mapped `head_center` IS the
+  ear mean); drift guarded by
+  `skellyforge/tests/test_tracker_mapping_offset_round_trip.py` (explicit allowances for the
+  frame-unreachable SC/crest points); pre-existing face-yaml test path repaired. Known-left:
+  lumbar/chest remain trunk-frame-driven (no midline keypoints in body7) — the spine cannot
+  articulate until a midline source exists.
 - **2026-08-24 (docs)** — Plan folder reconciled to code: dead-generation docs archived under
   [`archive/2026-08-24-skellyforge-rebuild/`](archive/2026-08-24-skellyforge-rebuild/) and rewritten
   against the current core (segment-model, reference-geometry, kinematics-engine, realtime-loop,

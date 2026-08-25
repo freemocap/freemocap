@@ -17,6 +17,8 @@ from skellycam.core.types.type_overloads import CameraIdString
 
 from freemocap.core.pipeline.posthoc.posthoc_pipeline import PosthocPipeline
 from freemocap.core.pipeline.posthoc.posthoc_pipeline_manager import PosthocPipelineManager
+from freemocap.core.pipeline.posthoc.sync_job import SyncJob
+from freemocap.core.pipeline.posthoc.sync_job_manager import SyncJobManager
 from freemocap.core.pipeline.realtime.realtime_aggregator_node import RealtimePipelineConfig
 from freemocap.core.pipeline.realtime.realtime_pipeline import RealtimePipeline
 from freemocap.core.pipeline.realtime.realtime_pipeline_manager import RealtimePipelineManager
@@ -25,6 +27,7 @@ from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineCon
 from freemocap.core.types.type_overloads import FrameNumberInt
 from freemocap.core.viz.frontend_payload import FrontendImagePacket, FrontendPayload
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+from skelly_synchronize.core.models import SyncRequest
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +38,7 @@ class FreemocapApplication:
     worker_registry: WorkerRegistry
     realtime_pipeline_manager: RealtimePipelineManager
     posthoc_pipeline_manager: PosthocPipelineManager
+    sync_job_manager: SyncJobManager
     camera_group_manager: CameraGroupManager
 
     @classmethod
@@ -49,6 +53,10 @@ class FreemocapApplication:
                 worker_registry=worker_registry,
             ),
             posthoc_pipeline_manager=PosthocPipelineManager(
+                global_kill_flag=global_kill_flag,
+                worker_registry=worker_registry,
+            ),
+            sync_job_manager=SyncJobManager(
                 global_kill_flag=global_kill_flag,
                 worker_registry=worker_registry,
             ),
@@ -136,6 +144,13 @@ class FreemocapApplication:
         self.posthoc_pipeline_manager.stop_all_pipelines()
 
     # ------------------------------------------------------------------
+    # Video synchronization jobs
+    # ------------------------------------------------------------------
+
+    def create_sync_job(self, request: SyncRequest) -> SyncJob:
+        return self.sync_job_manager.create_job(request=request)
+
+    # ------------------------------------------------------------------
     # Frontend payloads
     # ------------------------------------------------------------------
 
@@ -154,6 +169,7 @@ class FreemocapApplication:
         # Drain BEFORE evicting so terminal COMPLETE/FAILED messages aren't lost
         posthoc_progress = self.posthoc_pipeline_manager.get_progress_updates()
         posthoc_progress.extend(self.posthoc_pipeline_manager.evict_completed())
+        posthoc_progress.extend(self.sync_job_manager.get_progress_updates())
 
         realtime_pipelines = self.realtime_pipeline_manager.pipelines
         active_pipelines = [p for p in realtime_pipelines.values() if p.alive]
@@ -211,6 +227,7 @@ class FreemocapApplication:
     def close_pipelines(self) -> None:
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
+        self.sync_job_manager.shutdown()
 
     def pause_unpause_pipelines(self) -> None:
         self.realtime_pipeline_manager.pause_unpause_all()
@@ -219,6 +236,7 @@ class FreemocapApplication:
         self.global_kill_flag.value = True
         self.realtime_pipeline_manager.shutdown()
         self.posthoc_pipeline_manager.shutdown()
+        self.sync_job_manager.shutdown()
 
 
 FREEMOCAP_APP: FreemocapApplication | None = None

@@ -440,8 +440,6 @@ class RealtimePipeline:
         """Drain and return the newest aggregator output newer than ``if_newer_than``.
 
         The standard-stream FrameRelay consumes this — the raw message carries
-        the rotations / CoM / xcom / rigidified skeleton the encoder needs,
-        The standard-stream FrameRelay consumes this — the raw message carries
         the rotations / CoM / xcom / rigidified skeleton the encoder needs.
         """
         if not self.alive:

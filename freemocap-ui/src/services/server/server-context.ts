@@ -3,7 +3,7 @@ import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
 import type { Point3d, BodyKinematics } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
-import type { RotationsFrame, RollingChannelName, SegmentLengthsFrame } from './transport/frame-types';
+import type { RotationsFrame, SegmentLengthsFrame } from './transport/frame-types';
 import type { ModelDefinition } from './transport/message-contract';
 
 export type CoMCallback = (point: Point3d | null) => void;
@@ -33,7 +33,6 @@ export interface ServerContextValue {
     subscribeToRotations: (cb: RotationsCallback) => () => void;
     getLatestRotations: () => RotationsFrame | null;
     getLatestSegmentLengths: () => SegmentLengthsFrame | null;
-    getRollingWindow: (channelName: RollingChannelName) => unknown[];
     // The model that rides every frame (the bone renderer's name→index authority).
     subscribeToModels: (cb: (models: ModelDefinition[]) => void) => () => void;
     getModels: () => ModelDefinition[] | null;

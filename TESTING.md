@@ -41,16 +41,15 @@ What they cover:
   creates the *real* shared memory and feeds it frames from the test videos; a
   single-threaded lockstep driver writes frame N, waits for the aggregator's
   output, and advances. Parametrized into a fast `charuco_only` case and a slow
-  (`@pytest.mark.slow`) `full` RTMPose-skeleton case. The full case also asserts
-  the raw realtime reconstruction is human-shaped **and** that its per-limb
-  segment lengths match the trusted posthoc output (within ~25%). Camera capture
-  is the only thing mocked — IPC, triangulation, filtering and fitting are real.
+  (`@pytest.mark.slow`) `full` RTMPose-skeleton case. The full case asserts the
+  raw realtime reconstruction produces keypoints, a hydrated standard-human
+  skeleton, and a whole-body center of mass. Camera capture is the only thing
+  mocked — IPC, triangulation, filtering and fitting are real.
 
-The "human-shaped" scoring lives in `freemocap/core/kinematics/segment_lengths.py`
-(reusable as a runtime diagnostic): it divides each measured segment length by the
-`bone_length_ratios` to get a per-segment *implied height*; a genuinely
-human skeleton implies one consistent height across all segments, so the spread
-(CV) of implied heights is height-independent and is the core signal.
+The realtime assertions live in
+`freemocap/tests/pipelines/test_realtime_pipeline.py`; skeleton-level numeric
+guards (rest-pose round trip, hydration, roll continuity) live in skellyforge's
+own test suite.
 
 These tests run in-place in the recording folder (regenerating `output_data/`,
 `annotated_videos/`, etc.), matching how the app runs.

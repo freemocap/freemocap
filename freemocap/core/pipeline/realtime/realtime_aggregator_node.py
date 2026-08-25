@@ -850,15 +850,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                                     )
                             prev_com = total_body_com.copy()
                             prev_com_time = now_com
-                        #
-                        # # ---- Centroidal kinematics (inertia ellipsoid + ground refs) ----
-                        # if not np.any(np.isnan(com_result.total_body_com)):
-                        #     body_kinematics = streaming_kinematics.update(
-                        #         t=now_com,
-                        #         whole_body_com=com_result.total_body_com,
-                        #         segment_coms=com_result.segment_coms,
-                        #         segment_masses=biomechanics.mass_percentages,
-                        #     )
 
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
@@ -899,7 +890,6 @@ class RealtimeAggregatorNode(AggregatorNode):
                         keypoints_arrays=filtered_keypoints,
                         total_body_com=total_body_com,
                         xcom=xcom,
-                        skeleton=(hydrated_landmarks if hydrated_landmarks else None),
                         standard_skeleton=(hydrated_landmarks if hydrated_landmarks else None),
                         segment_rotations_world=segment_rotations_world,
                         segment_rotations_local=segment_rotations_local,

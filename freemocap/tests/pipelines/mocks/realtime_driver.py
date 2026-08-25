@@ -69,7 +69,7 @@ def drive_realtime_lockstep(
             elapsed = now - t_start
             fps = (frame_index + 1) / elapsed if elapsed > 0 else 0.0
             has_kp = len(got.keypoints_arrays) > 0
-            has_skel = bool(got.skeleton)
+            has_skel = bool(got.standard_skeleton)
             logger.info(
                 f"  frame {frame_index + 1}/{num_frames}  "
                 f"elapsed={elapsed:.1f}s  fps={fps:.1f}  "

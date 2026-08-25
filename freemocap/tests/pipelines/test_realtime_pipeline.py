@@ -121,7 +121,7 @@ def test_realtime_pipeline_processes_test_data(
         )
 
         if mode == "full":
-            frames_with_skeleton = sum(1 for o in result.outputs if o.skeleton)
+            frames_with_skeleton = sum(1 for o in result.outputs if o.standard_skeleton)
             frames_with_com = sum(1 for o in result.outputs if o.total_body_com is not None)
             logger.info(
                 f"Frames with fitted skeleton: {frames_with_skeleton}/{result.frames_processed}"
@@ -129,7 +129,7 @@ def test_realtime_pipeline_processes_test_data(
             logger.info(
                 f"Frames with center-of-mass: {frames_with_com}/{result.frames_processed}"
             )
-            assert any(o.skeleton for o in result.outputs), "No fitted skeleton produced"
+            assert any(o.standard_skeleton for o in result.outputs), "No fitted skeleton produced"
             assert any(o.total_body_com is not None for o in result.outputs), (
                 "No center-of-mass result produced"
             )
@@ -197,11 +197,11 @@ def test_realtime_pipeline_on_sample_data(
             f"Only processed {result.frames_processed}/{n_frames} frames"
         )
 
-        frames_with_skeleton = sum(1 for o in result.outputs if o.skeleton)
+        frames_with_skeleton = sum(1 for o in result.outputs if o.standard_skeleton)
         logger.info(
             f"Frames with fitted skeleton: {frames_with_skeleton}/{result.frames_processed}"
         )
-        assert any(o.skeleton for o in result.outputs), "No fitted skeleton produced"
+        assert any(o.standard_skeleton for o in result.outputs), "No fitted skeleton produced"
 
         logger.info("=== REALTIME SAMPLE-DATA TEST PASSED ===")
     finally:
@@ -209,3 +209,4 @@ def test_realtime_pipeline_on_sample_data(
         time.sleep(0.25)
         mock.close()
         logger.info("Sample-data realtime manager shut down and mock closed")
+

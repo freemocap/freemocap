@@ -21,11 +21,11 @@ import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-
 
 Object3D.DEFAULT_UP.set(0, 0, 1);
 
-/** Returns true if at least one point in the frame is visible (vis > 0 and coords finite). */
+/** Returns true if at least one point in the frame is finite (stride 3, NaN = missing). */
 function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
   const arr = frame.interleaved;
-  for (let i = 0; i < arr.length; i += 4) {
-    if (arr[i + 3] > 0 && isFinite(arr[i]) && isFinite(arr[i + 1]) && isFinite(arr[i + 2])) {
+  for (let i = 0; i < arr.length; i += 3) {
+    if (isFinite(arr[i]) && isFinite(arr[i + 1]) && isFinite(arr[i + 2])) {
       return true;
     }
   }

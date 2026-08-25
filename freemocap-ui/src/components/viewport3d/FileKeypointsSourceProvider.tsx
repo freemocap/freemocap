@@ -23,8 +23,9 @@ import {calibrationLoadedFromBundle} from "@/store/slices/calibration/calibratio
  *   - Uses parquetRead (columnar API) instead of parquetReadObjects to read column-wise.
  *   - After decode, each trajectory is packed as Float32Array of length
  *     frameCount * K * 3, giving O(1) per-frame indexing.
- *   - Subscribers receive a stable KeypointsFrame whose `scratchInterleaved`
- *     buffer is mutated in place each tick (zero GC pressure after first frame).
+ *   - Subscribers receive a stable KeypointsFrame whose `interleaved` is a
+ *     zero-copy stride-3 view of the packed buffer, swapped per tick
+ *     (zero GC pressure and zero copying after load).
  *   - Driven by `currentFrameRef` from usePlaybackController, polled via our
  *     own rAF loop. React re-renders are not involved in the hot path.
  */
@@ -50,21 +51,18 @@ interface TrajectoryData {
     buffer: Float32Array;              // length = frameCount * K * 3 (x, y, z — no vis in parquet)
     frameCount: number;
     keypointCount: number;
-    scratchInterleaved: Float32Array;  // length = K * 4 (x, y, z, vis) — mutated each tick
-    scratchFrame: KeypointsFrame;      // stable reference — interleaved points at scratchInterleaved
+    scratchFrame: KeypointsFrame;      // stable reference — interleaved points at a per-frame view of buffer
     subscribers: Set<KeypointsCallback>;
     lastEmittedFrame: number;          // -1 means "never emitted"
 }
 
 function emptyTrajectory(): TrajectoryData {
-    const scratchInterleaved = new Float32Array(0);
     return {
         names: [],
         buffer: new Float32Array(0),
         frameCount: 0,
         keypointCount: 0,
-        scratchInterleaved,
-        scratchFrame: { pointNames: [], interleaved: scratchInterleaved },
+        scratchFrame: { pointNames: [], interleaved: new Float32Array(0) },
         subscribers: new Set(),
         lastEmittedFrame: -1,
     };
@@ -198,15 +196,13 @@ function buildTrajectory(
         buffer[off + 2] = zCol[i];
     }
 
-    const scratchInterleaved = new Float32Array(K * 4);
-    const scratchFrame: KeypointsFrame = { pointNames: names, interleaved: scratchInterleaved };
+    const scratchFrame: KeypointsFrame = { pointNames: names, interleaved: new Float32Array(0) };
 
     return {
         names,
         buffer,
         frameCount,
         keypointCount: K,
-        scratchInterleaved,
         scratchFrame,
         subscribers: new Set(),
         lastEmittedFrame: -1,
@@ -246,10 +242,7 @@ function remapTrajectoryFaceNames(
 
     // Mutate in-place so existing refs pick up the new names.
     (traj as { names: readonly string[] }).names = newNames;
-    (traj as { scratchFrame: KeypointsFrame }).scratchFrame = {
-        pointNames: newNames,
-        interleaved: traj.scratchInterleaved,
-    };
+    traj.scratchFrame.pointNames = newNames;
 }
 
 function updateScratch(traj: TrajectoryData, frame: number): void {
@@ -257,20 +250,9 @@ function updateScratch(traj: TrajectoryData, frame: number): void {
     if (K === 0) return;
     const clamped = Math.max(0, Math.min(frame, traj.frameCount - 1));
     const base = clamped * K * 3;
-    const buf = traj.buffer;
-    const scratch = traj.scratchInterleaved;
-
-    for (let k = 0; k < K; k++) {
-        const srcOff = base + k * 3;
-        const dstOff = k * 4;
-        const x = buf[srcOff];
-        const y = buf[srcOff + 1];
-        const z = buf[srcOff + 2];
-        scratch[dstOff]     = x;
-        scratch[dstOff + 1] = y;
-        scratch[dstOff + 2] = z;
-        scratch[dstOff + 3] = Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z) ? 1.0 : 0.0;
-    }
+    // Zero-copy view of the packed buffer for this frame — stride 3 (x, y, z),
+    // matching the KeypointsFrame contract. A missing point is a NaN row.
+    traj.scratchFrame.interleaved = traj.buffer.subarray(base, base + K * 3);
 }
 
 function fireSubscribers(traj: TrajectoryData): void {

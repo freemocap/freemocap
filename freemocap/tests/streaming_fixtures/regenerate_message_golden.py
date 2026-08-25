@@ -4,10 +4,11 @@ Run from project/freemocap::
 
     uv run python -m freemocap.tests.streaming_fixtures.regenerate_message_golden
 
-These fixtures are the cross-language parity anchors: the TS codec must decode
-each .bin to the same values this script pinned (freemocap-ui
-.../message-golden.test.ts). They are built from synthetic pinned values — do
-not change them without re-running this script and the TS parity check.
+These fixtures are the cross-language parity anchors: the TS fixtures under
+``freemocap-ui/src/services/server/transport/__fixtures__/`` must be BYTE-IDENTICAL
+copies of these files (the Python guard test ``test_golden_fixtures.py`` pins the
+Python side; copy the regenerated .bin files into the UI directory after any
+intentional change).
 
 Re-running REWRITES the fixtures, and therefore IS a contract change.
 """
@@ -18,6 +19,7 @@ from pathlib import Path
 import cbor2
 
 from freemocap.core.streaming.message_model import (
+    STANDARD_HUMAN_MODEL_ID,
     ChannelBlock,
     ChannelKind,
     CoordinateConvention,
@@ -45,7 +47,7 @@ def build_model_message() -> bytes:
     # quaternion (90 deg about z) — it pins "no float16 downcast" on scalar
     # floats in the TS parity test.
     model = ModelDefinition(
-        model_id="standard_human",
+        model_id=STANDARD_HUMAN_MODEL_ID,
         segments=(
             RestSegment(
                 name="hips",
@@ -66,6 +68,7 @@ def build_model_message() -> bytes:
             RestLandmark(name="hips_center", rest_position=(0.0, 0.0, 0.0)),
             RestLandmark(name="neck_center", rest_position=(0.0, 0.0, 200.0)),
         ),
+        connections=(("hips", "spine"),),
     )
     return cbor2.dumps(model.to_cbor_message())
 
@@ -85,7 +88,7 @@ def build_frame_message() -> bytes:
         envelope=MessageEnvelope(timestamp=1.5),
         frame_number=99,
         instances=(
-            ModelInstance(instance_id=0, model_id="standard_human", channels=(segment_origins, rotations_world)),
+            ModelInstance(instance_id=0, model_id=STANDARD_HUMAN_MODEL_ID, channels=(segment_origins, rotations_world)),
         ),
         image=b"\xff\xd8\xffgolden-fake-jpeg",
     )

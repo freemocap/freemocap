@@ -58,12 +58,11 @@ export function fitCameraToPoints(
     const { pointNames, interleaved } = frame;
     const box = new Box3();
     for (let i = 0; i < pointNames.length; i++) {
-        const off = i * 4;
-        const vis = interleaved[off + 3];
+        const off = i * 3;
         const x = interleaved[off];
         const y = interleaved[off + 1];
         const z = interleaved[off + 2];
-        if (vis > 0 && Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
             box.expandByPoint(new Vector3(x, y, z));
         }
     }

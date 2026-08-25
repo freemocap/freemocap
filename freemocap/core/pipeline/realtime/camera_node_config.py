@@ -22,6 +22,10 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 _REDETECT_SECONDS = 5.0
 _ASSUMED_CAMERA_FPS = 30.0
 
+# The one definition point for the default skeleton detector. Everything that
+# needs "the detector we assume when none is running" reads this.
+DEFAULT_DETECTOR_TYPE: Literal["rtmpose", "mediapipe"] = "rtmpose"
+
 
 def _default_skeleton_tracker_config() -> TrackerConfig:
     redetect_interval = max(1, round(_REDETECT_SECONDS * _ASSUMED_CAMERA_FPS))
@@ -64,7 +68,7 @@ class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS
     charuco_tracking_enabled: bool = True
     skeleton_tracking_enabled: bool = True
-    detector_type: Literal["rtmpose", "mediapipe"] = "rtmpose"
+    detector_type: Literal["rtmpose", "mediapipe"] = DEFAULT_DETECTOR_TYPE
     # RTMPose config (only used when detector_type="rtmpose")
     rtmpose_model_name: Literal["rtmw-x-l_256x192", "rtmw-x-l_384x288", "rtmw-l-m_256x192"] = "rtmw-x-l_256x192"
     rtmpose_confidence_threshold: float = 0.0025

@@ -238,13 +238,10 @@ export const MessageSchema = z.discriminatedUnion("kind", [
 export type Message = z.infer<typeof MessageSchema>;
 export type MessageKind = Message["kind"];
 
-export const KNOWN_KINDS = [
-  "frame",
-  "log",
-  "framerate",
-  "app_state",
-  "progress",
-] as const;
+// Derived from the union itself — the literals live exactly once, in the schemas.
+export const KNOWN_KINDS = MessageSchema.options.map(
+  (option) => option.shape.kind.value,
+) as readonly MessageKind[];
 
 export const CURRENT_VERSION = 0;
 

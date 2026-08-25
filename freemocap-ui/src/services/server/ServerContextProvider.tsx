@@ -33,7 +33,6 @@ import {TransportService} from "@/services/server/transport/TransportService";
 import {
     OverlayLayer,
     type RotationsFrame,
-    type RollingChannelName,
     type SegmentLengthsFrame,
 } from "@/services/server/transport/frame-types";
 import type {
@@ -95,7 +94,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     useEffect(() => {
         transportRef.current = new TransportService({
             url: serverUrls.getWebSocketUrl(),
-            maxWindowFrames: 100,
         });
         frameProcessorRef.current = new FrameProcessor();
         canvasManagerRef.current = new CanvasManager();
@@ -417,10 +415,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return segmentLengthsRef.current;
     }, []);
 
-    const getRollingWindow = useCallback((channelName: RollingChannelName): unknown[] => {
-        return transportRef.current?.getRollingWindow(channelName) ?? [];
-    }, []);
-
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
         canvasManagerRef.current?.setOverlayVisibility(charuco, skeleton);
     }, []);
@@ -461,10 +455,12 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToRotations,
         getLatestRotations,
         getLatestSegmentLengths,
-        getRollingWindow,
         subscribeToModels,
         getModels,
-    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations, getLatestRotations, getLatestSegmentLengths, getRollingWindow, subscribeToModels, getModels]);
+    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations,         getLatestRotations,
+        getLatestSegmentLengths,
+        subscribeToModels,
+        getModels]);
 
     return (
         <ServerContext.Provider value={contextValue}>

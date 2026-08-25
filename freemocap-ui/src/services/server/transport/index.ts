@@ -3,5 +3,4 @@ export * from "./message-contract";
 export * from "./frame-types";
 export * from "./frame-resolution";
 export * from "./cbor-codec";
-export * from "./RollingWindowStore";
 export * from "./TransportService";

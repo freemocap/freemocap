@@ -41,6 +41,9 @@ from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMe
 
 CURRENT_VERSION: int = 0
 
+# The one model_id the streaming layer emits for the standard human.
+STANDARD_HUMAN_MODEL_ID: str = "standard_human"
+
 
 class MessageKind(StrEnum):
     FRAME = "frame"
@@ -257,7 +260,7 @@ class ModelDefinition:
         cls, skeleton: SkeletonDefinition, rest_pose: RestPose
     ) -> "ModelDefinition":
         return cls(
-            model_id="standard_human",
+            model_id=STANDARD_HUMAN_MODEL_ID,
             segments=tuple(
                 RestSegment(
                     name=segment.name,

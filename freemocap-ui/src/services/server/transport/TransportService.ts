@@ -21,7 +21,6 @@ import {
 } from "@/services/server/server-helpers/websocket-connection";
 import { decodeMessage } from "./cbor-codec";
 import { resolveFrameChannels } from "./frame-resolution";
-import { RollingWindowStore } from "./RollingWindowStore";
 import type {
     AppStateMessage,
     CalibratedCamera,
@@ -36,7 +35,6 @@ import type {
     DerivedPointsFrame,
     OverlayFrame,
     PointsFrame,
-    RollingChannelName,
     RotationsFrame,
     SegmentLengthsFrame,
 } from "./frame-types";
@@ -56,32 +54,38 @@ export type ProgressCallback = (message: ProgressMessage) => void;
 
 export interface TransportServiceOptions {
     url: string;
-    maxWindowFrames?: number;
 }
 
 /** A cheap, stable signature of the calibration: a calibration hot-reload
- *  changes the extrinsics/intrinsics and thus the signature, so the camera
- *  slice updates without comparing full object graphs every frame. */
+ *  changes the intrinsics, extrinsics or rotation and thus the signature, so
+ *  the camera slice updates without comparing full object graphs every frame. */
 function cameraSignature(cameras: CalibratedCamera[]): string {
     return cameras
         .map(
             (c) =>
-                `${c.id}:${c.index}:${c.image_size[0]}x${c.image_size[1]}:` +
-                `${c.extrinsics.quaternion_wxyz.join(",")}:${c.extrinsics.translation.join(",")}`,
+                `${c.id}:${c.index}:${c.rotation ?? ""}:${c.image_size[0]}x${c.image_size[1]}:` +
+                `${JSON.stringify(c.intrinsics)}:` +
+                `${c.extrinsics.quaternion_wxyz.join(",")}:${c.extrinsics.translation.join(",")}:` +
+                `${JSON.stringify(c.world_position ?? "")}:${JSON.stringify(c.world_orientation ?? "")}`,
         )
         .join("|");
 }
 
+/** Call every callback in a set, isolating faults: one throwing subscriber must
+ *  neither abort the fan-out for the remaining subscribers nor escape into the
+ *  message dispatch loop. */
+function fanOut<T>(subscribers: Set<(value: T) => void>, value: T): void {
+    for (const cb of subscribers) {
+        try {
+            cb(value);
+        } catch (error) {
+            console.error("[TransportService] subscriber threw:", error);
+        }
+    }
+}
+
 export class TransportService {
     private readonly connection: WebSocketConnection;
-    private readonly maxWindowFrames: number;
-
-    // Rolling-window stores (per channel semantic).
-    readonly keypointsWindow: RollingWindowStore<PointsFrame>;
-    readonly segmentOriginsWindow: RollingWindowStore<PointsFrame>;
-    readonly rotationsWorldWindow: RollingWindowStore<RotationsFrame>;
-    readonly derivedWindow: RollingWindowStore<DerivedPointsFrame>;
-    readonly segmentLengthsWindow: RollingWindowStore<SegmentLengthsFrame>;
 
     // Latest-frame refs.
     private keypointsLatest: PointsFrame | null = null;
@@ -116,14 +120,7 @@ export class TransportService {
     private readonly progressSubscribers = new Set<ProgressCallback>();
 
     constructor(options: TransportServiceOptions) {
-        this.maxWindowFrames = options.maxWindowFrames ?? 100;
         this.connection = new WebSocketConnection({ url: options.url });
-
-        this.keypointsWindow = new RollingWindowStore<PointsFrame>({ maxFrames: this.maxWindowFrames });
-        this.segmentOriginsWindow = new RollingWindowStore<PointsFrame>({ maxFrames: this.maxWindowFrames });
-        this.rotationsWorldWindow = new RollingWindowStore<RotationsFrame>({ maxFrames: this.maxWindowFrames });
-        this.derivedWindow = new RollingWindowStore<DerivedPointsFrame>({ maxFrames: this.maxWindowFrames });
-        this.segmentLengthsWindow = new RollingWindowStore<SegmentLengthsFrame>({ maxFrames: this.maxWindowFrames });
 
         this.connection.on("message", (event: MessageEvent) => this.handleMessage(event));
     }
@@ -132,14 +129,15 @@ export class TransportService {
 
     private handleMessage(event: MessageEvent): void {
         const data = event.data;
-        // The server only sends "pong" as text; every real message is binary CBOR.
+        // The server only sends "pong" as text; every real message is binary CBOR,
+        // delivered as ArrayBuffer because binaryType is set to 'arraybuffer'.
         if (typeof data === "string") return;
         if (data instanceof ArrayBuffer) {
             this.dispatchBytes(data);
-        } else if (data instanceof Blob) {
-            data.arrayBuffer()
-                .then((buf) => this.dispatchBytes(buf))
-                .catch(() => {});
+        } else {
+            console.error(
+                `[TransportService] received unexpected binary payload type ${data?.constructor?.name}`,
+            );
         }
     }
 
@@ -155,16 +153,16 @@ export class TransportService {
                 this.handleFrame(message);
                 break;
             case "log":
-                this.logSubscribers.forEach((cb) => cb(message.record));
+                fanOut(this.logSubscribers, message.record);
                 break;
             case "framerate":
-                this.framerateSubscribers.forEach((cb) => cb(message));
+                fanOut(this.framerateSubscribers, message);
                 break;
             case "app_state":
-                this.appStateSubscribers.forEach((cb) => cb(message));
+                fanOut(this.appStateSubscribers, message);
                 break;
             case "progress":
-                this.progressSubscribers.forEach((cb) => cb(message));
+                fanOut(this.progressSubscribers, message);
                 break;
         }
     }
@@ -175,37 +173,38 @@ export class TransportService {
 
         if (resolved.keypoints) {
             this.keypointsLatest = resolved.keypoints;
-            this.keypointsWindow.push(resolved.keypoints);
-            this.keypointsSubscribers.forEach((cb) => cb(resolved.keypoints!));
+            fanOut(this.keypointsSubscribers, resolved.keypoints);
         }
         if (resolved.segmentOrigins) {
             this.segmentOriginsLatest = resolved.segmentOrigins;
-            this.segmentOriginsWindow.push(resolved.segmentOrigins);
-            this.segmentOriginsSubscribers.forEach((cb) => cb(resolved.segmentOrigins!));
+            fanOut(this.segmentOriginsSubscribers, resolved.segmentOrigins);
         }
         if (resolved.rotations) {
             this.rotationsLatest = resolved.rotations;
-            this.rotationsWorldWindow.push(resolved.rotations);
-            this.rotationsSubscribers.forEach((cb) => cb(resolved.rotations!));
+            fanOut(this.rotationsSubscribers, resolved.rotations);
         }
         this.derivedLatest = resolved.derived;
-        this.derivedWindow.push(resolved.derived);
-        this.derivedSubscribers.forEach((cb) => cb(resolved.derived));
+        fanOut(this.derivedSubscribers, resolved.derived);
         if (resolved.segmentLengths) {
             this.segmentLengthsLatest = resolved.segmentLengths;
-            this.segmentLengthsWindow.push(resolved.segmentLengths);
-            this.segmentLengthsSubscribers.forEach((cb) => cb(resolved.segmentLengths!));
+            fanOut(this.segmentLengthsSubscribers, resolved.segmentLengths);
         }
         for (const overlay of resolved.overlays) {
-            this.overlaySubscribers.forEach((cb) => cb(overlay));
+            fanOut(this.overlaySubscribers, overlay);
         }
 
         if (frame.image) {
-            // Copy the bytes out (the frame may be re-used); pass to the image
-            // consumers with the frame's own frame number so they pair it with
-            // its overlays atomically.
-            const copy = new Uint8Array(frame.image);
-            this.imageSubscribers.forEach((cb) => cb(copy.buffer, frame.frame_number));
+            // The codec hands back an owned, exact-size buffer (see
+            // cbor-codec.normalizeValue), so the bytes go straight through —
+            // paired with the frame's own frame number so consumers pair it
+            // with its overlays atomically.
+            for (const cb of this.imageSubscribers) {
+                try {
+                    cb(frame.image as unknown as ArrayBuffer, frame.frame_number);
+                } catch (error) {
+                    console.error("[TransportService] subscriber threw:", error);
+                }
+            }
         }
     }
 
@@ -216,9 +215,9 @@ export class TransportService {
             this.conventionLatest = frame.convention;
             this.camerasLatest = frame.cameras;
             this.lastCameraSignature = cameraSignature(frame.cameras);
-            this.modelsSubscribers.forEach((cb) => cb(frame.models));
-            this.conventionSubscribers.forEach((cb) => cb(frame.convention));
-            this.camerasSubscribers.forEach((cb) => cb(frame.cameras));
+            fanOut(this.modelsSubscribers, frame.models);
+            fanOut(this.conventionSubscribers, frame.convention);
+            fanOut(this.camerasSubscribers, frame.cameras);
             return;
         }
         // Cameras (calibration) can change independently of the model: only emit
@@ -227,7 +226,7 @@ export class TransportService {
         if (signature !== this.lastCameraSignature) {
             this.lastCameraSignature = signature;
             this.camerasLatest = frame.cameras;
-            this.camerasSubscribers.forEach((cb) => cb(frame.cameras));
+            fanOut(this.camerasSubscribers, frame.cameras);
         }
     }
 
@@ -369,30 +368,8 @@ export class TransportService {
         return this.camerasLatest;
     }
 
-    getRollingWindow(channelName: RollingChannelName): unknown[] {
-        switch (channelName) {
-            case "keypoints":
-                return this.keypointsWindow.getLast();
-            case "segment_origins":
-                return this.segmentOriginsWindow.getLast();
-            case "rotations_world":
-                return this.rotationsWorldWindow.getLast();
-            case "derived_points":
-                return this.derivedWindow.getLast();
-            default: {
-                const _exhaustive: never = channelName;
-                return _exhaustive;
-            }
-        }
-    }
-
-    /** Reset all stores and clear caches on disconnect. */
+    /** Reset caches on disconnect. */
     reset(): void {
-        this.keypointsWindow.clear();
-        this.segmentOriginsWindow.clear();
-        this.rotationsWorldWindow.clear();
-        this.derivedWindow.clear();
-        this.segmentLengthsWindow.clear();
         this.keypointsLatest = null;
         this.segmentOriginsLatest = null;
         this.rotationsLatest = null;

@@ -46,7 +46,7 @@ class OverlayProducer(ChannelProducer):
             blocks.append(
                 ChannelBlock(
                     kind=ChannelKind.OVERLAY_REPROJECTIONS,
-            columns=("x", "y", "visibility"),
+                    columns=("x", "y", "visibility"),
                     data=assemble_channel_bytes(names=segment_names, positions=reprojections, n_cols=3),
                     camera_id=camera_id,
                     image_size=stream_ctx.live_image_sizes.get(camera_id),

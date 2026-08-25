@@ -73,10 +73,13 @@ if os.path.isdir(mp_tasks_c_path):
             binaries.append((lib_file, 'mediapipe/tasks/c'))
 hiddenimports.append('mediapipe.tasks.c')
 
-# ── skellyforge (yaml config files needed at runtime) ──
+# ── skellyforge (yaml definition files needed at runtime) ──
 import skellyforge
 sf_path = os.path.dirname(skellyforge.__file__)
-datas.append((os.path.join(sf_path, 'skellymodels', 'tracker_info', '*.yaml'), 'skellyforge/skellymodels/tracker_info'))
+# The skeleton/anthropometry/COM/coordinate-system definitions load at
+# construction (SkeletonDefinition.from_default_yaml etc.), so the whole
+# definitions tree must ship with the frozen build.
+datas.append((os.path.join(sf_path, 'definitions'), 'skellyforge/definitions'))
 
 # ── skellytracker (active trackers only; exclude v1 legacy, tests, scripts) ──
 datas.extend(collect_data_files('skellytracker', includes=['**/*.yaml']))

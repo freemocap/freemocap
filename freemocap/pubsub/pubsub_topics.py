@@ -110,7 +110,6 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
     total_body_com: np.ndarray | None = None
     xcom: np.ndarray | None = None
-    skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
     standard_skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None

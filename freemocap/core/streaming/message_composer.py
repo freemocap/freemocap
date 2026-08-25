@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from freemocap.core.streaming.message_model import (
+    STANDARD_HUMAN_MODEL_ID,
     CalibratedCamera,
     ChannelKind,
     CoordinateConvention,
@@ -25,6 +26,7 @@ from freemocap.core.streaming.message_model import (
     TrackerObservation,
 )
 from freemocap.core.streaming.producers import ALL_PRODUCERS
+from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 
 _TRACKER_KINDS = frozenset((ChannelKind.KEYPOINTS_3D, ChannelKind.OVERLAY_2D))
@@ -35,7 +37,7 @@ class MessageComposition:
     """One stream data model's static message parts + the frame-building context."""
 
     context: StreamContext
-    producers: tuple
+    producers: tuple[ChannelProducer, ...]
     convention: CoordinateConvention
     cameras: tuple[CalibratedCamera, ...]
     models: tuple[ModelDefinition, ...]
@@ -47,13 +49,13 @@ class MessageComposition:
         instance_blocks = tuple(b for b in blocks if b.kind not in _TRACKER_KINDS)
         tracker_blocks = tuple(b for b in blocks if b.kind in _TRACKER_KINDS)
         instances = (
-            ModelInstance(instance_id=0, model_id="standard_human", channels=instance_blocks),
+            ModelInstance(instance_id=0, model_id=STANDARD_HUMAN_MODEL_ID, channels=instance_blocks),
         ) if instance_blocks else ()
         trackers = (
             TrackerObservation(
                 tracker_id=self.context.detector_type,
                 detector_type=self.context.detector_type,
-                model_id="standard_human",
+                model_id=STANDARD_HUMAN_MODEL_ID,
                 channels=tracker_blocks,
             ),
         ) if tracker_blocks else ()

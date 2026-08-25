@@ -212,8 +212,7 @@ export function ConnectionRenderer() {
         }
         const { pointNames, interleaved } = frame;
         for (let i = 0; i < pointNames.length; i++) {
-            const off = i * 4;
-            if (!interleaved[off + 3]) continue;
+            const off = i * 3;
             const x = interleaved[off];
             const y = interleaved[off + 1];
             const z = interleaved[off + 2];

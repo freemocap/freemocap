@@ -18,10 +18,12 @@ type EventCallback = (...args: any[]) => void;
 export class WebSocketConnection {
     private ws: WebSocket | null = null;
     private config: Required<WebSocketConfig>;
-    private reconnectAttempts: number = 1;
+    private reconnectAttempts: number = 0;
     private reconnectTimer: number | null = null;
     private heartbeatTimer: number | null = null;
     private state: ConnectionState = ConnectionState.DISCONNECTED;
+    /** Set by disconnect() — the only close that must NOT trigger reconnection. */
+    private disconnectRequested: boolean = false;
 
     // Simple event emitter implementation for browser
     private listeners: Map<string, Set<EventCallback>> = new Map();
@@ -61,6 +63,7 @@ export class WebSocketConnection {
         if (this.state === ConnectionState.CONNECTING || this.state === ConnectionState.CONNECTED) {
             return;
         }
+        this.disconnectRequested = false;
 
         this.setState(ConnectionState.CONNECTING);
 
@@ -80,6 +83,7 @@ export class WebSocketConnection {
     public disconnect(): void {
         this.clearTimers();
         this.reconnectAttempts = 0;
+        this.disconnectRequested = true;
 
         if (this.ws) {
             // Remove handlers to avoid reconnection on close
@@ -139,9 +143,10 @@ export class WebSocketConnection {
         console.log(`WebSocket closed: code=${event.code}, reason=${event.reason}`);
         this.clearTimers();
 
-        const wasConnected = this.state === ConnectionState.CONNECTED;
-
-        if (wasConnected && this.reconnectAttempts < this.config.maxReconnectAttempts) {
+        // A drop (from CONNECTED) or a failed retry (from CONNECTING while
+        // RECONNECTING) both count toward the attempt budget — only a clean
+        // client-side disconnect ends up here with no attempts left to spend.
+        if (!this.disconnectRequested && this.reconnectAttempts < this.config.maxReconnectAttempts) {
             this.scheduleReconnect();
         } else if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
             this.setState(ConnectionState.FAILED);

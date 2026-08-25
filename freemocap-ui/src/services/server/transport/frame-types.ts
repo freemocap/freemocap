@@ -47,9 +47,3 @@ export interface OverlayFrame {
     imageSize?: [number, number];
 }
 
-/** Rolling-window channel keys accepted by TransportService.getRollingWindow. */
-export type RollingChannelName =
-    | "keypoints"
-    | "segment_origins"
-    | "rotations_world"
-    | "derived_points";

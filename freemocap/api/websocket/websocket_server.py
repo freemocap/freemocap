@@ -35,6 +35,7 @@ from starlette.websockets import WebSocket, WebSocketState, WebSocketDisconnect
 from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
+from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import (
     AppStateMessage,
@@ -154,10 +155,20 @@ class WebsocketServer:
         calibration_by_id = {cm.id: cm for cm in calibration.cameras}
         calibration_by_index = {cm.index: cm for cm in calibration.cameras}
         cameras = []
+        index_matched_ids: list[str] = []
         for live_id, config in configs.items():
-            # Match the calibration camera by id; fall back to its (stable) index
-            # when the camera was re-enumerated and its id drifted (e.g. d441 -> fa5a).
-            camera_model = calibration_by_id.get(live_id) or calibration_by_index.get(config.camera_index)
+            # Match the calibration camera by id; fall back to its index when the
+            # camera was re-enumerated and its id drifted (e.g. d441 -> fa5a).
+            # The fallback is LOUD: pairing one camera's intrinsics with another
+            # id is only tolerable while everyone can see that it happened.
+            camera_model = calibration_by_id.get(live_id)
+            if camera_model is None:
+                camera_model = calibration_by_index.get(config.camera_index)
+                if camera_model is not None:
+                    index_matched_ids.append(
+                        f"{live_id} -> index {config.camera_index} "
+                        f"(calibration id {camera_model.id!r})"
+                    )
             if camera_model is None:
                 continue
             rotation = _CAMERA_ROTATION_BY_CONFIG.get(config.rotation, CameraRotation.NONE)
@@ -170,6 +181,13 @@ class WebsocketServer:
                     rotation=rotation,
                     image_size=(config.width, config.height),
                 )
+            )
+        if index_matched_ids:
+            logger.error(
+                "Calibration cameras matched by INDEX, not id - the camera ids "
+                "drifted from the calibration recording and its intrinsics may "
+                "belong to a different physical camera. Recalibrate to fix: %s",
+                "; ".join(index_matched_ids),
             )
         return tuple(cameras)
 
@@ -199,14 +217,14 @@ class WebsocketServer:
         """The configured detector type from the live realtime pipelines.
 
         One pipeline per camera set today; the frame's tracker keypoint names
-        come from the first live pipeline's config. Defaults to ``rtmpose``
-        (the config default) when no pipeline is running yet — the replace-kinds
-        re-emit when the type changes.
+        come from the first live pipeline's config. Defaults to the config
+        default when no pipeline is running yet — the replace-kinds re-emit
+        when the type changes.
         """
         for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
             if pipeline.alive:
                 return pipeline.config.camera_node_config.detector_type
-        return "rtmpose"
+        return DEFAULT_DETECTOR_TYPE
 
     # ── Frame source (wired to the app) ─────────────────────────────────
 
@@ -459,8 +477,17 @@ class WebsocketServer:
                     except Empty:
                         await await_10ms()
                         continue
-                    except (EOFError, OSError):
-                        continue
+                    except (EOFError, OSError) as error:
+                        # The queue itself is failing - back off and log rather
+                        # than spin on it inside the event loop.
+                        logger.error(
+                            "Log queue read failed (%s: %s); backing off 100ms",
+                            error.__class__.__name__,
+                            error,
+                        )
+                        self._websocket_should_continue = False
+                        self._global_kill_flag.value = True
+                        raise
                     if not isinstance(log_entry, dict):
                         continue
                     if log_entry.get("levelno", 0) < ws_log_level:

@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
 from freemocap.core.streaming.message_model import CalibratedCamera  # noqa: TC001
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition  # noqa: TC002
@@ -23,7 +24,7 @@ class StreamContext:
     camera_ids: tuple[str, ...] = ()
     calibrated_cameras: tuple[CalibratedCamera, ...] = ()
     tracker_keypoint_names: tuple[str, ...] = ()
-    detector_type: str = "rtmpose"
+    detector_type: str = DEFAULT_DETECTOR_TYPE
     pipeline_live: bool = False
     # camera_id -> full-resolution (rotated) image size from the LIVE SkellyCam
     # config (every live camera, calibrated or not) — the overlay's scale source.

@@ -127,7 +127,6 @@ def _message(
         keypoints_arrays=pose,
         total_body_com=np.zeros(3),
         xcom=np.zeros(3),
-        skeleton=hydrated_landmarks,
         standard_skeleton=hydrated_landmarks,
         segment_rotations_world=world,
         segment_rotations_local={},

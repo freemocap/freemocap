@@ -491,7 +491,7 @@ wheels = [
 
 [[package]]
 name = "freemocap"
-version = "2.0.0a20"
+version = "2.0.0a21"
 source = { editable = "." }
 dependencies = [
     { name = "beartype" },
@@ -597,7 +597,7 @@ tracker-default = [
 [[package]]
 name = "freemocap-blender-addon"
 version = "2026.4.1041"
-source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#32f49dd8c91f463f5a9b6335b47469bf091965f0" }
+source = { git = "https://github.com/freemocap/freemocap_blender_addon?branch=main#9f08f2c7d786ae92ab5c374a71aa6791a43d27b8" }
 
 [[package]]
 name = "h11"

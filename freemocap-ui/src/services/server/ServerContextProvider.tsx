@@ -178,6 +178,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subs.push(transport.subscribeToFramerate((message) => {
             serverFpsRef.current = message.backend_framerate.mean_frames_per_second;
             framerateStoreRef.current.updateBackend(message.backend_framerate);
+            framerateStoreRef.current.updateFrontend(message.frontend_framerate);
         }));
         subs.push(transport.subscribeToAppState((message) => {
             store.dispatch(serverStateReceived(message));

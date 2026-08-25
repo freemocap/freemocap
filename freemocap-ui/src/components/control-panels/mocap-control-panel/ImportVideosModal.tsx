@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useElectronIPC} from '@/services';
 import {useAppDispatch, useAppSelector} from '@/store';
 import {
@@ -64,11 +64,16 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
     const activePipelines = useAppSelector(selectActivePipelines);
     const syncProgress = syncJobId ? activePipelines[syncJobId] : undefined;
 
+    const recordingNameInputRef = useRef<HTMLInputElement>(null);
+
     useEffect(() => {
         if (!open) return;
+
+        const generatedName = generateDefaultRecordingName(defaultNameTag);
+
         setVideoPaths([]);
-        setRecordingName('');
-        setDefaultRecordingName(generateDefaultRecordingName(defaultNameTag));
+        setRecordingName(generatedName);
+        setDefaultRecordingName(generatedName);
         setBusy(false);
         setError(null);
         setCheckingSync(false);
@@ -265,10 +270,14 @@ export const ImportVideosModal: React.FC<ImportVideosModalProps> = ({open, onClo
                         <SubactionHeader text="Recording name" className="text-gray"/>
                         <div className="input-with-string" style={{width: '100%'}}>
                             <input
+                                ref={recordingNameInputRef}
                                 className="input-field text md w-full"
                                 value={recordingName}
                                 onChange={(e) => setRecordingName(e.target.value)}
-                                placeholder={defaultRecordingName}
+                                onFocus={(e) => {
+                                    const end = e.currentTarget.value.length;
+                                    e.currentTarget.setSelectionRange(end, end);
+                                }}
                                 disabled={busy}
                             />
                         </div>

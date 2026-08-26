@@ -363,7 +363,10 @@ class RealtimeAggregatorNode(AggregatorNode):
         # DIRECTIONS are unchanged by live lengths — the lengths only refine the
         # rest-pose map and model values; quaternions never depend on them.
         rest_pose = RestPose.from_default_yaml(skeleton=standard_human)
-        roll_resolver = ContinuousRollResolver.for_skeleton(skeleton=standard_human)
+        roll_resolver = ContinuousRollResolver.for_skeleton(
+            skeleton=standard_human,
+            rest_relative_orientations=rest_pose.relative_orientations,
+        )
 
         timing_reporter: PipelineTimingReporter | None = None
         timing_reporter_stop: threading.Event | None = None
@@ -880,6 +883,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                 if segment_lengths and all(v <= 0.0 for v in segment_lengths.values()) and "zero_lengths" not in skeleton_observability_logged:
                     skeleton_observability_logged.add("zero_lengths")
                     logger.error("All segment lengths are ZERO — the 3D bones will have zero length")
+                joint_angles = (
+                    {
+                        joint_name: joint_pose.angles
+                        for joint_name, joint_pose in standard_human.compute_joint_poses(
+                            pose=resolved_pose
+                        ).items()
+                    }
+                    if resolved_pose is not None
+                    else None
+                )
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,
@@ -891,6 +904,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         total_body_com=total_body_com,
                         xcom=xcom,
                         standard_skeleton=(hydrated_landmarks if hydrated_landmarks else None),
+                        joint_angles=joint_angles,
                         segment_rotations_world=segment_rotations_world,
                         segment_rotations_local=segment_rotations_local,
                         segment_lengths=segment_lengths,

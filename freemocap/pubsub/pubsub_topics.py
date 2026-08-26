@@ -111,6 +111,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     total_body_com: np.ndarray | None = None
     xcom: np.ndarray | None = None
     standard_skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
+    # Per-joint named angles (radians) from the linkage layer, keyed by joint
+    # name: {joint_name: (angle_0, angle_1, angle_2)} in the joint's authored
+    # euler convention. None when the skeleton fitter produced no pose this
+    # frame. Provenance (measured vs convention-carried inputs) lives in
+    # skellyforge's JointPose objects and is not serialized yet.
+    joint_angles: dict[str, tuple[float, float, float]] | None = None
     segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
     # Per-segment measured rest lengths (mm), keyed by segment name — the

@@ -7,20 +7,6 @@ export interface Point3d {
     z: number;
 }
 
-/** Per-frame centroidal-kinematics bundle (mirrors backend BodyKinematicsState). */
-export interface BodyKinematics {
-    center_of_mass: Point3d;
-    com_velocity: Point3d | null;
-    center_of_pressure: Point3d | null;
-    xcom: Point3d | null;
-    cmp: Point3d | null;
-    ellipsoid_semi_axes: Point3d | null;
-    ellipsoid_axis_x: Point3d | null;
-    ellipsoid_axis_y: Point3d | null;
-    ellipsoid_axis_z: Point3d | null;
-    cop_is_estimated: boolean;
-}
-
 export interface PointStyle {
     color: Color;
     scale: number;
@@ -40,10 +26,9 @@ export interface ViewportVisibility {
     centerOfMassConnection: boolean;
     centerOfMassXcom: boolean;
     centerOfMassXcomConnection: boolean;
-    bodyKinematics: boolean;
-    reactionMassEllipsoid: boolean;
-    centroidalMomentPivot: boolean;
     rigidBodyBones: boolean;
+    /** Per-segment orientation triads (x/y/z axes at each segment origin). */
+    segmentAxes: boolean;
 }
 
 export const DEFAULT_VISIBILITY: ViewportVisibility = {
@@ -59,10 +44,8 @@ export const DEFAULT_VISIBILITY: ViewportVisibility = {
     centerOfMassConnection: true,
     centerOfMassXcom: true,
     centerOfMassXcomConnection: true,
-    bodyKinematics: true,
-    reactionMassEllipsoid: true,
-    centroidalMomentPivot: true,
     rigidBodyBones: true,
+    segmentAxes: true,
 };
 
 /** Live stats from each renderer. */

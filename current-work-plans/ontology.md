@@ -93,11 +93,15 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 - **Adapters project the one skeleton outward:** VMC / LSL later
   ([03-transport/hub-and-adapters.md](03-transport/hub-and-adapters.md)).
 
-*Status:* layers 1–4 and 7 are implemented and run in the realtime loop —
-`AnatomicalLandmark`, `RigidBodySegment`, `SkeletonDefinition.from_default_yaml()`,
-`RestPose`, `hydrate_skeleton(require_all=False)`, `ContinuousRollResolver`, and the derived
-biomechanics layer behind it. Layers 5–6 are typed placeholders (`SegmentLinkage`,
-`KinematicChain`); until they land, the hierarchy lives in `rest_pose.yaml`'s `parent`/
-`connect_at` fields, and building the linkage layer means reconciling those two representations.
-The shipped model is 61 segments / 124 landmarks / zero chains. Worked example:
+*Status:* layers 1–4, 7 — and now the linkage layer's core (5) — are implemented and run in the
+realtime loop: `AnatomicalLandmark`, `RigidBodySegment`, `SkeletonDefinition.from_default_yaml()`
+(compiling `JointDefinition`s from `human_skeleton.yaml`'s `joints:` section — the authoritative
+topology), `RestPose` (orientation-only; its tree comes from the joints),
+`hydrate_skeleton(require_all=False)`, `ContinuousRollResolver`, and the derived biomechanics layer
+behind it. Linkage hydrated math lives in
+[05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md):
+`relative_orientation`, euler `decompose/compose` under per-joint conventions
+(`core/math/kinematics/euler_sequence.py`), and `JointPose`s carrying input provenance. The chain
+layer (6) remains a placeholder (`KinematicChain`); twist backfill / IK land there next. The shipped
+model is 61 segments / 124 landmarks / 60 joints / zero declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

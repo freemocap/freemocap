@@ -68,6 +68,7 @@ export function ViewportOverlay({
   const toggleConnections = useCallback(() => toggle("connections"), [toggle]);
   const toggleCameras = useCallback(() => toggle("cameras"), [toggle]);
   const toggleRigidBodyBones = useCallback(() => toggle("rigidBodyBones"), [toggle]);
+  const toggleSegmentAxes = useCallback(() => toggle("segmentAxes"), [toggle]);
   const toggleCenterOfMass = useCallback(() => toggle("centerOfMass"), [toggle]);
   const toggleComSphere = useCallback(() => toggle("centerOfMassSphere"), [toggle]);
   const toggleComProjection = useCallback(() => toggle("centerOfMassProjection"), [toggle]);
@@ -140,6 +141,11 @@ export function ViewportOverlay({
               label="Rigid Body Bones"
               checked={visibility.rigidBodyBones}
               onChange={toggleRigidBodyBones}
+            />
+            <VisToggle
+              label="Segment Axes"
+              checked={visibility.segmentAxes}
+              onChange={toggleSegmentAxes}
             />
             <p className="text sm mt-1 mb-0" style={{ color: "#888" }}>
               Hover a point or bone for its name · click to pin its numbers.

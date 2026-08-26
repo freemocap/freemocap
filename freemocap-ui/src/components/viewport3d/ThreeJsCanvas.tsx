@@ -78,16 +78,6 @@ function XcomForwarder() {
   return null;
 }
 
-function BodyKinematicsForwarder() {
-  const server = useServer();
-  useEffect(() => {
-    return server.subscribeToBodyKinematics((bk) => {
-      VIEWPORT_WORKER.postMessage({ type: "bodyKinematics", data: bk });
-    });
-  }, [server]);
-  return null;
-}
-
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
   useEffect(() => {
@@ -406,7 +396,6 @@ export function ThreeJsCanvas() {
       <VisibilityForwarder />
       <CenterOfMassForwarder />
       <XcomForwarder />
-      <BodyKinematicsForwarder />
       <WorkerStatsReceiver />
       <InspectionReceiver />
       <div

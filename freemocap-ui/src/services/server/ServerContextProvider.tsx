@@ -17,7 +17,7 @@ import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
-import {Point3d, BodyKinematics} from "@/components/viewport3d";
+import {Point3d} from "@/components/viewport3d";
 import {
     KeypointsCallback,
     KeypointsFrame,
@@ -77,7 +77,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const skeletonSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
     const centerOfMassSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
     const xcomSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
-    const bodyKinematicsSubscribersRef = useRef<Set<(bk: BodyKinematics | null) => void>>(new Set());
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
     const segmentLengthsRef = useRef<SegmentLengthsFrame | null>(null);
@@ -381,17 +380,17 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return () => { xcomSubscribersRef.current.delete(cb); };
     }, []);
 
-    const subscribeToBodyKinematics = useCallback((cb: (bk: BodyKinematics | null) => void): () => void => {
-        bodyKinematicsSubscribersRef.current.add(cb);
-        return () => { bodyKinematicsSubscribersRef.current.delete(cb); };
-    }, []);
-
     const subscribeToRotations = useCallback((cb: (frame: RotationsFrame) => void): () => void => {
         rotationsSubscribersRef.current.add(cb);
         return () => { rotationsSubscribersRef.current.delete(cb); };
     }, []);
 
     const subscribeToModels = useCallback((cb: (models: ModelDefinition[]) => void): () => void => {
+        // Replay the held model immediately: a subscriber that joins mid-stream
+        // (worker recreation, remount) would otherwise wait for a model_sequence
+        // change that never comes on a stable pipeline.
+        const existing = transportRef.current?.getModels();
+        if (existing) cb(existing);
         return transportRef.current?.subscribeToModels(cb) ?? (() => {});
     }, []);
 
@@ -448,7 +447,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         subscribeToSkeleton,
         subscribeToCenterOfMass,
         subscribeToXcom,
-        subscribeToBodyKinematics,
         getLatestKeypoints,
         getLatestSkeleton,
         setOverlayVisibility,
@@ -457,7 +455,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         getLatestSegmentLengths,
         subscribeToModels,
         getModels,
-    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, subscribeToBodyKinematics, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations,         getLatestRotations,
+    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations,         getLatestRotations,
         getLatestSegmentLengths,
         subscribeToModels,
         getModels]);

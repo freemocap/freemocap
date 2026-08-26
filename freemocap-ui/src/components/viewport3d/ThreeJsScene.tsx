@@ -13,8 +13,8 @@ import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRe
 import {SegmentConnectionRenderer} from "@/components/viewport3d/renderers/SegmentConnectionRenderer";
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
 import {CenterOfMassRenderer} from "@/components/viewport3d/renderers/CenterOfMassRenderer";
-import {BodyKinematicsRenderer} from "@/components/viewport3d/renderers/BodyKinematicsRenderer";
 import {RigidBodyBoneRenderer} from "@/components/viewport3d/renderers/RigidBodyBoneRenderer";
+import {SegmentAxesRenderer} from "@/components/viewport3d/renderers/SegmentAxesRenderer";
 import {ViewportPicker} from "@/components/viewport3d/renderers/ViewportPicker";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
@@ -116,12 +116,12 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneEnvironment />
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
-            {visibility.bodyKinematics && <BodyKinematicsRenderer />}
             {visibility.connections && <ConnectionRenderer />}
             {visibility.connections && <SegmentConnectionRenderer />}
             {visibility.face && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
             {visibility.rigidBodyBones && <RigidBodyBoneRenderer />}
+            {visibility.segmentAxes && <SegmentAxesRenderer />}
             <ViewportPicker />
             <BloomLayer />
         </>

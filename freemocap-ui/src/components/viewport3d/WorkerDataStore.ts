@@ -12,7 +12,7 @@ import type { TrackedObjectDefinition } from "@/services/server/server-helpers/t
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
 import type { RotationsFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
-import { DEFAULT_VISIBILITY, type Point3d, type BodyKinematics, type ViewportVisibility } from "./helpers/viewport3d-types";
+import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
@@ -21,7 +21,8 @@ import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
 
 type Listener<T> = (data: T) => void;
 
-function makeChannel<T>(initial: T) {
+function makeChannel<T>(initial: T, options?: { replayOnSubscribe?: boolean }) {
+    const replayOnSubscribe = options?.replayOnSubscribe ?? false;
     const subscribers = new Set<Listener<T>>();
     let latest = initial;
     return {
@@ -30,6 +31,11 @@ function makeChannel<T>(initial: T) {
             subscribers.forEach((cb) => cb(data));
         },
         subscribe(cb: Listener<T>): () => void {
+            // Static channels replay their current value so a subscriber that
+            // joins after a worker/provider recreation (HMR swap) receives the
+            // held state immediately instead of waiting for a change that may
+            // never come on a stable stream. Frame channels stay change-only.
+            if (replayOnSubscribe) cb(latest);
             subscribers.add(cb);
             return () => subscribers.delete(cb);
         },
@@ -57,14 +63,13 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
 const keypointsChan = makeChannel<KeypointsFrame | null>(null);
 const skeletonChan = makeChannel<KeypointsFrame | null>(null);
 const rotationsChan = makeChannel<RotationsFrame | null>(null);
-const modelsChan = makeChannel<ModelDefinition[] | null>(null);
-const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} });
-const calibChan = makeChannel<LoadedCalibration | null>(null);
-const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG);
+const modelsChan = makeChannel<ModelDefinition[] | null>(null, {replayOnSubscribe: true});
+const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} }, {replayOnSubscribe: true});
+const calibChan = makeChannel<LoadedCalibration | null>(null, {replayOnSubscribe: true});
+const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG, {replayOnSubscribe: true});
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
 const comChan = makeChannel<Point3d | null>(null);
 const xcomChan = makeChannel<Point3d | null>(null);
-const bodyKinematicsChan = makeChannel<BodyKinematics | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -87,8 +92,6 @@ export const workerDataStore: KeypointsSource & {
     getLatestCenterOfMass: () => Point3d | null;
     subscribeToXcom: (cb: Listener<Point3d | null>) => () => void;
     getLatestXcom: () => Point3d | null;
-    subscribeToBodyKinematics: (cb: Listener<BodyKinematics | null>) => () => void;
-    getLatestBodyKinematics: () => BodyKinematics | null;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
@@ -151,10 +154,6 @@ export const workerDataStore: KeypointsSource & {
     subscribeToXcom: xcomChan.subscribe,
     getLatestXcom: xcomChan.getLatest,
 
-    // Centroidal kinematics bundle (reaction-mass ellipsoid + ground references)
-    subscribeToBodyKinematics: bodyKinematicsChan.subscribe,
-    getLatestBodyKinematics: bodyKinematicsChan.getLatest,
-
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
@@ -190,9 +189,6 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "xcom":
                 xcomChan.dispatch(data as Point3d | null);
-                break;
-            case "bodyKinematics":
-                bodyKinematicsChan.dispatch(data as BodyKinematics | null);
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);

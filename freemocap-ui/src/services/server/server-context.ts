@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
-import type { Point3d, BodyKinematics } from '@/components/viewport3d';
+import type { Point3d } from '@/components/viewport3d';
 import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
 import type { RotationsFrame, SegmentLengthsFrame } from './transport/frame-types';
 import type { ModelDefinition } from './transport/message-contract';
@@ -26,7 +26,6 @@ export interface ServerContextValue {
     subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
     subscribeToCenterOfMass: (cb: CoMCallback) => () => void;
     subscribeToXcom: (cb: CoMCallback) => () => void;
-    subscribeToBodyKinematics: (cb: (bk: BodyKinematics | null) => void) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
     getLatestSkeleton: () => KeypointsFrame | null;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;

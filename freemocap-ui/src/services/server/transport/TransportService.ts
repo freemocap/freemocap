@@ -194,13 +194,20 @@ export class TransportService {
         }
 
         if (frame.image) {
-            // The codec hands back an owned, exact-size buffer (see
-            // cbor-codec.normalizeValue), so the bytes go straight through —
-            // paired with the frame's own frame number so consumers pair it
+            // Consumers transfer the buffer into workers via postMessage, which
+            // only accepts plain ArrayBuffers - so hand them one. The codec
+            // hands back owned byteOffset-0 views, so this is zero-copy except
+            // in the (unexpected) sliced-view case.
+            const bytes = frame.image;
+            const buffer =
+                bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+                    ? (bytes.buffer as ArrayBuffer)
+                    : (bytes.slice().buffer as ArrayBuffer);
+            // Paired with the frame's own frame number so consumers pair it
             // with its overlays atomically.
             for (const cb of this.imageSubscribers) {
                 try {
-                    cb(frame.image as unknown as ArrayBuffer, frame.frame_number);
+                    cb(buffer, frame.frame_number);
                 } catch (error) {
                     console.error("[TransportService] subscriber threw:", error);
                 }

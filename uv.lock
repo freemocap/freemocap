@@ -1244,27 +1244,27 @@ wheels = [
 
 [[package]]
 name = "polars"
-version = "1.44.0"
+version = "1.44.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "polars-runtime-32", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7c/ff/94fd6c318da5ad55effff289cf232b6378fd7689ae8ce779c1a61ef27b49/polars-1.44.0.tar.gz", hash = "sha256:6cab3691eac679956aa833e7d015e582d6590fd39f3ad707f6c5d4ca89fa0488", size = 765633, upload-time = "2026-08-24T09:38:12.621Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/26/73/258a1fe17bb2744a507199566ed712663144fdd0811b615b59a47dfa38d2/polars-1.44.1.tar.gz", hash = "sha256:ef3c89e9ebbbe8eb343c06873f1945683f8b6f97a1bdf001c60551c6c5e3cda1", size = 765660, upload-time = "2026-08-26T07:09:12.704Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/38/41/b347e6a1d8740d2911b97e927c2d5791d69beed977b5a6e827e455631465/polars-1.44.0-py3-none-any.whl", hash = "sha256:37facc6cca424040f336def717f25124aea6f68545a6ca1fefa5f049ce053ec9", size = 865200, upload-time = "2026-08-24T09:36:22.606Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/f1/59154659081930fbde291ea6225607956b500a71b0ce45d88217b7d32da2/polars-1.44.1-py3-none-any.whl", hash = "sha256:1fa62fc1c88fba77a68b28291b5aabdd69e5f38b34e59721a064ae3169b59bb5", size = 865208, upload-time = "2026-08-26T07:07:44.646Z" },
 ]
 
 [[package]]
 name = "polars-runtime-32"
-version = "1.44.0"
+version = "1.44.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/77/6c/7bd2f5538649aa8c9265d3154e644494ac356e89d4071f2a386e474750ae/polars_runtime_32-1.44.0.tar.gz", hash = "sha256:4b39023054a33e52a759cf0d040db81b5f4194d6021458a14d2d830284ea65f7", size = 3169025, upload-time = "2026-08-24T09:38:14.369Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/b2/2a76415d047a45df05489f2334c91ff120a274cf655d4ca030c7f54a8743/polars_runtime_32-1.44.1.tar.gz", hash = "sha256:abd10a54ed1caff42228610fcba0f93251f9870bd7cffb0c78bc26f5e0718ce4", size = 3171156, upload-time = "2026-08-26T07:09:14.243Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/6b/024abbc09eeedac2ac2a3002c0dfceefc2af8bb23ed3b92f0b0f57f0f682/polars_runtime_32-1.44.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:d5513c1f9d9981c5d73efd9de8cad9aff7fc86e4af156068d190dc0f6a99bc4d", size = 53955921, upload-time = "2026-08-24T09:36:26.408Z" },
-    { url = "https://files.pythonhosted.org/packages/34/49/d3db94bb33174b0f260ed63cc29cacd164686dbf1f09588926b7e9eb75e9/polars_runtime_32-1.44.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:096b3937cb3a6efc35f80e2b34e2a21bc87c5a52f05f8b96dd75569302203617", size = 48613230, upload-time = "2026-08-24T09:36:30.579Z" },
-    { url = "https://files.pythonhosted.org/packages/9b/37/c0fbf9bebfbc0cbce7c8756ca74dfdf111ba919e57c7f8b16b318cfbac7b/polars_runtime_32-1.44.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:975da593d19db0b800bf2c2ac88d087f2e55b1ebee9d72e3a5789941c5cce85f", size = 58553834, upload-time = "2026-08-24T09:36:38.129Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/f1/054bf03c1561c1dfb278159c372d500e542c59ee2c39d41a1c99d33edbbd/polars_runtime_32-1.44.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:09a20c154d8f85156a6fbb4e8fdd33acbf883627d8b5758706a43ac760a66a13", size = 56444743, upload-time = "2026-08-24T09:36:45.835Z" },
-    { url = "https://files.pythonhosted.org/packages/a4/03/9b787bc06729cf19d78d0b873e3168e1a4ba497a49180cb05fea63b881b5/polars_runtime_32-1.44.0-cp310-abi3-win_amd64.whl", hash = "sha256:64228c43a24f5cca1ab29ce47187d02d3c41466a1c07ed75d8f7899ba83bc105", size = 53697682, upload-time = "2026-08-24T09:36:50.265Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/93/ef9344dcec16757cf21027dc907ef989197e50742cfe4407f2e87edb0a7f/polars_runtime_32-1.44.1-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:1dfccb2b52aa50468a7d28e3e61c8338a13fb5bffc8646e388a649f5bdc6b463", size = 53962370, upload-time = "2026-08-26T07:07:47.21Z" },
+    { url = "https://files.pythonhosted.org/packages/10/da/38b32b7901af33f1fee2172ceaa39e9159825657920064298917392d78fa/polars_runtime_32-1.44.1-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:0580807dc3eed258f0db70bb65d905dd43f0135392119ec25308033ae24258fb", size = 48620468, upload-time = "2026-08-26T07:07:50.436Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/0a/0858f60cb5a6f8f73ec4cdd73eccd9f748d66bfc23304c5c23fa3468094a/polars_runtime_32-1.44.1-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eea4283be8e60822d890dbda20588fe59b4172b508bd5ebf3471e531ca9f50d7", size = 58561262, upload-time = "2026-08-26T07:07:57.508Z" },
+    { url = "https://files.pythonhosted.org/packages/98/ac/769c598dd106e2a6647798da3ed25ddeee67f2d12c04f5da316cb3da6360/polars_runtime_32-1.44.1-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:0956f0cae632d8fad3a04b4315bf2bb69b56d10c83c79a75c2c4c5a13b9ce5cc", size = 56447612, upload-time = "2026-08-26T07:08:12.36Z" },
+    { url = "https://files.pythonhosted.org/packages/b2/ee/98408296e15388020b6183323fdbe78ccab4f72c20d8e0d7092c062d3ad2/polars_runtime_32-1.44.1-cp310-abi3-win_amd64.whl", hash = "sha256:159334184e6fbb074c9f4692221ea19970a5e2bed2a479f9d7bdb00b7f3eedb9", size = 53702970, upload-time = "2026-08-26T07:08:15.398Z" },
 ]
 
 [[package]]
@@ -1936,7 +1936,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#8f0bca397fee85ea2fb1d806dab68ed6ed2247a1" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#47be4bf9fe9792785026dc8956a2c38ed54a5617" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -1961,7 +1961,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#2669be02590b7eb898bbf289aa9e084816ab630c" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#394bb8b6f298ab3fdca0f10f11806a50f204b74c" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

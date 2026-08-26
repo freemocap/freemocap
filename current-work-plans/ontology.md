@@ -101,8 +101,10 @@ the realtime loop's stack: `AnatomicalLandmark`, `RigidBodySegment`,
 `ContinuousRollResolver`, and the derived biomechanics layer behind it. Linkage hydrated math:
 `relative_orientation`, euler `decompose/compose` under per-joint conventions, `JointPose`s with
 input provenance ([05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md)).
-Chain layer: `KinematicChain` declarations compiled at load, and forward synthesis
+Chain layer: `KinematicChain` declarations compiled at load, forward synthesis
 (`core/skeleton/chain/synthesis.py`) — joint angles → whole-body poses, gated by the FK-closure
-tests. Still pending in the chain layer: inverse kinematics and twist backfill. The shipped model
+tests — and inverse kinematics (`core/skeleton/chain/two_bone_ik.py`, `fabrik_ik.py`): closed-form
+limb solving and iterative chain reaching, both fail-loud on unreachable targets. Still pending:
+twist backfill (L6.4). The shipped model
 is 61 segments / 124 landmarks / 60 joints / 6 declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

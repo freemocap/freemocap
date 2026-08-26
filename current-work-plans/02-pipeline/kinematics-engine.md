@@ -33,10 +33,11 @@ loop that drives it in [realtime-loop.md](realtime-loop.md).
 2. **Skip what cannot be solved:** `hydrate_skeleton(..., require_all=False)` returns a
    `SkeletonPose` holding only the segments that hydrated (occlusion is data). Callers tolerate
    missing segments; there is no hardcoded fallback direction.
-3. **Resolve roll** (`ContinuousRollResolver.resolve_pose`): parallel-transport each
-   direction-only segment's basis from the previous frame within the take (stateful per take;
-   `reset()` for a new take; seeded from the rest pose at start). Output poses are tagged
-   `PoseSolution.TRANSPORTED_ROLL`.
+3. **Resolve roll** (`ContinuousRollResolver.resolve_pose`): underspecified segments get roll by
+   convention — anchored secondary axes (projected from the parent's origin direction, deterministic
+   per frame), parallel transport where no anchor exists (stateful per take; `reset()` for a new take;
+   seeded from the rest pose at start), and twist backfill along declared chains from measured
+   rigid-fit terminals. Output poses are tagged `PoseSolution.TRANSPORTED_ROLL`.
 4. **Read the result:** `SegmentPose(origin, orientation, solved_by, has_resolved_roll)` inside a
    frozen `SkeletonPose` (`PoseSolution = {RIGID_FIT | DIRECTION | TRANSPORTED_ROLL}`). Local
    rotations compose as `q_local = conj(q_parent) · q_world`; freemocap falls back to world when

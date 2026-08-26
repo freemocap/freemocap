@@ -9,10 +9,11 @@
 ## The counts (canonical — link, don't restate)
 
 The shipped standard human (`SkeletonDefinition.from_default_yaml()`) loads **61 segments /
-124 landmarks**, declared across seven components, with **zero chains** (the linkage/chain layers
-are code placeholders; see below). 52 ARKit face blendshapes exist as a separate
-`FaceBlendShapes` object — not a skeleton component — and the face component is commented out of
-the composition pending implementation.
+124 landmarks / 60 joints / 5 chains**, declared across seven components. The linkage and chain
+layers are built — `joints:` is the authoritative topology, `chains:` declares the spine + both
+arms + both legs (see [linkage-chain.md](../05-linkage-chain/linkage-chain-design.md)). 52 ARKit
+face blendshapes exist as a separate `FaceBlendShapes` object — not a skeleton component — and the
+face component is commented out of the composition pending implementation.
 
 ## Composition
 
@@ -23,7 +24,7 @@ name: human
 coordinate_system: blender          # the canonical convention - see ../00-foundation/conventions.md
 components:
   pelvis: { $include: components/pelvis.yaml }
-  spine:  { $include: components/spine.yaml }   # clavicle + chest + cervical_spine + lumbar_spine
+  spine:  { $include: components/spine.yaml }   # sacrolumbar + thoracic + cervical_spine + clavicle
   skull:  { $include: components/skull.yaml }
   arm:    { $include: components/arm.yaml }
   hand:   { $include: components/hand.yaml }
@@ -33,8 +34,8 @@ components:
 ```
 
 A `$include` resolves relative to the including file; duplicate names across components fail the
-load. There is no `axial` part and no `head` segment — the spine owns `clavicle`/`chest`, the skull
-is its own component.
+load. There is no `axial` part and no `head` segment — the spine owns `clavicle`/`thoracic`, the
+skull is its own component.
 
 ## Component authoring format (real example — `components/leg.yaml`)
 
@@ -55,7 +56,7 @@ landmarks:
     aliases: [tibiofemoral_joint]
     definition: "Geometric center of the knee joint, between the femoral condyles and the tibial plateau"
     reference_frame: upper_leg      # explicit ownership - never "whoever declares it first"
-    local_position: [0, 0, 440]     # millimetres, in the OWNING segment's local frame
+    local_position: [0, 0, 0.267]   # body-height proportions, in the OWNING segment's local frame
 ```
 
 Rules the loader enforces while building objects:
@@ -75,9 +76,9 @@ Rules the loader enforces while building objects:
 | Component | Segments (per side where sided) |
 |---|---|
 | pelvis | pelvis (fully specified) |
-| spine | lumbar_spine, chest (fully specified), cervical_spine + entry-level-sided clavicle/sternoclavicular/acromion landmarks |
+| spine | sacrolumbar, thoracic (fully specified), cervical_spine + clavicle/sternoclavicular/acromion landmarks |
 | skull | skull (fully specified) |
-| arm | clavicle, upper_arm, lower_arm ×2 |
+| arm | upper_arm, lower_arm ×2 |
 | hand | carpals + thumb/index/middle/ring/pinky metacarpals + proximal/middle/distal phalanges ×2 (20/side) |
 | leg | upper_leg, lower_leg ×2 |
 | foot | foot, toes, heel ×2 (heel hangs off lower_leg at the ankle) |
@@ -86,12 +87,13 @@ Hand and finger chains are fully modeled (metacarpals included). Tracker *mappin
 cover only detector-emittable points — unmapped distal segments ride partial hydration / transport,
 which is the articulated-model contract, not a modeling gap.
 
-## The placeholders (layers 5–6)
+## Joints & chains (layers 5–6)
 
-`SegmentLinkage` and `KinematicChain` exist as typed placeholder classes nothing constructs yet.
-The parent hierarchy currently lives in `rest_pose.yaml`'s `parent`/`connect_at` fields;
-building the linkage layer means reconciling those two representations — tracked in
-[../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
+The linkage and chain layers are built: `joints:` in `human_skeleton.yaml` is the authoritative
+topology (bilateral joints authored once via `sided: true`), and `chains:` declares the spine,
+both arms, and both legs. `rest_pose.yaml` keeps only per-segment rest orientations; the parent
+tree and `connect_at` live with the joints. See
+[../05-linkage-chain/linkage-chain-design.md](../05-linkage-chain/linkage-chain-design.md).
 
 ## Loading in code
 

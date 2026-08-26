@@ -32,8 +32,9 @@ Detector changes reload the mapping; calibration hot-reloads reset the roll reso
 5. **Hydrate:** each mapped position wrapped as a `Point`;
    `hydrate_skeleton(skeleton=..., observed=..., require_all=False)` → partial `SkeletonPose`
    (unhydratable segments are absent this frame).
-6. **Resolve roll:** `roll_resolver.resolve_pose(pose=...)` — direction-only segments get
-   parallel-transported roll; rigid-fit poses pass through.
+6. **Resolve roll:** `roll_resolver.resolve_pose(pose=...)` — underspecified segments get roll by
+   convention (anchored secondary axes, parallel transport fallback, twist backfill); rigid-fit poses
+   pass through.
 7. **Extract rotations:** world quats straight from segment poses; local = `conj(parent) · child`,
    falling back to world for the root or when the parent did not hydrate this frame.
 8. **Reproject** segment origins into each camera via `origin_landmark_names(skeleton)` +

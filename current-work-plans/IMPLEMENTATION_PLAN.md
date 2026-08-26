@@ -1,20 +1,21 @@
 # Implementation Plan & Progress
 
-> **Live (2026-08-24).** Re-created slim after the Aug 20–24 skellyforge rebuild made the previous
-> tracker obsolete; that generation's records live in [`archive/`](archive/). The scope table below
-> is the live queue — the progress log is history, newest first.
+> **Live.** The scope table below is the live queue — the progress log is history, newest first.
 
 ## Scope table
 
 ### `[IN]`
 
-- **Linkage/chain layer** — reconcile the hierarchy currently living in `rest_pose.yaml`'s
-  `parent`/`connect_at` fields with the placeholder `SegmentLinkage`/`KinematicChain` classes;
-  joint angles come with it; IK seams stay future.
-- **Length-estimation cleanup** — live rolling-median lengths are wired in the aggregator (landed
-  2026-08-24); owed: delete-or-drive the dead `segment_length_window_s` config field and decide
-  inline-mirror vs. calling skellyforge's `estimate_segment_lengths` directly
+- **Body fitting** — the proportional template (`H = 1.0`) needs a fitting step that solves the
+  subject's `H` and per-segment proportions from measured distances (hip-to-shoulder as the anchor),
+  then scales the template to mm. Formalizes `estimate_segment_lengths` into an explicit H-scaled fit.
+- **Tracker mapping proportional conversion** — mapping `reference_length`s are still mm-anchored;
+  convert to `H`-proportions alongside the template.
+- **Length-estimation cleanup** — delete-or-drive the dead `segment_length_window_s` config field and
+  decide inline-mirror vs. calling skellyforge's `estimate_segment_lengths` directly
   ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
+- **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
+  `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 - **Face component implementation** — currently commented out of the composition (`#TODO`);
   `FaceBlendShapes` plumbing exists, the component does not load.
 - **Posthoc rebuild** — **deferred by decision**; the offline mocap/calibration paths are
@@ -26,21 +27,29 @@
 
 VMC adapter · frontend test suite · HTTP control plane ([03-transport/http-control-plane.md](03-transport/http-control-plane.md)) ·
 on-disk tidy serialization ([03-transport/serialization-tidy.md](03-transport/serialization-tidy.md)) ·
-LSL / URDF / OpenSim exports.
+LSL / URDF / OpenSim exports · charuco-board tracking to force a non-human generic case.
 
 ### `[FUTURE]`
 
-The constraint/solve layer — typed joints, chains/IK, twist-backfill — seams only.
+Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enforced in synthesis/IK/backfill.
 
 ## Dependencies & blockers
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Linkage layer | IK / constraint work | hierarchy reconciled out of `rest_pose.yaml` |
+| Body fitting | tracker mapping proportional conversion | solve `H` + per-segment proportions from measured distances |
 | Posthoc rebuild | tidy serialization | both offline paths run on the new core |
 
 ## Progress log
 
+- **(spine/thorax redesign + proportional authoring)** — Trunk re-partitioned at tracker-solid lines:
+  `sacrolumbar` (hip center) → `thoracic` (chest_center → neck_center = shoulder midpoint) →
+  `cervical_spine` (neck_center → head center) → `skull`; `neck_center`/`chest_center` replaced the
+  old junction landmarks; sternoclavicular joints anteriorly offset; xiphoid kept as thoracic volume
+  reference. Tracker mapping ratios regenerated. Landmark coordinates converted from mm to
+  **body-height proportions** (`H = 1.0` = floor-to-skull-top); `anatomical_segment` moved from a
+  hardcoded Python dict onto each segment's component YAML; bilateral joints authored once via
+  `sided: true`. The body-fitting step that scales the template to mm is the open `[IN]`.
 - **2026-08-24 (spine audit + mapping/model fixes)** — Root-caused the fluffy-spine viewer
   artifact: SkellyTracker's `anatomical_offset` ratios were stale against the shipped rest pose
   (junction errors 16–46mm growing up the chain), two definitions of each junction reached

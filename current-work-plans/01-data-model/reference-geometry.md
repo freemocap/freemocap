@@ -6,12 +6,13 @@ against. Model/authoring format lives in [segment-model.md](segment-model.md); v
 
 ## What it is
 
-`RestPose` (`core/skeleton/pose/rest_pose.py`) is the standard human's reference pose: per segment
-a **parent**, an optional **`connect_at`** (a parent-owned landmark the child's origin sits on,
-defaulting to the segment's own origin landmark), and an optional **parent-relative `[w, x, y, z]`
-quaternion** (defaulting to identity). `build_rest_pose` walks the tree (cycle-detecting) and
-composes world orientations, world origins, and landmark positions. Every segment's local `+z`
-runs proximal → distal, so identity orientation means "continues straight on from its parent".
+`RestPose` (`core/skeleton/pose/rest_pose.py`) is the standard human's reference pose:
+`rest_pose.yaml` carries **only per-segment rest geometry** — each entry's optional
+`orientation` is a parent-relative `[w, x, y, z]` quaternion (defaulting to identity). The
+parent/child topology lives in `human_skeleton.yaml`'s `joints:` section (the linkage layer); walking
+joints × orientations composes the world transforms. `RestPose.from_yaml` requires an entry for every
+segment. Every segment's local `+z` runs proximal → distal, so identity orientation means "continues
+straight on from its parent".
 
 ## Provenance
 
@@ -31,7 +32,7 @@ orientations are derived from real anatomy positions, not dialled in by eye:
 ## Invariants (`RestPose.from_yaml` enforces all of these)
 
 - An entry exists for **every** segment of the skeleton, and there is exactly **one root** (`pelvis`).
-- A `connect_at` must be owned by the named parent.
+- The parent tree and `connect_at` are validated against the `joints:` topology, not declared here.
 - Unknown keys are rejected; nothing is inferred silently.
 - The composed geometry satisfies the ground-plane test:
   `test_both_feet_stand_on_one_flat_ground_plane` ties heel orientation, heel length, and foot
@@ -47,7 +48,7 @@ only 3 of 61 segments are fully specified (roll measured). The invariant that re
 > Gram-Schmidt reference geometry and the Kabsch/FK local positions one answer to "which way does
 > this segment face", not two.
 
-Direction-only segments get their roll from `ContinuousRollResolver`
+Underspecified segments get their roll from `ContinuousRollResolver`
 ([../02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md)), not from measurement —
 their live orientation at T-pose equals their transported reference only after roll resolution has
 seeded from the rest pose.

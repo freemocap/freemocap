@@ -11,10 +11,10 @@ The ontology is **seven layers**, and each layer is an object with two faces and
 | 1 | keypoint | *(skellytracker)* | name | tracked position | — (measurement) |
 | 2 | mapping | *(skellytracker)* | rule (keypoints → weights/offset) | the computation | weighted sum / offset |
 | 3 | landmark | `AnatomicalLandmark` | name + anatomical definition + `local_position` + `reference_frame` | world position | trajectory |
-| 4 | segment | `RigidBodySegment` | name + aliases + landmarks + reference geometry | pose (origin + orientation + `PoseSolution`) | rigid-body math (Kabsch, shortest-arc) |
-| 5 | linkage | `SegmentLinkage` *(placeholder)* | parent + child segments + shared landmark | joint angle | relative orientation `conj(q_parent)·q_child` |
-| 6 | chain | `KinematicChain` *(placeholder)* | `start` → `end` segment path | chain pose | IK / FABRIK / twist-backfill |
-| 7 | skeleton | `SkeletonDefinition` | its landmarks + segments (+ rest pose) | whole pose | the composition |
+| 4 | segment | `RigidBodySegment` | name + aliases + landmarks + reference geometry + `anatomical_segment` | pose (origin + orientation + `PoseSolution`) | rigid-body math (Kabsch, shortest-arc) |
+| 5 | linkage | `JointDefinition` | parent + child segments + shared landmark + euler convention | joint angle | relative orientation `conj(q_parent)·q_child` + decomposition |
+| 6 | chain | `KinematicChain` | `start` → `end` segment path | chain pose | FK synthesis / IK / FABRIK / twist-backfill |
+| 7 | skeleton | `SkeletonDefinition` | its landmarks + segments + joints (+ rest pose) | whole pose | the composition |
 
 ## The layers
 
@@ -31,18 +31,23 @@ explicit ownership, never "whoever declares it first"). Its hydrated face is a p
 *(skellyforge)*
 
 **segment** — a **rigid body**: origin + orientation + length, solved from its landmarks. **Fully
-specified** when its reference geometry pins three non-collinear points (roll measured via Kabsch);
-otherwise **direction-only** — origin + primary direction are measured, and roll is supplied by
-per-take parallel transport (`ContinuousRollResolver`). Its `length` derives from its rest-pose
-local positions. *(skellyforge)*
+specified** when its reference geometry names a secondary axis (roll measured via Gram-Schmidt);
+otherwise **underspecified** — origin + primary direction are measured, and roll is supplied by
+convention: anchored to the parent's origin direction where available, parallel transport otherwise,
+and twist-backfill where a measured rigid-fit terminal pins it (`ContinuousRollResolver`). Its `length`
+derives from its rest-pose local positions, authored as body-height proportions. Each segment also
+declares its `anatomical_segment` (the de Leva mass chunk it contributes to) in its component YAML.
+*(skellyforge)*
 
-**linkage** — **two segments that share a point** (e.g. upper arm + lower arm at the elbow). Derived
-from the rest-pose parent tree — the child's `connect_at` *is* the shared point. *(skellyforge —
-placeholder; nothing constructs it yet)*
+**linkage** — **two segments that share a point** (e.g. upper arm + lower arm at the elbow). Authored
+in the skeleton's `joints:` section as a `JointDefinition` — parent + child segments, the shared
+`connect_at` landmark, and a per-joint euler convention that decomposes the relative orientation into
+named angles. Its hydrated face is a `JointPose` carrying input provenance (which `PoseSolution`s fed
+it). *(skellyforge)*
 
 **chain** — **three or more linked segments**: a **path** from a `start` segment to an `end` segment
-in the tree. Straight (a limb) or branching (the wrist fan). This is the unit FABRIK/IK solves.
-*(skellyforge — placeholder; no chains declared yet)*
+in the tree. Straight (a limb) or branching (the wrist fan). Authored in `chains:` and compiled into
+`KinematicChain`; owns multi-segment math — FK synthesis, IK/FABRIK, twist-backfill. *(skellyforge)*
 
 **skeleton** — **the composition**: every landmark + segment of one model, loaded and validated as a
 unit, plus its authored rest pose. *(skellyforge)*
@@ -64,8 +69,11 @@ silently.
   is a plain value (a bare string is always a string, never a path). A model can be one file or many
   nested files.
 - **Ownership** — a landmark declares its segment explicitly. No ordering convention.
-- **Length** — derived from rest-pose geometry, not authored as a ratio. Live-subject adaptation is
-  per-segment: a rolling median of observed lengths replaces each authored seed
+- **Sidedness** — bilateral segments, landmarks, and joints are authored once with `sided: true` and
+  compiled into `left_*` / `right_*` pairs; the right side mirrors x. No hand-duplicated left/right.
+- **Scale** — coordinates are body-height proportions (`H = 1.0`), so the template is body-agnostic.
+  The **body-fitting step** (next work) solves the subject's `H` + per-segment proportions from measured
+  distances and scales the template to mm
   ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
 
 ## The constitution — invariants at every layer
@@ -93,20 +101,16 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 - **Adapters project the one skeleton outward:** VMC / LSL later
   ([03-transport/hub-and-adapters.md](03-transport/hub-and-adapters.md)).
 
-*Status:* layers 1–5 and the chain layer's declarations + forward synthesis are implemented in
-the realtime loop's stack: `AnatomicalLandmark`, `RigidBodySegment`,
-`SkeletonDefinition.from_default_yaml()` (compiling `JointDefinition`s from `human_skeleton.yaml`'s
-`joints:` section — the authoritative topology — plus declared `chains:`), `RestPose`
+*Status:* layers 1–7 are implemented and run in the realtime loop's stack: `AnatomicalLandmark`,
+`RigidBodySegment` (with `anatomical_segment` declared per component), `SkeletonDefinition.from_default_yaml()`
+(compiling `JointDefinition`s from `human_skeleton.yaml`'s `joints:` section — the authoritative
+topology, bilateral joints authored once via `sided: true` — plus declared `chains:`), `RestPose`
 (orientation-only; its tree comes from the joints), `hydrate_skeleton(require_all=False)`,
-`ContinuousRollResolver`, and the derived biomechanics layer behind it. Linkage hydrated math:
-`relative_orientation`, euler `decompose/compose` under per-joint conventions, `JointPose`s with
-input provenance ([05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md)).
-Chain layer: `KinematicChain` declarations compiled at load, forward synthesis
-(`core/skeleton/chain/synthesis.py`) — joint angles → whole-body poses, gated by the FK-closure
-tests — inverse kinematics (`core/skeleton/chain/two_bone_ik.py`, `fabrik_ik.py`): closed-form
-limb solving and iterative chain reaching, both fail-loud on unreachable targets — and twist
-backfill (`core/skeleton/chain/twist_backfill.py`): forearm roll recovered from the measured
-carpals orientation against a baseline pose, closing the pronation gap the two-landmark forearm
-cannot see. The shipped model
-is 61 segments / 124 landmarks / 60 joints / 6 declared chains. Worked example:
+`ContinuousRollResolver` (anchored secondary axes + transport fallback + twist backfill from measured
+rigid-fit terminals), and the derived biomechanics layer. Linkage hydrated math: `relative_orientation`,
+euler `decompose/compose` under per-joint conventions, `JointPose`s with input provenance. Chain layer:
+`KinematicChain` declarations, forward synthesis, two-bone IK + FABRIK (both fail-loud), twist backfill.
+Coordinates are authored as **body-height proportions** (`H = 1.0`); the body-fitting step that scales
+the template to measured millimetres is next work. The shipped model is 61 segments / 124 landmarks /
+60 joints / 5 declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

@@ -1,15 +1,15 @@
 # Current Work Plans
 
 > **STATUS — the realtime pipeline runs the rebuilt core end to end.** The standard human is the
-> VRM-aligned re-authoring: **61 segments / 124 landmarks / 52 face blendshapes**, loaded by
-> `SkeletonDefinition.from_default_yaml()` + `RestPose.from_default_yaml(skeleton=...)`, solved
-> closed-form by `hydrate_skeleton(require_all=False)` + `ContinuousRollResolver`, in the Blender
-> convention (+X right, +Y forward, +Z up) with one conversion at skellycam ingest. The wire is a
-> self-describing CBOR stream and the frontend consumes it data-driven; Center of Mass / XCoM ride
-> every frame. The old `skellymodels`/`post_processing`/`data_models` system is **deleted from
-> skellyforge**; freemocap's posthoc paths still import it behind lazy imports and are therefore
-> broken-if-invoked — deferred by decision (see
-> [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+> VRM-aligned re-authoring: **61 segments / 124 landmarks / 52 face blendshapes / 60 joints /
+> 5 chains**, authored as **body-height proportions** (`H = 1.0`) in the Blender convention
+> (+X right, +Y forward, +Z up), loaded by `SkeletonDefinition.from_default_yaml()` +
+> `RestPose.from_default_yaml(skeleton=...)`, solved closed-form by `hydrate_skeleton(require_all=False)`
+> + `ContinuousRollResolver` (anchored roll + twist backfill). The wire is a self-describing CBOR stream
+> (including named joint angles) and the frontend consumes it data-driven; CoM / XCoM ride every frame.
+> The old `skellymodels`/`post_processing`/`data_models` system is **deleted from skellyforge**;
+> freemocap's posthoc paths still import it behind lazy imports and are therefore broken-if-invoked —
+> deferred by decision (see [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
 
 Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
 message stream** — the two intertwined efforts that turn synchronized camera frames into a
@@ -37,51 +37,61 @@ and the VMC Definition of Done. Then:
 ## Status (what has landed)
 
 1. **Core classes** — `AnatomicalLandmark` / `RigidBodySegment` / `SkeletonDefinition` / `RestPose`
-   / `SegmentPose`–`SkeletonPose`–`PoseSolution` / `FaceBlendShapes`. `SegmentLinkage` +
-   `KinematicChain` exist as typed placeholders; nothing constructs them yet.
+   / `SegmentPose`–`SkeletonPose`–`PoseSolution` / `JointDefinition` / `KinematicChain` /
+   `FaceBlendShapes`. All seven ontology layers are constructed, none are placeholders.
 2. **YAML definitions** — seven `$include` components (pelvis, spine, skull, arm, hand, leg, foot)
-   with sidedness + x-mirroring; `rest_pose.yaml` (parent tree + relative quats) derived against a
-   real VRM humanoid (`default-vrm.gltf.json5`). Loads green: 61 segments / 124 landmarks /
-   zero chains declared.
-3. **Closed-form solve** — Kabsch rigid fit for fully-specified segments (≥3 observed landmarks),
-   shortest-arc direction fit otherwise; `ContinuousRollResolver` supplies direction-only roll by
-   per-take parallel transport. No damping anywhere; partial hydration skips unobservable segments.
-4. **Realtime loop** — ingest-time frame conversion → One Euro filter → velocity gate →
-   mapping-before-hydration → hydrate → resolve → local/world rotations → reprojection overlay →
-   CoM/XCoM → self-describing frame (producers emit `ModelDefinition` including `connections`).
-   Verified by `test_full_loop.py` + pipeline e2e tests.
-5. **Biomechanics layer** — de Leva anthropometry, partial-CoM-aware segment CoMs, whole-body
-   inertia, XCoM/CoP/CMP, derived kinematics; wired into the aggregator
-   ([02-pipeline/biomechanics-layer.md](02-pipeline/biomechanics-layer.md)).
-6. **Old system excised upstream** — `skellymodels`/`post_processing`/`data_models`/
-   `tracker_info/*.yaml` no longer exist in skellyforge; tracker mapping YAMLs moved into
-   skellytracker and are consumed read-only by freemocap.
+   with sidedness + x-mirroring; bilateral **segments, landmarks, and joints** authored once via
+   `sided: true`; `rest_pose.yaml` (relative quats) derived against `default-vrm.gltf.json5`.
+   Every segment declares its `anatomical_segment` (de Leva chunk). Loads green: 61 segments /
+   124 landmarks / 60 joints / 5 chains.
+3. **Closed-form solve** — Kabsch rigid fit (≥3 observed landmarks), shortest-arc direction fit
+   otherwise; `ContinuousRollResolver` supplies underspecified roll by anchored secondary axes with
+   parallel-transport fallback and twist-backfill from measured rigid-fit terminals. No damping;
+   partial hydration skips unobservable segments.
+4. **Linkage + chain layers** — `relative_orientation` + per-joint euler `decompose/compose` →
+   named joint angles with input provenance; FK synthesis, two-bone IK + FABRIK (fail-loud on
+   unreachable targets), twist backfill; joint angles ride the wire as a `JOINT_ANGLES` channel.
+5. **Spine/thorax redesign** — the trunk is partitioned at tracker-solid lines (hip center, shoulder
+   midpoint, ear mean): `sacrolumbar` → `thoracic` → `cervical_spine` → `skull`, with the
+   sternoclavicular joints anteriorly offset and xiphoid as the thoracic volume reference
+   ([06-spine-thorax-redesign/design.md](06-spine-thorax-redesign/design.md)).
+6. **Realtime loop** — ingest conversion → One Euro filter → velocity gate → mapping-before-hydration
+   → hydrate → resolve → local/world rotations → reprojection overlay → CoM/XCoM → self-describing
+   frame. Verified by `test_full_loop.py` + pipeline e2e tests.
+7. **Biomechanics layer** — de Leva anthropometry, partial-CoM-aware segment CoMs, whole-body inertia,
+   XCoM/CoP/CMP, derived kinematics; wired into the aggregator.
+8. **Proportional authoring** — landmark coordinates are body-height fractions (`H = 1.0` =
+   floor-to-skull-top), so the template is body-agnostic; the body-fitting step that scales it to
+   measured millimetres is next work (below).
 
 ## Next work (in order)
 
-1. **Build the linkage/chain layer** — reconcile the hierarchy currently living in
-   `rest_pose.yaml`'s `parent`/`connect_at` with the placeholder `SegmentLinkage`/`KinematicChain`
-   classes; unblocks joint angles + IK later.
-2. **Length-estimation cleanup** — live lengths are wired (rolling median in the aggregator); owed:
-   delete-or-drive the dead `segment_length_window_s` config field, and decide inline-mirror vs.
-   calling skellyforge's estimator directly
-   ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
-3. **Implement the face component** — currently commented out of the composition (`#TODO`);
-   blendshape plumbing exists.
-4. **Posthoc rebuild** — deferred by decision; the old imports are already dead upstream, so the
-   offline mocap/calibration paths are broken-if-invoked. Scope in
-   [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md).
-5. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, on-disk
-   tidy serialization.
+1. **Body fitting** — the proportional template needs a fitting step that solves the subject's
+   `H` and per-segment proportions from measured distances (hip-to-shoulder as the anchor), then
+   scales the template to mm. Formalizes the existing rolling-median `estimate_segment_lengths`
+   into an explicit, H-scaled fit. Tracker mapping `reference_length`s follow.
+2. **Tracker mapping proportional conversion** — mapping `reference_length`s are still mm-anchored;
+   convert to `H`-proportions alongside the template.
+3. **Length-estimation cleanup** — delete-or-drive the dead `segment_length_window_s` config field;
+   decide inline-mirror vs. calling skellyforge's estimator directly.
+4. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
+   `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
+5. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
+6. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
+   synthesis/IK/backfill; the remaining deferred linkage/chain piece.
+7. **Posthoc rebuild** — deferred by decision; old imports are dead upstream, offline paths are
+   broken-if-invoked ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+8. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, on-disk tidy
+   serialization, and charuco-board tracking to force a non-human generic case.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
-**mm · right-handed · Blender axes (+X right, +Y forward, +Z up)**, quaternions **wxyz**,
-`q_local = conj(q_parent) · q_child`, ground plane at `z = 0`. Segments are VRM 1.0-aligned rigid
-bodies; the standard human is **61 segments**, composed from YAML parts (vocabulary single-sourced
-in the [glossary](00-foundation/glossary.md)).
+**Body-height proportions (H = 1.0) · right-handed · Blender axes (+X right, +Y forward, +Z up)**,
+quaternions **wxyz**, `q_local = conj(q_parent) · q_child`, ground plane at `z = 0`. Segments are
+VRM 1.0-aligned rigid bodies; the standard human is **61 segments**, composed from YAML parts
+(vocabulary single-sourced in the [glossary](00-foundation/glossary.md)).
 
 ## House rules for these docs
 

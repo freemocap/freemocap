@@ -5,7 +5,14 @@ doc needs one of these facts, it links here.
 
 ## World space
 
-- **Units:** millimetres (mm).
+- **Units (authored):** body-height proportions. The standard human is authored at **unit scale**:
+  `H = 1.0` is the distance from the ground plane to the top of the skull (`head_vertex`). Every
+  `local_position` is a fraction of `H`, so the template is body-agnostic — a 1.0-tall humanoid that
+  the body-fitting step scales to the measured subject. Anchored on the skull top (not the hips) so the
+  proportions match anthropometric practice (de Leva, H from floor to vertex).
+- **Units (measured):** millimetres. Tracked keypoints, calibrated cameras, and the wire carry mm. The
+  boundary between the two is the **body-fitting step** (next work): solve the subject's `H` and
+  per-segment proportions from measured distances, then scale the template to mm.
 - **Handedness:** right-handed.
 - **Axes:** **Blender's** — **+X right**, **+Y forward** (anterior), **+Z up** (ground plane at `z = 0`).
   SkellyForge authors everything in this frame (`coordinate_system: blender` in the top-level YAML).

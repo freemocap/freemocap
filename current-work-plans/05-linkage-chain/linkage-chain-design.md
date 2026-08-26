@@ -66,7 +66,7 @@ Per frame, per edge:
 | `angles` | the decomposed triple, in the joint's convention, in radians |
 | `provenance` | which `PoseSolution`s fed parent and child |
 
-**Provenance is mandatory.** 56 of 61 segments are direction-only; any angle
+**Provenance is mandatory.** 58 of 61 segments are underspecified; any angle
 computed through a transported-roll input is partly convention, not measurement.
 Every exported angle states what it stands on. A consumer comparing sessions must
 be able to see that `shoulder_axial_rotation` is transport-carried while
@@ -107,35 +107,32 @@ face: chain declarations referencing joint names. Hydrated face: a `ChainPose`
 
 ## 4. What happens to `ContinuousRollResolver`
 
-Two resolution tiers now live there (L6.2 ✅):
+Three resolution strategies live there (L6.2 ✅ + L6.4 ✅), applied at the skeleton
+level in `resolve_pose`:
 
-- **Skeleton level (`resolve_pose`, production path):** a direction-only
-  segment's roll is ANCHORED - the secondary axis is projected perpendicular
-  from the direction pointing back toward the parent segment's origin, which is
-  roll-free measured geometry. Same motion ⇒ same roll, regardless of history.
-  Falls back to parallel transport when the parent pose is absent or the hint
-  is collinear with the long axis (straight chains carry no roll reference at
-  all - that is information, not a failure).
-- **Segment level (`resolve_segment_pose`):** pure parallel transport, the
-  historical primitive, available without context.
+- **Anchored secondary axes:** an underspecified segment's roll is projected
+  perpendicular from the direction pointing back toward its parent's origin —
+  roll-free measured geometry, same motion ⇒ same roll regardless of history.
+- **Parallel transport fallback:** when the parent pose is absent or the hint is
+  collinear with the long axis (straight chains carry no roll reference), the
+  carried roll is transported forward.
+- **Twist backfill:** along every declared chain with a measured rigid-fit
+  terminal, swing-twist decomposition of each pair's rotation against its
+  authored rest relative orientation cascades proximal — a pure function of the
+  current frame, so pronation is recovered from the hand measurement without
+  reintroducing history dependence.
 
-The carry updates on BOTH paths so fallback frames continue from the last
-anchored state. Twist backfill from end-segment orientations remains L6.4.
+`resolve_segment_pose` remains the pure-parallel-transport primitive, available
+without context. The carry updates on every path so fallback frames continue
+from the last anchored state.
 
 ## 5. Topology reconciliation — one home for the tree
 
-Today the hierarchy lives twice in spirit: `rest_pose.yaml` holds
-`parent`/`connect_at` (geometry-adjacent), while the ontology says the linkage
-layer owns joints. Resolution, following the single-source rule:
-
-- `human_skeleton.yaml` gains a `joints:` section (the §2.1 schema) — **the**
-  authoritative topology. `rest_pose.yaml` keeps only per-segment rest
-  orientations and loses `parent`/`connect_at`.
-- `SkeletonDefinition` compiles `SegmentLinkage` objects at load; `RestPose`
-  reads the parent tree from the linkage instead of its own fields.
-- Loader validations move with it: single root, every segment has exactly one
-  parent edge, `connect_at` owned by the parent, acyclicity — all asserted
-  against joint definitions now, error messages pointing at the joint YAML line.
+Done (L5.1 ✅): `human_skeleton.yaml` holds the authoritative `joints:` section (bilateral joints
+authored once via `sided: true`), `rest_pose.yaml` keeps only per-segment rest orientations, and
+`SkeletonDefinition` compiles `JointDefinition` objects whose references are resolved at load — single
+root, one parent edge per segment, `connect_at` owned by the parent, acyclicity, all asserted against
+the joint definitions with error messages naming the offending YAML line.
 
 ## 6. Invariants — how we know it is right
 
@@ -187,22 +184,19 @@ assumption.
 |---|---|---|
 | L5.1 ✅ | `JointDefinition` YAML + compilation; topology moved out of `rest_pose.yaml`; `relative_orientation` + generic euler `decompose/compose`; provenance struct | invariants 2, 4, 5; full suite green |
 | L6.1 ✅ | Chain declarations (`chains:` YAML, compiled with contiguity validation); forward synthesis over the whole joint tree | invariant 3 in its honest two-tier form: exact closure for every rigid-rigid joint, direction closure for ALL joints at 1e-6°; determinism; root-placement invariance. Note: the shipped model currently has NO adjacent rigid-rigid pair (rigid segments are isolated), so the exact tier is wired to the statics and exercises vacuously until one exists - asserted, not skipped |
-| L5.2 | Named-angle outputs surfaced (aggregator message field; wire channel decision separate) | round trip through serialization |
+| L5.2 ✅ | Named-angle outputs surfaced: `JOINT_ANGLES` channel kind + `JointAnglesProducer` in ALL_PRODUCERS; `SkeletonDefinition.compute_joint_poses(pose=...)` generic read-out; aggregator publishes named angles on the wire | frame composes with a JOINT_ANGLES block; full suite green; TS consumes it as a plain string kind (no schema change needed) |
 | L6.2 ✅ | Anchored secondary axes: skeleton-level resolution anchors a direction segment's roll to its parent's origin direction when usable (deterministic per frame), falling back to parallel transport on degeneracy or missing parent | same-motion-same-roll history independence tested at 1e-6°; perpendicularity/handedness asserted; straight-limb and missing-parent fallbacks tested; full suite green |
 | L6.3 ✅ | Two-bone analytic solver + FABRIK, both fail-loud: unreachable targets raise naming distances; FABRIK exhaustion raises naming its residual; out-of-reach stretch only with explicit permission and reports `converged=False` | reach probes: known triangles solved exactly; bone lengths preserved to 1e-9; two-bone solution is a FABRIK fixed point (1-pass convergence); unreachable/fold-limit/exhaustion raise |
-| L6.4 ✅ | Twist backfill from the chain's measured rigid-fit terminal (`backfill_twist_from_rigid_terminal`): swing-twist decomposition of the pair's relative-rotation CHANGE against a baseline pose (previous frame in streaming), attributing axial content to the direction segment and leaving swing to the joint. Pronation probe recovered at 60°±0.5° from carpals measurement; wrist-flexion control stays <2°. Finger couplings DEFERRED - they need an authored ratio schema and belong with hand-chain work | pronation probe: forearm twist recovered when hand is rigid-fit; flexion control clean; no-rigid-terminal chains unchanged |
+| L6.4 ✅ | Twist backfill (`apply_terminal_twist_backfills`, folded into `ContinuousRollResolver.resolve_pose`): swing-twist decomposition of each chain pair's rotation **against its authored rest relative orientation** — a pure function of the current frame, history-independent. Cascades proximal from the measured rigid-fit terminal. Pronation recovered at 60°±0.5°; wrist-flexion control <2°; determinism asserted | pronation probe green; flexion control clean; no-rigid-terminal chains unchanged; resolver-without-rest-rels skips cleanly. Finger couplings DEFERRED — authored ratio schema, hand-chain work |
 
-## 9. Open decisions (need owner input before L5.1)
+## 9. Decisions (all resolved)
 
-1. **Convention authority:** ship pragmatic per-joint euler defaults now with
-   ISB-exact refinement as YAML iteration (recommended), or block on a full ISB
-   pass up front?
-2. **Topology move timing:** relocate `parent`/`connect_at` in L5.1 (single
-   source immediately, touches loader + rest-pose tests), or alias-duplicate for
-   one phase (violates single-source temporarily)?
-3. **Resolver default:** once anchored secondary axes exist (L6.2), do they
-   become the default for all direction segments with transport as fallback
-   (recommended — deterministic), or stay opt-in?
-4. **Realtime vs export:** do joint angles ride the realtime wire early (new
-   channel kind, UI/debug value) or land export-first (CSV/adapters) with the
-   wire later?
+1. **Convention authority:** pragmatic per-joint euler defaults now, ISB-exact
+   refinement as YAML iteration. *(done — default zyx, overridable per joint)*
+2. **Topology move timing:** relocate `parent`/`connect_at` into `joints:` in
+   L5.1, single source immediately. *(done)*
+3. **Resolver default:** anchored secondary axes are the default for all
+   direction segments, transport as fallback, twist backfill where a measured
+   terminal exists. *(done)*
+4. **Realtime vs export:** joint angles ride the realtime wire (`JOINT_ANGLES`
+   channel). *(done)*

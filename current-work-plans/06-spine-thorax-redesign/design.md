@@ -1,7 +1,14 @@
 # Spine & Thorax Redesign — COCO-Anchored Trunk
 
-Status: APPROVED, in implementation. Companion to
+Status: **IMPLEMENTED** (with two deviations noted inline). Companion to
 [../ontology.md](../ontology.md) and [05-linkage-chain](05-linkage-chain-design.md).
+
+> **What landed vs. what this doc proposed.** The trunk re-partitioning shipped exactly as designed
+> (`sacrolumbar` → `thoracic` → `cervical_spine`, neck_center = shoulder midpoint, SC anterior
+> offset, xiphoid volume reference). Two deviations: (1) the **pelvis split was reverted** — the
+> hemipelvis ownership/cascade tangled with the FK `connect_at` model and was deferred to `[IN]`;
+> (2) the whole skeleton was then **re-authored in body-height proportions** (`H = 1.0`) rather than
+> millimetres. See [../00-foundation/conventions.md](../00-foundation/conventions.md).
 
 ## The problem
 
@@ -40,39 +47,41 @@ segment *anchors*, and let non-trackable anatomy (SI joints, PSIS, xiphoid)
 hang off them through mappings - which is exactly what the mapping layer is
 for.
 
-## The new layout
+## The new layout (as landed)
 
 ```
-pelvis (ROOT, origin = hip_center)
-├─ left_pelvis   (origin = left hip socket  - TRACKED)
-└─ right_pelvis  (origin = right hip socket - TRACKED)
-     └─ sacrolumbar : hip_center → chest_center (~T12/L1, authored)
-          └─ thoracic : chest_center → neck_center (= SHOULDER MIDPOINT, ~C7/T1)
-               └─ cervical : neck_center → head_center (= MEAN OF EARS)
-                    └─ skull (attaches at head_center)
+pelvis (ROOT, origin = pelvis_origin = hip center)
+├─ sacrolumbar : pelvis_origin → chest_center (~T12/L1, authored)
+│    └─ thoracic : chest_center → neck_center (= SHOULDER MIDPOINT, ~C7/T1)
+│         └─ cervical_spine : neck_center → craniocervical_junction
+│              └─ skull (origin = head_center, attaches at craniocervical_junction)
+│         └─ clavicle : sternoclavicular → acromion (off the front of the thoracic)
+│              └─ upper_arm → lower_arm → carpals
+└─ upper_leg → lower_leg → foot → toes  (off the pelvis at the hip sockets; ×2)
 ```
 
 - `neck_center` absorbs `cervicothoracic_junction` (same alias family:
   c7_t1_junction, shoulder_midpoint).
 - `chest_center` absorbs `thoracolumbar_junction`.
-- `head_center` replaces `craniocervical_junction` as the skull's attach
-  point; it maps directly as the mean of the two ear keypoints.
+- The skull's own origin landmark is `head_center` (foramen magnum center),
+  which maps directly as the mean of the two ear keypoints; the cervical
+  spine terminates at `craniocervical_junction`, where the skull attaches.
 - The clavicle's parent moves `chest` → `thoracic`; it connects to the
-  sternoclavicular landmark, whose ANTERIOR offset (80 mm forward of the
+  sternoclavicular landmark, whose ANTERIOR offset (0.0486 H forward of the
   spine plane) is now documented authoring intent - the animation-grade
   "shoulders hang off the front of the ribcage" placement.
 - `xiphoid_process` stays the thoracic segment's anterior reference
   (thoracic volume cue).
 
-### Pelvis split mechanics
+### Pelvis split (deferred - reverted)
 
-Root `pelvis` keeps the midline landmarks (hip center, sacrum_top, sacrum,
-coccyx, pubic symphysis) and shrinks to a short structural root segment -
-it remains the CoM anchor and tree root. `left_pelvis` / `right_pelvis`
-originate at their own hip sockets (which become hemipelvis-owned, local
-zero) and connect back to the root at `sacrum_top`. Sided ilium landmarks
-(crest/ASIS/PSIS/SI joint) migrate into their respective hemipelvis frames,
-re-authored relative to that side's hip socket.
+The pelvis split was attempted and **reverted**: `left_pelvis` / `right_pelvis`
+originating at their own hip sockets tangled the hemipelvis ownership/cascade
+with the FK `connect_at` model. The root `pelvis` stays whole - it keeps the
+midline landmarks (hip center, sacrum_top, sacrum, coccyx, pubic symphysis)
+plus the sided ilium landmarks (crest/ASIS/PSIS/SI joint), and is the CoM
+anchor and tree root. Deferred to `[IN]` in
+[../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
 
 ### Naming + aliases (transition safety)
 
@@ -83,9 +92,10 @@ re-authored relative to that side's hip socket.
 | `cervical_spine` | unchanged |
 | `chest_center` | thoracolumbar_junction, t12_l1_junction |
 | `neck_center` | cervicothoracic_junction, c7_t1_junction, shoulder_midpoint |
-| `head_center` | craniocervical_junction |
 
-Old references resolve through aliases during transition; nothing silently
+`head_center` and `craniocervical_junction` are **distinct** landmarks — the skull's
+own origin vs. the cervical spine's distal terminus where the skull connects — not
+aliases. Old references resolve through aliases during transition; nothing silently
 breaks.
 
 ## Consequences for expectations
@@ -97,8 +107,10 @@ breaks.
   revised accordingly.
 - Twist-backfill / anchoring / synthesis are definition-agnostic (they walk
   whatever joints/chains declare) - no ontology or pipeline code changes.
-- Joint count changes (60 → 62: pelvis split adds one edge); chain
-  declarations update (`left_leg` now starts at `left_pelvis`).
+- Joint count is unchanged (60) - the pelvis split (which would have added
+  the `left_pelvis`/`right_pelvis` pair) was reverted; chains are as declared
+  in `human_skeleton.yaml` (`spine`, `left_arm`, `right_arm`, `left_leg`,
+  `right_leg`).
 
 ## Cascade inventory
 
@@ -109,9 +121,9 @@ breaks.
 4. Tracker mappings: scaffold offset entries for `chest_center`,
    `neck_center` (+ head_center as direct mean-of-ears); regenerate ratios
    with `scripts/generate_tracker_mapping_ratios.py`
-5. `center_of_mass.yaml` + `segment_mapping.py` renamed/split coverage
-6. Test revisions: rest-pose origin constants, joint counts, pelvis tests,
-   freemocap chest gate
+5. `center_of_mass.yaml` + `segment_mapping.py` renamed coverage (`chest` →
+   `thoracic`, `lumbar_spine` → `sacrolumbar`)
+6. Test revisions: rest-pose origin constants, joint counts, freemocap chest gate
 7. Golden fixtures regenerate if composed channels change shape
 
 ## Acceptance gates

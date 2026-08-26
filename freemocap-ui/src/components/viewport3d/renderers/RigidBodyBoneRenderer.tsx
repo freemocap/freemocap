@@ -54,6 +54,8 @@ const MAX_BONES = 256;
  *       absent but a height is known;
  *    3. DEFAULT_SEGMENT_LENGTH, which means the subject has no measured size at all.
  */
+let warnedAboutMissingSize = false;
+
 export function resolveBoneLengthMm(
     table: BoneInstanceTable,
     liveLengths: SegmentLengthsFrame | null,
@@ -68,6 +70,19 @@ export function resolveBoneLengthMm(
     if (proportion !== undefined && proportion > 0 && bodyHeightMm != null && bodyHeightMm > 0) {
         return proportion * bodyHeightMm;
     }
+
+    // Falling through means the bones are about to be drawn a millimetre long, which reads
+    // as "the renderer is broken" rather than "nothing has told me how big this person is".
+    // Say so once — a silent version of this cost an afternoon.
+    if (!warnedAboutMissingSize) {
+        warnedAboutMissingSize = true;
+        console.warn(
+            "[RigidBodyBoneRenderer] no size for the subject: neither a fitted SEGMENT_LENGTHS " +
+            "row nor a body height reached this renderer, so bones are drawn at " +
+            `${DEFAULT_SEGMENT_LENGTH}mm and will look invisible. The model is dimensionless — ` +
+            "check that segment lengths are being forwarded to the viewport worker.",
+        );
+    }
     return DEFAULT_SEGMENT_LENGTH;
 }
 
@@ -80,11 +95,14 @@ const DUMMY = new Object3D();
 const _matrix4 = new Matrix4();
 
 const BONE_COLOR_DIM = 0.7;
-const SIDE_COLORS: Record<string, Color> = {
-    left: new Color(...BONE_SIDE_COLORS.left).multiplyScalar(BONE_COLOR_DIM),
-    right: new Color(...BONE_SIDE_COLORS.right).multiplyScalar(BONE_COLOR_DIM),
-    center: new Color(...BONE_SIDE_COLORS.center).multiplyScalar(BONE_COLOR_DIM),
-};
+// Derived from the shared table rather than re-listed, so a new side gets its bone color
+// for free instead of silently falling back to whatever `Record` lookup returns.
+const SIDE_COLORS = Object.fromEntries(
+    Object.entries(BONE_SIDE_COLORS).map(([side, rgb]) => [
+        side,
+        new Color(...(rgb as [number, number, number])).multiplyScalar(BONE_COLOR_DIM),
+    ]),
+) as Record<string, Color>;
 const HIDDEN_COLOR = new Color("#000000");
 
 export function RigidBodyBoneRenderer() {

@@ -16,10 +16,19 @@ import { InterleavedBufferAttribute, Vector2 } from "three";
 import { LineSegments2, LineSegmentsGeometry, LineMaterial } from "three-stdlib";
 import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
+import { BONE_SIDE_COLORS, classifyBone } from "./RigidBodyBoneInstances";
 
 const LINE_WIDTH = 2;
-// Matches the 2D overlay's connection green (rgba(20, 255, 20, 0.6)).
-const LINE_COLOR: readonly [number, number, number] = [20 / 255, 255 / 255, 20 / 255];
+
+/** An edge's color: the CHILD segment's, from the shared bone-color table.
+ *
+ *  The edge is the child bone hanging off its parent's origin, so the child is what it
+ *  represents — which also puts a hand's connections in the hand's color rather than the
+ *  forearm's. Reading `BONE_SIDE_COLORS` rather than keeping a second palette here is what
+ *  stops the lines and the bone meshes from drifting apart. */
+function edgeColor(childSegmentName: string): readonly [number, number, number] {
+    return BONE_SIDE_COLORS[classifyBone(childSegmentName)];
+}
 
 export function SegmentConnectionRenderer() {
     const { subscribeToSkeleton, subscribeToModels, getModels } = useKeypointsSource();
@@ -102,8 +111,9 @@ export function SegmentConnectionRenderer() {
                 pos[base + 3] = skeleton.interleaved[co];
                 pos[base + 4] = skeleton.interleaved[co + 1];
                 pos[base + 5] = skeleton.interleaved[co + 2];
-                col[base]     = LINE_COLOR[0]; col[base + 1] = LINE_COLOR[1]; col[base + 2] = LINE_COLOR[2];
-                col[base + 3] = LINE_COLOR[0]; col[base + 4] = LINE_COLOR[1]; col[base + 5] = LINE_COLOR[2];
+                const rgb = edgeColor(child);
+                col[base]     = rgb[0]; col[base + 1] = rgb[1]; col[base + 2] = rgb[2];
+                col[base + 3] = rgb[0]; col[base + 4] = rgb[1]; col[base + 5] = rgb[2];
             } else {
                 for (let j = 0; j < 6; j++) { pos[base + j] = 1e5; col[base + j] = 0; }
             }

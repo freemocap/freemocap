@@ -31,6 +31,7 @@ export interface ServerContextValue {
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
     subscribeToRotations: (cb: RotationsCallback) => () => void;
     getLatestRotations: () => RotationsFrame | null;
+    subscribeToSegmentLengths: (cb: (frame: SegmentLengthsFrame) => void) => () => void;
     getLatestSegmentLengths: () => SegmentLengthsFrame | null;
     // The model that rides every frame (the bone renderer's name→index authority).
     subscribeToModels: (cb: (models: ModelDefinition[]) => void) => () => void;

@@ -40,6 +40,7 @@ export interface KeypointsSource {
     getLatestSkeleton: () => KeypointsFrame | null;
     subscribeToRotations?: (cb: (frame: RotationsFrame) => void) => () => void;
     getLatestRotations?: () => RotationsFrame | null;
+    subscribeToSegmentLengths?: (cb: (frame: SegmentLengthsFrame) => void) => () => void;
     getLatestSegmentLengths?: () => SegmentLengthsFrame | null;
     // The model that rides every frame (the rigid-body renderer's name→index map).
     subscribeToModels?: (cb: (models: ModelDefinition[]) => void) => () => void;
@@ -82,6 +83,7 @@ export function useKeypointsSource(): KeypointsSource {
             getLatestSkeleton: server.getLatestSkeleton,
             subscribeToRotations: server.subscribeToRotations,
             getLatestRotations: server.getLatestRotations,
+            subscribeToSegmentLengths: server.subscribeToSegmentLengths,
             getLatestSegmentLengths: server.getLatestSegmentLengths,
             subscribeToModels: server.subscribeToModels,
             getModels: server.getModels,
@@ -94,6 +96,7 @@ export function useKeypointsSource(): KeypointsSource {
         server?.getLatestSkeleton,
         server?.subscribeToRotations,
         server?.getLatestRotations,
+        server?.subscribeToSegmentLengths,
         server?.getLatestSegmentLengths,
         server?.subscribeToModels,
         server?.getModels,

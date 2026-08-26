@@ -10,7 +10,7 @@
 
 import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import type { RotationsFrame } from "@/services/server/transport/frame-types";
+import type { RotationsFrame, SegmentLengthsFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
 import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
@@ -64,6 +64,10 @@ const keypointsChan = makeChannel<KeypointsFrame | null>(null);
 const skeletonChan = makeChannel<KeypointsFrame | null>(null);
 const rotationsChan = makeChannel<RotationsFrame | null>(null);
 const modelsChan = makeChannel<ModelDefinition[] | null>(null, {replayOnSubscribe: true});
+// The subject's fitted size — per-segment lengths in mm plus the body height they were
+// pooled from. The model itself is dimensionless, so this is the ONLY source of a
+// millimetre in the worker; without it every bone draws at the fallback length.
+const segmentLengthsChan = makeChannel<SegmentLengthsFrame | null>(null, {replayOnSubscribe: true});
 const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} }, {replayOnSubscribe: true});
 const calibChan = makeChannel<LoadedCalibration | null>(null, {replayOnSubscribe: true});
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG, {replayOnSubscribe: true});
@@ -130,6 +134,15 @@ export const workerDataStore: KeypointsSource & {
     },
     getLatestRotations: rotationsChan.getLatest,
 
+    // Fitted segment lengths + body height (SEGMENT_LENGTHS + instance body_height_mm)
+    subscribeToSegmentLengths: (cb) => {
+        const unsub = segmentLengthsChan.subscribe((f) => { if (f) cb(f); });
+        const latest = segmentLengthsChan.getLatest();
+        if (latest) cb(latest);
+        return unsub;
+    },
+    getLatestSegmentLengths: segmentLengthsChan.getLatest,
+
     // Schema state
     subscribeToSchemaState: schemaChan.subscribe,
     getSchemaState: schemaChan.getLatest,
@@ -171,6 +184,9 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "rotations":
                 rotationsChan.dispatch(data as RotationsFrame);
+                break;
+            case "segmentLengths":
+                segmentLengthsChan.dispatch(data as SegmentLengthsFrame);
                 break;
             case "schemaState":
                 schemaChan.dispatch(data as SchemaState);

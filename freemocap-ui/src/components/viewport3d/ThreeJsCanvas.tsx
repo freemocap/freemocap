@@ -177,6 +177,7 @@ export function ThreeJsCanvas() {
     subscribeToModels,
     getModels,
     subscribeToRotations,
+    subscribeToSegmentLengths,
   } = useKeypointsSource();
   const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -245,6 +246,16 @@ export function ThreeJsCanvas() {
       VIEWPORT_WORKER.postMessage({ type: "rotations", data: frame });
     });
   }, [subscribeToRotations]);
+
+  // The bone renderer lives in the worker and the model is DIMENSIONLESS, so without
+  // this the bones have no size at all and draw at the fallback millimetre — visible
+  // only as specks at each joint. The frame carries both the per-segment fitted
+  // lengths and the subject's fitted height.
+  useEffect(() => {
+    return subscribeToSegmentLengths?.((frame) => {
+      VIEWPORT_WORKER.postMessage({ type: "segmentLengths", data: frame });
+    });
+  }, [subscribeToSegmentLengths]);
 
   // The model must reach the worker: the rigid-body renderer builds its
   // name→slot table from it (segment names, primary axes, lengths, rest orientations).

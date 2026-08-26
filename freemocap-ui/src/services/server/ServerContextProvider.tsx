@@ -80,6 +80,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
     const segmentLengthsRef = useRef<SegmentLengthsFrame | null>(null);
+    const segmentLengthsSubscribersRef = useRef<Set<(frame: SegmentLengthsFrame) => void>>(new Set());
 
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
@@ -155,6 +156,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         }));
         subs.push(transport.subscribeToSegmentLengths((frame) => {
             segmentLengthsRef.current = frame;
+            for (const cb of segmentLengthsSubscribersRef.current) cb(frame);
         }));
 
         // Static-model + kind subscribers → Redux (change-detected on the transport).
@@ -410,6 +412,11 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return rotationsRef.current;
     }, []);
 
+    const subscribeToSegmentLengths = useCallback((cb: (frame: SegmentLengthsFrame) => void): () => void => {
+        segmentLengthsSubscribersRef.current.add(cb);
+        return () => { segmentLengthsSubscribersRef.current.delete(cb); };
+    }, []);
+
     const getLatestSegmentLengths = useCallback((): SegmentLengthsFrame | null => {
         return segmentLengthsRef.current;
     }, []);
@@ -452,6 +459,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         setOverlayVisibility,
         subscribeToRotations,
         getLatestRotations,
+        subscribeToSegmentLengths,
         getLatestSegmentLengths,
         subscribeToModels,
         getModels,

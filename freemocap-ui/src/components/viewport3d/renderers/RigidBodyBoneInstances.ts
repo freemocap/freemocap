@@ -20,7 +20,7 @@
 
 import type { ModelDefinition, PrimaryAxis } from "@/services/server/transport/message-contract";
 
-export type BoneSide = "left" | "right" | "center";
+export type BoneSide = "left" | "right" | "center" | "left_hand" | "right_hand";
 
 export type BoneRegion = "body" | "hand" | "face" | "foot";
 
@@ -78,17 +78,29 @@ export interface BoneInstanceTable {
  *  length on the wire and no body height to scale its proportion by. */
 export const DEFAULT_SEGMENT_LENGTH = 1.0;
 
-/** Bone colors keyed by side (left = blue, right = red, center = green). */
+/** Bone colors keyed by side. Left is cool, right is warm, and the hands are the
+ *  brighter pair of the same two families so a hand reads as "left" or "right" at a
+ *  glance while still being distinguishable from the arm it hangs off.
+ *
+ *  This is the ONE place skeleton coloring is decided — the bone meshes and the
+ *  segment-origin connection lines both read it, so they cannot drift apart. */
 export const BONE_SIDE_COLORS: Readonly<Record<BoneSide, readonly [number, number, number]>> = {
-    left:   [0x44 / 255, 0x88 / 255, 0xff / 255],
-    right:  [0xff / 255, 0x44 / 255, 0x44 / 255],
-    center: [0x00 / 255, 0xaa / 255, 0x00 / 255],
+    left:       [0x44 / 255, 0x88 / 255, 0xff / 255],  // blue
+    right:      [0xff / 255, 0x44 / 255, 0x44 / 255],  // red
+    center:     [0x00 / 255, 0xaa / 255, 0x00 / 255],  // green
+    left_hand:  [0x22 / 255, 0xdd / 255, 0xdd / 255],  // cyan
+    right_hand: [0xff / 255, 0x44 / 255, 0xdd / 255],  // magenta
 };
 
-/** Classify a segment name by its left_ / right_ prefix. */
+/** Classify a segment name by its left_ / right_ prefix, and hands separately.
+ *
+ *  Sidedness comes from the prefix the YAML loader writes; "is this a hand" comes from
+ *  `classifyRegion`, so the two questions have one answer each rather than a second
+ *  hand-written list of finger names here. */
 export function classifyBone(name: string): BoneSide {
-    if (name.startsWith("left_")) return "left";
-    if (name.startsWith("right_")) return "right";
+    const isHand = classifyRegion(name) === "hand";
+    if (name.startsWith("left_")) return isHand ? "left_hand" : "left";
+    if (name.startsWith("right_")) return isHand ? "right_hand" : "right";
     return "center";
 }
 

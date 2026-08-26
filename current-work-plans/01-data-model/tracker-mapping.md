@@ -1,6 +1,6 @@
-# Tracker → Standard-Human Mapping
+# Tracker → Landmark Mapping
 
-**Describes:** skellytracker's `*_to_standard_human_mapping.yaml` + `core.io` mapping machinery
+**Describes:** skellytracker's `*_to_*_mapping.yaml` + `core.io` mapping machinery
 (`TrackerMapping`, `mapping_paths`); freemocap's mapping-path SSOT
 (`freemocap/core/tasks/mocap/tracker_mappings.py`). The model is **articulated**: a tracker hydrates
 the landmarks it can see (body + hand keypoints + `anatomical_offset` derived points); the remaining
@@ -17,7 +17,17 @@ body, mediapipe hand, rtmpose body, rtmpose hand.
 ## Key facts 
 
 - Mapping forms: string / list (mean) / dict / **`anatomical_offset`** (a landmark built at an offset from
-  tracked keypoints — e.g. `head_vertex`, `foot_ball`, `jaw`, mouth corners for RTMPose).
+  tracked keypoints — e.g. `head_vertex`, `foot_ball`, `jaw`, mouth corners for RTMPose) / **pass-through**.
+- **Measured vs. constructed.** Every non-offset form is an affine combination of measured keypoints
+  with constant coefficients, so it carries the subject's real geometry; an `anatomical_offset` places
+  a landmark at `ratio x reference_length` and therefore restates the template.
+  `TrackerMapping.directly_measured_landmark_names` draws that line, and the model-scale fit only lets
+  measured landmarks set the scale
+  ([../02-pipeline/model-scale-fitting.md](../02-pipeline/model-scale-fitting.md)).
+- **Pass-through** (`passthrough_keypoints_as_landmarks: true`) is the whole file for an object whose
+  markers ARE its landmarks — a charuco board. Every keypoint becomes a landmark of the same name, so
+  every landmark is measured. Authoring a line per marker would be duplication with a chance of typos,
+  and it is the case that recurs for any simple tracked object.
 - **Boundary rule:** skellytracker owns the YAMLs; skellyforge never imports skellytracker or freemocap;
   freemocap applies the mapping. Concretely: `load_standard_human_mapping(detector_type)` merges the
   body + hand YAMLs into one callable via `TrackerMapping.from_yaml`, and the aggregator runs

@@ -1,7 +1,7 @@
 # Spine & Thorax Redesign — COCO-Anchored Trunk
 
 Status: **IMPLEMENTED** (with two deviations noted inline). Companion to
-[../ontology.md](../ontology.md) and [05-linkage-chain](05-linkage-chain-design.md).
+[../ontology.md](../ontology.md) and [05-linkage-chain](../05-linkage-chain/linkage-chain-design.md).
 
 > **What landed vs. what this doc proposed.** The trunk re-partitioning shipped exactly as designed
 > (`sacrolumbar` → `thoracic` → `cervical_spine`, neck_center = shoulder midpoint, SC anterior

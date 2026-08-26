@@ -1,15 +1,16 @@
-# Body-Scale Fitting
+# Model-Scale Fitting
 
-**Describes:** how the dimensionless standard human gets a size — skellyforge's
-`core/skeleton/pose/body_scale_fitting.py`, the per-segment scale every hydrated pose now
-carries, and how the realtime aggregator drives them.
+**Describes:** how a dimensionless skeleton gets a size — skellyforge's
+`core/skeleton/pose/model_scale_fitting.py`, the per-segment scale every hydrated pose carries,
+and how the realtime aggregator drives them. Applies to **every** skeleton, human or not.
 
 ## The problem it solves
 
-Landmarks are authored as fractions of body height (`H = 1.0`, floor to skull top), so the
-template describes a shape and not a person. Turning it into a body means answering one
-question — **how big is this subject** — under the condition that a camera rarely sees all of
-one. Seated at a desk, there are no knees, ankles or feet.
+Landmarks are authored as fractions of the skeleton's own **reference unit** — reference scale for
+the human (`H = 1.0`, floor to skull top), square length for a charuco board — so a template
+describes a shape and not a thing. Turning it into a thing means answering one question —
+**how big is this one** — under the condition that a camera rarely sees all of it. Seated at a
+desk, a person has no knees, ankles or feet; a board is often half out of frame.
 
 ## The idea
 
@@ -17,29 +18,42 @@ The authored proportion `p` makes every visible segment an answer to the *same* 
 segment observed to be `d` long reports
 
 ```
-s = d / p        world units per unit body height
+s = d / p        world units per unit of the model's reference unit
 ```
 
-and that is the subject's height, read off that one bone. So the fit is not "measure lengths,
-then guess a height". It is **one scale field over the skeleton**:
+and that is the model's size, read off that one segment. So the fit is not "measure lengths,
+then guess a size". It is **one scale field over the skeleton**:
 
 ```
-Ĥ   = robust aggregate of the readings from segments that actually measure something
-s̃ₛ  = that segment's own reading, shrunk toward Ĥ by how much evidence it has
+Ŝ   = robust aggregate of the readings from segments that actually measure something
+s̃ₛ  = that segment's own reading, shrunk toward Ŝ by how much evidence it has
 Lₛ  = pₛ · s̃ₛ
 ```
 
-A segment nobody can see has no reading, so `s̃ₛ` **is** `Ĥ` and its length is `pₛ · Ĥ`. That
-is not a fallback — it is the answer a proportional template exists to give. Segment length
-and global height are not two estimators to reconcile; they are the same number viewed
-through `pₛ`.
+A segment nobody can see has no reading, so `s̃ₛ` **is** `Ŝ` and its length is `pₛ · Ŝ`. That is
+not a fallback — it is the answer a proportional template exists to give. Segment length and
+overall size are not two estimators to reconcile; they are the same number viewed through `pₛ`.
 
-Nothing in the fit measures a floor, assumes the subject is standing, or needs a calibration
-pose.
+Nothing in the fit measures a floor, assumes anything is standing, or needs a calibration pose.
+
+## What the fitted scale MEANS
+
+`ModelDefinition.scale_reference_name` says what the model's `1.0` is, so one number reads
+correctly for every skeleton:
+
+| Skeleton | `1.0` is | Fitted scale is |
+|---|---|---|
+| standard human | reference scale | the subject's stature in mm |
+| charuco board | square length | the board's measured square length in mm |
+
+The board case is not a curiosity — **it is the calibration's own scale.** The user types the
+square length during calibration and that number defines the scale of the whole capture volume,
+so the fitted square length is directly comparable to the entered one. The same machinery that
+sizes a person doubles as a reconstruction-error metric, with no board-specific code path.
 
 ## Where the readings come from
 
-`SegmentPose.body_scale_estimate`, filled by hydration, so every hydrated segment is
+`SegmentPose.scale_estimate`, filled by hydration, so every hydrated segment is
 self-describing about its size:
 
 | Solve | Scale it reports |
@@ -65,7 +79,7 @@ as the best evidence available.
 `TrackerMapping.directly_measured_landmark_names` names what the mapping measures rather than
 constructs (every non-offset form is an affine combination of measured keypoints with
 constant coefficients, so it carries the subject's real geometry).
-`body_scale_voting_segment_names` turns that into the segments those make measurable — a
+`scale_voting_segment_names` turns that into the segments those make measurable — a
 rigid-fit segment needs **all** of its landmarks measured, a direction-fit one needs its
 origin and primary. For rtmpose that is 40 segments: the four long limb bones per side, the
 heels, and the finger phalanges. No spine, clavicle, pelvis, thorax or skull.
@@ -87,7 +101,7 @@ not reach its own joints.
 - **Bilateral pooling for the height, per-side lengths.** A one-sided occlusion is ordinary and
   stature is not sided, so left and right pool their readings into one vote. Their *lengths*
   stay separate, so a real limb-length difference survives the fit.
-- **Shrinkage toward the pooled height.** `λ = n / (n + κ)` with `κ` scaled by dispersion: with
+- **Shrinkage toward the pooled scale.** `λ = n / (n + κ)` with `κ` scaled by dispersion: with
   no readings a segment is entirely the template, at `SHRINKAGE_PRIOR_SAMPLES` clean readings it
   is half its own measurement, past that mostly itself. Noisier readings buy less.
 - **One temporal mechanism.** A bounded per-segment window (`segment_scale_window_frames`,
@@ -100,14 +114,14 @@ not reach its own joints.
 
 ## No scale is a state, not a default
 
-`has_body_scale` is False while no measurable segment has ever been seen. Then there are no
-millimetres, and the aggregator publishes none — `segment_lengths` empty, `body_height_mm`
+`has_model_scale` is False while no measurable segment has ever been seen. Then there are no
+millimetres, and the aggregator publishes none — `segment_lengths` empty, `fitted_scale_mm`
 `None` — rather than a plausible-looking nominal. `current_fit()` raises
 `InsufficientScaleEvidence` if asked anyway.
 
 ## Where it runs
 
-The aggregator builds one `StreamingBodyScaleFitter` per run (rebuilt on detector change,
+The aggregator builds one `StreamingModelScaleFitter` per run (rebuilt on detector change,
 since which landmarks are measured is a property of the mapping), calls `observe_pose` after
 roll resolution, and fits once per frame. The fit feeds three consumers:
 
@@ -115,7 +129,7 @@ roll resolution, and fits once per frame. The fit feeds three consumers:
    their **proportional** local positions, so without the scale every landmark collapses onto
    its segment's origin and the CoM becomes a mass-weighted average of joint centres.
 2. the `SEGMENT_LENGTHS` channel — fitted millimetres for **every** segment, seen or not.
-3. `ModelInstance.body_height_mm` — the instance's size, since the model definition is
+3. `ModelInstance.fitted_scale_mm` — the instance's size, since the model definition is
    dimensionless (`RestSegment.length_proportion`).
 
 Reset paths: the skeleton-fit reset signal, and calibration hot-reload (every reading in the

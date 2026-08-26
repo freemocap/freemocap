@@ -38,18 +38,30 @@ decode-vs-render split and no held descriptor). It carries:
   overlay/JPEG coordinate space.
 - `models` — `ModelDefinition`: model_id, ordered `segments` (name, parent, primary_axis,
   rest_orientation wxyz, **`length_proportion`**, is_fully_specified), ordered `landmarks` (name,
-  rest_position), and `connections` — the `(parent_segment, child_segment)` name pairs derived once
-  from the joint topology. The model is the single source of truth for hierarchy: clients draw these
-  edges directly (3D joint lines + the 2D overlay) and never re-derive connections from the `parent`
-  fields. The model is also **dimensionless** — lengths and rest positions are fractions of body
-  height — so a size lives on the instance, not here.
-- `instances` — `ModelInstance`: instance_id, model_id, channels, and `body_height_mm` — this
-  subject's fitted stature, absent until a segment has measured them (which means "no size", not
-  "assume a default"). Multiply a segment's `length_proportion` by it for millimetres, or prefer the
-  `SEGMENT_LENGTHS` channel, which carries fitted millimetres for every segment whether or not it was
-  visible ([../02-pipeline/body-scale-fitting.md](../02-pipeline/body-scale-fitting.md)).
+  rest_position), and the structure a client needs in order to draw it without inventing anything:
+  - `connections` — `(parent_segment, child_segment)` name pairs derived once from the joint topology.
+  - `landmark_connections` — named **connection groups** (`charuco_grid`, `aruco_markers`,
+    `skull_outline`), each a list of landmark pairs with an optional colour.
+  - `landmark_groups` — named sets of landmarks with an optional colour, so a client colours a point
+    by what it *is* rather than by what its name starts with.
+  - `scale_reference_name` — what this model's `1.0` means (`body_height`, `square_length`).
+
+  The model is the single source of truth for structure: clients draw these edges and groups directly
+  and never re-derive them from names, config, or hierarchy fields. The model is **dimensionless** —
+  lengths and rest positions are fractions of `scale_reference_name` — so a size lives on the instance.
+- `instances` — `ModelInstance`: instance_id, model_id, channels, and `fitted_scale_mm` — this
+  occurrence's fitted size in the unit the model names, absent until something has measured it (which
+  means "no size", not "assume a default"). Multiply a segment's `length_proportion` by it for
+  millimetres, or prefer the `SEGMENT_LENGTHS` channel, which carries fitted millimetres for every
+  segment whether or not it was visible
+  ([../02-pipeline/model-scale-fitting.md](../02-pipeline/model-scale-fitting.md)).
 - `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels.
 - `image` — the camera image bytes.
+
+**`models`, `instances` and `trackers` are plural, always.** A tracked human and a tracked charuco
+board are two models; two people are two instances of one model; a pose detector and a charuco
+detector are two tracker observations. No consumer on either side of the wire may assume one of any
+of them ([../07-generic-skeletons/design.md](../07-generic-skeletons/design.md)).
 
 ## The channel block
 

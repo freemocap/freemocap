@@ -1,7 +1,9 @@
-# The Segment Model (the standard human in YAML + code)
+# The Segment Model (a skeleton in YAML + code)
 
-**Describes:** how the standard human is authored, loaded, and held in memory —
-`SkeletonDefinition` + the component YAMLs. The rest-pose authoring lives in
+**Describes:** how a skeleton is authored, loaded, and held in memory — `SkeletonDefinition` + the
+component YAMLs — using the standard human as the worked example. The same structures describe a
+one-segment charuco board built programmatically rather than from YAML
+([../07-generic-skeletons/design.md](../07-generic-skeletons/design.md)). The rest-pose authoring lives in
 [reference-geometry.md](reference-geometry.md); the solve lives in
 [../02-pipeline/kinematics-engine.md](../02-pipeline/kinematics-engine.md); vocabulary in
 [../00-foundation/glossary.md](../00-foundation/glossary.md).
@@ -86,6 +88,44 @@ Rules the loader enforces while building objects:
 Hand and finger chains are fully modeled (metacarpals included). Tracker *mappings* currently
 cover only detector-emittable points — unmapped distal segments ride partial hydration / transport,
 which is the articulated-model contract, not a modeling gap.
+
+## Landmark groups & connection groups
+
+Two optional, per-component sections that let a skeleton say what its landmarks *are* and which of
+them a consumer should draw as edges — so nothing downstream recovers that by parsing names
+([../00-foundation/conventions.md](../00-foundation/conventions.md)):
+
+```yaml
+landmark_groups:
+  skull_surface:
+    color: "#ffd700"
+    landmarks: [head_vertex, chin, left_ear, right_ear, nose]
+
+landmark_connections:
+  skull_outline:
+    color: "#ffd700"
+    pairs:
+      - [left_ear, right_ear]
+      - [nose, chin]
+```
+
+Both validate against the live landmark set at load, the same way segment reference geometry does. A
+charuco board declares the same two sections programmatically — its grid and its marker quads — which
+is what lets one renderer draw a skull and a calibration board without knowing which is which.
+
+## Under-specified skeletons
+
+A skeleton declares what it has; what it omits it gets by **sensible default**, resolved once at load:
+
+| Omitted | Default |
+|---|---|
+| `joints:` (with one segment) | a trivial tree — that segment is the root |
+| rest pose | identity relative orientations, root at the world origin |
+| mass distribution | unweighted-mean centre of mass ([../02-pipeline/biomechanics-layer.md](../02-pipeline/biomechanics-layer.md)) |
+| `derived_quantities:` | none beyond the centre of mass |
+
+`joints:` omitted on a *multi*-segment skeleton is not a default — there is no one right tree — so it
+raises, naming the segments left unattached.
 
 ## Joints & chains (layers 5–6)
 

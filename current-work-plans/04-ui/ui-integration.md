@@ -30,11 +30,23 @@ the model (`models[0].connections`) — nothing client-side derives parent→chi
 ## Renderers are model-driven
 
 The viewport renders from the frame document: `RigidBodyBoneRenderer` draws oriented cylinders from
-segment rotations/lengths; `SegmentConnectionRenderer` draws the overlay-green origin→origin joint lines
-from `ModelDefinition.connections`, resolving each edge through a name→index map built once at model
-arrival against SEGMENT_ORIGINS (NaN-safe per frame); `CenterOfMassRenderer` consumes the
-`DERIVED_POINTS` rows; keypoints render tracker-named channels. Adding a channel kind or model field is
-a renderer concern, never a recompute-the-model concern.
+segment rotations/lengths; the connection renderer draws every edge the model declares —
+`ModelDefinition.connections` (segment origin→origin) and its **landmark connection groups**, each in
+its authored colour — resolving each edge through a name→index map built once at model arrival
+(NaN-safe per frame); `CenterOfMassRenderer` consumes the `DERIVED_POINTS` rows; keypoints render
+tracker-named channels, coloured by **landmark group** rather than by name prefix. Adding a channel
+kind or model field is a renderer concern, never a recompute-the-model concern.
+
+**One connection renderer, not two.** Edges come from the model and nowhere else — never re-derived
+from client config, tracker schemas, or by parsing point names. Everything the viewport draws is
+per-model and per-instance; a frame with a person and a charuco board draws both from the same code.
+
+## The viewport runs in a Web Worker
+
+`ThreeJsCanvas` transfers the canvas to an offscreen worker, and the renderers read `WorkerDataStore`
+rather than the server context. **A channel not explicitly forwarded to the worker does not exist
+there** — it fails silently and looks like a broken renderer, which is how segment lengths went
+missing once already. Every new channel needs its hop through `ThreeJsCanvas` → `WorkerDataStore`.
 
 ## Preservation inventory (nothing live is lost)
 

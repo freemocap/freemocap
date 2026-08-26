@@ -66,10 +66,14 @@ Everything encodes to CBOR per [../03-transport/message-relay.md](../03-transpor
 ## Segment lengths today
 
 Published lengths are **fitted millimetres for every segment**, seen or not. Each hydrated segment
-reports how big the subject is (`observed length / authored proportion`); those readings pool into
-one body height, and a segment with no reading of its own is sized by it. The frame also carries
-`ModelInstance.body_height_mm`, because the model definition is dimensionless
-(`RestSegment.length_proportion`) — see [body-scale-fitting.md](body-scale-fitting.md).
+reports how big its model is (`observed length / authored proportion`); those readings pool into one
+fitted scale, and a segment with no reading of its own is sized by it. The frame also carries
+`ModelInstance.fitted_scale_mm`, because a model definition is dimensionless
+(`RestSegment.length_proportion`) — see [model-scale-fitting.md](model-scale-fitting.md).
+
+The loop runs **once per tracked skeleton**, not once for the human: ingest → filter → gate → then,
+per skeleton, mapping → hydrate → resolve → scale fit → reprojection, composed into one
+`ModelInstance` each. A session tracking a person and a charuco board runs two.
 
 ## The gate
 

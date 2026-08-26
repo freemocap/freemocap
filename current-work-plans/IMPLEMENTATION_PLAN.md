@@ -6,20 +6,27 @@
 
 ### `[IN]`
 
+- **Generic skeletons, driven by the charuco board** — the current initiative. Track, reconstruct and
+  render the board on the human's machinery, using the mismatch to drive out single-human assumptions:
+  plural models/instances end to end, landmark + connection groups, sensible defaults for
+  under-specified skeletons, scale generalized to each skeleton's reference unit, and one model-driven
+  connection renderer ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
 - **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
   `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 - **Face component implementation** — currently commented out of the composition (`#TODO`);
   `FaceBlendShapes` plumbing exists, the component does not load.
-- **Posthoc rebuild** — **deferred by decision**; the offline mocap/calibration paths are
+- **Posthoc rebuild** — deferred until generic skeletons land, so the offline paths are rebuilt on the
+  generic layer rather than a human-shaped one. The offline mocap/calibration paths are
   broken-if-invoked against installed skellyforge (scope +
-  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). Carries the neutral-naming
-  decision (`SkeletonDefinition` → a name a non-human board can wear).
+  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). The neutral-naming question is
+  **settled**: `SkeletonDefinition` keeps its name, and "skeleton" is the generic term — a board is a
+  one-segment skeleton ([ontology.md](ontology.md)).
 
 ### `[LATER]`
 
 VMC adapter · frontend test suite · HTTP control plane ([03-transport/http-control-plane.md](03-transport/http-control-plane.md)) ·
 on-disk tidy serialization ([03-transport/serialization-tidy.md](03-transport/serialization-tidy.md)) ·
-LSL / URDF / OpenSim exports · charuco-board tracking to force a non-human generic case.
+LSL / URDF / OpenSim exports.
 
 ### `[FUTURE]`
 
@@ -29,8 +36,9 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
+| Generic skeletons | posthoc rebuild | the board reconstructs end to end on the generic layer |
 | Posthoc rebuild | tidy serialization | both offline paths run on the new core |
-| skellyforge + skellytracker pushed | freemocap's venv seeing the body-scale fit | user commits/pushes both, then `uv sync` freemocap |
+| skellyforge + skellytracker pushed | freemocap's venv seeing either repo's changes | user commits/pushes both, then `uv sync` freemocap |
 
 ## Progress log
 
@@ -40,7 +48,8 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
   (`thoracic` was 200mm out against a perfect subject, `pelvis`/`skull` ~54mm). Every `SegmentPose`
   carries a `body_scale_estimate`; `body_scale_fitting.py` pools them into one body height plus a
   per-segment scale field that relaxes to that height where there is no data
-  ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)). Only segments built
+  ([02-pipeline/model-scale-fitting.md](02-pipeline/model-scale-fitting.md), renamed from
+  `body-scale-fitting.md` by the generic-skeletons work below). Only segments built
   entirely from landmarks the tracker mapping *measures* may set the height — new
   `TrackerMapping.directly_measured_landmark_names` — so constructed trunk landmarks cannot quote
   the template back as evidence. `landmark_world_positions` takes the scale field, fixing a CoM

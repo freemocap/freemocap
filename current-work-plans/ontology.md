@@ -1,8 +1,19 @@
 # The FreeMoCap Kinematic Ontology
 
-The layered architecture for how FreeMoCap turns measured points into a standard human (and, later,
-other) kinematic model. It exists so FreeMoCap can be a **boundary object** — one neutral core that
-biomechanics, robotics, and animation each consume in their own format.
+The layered architecture for how FreeMoCap turns measured points into a kinematic model. It exists so
+FreeMoCap can be a **boundary object** — one neutral core that biomechanics, robotics, and animation
+each consume in their own format.
+
+> **"Skeleton" is the generic term, not the human one.** A `SkeletonDefinition` is a hydratable
+> specification of a rigid, named thing, and the same seven layers describe all of them:
+>
+> - a **fully specified** skeleton — the standard human: landmarks, segments, joints, chains, a rest
+>   pose, biomechanics, roll conventions;
+> - a **simple** skeleton — a charuco board: one segment carrying a set of landmarks.
+>
+> Everything in between works without new machinery. A layer a skeleton does not use is simply
+> absent, not stubbed. Read every "the human does X" below as an *example* of a layer, never as its
+> definition — that conflation is what let single-human assumptions accumulate in the first place.
 
 The ontology is **seven layers**, and each layer is an object with two faces and its own math:
 
@@ -14,7 +25,10 @@ The ontology is **seven layers**, and each layer is an object with two faces and
 | 4 | segment | `RigidBodySegment` | name + aliases + landmarks + reference geometry + `anatomical_segment` | pose (origin + orientation + `PoseSolution`) | rigid-body math (Kabsch, shortest-arc) |
 | 5 | linkage | `JointDefinition` | parent + child segments + shared landmark + euler convention | joint angle | relative orientation `conj(q_parent)·q_child` + decomposition |
 | 6 | chain | `KinematicChain` | `start` → `end` segment path | chain pose | FK synthesis / IK / FABRIK / twist-backfill |
-| 7 | skeleton | `SkeletonDefinition` | its landmarks + segments + joints (+ rest pose) | whole pose | the composition |
+| 7 | skeleton | `SkeletonDefinition` | its landmarks + segments (+ joints, chains, rest pose) | whole pose | the composition |
+
+Layers 1–4 and 7 are required of every skeleton. Layers 5–6 are what an *articulated* skeleton adds;
+a rigid one simply has none.
 
 ## The layers
 
@@ -50,7 +64,11 @@ in the tree. Straight (a limb) or branching (the wrist fan). Authored in `chains
 `KinematicChain`; owns multi-segment math — FK synthesis, IK/FABRIK, twist-backfill. *(skellyforge)*
 
 **skeleton** — **the composition**: every landmark + segment of one model, loaded and validated as a
-unit, plus its authored rest pose. *(skellyforge)*
+unit, plus its rest pose. Layers 5 and 6 are optional — a skeleton of one segment has no joints and
+no chains, and that is a complete skeleton, not a deficient one. What a skeleton does not declare it
+gets by **sensible default** (a one-segment rest pose is its segment's rest pose; an undeclared mass
+distribution gives an unweighted centre of mass); what a default cannot answer raises at load. See
+[00-foundation/conventions.md](00-foundation/conventions.md). *(skellyforge)*
 
 ## The two faces (static vs. hydrated)
 
@@ -71,11 +89,15 @@ silently.
 - **Ownership** — a landmark declares its segment explicitly. No ordering convention.
 - **Sidedness** — bilateral segments, landmarks, and joints are authored once with `sided: true` and
   compiled into `left_*` / `right_*` pairs; the right side mirrors x. No hand-duplicated left/right.
-- **Scale** — coordinates are body-height proportions (`H = 1.0`), so the template is body-agnostic,
-  and the map from a segment's frame into the world is a **similarity**, not a rigid motion. Every
-  hydrated segment therefore carries a `body_scale_estimate`, and the **body-scale fit** pools those
-  into the subject's `H` plus a per-segment scale field — a segment nobody can see is sized by `H`
-  ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)).
+- **Scale** — coordinates are **proportions of the skeleton's own reference unit** (`1.0` = body height
+  for the human, = square length for a charuco board), so a template is size-agnostic and the map from
+  a segment's frame into the world is a **similarity**, not a rigid motion. Every hydrated segment
+  carries a `scale_estimate`, and the **model-scale fit** pools those into one fitted scale plus a
+  per-segment scale field — a segment nobody can see is sized by the pooled one
+  ([02-pipeline/model-scale-fitting.md](02-pipeline/model-scale-fitting.md)).
+- **Structure, never string patterns** — if a consumer needs to know that four landmarks form a
+  square, the skeleton declares it as a connection group. Nothing downstream parses a name to recover
+  structure it should have been handed.
 
 ## The constitution — invariants at every layer
 
@@ -102,6 +124,14 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 - **Adapters project the one skeleton outward:** VMC / LSL later
   ([03-transport/hub-and-adapters.md](03-transport/hub-and-adapters.md)).
 
+## More than one skeleton at a time
+
+A frame carries **several skeletons**, and several **instances** of each — the wire's `models`,
+`instances` and `trackers` have always been plural. A tracked human and a tracked charuco board are
+two skeletons; two people are two instances of one skeleton. Nothing in the pipeline may assume there
+is exactly one of either ([01-data-model/message-contract.md](01-data-model/message-contract.md),
+[07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
+
 *Status:* layers 1–7 are implemented and run in the realtime loop's stack: `AnatomicalLandmark`,
 `RigidBodySegment` (with `anatomical_segment` declared per component), `SkeletonDefinition.from_default_yaml()`
 (compiling `JointDefinition`s from `human_skeleton.yaml`'s `joints:` section — the authoritative
@@ -111,7 +141,7 @@ topology, bilateral joints authored once via `sided: true` — plus declared `ch
 rigid-fit terminals), and the derived biomechanics layer. Linkage hydrated math: `relative_orientation`,
 euler `decompose/compose` under per-joint conventions, `JointPose`s with input provenance. Chain layer:
 `KinematicChain` declarations, forward synthesis, two-bone IK + FABRIK (both fail-loud), twist backfill.
-Coordinates are authored as **body-height proportions** (`H = 1.0`); the body-fitting step that scales
-the template to measured millimetres is next work. The shipped model is 61 segments / 124 landmarks /
-60 joints / 5 declared chains. Worked example:
+Coordinates are authored as proportions of each skeleton's reference unit (`H = 1.0` for the human);
+the model-scale fit that turns them into measured millimetres is landed. The shipped human is 61
+segments / 124 landmarks / 60 joints / 5 declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

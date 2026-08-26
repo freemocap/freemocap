@@ -22,9 +22,20 @@ The shared vocabulary, defined once here — every other doc links.
   via `sided: true`); its hydrated face is a `JointPose` carrying input provenance.
 - **chain** — a path of linked segments from a `start` to an `end`; the unit of IK/FABRIK/twist-backfill.
   Authored in `chains:` and compiled into `KinematicChain` (5 declared: spine, both arms, both legs).
-- **skeleton** — every landmark + segment + joint of one model, loaded and validated as one unit
-  (`SkeletonDefinition`). The standard human is 61 segments / 124 landmarks / 60 joints / 5 chains
-  (+52 face blendshapes, which are not skeleton components).
+- **skeleton** — every landmark + segment (+ joint, chain) of one model, loaded and validated as one
+  unit (`SkeletonDefinition`). **Generic, not human**: a skeleton is any rigid named thing, from the
+  standard human (61 segments / 124 landmarks / 60 joints / 5 chains, +52 face blendshapes which are
+  not skeleton components) down to a charuco board (one segment carrying its markers). Joints and
+  chains are what an *articulated* skeleton adds; a rigid one has none, and is no less a skeleton.
+- **landmark group** — a named set of a skeleton's landmarks (`charuco_corners`, `face`), optionally
+  with a colour. How a consumer knows what a landmark *is* without parsing its name.
+- **connection group** — a named set of landmark pairs a consumer should draw as edges
+  (`charuco_grid`, `aruco_markers`, `skull_outline`), optionally with a colour. Distinct from
+  **connections** below, which are segment-level.
+- **derived quantity** — a computed property a skeleton opts into (`inertia`, `xcom`, `cop`,
+  `roll_resolution`). Declared in the skeleton's `derived_quantities:`; asking for one whose inputs
+  are undeclared raises at load. Centre of mass is *not* here — every skeleton has one
+  ([../02-pipeline/biomechanics-layer.md](../02-pipeline/biomechanics-layer.md)).
 
 ## Pose vocabulary
 
@@ -34,9 +45,10 @@ The shared vocabulary, defined once here — every other doc links.
   joints × orientations yields world transforms + landmark positions. Authored in `rest_pose.yaml`,
   derived against a VRM humanoid — see [../01-data-model/reference-geometry.md](../01-data-model/reference-geometry.md).
 - **hydration** — recovering each segment's pose for one frame from observed landmark world positions:
-  **rigid fit** (closed-form Kabsch over ≥3 observed landmarks) or **direction fit** (shortest-arc
-  rotation taking the origin→primary-direction ray onto its observed ray). Output is a `SkeletonPose`
-  of frozen `SegmentPose`s, each tagged with how it was solved.
+  **rigid fit** (closed-form Umeyama similarity over ≥3 observed landmarks) or **direction fit**
+  (shortest-arc rotation taking the origin→primary-direction ray onto its observed ray). Both also
+  recover a `scale_estimate`, because the authored template is dimensionless. Output is a
+  `SkeletonPose` of frozen `SegmentPose`s, each tagged with how it was solved.
 - **`PoseSolution`** — `{RIGID_FIT | DIRECTION | TRANSPORTED_ROLL}`; read it before trusting a pose's roll.
 - **roll resolution** — supplying the roll underspecified segments cannot measure: anchored secondary
   axes where the parent's origin direction is usable, parallel transport otherwise, and twist backfill
@@ -51,9 +63,12 @@ The shared vocabulary, defined once here — every other doc links.
 
 ## Mapping vocabulary
 
-- **mapping** — the skellytracker-owned rule turning tracker keypoints into standard-human landmark
-  observations (direct / mean / weighted / `anatomical_offset`). Applied in freemocap *before*
+- **mapping** — the skellytracker-owned rule turning tracker keypoints into landmark observations
+  (direct / mean / weighted / `anatomical_offset`, or **pass-through**). Applied in freemocap *before*
   hydration — see [../01-data-model/tracker-mapping.md](../01-data-model/tracker-mapping.md).
+- **pass-through mapping** — a mapping that declares every tracked keypoint to be a landmark of the
+  same name. The whole file is one flag. For an object whose markers *are* its landmarks (a charuco
+  board), authoring a line per marker would be duplication with a chance of typos.
 - **articulated model** — driven by whatever landmarks the tracker can observe this frame; there is no
   load-time "every landmark must be produced" contract.
 
@@ -64,7 +79,14 @@ The shared vocabulary, defined once here — every other doc links.
 - **kind** — a message-type tag (`frame`, `log`, `framerate`, `app_state`, `progress`). A new data type
   is a new kind.
 - **frame** — the per-frame kind: convention + cameras + models + instances + trackers + image, with
-  index-keyed channel blocks.
+  index-keyed channel blocks. All three of those are **plural**, always.
+- **model** — one skeleton's static definition on the wire (`ModelDefinition`): its segments,
+  landmarks, connections, groups, and `scale_reference_name`. Dimensionless.
+- **instance** — one tracked *occurrence* of a model this frame (`ModelInstance`): its channels plus
+  its `fitted_scale_mm`. Two people are two instances of one model; a person and a board are two
+  models. Nothing may assume one of either.
+- **tracker observation** — one detector's per-frame keypoints (`TrackerObservation`), 2D and 3D. A
+  session runs several — a pose detector and a charuco detector are separate observations.
 - **self-describing** — a message carries everything needed to decode AND render it — the full model
   rides every frame; no external descriptor, no cached schema to drift, no decode-vs-render split.
 - **idempotent** — an update whose effect is the same however many times it is applied (full-snapshot

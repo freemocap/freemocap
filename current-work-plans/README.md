@@ -11,9 +11,14 @@
 > freemocap's posthoc paths still import it behind lazy imports and are therefore broken-if-invoked —
 > deferred by decision (see [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
 
-Engineering plans + design for the FreeMoCap **human-reconstruction rebuild** and its **self-describing
-message stream** — the two intertwined efforts that turn synchronized camera frames into a
-self-describing stream of a standard-human, VRM-1.0-aligned human.
+Engineering plans + design for FreeMoCap's **kinematic reconstruction rebuild** and its
+**self-describing message stream** — the two intertwined efforts that turn synchronized camera frames
+into a self-describing stream of tracked skeletons.
+
+> **"Skeleton" is generic here.** A `SkeletonDefinition` describes any rigid named thing — the
+> VRM-aligned standard human at one end, a one-segment charuco board at the other — and a frame
+> carries several of them. Read "the human" throughout as the worked example, never as the contract
+> ([ontology.md](ontology.md), [07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
 
 > **How this folder is organized.** Split **by architectural layer** (below). Older spec sets live
 > verbatim under [`archive/`](archive/) — they are history, not guidance. These docs and the code
@@ -28,8 +33,8 @@ and the VMC Definition of Done. Then:
 | # | Layer | Covers |
 |---|-------|--------|
 | **00** | [foundation/](00-foundation/) | Conventions (frames, units, quaternions, mirroring), the vocabulary, testing philosophy. |
-| **01** | [data-model/](01-data-model/) | The standard-human structures: component YAMLs + loader, rest-pose reference geometry, tracker→landmark mappings, the message contract. |
-| **02** | [pipeline/](02-pipeline/) | The engine: math kernel + solve, the biomechanics layer, length estimation, the realtime loop, the posthoc path. |
+| **01** | [data-model/](01-data-model/) | The skeleton structures: component YAMLs + loader, rest-pose reference geometry, tracker→landmark mappings, the message contract. |
+| **02** | [pipeline/](02-pipeline/) | The engine: math kernel + solve, the biomechanics layer, model-scale fitting, the realtime loop, the posthoc path. |
 | **03** | [transport/](03-transport/) | The wire: protocol, backend relay, hub + adapters, HTTP control plane, on-disk serialization. |
 | **04** | [ui/](04-ui/) | The frontend: TransportService dispatch, client homes, renderers. |
 | — | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The cross-cutting scope tracker: scope table + progress log. |
@@ -44,7 +49,7 @@ and the VMC Definition of Done. Then:
    `sided: true`; `rest_pose.yaml` (relative quats) derived against `default-vrm.gltf.json5`.
    Every segment declares its `anatomical_segment` (de Leva chunk). Loads green: 61 segments /
    124 landmarks / 60 joints / 5 chains.
-3. **Closed-form solve** — Kabsch rigid fit (≥3 observed landmarks), shortest-arc direction fit
+3. **Closed-form solve** — Umeyama similarity rigid fit (≥3 observed landmarks), shortest-arc direction fit
    otherwise; `ContinuousRollResolver` supplies underspecified roll by anchored secondary axes with
    parallel-transport fallback and twist-backfill from measured rigid-fit terminals. No damping;
    partial hydration skips unobservable segments.
@@ -60,36 +65,46 @@ and the VMC Definition of Done. Then:
    frame. Verified by `test_full_loop.py` + pipeline e2e tests.
 7. **Biomechanics layer** — de Leva anthropometry, partial-CoM-aware segment CoMs, whole-body inertia,
    XCoM/CoP/CMP, derived kinematics; wired into the aggregator.
-8. **Proportional authoring** — landmark coordinates are body-height fractions (`H = 1.0` =
-   floor-to-skull-top), so the template is body-agnostic.
-9. **Body-scale fit** — the template gets a size from the data. The local→world map is a
+8. **Proportional authoring** — landmark coordinates are fractions of the skeleton's reference unit
+   (`H = 1.0` = floor-to-skull-top for the human), so a template is size-agnostic.
+9. **Model-scale fit** — a template gets its size from the data. The local→world map is a
    **similarity**, so hydration's rigid fit is Umeyama and every `SegmentPose` carries a
-   `body_scale_estimate`; those pool into one body height plus a per-segment scale field that
-   relaxes to that height where nothing was seen. Only segments the tracker mapping genuinely
-   *measures* set the height. Robust to partial views by construction — seated, with only the arms
-   voting, an unseen foot fits within 0.2mm of its standing measurement
-   ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)).
+   `scale_estimate`; those pool into one fitted scale plus a per-segment scale field that relaxes to
+   it where nothing was seen. Only segments the tracker mapping genuinely *measures* set the scale.
+   Robust to partial views by construction — seated, with only the arms voting, an unseen foot fits
+   within 0.2mm of its standing measurement
+   ([02-pipeline/model-scale-fitting.md](02-pipeline/model-scale-fitting.md)).
 
 ## Next work (in order)
 
-1. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
+1. **Generic skeletons, driven by the charuco board** — track, reconstruct and render the board using
+   the machinery built for the human, and let the mismatch drive out every single-human assumption:
+   plural models/instances through the pipeline, landmark + connection groups so structure travels in
+   the model rather than in string patterns, sensible defaults for under-specified skeletons, and the
+   scale concept generalized to each skeleton's reference unit
+   ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
+2. **Posthoc rebuild** — unblocked by (1): the offline paths get rebuilt on the generic skeleton layer
+   rather than on a human-shaped one ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+3. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
    `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
-2. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
-3. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
+4. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
+5. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
    synthesis/IK/backfill; the remaining deferred linkage/chain piece.
-4. **Posthoc rebuild** — deferred by decision; old imports are dead upstream, offline paths are
-   broken-if-invoked ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
-5. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, on-disk tidy
-   serialization, and charuco-board tracking to force a non-human generic case.
+6. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, and on-disk tidy
+   serialization.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
-**Body-height proportions (H = 1.0) · right-handed · Blender axes (+X right, +Y forward, +Z up)**,
-quaternions **wxyz**, `q_local = conj(q_parent) · q_child`, ground plane at `z = 0`. Segments are
-VRM 1.0-aligned rigid bodies; the standard human is **61 segments**, composed from YAML parts
-(vocabulary single-sourced in the [glossary](00-foundation/glossary.md)).
+**Proportions of the skeleton's reference unit (`1.0` = body height for the human) · right-handed ·
+Blender axes (+X right, +Y forward, +Z up)**, quaternions **wxyz**,
+`q_local = conj(q_parent) · q_child`, ground plane at `z = 0`. Segments are VRM 1.0-aligned rigid
+bodies; the standard human is **61 segments**, composed from YAML parts. Two principles decide
+arguments: **sensible defaults, never runtime fallbacks**, and **structure travels in the model,
+never in string patterns** (vocabulary single-sourced in the
+[glossary](00-foundation/glossary.md), principles in
+[00-foundation/conventions.md](00-foundation/conventions.md)).
 
 ## House rules for these docs
 

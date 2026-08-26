@@ -12,14 +12,12 @@ Calibration hot-reload: the node polls the calibration file on disk once per
 second. If the file has changed (e.g. after posthoc calibration completes),
 the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
-Skeleton fitting runs on the filtered 3D keypoints: the tracker mapping names them
-as standard-human landmarks, ``hydrate_skeleton`` recovers each segment's pose
-closed-form, and ``ContinuousRollResolver`` supplies the roll two landmarks leave
-free. The standard human is authored as fractions of body height, so hydration
-also recovers each segment's SIZE, and ``StreamingBodyScaleFitter`` pools those
-readings into the subject's height plus a per-segment scale — which is what sizes
-the segments the cameras cannot see. The reset signal clears those windows so the
-next ~window frames re-fit from scratch.
+Reconstruction runs ONCE PER TRACKED SKELETON on the filtered 3D keypoints — a session
+tracking a person and a charuco board runs it twice. Each skeleton's bundle carries the
+mapping that feeds it, the fitter that sizes it and the roll convention it opted into, and
+``reconstruct_skeleton`` does the per-skeleton work; this node owns the shared parts
+(triangulation, smoothing, gating) and the cross-frame state a pure function cannot hold.
+The reset signal clears every skeleton's fit windows so the next ~window frames re-fit.
 """
 import logging
 import multiprocessing.synchronize
@@ -31,14 +29,6 @@ from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
 
 import numpy as np
-from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
-from skellyforge.core.biomechanics.anthropometric_parameters import AnthropometricParameters
-from skellyforge.core.biomechanics.center_of_mass import (
-    CenterOfMassDefinitions,
-    compute_segment_coms,
-    landmark_world_positions,
-)
-from skellyforge.core.biomechanics.composite_inertia import whole_body_center_of_mass
 from skellyforge.core.biomechanics.ground_reference import (
     GRAVITY_ACCELERATION,
     extrapolated_center_of_mass,
@@ -49,19 +39,14 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
     CameraGroupSharedMemoryDTO,
 )
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
-from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.pose.body_scale_fitting import (
-    BodyScaleFit,
-    StreamingBodyScaleFitter,
-    body_scale_voting_segment_names,
-)
-from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
-from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
+from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
+from freemocap.core.skeletons.standard_human_skeleton import build_standard_human_bundle
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
 )
-from skellyforge.core.skeleton.pose.rest_pose import RestPose
 
 from freemocap.core.pipeline.abcs.aggregator_node_abc import AggregatorNode
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
@@ -126,18 +111,18 @@ def _from_blender(position: np.ndarray) -> np.ndarray:
 def _reproject_segment_origins(
         *,
         calibration,
-        standard_human: SkeletonDefinition,
+        skeleton: SkeletonDefinition,
         solver_landmarks: dict[str, np.ndarray],
 ) -> dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]]:
-    """Project the fitted skeleton's segment origins into every camera.
+    """Project one skeleton's segment origins into every camera.
 
-    Builds one (60, 3) array of origin positions in the solver's standard-human
-    names, runs it through the calibration's triangulator projection, and
-    returns ``{camera_id: {segment_name: (x, y)}}`` in capture-resolution px.
-    Origins not hydrated this frame project to NaN and are dropped.
+    Builds an (n_segments, 3) array of origin positions in that skeleton's own names, runs
+    it through the calibration's triangulator projection, and returns
+    ``{camera_id: {segment_name: (x, y)}}`` in capture-resolution px. Origins not hydrated
+    this frame project to NaN and are dropped.
     """
-    origin_names = origin_landmark_names(standard_human)
-    segment_names = list(standard_human.segments)
+    origin_names = origin_landmark_names(skeleton)
+    segment_names = list(skeleton.segments)
     origins = np.full((len(segment_names), 3), np.nan, dtype=np.float64)
     for i, name in enumerate(segment_names):
         pos = solver_landmarks.get(origin_names[name])
@@ -155,29 +140,85 @@ def _reproject_segment_origins(
     return out
 
 
-def _build_body_scale_fitter(
+def _fill_extrapolated_center_of_mass(
         *,
-        standard_human: SkeletonDefinition,
-        standard_human_mapping,
-        window_frames: int,
-) -> StreamingBodyScaleFitter:
-    """A body-scale fitter that only lets genuinely measured segments set the height.
+        reconstruction: SkeletonReconstruction,
+        previous_by_model: dict[str, tuple[np.ndarray, float]],
+        enabled: bool,
+) -> None:
+    """Add this skeleton's XCoM, from the change in its centre of mass since last frame.
 
-    The tracker mapping constructs a good many standard-human landmarks from authored
-    ratios of a measured span — the sternoclavicular joints, the xiphoid process. Those
-    are fine POSITIONS but they are not independent evidence about how big the subject is,
-    and because they are nearly noise-free a consistency-weighted estimator would rank
-    them as its best evidence. The mapping says which of its outputs it measures; the
-    skeleton says which segments those make measurable.
+    Cross-frame state, which is why it lives here rather than in the pure per-frame
+    reconstruction. Keyed by model so two tracked skeletons cannot borrow each other's
+    velocity.
+
+    Skipped entirely for a skeleton that did not opt into `extrapolated_center_of_mass`:
+    XCoM is a balance quantity about a body standing on the ground, and it means nothing
+    for a calibration board held in the air.
     """
-    return StreamingBodyScaleFitter(
-        skeleton=standard_human,
-        voting_segment_names=body_scale_voting_segment_names(
-            skeleton=standard_human,
-            measured_landmark_names=standard_human_mapping.directly_measured_landmark_names,
-        ),
-        window_frames=window_frames,
-    )
+    center_of_mass = reconstruction.center_of_mass
+    if not enabled or center_of_mass is None:
+        return
+    now = time.perf_counter()
+    previous = previous_by_model.get(reconstruction.model_id)
+    if previous is not None and float(center_of_mass[2]) > 0.0:
+        previous_center, previous_time = previous
+        elapsed = now - previous_time
+        if elapsed > 0:
+            reconstruction.extrapolated_center_of_mass = extrapolated_center_of_mass(
+                com=center_of_mass,
+                com_velocity=(center_of_mass - previous_center) / elapsed,
+                gravity=GRAVITY_ACCELERATION,
+            )
+    previous_by_model[reconstruction.model_id] = (center_of_mass.copy(), now)
+
+
+def _log_reconstruction_observability(
+        *,
+        bundles: tuple[TrackedSkeletonBundle, ...],
+        reconstructions: dict[str, SkeletonReconstruction],
+        already_logged: set[str],
+) -> None:
+    """Say once per run when a skeleton is not reconstructing, and how badly.
+
+    Once per run rather than per frame, and keyed by model so one skeleton going quiet
+    cannot mask another's.
+    """
+    for bundle in bundles:
+        reconstruction = reconstructions.get(bundle.model_id)
+        expected = len(bundle.skeleton.segments)
+        if reconstruction is None or not reconstruction.segment_rotations_world:
+            key = f"{bundle.model_id}:no_orientations"
+            if key not in already_logged:
+                already_logged.add(key)
+                logger.error(
+                    f"Skeleton {bundle.model_id!r} produced ZERO segment orientations — "
+                    "its 3D geometry will not render. Either nothing it tracks is in "
+                    "view, or its mapping produced no landmarks."
+                )
+            continue
+        solved = len(reconstruction.segment_rotations_world)
+        if solved < expected:
+            key = f"{bundle.model_id}:partial_orientations"
+            if key not in already_logged:
+                already_logged.add(key)
+                missing = sorted(
+                    set(bundle.skeleton.segments) - set(reconstruction.segment_rotations_world)
+                )
+                logger.warning(
+                    f"Skeleton {bundle.model_id!r} produced {solved}/{expected} "
+                    f"orientations — unsolved segments: {missing}"
+                )
+        if reconstruction.fitted_scale_mm is None:
+            key = f"{bundle.model_id}:no_scale"
+            if key not in already_logged:
+                already_logged.add(key)
+                logger.info(
+                    f"Skeleton {bundle.model_id!r} has no measured size yet, so its "
+                    "segment lengths and fitted scale stay off the wire until a segment "
+                    "that may set the scale is seen. Voting segments: "
+                    f"{len(bundle.scale_fitter.voting_segment_names)}"
+                )
 
 
 def _merge_angulation(
@@ -313,23 +354,18 @@ class RealtimeAggregatorNode(AggregatorNode):
             max_rejected_streak=filter_config.max_rejected_streak,
         )
 
-        # Load body biomechanics for per-frame center of mass calculation, using
-        # the tracker→standard-human mapping that matches the configured detector
-        # (RTMPose and MediaPipe use different keypoint naming conventions).
-        # No Pydantic in the hot loop — the mapping is a plain dict applied per frame.
         detector_type = pipeline_config.camera_node_config.detector_type
-        # The body biomechanics carries the tracker->standard-human mapping —
-        # needed by the rigidifier + solver regardless of center-of-mass.
-        standard_human_mapping = load_standard_human_mapping(detector_type)
+        # Every skeleton this run tracks, each bundled with what reconstructs it. Built
+        # once per run — every recording gets fresh fit windows, no module globals — and
+        # rebuilt when the detector changes, because which landmarks are MEASURED (as
+        # opposed to constructed from authored ratios) is a property of its mapping.
+        skeleton_bundles: tuple[TrackedSkeletonBundle, ...] = (
+            build_standard_human_bundle(
+                detector_type=detector_type,
+                scale_window_frames=filter_config.segment_scale_window_frames,
+            ),
+        )
 
-        # Composed standard human — shared by the skeleton rigidifier (segment
-        # trees) and the orientation solver (reference geometry). Built once per
-        # run (D16): the model is cheap to build, and every recording gets a
-        # fresh instance — no module globals.
-        standard_human = SkeletonDefinition.from_default_yaml()
-
-        # Skeleton fitting is stateless: rigidify_landmarks runs per frame from
-        # the loaded model + T-pose. Nothing is created or recreated.
         skeleton_fitting_enabled: bool = aggregator_config.skeleton_fitting_enabled
 
         # One Euro filter: smooths raw keypoints and gap-fills brief occlusions
@@ -361,43 +397,12 @@ class RealtimeAggregatorNode(AggregatorNode):
         # measure aggregator-startup → first-frame-arrival, which is dominated
         # by camera warmup (~5-7s) and is not a steady-state metric.
         recorded_first_frame: bool = False
-        # XCoM velocity tracking: previous CoM position + timestamp for dt.
-        prev_com: np.ndarray | None = None
-        prev_com_time: float | None = None
-        # Per-segment orientation history: carries the critically damped twist
-        # state and the timestamp the next frame's dt is measured against. Scoped
-        # to this run — at module scope, concurrent pipelines would share
-        # smoothing state and damping would persist across recordings.
-        anthropometric = AnthropometricParameters.from_default_yaml()
-        com_definitions = CenterOfMassDefinitions.from_default_yaml()
-        com_definitions.validate_against(skeleton=standard_human)
-        segment_masses: dict[str, float] = {}
-        for definition in com_definitions.definitions.values():
-            mass = anthropometric.get(name=definition.name).mass_fraction * 70.0
-            for full_name, _side in definition.side_entries:
-                segment_masses[full_name] = mass
-        # Observability: log each skeleton-failure class ONCE per run, not per frame.
+        # XCoM velocity tracking, per skeleton: its previous centre of mass and when it
+        # was taken. Keyed by model so two tracked skeletons cannot borrow each other's
+        # velocity.
+        previous_center_of_mass_by_model: dict[str, tuple[np.ndarray, float]] = {}
+        # Observability: log each failure class ONCE per run per skeleton, not per frame.
         skeleton_observability_logged: set[str] = set()
-        # The standard human is authored as fractions of body height, so it has no size
-        # until it is fitted. This holds a rolling window of every visible segment's
-        # reading of how big the subject is, and turns them into one height plus a
-        # per-segment scale — which is what sizes the segments nothing can see.
-        # Rebuilt whenever the detector changes, because which landmarks are MEASURED
-        # (as opposed to constructed from authored ratios) is a property of the mapping,
-        # and only measured ones are allowed to set the height.
-        body_scale_fitter = _build_body_scale_fitter(
-            standard_human=standard_human,
-            standard_human_mapping=standard_human_mapping,
-            window_frames=filter_config.segment_scale_window_frames,
-        )
-        # The rest pose supplies the roll resolver's seed and the parent tree the local
-        # rotations are composed against. Its geometry is proportional; sizing it is the
-        # fit's job, not this map's.
-        rest_pose = RestPose.from_default_yaml(skeleton=standard_human)
-        roll_resolver = ContinuousRollResolver.for_skeleton(
-            skeleton=standard_human,
-            rest_relative_orientations=rest_pose.relative_orientations,
-        )
 
         timing_reporter: PipelineTimingReporter | None = None
         timing_reporter_stop: threading.Event | None = None
@@ -446,16 +451,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                     detector_type_changed = new_detector_type != detector_type
                     detector_type = new_detector_type
 
-                    if standard_human_mapping is None or detector_type_changed:
-                        standard_human_mapping = load_standard_human_mapping(detector_type)
+                    if detector_type_changed:
                         # A different detector measures different landmarks, so which
-                        # segments may set the body height changes with it. Rebuilding
+                        # segments may set a skeleton's scale changes with it. Rebuilding
                         # also drops the old detector's readings, which is right: they
                         # were measured through a different naming convention.
-                        body_scale_fitter = _build_body_scale_fitter(
-                            standard_human=standard_human,
-                            standard_human_mapping=standard_human_mapping,
-                            window_frames=filter_config.segment_scale_window_frames,
+                        skeleton_bundles = (
+                            build_standard_human_bundle(
+                                detector_type=detector_type,
+                                scale_window_frames=filter_config.segment_scale_window_frames,
+                            ),
                         )
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
@@ -479,9 +484,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
-                    roll_resolver.reset()
-                    body_scale_fitter.reset()
-                    skeleton_observability_logged.discard("no_body_scale")
+                    for bundle in skeleton_bundles:
+                        bundle.reset()
+                    previous_center_of_mass_by_model.clear()
+                    skeleton_observability_logged.clear()
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()
@@ -497,11 +503,10 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # fitter's windows was measured in the old frame's units.
                         keypoint_filter.reset()
                         point_gate.reset()
-                        prev_com = None
-                        prev_com_time = None
-                        roll_resolver.reset()
-                        body_scale_fitter.reset()
-                        skeleton_observability_logged.discard("no_body_scale")
+                        for bundle in skeleton_bundles:
+                            bundle.reset()
+                        previous_center_of_mass_by_model.clear()
+                        skeleton_observability_logged.clear()
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -667,15 +672,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                 measured_keypoints: dict[str, np.ndarray] = {}
                 skeleton_keypoints: dict[str, np.ndarray] = {}
                 frame_time = time.perf_counter()
-                total_body_com: np.ndarray | None = None
-                xcom: np.ndarray | None = None
-                resolved_pose = None
-                mapped_landmarks: dict[str, np.ndarray] = {}
-                hydrated_landmarks: dict[str, np.ndarray] = {}
-                body_scale_fit: BodyScaleFit | None = None
-                reprojected_segment_origins: dict[
-                    CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
-                ] = {}
+                # One reconstruction per tracked skeleton, filled below. A skeleton that
+                # did not hydrate this frame is simply absent.
+                reconstructions: dict[str, SkeletonReconstruction] = {}
                 if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
@@ -757,156 +756,44 @@ class RealtimeAggregatorNode(AggregatorNode):
                             if timer is not None:
                                 timer.record("velocity_gate", (time.perf_counter() - t0) * 1e3)
 
-                    # ---- Rigid-body skeleton correction ----
+                    # ---- Reconstruct each tracked skeleton ----
+                    # One pass per skeleton: map -> hydrate -> resolve roll -> fit scale ->
+                    # size every segment -> place the centre of mass. A session tracking a
+                    # person and a charuco board runs this twice, and nothing below knows
+                    # which is which.
                     if skeleton_fitting_enabled and filtered_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        mapped_landmarks = standard_human_mapping(filtered_keypoints)
-                        observed = {
-                            name: Point.from_array(values=position)
-                            for name, position in mapped_landmarks.items()
-                        }
-                        hydrated_pose = hydrate_skeleton(
-                            skeleton=standard_human,
-                            observed=observed,
-                            require_all=False,
-                        )
-                        resolved_pose = roll_resolver.resolve_pose(pose=hydrated_pose)
-                        hydrated_landmarks = dict(mapped_landmarks)
-                        for segment in standard_human.segments.values():
-                            if segment.name not in resolved_pose.segment_poses:
-                                # Partial hydration: a segment whose landmarks weren't
-                                # observed this frame is absent from the pose — skip its
-                                # origin rather than indexing a missing segment.
+                        for bundle in skeleton_bundles:
+                            reconstruction = reconstruct_skeleton(
+                                bundle=bundle,
+                                filtered_keypoints=filtered_keypoints,
+                                compute_center_of_mass=aggregator_config.center_of_mass_enabled,
+                            )
+                            if reconstruction is None:
                                 continue
-                            origin_name = segment.frame_definition.origin_point_name
-                            hydrated_landmarks[origin_name] = resolved_pose.segment_poses[segment.name].origin.array
-                        # Every hydrated segment already carries its own reading of how big
-                        # the subject is — the rigid fit measures it over all of a
-                        # segment's landmarks, the direction fit over its one distance —
-                        # so the fitter only has to be handed the pose.
-                        body_scale_fitter.observe_pose(pose=resolved_pose)
+                            _fill_extrapolated_center_of_mass(
+                                reconstruction=reconstruction,
+                                previous_by_model=previous_center_of_mass_by_model,
+                                enabled="extrapolated_center_of_mass"
+                                in bundle.skeleton.derived_quantities,
+                            )
+                            if calibration.is_valid:
+                                reconstruction.reprojected_segment_origins = (
+                                    _reproject_segment_origins(
+                                        calibration=calibration,
+                                        skeleton=bundle.skeleton,
+                                        solver_landmarks=reconstruction.landmarks,
+                                    )
+                                )
+                            reconstructions[bundle.model_id] = reconstruction
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
-                    # The rigidifier hands back the hydrated standard-human
-                    # landmarks (body + standard-named hands); the solver
-                    # consumes them straight through — no bone-keyed map, the
-                    # standard human already names every landmark it needs.
-                    segment_rotations_world: dict[str, np.ndarray] | None = None
-                    segment_rotations_local: dict[str, np.ndarray] | None = None
-                    if resolved_pose is not None:
-                        t0 = time.perf_counter() if timer is not None else 0.0
-                        segment_rotations_world = {
-                            name: segment_pose.orientation.as_array()
-                            for name, segment_pose in resolved_pose.segment_poses.items()
-                        }
-                        segment_rotations_local = {}
-                        for name, segment_pose in resolved_pose.segment_poses.items():
-                            parent_name = rest_pose.parents[name]
-                            if (
-                                parent_name is None
-                                or parent_name not in resolved_pose.segment_poses
-                            ):
-                                # Root, or a segment whose parent was skipped by partial
-                                # hydration — fall back to the world orientation.
-                                local = segment_pose.orientation
-                            else:
-                                local = (
-                                    resolved_pose.segment_poses[parent_name].orientation.inverse()
-                                    * segment_pose.orientation
-                                )
-                            segment_rotations_local[name] = local.as_array()
-                        if not segment_rotations_world and "empty_orientations" not in skeleton_observability_logged:
-                            skeleton_observability_logged.add("empty_orientations")
-                            logger.error(
-                                "Skeleton solve produced ZERO segment orientations — "
-                                "the 3D bones will not render. Rigidified landmarks are "
-                                "present, but the solver hydrated no segments."
-                            )
-                        elif segment_rotations_world and len(segment_rotations_world) < len(standard_human.segments) and "partial_orientations" not in skeleton_observability_logged:
-                            skeleton_observability_logged.add("partial_orientations")
-                            missing = sorted(set(standard_human.segments) - set(segment_rotations_world))
-                            logger.warning(
-                                f"Skeleton solve produced {len(segment_rotations_world)}/"
-                                f"{len(standard_human.segments)} orientations — unsolved segments: {missing}"
-                            )
-                        if timer is not None:
-                            timer.record("orientation_solve", (time.perf_counter() - t0) * 1e3)
-
-                        # ---- Segment-origin reprojections (the 2D skeleton) ----
-                        # Project the fitted skeleton's segment origins back into
-                        # each camera — the OVERLAY_REPROJECTIONS layer (larger
-                        # dots + connections on the frontend). Only possible with
-                        # a valid calibration.
-                        if calibration.is_valid:
-                            t0 = time.perf_counter() if timer is not None else 0.0
-                            reprojected_segment_origins = _reproject_segment_origins(
-                                calibration=calibration,
-                                standard_human=standard_human,
-                                solver_landmarks=hydrated_landmarks,
-                            )
-                            if timer is not None:
-                                timer.record("segment_reprojection", (time.perf_counter() - t0) * 1e3)
-
-                    # ---- Body scale ----
-                    # One fit per frame, shared by the center of mass (which places
-                    # landmarks from their proportional local positions) and the wire
-                    # (which publishes the lengths and the height). `has_body_scale` is
-                    # False only while no measurable segment has ever been seen — nobody
-                    # in front of the cameras — and then there are no millimetres to
-                    # publish, which is said rather than defaulted.
-                    if body_scale_fitter.has_body_scale:
-                        body_scale_fit = body_scale_fitter.current_fit()
-                    elif "no_body_scale" not in skeleton_observability_logged:
-                        skeleton_observability_logged.add("no_body_scale")
-                        logger.info(
-                            "No segment has measured the subject yet, so the skeleton has "
-                            "no size — segment lengths and body height stay off the wire "
-                            "until a measurable segment is seen. Voting segments: "
-                            f"{len(body_scale_fitter.voting_segment_names)}"
+                        _log_reconstruction_observability(
+                            bundles=skeleton_bundles,
+                            reconstructions=reconstructions,
+                            already_logged=skeleton_observability_logged,
                         )
-
-                    # ---- Center of mass ----
-                    if (
-                        standard_human_mapping is not None
-                        and aggregator_config.center_of_mass_enabled
-                        and resolved_pose is not None
-                        and body_scale_fit is not None
-                    ):
-                        t0 = time.perf_counter() if timer is not None else 0.0
-                        world = landmark_world_positions(
-                            skeleton=standard_human,
-                            pose=resolved_pose,
-                            segment_scales=body_scale_fit.segment_scales,
-                        )
-                        segment_coms = compute_segment_coms(
-                            definitions=com_definitions, world=world
-                        )
-                        total_body_com = whole_body_center_of_mass(
-                            segment_coms=segment_coms, segment_masses=segment_masses
-                        )
-                        if timer is not None:
-                            timer.record("center_of_mass", (time.perf_counter() - t0) * 1e3)
-
-                        # ---- XCoM (extrapolated center of mass) ----
-                        if total_body_com is not None:
-                            now_com = time.perf_counter()
-                            com_z = float(total_body_com[2])
-                            if (
-                                com_z > 0.0
-                                and prev_com is not None
-                                and prev_com_time is not None
-                            ):
-                                dt = now_com - prev_com_time
-                                if dt > 0:
-                                    com_velocity = (total_body_com - prev_com) / dt
-                                    xcom = extrapolated_center_of_mass(
-                                        com=total_body_com,
-                                        com_velocity=com_velocity,
-                                        gravity=GRAVITY_ACCELERATION,
-                                    )
-                            prev_com = total_body_com.copy()
-                            prev_com_time = now_com
 
                 # Convert to Point3d once at the end for the output message
                 if timer is not None:
@@ -922,25 +809,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Publish aggregated output ----
-                # Fitted per-segment lengths in millimetres, covering EVERY segment: the
-                # ones that were seen carry their own measurement, and the ones that were
-                # not are sized by the fitted body height. Empty only while the subject
-                # has never been measured at all.
-                segment_lengths: dict[str, float] = (
-                    dict(body_scale_fit.segment_lengths)
-                    if body_scale_fit is not None
-                    else {}
-                )
-                joint_angles = (
-                    {
-                        joint_name: joint_pose.angles
-                        for joint_name, joint_pose in standard_human.compute_joint_poses(
-                            pose=resolved_pose
-                        ).items()
-                    }
-                    if resolved_pose is not None
-                    else None
-                )
+                # Every tracked skeleton's reconstruction, keyed by model. Each carries
+                # its own fitted lengths (covering EVERY segment — the ones nothing saw
+                # are sized by its fitted scale), rotations, joint angles and CoM.
                 aggregation_output_pub.put(
                     AggregationNodeOutputMessage(
                         frame_number=last_received_frame,
@@ -949,19 +820,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         camera_group_id=camera_group_id,
                         camera_node_outputs=frame_n_outputs,
                         keypoints_arrays=filtered_keypoints,
-                        total_body_com=total_body_com,
-                        xcom=xcom,
-                        standard_skeleton=(hydrated_landmarks if hydrated_landmarks else None),
-                        joint_angles=joint_angles,
-                        segment_rotations_world=segment_rotations_world,
-                        segment_rotations_local=segment_rotations_local,
-                        segment_lengths=segment_lengths,
-                        body_height_mm=(
-                            body_scale_fit.body_height
-                            if body_scale_fit is not None
-                            else None
-                        ),
-                        reprojected_segment_origins=reprojected_segment_origins,
+                        reconstructions=reconstructions,
                     ),
                 )
                 # Mark the slot as full and not-yet-consumed; the consumer

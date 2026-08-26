@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
@@ -20,14 +21,21 @@ class JointAnglesProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
 
-    def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
+    def fill(
+        self, frame_ctx: FrameContext, skeleton: TrackedSkeletonBundle
+    ) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output
-        if message is None or not message.joint_angles:
+        if message is None:
+            return []
+        reconstruction = message.reconstructions.get(skeleton.model_id)
+        # A skeleton with no joints — a rigid marked object — has no angles, and that is
+        # an absent channel rather than a channel of NaNs.
+        if reconstruction is None or not reconstruction.joint_angles:
             return []
 
         names: list[str] = []
         values: list[float] = []
-        for joint_name, angles in sorted(message.joint_angles.items()):
+        for joint_name, angles in sorted(reconstruction.joint_angles.items()):
             # Angle names ride the aggregator's convention; the wire flattens
             # to <joint>.<angle> scalars so consumers can address any axis.
             for angle_index in range(3):

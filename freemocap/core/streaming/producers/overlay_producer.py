@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, camera_2d_detections
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
@@ -19,16 +20,23 @@ class OverlayProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
 
-    def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
+    def fill(
+        self, frame_ctx: FrameContext, skeleton: TrackedSkeletonBundle
+    ) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output
         stream_ctx = frame_ctx.stream_context
         if message is None or stream_ctx is None:
             return []
-        kp_names = tuple(stream_ctx.tracker_keypoint_names)
-        segment_names = tuple(stream_ctx.standard_human.segments)
+        reconstruction = message.reconstructions.get(skeleton.model_id)
+        kp_names = tuple(skeleton.tracker_keypoint_names)
+        segment_names = tuple(skeleton.skeleton.segments)
         blocks: list[ChannelBlock] = []
         for camera_id in stream_ctx.camera_ids:
-            detections = camera_2d_detections(message, camera_id)
+            # Each skeleton overlays ITS detector's detections, so a charuco board's
+            # corners and a pose detector's joints land in separate blocks.
+            detections = camera_2d_detections(
+                message, camera_id, detector_type=skeleton.detector_type
+            )
             blocks.append(
                 ChannelBlock(
                     kind=ChannelKind.OVERLAY_2D,
@@ -41,7 +49,11 @@ class OverlayProducer(ChannelProducer):
             )
             reprojections = {
                 name: np.asarray(xy, dtype=np.float32)
-                for name, xy in message.reprojected_segment_origins.get(camera_id, {}).items()
+                for name, xy in (
+                    reconstruction.reprojected_segment_origins.get(camera_id, {})
+                    if reconstruction
+                    else {}
+                ).items()
             }
             blocks.append(
                 ChannelBlock(

@@ -39,7 +39,7 @@ class RestSegment:
 
     The model is DIMENSIONLESS. `length_proportion` is this segment's length as a fraction
     of body height, so the same model describes a toddler and a basketball player; a
-    consumer that wants millimetres multiplies by the instance's `body_height_mm`, or uses
+    consumer that wants millimetres multiplies by the instance's `fitted_scale_mm`, or uses
     the per-frame `SEGMENT_LENGTHS` channel where the segment was actually measured.
     """
 
@@ -58,6 +58,47 @@ class RestSegment:
             "rest_orientation": list(self.rest_orientation),
             "length_proportion": self.length_proportion,
             "is_fully_specified": self.is_fully_specified,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ModelLandmarkGroup:
+    """A named set of a model's landmarks, with its colour already resolved.
+
+    The model carries TAGS and skellyforge's palette turns them into a colour; that
+    resolution happens here, on the way to the wire, so a client never needs the palette
+    and swapping the palette recolours every client at once.
+    """
+
+    name: str
+    landmark_names: tuple[str, ...]
+    color: str
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "landmark_names": list(self.landmark_names),
+            "color": self.color,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ModelConnectionGroup:
+    """A named set of landmark edges a client should draw, with its colour resolved.
+
+    Distinct from `ModelDefinition.connections`, which joins SEGMENT origins along the
+    joint tree. These join landmarks — the only kind of edge a one-segment model has.
+    """
+
+    name: str
+    pairs: tuple[tuple[str, str], ...]
+    color: str
+
+    def to_cbor_message(self) -> dict[str, Any]:
+        return {
+            "name": self.name,
+            "pairs": [list(pair) for pair in self.pairs],
+            "color": self.color,
         }
 
 

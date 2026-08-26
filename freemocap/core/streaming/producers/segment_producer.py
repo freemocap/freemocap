@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import assemble_channel_bytes, origin_landmark_names
 from freemocap.core.streaming.message_model import ChannelBlock, ChannelKind
 from freemocap.core.streaming.producers.channel_producer import ChannelProducer
@@ -19,18 +20,22 @@ class SegmentProducer(ChannelProducer):
     def is_active(self, ctx: StreamContext) -> bool:
         return ctx.pipeline_live
 
-    def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
+    def fill(
+        self, frame_ctx: FrameContext, skeleton: TrackedSkeletonBundle
+    ) -> list[ChannelBlock]:
         message = frame_ctx.aggregator_output
-        stream_ctx = frame_ctx.stream_context
-        if message is None or stream_ctx is None:
+        if message is None:
             return []
-        segment_names = tuple(stream_ctx.standard_human.segments)
-        origin_names = origin_landmark_names(stream_ctx.standard_human)
-        positions = message.standard_skeleton or {}
+        reconstruction = message.reconstructions.get(skeleton.model_id)
+        segment_names = tuple(skeleton.skeleton.segments)
+        origin_names = origin_landmark_names(skeleton.skeleton)
+        positions = reconstruction.landmarks if reconstruction else {}
         origin_positions = {name: positions.get(origin_names[name]) for name in segment_names}
         lengths = {
             name: np.array([length], dtype=np.float32)
-            for name, length in (message.segment_lengths or {}).items()
+            for name, length in (
+                reconstruction.segment_lengths if reconstruction else {}
+            ).items()
         }
         return [
             ChannelBlock(
@@ -41,12 +46,20 @@ class SegmentProducer(ChannelProducer):
             ChannelBlock(
                 kind=ChannelKind.ROTATIONS_LOCAL,
                 columns=("w", "x", "y", "z"),
-                data=assemble_channel_bytes(names=segment_names, positions=message.segment_rotations_local or {}, n_cols=4),
+                data=assemble_channel_bytes(
+                    names=segment_names,
+                    positions=reconstruction.segment_rotations_local if reconstruction else {},
+                    n_cols=4,
+                ),
             ),
             ChannelBlock(
                 kind=ChannelKind.ROTATIONS_WORLD,
                 columns=("w", "x", "y", "z"),
-                data=assemble_channel_bytes(names=segment_names, positions=message.segment_rotations_world or {}, n_cols=4),
+                data=assemble_channel_bytes(
+                    names=segment_names,
+                    positions=reconstruction.segment_rotations_world if reconstruction else {},
+                    n_cols=4,
+                ),
             ),
             ChannelBlock(
                 kind=ChannelKind.SEGMENT_LENGTHS,

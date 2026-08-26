@@ -24,10 +24,12 @@ import numpy as np
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import encode_message
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from freemocap.core.tasks.mocap.tracker_mappings import (
-    load_standard_human_mapping,
-    tracker_keypoint_names,
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
+from freemocap.core.skeletons.standard_human_skeleton import (
+    STANDARD_HUMAN_MODEL_ID,
+    build_standard_human_bundle,
 )
+from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
@@ -119,19 +121,26 @@ def _message(
     hydrated_landmarks: dict[str, np.ndarray],
     pose: dict[str, np.ndarray],
 ) -> AggregationNodeOutputMessage:
-    """A real aggregator message: tracker keypoints + hydrated landmarks + solved rotations."""
+    """A real aggregator message: tracker keypoints + one skeleton's reconstruction."""
     return AggregationNodeOutputMessage(
         frame_number=7,
         pipeline_config=RealtimePipelineConfig(),
         camera_group_id="cg-0",
         camera_node_outputs={},
         keypoints_arrays=pose,
-        total_body_com=np.zeros(3),
-        xcom=np.zeros(3),
-        standard_skeleton=hydrated_landmarks,
-        segment_rotations_world=world,
-        segment_rotations_local={},
-        segment_lengths={seg.name: seg.length for seg in skeleton.segments.values()},
+        reconstructions={
+            STANDARD_HUMAN_MODEL_ID: SkeletonReconstruction(
+                model_id=STANDARD_HUMAN_MODEL_ID,
+                landmarks=hydrated_landmarks,
+                segment_rotations_world=world,
+                center_of_mass=np.zeros(3),
+                extrapolated_center_of_mass=np.zeros(3),
+                segment_lengths={
+                    seg.name: seg.length for seg in skeleton.segments.values()
+                },
+                fitted_scale_mm=1700.0,
+            )
+        },
     )
 
 
@@ -145,10 +154,12 @@ def _frame_message(
     """Compose the self-describing frame message, encode, and CBOR-decode."""
     composition = compose_messages(
         StreamContext(
-            standard_human=skeleton,
-            rest_pose=rest_pose,
+            skeletons=(
+                build_standard_human_bundle(
+                    detector_type="rtmpose", scale_window_frames=30
+                ),
+            ),
             camera_ids=("cam-0", "cam-1"),
-            tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
             detector_type="rtmpose",
             pipeline_live=True,
         )

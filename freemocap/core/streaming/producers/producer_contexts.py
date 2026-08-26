@@ -10,17 +10,20 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle  # noqa: TC001
 from freemocap.core.streaming.message_model import CalibratedCamera  # noqa: TC001
-from skellyforge.core.skeleton.pose.rest_pose import RestPose
-from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition  # noqa: TC002
 
 
 @dataclass
 class StreamContext:
-    """Structural only, no per-frame data."""
+    """Structural only, no per-frame data.
 
-    standard_human: SkeletonDefinition
-    rest_pose: RestPose
+    `skeletons` is a TUPLE because a session tracks several - a person and a charuco board
+    are two. Producers loop over it and tag their blocks with each skeleton's `model_id`;
+    nothing here may assume there is one.
+    """
+
+    skeletons: tuple[TrackedSkeletonBundle, ...]
     camera_ids: tuple[str, ...] = ()
     calibrated_cameras: tuple[CalibratedCamera, ...] = ()
     tracker_keypoint_names: tuple[str, ...] = ()

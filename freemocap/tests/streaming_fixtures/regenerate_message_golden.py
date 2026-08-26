@@ -30,6 +30,8 @@ from freemocap.core.streaming.message_model import (
     encode_message,
 )
 from freemocap.core.streaming.rest_geometry import (
+    ModelConnectionGroup,
+    ModelLandmarkGroup,
     PrimaryAxis,
     RestLandmark,
     RestSegment,
@@ -70,6 +72,23 @@ def build_model_message() -> bytes:
             RestLandmark(name="neck_center", rest_position=(0.0, 0.0, 0.2)),
         ),
         connections=(("hips", "spine"),),
+        # Landmark-level structure with its colour already resolved — the only kind of
+        # structure a one-segment model (a charuco board) can offer.
+        landmark_groups=(
+            ModelLandmarkGroup(
+                name="trunk_points",
+                landmark_names=("hips_center", "neck_center"),
+                color="#4488ff",
+            ),
+        ),
+        landmark_connections=(
+            ModelConnectionGroup(
+                name="trunk_outline",
+                pairs=(("hips_center", "neck_center"),),
+                color="#14ff14",
+            ),
+        ),
+        scale_reference_name="body_height",
     )
     return cbor2.dumps(model.to_cbor_message())
 
@@ -94,7 +113,8 @@ def build_frame_message() -> bytes:
                 model_id=STANDARD_HUMAN_MODEL_ID,
                 channels=(segment_origins, rotations_world),
                 # The instance is where a size lives: the model above is dimensionless.
-                body_height_mm=1700.0,
+                # 1700 mm of `body_height`, the unit that model names.
+                fitted_scale_mm=1700.0,
             ),
         ),
         image=b"\xff\xd8\xffgolden-fake-jpeg",

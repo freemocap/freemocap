@@ -4,7 +4,7 @@ Tunable configuration for the realtime filtering + skeleton-fitting stage.
 Consumed by the realtime aggregator node, which wires these values into:
     - ``RealtimeKeypointFilter``     (One Euro smoothing of raw 3D keypoints)
     - ``RealtimePointGate``          (velocity teleportation rejection)
-    - ``StreamingBodyScaleFitter``   (fitting the proportional template to the subject)
+    - ``StreamingModelScaleFitter`` (fitting each skeleton's template to what it tracks)
     - triangulation                  (reprojection-error gating)
 """
 
@@ -69,13 +69,16 @@ class RealtimeFilterConfig(BaseModel):
     # Higher = faster adaptation -> more responsive to sudden speed changes.
     d_cutoff: float = 1.0
 
-    # ---- Body-scale fit ----
-    # The standard human is authored as fractions of body height, so it has no size until
-    # it is fitted to the subject. Every visible segment reports how big the body is
-    # (its observed length over its authored proportion); the fit takes the median of each
-    # segment's readings over a rolling window, then a weighted median across segments for
-    # the subject's height. A segment nobody can see is sized from that height — which is
-    # how the feet stay the right length while a desk hides them.
+    # ---- Model-scale fit ----
+    # A skeleton is authored as fractions of its own reference unit — body height for the
+    # human, square length for a charuco board — so it has no size until it is fitted.
+    # Every visible segment reports how big its skeleton is (observed length over authored
+    # proportion); the fit takes the median of each segment's readings over a rolling
+    # window, then a weighted median across segments. A segment nobody can see is sized
+    # from that — which is how the feet stay the right length while a desk hides them.
+    #
+    # One window length for every tracked skeleton: they see the same cameras at the same
+    # framerate, so a per-skeleton knob would be two numbers describing one thing.
     #
     # Window length in FRAMES, not seconds, because that is what the estimator consumes:
     # converting from seconds would need a framerate the aggregator has no stable reading

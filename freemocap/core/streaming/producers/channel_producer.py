@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Protocol, runtime_checkable
 
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.message_model import ChannelBlock
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
 
@@ -21,7 +22,13 @@ class ChannelProducer(Protocol):
 
     def is_active(self, ctx: StreamContext) -> bool: ...
 
-    def fill(self, frame_ctx: FrameContext) -> list[ChannelBlock]:
-        """The self-describing channel block(s) for this frame; an empty list
-        when there is no data this frame."""
+    def fill(
+        self, frame_ctx: FrameContext, skeleton: TrackedSkeletonBundle
+    ) -> list[ChannelBlock]:
+        """This frame's channel block(s) for ONE skeleton; empty when it has no data.
+
+        Called once per tracked skeleton. A producer reads that skeleton's reconstruction
+        by `model_id` and never sees the others, which is what stops one model's channels
+        being filled from another's data.
+        """
         ...

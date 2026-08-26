@@ -14,6 +14,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
     PipelineIdString,
@@ -107,36 +108,14 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     pipeline_config: RealtimePipelineConfig = None
     camera_group_id: CameraGroupIdString = ""
     camera_node_outputs: dict[CameraIdString, CameraNodeOutputMessage] = field(default_factory=dict)
+    # Every tracked keypoint this frame, from every detector, in one flat dict. Detector
+    # name spaces do not collide (a pose detector emits `left_knee`, a charuco detector
+    # emits `CharucoCorner-0`), and each skeleton's mapping takes only what it recognizes.
     keypoints_arrays: dict[TrackedPointNameString, np.ndarray] = field(default_factory=dict)
-    total_body_com: np.ndarray | None = None
-    xcom: np.ndarray | None = None
-    standard_skeleton: dict[TrackedPointNameString, np.ndarray] | None = None
-    # Per-joint named angles (radians) from the linkage layer, keyed by joint
-    # name: {joint_name: (angle_0, angle_1, angle_2)} in the joint's authored
-    # euler convention. None when the skeleton fitter produced no pose this
-    # frame. Provenance (measured vs convention-carried inputs) lives in
-    # skellyforge's JointPose objects and is not serialized yet.
-    joint_angles: dict[str, tuple[float, float, float]] | None = None
-    segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
-    segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
-    # Per-segment FITTED lengths (mm), keyed by segment name — every segment of the
-    # standard human, whether or not it was visible this frame. A segment that was seen
-    # carries its own measurement; one that was not is sized by the fitted body height,
-    # which is what the proportional template is for. Empty only while nobody has been
-    # measured at all, which ``body_height_mm is None`` says explicitly.
-    segment_lengths: dict[str, float] = field(default_factory=dict)
-    # The subject's fitted standing height (mm): floor to skull top, the `H = 1.0` the
-    # standard human is authored against. Pooled by weighted median from every segment
-    # that genuinely measures the subject, so it is available from partial views — the
-    # legs never need to be visible. None until such a segment has been seen.
-    body_height_mm: float | None = None
-    # Per-camera segment-origin landmark reprojections (camera_id → segment
-    # name → (x, y) in capture-resolution px) — the fitted skeleton projected
-    # back into each camera. Empty when there is no valid calibration or no
-    # solved skeleton this frame (2D-only mode).
-    reprojected_segment_origins: dict[
-        CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
-    ] = field(default_factory=dict)
+    # One reconstruction per tracked skeleton, keyed by `model_id`. A session tracking a
+    # person and a charuco board publishes two; nothing downstream may assume one. Empty
+    # for a frame where nothing hydrated at all.
+    reconstructions: dict[str, SkeletonReconstruction] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

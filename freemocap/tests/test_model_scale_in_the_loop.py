@@ -18,10 +18,10 @@ import pytest
 
 from freemocap.core.tasks.mocap.tracker_mappings import load_standard_human_mapping
 from skellyforge.core.math.geometry.spatial_vectors import Point
-from skellyforge.core.skeleton.pose.body_scale_fitting import (
-    BodyScaleFit,
-    StreamingBodyScaleFitter,
-    body_scale_voting_segment_names,
+from skellyforge.core.skeleton.pose.model_scale_fitting import (
+    ModelScaleFit,
+    StreamingModelScaleFitter,
+    scale_voting_segment_names,
 )
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
@@ -81,13 +81,13 @@ def _seated_keypoints() -> dict[str, np.ndarray]:
 def _skeleton_and_voting_segments() -> tuple[SkeletonDefinition, frozenset[str]]:
     skeleton = SkeletonDefinition.from_default_yaml()
     mapping = load_standard_human_mapping("rtmpose")
-    return skeleton, body_scale_voting_segment_names(
+    return skeleton, scale_voting_segment_names(
         skeleton=skeleton,
         measured_landmark_names=mapping.directly_measured_landmark_names,
     )
 
 
-def _fit(keypoints: dict[str, np.ndarray]) -> BodyScaleFit:
+def _fit(keypoints: dict[str, np.ndarray]) -> ModelScaleFit:
     """The aggregator's per-frame order: map -> hydrate -> resolve roll -> fit."""
     skeleton, voting = _skeleton_and_voting_segments()
     mapping = load_standard_human_mapping("rtmpose")
@@ -98,7 +98,7 @@ def _fit(keypoints: dict[str, np.ndarray]) -> BodyScaleFit:
     resolved = ContinuousRollResolver.for_skeleton(skeleton=skeleton).resolve_pose(
         pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)
     )
-    fitter = StreamingBodyScaleFitter(skeleton=skeleton, voting_segment_names=voting)
+    fitter = StreamingModelScaleFitter(skeleton=skeleton, voting_segment_names=voting)
     fitter.observe_pose(pose=resolved)
     return fitter.current_fit()
 
@@ -137,7 +137,7 @@ def test_a_standing_subject_fits_a_plausible_body() -> None:
     fit = _fit(_standing_keypoints())
 
     low, high = _PLAUSIBLE_HEIGHT_RANGE_MM
-    assert low < fit.body_height < high, f"fitted {fit.body_height:.0f}mm"
+    assert low < fit.fitted_scale < high, f"fitted {fit.fitted_scale:.0f}mm"
     # Every segment of the standard human has a length, in millimetres.
     skeleton, _ = _skeleton_and_voting_segments()
     assert set(fit.segment_lengths) == set(skeleton.segments)
@@ -162,7 +162,7 @@ def test_a_subject_at_a_desk_still_gets_correctly_sized_feet() -> None:
     assert seated.voting_segment_names, "the arms must still be measuring the subject"
 
     # The height barely moves...
-    assert seated.body_height == pytest.approx(standing.body_height, rel=0.05)
+    assert seated.fitted_scale == pytest.approx(standing.fitted_scale, rel=0.05)
 
     # ...and the foot nobody can see lands where it lands when it IS seen.
     assert seated.segment_lengths["left_foot"] == pytest.approx(

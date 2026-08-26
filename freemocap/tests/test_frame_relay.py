@@ -15,12 +15,15 @@ from starlette.websockets import WebSocketState
 
 from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
+from freemocap.core.skeletons.standard_human_skeleton import (
+    STANDARD_HUMAN_MODEL_ID,
+    build_standard_human_bundle,
+)
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.producers.producer_contexts import FrameContext, StreamContext
-from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
-from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
 
@@ -40,15 +43,15 @@ class FakeWebSocket:
         self.client_state = WebSocketState.DISCONNECTED
 
 
+def _human_bundle():
+    return build_standard_human_bundle(detector_type="rtmpose", scale_window_frames=30)
+
+
 def _composition():
-    skeleton = SkeletonDefinition.from_default_yaml()
-    rest_pose = RestPose.from_default_yaml(skeleton=skeleton)
     return compose_messages(
         StreamContext(
-            standard_human=skeleton,
-            rest_pose=rest_pose,
+            skeletons=(_human_bundle(),),
             camera_ids=("cam-0",),
-            tracker_keypoint_names=tracker_keypoint_names("rtmpose"),
             pipeline_live=True,
         )
     )
@@ -70,11 +73,14 @@ def _message(frame_number: int) -> AggregationNodeOutputMessage:
         pipeline_config=RealtimePipelineConfig(),
         camera_group_id="cg-0",
         camera_node_outputs={},
-        total_body_com=np.array([0.0, 0.0, 900.0]),
-        xcom=np.array([1.0, 0.0, 0.0]),
-        standard_skeleton={"pelvis_origin": np.array([0.0, 0.0, 900.0])},
-        segment_rotations_world={},
-        segment_rotations_local={},
+        reconstructions={
+            STANDARD_HUMAN_MODEL_ID: SkeletonReconstruction(
+                model_id=STANDARD_HUMAN_MODEL_ID,
+                landmarks={"pelvis_origin": np.array([0.0, 0.0, 900.0])},
+                center_of_mass=np.array([0.0, 0.0, 900.0]),
+                extrapolated_center_of_mass=np.array([1.0, 0.0, 0.0]),
+            )
+        },
     )
 
 
@@ -146,12 +152,23 @@ async def test_relay_stops_on_its_own_when_should_continue_flips():
     assert not task.cancelled()
 
 
-def test_message_carries_segment_lengths():
+def test_message_carries_a_reconstruction_per_skeleton():
+    """The message is keyed by model: a session tracking two things publishes two."""
     synthetic = {"hips": 246.5, "left_upper_arm": 333.0}
-    msg = AggregationNodeOutputMessage(segment_lengths=synthetic)
-    assert msg.segment_lengths == synthetic
+    msg = AggregationNodeOutputMessage(
+        reconstructions={
+            "standard_human": SkeletonReconstruction(
+                model_id="standard_human", segment_lengths=synthetic, fitted_scale_mm=1700.0
+            ),
+            "charuco_board": SkeletonReconstruction(
+                model_id="charuco_board", fitted_scale_mm=54.0
+            ),
+        }
+    )
+    assert msg.reconstructions["standard_human"].segment_lengths == synthetic
+    assert msg.reconstructions["charuco_board"].fitted_scale_mm == 54.0
 
 
-def test_message_defaults_segment_lengths_empty():
-    msg = AggregationNodeOutputMessage()
-    assert msg.segment_lengths == {}
+def test_message_defaults_to_no_reconstructions():
+    """A frame where nothing hydrated carries none — not an empty human."""
+    assert AggregationNodeOutputMessage().reconstructions == {}

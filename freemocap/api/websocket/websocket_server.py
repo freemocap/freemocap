@@ -36,6 +36,8 @@ from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
+from freemocap.core.skeletons.standard_human_skeleton import build_standard_human_bundle
+from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import (
     AppStateMessage,
@@ -53,10 +55,7 @@ from freemocap.core.streaming.producers.producer_contexts import (
     StreamContext,
 )
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
-from freemocap.core.tasks.mocap.tracker_mappings import tracker_keypoint_names
 from freemocap.utilities.wait_functions import await_10ms
-from skellyforge.core.skeleton.pose.rest_pose import RestPose
-from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
 logger = logging.getLogger(__name__)
 
@@ -91,8 +90,6 @@ class WebsocketServer:
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
-        self._standard_human = SkeletonDefinition.from_default_yaml()
-        self._rest_pose = RestPose.from_default_yaml(skeleton=self._standard_human)
         # Calibration hot-reload source (feeds the frame's cameras field).
         self._calibration_state = CalibrationStateTracker.create_and_try_load()
         # The relay consumes raw frame contexts via the injected source.
@@ -111,11 +108,16 @@ class WebsocketServer:
         camera_ids = self._current_camera_ids()
         detector_type = self._current_detector_type()
         return StreamContext(
-            standard_human=self._standard_human,
-            rest_pose=self._rest_pose,
+            # Every skeleton the stream describes. Rebuilt with the context, so a detector
+            # change re-derives which landmarks each skeleton measures.
+            skeletons=(
+                build_standard_human_bundle(
+                    detector_type=detector_type,
+                    scale_window_frames=RealtimeFilterConfig().segment_scale_window_frames,
+                ),
+            ),
             camera_ids=camera_ids,
             calibrated_cameras=self._calibrated_cameras(),
-            tracker_keypoint_names=tuple(tracker_keypoint_names(detector_type)),
             detector_type=detector_type,
             pipeline_live=bool(camera_ids),
             live_image_sizes={

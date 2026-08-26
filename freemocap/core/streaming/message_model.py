@@ -28,6 +28,8 @@ from skellycam.core.types.type_overloads import (
 )
 from freemocap.core.streaming.rest_geometry import (
     PrimaryAxis,
+    ModelConnectionGroup,
+    ModelLandmarkGroup,
     RestLandmark,
     RestSegment,
 )
@@ -35,6 +37,7 @@ from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtr
 from freemocap.core.tasks.calibration.shared.camera_intrinsics import CameraIntrinsics
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from skellycam.core.recorders.framerate_tracker import CurrentFramerate
+from skellyforge.core.skeleton.components.color_palette import ColorPalette
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
@@ -246,7 +249,12 @@ class CalibratedCamera:
 
 @dataclass(frozen=True, slots=True)
 class ModelDefinition:
-    """One model definition (the standard human), shared by its instances."""
+    """One skeleton's static definition, shared by its instances.
+
+    Generic: a tracked human and a tracked charuco board are two of these. The definition
+    is DIMENSIONLESS - lengths and rest positions are fractions of `scale_reference_name` -
+    so a size lives on the per-frame instance, not here.
+    """
 
     model_id: str
     segments: tuple[RestSegment, ...]
@@ -255,13 +263,52 @@ class ModelDefinition:
     # derived from the rest pose's parent tree. The frontend draws these edges
     # directly - the model is the single source of truth, never re-derived client-side.
     connections: tuple[tuple[str, str], ...]
+    # Landmark-level structure, colours already resolved. A one-segment model has no
+    # segment connections at all, so this is the only structure it can offer - and it is
+    # what stops a client rebuilding a board's grid from config or a marker quad from a
+    # name.
+    landmark_groups: tuple[ModelLandmarkGroup, ...] = ()
+    landmark_connections: tuple[ModelConnectionGroup, ...] = ()
+    # What this model's `1.0` MEANS: "body_height" for the human, "square_length" for a
+    # charuco board. Lets a client render "height 1684 mm" or "square 54.2 mm" without
+    # either side hardcoding which model it is looking at.
+    scale_reference_name: str = "body_height"
 
     @classmethod
-    def from_standard_human(
-        cls, skeleton: SkeletonDefinition, rest_pose: RestPose
+    def from_skeleton(
+        cls,
+        *,
+        model_id: str,
+        skeleton: SkeletonDefinition,
+        rest_pose: RestPose,
+        palette: ColorPalette,
+        scale_reference_name: str,
     ) -> "ModelDefinition":
+        """Project any skeleton onto the wire.
+
+        Nothing here is human-specific - it reads whatever the skeleton declares. A
+        one-segment board yields one segment, no connections, and whatever landmark groups
+        it was built with.
+        """
         return cls(
-            model_id=STANDARD_HUMAN_MODEL_ID,
+            model_id=model_id,
+            scale_reference_name=scale_reference_name,
+            landmark_groups=tuple(
+                ModelLandmarkGroup(
+                    name=group.name,
+                    landmark_names=tuple(group.landmark_names),
+                    color=palette.color_for(tags=group.tags),
+                )
+                for group in skeleton.landmark_groups.values()
+            ),
+            landmark_connections=tuple(
+                ModelConnectionGroup(
+                    name=group.name,
+                    pairs=tuple((pair[0], pair[1]) for pair in group.pairs),
+                    color=palette.color_for(tags=group.tags),
+                )
+                for group in skeleton.landmark_connections.values()
+            ),
             segments=tuple(
                 RestSegment(
                     name=segment.name,
@@ -297,9 +344,14 @@ class ModelDefinition:
     def to_cbor_message(self) -> dict[str, Any]:
         return {
             "model_id": self.model_id,
+            "scale_reference_name": self.scale_reference_name,
             "segments": [s.to_cbor_message() for s in self.segments],
             "landmarks": [l.to_cbor_message() for l in self.landmarks],
             "connections": [list(edge) for edge in self.connections],
+            "landmark_groups": [g.to_cbor_message() for g in self.landmark_groups],
+            "landmark_connections": [
+                g.to_cbor_message() for g in self.landmark_connections
+            ],
         }
 
 
@@ -339,21 +391,24 @@ class ChannelBlock:
 
 @dataclass(frozen=True, slots=True)
 class ModelInstance:
-    """One per-frame instance of a model definition.
+    """One per-frame occurrence of a model.
 
-    The model definition is dimensionless — its segment lengths are fractions of body
-    height — so the instance is where a size lives: `body_height_mm` is THIS subject's
-    fitted stature, and multiplying the model's `length_proportion`s by it gives the
-    instance at rest. The per-frame `SEGMENT_LENGTHS` channel refines that segment by
-    segment for the ones actually seen.
+    The model definition is dimensionless — its lengths are fractions of whatever its
+    `scale_reference_name` says — so the INSTANCE is where a size lives. Two people are
+    two instances of one model; a person and a charuco board are two models.
+
+    Multiplying the model's `length_proportion`s by `fitted_scale_mm` gives this instance
+    at rest; the per-frame `SEGMENT_LENGTHS` channel refines that segment by segment for
+    the ones actually seen.
     """
 
     instance_id: int
     model_id: str
     channels: tuple[ChannelBlock, ...]
-    # The subject's fitted standing height (mm), or None while nothing has measured them.
-    # None is not "assume a default" — it means this instance has no size yet.
-    body_height_mm: float | None = None
+    # This occurrence's fitted size (mm) in the unit its model names — stature for a
+    # human, square length for a board — or None while nothing has measured it. None is
+    # not "assume a default"; it means this instance has no size yet.
+    fitted_scale_mm: float | None = None
 
 
 @dataclass(frozen=True, slots=True)

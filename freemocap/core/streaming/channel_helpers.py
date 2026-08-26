@@ -34,25 +34,61 @@ def assemble_channel_bytes(
     return rows.tobytes(order="C")
 
 
+# Which camera-node observation, and which of its stages, a detector's 2D points live in.
+# A camera node runs several detectors per frame and files each under its own observation,
+# so a consumer asking for "the detections" has to say whose.
+_OBSERVATION_BY_DETECTOR: dict[str, tuple[str, tuple[str, ...]]] = {
+    "rtmpose": ("skeleton_observation", ("body",)),
+    "mediapipe": ("skeleton_observation", ("body",)),
+    "charuco": ("charuco_observation", ("charuco",)),
+}
+
+
 def camera_2d_detections(
     message: Any,  # duck-typed: the concrete type pulls skellytracker/mediapipe
     camera_id: str,
+    *,
+    detector_type: str,
 ) -> dict[str, np.ndarray]:
-    """The per-camera tracker 2D detections (name -> (x, y, visibility))."""
+    """One detector's per-camera 2D detections (name -> (x, y, visibility)).
+
+    `detector_type` is required rather than defaulted because a camera node produces
+    several observations per frame and defaulting to one of them is how the charuco
+    detections went missing from the overlay for as long as they did.
+
+    Raises:
+        KeyError: an unknown detector type. A new detector needs a line above saying where
+            it files its points, rather than silently overlaying nothing.
+    """
+    try:
+        observation_attribute, stage_names = _OBSERVATION_BY_DETECTOR[detector_type]
+    except KeyError as error:
+        raise KeyError(
+            f"unknown detector type {detector_type!r} - add it to "
+            f"`_OBSERVATION_BY_DETECTOR` so its 2D points can be found. Known: "
+            f"{sorted(_OBSERVATION_BY_DETECTOR)}"
+        ) from error
+
     cam_output = message.camera_node_outputs.get(camera_id)
-    if cam_output is None or cam_output.skeleton_observation is None:
+    if cam_output is None:
         return {}
-    observation = cam_output.skeleton_observation
-    body_stage = observation.stages.get("body")
-    if body_stage is None or body_stage.keypoints is None:
+    observation = getattr(cam_output, observation_attribute, None)
+    if observation is None:
         return {}
-    kpts = body_stage.keypoints
+
     detections: dict[str, np.ndarray] = {}
-    for i, name in enumerate(kpts.names):
-        x, y, _z = kpts.xyz[i]
-        if np.isnan(x) or np.isnan(y):
+    for stage_name in stage_names:
+        stage = observation.stages.get(stage_name)
+        if stage is None or stage.keypoints is None:
             continue
-        detections[name] = np.array([x, y, kpts.visibility[i]], dtype=np.float32)
+        keypoints = stage.keypoints
+        for index, name in enumerate(keypoints.names):
+            x, y, _z = keypoints.xyz[index]
+            if np.isnan(x) or np.isnan(y):
+                continue
+            detections[name] = np.array(
+                [x, y, keypoints.visibility[index]], dtype=np.float32
+            )
     return detections
 
 

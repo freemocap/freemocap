@@ -186,9 +186,9 @@ assumption.
 
 | Phase | Delivers | Test gate |
 |---|---|---|
-| L5.1 | `JointDefinition` YAML + compilation; topology moves out of `rest_pose.yaml`; `relative_orientation` + generic euler `decompose/compose`; provenance struct | invariants 1, 2, 5; full suite green |
+| L5.1 ✅ | `JointDefinition` YAML + compilation; topology moved out of `rest_pose.yaml`; `relative_orientation` + generic euler `decompose/compose`; provenance struct | invariants 2, 4, 5; full suite green |
+| L6.1 ✅ | Chain declarations (`chains:` YAML, compiled with contiguity validation); forward synthesis over the whole joint tree | invariant 3 in its honest two-tier form: exact closure for every rigid-rigid joint, direction closure for ALL joints at 1e-6°; determinism; root-placement invariance. Note: the shipped model currently has NO adjacent rigid-rigid pair (rigid segments are isolated), so the exact tier is wired to the statics and exercises vacuously until one exists - asserted, not skipped |
 | L5.2 | Named-angle outputs surfaced (aggregator message field; wire channel decision separate) | round trip through serialization |
-| L6.1 | Chain declarations; FK synthesis over time-varying angles | invariant 3 (FK closure) |
 | L6.2 | Anchored secondary axes upgrade to resolver | invariant 4 extended: same-motion-same-roll determinism |
 | L6.3 | Two-bone IK + FABRIK with residual reporting | reach probes: known targets hit; unreachable raises |
 | L6.4 | Twist backfill from end-segment orientations; finger couplings | pronation probe: forearm twist recovered when hand is rigid-fit |

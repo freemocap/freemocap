@@ -93,15 +93,16 @@ skellytracker  →  [ mapping: the one seam ]  →  skellyforge            →  
 - **Adapters project the one skeleton outward:** VMC / LSL later
   ([03-transport/hub-and-adapters.md](03-transport/hub-and-adapters.md)).
 
-*Status:* layers 1–4, 7 — and now the linkage layer's core (5) — are implemented and run in the
-realtime loop: `AnatomicalLandmark`, `RigidBodySegment`, `SkeletonDefinition.from_default_yaml()`
-(compiling `JointDefinition`s from `human_skeleton.yaml`'s `joints:` section — the authoritative
-topology), `RestPose` (orientation-only; its tree comes from the joints),
-`hydrate_skeleton(require_all=False)`, `ContinuousRollResolver`, and the derived biomechanics layer
-behind it. Linkage hydrated math lives in
-[05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md):
-`relative_orientation`, euler `decompose/compose` under per-joint conventions
-(`core/math/kinematics/euler_sequence.py`), and `JointPose`s carrying input provenance. The chain
-layer (6) remains a placeholder (`KinematicChain`); twist backfill / IK land there next. The shipped
-model is 61 segments / 124 landmarks / 60 joints / zero declared chains. Worked example:
+*Status:* layers 1–5 and the chain layer's declarations + forward synthesis are implemented in
+the realtime loop's stack: `AnatomicalLandmark`, `RigidBodySegment`,
+`SkeletonDefinition.from_default_yaml()` (compiling `JointDefinition`s from `human_skeleton.yaml`'s
+`joints:` section — the authoritative topology — plus declared `chains:`), `RestPose`
+(orientation-only; its tree comes from the joints), `hydrate_skeleton(require_all=False)`,
+`ContinuousRollResolver`, and the derived biomechanics layer behind it. Linkage hydrated math:
+`relative_orientation`, euler `decompose/compose` under per-joint conventions, `JointPose`s with
+input provenance ([05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md)).
+Chain layer: `KinematicChain` declarations compiled at load, and forward synthesis
+(`core/skeleton/chain/synthesis.py`) — joint angles → whole-body poses, gated by the FK-closure
+tests. Still pending in the chain layer: inverse kinematics and twist backfill. The shipped model
+is 61 segments / 124 landmarks / 60 joints / 6 declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

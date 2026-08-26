@@ -45,7 +45,8 @@ def build_convention_message() -> bytes:
 def build_model_message() -> bytes:
     # A synthetic 2-segment model; the spine orientation is a non-exact unit
     # quaternion (90 deg about z) — it pins "no float16 downcast" on scalar
-    # floats in the TS parity test.
+    # floats in the TS parity test. The model is dimensionless: lengths and rest
+    # positions are fractions of body height, as the standard human's are.
     model = ModelDefinition(
         model_id=STANDARD_HUMAN_MODEL_ID,
         segments=(
@@ -54,19 +55,19 @@ def build_model_message() -> bytes:
                 parent=None,
                 primary_axis=PrimaryAxis(value="y"),
                 rest_orientation=(1.0, 0.0, 0.0, 0.0),
-                length_mm=100.0,
+                length_proportion=0.1,
             ),
             RestSegment(
                 name="spine",
                 parent="hips",
                 primary_axis=PrimaryAxis(value="y"),
                 rest_orientation=(0.7071067811865476, 0.0, 0.0, 0.7071067811865476),
-                length_mm=200.0,
+                length_proportion=0.2,
             ),
         ),
         landmarks=(
             RestLandmark(name="hips_center", rest_position=(0.0, 0.0, 0.0)),
-            RestLandmark(name="neck_center", rest_position=(0.0, 0.0, 200.0)),
+            RestLandmark(name="neck_center", rest_position=(0.0, 0.0, 0.2)),
         ),
         connections=(("hips", "spine"),),
     )
@@ -88,7 +89,13 @@ def build_frame_message() -> bytes:
         envelope=MessageEnvelope(timestamp=1.5),
         frame_number=99,
         instances=(
-            ModelInstance(instance_id=0, model_id=STANDARD_HUMAN_MODEL_ID, channels=(segment_origins, rotations_world)),
+            ModelInstance(
+                instance_id=0,
+                model_id=STANDARD_HUMAN_MODEL_ID,
+                channels=(segment_origins, rotations_world),
+                # The instance is where a size lives: the model above is dimensionless.
+                body_height_mm=1700.0,
+            ),
         ),
         image=b"\xff\xd8\xffgolden-fake-jpeg",
     )

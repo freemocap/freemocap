@@ -61,27 +61,25 @@ and the VMC Definition of Done. Then:
 7. **Biomechanics layer** — de Leva anthropometry, partial-CoM-aware segment CoMs, whole-body inertia,
    XCoM/CoP/CMP, derived kinematics; wired into the aggregator.
 8. **Proportional authoring** — landmark coordinates are body-height fractions (`H = 1.0` =
-   floor-to-skull-top), so the template is body-agnostic; the body-fitting step that scales it to
-   measured millimetres is next work (below).
+   floor-to-skull-top), so the template is body-agnostic.
+9. **Body-scale fit** — the template gets a size from the data. The local→world map is a
+   **similarity**, so hydration's rigid fit is Umeyama and every `SegmentPose` carries a
+   `body_scale_estimate`; those pool into one body height plus a per-segment scale field that
+   relaxes to that height where nothing was seen. Only segments the tracker mapping genuinely
+   *measures* set the height. Robust to partial views by construction — seated, with only the arms
+   voting, an unseen foot fits within 0.2mm of its standing measurement
+   ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)).
 
 ## Next work (in order)
 
-1. **Body fitting** — the proportional template needs a fitting step that solves the subject's
-   `H` and per-segment proportions from measured distances (hip-to-shoulder as the anchor), then
-   scales the template to mm. Formalizes the existing rolling-median `estimate_segment_lengths`
-   into an explicit, H-scaled fit. Tracker mapping `reference_length`s follow.
-2. **Tracker mapping proportional conversion** — mapping `reference_length`s are still mm-anchored;
-   convert to `H`-proportions alongside the template.
-3. **Length-estimation cleanup** — delete-or-drive the dead `segment_length_window_s` config field;
-   decide inline-mirror vs. calling skellyforge's estimator directly.
-4. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
+1. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
    `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
-5. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
-6. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
+2. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
+3. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
    synthesis/IK/backfill; the remaining deferred linkage/chain piece.
-7. **Posthoc rebuild** — deferred by decision; old imports are dead upstream, offline paths are
+4. **Posthoc rebuild** — deferred by decision; old imports are dead upstream, offline paths are
    broken-if-invoked ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
-8. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, on-disk tidy
+5. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, on-disk tidy
    serialization, and charuco-board tracking to force a non-human generic case.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.

@@ -6,14 +6,6 @@
 
 ### `[IN]`
 
-- **Body fitting** — the proportional template (`H = 1.0`) needs a fitting step that solves the
-  subject's `H` and per-segment proportions from measured distances (hip-to-shoulder as the anchor),
-  then scales the template to mm. Formalizes `estimate_segment_lengths` into an explicit H-scaled fit.
-- **Tracker mapping proportional conversion** — mapping `reference_length`s are still mm-anchored;
-  convert to `H`-proportions alongside the template.
-- **Length-estimation cleanup** — delete-or-drive the dead `segment_length_window_s` config field and
-  decide inline-mirror vs. calling skellyforge's `estimate_segment_lengths` directly
-  ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
 - **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
   `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 - **Face component implementation** — currently commented out of the composition (`#TODO`);
@@ -37,10 +29,31 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Body fitting | tracker mapping proportional conversion | solve `H` + per-segment proportions from measured distances |
 | Posthoc rebuild | tidy serialization | both offline paths run on the new core |
+| skellyforge + skellytracker pushed | freemocap's venv seeing the body-scale fit | user commits/pushes both, then `uv sync` freemocap |
 
 ## Progress log
+
+- **2026-08-26 (body-scale fit)** — The proportional template got a size. Hydration's rigid fit
+  became a **similarity** fit (`align_point_sets_similarity`, Umeyama): scale now comes out of the
+  same SVD as the rotation, which fixed origins that had collapsed onto the observed centroid
+  (`thoracic` was 200mm out against a perfect subject, `pelvis`/`skull` ~54mm). Every `SegmentPose`
+  carries a `body_scale_estimate`; `body_scale_fitting.py` pools them into one body height plus a
+  per-segment scale field that relaxes to that height where there is no data
+  ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)). Only segments built
+  entirely from landmarks the tracker mapping *measures* may set the height — new
+  `TrackerMapping.directly_measured_landmark_names` — so constructed trunk landmarks cannot quote
+  the template back as evidence. `landmark_world_positions` takes the scale field, fixing a CoM
+  that had been computed from landmarks collapsed onto their segment origins.
+  `segment_length_estimation.py` deleted (subsumed). Wire: `RestSegment.length_mm` →
+  `length_proportion`, `ModelInstance.body_height_mm` added, goldens regenerated; the UI consumes
+  both. Config: dead `segment_length_window_s` + `height_mm` + `NOMINAL_SUBJECT_HEIGHT_MM` deleted,
+  replaced by the one field that drives the fit (`segment_scale_window_frames`). Verified seated:
+  with only the arms voting, the unseen foot fits within 0.2mm of its standing measurement.
+  Also fixed two stale tests found in the audit — the tracker-mapping round trip was comparing
+  `H`-unit positions against a millimetre tolerance (vacuously green; real worst residual 1.1mm at
+  `H = 1700`), and `test_arm_abduction` asserted on an angle between two roll-resolved quaternions
+  and named a `chest` segment the spine redesign had deleted.
 
 - **(spine/thorax redesign + proportional authoring)** — Trunk re-partitioned at tracker-solid lines:
   `sacrolumbar` (hip center) → `thoracic` (chest_center → neck_center = shoulder midpoint) →
@@ -49,7 +62,7 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
   reference. Tracker mapping ratios regenerated. Landmark coordinates converted from mm to
   **body-height proportions** (`H = 1.0` = floor-to-skull-top); `anatomical_segment` moved from a
   hardcoded Python dict onto each segment's component YAML; bilateral joints authored once via
-  `sided: true`. The body-fitting step that scales the template to mm is the open `[IN]`.
+  `sided: true`. The body-fitting step that scales the template to mm landed the following day.
 - **2026-08-24 (spine audit + mapping/model fixes)** — Root-caused the fluffy-spine viewer
   artifact: SkellyTracker's `anatomical_offset` ratios were stale against the shipped rest pose
   (junction errors 16–46mm growing up the chain), two definitions of each junction reached

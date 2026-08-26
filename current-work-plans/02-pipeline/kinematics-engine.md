@@ -14,7 +14,9 @@ loop that drives it in [realtime-loop.md](realtime-loop.md).
   `ReferenceFrameDefinition`), `PointRingBuffer` (zero-copy streaming window),
   `numeric_tolerances.py` (the single source of every tolerance — no bare `1e-10` anywhere).
 - `math/kinematics/` — closed-form solvers on observed positions: `rigid_point_set.py`
-  (`align_point_sets_kabsch`, `RigidPointSet.fit_pose`) and `coordinate_frame_ops.py`
+  (`align_point_sets_similarity` — Umeyama, so the fit recovers SCALE as well as rotation and
+  translation, which a dimensionless template requires; `RigidPointSet.fit_pose`) and
+  `coordinate_frame_ops.py`
   (`rotation_between_vectors` shortest-arc, `default_perpendicular`).
 - `skeleton/components/segment_basis_solver.py` — `calculate_bases_for_segments`, the batched
   Gram-Schmidt basis solve grouped by axis convention.

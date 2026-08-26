@@ -2,17 +2,13 @@
 Tunable configuration for the realtime filtering + skeleton-fitting stage.
 
 Consumed by the realtime aggregator node, which wires these values into:
-    - ``RealtimeKeypointFilter``  (One Euro smoothing of raw 3D keypoints)
-    - ``RealtimePointGate``       (velocity teleportation rejection)
-    - ``rigidify_landmarks``          (rigid-body skeleton correction)
-    - triangulation               (reprojection-error gating)
+    - ``RealtimeKeypointFilter``     (One Euro smoothing of raw 3D keypoints)
+    - ``RealtimePointGate``          (velocity teleportation rejection)
+    - ``StreamingBodyScaleFitter``   (fitting the proportional template to the subject)
+    - triangulation                  (reprojection-error gating)
 """
 
 from pydantic import BaseModel
-
-from freemocap.core.streaming.constants import (
-    NOMINAL_SUBJECT_HEIGHT_MM,
-)
 
 
 class RealtimeFilterConfig(BaseModel):
@@ -73,24 +69,21 @@ class RealtimeFilterConfig(BaseModel):
     # Higher = faster adaptation -> more responsive to sudden speed changes.
     d_cutoff: float = 1.0
 
-    # ---- Rigid-body skeleton correction ----
-    # Each bone's enforced length is the median of its measured lengths over a
-    # rolling time window; a single closed-form forward pass then holds those
-    # lengths while following the observed pose (the streaming analogue of the
-    # posthoc rigid-bones step). No ritual, no per-bone buffer tuning — the
-    # median is inherently robust and self-adapting.
-
-    # Rolling-window duration (seconds) over which each bone's median length is
-    # taken. Larger = steadier lengths, slower to adapt to a new subject.
-    # "Reset skeleton fit" clears the window so the next ~window seconds re-fit.
-    segment_length_window_s: float = 2.5
-
-    # ---- Subject scale ----
-    # Subject standing height in keypoint-coordinate units (mm). The charuco
-    # calibration produces mm-scale coordinates, so the bone-length seeds
-    # (which scale by height) use the same units. Single source of truth is
-    # NOMINAL_SUBJECT_HEIGHT_MM.
-    height_mm: float = NOMINAL_SUBJECT_HEIGHT_MM
+    # ---- Body-scale fit ----
+    # The standard human is authored as fractions of body height, so it has no size until
+    # it is fitted to the subject. Every visible segment reports how big the body is
+    # (its observed length over its authored proportion); the fit takes the median of each
+    # segment's readings over a rolling window, then a weighted median across segments for
+    # the subject's height. A segment nobody can see is sized from that height — which is
+    # how the feet stay the right length while a desk hides them.
+    #
+    # Window length in FRAMES, not seconds, because that is what the estimator consumes:
+    # converting from seconds would need a framerate the aggregator has no stable reading
+    # of at startup, and would make this two decisions instead of one. 30 frames is about a
+    # second at 30 fps — long enough that a handful of badly triangulated frames cannot move
+    # the median, short enough to re-fit within a second when the subject moves closer to
+    # the cameras. "Reset skeleton fit" clears the windows entirely.
+    segment_scale_window_frames: int = 30
 
     # ---- Triangulation reprojection gate ----
     # Reject triangulated points whose mean reprojection error across cameras

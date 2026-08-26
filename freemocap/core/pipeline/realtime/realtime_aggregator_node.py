@@ -12,20 +12,20 @@ Calibration hot-reload: the node polls the calibration file on disk once per
 second. If the file has changed (e.g. after posthoc calibration completes),
 the new calibration is loaded and the skeleton filter + velocity gate are reset.
 
-Rigid-body correction (``rigidify_landmarks``) runs on the triangulated 3D
-points: each bone enforces its derived rest length while keeping the observed
-direction, and the 3+-landmark rigid bodies fit their rest shape by a
-rotation-pinned Procrustes. The corrected landmarks then feed the solver.
-enforced by a single closed-form forward pass. Only real (non-extrapolated)
-keypoints teach lengths. The reset signal clears the rolling window so the next
-~window seconds re-fit from scratch.
+Skeleton fitting runs on the filtered 3D keypoints: the tracker mapping names them
+as standard-human landmarks, ``hydrate_skeleton`` recovers each segment's pose
+closed-form, and ``ContinuousRollResolver`` supplies the roll two landmarks leave
+free. The standard human is authored as fractions of body height, so hydration
+also recovers each segment's SIZE, and ``StreamingBodyScaleFitter`` pools those
+readings into the subject's height plus a per-segment scale — which is what sizes
+the segments the cameras cannot see. The reset signal clears those windows so the
+next ~window frames re-fit from scratch.
 """
 import logging
 import multiprocessing.synchronize
 import queue
 import threading
 import time
-from collections import deque
 from dataclasses import dataclass
 from multiprocessing.sharedctypes import Synchronized
 from pathlib import Path
@@ -50,6 +50,11 @@ from skellycam.core.ipc.shared_memory.camera_group_shared_memory import (
 )
 from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, TopicSubscriptionQueue
 from skellyforge.core.math.geometry.spatial_vectors import Point
+from skellyforge.core.skeleton.pose.body_scale_fitting import (
+    BodyScaleFit,
+    StreamingBodyScaleFitter,
+    body_scale_voting_segment_names,
+)
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
@@ -104,8 +109,6 @@ logger = logging.getLogger(__name__)
 # How often (seconds) to poll the calibration file for changes
 CALIBRATION_POLL_INTERVAL_SECONDS: float = 1.0
 
-# Rolling window (frames) over which per-segment lengths are median-estimated.
-LENGTH_WINDOW_FRAMES: int = 30
 
 def _to_blender(position: np.ndarray) -> np.ndarray:
     """FreeMoCap (+X forward, +Y left, +Z up) -> Blender (+X right, +Y forward, +Z up).
@@ -150,6 +153,31 @@ def _reproject_segment_origins(
                 per_cam[name] = (float(x), float(y))
         out[camera_id] = per_cam
     return out
+
+
+def _build_body_scale_fitter(
+        *,
+        standard_human: SkeletonDefinition,
+        standard_human_mapping,
+        window_frames: int,
+) -> StreamingBodyScaleFitter:
+    """A body-scale fitter that only lets genuinely measured segments set the height.
+
+    The tracker mapping constructs a good many standard-human landmarks from authored
+    ratios of a measured span — the sternoclavicular joints, the xiphoid process. Those
+    are fine POSITIONS but they are not independent evidence about how big the subject is,
+    and because they are nearly noise-free a consistency-weighted estimator would rank
+    them as its best evidence. The mapping says which of its outputs it measures; the
+    skeleton says which segments those make measurable.
+    """
+    return StreamingBodyScaleFitter(
+        skeleton=standard_human,
+        voting_segment_names=body_scale_voting_segment_names(
+            skeleton=standard_human,
+            measured_landmark_names=standard_human_mapping.directly_measured_landmark_names,
+        ),
+        window_frames=window_frames,
+    )
 
 
 def _merge_angulation(
@@ -350,18 +378,21 @@ class RealtimeAggregatorNode(AggregatorNode):
                 segment_masses[full_name] = mass
         # Observability: log each skeleton-failure class ONCE per run, not per frame.
         skeleton_observability_logged: set[str] = set()
-        # Rolling per-segment origin->primary distances: the median over the window
-        # is the live measured bone length (mirrors skellyforge's
-        # estimate_segment_lengths, adapted for streaming partial data). Keyed by
-        # segment name; a segment with no measurements yet falls back to its
-        # authored length.
-        length_distances: dict[str, deque] = {}
-        # Nominal per-run reference geometry (anthropometric seeds, including
-        # the face's nominal spans) — the fallback BEFORE the first rigidify
-        # result lands. Once the estimator has live measured lengths, the
-        # per-frame build (below) replaces this. The solver's reference
-        # DIRECTIONS are unchanged by live lengths — the lengths only refine the
-        # rest-pose map and model values; quaternions never depend on them.
+        # The standard human is authored as fractions of body height, so it has no size
+        # until it is fitted. This holds a rolling window of every visible segment's
+        # reading of how big the subject is, and turns them into one height plus a
+        # per-segment scale — which is what sizes the segments nothing can see.
+        # Rebuilt whenever the detector changes, because which landmarks are MEASURED
+        # (as opposed to constructed from authored ratios) is a property of the mapping,
+        # and only measured ones are allowed to set the height.
+        body_scale_fitter = _build_body_scale_fitter(
+            standard_human=standard_human,
+            standard_human_mapping=standard_human_mapping,
+            window_frames=filter_config.segment_scale_window_frames,
+        )
+        # The rest pose supplies the roll resolver's seed and the parent tree the local
+        # rotations are composed against. Its geometry is proportional; sizing it is the
+        # fit's job, not this map's.
         rest_pose = RestPose.from_default_yaml(skeleton=standard_human)
         roll_resolver = ContinuousRollResolver.for_skeleton(
             skeleton=standard_human,
@@ -417,6 +448,15 @@ class RealtimeAggregatorNode(AggregatorNode):
 
                     if standard_human_mapping is None or detector_type_changed:
                         standard_human_mapping = load_standard_human_mapping(detector_type)
+                        # A different detector measures different landmarks, so which
+                        # segments may set the body height changes with it. Rebuilding
+                        # also drops the old detector's readings, which is right: they
+                        # were measured through a different naming convention.
+                        body_scale_fitter = _build_body_scale_fitter(
+                            standard_human=standard_human,
+                            standard_human_mapping=standard_human_mapping,
+                            window_frames=filter_config.segment_scale_window_frames,
+                        )
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"(re)loaded body biomechanics for detector_type={detector_type}"
@@ -440,7 +480,8 @@ class RealtimeAggregatorNode(AggregatorNode):
                         f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
                     roll_resolver.reset()
-                    length_distances.clear()
+                    body_scale_fitter.reset()
+                    skeleton_observability_logged.discard("no_body_scale")
 
                 # ---- Periodically check if calibration file changed on disk ----
                 now = time.perf_counter()
@@ -451,13 +492,16 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"hot-reloaded calibration from {calibration.calibration_path}"
                         )
-                        # Coordinate frame may have changed — reset filter + gate + XCoM tracking
+                        # Coordinate frame may have changed — reset filter + gate + XCoM
+                        # tracking, and the body scale with them: every reading in the
+                        # fitter's windows was measured in the old frame's units.
                         keypoint_filter.reset()
                         point_gate.reset()
                         prev_com = None
                         prev_com_time = None
                         roll_resolver.reset()
-                        length_distances.clear()
+                        body_scale_fitter.reset()
+                        skeleton_observability_logged.discard("no_body_scale")
 
                 # ---- Request new frames if ready ----
                 if not camera_group_shm.valid:
@@ -628,7 +672,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 resolved_pose = None
                 mapped_landmarks: dict[str, np.ndarray] = {}
                 hydrated_landmarks: dict[str, np.ndarray] = {}
-                measured_lengths: dict[str, float] | None = None
+                body_scale_fit: BodyScaleFit | None = None
                 reprojected_segment_origins: dict[
                     CameraIdString, dict[TrackedPointNameString, tuple[float, float]]
                 ] = {}
@@ -736,22 +780,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 continue
                             origin_name = segment.frame_definition.origin_point_name
                             hydrated_landmarks[origin_name] = resolved_pose.segment_poses[segment.name].origin.array
-                        # Teach per-segment lengths from observed origin->primary
-                        # distances (median over the rolling window). Only frames
-                        # where BOTH landmarks are finite contribute.
-                        for seg in standard_human.segments.values():
-                            origin = hydrated_landmarks.get(seg.frame_definition.origin_point_name)
-                            primary = hydrated_landmarks.get(seg.frame_definition.primary_point_name)
-                            if origin is None or primary is None:
-                                continue
-                            o = np.asarray(origin, dtype=np.float64)
-                            p = np.asarray(primary, dtype=np.float64)
-                            if np.any(np.isnan(o)) or np.any(np.isnan(p)):
-                                continue
-                            distance = float(np.linalg.norm(p - o))
-                            if distance <= 0.0:
-                                continue
-                            length_distances.setdefault(seg.name, deque(maxlen=LENGTH_WINDOW_FRAMES)).append(distance)
+                        # Every hydrated segment already carries its own reading of how big
+                        # the subject is — the rigid fit measures it over all of a
+                        # segment's landmarks, the direction fit over its one distance —
+                        # so the fitter only has to be handed the pose.
+                        body_scale_fitter.observe_pose(pose=resolved_pose)
                         if timer is not None:
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
@@ -815,15 +848,36 @@ class RealtimeAggregatorNode(AggregatorNode):
                             if timer is not None:
                                 timer.record("segment_reprojection", (time.perf_counter() - t0) * 1e3)
 
+                    # ---- Body scale ----
+                    # One fit per frame, shared by the center of mass (which places
+                    # landmarks from their proportional local positions) and the wire
+                    # (which publishes the lengths and the height). `has_body_scale` is
+                    # False only while no measurable segment has ever been seen — nobody
+                    # in front of the cameras — and then there are no millimetres to
+                    # publish, which is said rather than defaulted.
+                    if body_scale_fitter.has_body_scale:
+                        body_scale_fit = body_scale_fitter.current_fit()
+                    elif "no_body_scale" not in skeleton_observability_logged:
+                        skeleton_observability_logged.add("no_body_scale")
+                        logger.info(
+                            "No segment has measured the subject yet, so the skeleton has "
+                            "no size — segment lengths and body height stay off the wire "
+                            "until a measurable segment is seen. Voting segments: "
+                            f"{len(body_scale_fitter.voting_segment_names)}"
+                        )
+
                     # ---- Center of mass ----
                     if (
                         standard_human_mapping is not None
                         and aggregator_config.center_of_mass_enabled
                         and resolved_pose is not None
+                        and body_scale_fit is not None
                     ):
                         t0 = time.perf_counter() if timer is not None else 0.0
                         world = landmark_world_positions(
-                            skeleton=standard_human, pose=resolved_pose
+                            skeleton=standard_human,
+                            pose=resolved_pose,
+                            segment_scales=body_scale_fit.segment_scales,
                         )
                         segment_coms = compute_segment_coms(
                             definitions=com_definitions, world=world
@@ -868,21 +922,15 @@ class RealtimeAggregatorNode(AggregatorNode):
                     )
 
                 # ---- Publish aggregated output ----
-                # Live measured per-segment lengths: the median observed
-                # origin->primary distance over the rolling window, falling back
-                # to each segment's authored nominal length until a measurement
-                # has been accumulated.
-                segment_lengths: dict[str, float] = {
-                    seg.name: (
-                        float(np.median(list(length_distances[seg.name])))
-                        if length_distances.get(seg.name)
-                        else seg.length
-                    )
-                    for seg in standard_human.segments.values()
-                }
-                if segment_lengths and all(v <= 0.0 for v in segment_lengths.values()) and "zero_lengths" not in skeleton_observability_logged:
-                    skeleton_observability_logged.add("zero_lengths")
-                    logger.error("All segment lengths are ZERO — the 3D bones will have zero length")
+                # Fitted per-segment lengths in millimetres, covering EVERY segment: the
+                # ones that were seen carry their own measurement, and the ones that were
+                # not are sized by the fitted body height. Empty only while the subject
+                # has never been measured at all.
+                segment_lengths: dict[str, float] = (
+                    dict(body_scale_fit.segment_lengths)
+                    if body_scale_fit is not None
+                    else {}
+                )
                 joint_angles = (
                     {
                         joint_name: joint_pose.angles
@@ -908,6 +956,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         segment_rotations_world=segment_rotations_world,
                         segment_rotations_local=segment_rotations_local,
                         segment_lengths=segment_lengths,
+                        body_height_mm=(
+                            body_scale_fit.body_height
+                            if body_scale_fit is not None
+                            else None
+                        ),
                         reprojected_segment_origins=reprojected_segment_origins,
                     ),
                 )

@@ -273,7 +273,7 @@ class ModelDefinition:
                         float(c)
                         for c in rest_pose.segment_orientations[segment.name].as_array()
                     ),
-                    length_mm=float(segment.length),
+                    length_proportion=float(segment.length),
                     is_fully_specified=segment.is_fully_specified,
                 )
                 for segment in skeleton.segments.values()
@@ -339,11 +339,21 @@ class ChannelBlock:
 
 @dataclass(frozen=True, slots=True)
 class ModelInstance:
-    """One per-frame instance of a model definition."""
+    """One per-frame instance of a model definition.
+
+    The model definition is dimensionless — its segment lengths are fractions of body
+    height — so the instance is where a size lives: `body_height_mm` is THIS subject's
+    fitted stature, and multiplying the model's `length_proportion`s by it gives the
+    instance at rest. The per-frame `SEGMENT_LENGTHS` channel refines that segment by
+    segment for the ones actually seen.
+    """
 
     instance_id: int
     model_id: str
     channels: tuple[ChannelBlock, ...]
+    # The subject's fitted standing height (mm), or None while nothing has measured them.
+    # None is not "assume a default" — it means this instance has no size yet.
+    body_height_mm: float | None = None
 
 
 @dataclass(frozen=True, slots=True)

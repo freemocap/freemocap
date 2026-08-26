@@ -56,6 +56,6 @@ seeded from the rest pose.
 ## On the wire
 
 `ModelDefinition.from_standard_human(skeleton=..., rest_pose=...)` serializes the rest pose into
-every frame message: per-segment `rest_orientation` (wxyz world quats), `length_mm`, plus
+every frame message: per-segment `rest_orientation` (wxyz world quats), `length_proportion`, plus
 `connections` — the `(parent, child)` name pairs of this tree. See
 [message-contract.md](message-contract.md).

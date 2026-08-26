@@ -74,7 +74,20 @@ function computeDetails(
         },
         { label: "world quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.worldQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
         { label: "local quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.localQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
-        { label: "length (mm)", value: li >= 0 && lengths ? fmt(lengths.data[li]) : (seg ? fmt(seg.length_mm) : "—") },
+        // The model is dimensionless, so a length in mm always comes from the fit: this
+        // segment's own fitted length where the wire carries one, otherwise its authored
+        // proportion times the subject's fitted height.
+        {
+            label: "length (mm)",
+            value:
+                li >= 0 && lengths
+                    ? fmt(lengths.data[li])
+                    : seg && lengths?.bodyHeightMm != null
+                      ? fmt(seg.length_proportion * lengths.bodyHeightMm)
+                      : "—",
+        },
+        { label: "length (body heights)", value: seg ? fmt(seg.length_proportion) : "—" },
+        { label: "body height (mm)", value: lengths?.bodyHeightMm != null ? fmt(lengths.bodyHeightMm) : "not measured" },
         { label: "rest orientation", value: seg ? quat(seg.rest_orientation) : "—" },
         { label: "primary axis", value: seg ? JSON.stringify(seg.primary_axis) : "—" },
     ];

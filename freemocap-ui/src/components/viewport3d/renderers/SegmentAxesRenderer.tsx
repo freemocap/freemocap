@@ -53,24 +53,39 @@ interface SegmentAxisTable {
 const _quaternion = new Quaternion();
 const _axis = new Vector3();
 
-function buildAxisTable(model: ModelDefinition): SegmentAxisTable {
+/** Axis lengths in mm, sized from each segment's own size.
+ *
+ *  The model is dimensionless, so its `length_proportion` only becomes a length once it is
+ *  multiplied by the subject's fitted height. Until a fit exists there is no size to scale
+ *  by, and every axis falls back to the same nominal length — which is the honest picture,
+ *  not a guess at how big the subject might be. Recomputed whenever the height changes.
+ */
+function buildAxisTable(model: ModelDefinition, bodyHeightMm: number | null): SegmentAxisTable {
     const segmentCount = Math.min(model.segments.length, MAX_SEGMENTS);
     const axisLengthsMm = new Float32Array(segmentCount);
     for (let i = 0; i < segmentCount; i++) {
-        const lengthMm = model.segments[i].length_mm;
-        const scaled = Number.isFinite(lengthMm) && lengthMm > 0 ? lengthMm * AXIS_LENGTH_FRACTION : 50;
+        const proportion = model.segments[i].length_proportion;
+        const lengthMm =
+            bodyHeightMm != null && bodyHeightMm > 0 && Number.isFinite(proportion) && proportion > 0
+                ? proportion * bodyHeightMm
+                : null;
+        const scaled = lengthMm !== null ? lengthMm * AXIS_LENGTH_FRACTION : 50;
         axisLengthsMm[i] = Math.min(Math.max(scaled, MIN_AXIS_LENGTH_MM), MAX_AXIS_LENGTH_MM);
     }
     return { segmentCount, axisLengthsMm };
 }
 
 export function SegmentAxesRenderer() {
-    const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels } =
+    const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels, getLatestSegmentLengths } =
         useKeypointsSource();
     const lineRef = useRef<LineSegments>(null);
     const skeletonRef = useRef<KeypointsFrame | null>(null);
     const rotationsRef = useRef<RotationsFrame | null>(null);
     const tableRef = useRef<SegmentAxisTable | null>(null);
+    // The model, kept so the table can be rebuilt when the subject's fitted height moves
+    // without waiting for a new model, and the height the current table was built for.
+    const modelRef = useRef<ModelDefinition | null>(null);
+    const builtForHeightRef = useRef<number | null>(null);
     const dirtyRef = useRef(false);
 
     // Fixed-capacity buffers: positions rewritten per frame, colors written once.
@@ -119,14 +134,16 @@ export function SegmentAxesRenderer() {
     useEffect(() => {
         const rebuild = (models: ModelDefinition[]) => {
             if (models.length === 0) return;
-            tableRef.current = buildAxisTable(models[0]);
+            modelRef.current = models[0];
+            builtForHeightRef.current = getLatestSegmentLengths?.()?.bodyHeightMm ?? null;
+            tableRef.current = buildAxisTable(models[0], builtForHeightRef.current);
             applyTable();
         };
         const unsubscribe = subscribeToModels ? subscribeToModels(rebuild) : () => {};
         const existing = getModels?.();
         if (existing && existing.length > 0) rebuild(existing);
         return unsubscribe;
-    }, [subscribeToModels, getModels, applyTable]);
+    }, [subscribeToModels, getModels, applyTable, getLatestSegmentLengths]);
 
     useEffect(() => {
         return subscribeToSkeleton((frame) => {
@@ -145,6 +162,15 @@ export function SegmentAxesRenderer() {
 
     useFrame(() => {
         const line = lineRef.current;
+        // The model is dimensionless, so the axis lengths depend on the subject's fitted
+        // height as well as on the model. Rebuild when that height moves — 61 float
+        // multiplies, and only on the frames where the fit actually changed.
+        const bodyHeightMm = getLatestSegmentLengths?.()?.bodyHeightMm ?? null;
+        if (modelRef.current && bodyHeightMm !== builtForHeightRef.current) {
+            builtForHeightRef.current = bodyHeightMm;
+            tableRef.current = buildAxisTable(modelRef.current, bodyHeightMm);
+            applyTable();
+        }
         const table = tableRef.current;
         if (!line || !table || !dirtyRef.current) return;
         const skeleton = skeletonRef.current;

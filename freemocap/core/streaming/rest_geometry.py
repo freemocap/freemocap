@@ -35,13 +35,19 @@ class PrimaryAxis:
 
 @dataclass(frozen=True, slots=True)
 class RestSegment:
-    """One segment at rest: name, parent, primary direction, rest orientation, length."""
+    """One segment at rest: name, parent, primary direction, rest orientation, proportion.
+
+    The model is DIMENSIONLESS. `length_proportion` is this segment's length as a fraction
+    of body height, so the same model describes a toddler and a basketball player; a
+    consumer that wants millimetres multiplies by the instance's `body_height_mm`, or uses
+    the per-frame `SEGMENT_LENGTHS` channel where the segment was actually measured.
+    """
 
     name: str
     parent: str | None
     primary_axis: PrimaryAxis
     rest_orientation: tuple[float, float, float, float]  # wxyz
-    length_mm: float
+    length_proportion: float
     is_fully_specified: bool = False
 
     def to_cbor_message(self) -> dict[str, Any]:
@@ -50,14 +56,14 @@ class RestSegment:
             "parent": self.parent,
             "primary_axis": self.primary_axis.to_cbor_message(),
             "rest_orientation": list(self.rest_orientation),
-            "length_mm": self.length_mm,
+            "length_proportion": self.length_proportion,
             "is_fully_specified": self.is_fully_specified,
         }
 
 
 @dataclass(frozen=True, slots=True)
 class RestLandmark:
-    """One landmark at rest: its name and rest position."""
+    """One landmark at rest: its name and rest position, as body-height proportions."""
 
     name: str
     rest_position: tuple[float, float, float] | None = None

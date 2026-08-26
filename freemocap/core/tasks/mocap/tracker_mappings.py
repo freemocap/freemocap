@@ -20,6 +20,7 @@ classes, whose module imports would pull in mediapipe / onnxruntime.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path  # noqa: TC003  # module-level annotations are evaluated lazily
 
 from skellytracker.core.detectors.keypoint_detectors._schema_loader import (
@@ -100,19 +101,45 @@ def tracker_keypoint_names(detector_type: str) -> tuple[str, ...]:
         raise ValueError(f"unknown detector_type {detector_type!r} (rtmpose | mediapipe)")
 
 
-def load_standard_human_mapping(detector_type: str):
-    """Load the merged body + hand tracker->standard-human mapping as one callable.
+@dataclass(frozen=True, slots=True)
+class StandardHumanMapping:
+    """The merged body + hand tracker->standard-human mapping, and what it measures.
 
-    Returns a function ``keypoints -> {landmark_name: position}`` that applies the body
-    and hand mappings and merges them (their name sets are disjoint). This is the one
-    seam that turns raw tracker keypoints into the hydrated standard-human segment
-    layer the rigidifier / solver / center-of-mass consume. Lives here (freemocap)
-    because it needs skellytracker, which skellyforge never imports.
+    Callable as ``mapping(keypoints) -> {landmark_name: position}``: it applies both
+    mappings and merges them (their name sets are disjoint). This is the one seam that
+    turns raw tracker keypoints into the standard-human landmark layer the solver and
+    center-of-mass consume.
     """
-    body_mapping = TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type))
-    hand_mapping = TrackerMapping.from_yaml(hand_mapping_yaml_path(detector_type))
 
-    def apply(keypoints: dict) -> dict:
-        return {**body_mapping.apply(keypoints), **hand_mapping.apply(keypoints)}
+    body_mapping: TrackerMapping
+    hand_mapping: TrackerMapping
 
-    return apply
+    def __call__(self, keypoints: dict) -> dict:
+        return {
+            **self.body_mapping.apply(keypoints),
+            **self.hand_mapping.apply(keypoints),
+        }
+
+    @property
+    def directly_measured_landmark_names(self) -> frozenset[str]:
+        """The landmarks this mapping measures rather than constructs from the template.
+
+        Forwarded from both mappings so the body-scale fit can tell which landmarks are
+        evidence about the SUBJECT'S size and which merely restate an authored ratio times
+        a span measured elsewhere. See ``TrackerMapping.directly_measured_landmark_names``.
+        """
+        return (
+            self.body_mapping.directly_measured_landmark_names
+            | self.hand_mapping.directly_measured_landmark_names
+        )
+
+
+def load_standard_human_mapping(detector_type: str) -> StandardHumanMapping:
+    """Load the merged body + hand tracker->standard-human mapping for a detector.
+
+    Lives here (freemocap) because it needs skellytracker, which skellyforge never imports.
+    """
+    return StandardHumanMapping(
+        body_mapping=TrackerMapping.from_yaml(body_mapping_yaml_path(detector_type)),
+        hand_mapping=TrackerMapping.from_yaml(hand_mapping_yaml_path(detector_type)),
+    )

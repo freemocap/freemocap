@@ -73,12 +73,16 @@ export const CalibratedCameraSchema = z.object({
   world_orientation: z.array(z.tuple([z.number(), z.number(), z.number()])),
 });
 
+/** One segment of the DIMENSIONLESS model. `length_proportion` is the segment's length
+ *  as a fraction of body height, so the same model describes any subject; multiply by
+ *  the instance's `body_height_mm` for millimetres, or prefer the per-frame
+ *  SEGMENT_LENGTHS channel, which carries the fitted length of every segment. */
 export const RestSegmentSchema = z.object({
   name: z.string(),
   parent: z.string().nullable(),
   primary_axis: PrimaryAxisSchema,
   rest_orientation: z.tuple([z.number(), z.number(), z.number(), z.number()]), // wxyz
-  length_mm: z.number(),
+  length_proportion: z.number(),
   is_fully_specified: z.boolean(),
 });
 export type RestSegment = z.infer<typeof RestSegmentSchema>;
@@ -114,10 +118,14 @@ export const ChannelBlockSchema = z.object({
 });
 export type ChannelBlock = z.infer<typeof ChannelBlockSchema>;
 
+/** One per-frame instance of a model. The model is dimensionless, so the instance is
+ *  where a size lives: `body_height_mm` is this subject's fitted stature. Absent while
+ *  nothing has measured them yet — which means "no size", not "assume a default". */
 export const ModelInstanceSchema = z.object({
   instance_id: z.number().int(),
   model_id: z.string(),
   channels: z.array(ChannelBlockSchema),
+  body_height_mm: z.number().nullish(),
 });
 export type ModelInstance = z.infer<typeof ModelInstanceSchema>;
 

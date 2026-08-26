@@ -104,11 +104,18 @@ export function resolveFrameChannels(frame: FrameMessage): ResolvedFrameChannels
         xcom = rowOf("xcom");
     }
 
-    // segment lengths — instances SEGMENT_LENGTHS (index-keyed, 1-col length_mm)
+    // segment lengths — instances SEGMENT_LENGTHS (index-keyed, 1-col length_mm), plus the
+    // instance's fitted body height, which is published in lockstep with them: both are
+    // the same body-scale fit, so they travel together rather than as two subscriptions
+    // that can disagree about which frame they came from.
     let segmentLengths: SegmentLengthsFrame | null = null;
     const sl = channelByKind(instanceChannels, SEGMENT_LENGTHS);
     if (sl) {
-        segmentLengths = { names: segmentNames, data: float32(sl.data) };
+        segmentLengths = {
+            names: segmentNames,
+            data: float32(sl.data),
+            bodyHeightMm: frame.instances[0]?.body_height_mm ?? null,
+        };
     }
 
     // overlays — OVERLAY_2D (trackers, detections) + OVERLAY_REPROJECTIONS (instances, reprojections)

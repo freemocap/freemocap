@@ -119,10 +119,17 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     joint_angles: dict[str, tuple[float, float, float]] | None = None
     segment_rotations_world: dict[TrackedPointNameString, np.ndarray] | None = None
     segment_rotations_local: dict[TrackedPointNameString, np.ndarray] | None = None
-    # Per-segment measured rest lengths (mm), keyed by segment name — the
-    # rigidifier's current estimates (body + both hands). Feeds the model's
-    # ``segment_lengths`` default-then-update lifecycle.
+    # Per-segment FITTED lengths (mm), keyed by segment name — every segment of the
+    # standard human, whether or not it was visible this frame. A segment that was seen
+    # carries its own measurement; one that was not is sized by the fitted body height,
+    # which is what the proportional template is for. Empty only while nobody has been
+    # measured at all, which ``body_height_mm is None`` says explicitly.
     segment_lengths: dict[str, float] = field(default_factory=dict)
+    # The subject's fitted standing height (mm): floor to skull top, the `H = 1.0` the
+    # standard human is authored against. Pooled by weighted median from every segment
+    # that genuinely measures the subject, so it is available from partial views — the
+    # legs never need to be visible. None until such a segment has been seen.
+    body_height_mm: float | None = None
     # Per-camera segment-origin landmark reprojections (camera_id → segment
     # name → (x, y) in capture-resolution px) — the fitted skeleton projected
     # back into each camera. Empty when there is no valid calibration or no

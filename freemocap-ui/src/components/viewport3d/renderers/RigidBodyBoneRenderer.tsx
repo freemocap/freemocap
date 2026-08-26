@@ -30,17 +30,46 @@ import {
 } from "three";
 import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
 import { registerPickingMesh, unregisterPickingMesh } from "./PickingRegistry";
-import type { RotationsFrame } from "@/services/server/transport/frame-types";
+import type { RotationsFrame, SegmentLengthsFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { createBoneMeshGeometry } from "./RigidBodyBoneGeometry";
 import {
     BONE_SIDE_COLORS,
+    DEFAULT_SEGMENT_LENGTH,
     buildBoneInstances,
     computeBoneMatrix,
     type BoneInstanceTable,
 } from "./RigidBodyBoneInstances";
 
 const MAX_BONES = 256;
+
+/** How long to draw one bone, in millimetres.
+ *
+ *  The model is dimensionless, so a length is always something the FIT supplies. In order
+ *  of preference:
+ *    1. the segment's own fitted length from this frame's SEGMENT_LENGTHS — every segment
+ *       has one once the subject is measured, including the ones nothing can currently
+ *       see (those are sized by the fitted body height);
+ *    2. the model's proportion times the fitted body height, if the lengths channel is
+ *       absent but a height is known;
+ *    3. DEFAULT_SEGMENT_LENGTH, which means the subject has no measured size at all.
+ */
+export function resolveBoneLengthMm(
+    table: BoneInstanceTable,
+    liveLengths: SegmentLengthsFrame | null,
+    name: string,
+    slot: number,
+): number {
+    const fitted = liveLengths?.data[slot];
+    if (fitted !== undefined && Number.isFinite(fitted) && fitted > 0) return fitted;
+
+    const proportion = table.byNameLengthProportion.get(name);
+    const bodyHeightMm = liveLengths?.bodyHeightMm;
+    if (proportion !== undefined && proportion > 0 && bodyHeightMm != null && bodyHeightMm > 0) {
+        return proportion * bodyHeightMm;
+    }
+    return DEFAULT_SEGMENT_LENGTH;
+}
 
 // Per-region transverse cross-section radius (mm), resolved at model time and
 // stored on the table (face < hand < body). D6: the radius is independent of a
@@ -180,9 +209,7 @@ export function RigidBodyBoneRenderer() {
                     [qw, qx, qy, qz],
                     table.byNameRestOrientation.get(name)!,
                     table.byNamePrimaryAxis.get(name)!,
-                    (liveLengths && Number.isFinite(liveLengths.data[slot]) && liveLengths.data[slot] > 0)
-                        ? liveLengths.data[slot]
-                        : (table.byNameLength.get(name) ?? 1.0),
+                    resolveBoneLengthMm(table, liveLengths, name, slot),
                     table.byNameCrossSection.get(name) ?? 12,
                 );
                 if (matrix !== null) {

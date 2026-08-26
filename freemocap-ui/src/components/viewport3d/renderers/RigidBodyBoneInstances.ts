@@ -60,8 +60,11 @@ export interface BoneInstanceTable {
     byName: ReadonlyMap<string, number>;
     /** Ordered instance descriptors (slot-stable). */
     instances: readonly BoneInstance[];
-    /** name → rest length (mm), resolved ONCE at model time. */
-    byNameLength: ReadonlyMap<string, number>;
+    /** name → rest length as a FRACTION OF BODY HEIGHT, resolved ONCE at model time.
+     *  The model is dimensionless; multiply by the frame's fitted `bodyHeightMm` for
+     *  millimetres, or prefer the per-frame SEGMENT_LENGTHS channel, which carries the
+     *  fitted length of every segment. */
+    byNameLengthProportion: ReadonlyMap<string, number>;
     /** name → primary axis (the bone's origin→distal direction). */
     byNamePrimaryAxis: ReadonlyMap<string, PrimaryAxis>;
     /** name → rest-frame orientation [w, x, y, z]: the rotation mapping the
@@ -71,7 +74,8 @@ export interface BoneInstanceTable {
     byNameCrossSection: ReadonlyMap<string, number>;
 }
 
-/** Fallback rest length (mm) for a segment with a missing/non-finite length. */
+/** Fallback rest length (mm) for a segment whose size is not known at all — no fitted
+ *  length on the wire and no body height to scale its proportion by. */
 export const DEFAULT_SEGMENT_LENGTH = 1.0;
 
 /** Bone colors keyed by side (left = blue, right = red, center = green). */
@@ -190,7 +194,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
             nameToIndex: new Map(),
             byName: new Map(),
             instances: [],
-            byNameLength: new Map(),
+            byNameLengthProportion: new Map(),
             byNamePrimaryAxis: new Map(),
             byNameRestOrientation: new Map(),
             byNameCrossSection: new Map(),
@@ -200,7 +204,7 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
     const nameToIndex = new Map<string, number>();
     const byName = new Map<string, number>();
     const instances: BoneInstance[] = [];
-    const byNameLength = new Map<string, number>();
+    const byNameLengthProportion = new Map<string, number>();
     const byNamePrimaryAxis = new Map<string, PrimaryAxis>();
     const byNameRestOrientation = new Map<string, readonly [number, number, number, number]>();
     const byNameCrossSection = new Map<string, number>();
@@ -209,18 +213,18 @@ export function buildBoneInstances(model: ModelDefinition): BoneInstanceTable {
         nameToIndex.set(segment.name, i);
         byName.set(segment.name, i);
         instances.push({ instanceIdx: i, name: segment.name, side: classifyBone(segment.name) });
-        byNameLength.set(
+        byNameLengthProportion.set(
             segment.name,
-            Number.isFinite(segment.length_mm) && segment.length_mm > 0
-                ? segment.length_mm
-                : DEFAULT_SEGMENT_LENGTH,
+            Number.isFinite(segment.length_proportion) && segment.length_proportion > 0
+                ? segment.length_proportion
+                : 0,
         );
         byNamePrimaryAxis.set(segment.name, segment.primary_axis);
         byNameRestOrientation.set(segment.name, segment.rest_orientation);
         byNameCrossSection.set(segment.name, REGION_CROSS_SECTION[classifyRegion(segment.name)]);
     });
 
-    return { nameToIndex, byName, instances, byNameLength, byNamePrimaryAxis, byNameRestOrientation, byNameCrossSection };
+    return { nameToIndex, byName, instances, byNameLengthProportion, byNamePrimaryAxis, byNameRestOrientation, byNameCrossSection };
 }
 
 /**

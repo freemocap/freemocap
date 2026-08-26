@@ -30,6 +30,7 @@ from freemocap.core.tasks.mocap.tracker_mappings import (
 )
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
+from skellyforge.core.math.geometry.rotation_quaternion import RotationQuaternion
 from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
@@ -224,16 +225,52 @@ def test_full_loop_wire_rotations_equal_solver_and_are_finite():
     np.testing.assert_allclose(kp_data[nose_idx, :3], pose["nose"], atol=1e-4)
 
 
-def test_arm_abduction_rotates_humerus_and_leaves_spine():
-    """The change lands where it should: ~90° on the humerus, ~0° on the chest."""
-    standing_world = _hydrate(_standing_pose())[2]
-    bent_world = _hydrate(_abducted_left_arm(_standing_pose()))[2]
+def _segment_direction(
+    skeleton: SkeletonDefinition, world: dict[str, np.ndarray], name: str
+) -> np.ndarray:
+    """Where a solved segment actually points: its local primary axis, rotated to world."""
+    segment = skeleton.segments[name]
+    local = segment.landmarks[segment.frame_definition.primary_point_name].local_position.array
+    signed = float(segment.frame_definition.primary_axis.sign) * local
+    signed = signed / float(np.linalg.norm(signed))
+    rotation = RotationQuaternion.from_array(array=np.asarray(world[name], dtype=np.float64))
+    return rotation.rotate_vector(vector=signed)
 
-    standing_humerus = standing_world["left_upper_arm"]
-    bent_humerus = bent_world["left_upper_arm"]
-    angle = _quat_angle_rad(standing_humerus, bent_humerus)
-    assert abs(angle - math.pi / 2) < 0.2, f"humerus rotated {math.degrees(angle):.1f}°, expected ~90°"
 
-    standing_chest = standing_world["chest"]
-    bent_chest = bent_world["chest"]
-    assert _quat_angle_rad(standing_chest, bent_chest) < 0.1, "chest must not rotate with the arm"
+def test_arm_abduction_points_the_humerus_where_the_data_says_and_leaves_the_trunk():
+    """The change lands where it should: the humerus follows the observed bone, trunk still.
+
+    Asserted on the segment's DIRECTION rather than on the angle between two quaternions.
+    Both are shortest-arc solutions about different axes and then have their roll supplied
+    by convention, so the quaternion-to-quaternion angle is not the angle the arm moved
+    through — it is convention plus motion. The direction is the part that is measured, and
+    it is what "the humerus followed the arm" means.
+    """
+    standing_pose = _standing_pose()
+    abducted_pose = _abducted_left_arm(standing_pose)
+    skeleton, _, standing_world, _ = _hydrate(standing_pose)
+    _, _, bent_world, _ = _hydrate(abducted_pose)
+
+    for label, pose, world in (
+        ("standing", standing_pose, standing_world),
+        ("abducted", abducted_pose, bent_world),
+    ):
+        observed = pose["left_elbow"] - pose["left_shoulder"]
+        observed = observed / np.linalg.norm(observed)
+        solved = _segment_direction(skeleton, world, "left_upper_arm")
+        np.testing.assert_allclose(
+            solved, observed, atol=1e-6, err_msg=f"{label}: humerus does not follow the data"
+        )
+
+    # Abduction is ~90 degrees of arm travel: nearly straight down, to straight out.
+    standing_direction = _segment_direction(skeleton, standing_world, "left_upper_arm")
+    bent_direction = _segment_direction(skeleton, bent_world, "left_upper_arm")
+    travel = math.degrees(
+        math.acos(min(1.0, max(-1.0, float(np.dot(standing_direction, bent_direction)))))
+    )
+    assert 80.0 < travel < 100.0, f"humerus travelled {travel:.1f}°, expected ~90°"
+
+    # ...and the trunk stayed put. `thoracic` is the spine redesign's chest segment.
+    assert (
+        _quat_angle_rad(standing_world["thoracic"], bent_world["thoracic"]) < 0.1
+    ), "the trunk must not rotate with the arm"

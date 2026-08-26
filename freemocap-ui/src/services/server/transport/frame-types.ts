@@ -19,10 +19,17 @@ export interface RotationsFrame {
     localQuaternions: Float32Array;
 }
 
+/** The subject's fitted size this frame: the whole body, and every segment of it.
+ *
+ *  The model is dimensionless, so this is where millimetres come from. Every segment has
+ *  a length whether or not it was visible — a segment nobody could see is sized by
+ *  `bodyHeightMm`, which is what lets the feet stay the right length under a desk. */
 export interface SegmentLengthsFrame {
     names: readonly string[];
-    /** one length_mm per segment — length names.length. */
+    /** one fitted length_mm per segment — length names.length. */
     data: Float32Array;
+    /** the subject's fitted standing height (mm), or null if nothing has measured them. */
+    bodyHeightMm: number | null;
 }
 
 export interface DerivedPointsFrame {

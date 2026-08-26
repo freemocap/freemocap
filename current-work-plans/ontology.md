@@ -71,10 +71,11 @@ silently.
 - **Ownership** — a landmark declares its segment explicitly. No ordering convention.
 - **Sidedness** — bilateral segments, landmarks, and joints are authored once with `sided: true` and
   compiled into `left_*` / `right_*` pairs; the right side mirrors x. No hand-duplicated left/right.
-- **Scale** — coordinates are body-height proportions (`H = 1.0`), so the template is body-agnostic.
-  The **body-fitting step** (next work) solves the subject's `H` + per-segment proportions from measured
-  distances and scales the template to mm
-  ([02-pipeline/segment-length-estimation.md](02-pipeline/segment-length-estimation.md)).
+- **Scale** — coordinates are body-height proportions (`H = 1.0`), so the template is body-agnostic,
+  and the map from a segment's frame into the world is a **similarity**, not a rigid motion. Every
+  hydrated segment therefore carries a `body_scale_estimate`, and the **body-scale fit** pools those
+  into the subject's `H` plus a per-segment scale field — a segment nobody can see is sized by `H`
+  ([02-pipeline/body-scale-fitting.md](02-pipeline/body-scale-fitting.md)).
 
 ## The constitution — invariants at every layer
 

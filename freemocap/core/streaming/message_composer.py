@@ -49,7 +49,16 @@ class MessageComposition:
         instance_blocks = tuple(b for b in blocks if b.kind not in _TRACKER_KINDS)
         tracker_blocks = tuple(b for b in blocks if b.kind in _TRACKER_KINDS)
         instances = (
-            ModelInstance(instance_id=0, model_id=STANDARD_HUMAN_MODEL_ID, channels=instance_blocks),
+            ModelInstance(
+                instance_id=0,
+                model_id=STANDARD_HUMAN_MODEL_ID,
+                channels=instance_blocks,
+                body_height_mm=(
+                    frame_ctx.aggregator_output.body_height_mm
+                    if frame_ctx.aggregator_output is not None
+                    else None
+                ),
+            ),
         ) if instance_blocks else ()
         trackers = (
             TrackerObservation(

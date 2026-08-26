@@ -65,9 +65,11 @@ Everything encodes to CBOR per [../03-transport/message-relay.md](../03-transpor
 
 ## Segment lengths today
 
-Published lengths are **live-measured**: the median observed origin→primary distance per segment
-over a 30-frame rolling window, falling back to the authored rest-pose length until a segment has
-measurements — see [segment-length-estimation.md](segment-length-estimation.md).
+Published lengths are **fitted millimetres for every segment**, seen or not. Each hydrated segment
+reports how big the subject is (`observed length / authored proportion`); those readings pool into
+one body height, and a segment with no reading of its own is sized by it. The frame also carries
+`ModelInstance.body_height_mm`, because the model definition is dimensionless
+(`RestSegment.length_proportion`) — see [body-scale-fitting.md](body-scale-fitting.md).
 
 ## The gate
 

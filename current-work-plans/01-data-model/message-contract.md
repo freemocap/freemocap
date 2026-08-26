@@ -37,11 +37,17 @@ decode-vs-render split and no held descriptor). It carries:
   extrinsics, world_position, world_orientation. `rotation` + `image_size` define the ROTATED
   overlay/JPEG coordinate space.
 - `models` — `ModelDefinition`: model_id, ordered `segments` (name, parent, primary_axis,
-  rest_orientation wxyz, length_mm, is_fully_specified), ordered `landmarks` (name, rest_position),
-  and `connections` — the `(parent_segment, child_segment)` name pairs derived once from the joint
-  topology. The model is the single source of truth for hierarchy: clients draw these edges directly
-  (3D joint lines + the 2D overlay) and never re-derive connections from the `parent` fields.
-- `instances` — `ModelInstance`: instance_id, model_id, channels.
+  rest_orientation wxyz, **`length_proportion`**, is_fully_specified), ordered `landmarks` (name,
+  rest_position), and `connections` — the `(parent_segment, child_segment)` name pairs derived once
+  from the joint topology. The model is the single source of truth for hierarchy: clients draw these
+  edges directly (3D joint lines + the 2D overlay) and never re-derive connections from the `parent`
+  fields. The model is also **dimensionless** — lengths and rest positions are fractions of body
+  height — so a size lives on the instance, not here.
+- `instances` — `ModelInstance`: instance_id, model_id, channels, and `body_height_mm` — this
+  subject's fitted stature, absent until a segment has measured them (which means "no size", not
+  "assume a default"). Multiply a segment's `length_proportion` by it for millimetres, or prefer the
+  `SEGMENT_LENGTHS` channel, which carries fitted millimetres for every segment whether or not it was
+  visible ([../02-pipeline/body-scale-fitting.md](../02-pipeline/body-scale-fitting.md)).
 - `trackers` — `TrackerObservation`: tracker_id, detector_type, model_id, channels.
 - `image` — the camera image bytes.
 

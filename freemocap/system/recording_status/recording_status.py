@@ -113,6 +113,7 @@ def missing_blender_input_files(
     detector: str
 ) -> list[str]:
     output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
+    detector = detect_blender_input_detector(output_data)
 
     return [
         name

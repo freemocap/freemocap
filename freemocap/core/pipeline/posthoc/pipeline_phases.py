@@ -51,3 +51,18 @@ class PosthocPipelineType(_StrValueEnum):
     """
     CALIBRATION = "calibration"
     MOCAP = "mocap"
+    SYNC = "sync"
+
+
+class SyncStage(_StrValueEnum):
+    """Stages within a video-synchronization job (skelly_synchronize's core pipeline).
+
+    Only TrimStage reports fine-grained per-video fraction progress today, so
+    the other stages are emitted as indeterminate (fraction=0.0) boundary markers.
+    """
+    PROBING = "probing"
+    DETECTING_LAG = "detecting_lag"
+    TRIMMING = "trimming"
+    VERIFYING = "verifying"
+    COMPLETE = "complete"
+    FAILED = "failed"

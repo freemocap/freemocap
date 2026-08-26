@@ -1936,7 +1936,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#8ab3bc1eef15ea7b28e6b97672c49c8a069ca2cb" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#a86f907642125f1c344415d89fd2e79e40da8092" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

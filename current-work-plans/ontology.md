@@ -103,8 +103,10 @@ the realtime loop's stack: `AnatomicalLandmark`, `RigidBodySegment`,
 input provenance ([05-linkage-chain/linkage-chain-design.md](05-linkage-chain/linkage-chain-design.md)).
 Chain layer: `KinematicChain` declarations compiled at load, forward synthesis
 (`core/skeleton/chain/synthesis.py`) — joint angles → whole-body poses, gated by the FK-closure
-tests — and inverse kinematics (`core/skeleton/chain/two_bone_ik.py`, `fabrik_ik.py`): closed-form
-limb solving and iterative chain reaching, both fail-loud on unreachable targets. Still pending:
-twist backfill (L6.4). The shipped model
+tests — inverse kinematics (`core/skeleton/chain/two_bone_ik.py`, `fabrik_ik.py`): closed-form
+limb solving and iterative chain reaching, both fail-loud on unreachable targets — and twist
+backfill (`core/skeleton/chain/twist_backfill.py`): forearm roll recovered from the measured
+carpals orientation against a baseline pose, closing the pronation gap the two-landmark forearm
+cannot see. The shipped model
 is 61 segments / 124 landmarks / 60 joints / 6 declared chains. Worked example:
 [01-data-model/segment-model.md](01-data-model/segment-model.md).

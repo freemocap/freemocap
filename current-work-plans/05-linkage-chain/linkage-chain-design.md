@@ -107,21 +107,20 @@ face: chain declarations referencing joint names. Hydrated face: a `ChainPose`
 
 ## 4. What happens to `ContinuousRollResolver`
 
-It stays API-stable and keeps working exactly as today until chain anchoring
-lands. The migration is conceptual ownership plus two upgrades, in order:
+Two resolution tiers now live there (L6.2 ✅):
 
-1. **Anchored secondary axes (chain phase 1):** for a direction-only segment
-   whose parent's pose exists this frame, anchor the secondary axis to the
-   parent-origin direction projected perpendicular to the primary axis
-   (Gram-Schmidt), falling back to parallel transport on degeneracy (parent
-   collinear with child axis, parent unhydrated). Deterministic — the same
-   motion yields the same roll regardless of history, which parallel transport
-   cannot promise. Probe `axes_tracking_probe.py` extends to assert this.
-2. **Twist backfill (chain phase 2):** when a chain's end segment carries a
-   rigid-fit orientation, distribute the observed end twist up the chain
-   (forearm pronation from hand orientation). Only where information exists —
-   two collinear landmarks alone still cannot see twist, and nothing pretends
-   otherwise.
+- **Skeleton level (`resolve_pose`, production path):** a direction-only
+  segment's roll is ANCHORED - the secondary axis is projected perpendicular
+  from the direction pointing back toward the parent segment's origin, which is
+  roll-free measured geometry. Same motion ⇒ same roll, regardless of history.
+  Falls back to parallel transport when the parent pose is absent or the hint
+  is collinear with the long axis (straight chains carry no roll reference at
+  all - that is information, not a failure).
+- **Segment level (`resolve_segment_pose`):** pure parallel transport, the
+  historical primitive, available without context.
+
+The carry updates on BOTH paths so fallback frames continue from the last
+anchored state. Twist backfill from end-segment orientations remains L6.4.
 
 ## 5. Topology reconciliation — one home for the tree
 
@@ -189,7 +188,7 @@ assumption.
 | L5.1 ✅ | `JointDefinition` YAML + compilation; topology moved out of `rest_pose.yaml`; `relative_orientation` + generic euler `decompose/compose`; provenance struct | invariants 2, 4, 5; full suite green |
 | L6.1 ✅ | Chain declarations (`chains:` YAML, compiled with contiguity validation); forward synthesis over the whole joint tree | invariant 3 in its honest two-tier form: exact closure for every rigid-rigid joint, direction closure for ALL joints at 1e-6°; determinism; root-placement invariance. Note: the shipped model currently has NO adjacent rigid-rigid pair (rigid segments are isolated), so the exact tier is wired to the statics and exercises vacuously until one exists - asserted, not skipped |
 | L5.2 | Named-angle outputs surfaced (aggregator message field; wire channel decision separate) | round trip through serialization |
-| L6.2 | Anchored secondary axes upgrade to resolver | invariant 4 extended: same-motion-same-roll determinism |
+| L6.2 ✅ | Anchored secondary axes: skeleton-level resolution anchors a direction segment's roll to its parent's origin direction when usable (deterministic per frame), falling back to parallel transport on degeneracy or missing parent | same-motion-same-roll history independence tested at 1e-6°; perpendicularity/handedness asserted; straight-limb and missing-parent fallbacks tested; full suite green |
 | L6.3 | Two-bone IK + FABRIK with residual reporting | reach probes: known targets hit; unreachable raises |
 | L6.4 | Twist backfill from end-segment orientations; finger couplings | pronation probe: forearm twist recovered when hand is rigid-fit |
 

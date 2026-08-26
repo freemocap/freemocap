@@ -27,11 +27,17 @@ The shared vocabulary, defined once here — every other doc links.
   standard human (61 segments / 124 landmarks / 60 joints / 5 chains, +52 face blendshapes which are
   not skeleton components) down to a charuco board (one segment carrying its markers). Joints and
   chains are what an *articulated* skeleton adds; a rigid one has none, and is no less a skeleton.
-- **landmark group** — a named set of a skeleton's landmarks (`charuco_corners`, `face`), optionally
-  with a colour. How a consumer knows what a landmark *is* without parsing its name.
+- **landmark group** — a named set of a skeleton's landmarks (`charuco_corners`, `face`), carrying
+  **tags**. How a consumer knows what a landmark *is* without parsing its name.
 - **connection group** — a named set of landmark pairs a consumer should draw as edges
-  (`charuco_grid`, `aruco_markers`, `skull_outline`), optionally with a colour. Distinct from
-  **connections** below, which are segment-level.
+  (`charuco_grid`, `aruco_markers`, `skull_outline`), also tagged. Distinct from **connections**
+  below, which are segment-level.
+- **tag** — what a group IS (`left`, `left_hand`, `aruco_marker`), ordered most-specific-first. A
+  group carries tags, never a colour.
+- **palette** — a tag → colour mapping with one default (`ColorPalette`,
+  `definitions/color_palette.yaml`). Resolution is FIRST MATCH over a group's ordered tags, so
+  specificity lives in the model's ordering rather than in precedence rules. A user recolours a whole
+  skeleton by editing the palette, not the components.
 - **derived quantity** — a computed property a skeleton opts into (`inertia`, `xcom`, `cop`,
   `roll_resolution`). Declared in the skeleton's `derived_quantities:`; asking for one whose inputs
   are undeclared raises at load. Centre of mass is *not* here — every skeleton has one

@@ -52,8 +52,13 @@ different parameters. Supporting a third is a config change, not code.
 ### Structure moves into the model
 
 A board's edges are landmark-to-landmark (grid lines, marker quads), not segment-to-segment. So
-`ModelDefinition` grows **landmark connection groups** and **landmark groups**, each with an optional
-colour ([../01-data-model/message-contract.md](../01-data-model/message-contract.md)).
+`ModelDefinition` grows **landmark connection groups** and **landmark groups**, each carrying
+ordered **tags** — `left`, `[eye, face]`, `aruco_marker` — which a palette turns into a colour
+([../01-data-model/message-contract.md](../01-data-model/message-contract.md)). Tags rather than
+colours because the model should say what a thing IS, not what it should look like: that is what lets
+a user recolour a whole skeleton by editing one mapping, and it keeps a presentation choice out of a
+geometry file. The palette lives in skellyforge, since skellyforge is what owns the things being
+coloured and cannot import the packages that would otherwise hold the answer.
 
 This is not a board feature — the human's skull outline is authored the same way, as the worked
 example. And it retires two places where structure was being recovered by parsing names: rebuilding
@@ -83,7 +88,7 @@ exercises multiple models, but must not re-close that door.
 Two connection renderers exist. The schema-driven one is **inert in the live path** — the tracker
 schema it needs is only ever dispatched to the viewport worker by the playback provider — while the
 model-driven one does the actual drawing. They collapse into the model-driven path, which then draws
-segment edges and landmark connection groups alike, in their authored colours
+segment edges and landmark connection groups alike, in their resolved colours
 ([../04-ui/ui-integration.md](../04-ui/ui-integration.md)).
 
 ## What it looks like when it works

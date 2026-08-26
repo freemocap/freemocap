@@ -32,7 +32,7 @@ the model (`models[0].connections`) — nothing client-side derives parent→chi
 The viewport renders from the frame document: `RigidBodyBoneRenderer` draws oriented cylinders from
 segment rotations/lengths; the connection renderer draws every edge the model declares —
 `ModelDefinition.connections` (segment origin→origin) and its **landmark connection groups**, each in
-its authored colour — resolving each edge through a name→index map built once at model arrival
+its resolved colour — resolving each edge through a name→index map built once at model arrival
 (NaN-safe per frame); `CenterOfMassRenderer` consumes the `DERIVED_POINTS` rows; keypoints render
 tracker-named channels, coloured by **landmark group** rather than by name prefix. Adding a channel
 kind or model field is a renderer concern, never a recompute-the-model concern.

@@ -97,21 +97,27 @@ them a consumer should draw as edges — so nothing downstream recovers that by 
 
 ```yaml
 landmark_groups:
-  skull_surface:
-    color: "#ffd700"
-    landmarks: [head_vertex, chin, left_ear, right_ear, nose]
+  FACE_SURFACE:
+    tags: [face]
+    landmark_names: [HEAD_VERTEX, CHIN, LEFT_EAR, RIGHT_EAR, NOSE]
 
 landmark_connections:
-  skull_outline:
-    color: "#ffd700"
+  EYE_LINE:
+    tags: [eye, face]          # most specific first
     pairs:
-      - [left_ear, right_ear]
-      - [nose, chin]
+      - [LEFT_EYE_OUTER, LEFT_EYE]
+      - [LEFT_EYE, LEFT_EYE_INNER]
 ```
 
 Both validate against the live landmark set at load, the same way segment reference geometry does. A
 charuco board declares the same two sections programmatically — its grid and its marker quads — which
 is what lets one renderer draw a skull and a calibration board without knowing which is which.
+
+Groups carry **tags, never colours**. `definitions/color_palette.yaml` maps a tag to a colour, and
+resolution is first-match over a group's ordered tags — so `[eye, face]` takes the eye colour where
+the palette defines one and the face colour where it does not, with no precedence rules to remember.
+A user recolours everything by editing that one file. Anything the palette does not name draws in its
+default (green), which is a default, not a fallback: a palette is partial by design.
 
 ## Under-specified skeletons
 

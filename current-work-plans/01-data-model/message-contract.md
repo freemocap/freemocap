@@ -41,9 +41,13 @@ decode-vs-render split and no held descriptor). It carries:
   rest_position), and the structure a client needs in order to draw it without inventing anything:
   - `connections` — `(parent_segment, child_segment)` name pairs derived once from the joint topology.
   - `landmark_connections` — named **connection groups** (`charuco_grid`, `aruco_markers`,
-    `skull_outline`), each a list of landmark pairs with an optional colour.
-  - `landmark_groups` — named sets of landmarks with an optional colour, so a client colours a point
+    `skull_outline`), each a list of landmark pairs plus its resolved colour.
+  - `landmark_groups` — named sets of landmarks plus a resolved colour, so a client colours a point
     by what it *is* rather than by what its name starts with.
+
+  Colours are RESOLVED before they go on the wire: the model carries tags, a palette turns them into
+  colours, and the frame carries the answer — so a client never needs the palette, and swapping the
+  palette recolours every client at once.
   - `scale_reference_name` — what this model's `1.0` means (`body_height`, `square_length`).
 
   The model is the single source of truth for structure: clients draw these edges and groups directly

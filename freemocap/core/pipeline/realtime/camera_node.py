@@ -35,7 +35,28 @@ from freemocap.pubsub.pubsub_topics import (
 
 import numpy as np
 
+from skellytracker.core.data_primitives.observation import Observation
+
 logger = logging.getLogger(__name__)
+
+_CHARUCO_MISS_SKIP_FRAMES = 10
+"""After a frame where the board was not seen, skip charuco detection for this
+many frames. One probe per window while the board is absent; a hit resumes
+per-frame detection immediately."""
+
+
+def _board_was_seen(observation: Observation | None) -> bool:
+    """A board counts as seen when at least three corner positions are finite.
+
+    Three non-collinear corners are the minimum a reconstruction can use, so the
+    skip gate triggers exactly when the detector's output could not matter."""
+    if observation is None:
+        return False
+    stage = observation.stages.get("charuco")
+    keypoints = getattr(stage, "keypoints", None)
+    if keypoints is None or keypoints.xyz is None or len(keypoints.xyz) == 0:
+        return False
+    return int(np.isfinite(keypoints.xyz).all(axis=1).sum()) >= 3
 
 
 def _build_charuco_tracker_from_config(node_config: CameraNodeConfig):
@@ -164,6 +185,9 @@ class CameraNode(SourceNode):
         skeleton_session = None
         skeleton_state = TrackerState()
 
+        # After a miss, skip detection for `_CHARUCO_MISS_SKIP_FRAMES` frames.
+        charuco_skip_until_frame_number = -1
+
         if config.charuco_tracking_enabled and config.charuco_tracker_config is not None:
             charuco_tracker, charuco_session = _build_charuco_tracker_from_config(config)
 
@@ -207,6 +231,7 @@ class CameraNode(SourceNode):
                             charuco_tracker.close()
                         charuco_tracker, charuco_session = _build_charuco_tracker_from_config(new_config)
                         charuco_state = TrackerState()
+                        charuco_skip_until_frame_number = -1
                     elif not new_config.charuco_tracking_enabled:
                         if charuco_tracker is not None:
                             charuco_tracker.close()
@@ -325,12 +350,21 @@ class CameraNode(SourceNode):
                                 timer.record("confidence_gate_dropped", float(low_conf.sum()))
 
                 if charuco_tracker is not None:
-                    t0 = time.perf_counter() if timer is not None else 0.0
-                    charuco_observation, charuco_state = charuco_tracker.process_image(
-                        image, actual_frame_number, charuco_state
-                    )
-                    if timer is not None:
-                        timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+                    if actual_frame_number > charuco_skip_until_frame_number:
+                        t0 = time.perf_counter() if timer is not None else 0.0
+                        charuco_observation, charuco_state = charuco_tracker.process_image(
+                            image, actual_frame_number, charuco_state
+                        )
+                        if timer is not None:
+                            timer.record("charuco_detection", (time.perf_counter() - t0) * 1e3)
+
+                        if not _board_was_seen(charuco_observation):
+                            # Board not in view: skip the next N frames instead of
+                            # paying full-frame detection every frame. A hit leaves
+                            # the gate open for per-frame detection immediately.
+                            charuco_skip_until_frame_number = (
+                                actual_frame_number + _CHARUCO_MISS_SKIP_FRAMES
+                            )
 
                 if timer is not None:
                     timer.record("total_camera_node", (time.perf_counter() - t_frame_start) * 1e3)

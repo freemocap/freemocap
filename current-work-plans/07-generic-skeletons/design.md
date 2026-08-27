@@ -83,12 +83,18 @@ every producer loops over them ([../02-pipeline/realtime-loop.md](../02-pipeline
 Multiple *people* fall out of the same change as several instances sharing one model. This work only
 exercises multiple models, but must not re-close that door.
 
-### The frontend collapses to one connection renderer
+### The frontend collapses to one connection renderer, and one plural channel
 
-Two connection renderers exist. The schema-driven one is **inert in the live path** — the tracker
-schema it needs is only ever dispatched to the viewport worker by the playback provider — while the
-model-driven one does the actual drawing. They collapse into the model-driven path, which then draws
-segment edges and landmark connection groups alike, in their resolved colours
+Two connection renderers existed. The schema-driven one was **inert in the live path** — the tracker
+schema it needed was only ever dispatched to the viewport worker by the playback provider — while the
+model-driven one did the actual drawing. Both are gone, replaced by a single `ModelConnectionRenderer`
+that draws segment edges and landmark connection groups alike, in their resolved colours. Playback
+moved onto the same path: a recording's tracked points and name-pair edges are just an under-specified
+model, so `playback-model-frame.ts` expresses it as one rather than keeping a second renderer alive.
+
+The deeper fix was upstream of the renderers. Segment origins, rotations, fitted lengths and derived
+points were four *singular* frame channels, each silently labelled from `models[0]`'s symbol table.
+They are now one plural `models: ResolvedModelFrame[]`, and every renderer iterates it
 ([../04-ui/ui-integration.md](../04-ui/ui-integration.md)).
 
 ## What it looks like when it works
@@ -99,6 +105,27 @@ segment edges and landmark connection groups alike, in their resolved colours
 - **3D, reconstructed** — the board as a rigid object: one fitted pose, its markers placed by the fit
   rather than by triangulation noise, grid in one colour and marker quads in another.
 - **The fitted square length** reported next to the entered one.
+
+### What one frame actually carries
+
+Decoded from a real composed frame with a person and a 5x3 board in it:
+
+```
+models:    ['standard_human', 'charuco_board']
+instances: [(0, 'standard_human', 1684.15 mm), (1, 'charuco_board', 54.00 mm)]
+trackers:  [('rtmpose', 'rtmpose', 'standard_human'), ('charuco', 'charuco', 'charuco_board')]
+
+charuco_board   scale_reference=square_length   segments=1 landmarks=36
+  landmark_group   charuco_corners   n=8    #14ff14
+  landmark_group   aruco_corners     n=28   #ff8c14
+  connection_group charuco_grid      n=10   #14ff14
+  connection_group aruco_markers     n=28   #ff8c14
+```
+
+The board's `fitted_scale_mm` of 54.00 is the *measured* square length against an entered 54 — the
+reconstruction-error metric, with no board-specific code path producing it. The human alongside it
+reports 1684 mm of body height from the identical machinery, each against the unit its own model
+names.
 
 ## Why this comes before the posthoc rebuild
 

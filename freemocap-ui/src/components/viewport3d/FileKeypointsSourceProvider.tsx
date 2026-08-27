@@ -6,7 +6,13 @@ import {
     KeypointsFrame,
     KeypointsSource,
     KeypointsSourceProvider,
+    ModelFramesCallback,
+    ModelsCallback,
 } from "./KeypointsSourceContext";
+import { playbackModelFrame, playbackModelFromSchema } from "./playback-model-frame";
+import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
+import type { ModelDefinition } from "@/services/server/transport/message-contract";
+import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import {serverUrls} from "@/constants/server-urls";
 import {VIEWPORT_WORKER} from "./ThreeJsCanvas";
 import {useAppDispatch, useAppSelector} from "@/store";
@@ -31,10 +37,6 @@ import {calibrationLoadedFromBundle} from "@/store/slices/calibration/calibratio
  */
 
 const PARQUET_KEYPOINTS_COLUMN = "3d_xyz";
-
-// Guard so the "no skeleton source" warning fires at most once per session,
-// not once per subscribeToSkeleton call / frame.
-let skeletonWarned = false;
 
 const ParquetColumnNames = {
     frame:      "frame",
@@ -270,6 +272,26 @@ export const FileKeypointsSourceProvider: React.FC<{
 
     const keypointsRef = useRef<TrajectoryData>(emptyTrajectory());
     const faceContourNamesRef = useRef<string[]>([]);
+    // The recording's schema as a model, plus its subscribers. Playback emits the SAME
+    // ResolvedModelFrame shape the live stream does, which is what lets one set of
+    // renderers serve both.
+    const playbackSchemaRef = useRef<TrackedObjectDefinition | null>(null);
+    const playbackModelRef = useRef<ModelDefinition | null>(null);
+    const modelFramesSubscribersRef = useRef<Set<ModelFramesCallback>>(new Set());
+    const modelsSubscribersRef = useRef<Set<ModelsCallback>>(new Set());
+
+    const currentModelFrames = (): ResolvedModelFrame[] | null => {
+        const model = playbackModelRef.current;
+        const trajectory = keypointsRef.current;
+        if (!model || trajectory.frameCount === 0 || trajectory.lastEmittedFrame < 0) return null;
+        return [playbackModelFrame(trajectory.scratchFrame)];
+    };
+
+    const emitModelFrames = (): void => {
+        const models = currentModelFrames();
+        if (!models) return;
+        for (const cb of modelFramesSubscribersRef.current) cb(models);
+    };
     const dispatch = useAppDispatch();
 
     // Fetch the playback bundle (calibration + tracker-schema + status) via
@@ -291,15 +313,13 @@ export const FileKeypointsSourceProvider: React.FC<{
     useEffect(() => {
         if (!bundle) return;
 
-        // Forward tracker schema to the worker so ConnectionRenderer draws skeleton lines.
-        const schemaName: string = (bundle.trackerSchema as any)?.name || "playback_schema";
-        VIEWPORT_WORKER.postMessage({
-            type: "schemaState",
-            data: {
-                activeTrackerId: schemaName,
-                trackerSchemas: {[schemaName]: bundle.trackerSchema},
-            },
-        });
+        playbackSchemaRef.current = bundle.trackerSchema as unknown as TrackedObjectDefinition;
+        playbackModelRef.current = playbackModelFromSchema(
+            playbackSchemaRef.current,
+            keypointsRef.current.names,
+        );
+        for (const cb of modelsSubscribersRef.current) cb([playbackModelRef.current]);
+        emitModelFrames();
 
         // Remap sequential face_XXXX names to contour YAML names so schema
         // connections match the trajectory's point names.
@@ -416,6 +436,7 @@ export const FileKeypointsSourceProvider: React.FC<{
                 updateScratch(traj, frame);
                 traj.lastEmittedFrame = frame;
                 fireSubscribers(traj);
+                emitModelFrames();
             }
 
             raf = requestAnimationFrame(tick);
@@ -433,19 +454,23 @@ export const FileKeypointsSourceProvider: React.FC<{
             }
             return () => { keypointsRef.current.subscribers.delete(cb); };
         },
-        subscribeToSkeleton: (_cb: KeypointsCallback) => {
-            // Playback has no skeleton data — return no-op unsubscribe.
-            if (!skeletonWarned) {
-                skeletonWarned = true;
-                console.warn(
-                    "[FileKeypointsSource] playback is live-stream-only: subscribeToSkeleton has no source and the rigid-body renderer will not update",
-                );
-            }
-            return () => {};
-        },
         getLatestKeypoints: () =>
             keypointsRef.current.frameCount > 0 ? keypointsRef.current.scratchFrame : null,
-        getLatestSkeleton: () => null,  // playback has no realtime skeleton fitter
+        subscribeToModels: (cb: ModelsCallback) => {
+            modelsSubscribersRef.current.add(cb);
+            const model = playbackModelRef.current;
+            if (model) cb([model]);
+            return () => { modelsSubscribersRef.current.delete(cb); };
+        },
+        getModels: () => (playbackModelRef.current ? [playbackModelRef.current] : null),
+        subscribeToModelFrames: (cb: ModelFramesCallback) => {
+            modelFramesSubscribersRef.current.add(cb);
+            const models = currentModelFrames();
+            if (models) cb(models);
+            return () => { modelFramesSubscribersRef.current.delete(cb); };
+        },
+        getLatestModelFrames: () => currentModelFrames(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }), []);
 
     return (

@@ -42,7 +42,7 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
-from freemocap.core.skeletons.standard_human_skeleton import build_standard_human_bundle
+from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
@@ -88,6 +88,11 @@ _MAX_PENDING_SKELETON_RESULTS: int = 2
 # requests published after it was created — so waiting unconditionally here
 # would deadlock the whole pipeline (camera feed included) forever.
 _SKELETON_RESULT_WAIT_TIMEOUT_SECONDS: float = 2.0
+_SKELETON_RESULT_POLL_SECONDS: float = 0.005
+"""Bounded wait on the skeleton-result queue while a frame's inference lands.
+
+Small enough to keep frame pickup responsive, big enough that waiting costs
+~nothing instead of burning the loop's core at 100%."""
 
 logger = logging.getLogger(__name__)
 
@@ -359,11 +364,9 @@ class RealtimeAggregatorNode(AggregatorNode):
         # once per run — every recording gets fresh fit windows, no module globals — and
         # rebuilt when the detector changes, because which landmarks are MEASURED (as
         # opposed to constructed from authored ratios) is a property of its mapping.
-        skeleton_bundles: tuple[TrackedSkeletonBundle, ...] = (
-            build_standard_human_bundle(
-                detector_type=detector_type,
-                scale_window_frames=filter_config.segment_scale_window_frames,
-            ),
+        skeleton_bundles: tuple[TrackedSkeletonBundle, ...] = build_tracked_skeletons(
+            camera_node_config=pipeline_config.camera_node_config,
+            scale_window_frames=filter_config.segment_scale_window_frames,
         )
 
         skeleton_fitting_enabled: bool = aggregator_config.skeleton_fitting_enabled
@@ -456,11 +459,9 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # segments may set a skeleton's scale changes with it. Rebuilding
                         # also drops the old detector's readings, which is right: they
                         # were measured through a different naming convention.
-                        skeleton_bundles = (
-                            build_standard_human_bundle(
-                                detector_type=detector_type,
-                                scale_window_frames=filter_config.segment_scale_window_frames,
-                            ),
+                        skeleton_bundles = build_tracked_skeletons(
+                            camera_node_config=pipeline_config.camera_node_config,
+                            scale_window_frames=filter_config.segment_scale_window_frames,
                         )
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
@@ -611,11 +612,26 @@ class RealtimeAggregatorNode(AggregatorNode):
                             )
                             skeleton_wait_started_at = None
                         else:
-                            # Camera outputs are ready but skeleton inference hasn't
-                            # caught up yet. Loop again — `camera_node_outputs` stays
-                            # populated, and the skeleton result will land in the
-                            # `skeleton_inference_sub` drain at the top of the next
-                            # iteration.
+                            # Camera outputs are ready but skeleton inference
+                            # hasn't caught up yet — WAIT on the result queue
+                            # (bounded) instead of spinning hot through the
+                            # whole loop body. This branch is steady state
+                            # whenever the batched GPU call finishes after the
+                            # camera nodes, which is the common case in the
+                            # default configuration. The overall wait budget
+                            # is still enforced above against
+                            # `skeleton_wait_started_at`.
+                            try:
+                                skel_msg: SkeletonInferenceResultMessage = (
+                                    skeleton_inference_sub.get(
+                                        timeout=_SKELETON_RESULT_POLL_SECONDS,
+                                    )
+                                )
+                                pending_skeleton_results[skel_msg.frame_number] = (
+                                    skel_msg.per_camera_skeleton
+                                )
+                            except (queue.Empty, InterruptedError):
+                                pass
                             continue
                     else:
                         # Splice the per-camera skeletons into each CameraNodeOutputMessage

@@ -9,8 +9,7 @@ import {SceneCamera} from "./scene/SceneCamera";
 import {SceneEnvironment} from "./scene/SceneEnvironment";
 import {KeypointsRenderer} from "./renderers/KeypointsRenderer";
 import {FaceRenderer} from "@/components/viewport3d/renderers/FaceRenderer";
-import {ConnectionRenderer} from "@/components/viewport3d/renderers/ConnectionRenderer";
-import {SegmentConnectionRenderer} from "@/components/viewport3d/renderers/SegmentConnectionRenderer";
+import {ModelConnectionRenderer} from "@/components/viewport3d/renderers/ModelConnectionRenderer";
 import {MocapCameraRenderer} from "@/components/viewport3d/renderers/MocapCameraRenderer";
 import {CenterOfMassRenderer} from "@/components/viewport3d/renderers/CenterOfMassRenderer";
 import {RigidBodyBoneRenderer} from "@/components/viewport3d/renderers/RigidBodyBoneRenderer";
@@ -28,18 +27,17 @@ import {workerDataStore} from "./WorkerDataStore";
  */
 function DataInvalidator() {
     const invalidate = useThree(state => state.invalidate);
-    const { subscribeToKeypoints, subscribeToSkeleton } = useKeypointsSource();
+    const { subscribeToKeypoints, subscribeToModelFrames } = useKeypointsSource();
 
     useEffect(() => {
         const unsubs = [
             subscribeToKeypoints(() => invalidate()),
-            subscribeToSkeleton(() => invalidate()),
+            subscribeToModelFrames(() => invalidate()),
             workerDataStore.subscribeToVisibility(() => invalidate()),
             workerDataStore.subscribeToCalibration(() => invalidate()),
-            workerDataStore.subscribeToSchemaState(() => invalidate()),
         ];
         return () => unsubs.forEach(fn => fn());
-    }, [invalidate, subscribeToKeypoints, subscribeToSkeleton]);
+    }, [invalidate, subscribeToKeypoints, subscribeToModelFrames]);
 
     return null;
 }
@@ -116,8 +114,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneEnvironment />
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
-            {visibility.connections && <ConnectionRenderer />}
-            {visibility.connections && <SegmentConnectionRenderer />}
+            {visibility.connections && <ModelConnectionRenderer />}
             {visibility.face && <FaceRenderer />}
             {visibility.cameras && <MocapCameraRenderer />}
             {visibility.rigidBodyBones && <RigidBodyBoneRenderer />}

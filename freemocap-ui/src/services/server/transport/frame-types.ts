@@ -19,17 +19,17 @@ export interface RotationsFrame {
     localQuaternions: Float32Array;
 }
 
-/** The subject's fitted size this frame: the whole body, and every segment of it.
+/** One model's fitted size this frame: the whole thing, and every segment of it.
  *
- *  The model is dimensionless, so this is where millimetres come from. Every segment has
- *  a length whether or not it was visible — a segment nobody could see is sized by
- *  `bodyHeightMm`, which is what lets the feet stay the right length under a desk. */
+ *  A model is dimensionless, so this is where millimetres come from. Every segment has a
+ *  length whether or not it was visible — a segment nobody could see is sized by
+ *  `fittedScaleMm`, which is what lets the feet stay the right length under a desk. */
 export interface SegmentLengthsFrame {
     names: readonly string[];
     /** one fitted length_mm per segment — length names.length. */
     data: Float32Array;
-    /** the subject's fitted standing height (mm), or null if nothing has measured them. */
-    bodyHeightMm: number | null;
+    /** this model's fitted size (mm) in the unit it names, or null if unmeasured. */
+    fittedScaleMm: number | null;
 }
 
 export interface DerivedPointsFrame {
@@ -45,6 +45,10 @@ export enum OverlayLayer {
 export interface OverlayFrame {
     cameraId: string;
     layer: OverlayLayer;
+    /** Which model these rows belong to. Set on REPROJECTIONS (they are one model's
+     *  segment origins); absent on DETECTIONS, which are raw per-detector measurements
+     *  not yet attributed to a reconstruction. */
+    modelId?: string;
     frameNumber: number;
     names: readonly string[];
     /** interleaved [x,y,visibility, …] — length names.length * 3. */
@@ -54,3 +58,28 @@ export interface OverlayFrame {
     imageSize?: [number, number];
 }
 
+
+/** Everything one tracked model looks like THIS FRAME.
+ *
+ *  A frame carries several — a tracked person and a tracked charuco board are two — so
+ *  consumers iterate these rather than reading "the" skeleton. Every row here is named
+ *  against THIS model's own symbol tables, never another's.
+ *
+ *  Deliberately does NOT carry the `ModelDefinition`: that is static between
+ *  `model_sequence` bumps and travels on its own change-detected channel. Inlining it here
+ *  meant structured-cloning 61 segments + 124 landmarks + 60 connections across the Web
+ *  Worker boundary thirty times a second, which cost most of the frame budget. Join to the
+ *  definition by `modelId`.
+ */
+export interface ResolvedModelFrame {
+    modelId: string;
+    /** This occurrence's fitted size (mm) in the unit its model names, or null. */
+    fittedScaleMm: number | null;
+    /** Segment origins, index-keyed against the model's segments. */
+    segmentOrigins: PointsFrame | null;
+    /** Landmarks placed by the FIT — the reconstructed object, not the raw measurement. */
+    landmarks: PointsFrame | null;
+    rotations: RotationsFrame | null;
+    segmentLengths: SegmentLengthsFrame | null;
+    derived: DerivedPointsFrame;
+}

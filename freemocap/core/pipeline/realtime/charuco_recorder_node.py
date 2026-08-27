@@ -108,35 +108,39 @@ class CharucoRecorderNode(SourceNode):
                 if shutdown_self_flag is not None and shutdown_self_flag.value:
                     break
 
-                # Drain recording state messages (first, to toggle recording)
-                while ipc.should_continue:
-                    try:
-                        msg = recording_state_sub.get_nowait()
-                        if isinstance(msg, CalibrationRecordingStateMessage):
-                            if msg.is_active and not is_recording:
-                                is_recording = True
-                                recording_info = msg.recording_info
-                                buffer = {cid: {} for cid in camera_ids}
-                                logger.info(
-                                    f"Calibration recording started: "
-                                    f"{recording_info.recording_name if recording_info else 'unknown'}"
-                                )
-                            elif not msg.is_active and is_recording:
-                                is_recording = False
-                                logger.info(
-                                    f"Calibration recording stopped — "
-                                    f"flushing {sum(len(v) for v in buffer.values())} observations"
-                                )
-                                _flush_buffer(
-                                    buffer=buffer,
-                                    recording_info=recording_info,
-                                    board_config=board_config,
-                                )
-                    except Empty:
-                        break
-                    except (OSError, EOFError):
-                        # Queue closed during shutdown on Windows
-                        break
+                # Block (bounded) on the recording-state signal instead of
+                # spinning hot through both drains: between recordings this
+                # node has nothing useful to do, so waiting here IS its idle
+                # state. The 50 ms ceiling bounds start-of-recording reaction
+                # time and shutdown latency; while recording, the drain below
+                # consumes observations continuously so nothing backs up.
+                try:
+                    msg = recording_state_sub.get(timeout=0.05)
+                    if isinstance(msg, CalibrationRecordingStateMessage):
+                        if msg.is_active and not is_recording:
+                            is_recording = True
+                            recording_info = msg.recording_info
+                            buffer = {cid: {} for cid in camera_ids}
+                            logger.info(
+                                f"Calibration recording started: "
+                                f"{recording_info.recording_name if recording_info else 'unknown'}"
+                            )
+                        elif not msg.is_active and is_recording:
+                            is_recording = False
+                            logger.info(
+                                f"Calibration recording stopped — "
+                                f"flushing {sum(len(v) for v in buffer.values())} observations"
+                            )
+                            _flush_buffer(
+                                buffer=buffer,
+                                recording_info=recording_info,
+                                board_config=board_config,
+                            )
+                except Empty:
+                    pass
+                except (OSError, EOFError):
+                    # Queue closed during shutdown on Windows
+                    break
 
                 # Drain camera node output messages (only when recording)
                 while ipc.should_continue:

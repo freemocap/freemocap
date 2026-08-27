@@ -141,7 +141,7 @@ lands ([posthoc-rebuild.md](posthoc-rebuild.md)).
 ## Measured behaviour
 
 Synthetic rtmpose keypoints through the real mapping
-(`freemocap/tests/test_body_scale_in_the_loop.py`):
+(`freemocap/tests/test_model_scale_in_the_loop.py`):
 
 | | fitted height | voting segments | `left_foot` | femur |
 |---|---|---|---|---|

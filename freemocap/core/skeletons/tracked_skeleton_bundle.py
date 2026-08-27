@@ -32,8 +32,15 @@ class KeypointToLandmarkMapping(Protocol):
     weighted/offset human mapping both satisfy this without either knowing about the other.
     """
 
-    def __call__(self, keypoints: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
-        """The landmark observations this frame's keypoints produce."""
+    def apply(
+        self, tracker_positions: dict[str, np.ndarray]
+    ) -> dict[str, np.ndarray]:
+        """The landmark observations this frame's keypoints produce.
+
+        Named `apply` to match skellytracker's `TrackerMapping`, which is the external
+        contract here - a mapping loaded straight from a YAML satisfies this as-is, with
+        no adapter whose only job would be to rename a method.
+        """
         ...
 
     @property

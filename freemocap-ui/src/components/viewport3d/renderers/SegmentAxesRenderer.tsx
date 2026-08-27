@@ -6,10 +6,14 @@
 // it shows which way each rigid body's local frame actually points, which is
 // the fastest way to spot a roll or convention bug.
 //
-// Cost profile: ONE LineSegments draw call for the whole skeleton. Positions
-// are written into a preallocated buffer per dirty frame (61 segments × 3
-// axes = 183 short vectors of arithmetic) and colors are static vertex
-// attributes set once — no allocations, no material churn, nothing to GC.
+// It draws EVERY model in the frame, each occupying a contiguous block of segment slots
+// in the shared buffer — so a tracked person and a tracked charuco board both show their
+// frames without one overwriting the other.
+//
+// Cost profile: ONE LineSegments draw call for every model at once. Positions are written
+// into a preallocated buffer per dirty frame (61 segments × 3 axes = 183 short vectors of
+// arithmetic) and colors are static vertex attributes set once — no allocations, no
+// material churn, nothing to GC.
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
@@ -21,8 +25,8 @@ import {
     Quaternion,
     Vector3,
 } from "three";
-import { useKeypointsSource, type KeypointsFrame } from "../KeypointsSourceContext";
-import type { RotationsFrame } from "@/services/server/transport/frame-types";
+import { useKeypointsSource, useModelDefinitionsById } from "../KeypointsSourceContext";
+import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 
 const MAX_SEGMENTS = 256;
@@ -43,7 +47,11 @@ const AXIS_LENGTH_FRACTION = 0.3;
 const MIN_AXIS_LENGTH_MM = 7.5;
 const MAX_AXIS_LENGTH_MM = 50;
 
-interface SegmentAxisTable {
+/** One model's triads: where its block of segment slots starts, and how long each of its
+ *  arms should be. */
+interface SegmentAxisBlock {
+    modelId: string;
+    baseSlot: number;
     segmentCount: number;
     /** Per-segment triad arm length in mm. */
     axisLengthsMm: Float32Array;
@@ -53,39 +61,61 @@ interface SegmentAxisTable {
 const _quaternion = new Quaternion();
 const _axis = new Vector3();
 
-/** Axis lengths in mm, sized from each segment's own size.
+/** One block of triads per model, sized from each segment's own size.
  *
- *  The model is dimensionless, so its `length_proportion` only becomes a length once it is
- *  multiplied by the subject's fitted height. Until a fit exists there is no size to scale
- *  by, and every axis falls back to the same nominal length — which is the honest picture,
- *  not a guess at how big the subject might be. Recomputed whenever the height changes.
+ *  A model is dimensionless, so its `length_proportion` only becomes a length once it is
+ *  multiplied by that model's fitted scale. Until a fit exists there is no size to scale
+ *  by, and every axis takes the same nominal length — which is the honest picture, not a
+ *  guess at how big the thing might be. Recomputed whenever a fitted scale changes.
  */
-function buildAxisTable(model: ModelDefinition, bodyHeightMm: number | null): SegmentAxisTable {
-    const segmentCount = Math.min(model.segments.length, MAX_SEGMENTS);
-    const axisLengthsMm = new Float32Array(segmentCount);
-    for (let i = 0; i < segmentCount; i++) {
-        const proportion = model.segments[i].length_proportion;
-        const lengthMm =
-            bodyHeightMm != null && bodyHeightMm > 0 && Number.isFinite(proportion) && proportion > 0
-                ? proportion * bodyHeightMm
-                : null;
-        const scaled = lengthMm !== null ? lengthMm * AXIS_LENGTH_FRACTION : 50;
-        axisLengthsMm[i] = Math.min(Math.max(scaled, MIN_AXIS_LENGTH_MM), MAX_AXIS_LENGTH_MM);
+function buildAxisBlocks(
+    models: ResolvedModelFrame[],
+    definitionsById: Map<string, ModelDefinition>,
+): SegmentAxisBlock[] {
+    const blocks: SegmentAxisBlock[] = [];
+    let nextSlot = 0;
+    for (const entry of models) {
+        const definition = definitionsById.get(entry.modelId);
+        if (!definition) continue;
+        const segmentCount = Math.min(definition.segments.length, MAX_SEGMENTS - nextSlot);
+        if (segmentCount <= 0) break;
+        const fittedScaleMm = entry.fittedScaleMm;
+        const axisLengthsMm = new Float32Array(segmentCount);
+        for (let i = 0; i < segmentCount; i++) {
+            const proportion = definition.segments[i].length_proportion;
+            const lengthMm =
+                fittedScaleMm != null && fittedScaleMm > 0 &&
+                Number.isFinite(proportion) && proportion > 0
+                    ? proportion * fittedScaleMm
+                    : null;
+            const scaled = lengthMm !== null ? lengthMm * AXIS_LENGTH_FRACTION : 50;
+            axisLengthsMm[i] = Math.min(Math.max(scaled, MIN_AXIS_LENGTH_MM), MAX_AXIS_LENGTH_MM);
+        }
+        blocks.push({ modelId: entry.modelId, baseSlot: nextSlot, segmentCount, axisLengthsMm });
+        nextSlot += segmentCount;
     }
-    return { segmentCount, axisLengthsMm };
+    return blocks;
+}
+
+/** What a rebuild depends on: which models, and each one's fitted scale (the arm lengths
+ *  are proportional to it).
+ *
+ *  The scale is quantised to the millimetre. A live fit moves in the last decimal place
+ *  every single frame, so comparing it raw rebuilds every block on every frame to produce
+ *  visually identical triads. */
+function axisBlockSignature(models: ResolvedModelFrame[]): string {
+    return models
+        .map((m) => `${m.modelId}:${m.fittedScaleMm == null ? "?" : Math.round(m.fittedScaleMm)}`)
+        .join("|");
 }
 
 export function SegmentAxesRenderer() {
-    const { subscribeToSkeleton, subscribeToRotations, subscribeToModels, getModels, getLatestSegmentLengths } =
-        useKeypointsSource();
+    const { subscribeToModelFrames } = useKeypointsSource();
+    const definitionsById = useModelDefinitionsById();
     const lineRef = useRef<LineSegments>(null);
-    const skeletonRef = useRef<KeypointsFrame | null>(null);
-    const rotationsRef = useRef<RotationsFrame | null>(null);
-    const tableRef = useRef<SegmentAxisTable | null>(null);
-    // The model, kept so the table can be rebuilt when the subject's fitted height moves
-    // without waiting for a new model, and the height the current table was built for.
-    const modelRef = useRef<ModelDefinition | null>(null);
-    const builtForHeightRef = useRef<number | null>(null);
+    const modelFramesRef = useRef<ResolvedModelFrame[] | null>(null);
+    const blocksRef = useRef<SegmentAxisBlock[]>([]);
+    const signatureRef = useRef<string>("");
     const dirtyRef = useRef(false);
 
     // Fixed-capacity buffers: positions rewritten per frame, colors written once.
@@ -124,72 +154,53 @@ export function SegmentAxesRenderer() {
         [geometry, material],
     );
 
-    const applyTable = useCallback(() => {
-        const geometryToBound = geometry;
-        const table = tableRef.current;
-        if (!table) return;
-        geometryToBound.setDrawRange(0, table.segmentCount * VERTICES_PER_SEGMENT);
+    const applyBlocks = useCallback(() => {
+        const blocks = blocksRef.current;
+        const drawnSlots = blocks.reduce((total, b) => total + b.segmentCount, 0);
+        geometry.setDrawRange(0, drawnSlots * VERTICES_PER_SEGMENT);
     }, [geometry]);
 
     useEffect(() => {
-        const rebuild = (models: ModelDefinition[]) => {
-            if (models.length === 0) return;
-            modelRef.current = models[0];
-            builtForHeightRef.current = getLatestSegmentLengths?.()?.bodyHeightMm ?? null;
-            tableRef.current = buildAxisTable(models[0], builtForHeightRef.current);
-            applyTable();
-        };
-        const unsubscribe = subscribeToModels ? subscribeToModels(rebuild) : () => {};
-        const existing = getModels?.();
-        if (existing && existing.length > 0) rebuild(existing);
-        return unsubscribe;
-    }, [subscribeToModels, getModels, applyTable, getLatestSegmentLengths]);
-
-    useEffect(() => {
-        return subscribeToSkeleton((frame) => {
-            skeletonRef.current = frame;
+        return subscribeToModelFrames((models) => {
+            modelFramesRef.current = models;
+            // The arm lengths depend on each model's fitted scale as well as on its
+            // segments, so the signature carries both — a rebuild is 61 float multiplies
+            // and only happens on the frames where the fit actually moved.
+            const signature = `${axisBlockSignature(models)}#${definitionsById.current.size}`;
+            if (signature !== signatureRef.current) {
+                signatureRef.current = signature;
+                blocksRef.current = buildAxisBlocks(models, definitionsById.current);
+                applyBlocks();
+            }
             dirtyRef.current = true;
         });
-    }, [subscribeToSkeleton]);
-
-    useEffect(() => {
-        if (!subscribeToRotations) return;
-        return subscribeToRotations((frame) => {
-            rotationsRef.current = frame;
-            dirtyRef.current = true;
-        });
-    }, [subscribeToRotations]);
+    }, [subscribeToModelFrames, applyBlocks, definitionsById]);
 
     useFrame(() => {
         const line = lineRef.current;
-        // The model is dimensionless, so the axis lengths depend on the subject's fitted
-        // height as well as on the model. Rebuild when that height moves — 61 float
-        // multiplies, and only on the frames where the fit actually changed.
-        const bodyHeightMm = getLatestSegmentLengths?.()?.bodyHeightMm ?? null;
-        if (modelRef.current && bodyHeightMm !== builtForHeightRef.current) {
-            builtForHeightRef.current = bodyHeightMm;
-            tableRef.current = buildAxisTable(modelRef.current, bodyHeightMm);
-            applyTable();
-        }
-        const table = tableRef.current;
-        if (!line || !table || !dirtyRef.current) return;
-        const skeleton = skeletonRef.current;
-        const rotations = rotationsRef.current;
-        if (!skeleton || !rotations) return;
+        const models = modelFramesRef.current;
+        if (!line || !models || !dirtyRef.current) return;
 
         const positionAttribute = geometry.getAttribute("position") as BufferAttribute;
         const positions = positionAttribute.array as Float32Array;
+        const frameByModelId = new Map(models.map((m) => [m.modelId, m]));
 
-        for (let segmentIdx = 0; segmentIdx < table.segmentCount; segmentIdx++) {
-            const originOffset = segmentIdx * 3;
-            const quaternionOffset = segmentIdx * 4;
-            const ox = skeleton.interleaved[originOffset];
-            const oy = skeleton.interleaved[originOffset + 1];
-            const oz = skeleton.interleaved[originOffset + 2];
-            const qw = rotations.worldQuaternions[quaternionOffset];
-            const qx = rotations.worldQuaternions[quaternionOffset + 1];
-            const qy = rotations.worldQuaternions[quaternionOffset + 2];
-            const qz = rotations.worldQuaternions[quaternionOffset + 3];
+        for (const block of blocksRef.current) {
+        const entry = frameByModelId.get(block.modelId);
+        const origins = entry?.segmentOrigins ?? null;
+        const rotations = entry?.rotations ?? null;
+
+        for (let localIdx = 0; localIdx < block.segmentCount; localIdx++) {
+            const segmentIdx = block.baseSlot + localIdx;
+            const originOffset = localIdx * 3;
+            const quaternionOffset = localIdx * 4;
+            const ox = origins?.data[originOffset] ?? Number.NaN;
+            const oy = origins?.data[originOffset + 1] ?? Number.NaN;
+            const oz = origins?.data[originOffset + 2] ?? Number.NaN;
+            const qw = rotations?.worldQuaternions[quaternionOffset] ?? Number.NaN;
+            const qx = rotations?.worldQuaternions[quaternionOffset + 1] ?? Number.NaN;
+            const qy = rotations?.worldQuaternions[quaternionOffset + 2] ?? Number.NaN;
+            const qz = rotations?.worldQuaternions[quaternionOffset + 3] ?? Number.NaN;
 
             const finiteOrigin =
                 Number.isFinite(ox) && Number.isFinite(oy) && Number.isFinite(oz);
@@ -207,7 +218,7 @@ export function SegmentAxesRenderer() {
             // here on purpose; passing them straight through scrambles the
             // rotation into something that looks like untracked axes.
             _quaternion.set(qx, qy, qz, qw);
-            const armLength = table.axisLengthsMm[segmentIdx];
+            const armLength = block.axisLengthsMm[localIdx];
             const segmentBase = segmentIdx * FLOATS_PER_SEGMENT;
 
             for (let axisIdx = 0; axisIdx < 3; axisIdx++) {
@@ -225,6 +236,7 @@ export function SegmentAxesRenderer() {
                 positions[writeBase + 4] = oy + _axis.y * armLength;
                 positions[writeBase + 5] = oz + _axis.z * armLength;
             }
+        }
         }
 
         positionAttribute.needsUpdate = true;

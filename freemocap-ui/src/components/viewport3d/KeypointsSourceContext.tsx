@@ -1,10 +1,10 @@
-import React, {createContext, useContext, useMemo} from "react";
+import React, {createContext, useContext, useEffect, useMemo, useRef, useState} from "react";
 import {useServerOptional} from "@/services/server/server-context";
-import type { RotationsFrame, SegmentLengthsFrame } from '@/services/server/transport/frame-types';
+import type { ResolvedModelFrame } from '@/services/server/transport/frame-types';
 import type { ModelDefinition } from '@/services/server/transport/message-contract';
 
 /**
- * Abstraction over "where do 3D keypoints come from". The Streaming panel
+ * Abstraction over "where does 3D scene data come from". The Streaming panel
  * feeds the renderers from a live WebSocket (via useServer). The Playback
  * panel feeds them from a cached Float32 buffer driven by the playback slider.
  *
@@ -16,15 +16,9 @@ import type { ModelDefinition } from '@/services/server/transport/message-contra
 /**
  * A single frame of keypoint data in typed-array form.
  *
- * `interleaved` is a Float32Array whose layout depends on which stream produced
- * it. Every PointsFrame delivered to consumers is 3-interleaved `x, y, z`:
- * frame-resolution strips KEYPOINTS_3D's 4th column (reprojection_error) and
- * SEGMENT_ORIGINS is natively 3-column:
- *
- *   keypoints: [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3
- *   skeleton:  [x₀, y₀, z₀,  x₁, y₁, z₁, … ]   stride 3  (model segment order)
- *
- * Missing / untriangulated points have NaN coords.
+ * `interleaved` is 3-interleaved `x, y, z` (stride 3): frame-resolution strips
+ * KEYPOINTS_3D's 4th column (reprojection_error). Missing / untriangulated points
+ * have NaN coords.
  */
 export interface KeypointsFrame {
     pointNames: readonly string[];
@@ -32,19 +26,52 @@ export interface KeypointsFrame {
 }
 
 export type KeypointsCallback = (frame: KeypointsFrame) => void;
+export type ModelFramesCallback = (models: ResolvedModelFrame[]) => void;
+export type ModelsCallback = (models: ModelDefinition[]) => void;
 
+/**
+ * A source of scene data.
+ *
+ * `keypoints` are raw measurements — every detector's triangulated points, merged.
+ * `modelFrames` are the RECONSTRUCTIONS: one entry per tracked thing this frame, each
+ * carrying its own model definition alongside its own origins / landmarks / rotations /
+ * lengths / derived points. A tracked person and a tracked charuco board are two entries,
+ * so every renderer iterates rather than reading "the" skeleton — which is the whole
+ * reason these five channels travel together instead of separately.
+ */
 export interface KeypointsSource {
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
-    subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
-    getLatestSkeleton: () => KeypointsFrame | null;
-    subscribeToRotations?: (cb: (frame: RotationsFrame) => void) => () => void;
-    getLatestRotations?: () => RotationsFrame | null;
-    subscribeToSegmentLengths?: (cb: (frame: SegmentLengthsFrame) => void) => () => void;
-    getLatestSegmentLengths?: () => SegmentLengthsFrame | null;
-    // The model that rides every frame (the rigid-body renderer's name→index map).
-    subscribeToModels?: (cb: (models: ModelDefinition[]) => void) => () => void;
-    getModels?: () => ModelDefinition[] | null;
+    /** The STATIC model definitions — segments, landmarks, connections, groups. Emitted only
+     *  when the model set actually changes, never per frame: they are large, and cloning
+     *  them to the viewport worker every frame is what turns 30fps into single digits. */
+    subscribeToModels: (cb: ModelsCallback) => () => void;
+    getModels: () => ModelDefinition[] | null;
+    /** The per-frame numbers, one entry per tracked model. Join to a definition by `modelId`. */
+    subscribeToModelFrames: (cb: ModelFramesCallback) => () => void;
+    getLatestModelFrames: () => ResolvedModelFrame[] | null;
+}
+
+/** Index the current model definitions by id, for the per-frame join.
+ *
+ *  Kept in a ref and rebuilt only on a model change, so the hot path is a Map lookup rather
+ *  than anything that allocates. */
+export function useModelDefinitionsById(): React.RefObject<Map<string, ModelDefinition>> {
+    const source = useKeypointsSource();
+    const byId = useRef<Map<string, ModelDefinition>>(new Map());
+    const [, setRevision] = useState(0);
+
+    useEffect(() => {
+        const apply = (models: ModelDefinition[]): void => {
+            byId.current = new Map(models.map((m) => [m.model_id, m]));
+            setRevision((r) => r + 1);
+        };
+        const existing = source.getModels();
+        if (existing) apply(existing);
+        return source.subscribeToModels(apply);
+    }, [source]);
+
+    return byId;
 }
 
 const KeypointsSourceContext = createContext<KeypointsSource | null>(null);
@@ -78,28 +105,20 @@ export function useKeypointsSource(): KeypointsSource {
         if (!server) return null;
         return {
             subscribeToKeypoints: server.subscribeToKeypoints,
-            subscribeToSkeleton: server.subscribeToSkeleton,
             getLatestKeypoints: server.getLatestKeypoints,
-            getLatestSkeleton: server.getLatestSkeleton,
-            subscribeToRotations: server.subscribeToRotations,
-            getLatestRotations: server.getLatestRotations,
-            subscribeToSegmentLengths: server.subscribeToSegmentLengths,
-            getLatestSegmentLengths: server.getLatestSegmentLengths,
             subscribeToModels: server.subscribeToModels,
             getModels: server.getModels,
+            subscribeToModelFrames: server.subscribeToModelFrames,
+            getLatestModelFrames: server.getLatestModelFrames,
         };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
         server?.subscribeToKeypoints,
-        server?.subscribeToSkeleton,
         server?.getLatestKeypoints,
-        server?.getLatestSkeleton,
-        server?.subscribeToRotations,
-        server?.getLatestRotations,
-        server?.subscribeToSegmentLengths,
-        server?.getLatestSegmentLengths,
         server?.subscribeToModels,
         server?.getModels,
+        server?.subscribeToModelFrames,
+        server?.getLatestModelFrames,
     ]);
 
     const source = ctx ?? liveAdapter;

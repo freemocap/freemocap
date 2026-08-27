@@ -7,10 +7,10 @@ import {
 import { ViewportOverlay } from "./scene/ViewportOverlay";
 import { ViewportInspection } from "./scene/ViewportInspection";
 import {
-  useHasKeypointsSourceProvider,
   useKeypointsSource,
+  type KeypointsFrame,
 } from "./KeypointsSourceContext";
-import { useServer } from "@/services";
+import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import { useAppSelector } from "@/store";
 import {
   selectCalibrationConfig,
@@ -30,6 +30,31 @@ function _frameHasVisiblePoints(frame: { interleaved: Float32Array }): boolean {
     }
   }
   return false;
+}
+
+/** Every tracked model's segment origins as one point cloud, for camera framing.
+ *  Null when nothing has been reconstructed yet. */
+function fittableOrigins(
+  models: ResolvedModelFrame[] | null,
+): KeypointsFrame | null {
+  if (!models || models.length === 0) return null;
+  const names: string[] = [];
+  let total = 0;
+  for (const m of models) {
+    if (!m.segmentOrigins) continue;
+    names.push(...m.segmentOrigins.names);
+    total += m.segmentOrigins.data.length;
+  }
+  if (names.length === 0) return null;
+  const interleaved = new Float32Array(total);
+  let offset = 0;
+  for (const m of models) {
+    if (!m.segmentOrigins) continue;
+    interleaved.set(m.segmentOrigins.data, offset);
+    offset += m.segmentOrigins.data.length;
+  }
+  const frame = { pointNames: names, interleaved };
+  return _frameHasVisiblePoints(frame) ? frame : null;
 }
 
 console.debug("[ThreeJsCanvas] creating viewport3d worker");
@@ -57,26 +82,6 @@ if (import.meta.hot) {
 // immediately remounts in dev; we schedule the worker teardown on unmount and let
 // the remount cancel it, so it only actually fires on genuine navigation away.
 let pendingViewportTeardown: ReturnType<typeof setTimeout> | null = null;
-
-function CenterOfMassForwarder() {
-  const server = useServer();
-  useEffect(() => {
-    return server.subscribeToCenterOfMass((point) => {
-      VIEWPORT_WORKER.postMessage({ type: "centerOfMass", data: point });
-    });
-  }, [server]);
-  return null;
-}
-
-function XcomForwarder() {
-  const server = useServer();
-  useEffect(() => {
-    return server.subscribeToXcom((point) => {
-      VIEWPORT_WORKER.postMessage({ type: "xcom", data: point });
-    });
-  }, [server]);
-  return null;
-}
 
 function VisibilityForwarder() {
   const { visibility } = useViewportState();
@@ -167,19 +172,15 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
 }
 
 export function ThreeJsCanvas() {
-  const server = useServer();
   const calibrationConfig = useAppSelector(selectCalibrationConfig);
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
   const {
     subscribeToKeypoints,
-    subscribeToSkeleton,
-    getLatestSkeleton,
     subscribeToModels,
     getModels,
-    subscribeToRotations,
-    subscribeToSegmentLengths,
+    subscribeToModelFrames,
+    getLatestModelFrames,
   } = useKeypointsSource();
-  const isPlayback = useHasKeypointsSourceProvider();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -234,41 +235,28 @@ export function ThreeJsCanvas() {
     });
   }, [subscribeToKeypoints]);
 
+  // The STATIC model definitions, forwarded only when they change. Large and unchanging
+  // between `model_sequence` bumps — 61 segments + 124 landmarks + 60 connections for the
+  // human alone — so posting them per frame structured-clones all of that thirty times a
+  // second and eats the frame budget. This is the once-per-change hop.
   useEffect(() => {
-    return subscribeToSkeleton((frame) => {
-      if (!_frameHasVisiblePoints(frame)) return;
-      VIEWPORT_WORKER.postMessage({ type: "skeleton", data: frame });
-    });
-  }, [subscribeToSkeleton]);
-
-  useEffect(() => {
-    return subscribeToRotations?.((frame) => {
-      VIEWPORT_WORKER.postMessage({ type: "rotations", data: frame });
-    });
-  }, [subscribeToRotations]);
-
-  // The bone renderer lives in the worker and the model is DIMENSIONLESS, so without
-  // this the bones have no size at all and draw at the fallback millimetre — visible
-  // only as specks at each joint. The frame carries both the per-segment fitted
-  // lengths and the subject's fitted height.
-  useEffect(() => {
-    return subscribeToSegmentLengths?.((frame) => {
-      VIEWPORT_WORKER.postMessage({ type: "segmentLengths", data: frame });
-    });
-  }, [subscribeToSegmentLengths]);
-
-  // The model must reach the worker: the rigid-body renderer builds its
-  // name→slot table from it (segment names, primary axes, lengths, rest orientations).
-  useEffect(() => {
-    if (isPlayback) return;
-    const existing = getModels?.();
-    if (existing) {
-      VIEWPORT_WORKER.postMessage({ type: "models", data: existing });
-    }
-    return subscribeToModels?.((models) => {
+    const existing = getModels();
+    if (existing) VIEWPORT_WORKER.postMessage({ type: "models", data: existing });
+    return subscribeToModels((models) => {
       VIEWPORT_WORKER.postMessage({ type: "models", data: models });
     });
-  }, [isPlayback, getModels, subscribeToModels]);
+  }, [getModels, subscribeToModels]);
+
+  // The per-frame numbers for every tracked model — origins, landmarks, rotations, fitted
+  // lengths, derived points. The viewport runs in a Web Worker, so a channel that is not
+  // forwarded here silently does not exist over there: the bones drew at a millimetre for
+  // exactly that reason when the fitted lengths were missing, and the model is dimensionless
+  // so there is no size to fall back to.
+  useEffect(() => {
+    return subscribeToModelFrames((models) => {
+      VIEWPORT_WORKER.postMessage({ type: "modelFrames", data: models });
+    });
+  }, [subscribeToModelFrames]);
 
   useEffect(() => {
     VIEWPORT_WORKER.postMessage({
@@ -285,13 +273,19 @@ export function ThreeJsCanvas() {
   }, [loadedCalibration]);
 
   const handleFit = useCallback(() => {
-    // Use skeleton-only data so the bounding box excludes charuco board corners.
-    const skel = getLatestSkeleton();
-    if (!skel) return;
-    VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: skel });
+    // Frame every RECONSTRUCTED thing — a person and a board both belong in the shot —
+    // rather than the raw keypoint cloud, whose untriangulated outliers would blow the
+    // bounding box open.
+    const postFit = (): boolean => {
+      const origins = fittableOrigins(getLatestModelFrames());
+      if (!origins) return false;
+      VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: origins });
+      return true;
+    };
+    if (!postFit()) return;
 
-    // Refine over 2s — each new skeleton frame recomputes the target so the
-    // camera smoothly converges as the skeleton settles.
+    // Refine over 2s — each new frame recomputes the target so the camera smoothly
+    // converges as the reconstruction settles.
     const start = performance.now();
     const REFINE_DURATION_MS = 2000;
     const interval = setInterval(() => {
@@ -299,12 +293,9 @@ export function ThreeJsCanvas() {
         clearInterval(interval);
         return;
       }
-      const latest = getLatestSkeleton();
-      if (latest) {
-        VIEWPORT_WORKER.postMessage({ type: "fitCamera", data: latest });
-      }
+      postFit();
     }, 150);
-  }, [getLatestSkeleton]);
+  }, [getLatestModelFrames]);
 
   const handleReset = useCallback(() => {
     VIEWPORT_WORKER.postMessage({ type: "resetCamera" });
@@ -405,8 +396,6 @@ export function ThreeJsCanvas() {
   return (
     <ViewportStateProvider>
       <VisibilityForwarder />
-      <CenterOfMassForwarder />
-      <XcomForwarder />
       <WorkerStatsReceiver />
       <InspectionReceiver />
       <div

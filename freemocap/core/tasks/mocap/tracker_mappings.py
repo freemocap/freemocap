@@ -105,19 +105,23 @@ def tracker_keypoint_names(detector_type: str) -> tuple[str, ...]:
 class StandardHumanMapping:
     """The merged body + hand tracker->standard-human mapping, and what it measures.
 
-    Callable as ``mapping(keypoints) -> {landmark_name: position}``: it applies both
-    mappings and merges them (their name sets are disjoint). This is the one seam that
-    turns raw tracker keypoints into the standard-human landmark layer the solver and
-    center-of-mass consume.
+    ``mapping.apply(tracker_positions) -> {landmark_name: position}``. This is the one
+    seam that turns raw tracker keypoints into the standard-human landmark layer the
+    solver and center-of-mass consume.
     """
 
     body_mapping: TrackerMapping
     hand_mapping: TrackerMapping
 
-    def __call__(self, keypoints: dict) -> dict:
+    def apply(self, tracker_positions: dict) -> dict:
+        """Both mappings applied and merged; their name sets are disjoint.
+
+        Named to match skellytracker's `TrackerMapping`, so this and a bare mapping
+        loaded from a YAML are interchangeable wherever a mapping is wanted.
+        """
         return {
-            **self.body_mapping.apply(keypoints),
-            **self.hand_mapping.apply(keypoints),
+            **self.body_mapping.apply(tracker_positions),
+            **self.hand_mapping.apply(tracker_positions),
         }
 
     @property

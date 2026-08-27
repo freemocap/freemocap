@@ -36,7 +36,8 @@ from freemocap.api.websocket.frame_relay import FrameRelay
 from freemocap.api.websocket.send_serializer import SendSerializer
 from freemocap.app.freemocap_application import FreemocapApplication, get_freemocap_app
 from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
-from freemocap.core.skeletons.standard_human_skeleton import build_standard_human_bundle
+from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
+from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import (
@@ -92,6 +93,9 @@ class WebsocketServer:
         self._serializer = SendSerializer(websocket)
         # Calibration hot-reload source (feeds the frame's cameras field).
         self._calibration_state = CalibrationStateTracker.create_and_try_load()
+        # The skeleton set, memoized on the config it is built from. Constructing one loads
+        # several YAMLs off disk, and the composition check runs on every emitted frame.
+        self._tracked_skeletons_cache: tuple[tuple, tuple] | None = None
         # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
             serializer=self._serializer,
@@ -110,12 +114,7 @@ class WebsocketServer:
         return StreamContext(
             # Every skeleton the stream describes. Rebuilt with the context, so a detector
             # change re-derives which landmarks each skeleton measures.
-            skeletons=(
-                build_standard_human_bundle(
-                    detector_type=detector_type,
-                    scale_window_frames=RealtimeFilterConfig().segment_scale_window_frames,
-                ),
-            ),
+            skeletons=self._tracked_skeletons(),
             camera_ids=camera_ids,
             calibrated_cameras=self._calibrated_cameras(),
             detector_type=detector_type,
@@ -136,13 +135,32 @@ class WebsocketServer:
         simple signature (camera set, detector type, pipeline liveness, and the
         resolved calibrated cameras). The frame message is self-contained, so a
         rebuild just swaps the composition — nothing is re-emitted separately.
+
+        This runs on EVERY emitted frame, so the signature is computed from its raw
+        sources and compared BEFORE anything is built. Building the context first and
+        checking afterwards costs a full skeleton construction per frame — six YAML loads
+        and a 61-segment rebuild — which does not show up in the camera framerate at all,
+        only in the rate frames actually reach the client.
         """
         self._calibration_state.check_for_update()
         current = self._relay.composition
-        new_ctx = self._build_stream_context()
-        if current is not None and self._context_signature(new_ctx) == self._context_signature(current.context):
+        if current is not None and self._live_context_signature() == self._context_signature(current.context):
             return
-        self._relay.set_composition(compose_messages(new_ctx))
+        self._relay.set_composition(compose_messages(self._build_stream_context()))
+
+    def _live_context_signature(self) -> tuple:
+        """The context signature, read straight from its sources.
+
+        Must stay identical to `_context_signature`; it exists so the per-frame check does
+        not have to construct a `StreamContext` (and therefore the skeletons) to run.
+        """
+        camera_ids = self._current_camera_ids()
+        return (
+            camera_ids,
+            self._current_detector_type(),
+            bool(camera_ids),
+            self._calibrated_cameras(),
+        )
 
     def _calibrated_cameras(self) -> tuple[CalibratedCamera, ...]:
         """The current calibration's cameras, merged with the live camera config's
@@ -215,6 +233,49 @@ class WebsocketServer:
                 ids.update(pipeline.camera_ids)
         return tuple(sorted(ids))
 
+    def _tracked_skeletons(self) -> tuple:
+        """Every skeleton the stream describes, from the live pipeline's own config.
+
+        Read from the SAME place the aggregator reads it, so the frame's models and its
+        instances cannot come from different opinions about what is being tracked.
+
+        Memoized on the config it is derived from. Building a skeleton set means loading
+        the skeleton, rest-pose, mapping, centre-of-mass and anthropometry YAMLs off disk;
+        it is a pure function of that config, so it is built when the config changes and
+        not once per caller.
+        """
+        for pipeline in self._app.realtime_pipeline_manager.pipelines.values():
+            if pipeline.alive:
+                return self._skeletons_for(
+                    camera_node_config=pipeline.config.camera_node_config,
+                    scale_window_frames=(
+                        pipeline.config.aggregator_config.realtime_filter_config.segment_scale_window_frames
+                    ),
+                )
+        # No pipeline yet: describe what the defaults would track, so a client connecting
+        # early still receives a coherent model list.
+        return self._skeletons_for(
+            camera_node_config=CameraNodeConfig(),
+            scale_window_frames=RealtimeFilterConfig().segment_scale_window_frames,
+        )
+
+    def _skeletons_for(
+            self,
+            *,
+            camera_node_config: CameraNodeConfig,
+            scale_window_frames: int,
+    ) -> tuple:
+        cache_key = (camera_node_config.model_dump_json(), scale_window_frames)
+        cached = self._tracked_skeletons_cache
+        if cached is not None and cached[0] == cache_key:
+            return cached[1]
+        skeletons = build_tracked_skeletons(
+            camera_node_config=camera_node_config,
+            scale_window_frames=scale_window_frames,
+        )
+        self._tracked_skeletons_cache = (cache_key, skeletons)
+        return skeletons
+
     def _current_detector_type(self) -> str:
         """The configured detector type from the live realtime pipelines.
 
@@ -254,11 +315,15 @@ class WebsocketServer:
 
         await self._ensure_composition()
 
-        image_bytes: bytearray | None = None
+        image_bytes: bytes | bytearray | memoryview | None = None
         mf_timestamp: float = 0.0
         pipeline = self._app.realtime_pipeline_manager.pipelines.get(newest.pipeline_id)
         if pipeline is not None:
-            payload = pipeline.camera_group.get_frontend_payload_by_frame_number(
+            # JPEG resize+encode of every camera is milliseconds of CPU work —
+            # run it off the event loop so the frame sender, log relay, and
+            # framerate relays don't stall behind it each frame.
+            payload = await asyncio.to_thread(
+                pipeline.camera_group.get_frontend_payload_by_frame_number,
                 frame_number=newest.frame_number,
                 display_image_sizes=self._display_image_sizes,
             )
@@ -284,7 +349,7 @@ class WebsocketServer:
             frame_number=newest.frame_number,
             timestamp=float(mf_timestamp),
             aggregator_output=newest,
-            image_payload=bytes(image_bytes) if image_bytes is not None else None,
+            image_payload=image_bytes if image_bytes is not None else None,
         )
 
     async def _await_camera_only_frame(self) -> "FrameContext | None":
@@ -295,8 +360,9 @@ class WebsocketServer:
         """
         await self._ensure_composition()
         payloads: dict[
-            CameraGroupIdString, tuple[FrameNumberInt, float, bytearray]
-        ] = self._app.camera_group_manager.get_latest_frontend_payloads(
+            CameraGroupIdString, tuple[FrameNumberInt, float, bytes | bytearray | memoryview]
+        ] = await asyncio.to_thread(
+            self._app.camera_group_manager.get_latest_frontend_payloads,
             if_newer_than=self._relay.last_sent_frame_number,
             display_image_sizes=self._display_image_sizes,
         )
@@ -313,7 +379,7 @@ class WebsocketServer:
         return FrameContext(
             frame_number=int(frame_number),
             timestamp=float(mf_timestamp),
-            image_payload=bytes(image_bytes),
+            image_payload=image_bytes,
         )
 
     async def __aenter__(self):

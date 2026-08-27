@@ -73,10 +73,11 @@ export const CalibratedCameraSchema = z.object({
   world_orientation: z.array(z.tuple([z.number(), z.number(), z.number()])),
 });
 
-/** One segment of the DIMENSIONLESS model. `length_proportion` is the segment's length
- *  as a fraction of body height, so the same model describes any subject; multiply by
- *  the instance's `body_height_mm` for millimetres, or prefer the per-frame
- *  SEGMENT_LENGTHS channel, which carries the fitted length of every segment. */
+/** One segment of the DIMENSIONLESS model. `length_proportion` is the segment's length as
+ *  a fraction of whatever the model's `scale_reference_name` names, so the same model
+ *  describes any subject; multiply by the instance's `fitted_scale_mm` for millimetres, or
+ *  prefer the per-frame SEGMENT_LENGTHS channel, which carries every segment's fitted
+ *  length. */
 export const RestSegmentSchema = z.object({
   name: z.string(),
   parent: z.string().nullable(),
@@ -93,11 +94,36 @@ export const RestLandmarkSchema = z.object({
 });
 export type RestLandmark = z.infer<typeof RestLandmarkSchema>;
 
+/** A named set of landmarks, with its colour already resolved from the model's tags.
+ *  Colour resolution happens backend-side, so no client needs the palette and swapping
+ *  the palette recolours every client at once. */
+export const ModelLandmarkGroupSchema = z.object({
+  name: z.string(),
+  landmark_names: z.array(z.string()),
+  color: z.string(),
+});
+export type ModelLandmarkGroup = z.infer<typeof ModelLandmarkGroupSchema>;
+
+/** A named set of landmark EDGES a client should draw. Distinct from `connections`,
+ *  which joins segment origins along the joint tree — these join landmarks, which is the
+ *  only kind of edge a one-segment model (a charuco board) has. */
+export const ModelConnectionGroupSchema = z.object({
+  name: z.string(),
+  pairs: z.array(z.tuple([z.string(), z.string()])),
+  color: z.string(),
+});
+export type ModelConnectionGroup = z.infer<typeof ModelConnectionGroupSchema>;
+
 export const ModelDefinitionSchema = z.object({
   model_id: z.string(),
   segments: z.array(RestSegmentSchema),
   landmarks: z.array(RestLandmarkSchema),
   connections: z.array(z.tuple([z.string(), z.string()])),
+  landmark_groups: z.array(ModelLandmarkGroupSchema).default([]),
+  landmark_connections: z.array(ModelConnectionGroupSchema).default([]),
+  /** What this model's `1.0` means: "body_height", "square_length". Lets a client label
+   *  the fitted number without hardcoding which model it is looking at. */
+  scale_reference_name: z.string().default("body_height"),
 });
 export type ModelDefinition = z.infer<typeof ModelDefinitionSchema>;
 
@@ -118,14 +144,16 @@ export const ChannelBlockSchema = z.object({
 });
 export type ChannelBlock = z.infer<typeof ChannelBlockSchema>;
 
-/** One per-frame instance of a model. The model is dimensionless, so the instance is
- *  where a size lives: `body_height_mm` is this subject's fitted stature. Absent while
- *  nothing has measured them yet — which means "no size", not "assume a default". */
+/** One per-frame OCCURRENCE of a model. Two people are two instances of one model; a
+ *  person and a charuco board are two models. The model is dimensionless, so the instance
+ *  is where a size lives: `fitted_scale_mm` is this occurrence's fitted size in the unit
+ *  its model names. Absent while nothing has measured it — which means "no size", not
+ *  "assume a default". */
 export const ModelInstanceSchema = z.object({
   instance_id: z.number().int(),
   model_id: z.string(),
   channels: z.array(ChannelBlockSchema),
-  body_height_mm: z.number().nullish(),
+  fitted_scale_mm: z.number().nullish(),
 });
 export type ModelInstance = z.infer<typeof ModelInstanceSchema>;
 

@@ -3,7 +3,8 @@ import {Mesh, SphereGeometry, MeshBasicMaterial, MeshStandardMaterial, CanvasTex
 import {Line2, LineGeometry, LineMaterial} from "three-stdlib";
 import {useFrame, useThree} from "@react-three/fiber";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
-import {workerDataStore} from "@/components/viewport3d/WorkerDataStore";
+import {useKeypointsSource} from "@/components/viewport3d/KeypointsSourceContext";
+import type {ResolvedModelFrame} from "@/services/server/transport/frame-types";
 import type {Point3d} from "@/components/viewport3d";
 
 // Effective radius = 50 × 0.25 = 12.5 world units — about 2× keypoint size.
@@ -18,6 +19,26 @@ const COM_COLOR_DARK = "#002200"; // near-black green — checker quadrants
 const XCOM_COLOR = "#ffaa00";
 const XCOM_COLOR_NUM = 0xffaa00;
 
+/** The balance display's subject: the model whose derived points this draws.
+ *
+ *  A frame carries several models and each one may report a center of mass — every
+ *  skeleton gets one by default. The XCoM, by contrast, is an OPT-IN derived quantity that
+ *  only a model with a mass distribution and a ground reference declares, so a model
+ *  reporting one is a model that asked for this display. That makes the choice a
+ *  model-declared one rather than a guess about which object is "the person".
+ *
+ *  Only one subject is drawn: the projection line and the XCoM segment are a single
+ *  balance picture, and overlaying two of them reads as neither. */
+function balanceSubject(models: ResolvedModelFrame[]): ResolvedModelFrame | null {
+    const withCenterOfMass = models.filter((m) => m.derived.centerOfMass !== null);
+    if (withCenterOfMass.length === 0) return null;
+    return withCenterOfMass.find((m) => m.derived.xcom !== null) ?? withCenterOfMass[0];
+}
+
+function asPoint(triple: [number, number, number] | null): Point3d | null {
+    return triple ? { x: triple[0], y: triple[1], z: triple[2] } : null;
+}
+
 /**
  * Renders CoM sphere, vertical projection dot, CoM→projection connection
  * line, XCoM sphere, and VP→XCoM connection line. Each sub-element is
@@ -27,6 +48,7 @@ const XCOM_COLOR_NUM = 0xffaa00;
 export function CenterOfMassRenderer() {
     const { visibility, statsRef } = useViewportState();
     const { invalidate, size } = useThree();
+    const { subscribeToModelFrames } = useKeypointsSource();
 
     const sphereRef = useRef<Mesh>(null);
     const projectionRef = useRef<Mesh>(null);
@@ -139,16 +161,13 @@ export function CenterOfMassRenderer() {
     }, [sphereGeo, projectionGeo, xcomGeo, checkerTexture, sphereMat, projectionMat, xcomMat, lineGeo, lineMat, xcomLineGeo, xcomLineMat]);
 
     useEffect(() => {
-        const unsubCom = workerDataStore.subscribeToCenterOfMass((point) => {
-            comRef.current = point;
+        return subscribeToModelFrames((models) => {
+            const subject = balanceSubject(models);
+            comRef.current = asPoint(subject?.derived.centerOfMass ?? null);
+            xcomPosRef.current = asPoint(subject?.derived.xcom ?? null);
             invalidate();
         });
-        const unsubXcom = workerDataStore.subscribeToXcom((point) => {
-            xcomPosRef.current = point;
-            invalidate();
-        });
-        return () => { unsubCom(); unsubXcom(); };
-    }, [invalidate]);
+    }, [invalidate, subscribeToModelFrames]);
 
     useFrame(() => {
         const sphere = sphereRef.current;

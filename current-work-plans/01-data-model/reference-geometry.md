@@ -45,7 +45,7 @@ only 3 of 61 segments are fully specified (roll measured). The invariant that re
 
 > **A fully-specified segment solves to its own authoring frame from its own rest positions**
 > (`test_every_fully_specified_segment_solves_to_its_own_authoring_frame`). This keeps the
-> Gram-Schmidt reference geometry and the Kabsch/FK local positions one answer to "which way does
+> Gram-Schmidt reference geometry and the Umeyama/FK local positions one answer to "which way does
 > this segment face", not two.
 
 Underspecified segments get their roll from `ContinuousRollResolver`

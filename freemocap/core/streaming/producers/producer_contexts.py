@@ -41,5 +41,5 @@ class FrameContext:
     frame_number: int
     timestamp: float
     aggregator_output: Any | None = None  # duck-typed: the concrete type pulls skellytracker/mediapipe
-    image_payload: bytes | None = None
+    image_payload: bytes | bytearray | memoryview | None = None
     stream_context: StreamContext | None = None

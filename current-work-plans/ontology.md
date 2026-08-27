@@ -22,7 +22,7 @@ The ontology is **seven layers**, and each layer is an object with two faces and
 | 1 | keypoint | *(skellytracker)* | name | tracked position | — (measurement) |
 | 2 | mapping | *(skellytracker)* | rule (keypoints → weights/offset) | the computation | weighted sum / offset |
 | 3 | landmark | `AnatomicalLandmark` | name + anatomical definition + `local_position` + `reference_frame` | world position | trajectory |
-| 4 | segment | `RigidBodySegment` | name + aliases + landmarks + reference geometry + `anatomical_segment` | pose (origin + orientation + `PoseSolution`) | rigid-body math (Kabsch, shortest-arc) |
+| 4 | segment | `RigidBodySegment` | name + aliases + landmarks + reference geometry + `anatomical_segment` | pose (origin + orientation + `PoseSolution`) | rigid-body math (Umeyama similarity, shortest-arc) |
 | 5 | linkage | `JointDefinition` | parent + child segments + shared landmark + euler convention | joint angle | relative orientation `conj(q_parent)·q_child` + decomposition |
 | 6 | chain | `KinematicChain` | `start` → `end` segment path | chain pose | FK synthesis / IK / FABRIK / twist-backfill |
 | 7 | skeleton | `SkeletonDefinition` | its landmarks + segments (+ joints, chains, rest pose) | whole pose | the composition |

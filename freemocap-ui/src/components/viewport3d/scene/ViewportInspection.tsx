@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useKeypointsSource, type KeypointsSource } from "../KeypointsSourceContext";
+import { useKeypointsSource, useModelDefinitionsById, type KeypointsSource } from "../KeypointsSourceContext";
 import { useViewportState } from "./ViewportStateContext";
 import type { InspectionTarget } from "../helpers/viewport3d-types";
+import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
 
 /**
@@ -37,10 +38,9 @@ function findIndex(names: readonly string[] | undefined, name: string): number {
 function computeDetails(
     target: InspectionTarget,
     source: KeypointsSource,
-    models: ModelDefinition[] | null,
+    models: ResolvedModelFrame[] | null,
+    definitionsById: Map<string, ModelDefinition>,
 ): DetailLine[] {
-    const model = models?.[0];
-
     if (target.kind === "keypoint") {
         const frame = source.getLatestKeypoints?.();
         const i = findIndex(frame?.pointNames, target.name);
@@ -48,46 +48,61 @@ function computeDetails(
         return [{ label: "world", value: vec3(xyz) }];
     }
 
+    // Which MODEL owns this name. A frame carries several, so the numbers have to be read
+    // out of the one that declares the target — reading models[0] reported a board
+    // landmark's position out of the human's arrays.
     if (target.kind === "landmark") {
-        const frame = source.getLatestSkeleton?.();
-        const i = findIndex(frame?.pointNames, target.name);
-        const xyz = i >= 0 && frame ? [frame.interleaved[i * 3], frame.interleaved[i * 3 + 1], frame.interleaved[i * 3 + 2]] : undefined;
-        const lm = model?.landmarks.find((l) => l.name === target.name);
+        const entry = models?.find(
+            (m) => definitionsById.get(m.modelId)?.landmarks.some((l) => l.name === target.name),
+        );
+        const i = findIndex(entry?.landmarks?.names, target.name);
+        const data = entry?.landmarks?.data;
+        const xyz = i >= 0 && data ? [data[i * 3], data[i * 3 + 1], data[i * 3 + 2]] : undefined;
+        const definition = entry ? definitionsById.get(entry.modelId) : undefined;
+        const lm = definition?.landmarks.find((l) => l.name === target.name);
         return [
+            { label: "model", value: entry?.modelId ?? "—" },
             { label: "world", value: vec3(xyz) },
             { label: "rest (local)", value: vec3(lm?.rest_position) },
         ];
     }
 
     // segment
-    const skeleton = source.getLatestSkeleton?.();
-    const rotations = source.getLatestRotations?.();
-    const lengths = source.getLatestSegmentLengths?.();
-    const oi = findIndex(skeleton?.pointNames, target.name);
+    const entry = models?.find(
+        (m) => definitionsById.get(m.modelId)?.segments.some((s) => s.name === target.name),
+    );
+    const definition = entry ? definitionsById.get(entry.modelId) : undefined;
+    const origins = entry?.segmentOrigins ?? null;
+    const rotations = entry?.rotations ?? null;
+    const lengths = entry?.segmentLengths ?? null;
+    const oi = findIndex(origins?.names, target.name);
     const qi = findIndex(rotations?.boneNames, target.name);
     const li = findIndex(lengths?.names, target.name);
-    const seg = model?.segments.find((s) => s.name === target.name);
+    const seg = definition?.segments.find((s) => s.name === target.name);
+    const scaleReference = definition?.scale_reference_name ?? "scale reference";
+    const fittedScaleMm = entry?.fittedScaleMm ?? null;
     return [
+        { label: "model", value: entry?.modelId ?? "—" },
         {
             label: "world origin",
-            value: oi >= 0 && skeleton ? vec3([skeleton.interleaved[oi * 3], skeleton.interleaved[oi * 3 + 1], skeleton.interleaved[oi * 3 + 2]]) : "—",
+            value: oi >= 0 && origins ? vec3([origins.data[oi * 3], origins.data[oi * 3 + 1], origins.data[oi * 3 + 2]]) : "—",
         },
         { label: "world quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.worldQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
         { label: "local quaternion", value: qi >= 0 && rotations ? quat(Array.from(rotations.localQuaternions.slice(qi * 4, qi * 4 + 4))) : "—" },
-        // The model is dimensionless, so a length in mm always comes from the fit: this
+        // A model is dimensionless, so a length in mm always comes from the fit: this
         // segment's own fitted length where the wire carries one, otherwise its authored
-        // proportion times the subject's fitted height.
+        // proportion times this model's fitted scale.
         {
             label: "length (mm)",
             value:
                 li >= 0 && lengths
                     ? fmt(lengths.data[li])
-                    : seg && lengths?.bodyHeightMm != null
-                      ? fmt(seg.length_proportion * lengths.bodyHeightMm)
+                    : seg && fittedScaleMm != null
+                      ? fmt(seg.length_proportion * fittedScaleMm)
                       : "—",
         },
-        { label: "length (body heights)", value: seg ? fmt(seg.length_proportion) : "—" },
-        { label: "body height (mm)", value: lengths?.bodyHeightMm != null ? fmt(lengths.bodyHeightMm) : "not measured" },
+        { label: `length (${scaleReference}s)`, value: seg ? fmt(seg.length_proportion) : "—" },
+        { label: `${scaleReference} (mm)`, value: fittedScaleMm != null ? fmt(fittedScaleMm) : "not measured" },
         { label: "rest orientation", value: seg ? quat(seg.rest_orientation) : "—" },
         { label: "primary axis", value: seg ? JSON.stringify(seg.primary_axis) : "—" },
     ];
@@ -134,15 +149,13 @@ function HoverTooltip() {
 function InspectionPanel() {
     const { pinned, setPinned } = useViewportState();
     const source = useKeypointsSource();
-    const [models, setModels] = useState<ModelDefinition[] | null>(null);
+    const definitionsById = useModelDefinitionsById();
     const [, setTick] = useState(0);
 
-    useEffect(() => {
-        const unsub = source.subscribeToModels ? source.subscribeToModels((m) => setModels(m)) : () => {};
-        const existing = source.getModels?.();
-        if (existing) setModels(existing);
-        return unsub;
-    }, [source]);
+    // Read at render time rather than subscribed per frame. Calling setState on every
+    // frame here forced a React reconcile at frame rate for a panel that is usually not
+    // even open; the 100ms tick below is what keeps a PINNED panel live.
+    const models = source.getLatestModelFrames();
 
     // Re-resolve the numbers on a timer so a pinned panel tracks the live subject.
     useEffect(() => {
@@ -154,7 +167,7 @@ function InspectionPanel() {
     const [copied, setCopied] = useState(false);
 
     if (!pinned) return null;
-    const lines = computeDetails(pinned, source, models);
+    const lines = computeDetails(pinned, source, models, definitionsById.current);
     const text = detailText(pinned, lines);
 
     const handleCopy = async () => {

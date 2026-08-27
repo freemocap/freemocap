@@ -436,7 +436,7 @@ class FrameMessage:
     models: tuple[ModelDefinition, ...] = ()
     instances: tuple[ModelInstance, ...] = ()
     trackers: tuple[TrackerObservation, ...] = ()
-    image: bytes | None = None
+    image: bytes | bytearray | memoryview | None = None
 
 
 # - Append / telemetry kinds -
@@ -625,6 +625,15 @@ def _cbor_value(value: Any) -> Any:
         return value.value
     if isinstance(value, (str, int, float, bool, bytes)):
         return value
+    if isinstance(value, bytearray):
+        # Encodes byte-identical to `bytes` — pass through with no copy.
+        return value
+    if isinstance(value, memoryview):
+        # A view over the camera-group's REUSED scratch buffer: it must be
+        # snapshotted here (cbor2 would otherwise encode it as an array of
+        # ints), which is also the view's lifetime guarantee — the underlying
+        # bytes are overwritten by the next payload build.
+        return bytes(value)
     if isinstance(value, (tuple, list)):
         return [_cbor_value(v) for v in value]
     if isinstance(value, dict):

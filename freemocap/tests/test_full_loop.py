@@ -101,7 +101,7 @@ def _hydrate(
     rest_pose = RestPose.from_default_yaml(skeleton=skeleton)
     resolver = ContinuousRollResolver.for_skeleton(skeleton=skeleton)
     mapping = load_standard_human_mapping("rtmpose")
-    mapped = mapping(pose)
+    mapped = mapping.apply(tracker_positions=pose)
     observed = {name: Point.from_array(values=position) for name, position in mapped.items()}
     resolved = resolver.resolve_pose(
         pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)

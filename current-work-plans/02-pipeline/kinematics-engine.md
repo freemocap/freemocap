@@ -20,14 +20,16 @@ loop that drives it in [realtime-loop.md](realtime-loop.md).
   (`rotation_between_vectors` shortest-arc, `default_perpendicular`).
 - `skeleton/components/segment_basis_solver.py` — `calculate_bases_for_segments`, the batched
   Gram-Schmidt basis solve grouped by axis convention.
-- `skeleton/pose/` — the solve proper: `hydration.py`, `roll_resolution.py`,
-  `segment_length_estimation.py`.
+- `skeleton/pose/` — the solve proper: `hydration.py`, `roll_resolution.py`, `rest_pose.py`,
+  `model_scale_fitting.py`.
 
 ## The solve (one frame, no damping, no iteration)
 
 1. **Hydrate each segment** (`hydrate_segment`):
    - **Rigid fit** when the segment is fully specified and ≥3 landmarks are observed: closed-form
-     Kabsch (`MINIMUM_POINTS_FOR_RIGID_FIT = 3`; reflections and collinear sets are rejected).
+     Umeyama (`MINIMUM_POINTS_FOR_RIGID_FIT = 3`; reflections and collinear sets are rejected).
+     A similarity, not a rigid motion: the template is dimensionless, so the same SVD that gives the
+     rotation gives the scale.
      Roll is *measured* — these poses pass through roll resolution untouched.
    - **Direction fit** otherwise: shortest-arc rotation taking the origin→primary-direction ray
      onto its observed ray. Roll is not observable this way.

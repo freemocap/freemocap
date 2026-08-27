@@ -84,13 +84,26 @@ export const DEFAULT_SEGMENT_LENGTH = 1.0;
  *
  *  This is the ONE place skeleton coloring is decided — the bone meshes and the
  *  segment-origin connection lines both read it, so they cannot drift apart. */
-export const BONE_SIDE_COLORS: Readonly<Record<BoneSide, readonly [number, number, number]>> = {
-    left:       [0x44 / 255, 0x88 / 255, 0xff / 255],  // blue
-    right:      [0xff / 255, 0x44 / 255, 0x44 / 255],  // red
-    center:     [0x00 / 255, 0xaa / 255, 0x00 / 255],  // green
-    left_hand:  [0x22 / 255, 0xdd / 255, 0xdd / 255],  // cyan
-    right_hand: [0xff / 255, 0x44 / 255, 0xdd / 255],  // magenta
+/** The bone-side palette, authored once as hex. Everything that needs these colours
+ *  derives from HERE — a second hand-written copy is how the lines and the meshes drifted
+ *  apart the last time. */
+export const BONE_SIDE_HEX: Readonly<Record<BoneSide, string>> = {
+    left:       "#4488ff",  // blue
+    right:      "#ff4444",  // red
+    center:     "#00aa00",  // green
+    left_hand:  "#22dddd",  // cyan
+    right_hand: "#ff44dd",  // magenta
 };
+
+function normalizedRgbFromHex(hex: string): readonly [number, number, number] {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return [((value >> 16) & 0xff) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255];
+}
+
+export const BONE_SIDE_COLORS: Readonly<Record<BoneSide, readonly [number, number, number]>> =
+    Object.fromEntries(
+        Object.entries(BONE_SIDE_HEX).map(([side, hex]) => [side, normalizedRgbFromHex(hex)]),
+    ) as Readonly<Record<BoneSide, readonly [number, number, number]>>;
 
 /** Classify a segment name by its left_ / right_ prefix, and hands separately.
  *

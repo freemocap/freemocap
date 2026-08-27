@@ -93,7 +93,7 @@ def _fit(keypoints: dict[str, np.ndarray]) -> ModelScaleFit:
     mapping = load_standard_human_mapping("rtmpose")
     observed = {
         name: Point.from_array(values=position)
-        for name, position in mapping(keypoints).items()
+        for name, position in mapping.apply(tracker_positions=keypoints).items()
     }
     resolved = ContinuousRollResolver.for_skeleton(skeleton=skeleton).resolve_pose(
         pose=hydrate_skeleton(skeleton=skeleton, observed=observed, require_all=False)

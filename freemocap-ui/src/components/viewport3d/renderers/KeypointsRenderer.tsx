@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Color,
     InstancedMesh,
@@ -7,7 +7,7 @@ import {
     SphereGeometry,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useWorkerData } from "../WorkerDataContext";
+import type { ModelDefinition } from "@/services/server/transport/message-contract";
 import { useViewportState } from "../scene/ViewportStateContext";
 import { COLORS } from "../helpers/colors";
 import { classifyPointName, getPointStyle } from "../helpers/skeleton-config";
@@ -64,7 +64,10 @@ function samePointNames(a: readonly string[], b: readonly string[] | null): bool
 // KeypointLayer — one instanced‑mesh pass (raw or filtered).
 // ---------------------------------------------------------------------------
 interface KeypointLayerProps {
-    subscribeKey: "subscribeToKeypoints" | "subscribeToSkeleton";
+    /** Which points this layer draws: the raw triangulated measurements from every
+     *  detector, or every tracked model's fitted LANDMARKS. The second is what shows a
+     *  charuco board as a reconstructed rigid object rather than a cloud of corners. */
+    pointSource: "keypoints" | "modelLandmarks";
     color: Color;
     radius: number;
     statsKey: "keypoints" | "skeleton";
@@ -78,8 +81,7 @@ interface KeypointLayerProps {
     inspectionKind: "keypoint" | "landmark";
 }
 
-function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uniform", stride, inspectionKind }: KeypointLayerProps) {
-    const workerData = useWorkerData();
+function KeypointLayer({ pointSource, color, radius, statsKey, colorMode = "uniform", stride, inspectionKind }: KeypointLayerProps) {
     const keypointsSource: KeypointsSource = useKeypointsSource();
     const { statsRef } = useViewportState();
     const { invalidate } = useThree();
@@ -100,29 +102,42 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
 
     useEffect(() => () => { geo.dispose(); mat.dispose(); }, [geo, mat]);
 
-    // Pull color hints from the active schema (if any) so per-name palette
-    // overrides from the YAML propagate into the 3D view.
-    const rawColorHints = useMemo(() => {
-        const schema = workerData.getActiveSchema();
-        return schema?.color_hints;
-    }, [workerData, workerData.activeTrackerId, workerData.trackerSchemas]);
-
-    // Pre-build Color objects so getPointStyle doesn't allocate inside useFrame.
-    const colorHints = useMemo((): Record<string, Color> | undefined => {
-        if (!rawColorHints) return undefined;
-        return Object.fromEntries(
-            Object.entries(rawColorHints).map(([name, hex]) => [name, new Color(hex)])
-        ) as Record<string, Color>;
-    }, [rawColorHints]);
+    // Per-name colors declared by the MODEL: every landmark group carries its tags'
+    // resolved color, so a board's charuco corners come out green and its aruco corners
+    // orange because the model said so — not because a renderer matched their names.
+    // Rebuilt whenever the model set changes.
+    const [colorHints, setColorHints] = useState<Record<string, Color> | undefined>(undefined);
+    const hintSignatureRef = useRef<string>("");
 
     useEffect(() => {
-        const subscribeFn = keypointsSource[subscribeKey];
-        return subscribeFn((frame: KeypointsFrame) => {
+        if (pointSource !== "modelLandmarks") return;
+        // Driven by the STATIC model channel, so this fires when the model set changes and
+        // not once per frame.
+        const rebuildHints = (models: ModelDefinition[]): void => {
+            const signature = models.map((m) => `${m.model_id}:${m.landmark_groups.length}`).join("|");
+            if (signature === hintSignatureRef.current) return;
+            hintSignatureRef.current = signature;
+            const hints: Record<string, Color> = {};
+            for (const model of models) {
+                for (const group of model.landmark_groups) {
+                    const groupColor = new Color(group.color);
+                    for (const name of group.landmark_names) hints[name] = groupColor;
+                }
+            }
+            setColorHints(Object.keys(hints).length > 0 ? hints : undefined);
+        };
+        const existing = keypointsSource.getModels();
+        if (existing) rebuildHints(existing);
+        return keypointsSource.subscribeToModels(rebuildHints);
+    }, [keypointsSource, pointSource]);
+
+    useEffect(() => {
+        const handleFrame = (frame: KeypointsFrame) => {
             frameRef.current = frame;
             dirtyRef.current = true;
             invalidate();
 
-            // Only rebuild index maps when the point-name list changes (e.g. on schema switch).
+            // Only rebuild index maps when the point-name list changes (e.g. on model switch).
             // Content comparison, not reference: the worker boundary clones each frame.
             if (!samePointNames(frame.pointNames, lastPointNamesRef.current)) {
                 lastPointNamesRef.current = frame.pointNames;
@@ -139,8 +154,33 @@ function KeypointLayer({ subscribeKey, color, radius, statsKey, colorMode = "uni
                     }
                 }
             }
+        };
+
+        if (pointSource === "keypoints") {
+            return keypointsSource.subscribeToKeypoints(handleFrame);
+        }
+        // Every model's landmarks in one cloud. Concatenated rather than "the first
+        // model's", because a frame carries several tracked things and their name spaces
+        // are disjoint — showing only one of them was the single-object assumption.
+        return keypointsSource.subscribeToModelFrames((models) => {
+            const names: string[] = [];
+            let total = 0;
+            for (const entry of models) {
+                if (!entry.landmarks) continue;
+                names.push(...entry.landmarks.names);
+                total += entry.landmarks.data.length;
+            }
+            if (names.length === 0) return;
+            const interleaved = new Float32Array(total);
+            let offset = 0;
+            for (const entry of models) {
+                if (!entry.landmarks) continue;
+                interleaved.set(entry.landmarks.data, offset);
+                offset += entry.landmarks.data.length;
+            }
+            handleFrame({ pointNames: names, interleaved });
         });
-    }, [keypointsSource, subscribeKey, invalidate]);
+    }, [keypointsSource, pointSource, invalidate]);
 
     useEffect(() => {
         const mesh = meshRef.current;
@@ -235,7 +275,7 @@ export function KeypointsRenderer() {
         <>
             {visibility.keypoints && (
                 <KeypointLayer
-                    subscribeKey="subscribeToKeypoints"
+                    pointSource="keypoints"
                     color={COLORS.filtered}
                     radius={RAW_KEYPOINT_RADIUS}
                     statsKey="keypoints"
@@ -246,7 +286,7 @@ export function KeypointsRenderer() {
             )}
             {visibility.skeleton && (
                 <KeypointLayer
-                    subscribeKey="subscribeToSkeleton"
+                    pointSource="modelLandmarks"
                     color={COLORS.skeleton}
                     radius={SKELETON_POINT_RADIUS}
                     statsKey="skeleton"

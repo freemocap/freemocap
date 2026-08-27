@@ -17,10 +17,10 @@ import {CanvasManager} from "@/services/server/server-helpers/canvas-manager";
 import {serverUrls} from "@/services";
 import {FramerateStore} from "@/services/server/server-helpers/framerate-store";
 import {LogStore} from "@/services/server/server-helpers/log-store";
-import {Point3d} from "@/components/viewport3d";
 import {
     KeypointsCallback,
     KeypointsFrame,
+    ModelFramesCallback,
 } from "@/components/viewport3d/KeypointsSourceContext";
 import {store} from "@/store";
 import {pipelineProgressUpdated, PipelinePhase, PipelineType} from "@/store/slices/pipelines";
@@ -32,8 +32,7 @@ import {loadCalibrationForRecording} from "@/store/slices/calibration";
 import {TransportService} from "@/services/server/transport/TransportService";
 import {
     OverlayLayer,
-    type RotationsFrame,
-    type SegmentLengthsFrame,
+    type ResolvedModelFrame,
 } from "@/services/server/transport/frame-types";
 import type {
     CalibratedCamera,
@@ -73,14 +72,8 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
     // 3D data refs and subscriber sets (backed by TransportService below).
     const keypointsRef = useRef<KeypointsFrame | null>(null);
     const keypointsSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
-    const skeletonRef = useRef<KeypointsFrame | null>(null);
-    const skeletonSubscribersRef = useRef<Set<KeypointsCallback>>(new Set());
-    const centerOfMassSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
-    const xcomSubscribersRef = useRef<Set<(point: Point3d | null) => void>>(new Set());
-    const rotationsRef = useRef<RotationsFrame | null>(null);
-    const rotationsSubscribersRef = useRef<Set<(frame: RotationsFrame) => void>>(new Set());
-    const segmentLengthsRef = useRef<SegmentLengthsFrame | null>(null);
-    const segmentLengthsSubscribersRef = useRef<Set<(frame: SegmentLengthsFrame) => void>>(new Set());
+    const modelFramesRef = useRef<ResolvedModelFrame[] | null>(null);
+    const modelFramesSubscribersRef = useRef<Set<ModelFramesCallback>>(new Set());
 
     const pendingPayloadRef = useRef<ArrayBuffer | null>(null);
     const processingFrameRef = useRef<boolean>(false);
@@ -106,24 +99,9 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
             keypointsRef.current = kf;
             for (const cb of keypointsSubscribersRef.current) cb(kf);
         }));
-        subs.push(transport.subscribeToSegmentOrigins((frame) => {
-            const kf: KeypointsFrame = { pointNames: frame.names, interleaved: frame.data };
-            skeletonRef.current = kf;
-            for (const cb of skeletonSubscribersRef.current) cb(kf);
-        }));
-        subs.push(transport.subscribeToDerivedPoints((derived) => {
-            const com = derived.centerOfMass;
-            const xcom = derived.xcom;
-            for (const cb of centerOfMassSubscribersRef.current) {
-                cb(com ? { x: com[0], y: com[1], z: com[2] } : null);
-            }
-            for (const cb of xcomSubscribersRef.current) {
-                cb(xcom ? { x: xcom[0], y: xcom[1], z: xcom[2] } : null);
-            }
-        }));
-        subs.push(transport.subscribeToRotations((frame) => {
-            rotationsRef.current = frame;
-            for (const cb of rotationsSubscribersRef.current) cb(frame);
+        subs.push(transport.subscribeToModelFrames((models) => {
+            modelFramesRef.current = models;
+            for (const cb of modelFramesSubscribersRef.current) cb(models);
         }));
         subs.push(transport.subscribeToOverlay((overlay) => {
             if (overlay.layer !== OverlayLayer.DETECTIONS && overlay.layer !== OverlayLayer.REPROJECTIONS) return;
@@ -145,20 +123,24 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 z: 0,
                 visibility: overlay.data[i * 3 + 2],
             }));
+            // Appended, not assigned: several detectors overlay the SAME camera in one
+            // frame (a pose detector and a charuco detector), and assigning let whichever
+            // arrived last erase the other. Rows are name-keyed, so the union is lossless.
             if (overlay.layer === OverlayLayer.DETECTIONS) {
-                observation.points = points;
+                observation.points = [...observation.points, ...points];
             } else {
-                observation.landmarks = points;
-                observation.connections = modelsRef.current?.[0]?.connections ?? [];
+                observation.landmarks = [...(observation.landmarks ?? []), ...points];
+                // This overlay's OWN model's segment edges. Reading models[0] drew a
+                // board reprojection wearing the human model's connection list.
+                const overlayModel = modelsRef.current?.find((m) => m.model_id === overlay.modelId);
+                observation.connections = [
+                    ...(observation.connections ?? []),
+                    ...(overlayModel?.connections ?? []),
+                ];
             }
             frameOverlays.set(overlay.cameraId, observation);
             pendingOverlaysRef.current.set(overlay.frameNumber, frameOverlays);
         }));
-        subs.push(transport.subscribeToSegmentLengths((frame) => {
-            segmentLengthsRef.current = frame;
-            for (const cb of segmentLengthsSubscribersRef.current) cb(frame);
-        }));
-
         // Static-model + kind subscribers → Redux (change-detected on the transport).
         subs.push(transport.subscribeToModels((models) => {
             modelsRef.current = models;
@@ -228,9 +210,7 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
                 lastCameraIdsRef.current = [];
                 framerateStoreRef.current.clear();
                 keypointsRef.current = null;
-                skeletonRef.current = null;
-                rotationsRef.current = null;
-                segmentLengthsRef.current = null;
+                modelFramesRef.current = null;
                 modelsRef.current = null;
                 camerasRef.current = null;
                 setConnectedCameraIds([]);
@@ -367,30 +347,23 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         return () => { keypointsSubscribersRef.current.delete(cb); };
     }, []);
 
-    const subscribeToSkeleton = useCallback((cb: KeypointsCallback): () => void => {
-        skeletonSubscribersRef.current.add(cb);
-        return () => { skeletonSubscribersRef.current.delete(cb); };
+    const subscribeToModelFrames = useCallback((cb: ModelFramesCallback): () => void => {
+        // Replay what is held: a subscriber that joins mid-stream (worker recreation,
+        // remount) would otherwise render nothing until the next frame arrives.
+        const existing = modelFramesRef.current;
+        if (existing) cb(existing);
+        modelFramesSubscribersRef.current.add(cb);
+        return () => { modelFramesSubscribersRef.current.delete(cb); };
     }, []);
 
-    const subscribeToCenterOfMass = useCallback((cb: (point: Point3d | null) => void): () => void => {
-        centerOfMassSubscribersRef.current.add(cb);
-        return () => { centerOfMassSubscribersRef.current.delete(cb); };
-    }, []);
-
-    const subscribeToXcom = useCallback((cb: (point: Point3d | null) => void): () => void => {
-        xcomSubscribersRef.current.add(cb);
-        return () => { xcomSubscribersRef.current.delete(cb); };
-    }, []);
-
-    const subscribeToRotations = useCallback((cb: (frame: RotationsFrame) => void): () => void => {
-        rotationsSubscribersRef.current.add(cb);
-        return () => { rotationsSubscribersRef.current.delete(cb); };
+    const getLatestModelFrames = useCallback((): ResolvedModelFrame[] | null => {
+        return modelFramesRef.current;
     }, []);
 
     const subscribeToModels = useCallback((cb: (models: ModelDefinition[]) => void): () => void => {
-        // Replay the held model immediately: a subscriber that joins mid-stream
-        // (worker recreation, remount) would otherwise wait for a model_sequence
-        // change that never comes on a stable pipeline.
+        // Replay the held definitions: a subscriber joining mid-stream (worker recreation,
+        // remount) would otherwise wait for a model_sequence change that never comes on a
+        // stable pipeline.
         const existing = transportRef.current?.getModels();
         if (existing) cb(existing);
         return transportRef.current?.subscribeToModels(cb) ?? (() => {});
@@ -402,23 +375,6 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
 
     const getLatestKeypoints = useCallback((): KeypointsFrame | null => {
         return keypointsRef.current;
-    }, []);
-
-    const getLatestSkeleton = useCallback((): KeypointsFrame | null => {
-        return skeletonRef.current;
-    }, []);
-
-    const getLatestRotations = useCallback((): RotationsFrame | null => {
-        return rotationsRef.current;
-    }, []);
-
-    const subscribeToSegmentLengths = useCallback((cb: (frame: SegmentLengthsFrame) => void): () => void => {
-        segmentLengthsSubscribersRef.current.add(cb);
-        return () => { segmentLengthsSubscribersRef.current.delete(cb); };
-    }, []);
-
-    const getLatestSegmentLengths = useCallback((): SegmentLengthsFrame | null => {
-        return segmentLengthsRef.current;
     }, []);
 
     const setOverlayVisibility = useCallback((charuco: boolean, skeleton: boolean): void => {
@@ -451,22 +407,16 @@ export const ServerContextProvider: React.FC<{ children: ReactNode }> = ({childr
         connectedCameraIds,
         updateServerConnection,
         subscribeToKeypoints,
-        subscribeToSkeleton,
-        subscribeToCenterOfMass,
-        subscribeToXcom,
         getLatestKeypoints,
-        getLatestSkeleton,
         setOverlayVisibility,
-        subscribeToRotations,
-        getLatestRotations,
-        subscribeToSegmentLengths,
-        getLatestSegmentLengths,
         subscribeToModels,
         getModels,
-    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage, setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore, updateServerConnection, subscribeToKeypoints, subscribeToSkeleton, subscribeToCenterOfMass, subscribeToXcom, getLatestKeypoints, getLatestSkeleton, setOverlayVisibility, subscribeToRotations,         getLatestRotations,
-        getLatestSegmentLengths,
-        subscribeToModels,
-        getModels]);
+        subscribeToModelFrames,
+        getLatestModelFrames,
+    }), [isConnected, isFailed, connectedCameraIds, connect, disconnect, sendWebsocketMessage,
+        setCanvasForCamera, getFps, getServerFps, getFramerateStore, getLogStore,
+        updateServerConnection, subscribeToKeypoints, getLatestKeypoints, setOverlayVisibility,
+        subscribeToModels, getModels, subscribeToModelFrames, getLatestModelFrames]);
 
     return (
         <ServerContext.Provider value={contextValue}>

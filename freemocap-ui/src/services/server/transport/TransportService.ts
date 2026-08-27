@@ -32,17 +32,17 @@ import type {
 } from "./message-contract";
 import type { LogRecord } from "../server-helpers/log-store";
 import type {
-    DerivedPointsFrame,
     OverlayFrame,
     PointsFrame,
-    RotationsFrame,
-    SegmentLengthsFrame,
+    ResolvedModelFrame,
 } from "./frame-types";
 
-export type RotationsCallback = (frame: RotationsFrame) => void;
 export type OverlayCallback = (frame: OverlayFrame) => void;
-export type DerivedCallback = (frame: DerivedPointsFrame) => void;
-export type SegmentLengthsCallback = (frame: SegmentLengthsFrame) => void;
+/** Every tracked model this frame. ONE subscription rather than four singular ones
+ *  (origins / rotations / lengths / derived), because those four always describe the same
+ *  model and splitting them let a consumer read one model's rotations beside another's
+ *  origins. A person and a charuco board arrive here together. */
+export type ModelFramesCallback = (models: ResolvedModelFrame[]) => void;
 export type ImageCallback = (buf: ArrayBuffer, frameNumber: number) => void;
 export type ModelsCallback = (models: ModelDefinition[]) => void;
 export type ConventionCallback = (convention: CoordinateConvention) => void;
@@ -89,10 +89,7 @@ export class TransportService {
 
     // Latest-frame refs.
     private keypointsLatest: PointsFrame | null = null;
-    private segmentOriginsLatest: PointsFrame | null = null;
-    private rotationsLatest: RotationsFrame | null = null;
-    private derivedLatest: DerivedPointsFrame | null = null;
-    private segmentLengthsLatest: SegmentLengthsFrame | null = null;
+    private modelFramesLatest: ResolvedModelFrame[] | null = null;
 
     // Held model/convention/camera state (change-detected, not per-frame).
     private modelsLatest: ModelDefinition[] | null = null;
@@ -103,10 +100,7 @@ export class TransportService {
 
     // Frame-channel subscriber sets.
     private readonly keypointsSubscribers = new Set<(f: PointsFrame) => void>();
-    private readonly segmentOriginsSubscribers = new Set<(f: PointsFrame) => void>();
-    private readonly rotationsSubscribers = new Set<RotationsCallback>();
-    private readonly derivedSubscribers = new Set<DerivedCallback>();
-    private readonly segmentLengthsSubscribers = new Set<SegmentLengthsCallback>();
+    private readonly modelFramesSubscribers = new Set<ModelFramesCallback>();
     private readonly overlaySubscribers = new Set<OverlayCallback>();
     private readonly imageSubscribers = new Set<ImageCallback>();
 
@@ -175,20 +169,8 @@ export class TransportService {
             this.keypointsLatest = resolved.keypoints;
             fanOut(this.keypointsSubscribers, resolved.keypoints);
         }
-        if (resolved.segmentOrigins) {
-            this.segmentOriginsLatest = resolved.segmentOrigins;
-            fanOut(this.segmentOriginsSubscribers, resolved.segmentOrigins);
-        }
-        if (resolved.rotations) {
-            this.rotationsLatest = resolved.rotations;
-            fanOut(this.rotationsSubscribers, resolved.rotations);
-        }
-        this.derivedLatest = resolved.derived;
-        fanOut(this.derivedSubscribers, resolved.derived);
-        if (resolved.segmentLengths) {
-            this.segmentLengthsLatest = resolved.segmentLengths;
-            fanOut(this.segmentLengthsSubscribers, resolved.segmentLengths);
-        }
+        this.modelFramesLatest = resolved.models;
+        fanOut(this.modelFramesSubscribers, resolved.models);
         for (const overlay of resolved.overlays) {
             fanOut(this.overlaySubscribers, overlay);
         }
@@ -274,24 +256,9 @@ export class TransportService {
         return () => this.keypointsSubscribers.delete(cb);
     }
 
-    subscribeToSegmentOrigins(cb: (f: PointsFrame) => void): () => void {
-        this.segmentOriginsSubscribers.add(cb);
-        return () => this.segmentOriginsSubscribers.delete(cb);
-    }
-
-    subscribeToRotations(cb: RotationsCallback): () => void {
-        this.rotationsSubscribers.add(cb);
-        return () => this.rotationsSubscribers.delete(cb);
-    }
-
-    subscribeToDerivedPoints(cb: DerivedCallback): () => void {
-        this.derivedSubscribers.add(cb);
-        return () => this.derivedSubscribers.delete(cb);
-    }
-
-    subscribeToSegmentLengths(cb: SegmentLengthsCallback): () => void {
-        this.segmentLengthsSubscribers.add(cb);
-        return () => this.segmentLengthsSubscribers.delete(cb);
+    subscribeToModelFrames(cb: ModelFramesCallback): () => void {
+        this.modelFramesSubscribers.add(cb);
+        return () => this.modelFramesSubscribers.delete(cb);
     }
 
     subscribeToOverlay(cb: OverlayCallback): () => void {
@@ -347,20 +314,8 @@ export class TransportService {
         return this.keypointsLatest;
     }
 
-    getLatestSegmentOrigins(): PointsFrame | null {
-        return this.segmentOriginsLatest;
-    }
-
-    getLatestRotations(): RotationsFrame | null {
-        return this.rotationsLatest;
-    }
-
-    getLatestDerived(): DerivedPointsFrame | null {
-        return this.derivedLatest;
-    }
-
-    getLatestSegmentLengths(): SegmentLengthsFrame | null {
-        return this.segmentLengthsLatest;
+    getLatestModelFrames(): ResolvedModelFrame[] | null {
+        return this.modelFramesLatest;
     }
 
     getModels(): ModelDefinition[] | null {
@@ -378,10 +333,7 @@ export class TransportService {
     /** Reset caches on disconnect. */
     reset(): void {
         this.keypointsLatest = null;
-        this.segmentOriginsLatest = null;
-        this.rotationsLatest = null;
-        this.derivedLatest = null;
-        this.segmentLengthsLatest = null;
+        this.modelFramesLatest = null;
         this.modelsLatest = null;
         this.conventionLatest = null;
         this.camerasLatest = null;

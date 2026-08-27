@@ -8,12 +8,11 @@
  * (schemas, calibration, visibility) React state is used, driven by this store.
  */
 
-import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type { CalibrationConfig, LoadedCalibration } from "@/store/slices/calibration/calibration-types";
-import type { RotationsFrame, SegmentLengthsFrame } from "@/services/server/transport/frame-types";
+import type { ResolvedModelFrame } from "@/services/server/transport/frame-types";
 import type { ModelDefinition } from "@/services/server/transport/message-contract";
-import { DEFAULT_VISIBILITY, type Point3d, type ViewportVisibility } from "./helpers/viewport3d-types";
-import type { KeypointsFrame, KeypointsSource } from "./KeypointsSourceContext";
+import { DEFAULT_VISIBILITY, type ViewportVisibility } from "./helpers/viewport3d-types";
+import type { KeypointsFrame, KeypointsSource, ModelFramesCallback, ModelsCallback } from "./KeypointsSourceContext";
 
 // ---------------------------------------------------------------------------
 // Shared channel primitive
@@ -47,11 +46,6 @@ function makeChannel<T>(initial: T, options?: { replayOnSubscribe?: boolean }) {
 // Channels
 // ---------------------------------------------------------------------------
 
-export interface SchemaState {
-    activeTrackerId: string | null;
-    trackerSchemas: Record<string, TrackedObjectDefinition>;
-}
-
 const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
     charucoBoard: { squares_x: 5, squares_y: 3, square_length_mm: 54 },
     minSharedViewsPerCamera: 200,
@@ -61,19 +55,21 @@ const DEFAULT_CALIBRATION_CONFIG: CalibrationConfig = {
 };
 
 const keypointsChan = makeChannel<KeypointsFrame | null>(null);
-const skeletonChan = makeChannel<KeypointsFrame | null>(null);
-const rotationsChan = makeChannel<RotationsFrame | null>(null);
+// Every tracked thing this frame: its model definition, segment origins, landmarks,
+// rotations, fitted lengths and derived points. These travel as ONE channel because they
+// describe ONE model — split apart, a renderer could pair a person's rotations with a
+// board's origins. It also carries the only millimetres in the worker (the model itself is
+// dimensionless), so without it every bone draws at unit length.
+// Replayed on subscribe: a renderer mounting mid-stream after a worker/HMR swap would
+// otherwise show nothing until the next frame.
+const modelFramesChan = makeChannel<ResolvedModelFrame[] | null>(null, {replayOnSubscribe: true});
+// The STATIC definitions, on their own change-detected channel. Kept apart from the frame
+// channel above precisely because they are big: sending them per frame clones every segment
+// and landmark across the worker boundary thirty times a second.
 const modelsChan = makeChannel<ModelDefinition[] | null>(null, {replayOnSubscribe: true});
-// The subject's fitted size — per-segment lengths in mm plus the body height they were
-// pooled from. The model itself is dimensionless, so this is the ONLY source of a
-// millimetre in the worker; without it every bone draws at the fallback length.
-const segmentLengthsChan = makeChannel<SegmentLengthsFrame | null>(null, {replayOnSubscribe: true});
-const schemaChan = makeChannel<SchemaState>({ activeTrackerId: null, trackerSchemas: {} }, {replayOnSubscribe: true});
 const calibChan = makeChannel<LoadedCalibration | null>(null, {replayOnSubscribe: true});
 const calibConfigChan = makeChannel<CalibrationConfig>(DEFAULT_CALIBRATION_CONFIG, {replayOnSubscribe: true});
 const visibilityChan = makeChannel<ViewportVisibility>(DEFAULT_VISIBILITY);
-const comChan = makeChannel<Point3d | null>(null);
-const xcomChan = makeChannel<Point3d | null>(null);
 
 // One-shot command channels (fit/reset camera)
 const fitCameraChan = makeChannel<KeypointsFrame | null>(null);
@@ -84,18 +80,12 @@ const resetCameraChan = makeChannel<null>(null);
 // ---------------------------------------------------------------------------
 
 export const workerDataStore: KeypointsSource & {
-    subscribeToSchemaState: (cb: Listener<SchemaState>) => () => void;
-    getSchemaState: () => SchemaState;
     subscribeToCalibration: (cb: Listener<LoadedCalibration | null>) => () => void;
     getCalibration: () => LoadedCalibration | null;
     subscribeToCalibrationConfig: (cb: Listener<CalibrationConfig>) => () => void;
     getCalibrationConfig: () => CalibrationConfig;
     subscribeToVisibility: (cb: Listener<ViewportVisibility>) => () => void;
     getVisibility: () => ViewportVisibility;
-    subscribeToCenterOfMass: (cb: Listener<Point3d | null>) => () => void;
-    getLatestCenterOfMass: () => Point3d | null;
-    subscribeToXcom: (cb: Listener<Point3d | null>) => () => void;
-    getLatestXcom: () => Point3d | null;
     subscribeToFitCamera: (cb: Listener<KeypointsFrame | null>) => () => void;
     subscribeToResetCamera: (cb: Listener<null>) => () => void;
     dispatch: (type: string, data: unknown) => void;
@@ -107,45 +97,19 @@ export const workerDataStore: KeypointsSource & {
         if (latest) cb(latest);
         return unsub;
     },
-    subscribeToSkeleton: (cb) => {
-        const unsub = skeletonChan.subscribe((f) => { if (f) cb(f); });
-        const latest = skeletonChan.getLatest();
-        if (latest) cb(latest);
-        return unsub;
-    },
     getLatestKeypoints: keypointsChan.getLatest,
-    getLatestSkeleton: skeletonChan.getLatest,
 
-    // The model that rides every frame (the rigid-body renderer's name→slot source)
-    subscribeToModels: (cb) => {
-        const unsub = modelsChan.subscribe((m) => { if (m) cb(m); });
-        const latest = modelsChan.getLatest();
-        if (latest) cb(latest);
-        return unsub;
+    // The static model definitions (change-detected).
+    subscribeToModels: (cb: ModelsCallback) => {
+        return modelsChan.subscribe((m) => { if (m) cb(m); });
     },
     getModels: modelsChan.getLatest,
 
-    // World rotations (ROTATIONS_WORLD) — the rigid-body renderer's orientation source
-    subscribeToRotations: (cb) => {
-        const unsub = rotationsChan.subscribe((f) => { if (f) cb(f); });
-        const latest = rotationsChan.getLatest();
-        if (latest) cb(latest);
-        return unsub;
+    // Every tracked model's per-frame numbers — the renderers' scene data.
+    subscribeToModelFrames: (cb: ModelFramesCallback) => {
+        return modelFramesChan.subscribe((m) => { if (m) cb(m); });
     },
-    getLatestRotations: rotationsChan.getLatest,
-
-    // Fitted segment lengths + body height (SEGMENT_LENGTHS + instance body_height_mm)
-    subscribeToSegmentLengths: (cb) => {
-        const unsub = segmentLengthsChan.subscribe((f) => { if (f) cb(f); });
-        const latest = segmentLengthsChan.getLatest();
-        if (latest) cb(latest);
-        return unsub;
-    },
-    getLatestSegmentLengths: segmentLengthsChan.getLatest,
-
-    // Schema state
-    subscribeToSchemaState: schemaChan.subscribe,
-    getSchemaState: schemaChan.getLatest,
+    getLatestModelFrames: modelFramesChan.getLatest,
 
     // Loaded calibration (camera poses)
     subscribeToCalibration: calibChan.subscribe,
@@ -159,14 +123,6 @@ export const workerDataStore: KeypointsSource & {
     subscribeToVisibility: visibilityChan.subscribe,
     getVisibility: visibilityChan.getLatest,
 
-    // Center of mass
-    subscribeToCenterOfMass: comChan.subscribe,
-    getLatestCenterOfMass: comChan.getLatest,
-
-    // Extrapolated center of mass (XCoM)
-    subscribeToXcom: xcomChan.subscribe,
-    getLatestXcom: xcomChan.getLatest,
-
     // Camera commands (one-shot)
     subscribeToFitCamera: fitCameraChan.subscribe,
     subscribeToResetCamera: resetCameraChan.subscribe,
@@ -176,20 +132,11 @@ export const workerDataStore: KeypointsSource & {
             case "keypoints":
                 keypointsChan.dispatch(data as KeypointsFrame);
                 break;
-            case "skeleton":
-                skeletonChan.dispatch(data as KeypointsFrame);
-                break;
             case "models":
                 modelsChan.dispatch(data as ModelDefinition[]);
                 break;
-            case "rotations":
-                rotationsChan.dispatch(data as RotationsFrame);
-                break;
-            case "segmentLengths":
-                segmentLengthsChan.dispatch(data as SegmentLengthsFrame);
-                break;
-            case "schemaState":
-                schemaChan.dispatch(data as SchemaState);
+            case "modelFrames":
+                modelFramesChan.dispatch(data as ResolvedModelFrame[]);
                 break;
             case "calibration":
                 calibChan.dispatch(data as LoadedCalibration | null);
@@ -199,12 +146,6 @@ export const workerDataStore: KeypointsSource & {
                 break;
             case "visibility":
                 visibilityChan.dispatch(data as ViewportVisibility);
-                break;
-            case "centerOfMass":
-                comChan.dispatch(data as Point3d | null);
-                break;
-            case "xcom":
-                xcomChan.dispatch(data as Point3d | null);
                 break;
             case "fitCamera":
                 fitCameraChan.dispatch(data as KeypointsFrame | null);

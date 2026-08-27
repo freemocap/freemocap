@@ -269,6 +269,15 @@ def global_kill_flag():
 @pytest.fixture(scope="session")
 def thread_worker_registry(global_kill_flag) -> WorkerRegistry:
     logger.info("Creating WorkerRegistry (THREAD mode, no heartbeat)")
+    # Pipeline IPC wires logging through the websocket log queue, which real
+    # app startup creates before any pipeline exists. These THREAD-mode tests
+    # stand up pipelines without that startup, so create it here explicitly
+    # (the call is idempotent).
+    from skellylogs.handlers.websocket_log_queue_handler import (
+        create_websocket_log_queue,
+    )
+
+    create_websocket_log_queue()
     registry = WorkerRegistry(global_kill_flag=global_kill_flag, worker_mode=WorkerMode.THREAD)
     logger.info("WorkerRegistry created")
     return registry

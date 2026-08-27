@@ -1933,7 +1933,7 @@ dependencies = [
 [[package]]
 name = "skellyforge"
 version = "2024.12.1009"
-source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#0f49f6d7c585c047ff69ae44dca43a15819ad2c4" }
+source = { git = "https://github.com/freemocap/skellyforge?branch=development-streaming#4f765d817ee1a81409d5dfa703f0150da2ca611f" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
@@ -1944,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs?branch=main#8c4b5eace34b9b0bf44018de2f646b50288c2aa5" }
+source = { git = "https://github.com/freemocap/skellylogs#8c4b5eace34b9b0bf44018de2f646b50288c2aa5" }
 
 [[package]]
 name = "skellypings"
@@ -1958,7 +1958,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#50928cb81f8b67f98b7d86c339f63b7f34c8cfca" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#8ce0f919c784b69a51728f31a78d14605cea0557" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

@@ -1,13 +1,9 @@
 import { createContext, useContext } from 'react';
 import type { FramerateStore } from './server-helpers/framerate-store';
 import type { LogStore } from './server-helpers/log-store';
-import type { Point3d } from '@/components/viewport3d';
-import type { KeypointsCallback, KeypointsFrame } from '@/components/viewport3d/KeypointsSourceContext';
-import type { RotationsFrame, SegmentLengthsFrame } from './transport/frame-types';
+import type { KeypointsCallback, KeypointsFrame, ModelFramesCallback, ModelsCallback } from '@/components/viewport3d/KeypointsSourceContext';
+import type { ResolvedModelFrame } from './transport/frame-types';
 import type { ModelDefinition } from './transport/message-contract';
-
-export type CoMCallback = (point: Point3d | null) => void;
-export type RotationsCallback = (frame: RotationsFrame) => void;
 
 export interface ServerContextValue {
     isConnected: boolean;
@@ -23,19 +19,15 @@ export interface ServerContextValue {
     connectedCameraIds: string[];
     updateServerConnection: (host: string, port: number) => void;
     subscribeToKeypoints: (cb: KeypointsCallback) => () => void;
-    subscribeToSkeleton: (cb: KeypointsCallback) => () => void;
-    subscribeToCenterOfMass: (cb: CoMCallback) => () => void;
-    subscribeToXcom: (cb: CoMCallback) => () => void;
     getLatestKeypoints: () => KeypointsFrame | null;
-    getLatestSkeleton: () => KeypointsFrame | null;
     setOverlayVisibility: (charuco: boolean, skeleton: boolean) => void;
-    subscribeToRotations: (cb: RotationsCallback) => () => void;
-    getLatestRotations: () => RotationsFrame | null;
-    subscribeToSegmentLengths: (cb: (frame: SegmentLengthsFrame) => void) => () => void;
-    getLatestSegmentLengths: () => SegmentLengthsFrame | null;
-    // The model that rides every frame (the bone renderer's name→index authority).
-    subscribeToModels: (cb: (models: ModelDefinition[]) => void) => () => void;
+    /** The static model definitions, emitted only when the model set changes. */
+    subscribeToModels: (cb: ModelsCallback) => () => void;
     getModels: () => ModelDefinition[] | null;
+    /** Every tracked model's per-frame numbers — origins, landmarks, rotations, fitted
+     *  lengths and derived points, one entry per tracked thing. */
+    subscribeToModelFrames: (cb: ModelFramesCallback) => () => void;
+    getLatestModelFrames: () => ResolvedModelFrame[] | null;
 }
 
 export const ServerContext = createContext<ServerContextValue | null>(null);

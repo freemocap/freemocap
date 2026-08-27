@@ -6,22 +6,16 @@
 
 ### `[IN]`
 
-- **Generic skeletons, driven by the charuco board** — the current initiative. Track, reconstruct and
-  render the board on the human's machinery, using the mismatch to drive out single-human assumptions:
-  plural models/instances end to end, landmark + connection groups, sensible defaults for
-  under-specified skeletons, scale generalized to each skeleton's reference unit, and one model-driven
-  connection renderer ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
+- **Posthoc rebuild** — the current initiative, unblocked by generic skeletons: the offline paths get
+  rebuilt on the generic skeleton layer rather than a human-shaped one. They are broken-if-invoked
+  against installed skellyforge today (scope +
+  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). The neutral-naming question is
+  **settled**: `SkeletonDefinition` keeps its name, and "skeleton" is the generic term — a board is a
+  one-segment skeleton ([ontology.md](ontology.md)).
 - **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
   `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 - **Face component implementation** — currently commented out of the composition (`#TODO`);
   `FaceBlendShapes` plumbing exists, the component does not load.
-- **Posthoc rebuild** — deferred until generic skeletons land, so the offline paths are rebuilt on the
-  generic layer rather than a human-shaped one. The offline mocap/calibration paths are
-  broken-if-invoked against installed skellyforge (scope +
-  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). The neutral-naming question is
-  **settled**: `SkeletonDefinition` keeps its name, and "skeleton" is the generic term — a board is a
-  one-segment skeleton ([ontology.md](ontology.md)).
-
 ### `[LATER]`
 
 VMC adapter · frontend test suite · HTTP control plane ([03-transport/http-control-plane.md](03-transport/http-control-plane.md)) ·
@@ -36,11 +30,34 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Generic skeletons | posthoc rebuild | the board reconstructs end to end on the generic layer |
 | Posthoc rebuild | tidy serialization | both offline paths run on the new core |
 | skellyforge + skellytracker pushed | freemocap's venv seeing either repo's changes | user commits/pushes both, then `uv sync` freemocap |
 
 ## Progress log
+
+- **2026-08-27 (generic skeletons — the charuco board)** — A charuco board is now a
+  `SkeletonDefinition` and reconstructs end to end, with **no board-specific branch anywhere in the
+  pipeline**. skellyforge: `LandmarkGroup` + `LandmarkConnectionGroup` carry tags, `ColorPalette`
+  (`definitions/color_palette.yaml`) resolves tags to colours, `build_rigid_marker_skeleton` builds a
+  one-segment N-landmark skeleton from plain positions, `RestPose.default_for` and
+  `CenterOfMassDefinitions.default_for` supply defaults, `derived_quantities` makes everything exotic
+  opt-in and fails loud at load, and the scale layer renamed to `model_scale_fitting.py` /
+  `SegmentPose.scale_estimate` / `ModelScaleFit.fitted_scale`. The human's skull outline and eye lines
+  are authored as groups — the worked example that this is not a board feature. skellytracker:
+  `passthrough_keypoints_as_landmarks` (a one-line mapping file, not one line per corner), and the
+  board's normalized geometry + grid/quad connection groups derived from cv2 rather than hand-rolled.
+  freemocap: `TrackedSkeletonBundle` per tracked thing, `reconstruct_skeleton` as a pure per-skeleton
+  function, producers/composer/aggregator looping over bundles, `camera_2d_detections` requiring a
+  detector type. The frontend collapsed four singular frame channels (origins / rotations / lengths /
+  derived) into ONE plural `models: ResolvedModelFrame[]`; every renderer iterates it; the
+  schema-driven `ConnectionRenderer` and `SegmentConnectionRenderer` were both deleted in favour of
+  one `ModelConnectionRenderer`, with playback migrated onto the model path
+  (`playback-model-frame.ts`) so the whole `schemaState` channel could go. Both name-parsing sites are
+  gone. Verified on the wire: one frame carries two models / two instances / two trackers, the 5x3
+  board ships 8 charuco corners (green `#14ff14`) + 28 aruco corners (orange `#ff8c14`) + 10 grid
+  edges + 28 quad edges, and `fitted_scale_mm` comes back as 54.0 against
+  `scale_reference_name: "square_length"` — the entered calibration value, recovered
+  ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
 
 - **2026-08-26 (body-scale fit)** — The proportional template got a size. Hydration's rigid fit
   became a **similarity** fit (`align_point_sets_similarity`, Umeyama): scale now comes out of the

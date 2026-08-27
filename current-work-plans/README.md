@@ -74,23 +74,25 @@ and the VMC Definition of Done. Then:
    Robust to partial views by construction — seated, with only the arms voting, an unseen foot fits
    within 0.2mm of its standing measurement
    ([02-pipeline/model-scale-fitting.md](02-pipeline/model-scale-fitting.md)).
+10. **Generic skeletons** — a charuco board is a one-segment `SkeletonDefinition`, tracked,
+   reconstructed and rendered on the human's machinery with no board-specific branch anywhere in the
+   pipeline. Landmark + connection groups carry structure and tags; a palette resolves tags to colours
+   backend-side; under-specified skeletons get defaults (single-root rest pose, unweighted CoM) while
+   everything exotic is `derived_quantities` opt-in that fails loud at load; scale generalizes to each
+   skeleton's own reference unit, so the board's fitted scale IS its measured square length. Models,
+   instances and trackers are plural end to end, and the frontend iterates them
+   ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
 
 ## Next work (in order)
 
-1. **Generic skeletons, driven by the charuco board** — track, reconstruct and render the board using
-   the machinery built for the human, and let the mismatch drive out every single-human assumption:
-   plural models/instances through the pipeline, landmark + connection groups so structure travels in
-   the model rather than in string patterns, sensible defaults for under-specified skeletons, and the
-   scale concept generalized to each skeleton's reference unit
-   ([07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
-2. **Posthoc rebuild** — unblocked by (1): the offline paths get rebuilt on the generic skeleton layer
+1. **Posthoc rebuild** — unblocked: the offline paths get rebuilt on the generic skeleton layer
    rather than on a human-shaped one ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
-3. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
+2. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
    `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
-4. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
-5. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
+3. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
+4. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
    synthesis/IK/backfill; the remaining deferred linkage/chain piece.
-6. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, and on-disk tidy
+5. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, and on-disk tidy
    serialization.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.

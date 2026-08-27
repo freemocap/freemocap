@@ -19,7 +19,7 @@ How the two efforts are verified, and the runtime invariants the tests defend.
 
 | Layer | What it pins | Where |
 |-------|--------------|-------|
-| **Unit — math kernel** | Quaternion algebra + round trips, slerp/batching, orthonormal bases (incl. left-handed), Transform round trips, PointRingBuffer windows, tolerances, shortest-arc edge cases, Kabsch recovery/reflection/collinear rejection. | skellyforge `tests/` |
+| **Unit — math kernel** | Quaternion algebra + round trips, slerp/batching, orthonormal bases (incl. left-handed), Transform round trips, PointRingBuffer windows, tolerances, shortest-arc edge cases, Umeyama similarity recovery/reflection/collinear rejection. | skellyforge `tests/` |
 | **YAML loader + model** | `$include` composition/equivalence, lowercasing, sided expansion + x-mirroring, alias resolution, origin-at-zero, whole-skeleton loads (**61 segments / 124 landmarks**, fully-specified set), every fully-specified segment solves to its own authoring frame. | skellyforge `tests/test_skeleton_yaml_loader.py` et al. |
 | **Pose** | Rest-pose geometry (trunk up, arms out, legs down, both feet on one flat ground plane), hydration rigid/direction/partial paths, roll continuity + reset, length estimation, synthetic round trip. | skellyforge `tests/` |
 | **Biomechanics** | de Leva fractions sum to 1, segment mapping totality (61→16 sided names), whole-body CoM midline in T-pose, inertia SPD, CoP/XCoM/CMP formulas, derived kinematics timestamp validation. | skellyforge `tests/` |

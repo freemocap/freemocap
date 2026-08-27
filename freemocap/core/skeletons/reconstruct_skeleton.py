@@ -46,7 +46,7 @@ def reconstruct_skeleton(
         The reconstruction, or `None` when nothing of this skeleton was visible - which is
         an absent model this frame, not an empty one.
     """
-    mapped_landmarks = bundle.landmark_mapping(filtered_keypoints)
+    mapped_landmarks = bundle.landmark_mapping.apply(tracker_positions=filtered_keypoints)
     if not mapped_landmarks:
         return None
     observed = {

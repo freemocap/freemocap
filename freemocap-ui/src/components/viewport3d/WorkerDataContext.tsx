@@ -20,12 +20,11 @@ import React, {
     useMemo,
     useState,
 } from "react";
-import type { TrackedObjectDefinition } from "@/services/server/server-helpers/tracked-object-definition";
 import type {
     CalibrationConfig,
     LoadedCalibration,
 } from "@/store/slices/calibration/calibration-types";
-import { workerDataStore, type SchemaState } from "./WorkerDataStore";
+import { workerDataStore } from "./WorkerDataStore";
 import { useViewportState } from "./scene/ViewportStateContext";
 
 // ---------------------------------------------------------------------------
@@ -33,9 +32,6 @@ import { useViewportState } from "./scene/ViewportStateContext";
 // ---------------------------------------------------------------------------
 
 export interface WorkerDataContextValue {
-    activeTrackerId: string | null;
-    trackerSchemas: Record<string, TrackedObjectDefinition>;
-    getActiveSchema: () => TrackedObjectDefinition | null;
     calibrationConfig: CalibrationConfig;
     loadedCalibration: LoadedCalibration | null;
 }
@@ -47,9 +43,6 @@ const WorkerDataContext = createContext<WorkerDataContextValue | null>(null);
 // ---------------------------------------------------------------------------
 
 export function WorkerDataProvider({ children }: { children: React.ReactNode }) {
-    const [schemaState, setSchemaState] = useState<SchemaState>(
-        workerDataStore.getSchemaState,
-    );
     const [loadedCalibration, setLoadedCalibration] = useState<LoadedCalibration | null>(
         workerDataStore.getCalibration,
     );
@@ -59,27 +52,18 @@ export function WorkerDataProvider({ children }: { children: React.ReactNode }) 
 
     useEffect(() => {
         const unsubs = [
-            workerDataStore.subscribeToSchemaState(setSchemaState),
             workerDataStore.subscribeToCalibration(setLoadedCalibration),
             workerDataStore.subscribeToCalibrationConfig(setCalibrationConfig),
         ];
         return () => unsubs.forEach((fn) => fn());
     }, []);
 
-    const getActiveSchema = useCallback((): TrackedObjectDefinition | null => {
-        if (!schemaState.activeTrackerId) return null;
-        return schemaState.trackerSchemas[schemaState.activeTrackerId] ?? null;
-    }, [schemaState]);
-
     const value = useMemo<WorkerDataContextValue>(
         () => ({
-            activeTrackerId: schemaState.activeTrackerId,
-            trackerSchemas: schemaState.trackerSchemas,
-            getActiveSchema,
             calibrationConfig,
             loadedCalibration,
         }),
-        [schemaState, getActiveSchema, calibrationConfig, loadedCalibration],
+        [calibrationConfig, loadedCalibration],
     );
 
     return (

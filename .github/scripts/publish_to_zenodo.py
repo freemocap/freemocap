@@ -129,9 +129,9 @@ def main():
     response = requests.get(source_zip_url, timeout=900)
     if response.status_code != 200:
         die(f"Failed to download source archive {source_zip_url}", response)
+    file_name = f"{repo_name}-{tag}.zip"
     response = requests.put(
-        draft["links"]["bucket"],
-        params={"name": f"{repo_name}-{tag}.zip"},
+        f"{draft['links']['bucket']}/{file_name}",
         data=response.content,
         headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
         timeout=1800,

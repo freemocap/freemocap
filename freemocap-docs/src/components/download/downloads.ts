@@ -59,11 +59,10 @@ export function getR2BaseUrl(version: string): string {
 
 /** True for builds whose release assets live on R2 instead of GitHub.
  *  Mirrors the routing rule in .github/workflows/build-installers-pyinstaller.yml:
- *  ONLY the Linux CUDA build exceeds GitHub's 2 GB per-asset limit (its NVIDIA stack
- *  pushes it >2 GB), so it alone is hosted on R2. Everything else — including the smaller
- *  Windows CUDA build (~1.x GB) — goes to the GitHub Release. */
+ *  all CUDA builds are hosted on R2, while non-CUDA builds are hosted on GitHub Releases.
+ */
 export function isR2Hosted(os: OsType, variant?: VariantType): boolean {
-  return os === 'linux' && variant === 'cuda';
+  return variant === 'cuda';
 }
 
 /** Resolves the actual download URL for a file, routing R2-hosted builds correctly. */

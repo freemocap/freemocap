@@ -10,8 +10,8 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Git tag of the release to publish (e.g. v2.0.0-alpha.21)'
-        required: true
+        description: 'Git tag of the release to publish (leave empty to use the most recent release)'
+        required: false
         type: string
 
 permissions:

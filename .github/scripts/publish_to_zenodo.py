@@ -52,6 +52,21 @@ def github_release_notes(repo, tag, gh_token):
     return response.json().get("body") or ""
 
 
+def latest_release_tag(repo, gh_token):
+    headers = {"Authorization": f"Bearer {gh_token}"} if gh_token else {}
+    response = requests.get(
+        f"https://api.github.com/repos/{repo}/releases/latest", headers=headers, timeout=60
+    )
+    if response.status_code == 200:
+        return response.json().get("tag_name")
+    response = requests.get(
+        f"https://api.github.com/repos/{repo}/releases?per_page=1", headers=headers, timeout=60
+    )
+    if response.status_code == 200 and response.json():
+        return response.json()[0].get("tag_name")
+    return None
+
+
 def latest_version_recid(token):
     response = requests.get(
         f"{ZENODO_API}/records/{CONCEPT_REC_ID}", headers=zenodo(token), timeout=60
@@ -90,7 +105,10 @@ def main():
         die("ZENODO_ACCESS_TOKEN is not set (see the module docstring for how to create one)")
     tag = os.environ.get("RELEASE_TAG")
     if not tag:
-        die("RELEASE_TAG is not set")
+        tag = latest_release_tag(repo, os.environ.get("GH_TOKEN", ""))
+        if not tag:
+            die("RELEASE_TAG is not set and no releases were found on the repository")
+        print(f"  RELEASE_TAG not set - using the most recent release: {tag}")
     repo = os.environ.get("GITHUB_REPOSITORY", "freemocap/freemocap")
     repo_name = repo.split("/")[-1]
     dry_run = os.environ.get("ZENODO_DRY_RUN", "") == "1"
@@ -144,7 +162,7 @@ def main():
     notes = notes.replace("\r\n", "\n").replace("\n", "<br/>")[:MAX_DESCRIPTION_CHARS]
     metadata = {
         "title": RECORD_TITLE,
-        "upload_type": {"type": "software"},
+        "upload_type": "software",
         "publication_date": datetime.now(timezone.utc).date().isoformat(),
         "creators": load_creators(),
         "description": notes or f"Release {tag} of https://github.com/{repo}",

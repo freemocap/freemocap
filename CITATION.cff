@@ -3,7 +3,8 @@ message: "If you use this software, please cite it as below."
 authors:
   - family-names: Matthis
     given-names: Jonathan Samir
-    orcid: https://orcid.org/0000-0003-3683-646X  - family-names: Queen
+    orcid: https://orcid.org/0000-0003-3683-646X
+  - family-names: Queen
     given-names: Philip
     orcid: https://orcid.org/0009-0009-9872-6697
   - family-names: Cherian
@@ -15,7 +16,6 @@ authors:
   - family-names: Idehen
     given-names: Endurance
     orcid: https://orcid.org/0009-0007-8589-8436
-
 
 title: "FreeMoCap"
 version: 2.0.0-alpha.21

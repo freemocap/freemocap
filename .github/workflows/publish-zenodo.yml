@@ -1,0 +1,43 @@
+# Auto-publishes every GitHub release to Zenodo as a new version of the FreeMoCap
+# record family, so the concept DOI (10.5281/zenodo.7233713) always resolves to the
+# newest release. Replaces the manual "log into Zenodo and click Publish" workflow
+# of Zenodo's GitHub app integration.
+name: Publish release to Zenodo
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag of the release to publish (e.g. v2.0.0-alpha.21)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zenodo-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install requests pyyaml
+
+      - name: Publish release to Zenodo
+        run: python .github/scripts/publish_to_zenodo.py
+        env:
+          ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}

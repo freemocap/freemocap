@@ -59,8 +59,8 @@ system and platform for decentralized scientific research, education, and traini
 
 <p align="center">
 
-<a href="https://doi.org/10.5281/zenodo.7233714">
-    <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7233714.svg" alt=DOI-via-Zenodo.org>
+<a href="https://doi.org/10.5281/zenodo.7233713">
+    <img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7233713.svg" alt=DOI-via-Zenodo.org>
   </a>
 
 <a href="https://github.com/psf/black">

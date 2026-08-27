@@ -103,13 +103,13 @@ def main():
     token = os.environ.get("ZENODO_ACCESS_TOKEN")
     if not token:
         die("ZENODO_ACCESS_TOKEN is not set (see the module docstring for how to create one)")
+    repo = os.environ.get("GITHUB_REPOSITORY", "freemocap/freemocap")
     tag = os.environ.get("RELEASE_TAG")
     if not tag:
         tag = latest_release_tag(repo, os.environ.get("GH_TOKEN", ""))
         if not tag:
             die("RELEASE_TAG is not set and no releases were found on the repository")
         print(f"  RELEASE_TAG not set - using the most recent release: {tag}")
-    repo = os.environ.get("GITHUB_REPOSITORY", "freemocap/freemocap")
     repo_name = repo.split("/")[-1]
     dry_run = os.environ.get("ZENODO_DRY_RUN", "") == "1"
 

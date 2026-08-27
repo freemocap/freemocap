@@ -1944,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "skellylogs"
 version = "0.1.0"
-source = { git = "https://github.com/freemocap/skellylogs?branch=main#8c4b5eace34b9b0bf44018de2f646b50288c2aa5" }
+source = { git = "https://github.com/freemocap/skellylogs#8c4b5eace34b9b0bf44018de2f646b50288c2aa5" }
 
 [[package]]
 name = "skellypings"
@@ -1958,7 +1958,7 @@ dependencies = [
 [[package]]
 name = "skellytracker"
 version = "2024.9.1019"
-source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#8ce0f919c784b69a51728f31a78d14605cea0557" }
+source = { git = "https://github.com/freemocap/skellytracker?branch=development-streaming#0a66d8cee0aa0b0a39895f2e6a9e7b3cdb8dc136" }
 dependencies = [
     { name = "beartype", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", marker = "(platform_machine == 'x86_64' and sys_platform == 'linux') or (platform_machine == 'AMD64' and sys_platform == 'win32') or sys_platform == 'darwin'" },

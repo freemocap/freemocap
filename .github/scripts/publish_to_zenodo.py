@@ -117,17 +117,29 @@ def main():
     headers = zenodo(token)
 
     latest_recid = latest_version_recid(token)
-    print(f"  newest published version is record {latest_recid}, opening a new version draft on it")
-    response = requests.post(
-        f"{ZENODO_API}/deposit/depositions/{latest_recid}/actions/newversion",
-        headers=headers,
-        timeout=60,
+    print(f"  newest published version is record {latest_recid}")
+
+    response = requests.get(
+        f"{ZENODO_API}/deposit/depositions/{latest_recid}", headers=headers, timeout=60
     )
-    if response.status_code != 201:
-        die(f"Failed to create a new version draft on Zenodo record {latest_recid}", response)
+    if response.status_code != 200:
+        die(f"Could not fetch the published Zenodo deposit {latest_recid}", response)
     latest_draft_url = response.json().get("links", {}).get("latest_draft")
-    if not latest_draft_url:
-        die("Zenodo did not return a 'latest_draft' link", response)
+
+    if latest_draft_url:
+        print("  an unpublished new version draft already exists - reusing it")
+    else:
+        print("  opening a new version draft")
+        response = requests.post(
+            f"{ZENODO_API}/deposit/depositions/{latest_recid}/actions/newversion",
+            headers=headers,
+            timeout=60,
+        )
+        if response.status_code != 201:
+            die(f"Failed to create a new version draft on Zenodo record {latest_recid}", response)
+        latest_draft_url = response.json().get("links", {}).get("latest_draft")
+        if not latest_draft_url:
+            die("Zenodo did not return a 'latest_draft' link", response)
 
     response = requests.get(latest_draft_url, headers=headers, timeout=60)
     if response.status_code != 200:

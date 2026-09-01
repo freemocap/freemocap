@@ -22,6 +22,46 @@ from freemocap.core.tasks.triangulation.triangulator import Triangulator
 logger = logging.getLogger(__name__)
 
 
+def _reorder_to_model_info_order(
+    names: tuple[str, ...],
+    model_info,
+) -> np.ndarray:
+    """Return a column-permutation that reorders observation columns into the
+    order ``model_info`` expects (used by skellyforge's positional slicing).
+
+    The new skellytracker pipeline merges stages in its own order (pose →
+    face → right_hand → left_hand), while skellyforge's ``MediapipeModelInfo``
+    YAML slices positionally in ``[body, right_hand, left_hand, face]`` order.
+    Without reordering, the hands land on the face columns and vice-versa, so
+    the 3D hand reconstruction reads the wrong 2D points.
+
+    Columns are grouped by their stage-prefixed name (the new pipeline emits
+    ``body.*`` for pose, ``body.face_*`` for face, and ``hands.right_hand_*`` /
+    ``hands.left_hand_*`` for the hands child stage) and reassembled in the
+    model_info aspect order, preserving within-group order.
+    """
+    groups: dict[str, list[int]] = {
+        "body": [],
+        "right_hand": [],
+        "left_hand": [],
+        "face": [],
+    }
+    for idx, n in enumerate(names):
+        if n.startswith("body.face"):
+            groups["face"].append(idx)
+        elif n.startswith("hands.right_hand"):
+            groups["right_hand"].append(idx)
+        elif n.startswith("hands.left_hand"):
+            groups["left_hand"].append(idx)
+        else:
+            groups["body"].append(idx)
+
+    perm: list[int] = []
+    for aspect_name in model_info.order:
+        perm.extend(groups[aspect_name])
+    return np.asarray(perm, dtype=np.intp)
+
+
 def skeleton_from_mediapipe_observation_recorders(
     detector:str,
     observation_recorders: dict[CameraIdString, ObservationBuffer],
@@ -51,8 +91,25 @@ def skeleton_from_mediapipe_observation_recorders(
 
     # Extract 2D data from observation buffers
     data2d_by_camera: dict[CameraIdString, np.ndarray] = {}
+    # Determine the model-info column order up front (mediapipe only): the new
+    # skellytracker pipeline merges stages in [pose, face, right_hand, left_hand]
+    # order, but skellyforge's MediapipeModelInfo slices positionally in
+    # [body, right_hand, left_hand, face] order. Without a reorder, the hands
+    # would be read from the face columns and vice-versa.
+    reorder_perm: np.ndarray | None = None
+    if detector == "mediapipe":
+        from skellyforge.skellymodels.models.tracking_model_info import MediapipeModelInfo
+        model_info = MediapipeModelInfo()
+        for buf in observation_recorders.values():
+            if buf.observations:
+                merged_names = buf.observations[0].to_keypoints().names
+                reorder_perm = _reorder_to_model_info_order(merged_names, model_info)
+                break
+
     for camera_id, buf in observation_recorders.items():
         data2d_fr_id_xyc = buf.to_keypoints_array().copy()
+        if reorder_perm is not None:
+            data2d_fr_id_xyc = data2d_fr_id_xyc[:, reorder_perm, :]
         logger.info(f"Processing camera ID: {camera_id} with 2D data shape: {data2d_fr_id_xyc.shape}")
         data2d_by_camera[camera_id] = data2d_fr_id_xyc[..., :2]
 

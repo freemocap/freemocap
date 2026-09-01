@@ -145,12 +145,6 @@ class PosthocMocapPipelineConfig(BaseModel):
                                 min_pose_presence_confidence=self.mediapipe_presence_confidence,
                                 min_pose_tracking_confidence=self.mediapipe_tracking_confidence,
                             ),
-                            MediapipeHandDetectorConfig(
-                                num_hands=self.mediapipe_num_hands,
-                                min_hand_detection_confidence=self.mediapipe_detection_confidence,
-                                min_hand_presence_confidence=self.mediapipe_presence_confidence,
-                                min_hand_tracking_confidence=self.mediapipe_tracking_confidence,
-                            ),
                             MediapipeFaceDetectorConfig(
                                 num_faces=self.mediapipe_num_faces,
                                 min_face_detection_confidence=self.mediapipe_detection_confidence,
@@ -158,6 +152,19 @@ class PosthocMocapPipelineConfig(BaseModel):
                                 min_face_tracking_confidence=self.mediapipe_tracking_confidence,
                             ),
                         ],
+                        children=[
+                            DetectionStageConfig(
+                                name="hands",
+                                keypoint_detectors=[
+                                    MediapipeHandDetectorConfig(
+                                        num_hands=self.mediapipe_num_hands,
+                                        min_hand_detection_confidence=self.mediapipe_detection_confidence,
+                                        min_hand_presence_confidence=self.mediapipe_presence_confidence,
+                                        min_hand_tracking_confidence=self.mediapipe_tracking_confidence,
+                                    ),
+                                ]
+                            )
+                        ]
                     )
                 ]
             )

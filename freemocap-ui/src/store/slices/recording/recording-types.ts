@@ -68,6 +68,7 @@ export const RecordingInfoSchema = z.object({
     completionData: StopRecordingResponseSchema.nullable(),
     pendingOperation: PendingOperationSchema.nullable(),
     countdown: z.number().nullable(),
+    error: z.string().nullable(),
 });
 
 export type RecordingConfig = z.infer<typeof RecordingConfigSchema>;

@@ -66,7 +66,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
         replaceSkeletonFilterConfigLocalOnly,
     } = useMocap();
 
-    const {triggerRealtimeApply, isConnected} = useRealtimePipelineSync();
+    const {triggerRealtimeApply} = useRealtimePipelineSync();
     const calibrationDirectoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
 
     // ── Active detector type unified across contexts ───────────────────────────
@@ -402,8 +402,7 @@ export const RealtimePipelineConfigTree: React.FC<PipelineConfigTreeProps> = ({
                         <button
                             className="button sm"
                             onClick={handleResetSkeletonFitter}
-                            disabled={!isConnected}
-                            title={isConnected ? "Forget learned bone lengths and re-fit from scratch" : "Connect a realtime pipeline first"}
+                            title="Forget learned bone lengths and re-fit from scratch"
                         >
                             Reset Fitter
                         </button>

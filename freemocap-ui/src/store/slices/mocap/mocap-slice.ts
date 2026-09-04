@@ -484,37 +484,18 @@ export const selectIsUsingManualMocapPath = createSelector(
     (origin) => origin === 'browsed',
 );
 
+// These guard only what would make the *request itself* malformed or redundant:
+// no target path to send, or an operation of the same kind already running. Whether
+// the directory currently holds videos / a calibration / connected cameras is the
+// server's call — it re-checks and reports back; the UI does not pre-refuse.
 export const selectCanStartMocapRecording = createSelector(
-    [
-        selectMocapIsRecording,
-        selectMocapIsLoading,
-        selectEffectiveRecordingPath,
-        selectMocapDirectoryInfo
-    ],
-    (isRecording, isLoading, effectivePath, directoryInfo) => {
-        return !isRecording && !isLoading && !!effectivePath && (directoryInfo?.canRecord ?? true);
-    }
+    [selectMocapIsRecording, selectMocapIsLoading, selectEffectiveRecordingPath],
+    (isRecording, isLoading, effectivePath) => !isRecording && !isLoading && !!effectivePath
 );
 
 export const selectCanProcessMocapRecording = createSelector(
-    [
-        selectMocapRecordingPath,
-        selectMocapIsLoading,
-        selectMocapIsRecording,
-        selectMocapDirectoryInfo,
-        selectCalibrationTomlPath,
-    ],
-    (mocapPath, isLoading, isRecording, directoryInfo, manualCalibrationTomlPath) => {
-        const hasVideos = directoryInfo?.hasVideos ?? false;
-        // Single-camera recordings use a planar-projection fallback and never need
-        // a calibration TOML; multi-camera recordings still require one for triangulation.
-        const isSingleCamera = directoryInfo?.cameraCount === 1;
-        const hasAnyCalibrationToml =
-            !!manualCalibrationTomlPath ||
-            !!directoryInfo?.cameraMocapTomlPath ||
-            !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
-        return !!mocapPath && !isLoading && !isRecording && hasVideos && (isSingleCamera || hasAnyCalibrationToml);
-    }
+    [selectMocapRecordingPath, selectMocapIsLoading, selectMocapIsRecording],
+    (mocapPath, isLoading, isRecording) => !!mocapPath && !isLoading && !isRecording
 );
 
 // ==================== Actions Export ====================

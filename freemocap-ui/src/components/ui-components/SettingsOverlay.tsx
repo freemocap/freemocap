@@ -59,8 +59,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
     applyOrUpdatePipelineConfig,
     isConnected,
     isLoading: isPipelineLoading,
-    canConnect,
-    canDisconnect,
     toggleConnection,
   } = useRealtimePipelineSync();
 
@@ -93,7 +91,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
       aggregator_config: { ...aggregatorConfig, filter_enabled: !filterEnabled },
     });
 
-  const liveClickable = canConnect || canDisconnect;
   const handleLiveStreamClick = () => {
     toggleConnection();
   };
@@ -221,15 +218,15 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({
               onClick={handleLiveStreamClick}
               tooltip
               tooltipText={
-                isConnected
-                  ? "Disconnect pipeline"
-                  : canConnect
-                    ? "Connect pipeline"
-                    : "Select cameras first"
+                isPipelineLoading
+                  ? (isConnected ? "Disconnecting pipeline…" : "Connecting pipeline…")
+                  : isConnected
+                    ? "Disconnect pipeline"
+                    : "Connect pipeline"
               }
               tooltipPosition="pos-bottom-right"
-              disabled={!liveClickable || isPipelineLoading}
-              className={`icon-size-25 ${isConnected ? "active" : ""} ${!liveClickable ? "" : ""}`}
+              disabled={isPipelineLoading}
+              className={`icon-size-25 ${isConnected ? "active" : ""}`}
             />
           </div>
 

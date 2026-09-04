@@ -6,11 +6,10 @@ import {
     pipelineConfigUpdated,
     selectAggregatorConfig,
     selectCameraNodeConfig,
-    selectCanConnectPipeline,
-    selectCanDisconnectPipeline,
     selectIsPipelineConnected,
     selectIsPipelineLoading,
     selectPipelineConfig,
+    selectPipelineError,
 } from "@/store/slices/realtime";
 import {RealtimePipelineConfig} from "@/store/slices/realtime/realtime-types";
 
@@ -24,8 +23,7 @@ export function useRealtimePipelineSync() {
 
     const isConnected = useAppSelector(selectIsPipelineConnected);
     const isLoading = useAppSelector(selectIsPipelineLoading);
-    const canConnect = useAppSelector(selectCanConnectPipeline);
-    const canDisconnect = useAppSelector(selectCanDisconnectPipeline);
+    const error = useAppSelector(selectPipelineError);
     const pipelineConfig = useAppSelector(selectPipelineConfig);
     const cameraNodeConfig = useAppSelector(selectCameraNodeConfig);
     const aggregatorConfig = useAppSelector(selectAggregatorConfig);
@@ -62,8 +60,7 @@ export function useRealtimePipelineSync() {
     return {
         isConnected,
         isLoading,
-        canConnect,
-        canDisconnect,
+        error,
         pipelineConfig,
         cameraNodeConfig,
         aggregatorConfig,

@@ -11,8 +11,17 @@ export const applyRealtimePipeline = createAsyncThunk<
 >(
     'realtime/apply',
     async (realtimeConfig, {getState}) => {
-        const cameraConfigs = selectSelectedCameraConfigs(getState());
-        const realtimeCameraIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
+        // The UI's per-camera `selected` / `realtimeEnabled` flags are hints, not gates.
+        // When the UI has an explicit camera selection, send it so the server connects
+        // (or reconfigures) exactly those cameras alongside the pipeline. When it does
+        // not, send `null` for both fields — the server then attaches the pipeline to
+        // whatever camera group is already live. Sending `{}` / `[]` here would trip the
+        // server's "no valid camera configs" guard instead of falling through to that
+        // existing-group path.
+        const selectedCameraConfigs = selectSelectedCameraConfigs(getState());
+        const cameraConfigs = Object.keys(selectedCameraConfigs).length > 0 ? selectedCameraConfigs : null;
+        const realtimeEnabledIds = Object.keys(selectRealtimeEnabledCameraConfigs(getState()));
+        const realtimeCameraIds = realtimeEnabledIds.length > 0 ? realtimeEnabledIds : null;
         const calibrationConfig = selectCalibrationConfig(getState());
         const calibrationDirectoryInfo = selectCalibrationDirectoryInfo(getState());
 

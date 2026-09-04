@@ -26,8 +26,6 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
     isLoading,
     isRecording,
     mocapRecordingPath,
-    directoryInfo,
-    calibrationTomlPath,
     dispatchProcessMocapRecording,
   } = useMocap();
 
@@ -36,15 +34,8 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
     if (isRecording) return "Stop recording before processing";
     if (isLoading) return "Processing already in progress";
     if (!mocapRecordingPath) return "Select a recording folder to process";
-    if (!directoryInfo?.hasVideos) return "No videos found in the selected recording folder";
-    const hasAnyCalibration =
-      directoryInfo?.cameraCount === 1 ||
-      !!calibrationTomlPath ||
-      !!directoryInfo?.cameraMocapTomlPath ||
-      !!directoryInfo?.lastSuccessfulCalibrationTomlPath;
-    if (!hasAnyCalibration) return "No calibration file found — select a calibration TOML or run calibration first";
-    return "Cannot process recording";
-  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath, directoryInfo, calibrationTomlPath]);
+    return null;
+  }, [canProcessMocapRecording, isRecording, isLoading, mocapRecordingPath]);
   const [activeButton, setActiveButton] = useState<
     "button1" | "button2" | "button3" | "button4" | "button5" | "button6"
   >("button1");

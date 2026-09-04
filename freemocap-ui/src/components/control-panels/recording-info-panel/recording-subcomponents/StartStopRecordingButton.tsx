@@ -7,9 +7,7 @@ interface StartStopButtonProps {
     isPending: boolean;
     countdown: number | null;
     recordingStartTime: number | null;
-    disabled: boolean;
     onClick: () => void;
-    tooltipText?: string;
 }
 
 const formatDuration = (seconds: number): string => {
@@ -24,7 +22,7 @@ const formatDuration = (seconds: number): string => {
 };
 
 export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
-    isRecording, isPending, countdown, recordingStartTime, disabled, onClick, tooltipText,
+    isRecording, isPending, countdown, recordingStartTime, onClick,
 }) => {
     const [recordingDuration, setRecordingDuration] = useState<number>(0);
     const {t} = useTranslation();
@@ -40,8 +38,9 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
         return () => clearInterval(interval);
     }, [isRecording, recordingStartTime, isPending]);
 
-    const isDisabled = disabled || isPending;
-
+    // The button never gates itself on external state (cameras connected, etc.) —
+    // it forms and sends the request, and the server reconciles / reports back.
+    // `isPending` only debounces a request that is already in flight.
     const buttonEl = (
         <button
             data-onboarding="recording:start-recording"
@@ -50,8 +49,7 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
                 isRecording ? "record-button-active" : isPending ? "record-button-pending" : "accent",
             )}
             onClick={onClick}
-            disabled={isDisabled}
-            style={isDisabled && tooltipText ? {pointerEvents: "none"} : undefined}
+            disabled={isPending}
         >
             {countdown !== null && countdown > 0 ? (
                 <div className="flex items-center gap-1">
@@ -79,19 +77,6 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
             )}
         </button>
     );
-
-    if (isDisabled && tooltipText) {
-        return (
-            <div className="tooltip-wrapper pos-rel flex flex-1 w-full" style={{opacity: 0.5, cursor: "not-allowed"}}>
-                {buttonEl}
-                <div className={clsx("tooltip-container elevated-sharp pos-bottom p-01 br-2 bg-dark")}>
-                    <div className="tooltip-inner br-1 pl-2 pr-2 pt-1 pb-1 border-1 border-mid-black border-solid">
-                        <p className="text-white text md">{tooltipText}</p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
 
     return buttonEl;
 };

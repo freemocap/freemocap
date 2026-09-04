@@ -51,8 +51,6 @@ const CalibrationModule = ({
   const loadedCalibration = useAppSelector(selectLoadedCalibration);
   const isCamerasLoading = useAppSelector(selectIsLoading);
 
-  const noCamerasConnected = connectedCameraIds.length === 0;
-
   const {
     config,
     error,
@@ -253,12 +251,7 @@ const CalibrationModule = ({
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
-          disabled={noCamerasConnected && !isLoading}
-          tooltip={true}
-          tooltipPosition="pos-right"
-          tooltipText={
-            noCamerasConnected ? "Connect cameras to record" : undefined
-          }
+          disabled={isLoading}
         />
       )}
       <ButtonSm

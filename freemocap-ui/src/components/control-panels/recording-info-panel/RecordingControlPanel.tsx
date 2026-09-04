@@ -12,10 +12,8 @@ import { startRecording, stopRecording } from "@/store";
 import { processMocapRecording } from "@/store/slices/mocap/mocap-thunks";
 import { DelayRecordingStartControl } from "./recording-subcomponents/DelayRecordingStartControl";
 import { MicrophoneSelector } from "@/components/control-panels/recording-info-panel/recording-subcomponents/MicrophoneSelector";
-import { useServer } from "@/services/server/ServerContextProvider";
 import { getTimestampString } from "@/store/slices/recording/getTimestampString";
 import { StartStopRecordingButton } from "./recording-subcomponents/StartStopRecordingButton";
-import { useTranslation } from "react-i18next";
 import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import MocapSetupModal from "@/components/mocap-setup/mocap-setup-modal";
 
@@ -31,10 +29,6 @@ export const RecordingControlPanel: React.FC = () => {
   } = config;
 
   const [mocapSetupModalOpen, setMocapSetupModalOpen] = useState(false);
-
-  const { connectedCameraIds } = useServer();
-  const { t } = useTranslation();
-  const noCamerasConnected = connectedCameraIds.length === 0;
 
   useEffect(() => {
     if (!pendingOperation) return;
@@ -147,13 +141,6 @@ export const RecordingControlPanel: React.FC = () => {
             isPending={pendingOperation !== null}
             countdown={countdown}
             recordingStartTime={recordingStartTime}
-            disabled={noCamerasConnected && !recordingInfo.isRecording}
-           
-            tooltipText={
-              noCamerasConnected && !recordingInfo.isRecording
-                ? t("connectCamerasToRecord")
-                : undefined
-            }
             onClick={handleRecordButtonClick}
           />
         </div>

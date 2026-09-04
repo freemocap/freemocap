@@ -11,6 +11,7 @@ import BottomPanelContent from "@/layout/content/BottomPanelContent";
 import { useMenuActions } from "@/hooks/useMenuActions";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { RecordingCompleteDialog } from "@/components/control-panels/recording-info-panel/RecordingCompleteDialog";
+import { OperationErrorBanner } from "@/components/common/OperationErrorBanner";
 import { MainNavTabs } from "@/components/ui-components/MainNavTabs";
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
@@ -141,7 +142,10 @@ export const BasePanelLayout = ({
             <Panel className="right-side-panel" defaultSize={76} minSize={10}>
               <div className="flex flex-col h-full pos-rel bg-darkgray br-2">
                 <MainNavTabs />
-                <div className="flex-1 min-h-0 mt-45">{children}</div>
+                <div className="flex-1 min-h-0 mt-45 flex flex-col">
+                  <OperationErrorBanner />
+                  <div className="flex-1 min-h-0">{children}</div>
+                </div>
               </div>
               <RecordingCompleteDialog />
             </Panel>

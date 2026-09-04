@@ -101,6 +101,7 @@ const initialState: RecordingInfo = {
     },
     pendingOperation: null,
     countdown: null,
+    error: null,
 };
 
 // Initialize computed values
@@ -195,15 +196,29 @@ export const recordingSlice = createSlice({
         countdownSet: (state, action: PayloadAction<number | null>) => {
             state.countdown = action.payload;
         },
+        recordingErrorCleared: (state) => {
+            state.error = null;
+        },
     },
     extraReducers: (builder) => {
         builder
+            .addCase(startRecording.pending, (state) => {
+                state.error = null;
+            })
             .addCase(startRecording.fulfilled, (state, action) => {
                 state.isRecording = true;
                 state.recordingName = action.meta.arg.recordingName;
                 state.startedAt = new Date().toISOString();
                 state.duration = 0;
                 state.pendingOperation = null;
+                state.error = null;
+            })
+            .addCase(startRecording.rejected, (state, action) => {
+                state.pendingOperation = null;
+                state.error = action.error.message ?? 'Failed to start recording';
+            })
+            .addCase(stopRecording.pending, (state) => {
+                state.error = null;
             })
             .addCase(stopRecording.fulfilled, (state, action) => {
                 state.isRecording = false;
@@ -212,6 +227,11 @@ export const recordingSlice = createSlice({
                 state.duration = 0;
                 state.completionData = action.payload;
                 state.pendingOperation = null;
+                state.error = null;
+            })
+            .addCase(stopRecording.rejected, (state, action) => {
+                state.pendingOperation = null;
+                state.error = action.error.message ?? 'Failed to stop recording';
             });
     },
 });
@@ -237,7 +257,10 @@ export const {
     autoProcessToggled,
     pendingOperationSet,
     countdownSet,
+    recordingErrorCleared,
 } = recordingSlice.actions;
+
+export const selectRecordingError = (state: RootState): string | null => state.recording.error;
 
 /**
  * Shared selector: returns true when ANY recording mode is active

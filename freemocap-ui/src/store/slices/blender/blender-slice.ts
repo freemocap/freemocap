@@ -8,6 +8,8 @@ export interface BlenderState {
     detectedBlenderExePath: string | null;
     exportToBlenderEnabled: boolean;
     autoOpenBlendFile: boolean;
+    /** Remembers autoOpenBlendFile's value from before exportToBlenderEnabled was turned off, so it can be restored. */
+    autoOpenBlendFileBeforeExportDisabled: boolean | null;
     isExporting: boolean;
     isDetecting: boolean;
     isOpening: boolean;
@@ -28,6 +30,7 @@ const initialState: BlenderState = {
     detectedBlenderExePath: null,
     exportToBlenderEnabled: _persistedBlender?.exportToBlenderEnabled ?? true,
     autoOpenBlendFile: _persistedBlender?.autoOpenBlendFile ?? true,
+    autoOpenBlendFileBeforeExportDisabled: null,
     isExporting: false,
     isDetecting: false,
     isOpening: false,
@@ -46,7 +49,15 @@ export const blenderSlice = createSlice({
             state.blenderExePath = null;
         },
         exportToBlenderToggled: (state, action: PayloadAction<boolean>) => {
-            state.exportToBlenderEnabled = action.payload;
+            const enabled = action.payload;
+            if (!enabled && state.exportToBlenderEnabled) {
+                state.autoOpenBlendFileBeforeExportDisabled = state.autoOpenBlendFile;
+                state.autoOpenBlendFile = false;
+            } else if (enabled && !state.exportToBlenderEnabled && state.autoOpenBlendFileBeforeExportDisabled !== null) {
+                state.autoOpenBlendFile = state.autoOpenBlendFileBeforeExportDisabled;
+                state.autoOpenBlendFileBeforeExportDisabled = null;
+            }
+            state.exportToBlenderEnabled = enabled;
         },
         autoOpenBlendFileToggled: (state, action: PayloadAction<boolean>) => {
             state.autoOpenBlendFile = action.payload;

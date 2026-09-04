@@ -194,8 +194,6 @@ a = Analysis(
         'profile',
 
         # ── Dependencies in pyproject.toml but never imported ──
-        'numba',
-        'llvmlite',
         'libsass',
         'sass',
         'sklearn',

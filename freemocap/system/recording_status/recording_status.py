@@ -18,20 +18,53 @@ OUTPUT_DATA_FOLDER_NAME = "output_data"
 
 VIDEO_EXTENSIONS = {".mp4", ".avi", ".mov", ".mkv", ".webm"}
 
-REQUIRED_BLENDER_INPUT_FILES: list[str] = [
-    "mediapipe_body_3d_xyz.npy",
-    "mediapipe_right_hand_3d_xyz.npy",
-    "mediapipe_left_hand_3d_xyz.npy",
-    "mediapipe_face_3d_xyz.npy",
-    "mediapipe_body_total_body_center_of_mass.npy",
-    "mediapipe_body_segment_center_of_mass.npy",
-]
+def _blender_input_files_for(detector: str) -> list[str]:
+    """The .npy files the Blender add-on needs, for a given detector's output."""
+    return [
+        f"{detector}_body_3d_xyz.npy",
+        f"{detector}_right_hand_3d_xyz.npy",
+        f"{detector}_left_hand_3d_xyz.npy",
+        f"{detector}_face_3d_xyz.npy",
+        f"{detector}_body_total_body_center_of_mass.npy",
+        f"{detector}_body_segment_center_of_mass.npy",
+    ]
+
+
+# Output filenames are prefixed with the detector that produced them, so the required
+# set depends on which detector ran. This used to be a flat mediapipe-only list, which
+# meant an rtmpose recording always failed the pre-flight check with "missing
+# mediapipe_*.npy" and could never be exported to Blender at all.
+BLENDER_INPUT_FILES_BY_DETECTOR: dict[str, list[str]] = {
+    "rtmpose": _blender_input_files_for("rtmpose"),
+    "mediapipe": _blender_input_files_for("mediapipe"),
+}
+
+# Kept for backwards compatibility with callers that import this name directly.
+REQUIRED_BLENDER_INPUT_FILES: list[str] = BLENDER_INPUT_FILES_BY_DETECTOR["mediapipe"]
+
+DEFAULT_BLENDER_INPUT_DETECTOR = "mediapipe"
 
 
 LEGACY_BLENDER_INPUT_FILENAMES: dict[str, str] = {
     "mediapipe_right_hand_3d_xyz.npy": "mediapipe_right_hand_right_hand.npy",
     "mediapipe_left_hand_3d_xyz.npy": "mediapipe_left_hand_left_hand.npy",
+    "rtmpose_right_hand_3d_xyz.npy": "rtmpose_right_hand_right_hand.npy",
+    "rtmpose_left_hand_3d_xyz.npy": "rtmpose_left_hand_left_hand.npy",
 }
+
+
+def detect_blender_input_detector(output_data: Path) -> str:
+    """Which detector's output is present in this folder.
+
+    Picks whichever detector actually has a body file on disk rather than assuming one,
+    so a recording processed with either detector passes its own pre-flight check.
+    Falls back to the default so the caller still gets a useful "missing files" list
+    naming real filenames instead of an empty one.
+    """
+    for detector in BLENDER_INPUT_FILES_BY_DETECTOR:
+        if (output_data / f"{detector}_body_3d_xyz.npy").exists():
+            return detector
+    return DEFAULT_BLENDER_INPUT_DETECTOR
 
 STAGE_RAW_VIDEOS = "Synchronized videos"
 STAGE_CALIBRATION = "Calibration"
@@ -77,19 +110,22 @@ class RecordingStatus(BaseModel):
 
 def missing_blender_input_files(
     recording_folder_path: str | Path,
+    detector: str
 ) -> list[str]:
     output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
+    detector = detect_blender_input_detector(output_data)
 
     return [
         name
-        for name in REQUIRED_BLENDER_INPUT_FILES
+        for name in BLENDER_INPUT_FILES_BY_DETECTOR[detector]
         if not _find_blender_input_file(output_data, name).exists()
     ]
 
 
-def raise_if_not_blender_ready(recording_folder_path: str|Path) -> None:
+def raise_if_not_blender_ready(recording_folder_path: str|Path, 
+                               detector:str) -> None:
     """Pre-flight check for export_to_blender. Raises FileNotFoundError listing all missing files."""
-    missing = missing_blender_input_files(recording_folder_path)
+    missing = missing_blender_input_files(recording_folder_path, detector)
     if missing:
         output_data = Path(recording_folder_path) / OUTPUT_DATA_FOLDER_NAME
         raise FileNotFoundError(
@@ -189,13 +225,14 @@ def _build_blender_inputs_stage(
     recording_folder: Path,
 ) -> StageStatus:
     output_data = recording_folder / OUTPUT_DATA_FOLDER_NAME
+    detector = detect_blender_input_detector(output_data)
 
     files = [
         _file_status(
             _find_blender_input_file(output_data, name),
             display_name=name,
         )
-        for name in REQUIRED_BLENDER_INPUT_FILES
+        for name in BLENDER_INPUT_FILES_BY_DETECTOR[detector]
     ]
 
     present = sum(1 for file_status in files if file_status.exists)

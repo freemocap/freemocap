@@ -38,6 +38,7 @@ export const MocapPanel: React.FC = () => {
         setCalibrationTomlPath,
         clearCalibrationTomlPath,
         clearError,
+        detectorType,
     } = useMocap();
 
     const {
@@ -89,7 +90,9 @@ export const MocapPanel: React.FC = () => {
     const handleSelectDirectory = async (): Promise<void> => {
         if (!isElectron || !api) return;
         try {
-            const result: string | null = await api.fileSystem.selectDirectory.mutate();
+            const result: string | null = await api.fileSystem.selectDirectory.mutate({
+                defaultPath: mocapRecordingPath || undefined,
+            });
             if (result) {
                 await setManualRecordingPath(result);
             }
@@ -330,6 +333,7 @@ export const MocapPanel: React.FC = () => {
                         recordingFolderPath={mocapRecordingPath}
                         disabled={isLoading}
                         hasBlendFile={recordingStatus?.has_blend_file}
+                        detectorType={detectorType}
                     />
                 </div>
             </div>

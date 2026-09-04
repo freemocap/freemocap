@@ -175,7 +175,14 @@ def _run_pyceres_path(
         video_metadata: dict[CameraIdString, VideoMetadata],
 ) -> tuple[CalibrationResult, GroundPlaneResult | None]:
     """Run calibration using the pyceres bundle adjustment solver."""
-    from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
+    try:
+        from freemocap.core.tasks.calibration.pyceres_calibration.pyceres_calibration_pipeline import run_pyceres_calibration
+    except ImportError as e:
+        raise RuntimeError(
+            "The 'Accurate' calibration solver requires the optional `pyceres` package, "
+            "which is not installed in this environment. Install it with "
+            "`uv sync --group pyceres`, or select the 'Anipose legacy' solver instead."
+        ) from e
 
     if len(all_observations) == 0:
         raise ValueError("No valid charuco observations found")

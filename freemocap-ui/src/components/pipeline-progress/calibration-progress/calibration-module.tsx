@@ -8,6 +8,8 @@ import CalibrationSettings from "./calibration-settings";
 import { FloatingOnboarding } from "@/hooks/floatingOnboarding";
 import PromptTooltip from "@/components/ui-components/PromptTooltip";
 import ButtonSm from "@/components/ui-components/ButtonSm";
+import ImportVideosModal from "@/components/control-panels/mocap-control-panel/ImportVideosModal";
+import charucoBoardImage from "@/assets/images/charuco_board.webp";
 import { useCalibration } from "@/hooks/useCalibration";
 import { useElectronIPC, useServer } from "@/services";
 import { useAppDispatch, useAppSelector } from "@/store";
@@ -72,6 +74,7 @@ const CalibrationModule = ({
   const [isStopping, setIsStopping] = useState(false);
   const [recordingStartTime, setRecordingStartTime] = useState<number | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
+  const [showImportVideosModal, setShowImportVideosModal] = useState(false);
 
   const hasAutoOpened = useRef(false);
 
@@ -190,22 +193,19 @@ const CalibrationModule = ({
     dispatchStartCalibrationRecording();
   }, [dispatch, dispatchStartCalibrationRecording]);
 
-  const handleImportVideos = useCallback(async () => {
-    if (!isElectron || !api) return;
-    const result: string | null = await api.fileSystem.selectDirectory.mutate();
-    if (result) {
-      await setManualRecordingPath(result);
+  const handleOpenImportVideos = useCallback(() => {
+    setShowImportVideosModal(true);
+  }, []);
+
+  const handleVideosImported = useCallback(
+    async (result: { recordingPath: string }) => {
       setCalibrationSource("import-videos");
       dispatch(calibrationAutoLoadDismissed(null));
+      await setManualRecordingPath(result.recordingPath);
       calibrateSelectedRecording();
-    }
-  }, [
-    api,
-    isElectron,
-    dispatch,
-    setManualRecordingPath,
-    calibrateSelectedRecording,
-  ]);
+    },
+    [dispatch, setManualRecordingPath, calibrateSelectedRecording],
+  );
 
   const handleImportToml = useCallback(async () => {
     if (!isElectron || !api) return;
@@ -257,7 +257,7 @@ const CalibrationModule = ({
         text="Import Calibration videos"
         className="full-width"
         textClass="text-align-left"
-        onClick={handleImportVideos}
+        onClick={handleOpenImportVideos}
         disabled={!isElectron || isLoading}
       />
       <ButtonSm
@@ -278,9 +278,20 @@ const CalibrationModule = ({
     </div>
   );
 
+  const importVideosModal = (
+    <ImportVideosModal
+      open={showImportVideosModal}
+      onClose={() => setShowImportVideosModal(false)}
+      onImported={handleVideosImported}
+      defaultNameTag="imported_calibration"
+    />
+  );
+
   // Recording in progress
   if (isRecording) {
     return (
+      <>
+      {importVideosModal}
       <div className="calibration-module-recording flex flex-col p-1 bg-middark br-2 pos-rel gap-1 min-w-0 w-full">
         {errorBanner}
         <div className="flex flex-row items-center min-w-0 w-full">
@@ -354,12 +365,15 @@ const CalibrationModule = ({
           />
         </div>
       </div>
+      </>
     );
   }
 
   // Calibrated
   if (isCalibrated) {
     return (
+      <>
+      {importVideosModal}
       <div
         className="calibration-module-calibarted z-4 flex flex-col p-1 bg-middark br-1 pos-rel"
         style={{ minWidth: 0 }}
@@ -453,11 +467,14 @@ const CalibrationModule = ({
           />
         </div>
       </div>
+      </>
     );
   }
 
   // Not calibrated, not recording
   return (
+    <>
+    {importVideosModal}
     <div className="calibration-module-idle  flex flex-col p-1 bg-middark br-2 pos-rel order-2 ">
       {errorBanner}
       <div className="flex flex-row items-center">
@@ -480,7 +497,7 @@ const CalibrationModule = ({
                 title="How to Calibrate your cameras"
                 text="Print a ChArUco board and show it to each camera while recording, pan and rotate it so it can be captured from different angles for accurate 3D tracking."
                 image={true}
-                imageSrc="/images/charuco_board.webp"
+                imageSrc={charucoBoardImage}
                 position="pos-right"
                 variant="default"
                 button={true}
@@ -556,6 +573,7 @@ const CalibrationModule = ({
         disabled={isLoading}
       />
     </div>
+    </>
   );
 };
 

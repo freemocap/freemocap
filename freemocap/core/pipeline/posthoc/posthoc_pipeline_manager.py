@@ -25,7 +25,7 @@ from freemocap.core.tasks.calibration.calibration_task_config import PosthocCali
 from freemocap.core.tasks.calibration.posthoc_calibration_task import run_posthoc_calibration_task
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig
 from freemocap.core.types.type_overloads import PipelineIdString
-from freemocap.core.pipeline.posthoc.progress_messages import PipelineProgressMessage
+from freemocap.core.pipeline.posthoc.progress_messages import AggregatorNodeProgressMessage, PipelineProgressMessage
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +44,10 @@ class PosthocPipelineManager(PipelineManagerABC):
     worker_registry: WorkerRegistry
     lock: multiprocessing.synchronize.Lock = field(default_factory=multiprocessing.Lock)
     pipelines: dict[PipelineIdString, PosthocPipeline] = field(default_factory=dict)
+    # Synthetic terminal messages for pipelines stopped manually (via stop_pipeline/
+    # stop_all_pipelines), which never emit their own terminal COMPLETE/FAILED message
+    # since they're killed rather than left to finish. Drained by get_progress_updates().
+    pending_stop_messages: list[PipelineProgressMessage] = field(default_factory=list)
 
     # ------------------------------------------------------------------
     # Lazy cleanup
@@ -175,10 +179,23 @@ class PosthocPipelineManager(PipelineManagerABC):
     # Lifecycle
     # ------------------------------------------------------------------
 
+    def _stopped_by_user_message(self, pipeline: PosthocPipeline) -> AggregatorNodeProgressMessage:
+        return AggregatorNodeProgressMessage(
+            pipeline_id=pipeline.id,
+            pipeline_type=str(pipeline.pipeline_type),
+            phase="failed",
+            progress_fraction=0.0,
+            detail="Stopped by user",
+            recording_name=pipeline.recording_info.recording_name,
+            recording_path=str(pipeline.recording_info.full_recording_path),
+        )
+
     def stop_pipeline(self, pipeline_id: PipelineIdString) -> bool:
         """Shutdown a single pipeline by ID. Returns True if found, False if not."""
         with self.lock:
             pipeline = self.pipelines.pop(pipeline_id, None)
+            if pipeline is not None:
+                self.pending_stop_messages.append(self._stopped_by_user_message(pipeline))
         if pipeline is None:
             logger.warning(f"stop_pipeline: pipeline [{pipeline_id}] not found")
             return False
@@ -191,6 +208,9 @@ class PosthocPipelineManager(PipelineManagerABC):
         with self.lock:
             pipelines = list(self.pipelines.values())
             self.pipelines.clear()
+            self.pending_stop_messages.extend(
+                self._stopped_by_user_message(pipeline) for pipeline in pipelines
+            )
         for pipeline in pipelines:
             pipeline.shutdown()
         logger.info(f"Stopped {len(pipelines)} posthoc pipeline(s)")
@@ -209,7 +229,10 @@ class PosthocPipelineManager(PipelineManagerABC):
         logger.info("PosthocPipelineManager: all pipelines shut down")
 
     def get_progress_updates(self) -> list[PipelineProgressMessage]:
-        progress_messages: list[PipelineProgressMessage] = []
+        with self.lock:
+            stop_messages, self.pending_stop_messages = self.pending_stop_messages, []
+
+        progress_messages: list[PipelineProgressMessage] = list(stop_messages)
 
         for pipeline in self.pipelines.values():
             progress_messages.extend(pipeline.get_progress_messages())

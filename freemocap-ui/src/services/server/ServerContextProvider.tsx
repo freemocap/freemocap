@@ -489,5 +489,3 @@ function handleProgress(message: ProgressMessage, dedupeRef: { current: Record<s
         }
     }
 }
-
-

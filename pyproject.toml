@@ -1,6 +1,6 @@
 [project]
 name = "freemocap"
-version = "2.0.0a20"
+version = "2.0.0a23"  # bumpver
 description = "A free and open source markerless motion capture system for everyone 💀✨"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,7 @@ dependencies = [
     "freemocap_blender_addon",
     "skellycam",
     "skellyforge",
+    "skelly_synchronize",
     #skelly utils
     "skellylogs",
     "skellypings",
@@ -44,6 +45,7 @@ skellycam = { git = "https://github.com/freemocap/skellycam", branch = "developm
 skellytracker = { git = "https://github.com/freemocap/skellytracker", branch = "development-streaming"}
 skellyforge = { git = "https://github.com/freemocap/skellyforge", branch = "development-streaming" }
 freemocap_blender_addon = { git = "https://github.com/freemocap/freemocap_blender_addon", branch = "development-streaming" }
+skelly_synchronize = { git = "https://github.com/freemocap/skellysync", branch = "philip/rewrite" }
 
 skellylogs = { git = "https://github.com/freemocap/skellylogs" }
 skellypings = { git = "https://github.com/freemocap/skellypings" }
@@ -67,8 +69,8 @@ packages = ["freemocap"]
   # bypass the default and pick a group explicitly:
   #   uv sync --no-default-groups --group cuda
   #   uv sync --no-default-groups --group cpu
-  # (--no-default-groups is required — cuda and cpu pull different onnxruntime
-  # builds, which share the `onnxruntime` import name and cannot coexist on disk.)
+  # (--no-default-groups is required — cuda and cpu both ship skellytracker with a
+  # different onnxruntime backend and can't coexist on disk, see the rtmlib note below.)
   default-groups = ["tracker-default"]
   override-dependencies = [
       "numpy>=2.3.4,<2.5",  # <2.5: NumPy 2.5 changed ScalarT internals, breaking beartype's NDArray introspection
@@ -98,7 +100,7 @@ packages = ["freemocap"]
 # so `git describe` still resolves to v1.4.7. Every bump command therefore passes
 # --ignore-vcs-tag to bypass those stale VCS tags (baked into the poe tasks).
 [tool.bumpver]
-current_version = "v2.0.0-alpha.20"
+current_version = "v2.0.0-alpha.23"
 version_pattern = "vMAJOR.MINOR.PATCH[-TAG.NUM]"
 commit_message = "Bump version {old_version} -> {new_version}"
 commit = true
@@ -114,9 +116,10 @@ push = true
 # version, producing an empty diff ("nothing to commit") and a duplicate tag.
 "pyproject.toml" = [
     'current_version = "{version}"',
-    # Matches the [project] version line only. bumpver anchors on the full key, so
-    # this does not also match `current_version` on the line above.
-    'version = "{pep440_version}"',
+    # The `# bumpver` marker pins this to the [project] version line ONLY — a bare
+    # `version = "..."` pattern also matches the rtmlib [[tool.uv.dependency-metadata]]
+    # pin above and clobbers it. (Both the marker and that pin go away when rtmlib does.)
+    'version = "{pep440_version}"  # bumpver',
 ]
 "freemocap/__init__.py" = ['__version__ = "{version}"']
 "freemocap-ui/package.json" = ['"version": "MAJOR.MINOR.PATCH[-TAG.NUM]"']

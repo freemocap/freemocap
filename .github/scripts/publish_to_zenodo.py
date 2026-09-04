@@ -52,6 +52,21 @@ def github_release_notes(repo, tag, gh_token):
     return response.json().get("body") or ""
 
 
+def latest_release_tag(repo, gh_token):
+    headers = {"Authorization": f"Bearer {gh_token}"} if gh_token else {}
+    response = requests.get(
+        f"https://api.github.com/repos/{repo}/releases/latest", headers=headers, timeout=60
+    )
+    if response.status_code == 200:
+        return response.json().get("tag_name")
+    response = requests.get(
+        f"https://api.github.com/repos/{repo}/releases?per_page=1", headers=headers, timeout=60
+    )
+    if response.status_code == 200 and response.json():
+        return response.json()[0].get("tag_name")
+    return None
+
+
 def latest_version_recid(token):
     response = requests.get(
         f"{ZENODO_API}/records/{CONCEPT_REC_ID}", headers=zenodo(token), timeout=60
@@ -88,10 +103,13 @@ def main():
     token = os.environ.get("ZENODO_ACCESS_TOKEN")
     if not token:
         die("ZENODO_ACCESS_TOKEN is not set (see the module docstring for how to create one)")
+    repo = os.environ.get("GITHUB_REPOSITORY", "freemocap/freemocap")
     tag = os.environ.get("RELEASE_TAG")
     if not tag:
-        die("RELEASE_TAG is not set")
-    repo = os.environ.get("GITHUB_REPOSITORY", "freemocap/freemocap")
+        tag = latest_release_tag(repo, os.environ.get("GH_TOKEN", ""))
+        if not tag:
+            die("RELEASE_TAG is not set and no releases were found on the repository")
+        print(f"  RELEASE_TAG not set - using the most recent release: {tag}")
     repo_name = repo.split("/")[-1]
     dry_run = os.environ.get("ZENODO_DRY_RUN", "") == "1"
 
@@ -99,17 +117,29 @@ def main():
     headers = zenodo(token)
 
     latest_recid = latest_version_recid(token)
-    print(f"  newest published version is record {latest_recid}, opening a new version draft on it")
-    response = requests.post(
-        f"{ZENODO_API}/deposit/depositions/{latest_recid}/actions/newversion",
-        headers=headers,
-        timeout=60,
+    print(f"  newest published version is record {latest_recid}")
+
+    response = requests.get(
+        f"{ZENODO_API}/deposit/depositions/{latest_recid}", headers=headers, timeout=60
     )
-    if response.status_code != 201:
-        die(f"Failed to create a new version draft on Zenodo record {latest_recid}", response)
+    if response.status_code != 200:
+        die(f"Could not fetch the published Zenodo deposit {latest_recid}", response)
     latest_draft_url = response.json().get("links", {}).get("latest_draft")
-    if not latest_draft_url:
-        die("Zenodo did not return a 'latest_draft' link", response)
+
+    if latest_draft_url:
+        print("  an unpublished new version draft already exists - reusing it")
+    else:
+        print("  opening a new version draft")
+        response = requests.post(
+            f"{ZENODO_API}/deposit/depositions/{latest_recid}/actions/newversion",
+            headers=headers,
+            timeout=60,
+        )
+        if response.status_code != 201:
+            die(f"Failed to create a new version draft on Zenodo record {latest_recid}", response)
+        latest_draft_url = response.json().get("links", {}).get("latest_draft")
+        if not latest_draft_url:
+            die("Zenodo did not return a 'latest_draft' link", response)
 
     response = requests.get(latest_draft_url, headers=headers, timeout=60)
     if response.status_code != 200:
@@ -117,34 +147,55 @@ def main():
     draft = response.json()
     draft_id = draft["id"]
 
-    for existing_file in draft.get("files", []):
-        requests.delete(
-            f"{ZENODO_API}/deposit/depositions/{draft_id}/files/{existing_file['id']}",
+    source_zip_url = f"https://github.com/{repo}/archive/refs/tags/{tag}.zip"
+    print(f"  downloading {source_zip_url}")
+    zip_response = requests.get(source_zip_url, timeout=900)
+    if zip_response.status_code != 200:
+        die(f"Failed to download source archive {source_zip_url}", zip_response)
+    zip_bytes = zip_response.content
+    file_name = f"{repo_name}-{tag}.zip"
+
+    for attempt in range(2):
+        for existing_file in draft.get("files", []):
+            requests.delete(
+                f"{ZENODO_API}/deposit/depositions/{draft_id}/files/{existing_file['id']}",
+                headers=headers,
+                timeout=60,
+            )
+        response = requests.put(
+            f"{draft['links']['bucket']}/{file_name}",
+            data=zip_bytes,
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
+            timeout=1800,
+        )
+        if response.status_code in (200, 201):
+            break
+        if response.status_code != 403 or attempt > 0:
+            die("Failed to upload the source archive to Zenodo", response)
+        print("  draft bucket is locked - discarding the stale draft and creating a fresh one")
+        requests.delete(f"{ZENODO_API}/deposit/depositions/{draft_id}", headers=headers, timeout=60)
+        response = requests.post(
+            f"{ZENODO_API}/deposit/depositions/{latest_recid}/actions/newversion",
             headers=headers,
             timeout=60,
         )
-
-    source_zip_url = f"https://github.com/{repo}/archive/refs/tags/{tag}.zip"
-    print(f"  downloading {source_zip_url}")
-    response = requests.get(source_zip_url, timeout=900)
-    if response.status_code != 200:
-        die(f"Failed to download source archive {source_zip_url}", response)
-    response = requests.put(
-        draft["links"]["bucket"],
-        params={"name": f"{repo_name}-{tag}.zip"},
-        data=response.content,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/octet-stream"},
-        timeout=1800,
-    )
-    if response.status_code not in (200, 201):
-        die("Failed to upload the source archive to Zenodo", response)
-    print(f"  uploaded {repo_name}-{tag}.zip ({response.json().get('size', '?')} bytes)")
+        if response.status_code != 201:
+            die("Failed to create a replacement new version draft", response)
+        latest_draft_url = response.json().get("links", {}).get("latest_draft")
+        if not latest_draft_url:
+            die("Zenodo did not return a 'latest_draft' link", response)
+        response = requests.get(latest_draft_url, headers=headers, timeout=60)
+        if response.status_code != 200:
+            die("Failed to fetch the replacement new version draft", response)
+        draft = response.json()
+        draft_id = draft["id"]
+    print(f"  uploaded {file_name} ({response.json().get('size', '?')} bytes)")
 
     notes = html.escape(github_release_notes(repo, tag, os.environ.get("GH_TOKEN", "")))
     notes = notes.replace("\r\n", "\n").replace("\n", "<br/>")[:MAX_DESCRIPTION_CHARS]
     metadata = {
         "title": RECORD_TITLE,
-        "upload_type": {"type": "software"},
+        "upload_type": "software",
         "publication_date": datetime.now(timezone.utc).date().isoformat(),
         "creators": load_creators(),
         "description": notes or f"Release {tag} of https://github.com/{repo}",

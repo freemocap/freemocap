@@ -283,20 +283,19 @@ def run_pyceres_bundle_adjustment(
 
         # Pin one camera's extrinsics if configured. Defaults to the first
         # camera in the input list, but can be set explicitly via
-        # config.pin_camera_id (resolved with the shared fallback ladder).
+        # config.pin_camera_id (by exact id, or by structured camera index).
         if config.pin_camera_0:
             if config.pin_camera_id is None:
                 pin_cam = cameras[0]
             else:
-                from freemocap.core.tasks.calibration.shared.camera_id_resolution import (
-                    resolve_camera_id_or_raise,
+                from freemocap.core.tasks.calibration.shared.pin_target_resolution import (
+                    resolve_pin_target_camera,
                 )
-                resolved = resolve_camera_id_or_raise(
-                    config.pin_camera_id,
-                    [c.id for c in cameras],
+                pin_cam = resolve_pin_target_camera(
+                    pin_camera_id=config.pin_camera_id,
+                    cameras=cameras,
                     context="pyceres solver pin_camera_id",
                 )
-                pin_cam = next(c for c in cameras if c.id == resolved)
             problem.set_parameter_block_constant(cam_quat_arrays[pin_cam.id])
             problem.set_parameter_block_constant(cam_trans_arrays[pin_cam.id])
 

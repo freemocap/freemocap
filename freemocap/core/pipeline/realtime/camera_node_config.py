@@ -63,6 +63,7 @@ def _charuco_tracker_config_for_board(board: CharucoBoardDefinition) -> TrackerC
         ]
     )
 
+#TODO - JSM - Yee-ikes! this is awful and ugly and NEEDS FIXED
 
 class CameraNodeConfig(BaseModel):
     worker_mode: WorkerMode = WorkerMode.PROCESS

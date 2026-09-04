@@ -14,7 +14,7 @@ from freemocap.core.tasks.calibration.shared.camera_extrinsics import CameraExtr
 from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.tasks.calibration.charuco_board.charuco_corners import CharucoCornersObservation
 from skellytracker.core.detectors.keypoint_detectors.charuco import CharucoBoardDefinition
-from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
+from freemocap.core.tasks.calibration.shared.pin_target_resolution import resolve_pin_target_camera
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult, \
     apply_groundplane_to_cameras
 from freemocap.core.tasks.calibration.shared.groundplane_math import estimate_board_groundplane
@@ -39,18 +39,17 @@ def pin_camera_to_origin(
 
     Args:
         cameras: List of camera models with extrinsics.
-        camera_id: ID of the camera to place at the origin. Resolved against
-            the camera list using the shared fallback ladder (exact id
-            equality, then heuristic index match).
+        camera_id: ID of the camera to place at the origin. Resolved against the
+            camera list by exact id, then by structured camera index.
 
     Returns:
         New list of CameraModel with adjusted extrinsics.
     """
-    candidate_ids = [cam.id for cam in cameras]
-    resolved_id = resolve_camera_id_or_raise(
-        camera_id, candidate_ids, context="pin_camera_to_origin",
+    ref_cam = resolve_pin_target_camera(
+        pin_camera_id=camera_id,
+        cameras=cameras,
+        context="pin_camera_to_origin",
     )
-    ref_cam = next(cam for cam in cameras if cam.id == resolved_id)
     R0 = ref_cam.extrinsics.rotation_matrix
     t0 = ref_cam.extrinsics.translation
 

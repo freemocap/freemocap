@@ -8,18 +8,23 @@ failure, and periodic file-change detection for hot-reloading.
 import logging
 import os
 import time
+from collections.abc import Mapping
 from pathlib import Path
 
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 
 import numpy as np
 from numpy.typing import NDArray
-from skellycam.core.types.type_overloads import CameraIdString
+from skellycam.core.types.type_overloads import CameraIdString, CameraIndexInt
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
-from freemocap.core.tasks.calibration.shared.camera_id_resolution import resolve_camera_id_or_raise
+from freemocap.core.tasks.calibration.shared.calibration_camera_binding import (
+    CalibrationBinding,
+    CalibrationMatchKind,
+    bind_calibration_to_live_cameras,
+)
 from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import project_2d_observation_to_3d
 from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
@@ -70,12 +75,17 @@ class CalibrationStateTracker:
         # Maps frozenset of active calibration-name strings -> pre-built sub-Triangulator.
         # Lazily populated on first frame with a given camera subset; reused thereafter.
         self._subset_triangulator_cache: dict[frozenset, Triangulator] = {}
-        # Maps runtime CameraIdString -> resolved calibration camera name.
-        # Lazily populated. Cleared when the incoming camera ID set changes.
-        self._cam_id_name_cache: dict[str, str] = {}
-        # Last seen frozenset of incoming camera IDs, for detecting camera set changes.
-        self._last_incoming_cam_ids: frozenset | None = None
-        # Rate-limit per-frame diagnostic logs (fire once per root cause category).
+        # Which calibration camera describes which live camera, and whether the
+        # calibration applies to this camera set at all. Recomputed only when the
+        # calibration or the live camera set changes -- never per frame.
+        self._binding: CalibrationBinding | None = None
+        self._binding_key: tuple | None = None
+        # The key we have already spoken about, so a persistent mismatch is reported
+        # exactly once rather than on every frame.
+        self._binding_reported_key: tuple | None = None
+        # Bumped on every successful load. Part of the binding key so that reloading a
+        # DIFFERENT calibration with the same camera set still re-evaluates.
+        self._calibration_generation: int = 0
 
         # self._timer = PipelineStageTimer(name="CalibrationStateTracker")
 
@@ -112,6 +122,69 @@ class CalibrationStateTracker:
     @property
     def is_valid(self) -> bool:
         return self._is_valid and self._triangulator is not None
+
+    @property
+    def binding(self) -> CalibrationBinding | None:
+        """How the live cameras map onto the calibration, or None before `bind_live_cameras`."""
+        return self._binding
+
+    def is_applicable(self) -> bool:
+        """Whether the loaded calibration actually describes the current camera set.
+
+        Distinct from `is_valid`: a calibration can be perfectly well-formed and simply
+        not describe the cameras that are plugged in right now. That is an expected
+        condition, not a failure, and it must never discard the calibration.
+        """
+        return self.is_valid and self._binding is not None and self._binding.applicable
+
+    def bind_live_cameras(
+        self,
+        *,
+        live_camera_indices: Mapping[CameraIdString, CameraIndexInt],
+    ) -> CalibrationBinding | None:
+        """Resolve the live camera set against the loaded calibration.
+
+        Cheap to call often: the answer is memoized on (calibration generation, live
+        camera id+index set) and only recomputed when one of those changes. The result
+        is reported exactly ONCE per key -- a calibration that does not fit the current
+        cameras is normal, so it gets one WARNING and then silence, not a line per frame.
+
+        Returns None when there is no calibration loaded at all.
+        """
+        if self._calibration is None:
+            return None
+
+        key = (
+            self._calibration_generation,
+            frozenset(live_camera_indices.items()),
+        )
+        if key == self._binding_key and self._binding is not None:
+            return self._binding
+
+        binding = bind_calibration_to_live_cameras(
+            calibration_cameras=self._calibration.cameras,
+            live_camera_indices=live_camera_indices,
+        )
+        self._binding = binding
+        self._binding_key = key
+        # A different binding means a different set of active cameras for the triangulator.
+        self._subset_triangulator_cache.clear()
+
+        if self._binding_reported_key != key:
+            self._binding_reported_key = key
+            if binding.kind is CalibrationMatchKind.EXACT:
+                logger.info(f"Calibration applies to the live cameras. {binding.reason}")
+            elif binding.kind is CalibrationMatchKind.INDEX:
+                logger.warning(f"Calibration matched by index, not id. {binding.reason}")
+            else:
+                # Not an error. Cameras get replugged; the calibration on hand often
+                # will not fit. Say it once, then run 2D-only until something changes.
+                logger.warning(
+                    f"Loaded calibration does not describe the connected cameras -- "
+                    f"skipping triangulation (2D only) until the calibration or the "
+                    f"camera set changes. {binding.reason}"
+                )
+        return binding
 
     @property
     def triangulator(self) -> Triangulator:
@@ -210,9 +283,10 @@ class CalibrationStateTracker:
                 f"Loaded calibration from {path} with "
                 f"{len(cameras)} cameras: {[c.id for c in cameras]}"
             )
+            self._calibration_generation += 1
             self._subset_triangulator_cache.clear()
-            self._cam_id_name_cache.clear()
-            self._last_incoming_cam_ids = None
+            self._binding = None
+            self._binding_key = None
 
             return True
         except Exception as e:
@@ -249,28 +323,29 @@ class CalibrationStateTracker:
                 )
             return None
 
+        # Identity is settled before we get here, by `bind_live_cameras`. A calibration
+        # that does not describe these cameras is an expected condition, already reported
+        # once -- it is not a triangulation failure and must not touch the failure counter.
+        if not self.is_applicable():
+            return None
+
         if triangulation_config is None:
             triangulation_config = TriangulationConfig()
 
         try:
-            calibration_camera_ids = self._triangulator.camera_ids
+            binding = self._binding
+            assert binding is not None  # guaranteed by is_applicable()
 
-            # Detect when the incoming camera set changes (rare: reconnect, etc.)
-            # and clear the name-resolution cache so stale entries don't linger.
-            incoming_cam_ids: frozenset[str] = frozenset(frame_observations_by_camera.keys())
-            if incoming_cam_ids != self._last_incoming_cam_ids:
-                self._cam_id_name_cache.clear()
-                self._last_incoming_cam_ids = incoming_cam_ids
-
-            # Resolve runtime cam_id -> calibration camera name once per cam.
+            # Map live cam_id -> calibration camera. The Triangulator is built from
+            # calibration CameraModels, so its keys are calibration ids.
             matched_obs_by_cam: dict[str, Observation] = {}
             for cam_id, obs in frame_observations_by_camera.items():
-                if cam_id not in self._cam_id_name_cache:
-                    self._cam_id_name_cache[cam_id] = _match_camera_name(
-                        cam_id=cam_id,
-                        calibration_camera_names=calibration_camera_ids,
-                    )
-                matched_obs_by_cam[self._cam_id_name_cache[cam_id]] = obs
+                camera_model = binding.by_live_id.get(cam_id)
+                if camera_model is None:
+                    # A camera the binding does not cover (it appeared after the last
+                    # bind). Skip its observation; the next bind will pick it up.
+                    continue
+                matched_obs_by_cam[camera_model.id] = obs
 
             if len(matched_obs_by_cam) == 0:
                 return AngulationResult(points={}, errors_px={})
@@ -283,7 +358,7 @@ class CalibrationStateTracker:
             # Reuse a cached sub-triangulator for this camera subset; only build
             # a new one when we see a novel active-camera combination.
             active_cam_set: frozenset[str] = frozenset(matched_obs_by_cam.keys())
-            if active_cam_set == frozenset(calibration_camera_ids):
+            if active_cam_set == frozenset(self._triangulator.camera_ids):
                 sub_triangulator = self._triangulator
             elif active_cam_set in self._subset_triangulator_cache:
                 sub_triangulator = self._subset_triangulator_cache[active_cam_set]
@@ -366,14 +441,14 @@ class CalibrationStateTracker:
             self._consecutive_failure_count = 0
             return AngulationResult(points=points, errors_px=errors_px)
 
-        except Exception as e:
+        except (ValueError, IndexError, np.linalg.LinAlgError) as e:
+            # NUMERICAL failure only. Camera-identity mismatch is settled up front by
+            # `bind_live_cameras` and can no longer reach this counter; anything else
+            # (a TypeError, an AttributeError) is a programming error and must escape.
             self._consecutive_failure_count += 1
             if self._consecutive_failure_count >= MAX_CONSECUTIVE_FAILURES:
-                # Running without a valid calibration for the live camera set
-                # is an expected mode (2D-only) — one summary line at
-                # invalidation, no traceback, no per-frame spam.
                 logger.error(
-                    f"Triangulation failed {self._consecutive_failure_count} times "
+                    f"Triangulation failed numerically {self._consecutive_failure_count} times "
                     f"consecutively — invalidating calibration. Last error: {e}"
                 )
                 self._invalidate()
@@ -390,26 +465,7 @@ class CalibrationStateTracker:
         self._calibration = None
         self._calibration_path = None
         self._subset_triangulator_cache.clear()
-        self._cam_id_name_cache.clear()
-        self._last_incoming_cam_ids = None
+        self._binding = None
+        self._binding_key = None
+        self._binding_reported_key = None
         # Preserve _calibration_file_mtime so we can detect when the file changes
-
-
-def _match_camera_name(
-    *,
-    cam_id: CameraIdString,
-    calibration_camera_names: list[str],
-) -> str:
-    """Match a runtime camera_id to a calibration camera name.
-
-    Uses exact equality first, then the same fallback ladder as the
-    SkellyCam video filename parser (cam-prefix, trailing-int, opaque
-    digit). Raises `CameraIdMismatchError` (a `KeyError`) on miss — the
-    caller's existing exception handling treats this as a triangulation
-    failure that increments the consecutive-failure counter.
-    """
-    return resolve_camera_id_or_raise(
-        cam_id,
-        calibration_camera_names,
-        context="runtime frame camera_id vs calibration TOML",
-    )

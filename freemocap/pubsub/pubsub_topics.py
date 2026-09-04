@@ -10,10 +10,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
-from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdString, MultiframeTimestampFloat
+from skellycam.core.types.type_overloads import (
+    CameraGroupIdString,
+    CameraIdString,
+    CameraIndexInt,
+    MultiframeTimestampFloat,
+)
 from skellytracker.core.data_primitives.observation import Observation
 
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
+from freemocap.core.tasks.calibration.shared.camera_model import CameraModel
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.types.type_overloads import (
     FrameNumberInt,
@@ -101,6 +107,24 @@ class VideoNodeOutputMessage(TopicMessageABC):
 # Aggregation output (realtime)
 # ---------------------------------------------------------------------------
 
+@dataclass(frozen=True, slots=True)
+class LiveCameraCalibrationBinding:
+    """Which calibration camera (if any) describes one live camera, and how it was found.
+
+    Published for EVERY live camera, including the ones no calibration camera matched, so
+    the websocket layer can describe the whole live camera set rather than silently
+    dropping the cameras a stale calibration does not cover.
+    """
+
+    live_camera_id: CameraIdString
+    camera_index: CameraIndexInt
+    match_kind: str
+    """`CalibrationMatchKind` value: "exact" | "index" | "unmatched"."""
+    calibration_camera_id: str | None
+    camera_model: CameraModel | None
+    """None when nothing was bound — the live camera has no usable calibration."""
+
+
 @dataclass
 class AggregationNodeOutputMessage(TopicMessageABC):
     frame_number: FrameNumberInt = 0
@@ -116,6 +140,12 @@ class AggregationNodeOutputMessage(TopicMessageABC):
     # person and a charuco board publishes two; nothing downstream may assume one. Empty
     # for a frame where nothing hydrated at all.
     reconstructions: dict[str, SkeletonReconstruction] = field(default_factory=dict)
+    # The aggregator is the ONLY owner of calibration state; everything downstream
+    # forwards this rather than loading and judging the calibration a second time.
+    calibration_bindings: tuple[LiveCameraCalibrationBinding, ...] = ()
+    calibration_applicable: bool = False
+    """Whether the loaded calibration describes this camera set. False is a normal,
+    expected mode (2D-only) — not an error."""
 
     def __post_init__(self) -> None:
         if self.frame_number < 0:

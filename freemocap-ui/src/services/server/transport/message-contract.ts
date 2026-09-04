@@ -62,15 +62,29 @@ export const CameraExtrinsicsSchema = z.object({
   translation: z.tuple([z.number(), z.number(), z.number()]),
 });
 
+/** How a live camera was matched to the loaded calibration. `unmatched` is a normal
+ *  state, not an error - cameras get replugged and the calibration on hand often does not
+ *  describe them. Such a camera still streams images and 2D overlays (its `image_size` is
+ *  live and correct); it just carries no intrinsics/extrinsics and cannot be triangulated. */
+export const CameraCalibrationMatchSchema = z.enum(["exact", "index", "unmatched"]);
+export type CameraCalibrationMatch = z.infer<typeof CameraCalibrationMatchSchema>;
+
+/** The frame's `cameras` array describes EVERY live camera, not just the calibrated ones,
+ *  so a consumer can tell "no calibration for this camera" apart from "not streaming".
+ *  `intrinsics`/`extrinsics` are null exactly when `match_kind` is "unmatched". */
 export const CalibratedCameraSchema = z.object({
   id: z.string(),
   index: z.number().int(),
   rotation: z.enum(["none", "clockwise_90", "rotate_180", "counterclockwise_90"]),
   image_size: z.tuple([z.number().int(), z.number().int()]),
-  intrinsics: CameraIntrinsicsSchema,
-  extrinsics: CameraExtrinsicsSchema,
+  intrinsics: CameraIntrinsicsSchema.nullable(),
+  extrinsics: CameraExtrinsicsSchema.nullable(),
   world_position: z.tuple([z.number(), z.number(), z.number()]),
   world_orientation: z.array(z.tuple([z.number(), z.number(), z.number()])),
+  match_kind: CameraCalibrationMatchSchema,
+  /** The calibration camera this one was bound to. Differs from `id` only when matched by
+   *  index, which means the intrinsics may belong to a different physical camera. */
+  calibration_camera_id: z.string().nullable(),
 });
 
 /** One segment of the DIMENSIONLESS model. `length_proportion` is the segment's length as

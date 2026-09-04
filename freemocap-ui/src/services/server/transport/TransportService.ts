@@ -58,14 +58,22 @@ export interface TransportServiceOptions {
 
 /** A cheap, stable signature of the calibration: a calibration hot-reload
  *  changes the intrinsics, extrinsics or rotation and thus the signature, so
- *  the camera slice updates without comparing full object graphs every frame. */
+ *  the camera slice updates without comparing full object graphs every frame.
+ *
+ *  `intrinsics`/`extrinsics` are null for a camera the loaded calibration does not
+ *  describe, which is a normal state - this runs BEFORE `fanOut`'s fault isolation, so
+ *  dereferencing them unguarded would throw straight into the message dispatch loop.
+ *  `match_kind` is part of the signature so an exact -> unmatched transition (or the
+ *  reverse) re-fans-out even when nothing else about the camera changed. */
 function cameraSignature(cameras: CalibratedCamera[]): string {
     return cameras
         .map(
             (c) =>
                 `${c.id}:${c.index}:${c.rotation ?? ""}:${c.image_size[0]}x${c.image_size[1]}:` +
-                `${JSON.stringify(c.intrinsics)}:` +
-                `${c.extrinsics.quaternion_wxyz.join(",")}:${c.extrinsics.translation.join(",")}:` +
+                `${c.match_kind ?? ""}:${c.calibration_camera_id ?? ""}:` +
+                `${JSON.stringify(c.intrinsics ?? null)}:` +
+                `${c.extrinsics ? c.extrinsics.quaternion_wxyz.join(",") : ""}:` +
+                `${c.extrinsics ? c.extrinsics.translation.join(",") : ""}:` +
                 `${JSON.stringify(c.world_position ?? "")}:${JSON.stringify(c.world_orientation ?? "")}`,
         )
         .join("|");

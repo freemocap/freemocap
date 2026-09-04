@@ -106,6 +106,19 @@ class CameraRotation(StrEnum):
     COUNTERCLOCKWISE_90 = "counterclockwise_90"
 
 
+class CameraCalibrationMatch(StrEnum):
+    """How a live camera was matched to the loaded calibration.
+
+    UNMATCHED is a normal, expected state — cameras get replugged and the calibration
+    on hand often does not describe them. Such a camera still streams images and 2D
+    overlays; it just carries no intrinsics/extrinsics and cannot be triangulated.
+    """
+
+    EXACT = "exact"
+    INDEX = "index"
+    UNMATCHED = "unmatched"
+
+
 # - Envelope (composed, not inherited) -
 
 @dataclass(frozen=True, slots=True)
@@ -202,17 +215,28 @@ class CalibratedCamera:
     2D overlay points and the JPEG both live in this space (the backend rotates
     the image once, per the live camera config, before tracking and encoding), so
     a consumer scales overlays by ``image_size`` and needs no separate rotation.
-    ``intrinsics``/``extrinsics`` are the calibration for that same rotated space.
+    ``intrinsics``/``extrinsics`` are the calibration for that same rotated space, and
+    are None when ``match_kind`` is UNMATCHED — the array describes EVERY live camera,
+    including the ones the loaded calibration does not cover, so a consumer can tell
+    "no calibration for this camera" apart from "this camera is not streaming".
+
+    ``index`` is the LIVE camera's index, not the calibration's: an unmatched camera has
+    no calibration entry to take one from.
     """
 
     id: CameraIdString
     index: CameraIndexInt
     rotation: CameraRotation
     image_size: tuple[int, int]
-    intrinsics: CameraIntrinsicsMessage
-    extrinsics: CameraExtrinsicsMessage
+    intrinsics: CameraIntrinsicsMessage | None = None
+    extrinsics: CameraExtrinsicsMessage | None = None
     world_position: tuple[float, float, float] = (0.0, 0.0, 0.0)
     world_orientation: tuple[tuple[float, float, float], ...] = ()
+    match_kind: CameraCalibrationMatch = CameraCalibrationMatch.EXACT
+    calibration_camera_id: str | None = None
+    """The calibration camera this one was bound to. Differs from ``id`` only when
+    matched by index — which means the intrinsics may belong to a different physical
+    camera. None when unmatched."""
 
     @classmethod
     def from_camera_model(
@@ -220,18 +244,47 @@ class CalibratedCamera:
         camera_model: CameraModel,
         *,
         camera_id: CameraIdString,
+        camera_index: CameraIndexInt,
         rotation: CameraRotation,
         image_size: tuple[int, int],
+        match_kind: CameraCalibrationMatch = CameraCalibrationMatch.EXACT,
+        calibration_camera_id: str | None = None,
     ) -> "CalibratedCamera":
         return cls(
             id=CameraIdString(camera_id),
-            index=CameraIndexInt(camera_model.index),
+            index=CameraIndexInt(camera_index),
             rotation=rotation,
             image_size=(int(image_size[0]), int(image_size[1])),
             intrinsics=CameraIntrinsicsMessage.from_camera_intrinsics(camera_model.intrinsics),
             extrinsics=CameraExtrinsicsMessage.from_camera_extrinsics(camera_model.extrinsics),
             world_position=tuple(float(c) for c in camera_model.world_position),
             world_orientation=tuple(tuple(float(v) for v in row) for row in camera_model.world_orientation),
+            match_kind=match_kind,
+            calibration_camera_id=calibration_camera_id or camera_model.id,
+        )
+
+    @classmethod
+    def unmatched(
+        cls,
+        *,
+        camera_id: CameraIdString,
+        camera_index: CameraIndexInt,
+        rotation: CameraRotation,
+        image_size: tuple[int, int],
+    ) -> "CalibratedCamera":
+        """A live camera the loaded calibration does not describe.
+
+        It streams and its 2D overlays scale correctly; it simply has no 3D.
+        """
+        return cls(
+            id=CameraIdString(camera_id),
+            index=CameraIndexInt(camera_index),
+            rotation=rotation,
+            image_size=(int(image_size[0]), int(image_size[1])),
+            intrinsics=None,
+            extrinsics=None,
+            match_kind=CameraCalibrationMatch.UNMATCHED,
+            calibration_camera_id=None,
         )
 
     def to_cbor_message(self) -> dict[str, Any]:
@@ -240,10 +293,12 @@ class CalibratedCamera:
             "index": self.index,
             "rotation": self.rotation.value,
             "image_size": list(self.image_size),
-            "intrinsics": self.intrinsics.to_cbor_message(),
-            "extrinsics": self.extrinsics.to_cbor_message(),
+            "intrinsics": self.intrinsics.to_cbor_message() if self.intrinsics is not None else None,
+            "extrinsics": self.extrinsics.to_cbor_message() if self.extrinsics is not None else None,
             "world_position": list(self.world_position),
             "world_orientation": [list(row) for row in self.world_orientation],
+            "match_kind": self.match_kind.value,
+            "calibration_camera_id": self.calibration_camera_id,
         }
 
 

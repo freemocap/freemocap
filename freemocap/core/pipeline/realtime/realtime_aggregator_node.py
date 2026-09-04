@@ -53,6 +53,7 @@ from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.realtime.realtime_pipeline_config import RealtimePipelineConfig
 from freemocap.core.pipeline.pipeline_stage_timer import PipelineStageTimer
 from freemocap.core.pipeline.pipeline_timing_reporter import PipelineTimingReporter
+from freemocap.core.tasks.calibration.shared.calibration_camera_binding import CalibrationMatchKind
 from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.core.tasks.triangulation.helpers.angulation_result import AngulationResult
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_point_gate import RealtimePointGate, \
@@ -68,6 +69,7 @@ from freemocap.pubsub.pubsub_topics import (
     ProcessFrameNumberTopic,
     ProcessFrameNumberMessage,
     AggregationNodeOutputMessage,
+    LiveCameraCalibrationBinding,
     AggregationNodeOutputTopic,
     PipelineConfigUpdateMessage,
     SkeletonInferenceResultMessage,
@@ -134,15 +136,55 @@ def _reproject_segment_origins(
         if pos is not None and not np.any(np.isnan(pos)):
             origins[i] = _from_blender(np.asarray(pos, dtype=np.float64)[:3])
     projected = calibration.triangulator.project(origins)  # (n_cameras, 60, 2)
+    # The triangulator is keyed by CALIBRATION camera id; every consumer of these
+    # overlays looks them up by LIVE camera id. Translate here, or the overlays
+    # silently vanish for any rig whose ids drifted from the calibration.
+    binding = calibration.binding
+    live_id_by_calibration_id = binding.live_id_for_calibration_id if binding is not None else {}
     out: dict[CameraIdString, dict[TrackedPointNameString, tuple[float, float]]] = {}
-    for cam_idx, camera_id in enumerate(calibration.triangulator.camera_ids):
+    for cam_idx, calibration_camera_id in enumerate(calibration.triangulator.camera_ids):
+        live_camera_id = live_id_by_calibration_id.get(calibration_camera_id)
+        if live_camera_id is None:
+            continue
         per_cam: dict[TrackedPointNameString, tuple[float, float]] = {}
         for i, name in enumerate(segment_names):
             x, y = projected[cam_idx, i]
             if not (np.isnan(x) or np.isnan(y)):
                 per_cam[name] = (float(x), float(y))
-        out[camera_id] = per_cam
+        out[live_camera_id] = per_cam
     return out
+
+
+def _publishable_calibration_bindings(
+        *,
+        calibration,
+        live_camera_indices: dict[CameraIdString, int],
+) -> tuple[LiveCameraCalibrationBinding, ...]:
+    """Flatten the calibration binding into the per-camera form that goes on the wire.
+
+    Emits an entry for EVERY live camera, matched or not. The websocket layer describes
+    the whole live camera set from this; dropping unmatched cameras here is what used to
+    leave the frontend with no way to know a camera had no usable calibration.
+    """
+    binding = calibration.binding
+    return tuple(
+        LiveCameraCalibrationBinding(
+            live_camera_id=live_camera_id,
+            camera_index=camera_index,
+            match_kind=(
+                binding.kind.value
+                if binding is not None and binding.by_live_id.get(live_camera_id) is not None
+                else CalibrationMatchKind.UNMATCHED.value
+            ),
+            calibration_camera_id=(
+                model.id
+                if binding is not None and (model := binding.by_live_id.get(live_camera_id))
+                else None
+            ),
+            camera_model=(binding.by_live_id.get(live_camera_id) if binding is not None else None),
+        )
+        for live_camera_id, camera_index in live_camera_indices.items()
+    )
 
 
 def _fill_extrapolated_center_of_mass(
@@ -340,11 +382,19 @@ class RealtimeAggregatorNode(AggregatorNode):
         calibration = CalibrationStateTracker.create_and_try_load(
             calibration_toml_path=Path(_configured_calib_path) if _configured_calib_path else None,
         )
+        # The live camera set this pipeline owns, with the structured index each
+        # camera reports. Fixed for the pipeline's life, so binding is settled here.
+        live_camera_indices = {
+            cam_id: config.camera_index
+            for cam_id, config in camera_group_shm.camera_configs.items()
+            if cam_id in camera_ids
+        }
         if calibration.is_valid:
             logger.info(
                 f"RealtimeAggregationNode [{camera_group_id}] loaded calibration "
                 f"from {calibration.calibration_path}"
             )
+            calibration.bind_live_cameras(live_camera_indices=live_camera_indices)
         else:
             logger.info(
                 f"RealtimeAggregationNode [{camera_group_id}] starting without "
@@ -499,6 +549,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             f"RealtimeAggregationNode [{camera_group_id}] "
                             f"hot-reloaded calibration from {calibration.calibration_path}"
                         )
+                        calibration.bind_live_cameras(live_camera_indices=live_camera_indices)
                         # Coordinate frame may have changed — reset filter + gate + XCoM
                         # tracking, and the body scale with them: every reading in the
                         # fitter's windows was measured in the old frame's units.
@@ -691,7 +742,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                 # One reconstruction per tracked skeleton, filled below. A skeleton that
                 # did not hydrate this frame is simply absent.
                 reconstructions: dict[str, SkeletonReconstruction] = {}
-                if (calibration.is_valid or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
+                if (calibration.is_applicable() or len(camera_ids) == 1) and aggregator_config.triangulation_enabled:
                     # Triangulate mediapipe observations
                     skeleton_observations_by_camera = {
                         cam_id: output.skeleton_observation
@@ -793,7 +844,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 enabled="extrapolated_center_of_mass"
                                 in bundle.skeleton.derived_quantities,
                             )
-                            if calibration.is_valid:
+                            if calibration.is_applicable():
                                 reconstruction.reprojected_segment_origins = (
                                     _reproject_segment_origins(
                                         calibration=calibration,
@@ -837,6 +888,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                         camera_node_outputs=frame_n_outputs,
                         keypoints_arrays=filtered_keypoints,
                         reconstructions=reconstructions,
+                        calibration_bindings=_publishable_calibration_bindings(
+                            calibration=calibration,
+                            live_camera_indices=live_camera_indices,
+                        ),
+                        calibration_applicable=calibration.is_applicable(),
                     ),
                 )
                 # Mark the slot as full and not-yet-consumed; the consumer

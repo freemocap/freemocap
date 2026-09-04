@@ -40,9 +40,11 @@ from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
 from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.streaming.message_composer import compose_messages
+from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.streaming.message_model import (
     AppStateMessage,
     CalibratedCamera,
+    CameraCalibrationMatch,
     CameraRotation,
     DetailedFramerate,
     FramerateMessage,
@@ -55,7 +57,6 @@ from freemocap.core.streaming.producers.producer_contexts import (
     FrameContext,
     StreamContext,
 )
-from freemocap.core.tasks.calibration.shared.calibration_state import CalibrationStateTracker
 from freemocap.utilities.wait_functions import await_10ms
 
 logger = logging.getLogger(__name__)
@@ -91,8 +92,10 @@ class WebsocketServer:
         # ── Standard-stream send path ────────────────────────────────────
         # One writer (the serializer owns the send lock).
         self._serializer = SendSerializer(websocket)
-        # Calibration hot-reload source (feeds the frame's cameras field).
-        self._calibration_state = CalibrationStateTracker.create_and_try_load()
+        # NOTE: this server does NOT load or judge calibration. The aggregation node is
+        # the single owner of calibration state; the frame's cameras field is built from
+        # the binding it publishes (see `_calibrated_cameras_from`). Two independent
+        # trackers is what let one invalidate while the other logged forever.
         # The skeleton set, memoized on the config it is built from. Constructing one loads
         # several YAMLs off disk, and the composition check runs on every emitted frame.
         self._tracked_skeletons_cache: tuple[tuple, tuple] | None = None
@@ -108,7 +111,10 @@ class WebsocketServer:
 
     # ── Composition lifecycle ──────────────────────────────────────────
 
-    def _build_stream_context(self) -> StreamContext:
+    def _build_stream_context(
+        self,
+        aggregator_output: AggregationNodeOutputMessage | None,
+    ) -> StreamContext:
         camera_ids = self._current_camera_ids()
         detector_type = self._current_detector_type()
         return StreamContext(
@@ -116,7 +122,7 @@ class WebsocketServer:
             # change re-derives which landmarks each skeleton measures.
             skeletons=self._tracked_skeletons(),
             camera_ids=camera_ids,
-            calibrated_cameras=self._calibrated_cameras(),
+            calibrated_cameras=self._calibrated_cameras_from(aggregator_output),
             detector_type=detector_type,
             pipeline_live=bool(camera_ids),
             live_image_sizes={
@@ -126,9 +132,12 @@ class WebsocketServer:
         )
 
     def _compose_current(self):
-        return compose_messages(self._build_stream_context())
+        return compose_messages(self._build_stream_context(None))
 
-    async def _ensure_composition(self) -> None:
+    async def _ensure_composition(
+        self,
+        aggregator_output: AggregationNodeOutputMessage | None,
+    ) -> None:
         """Rebuild the composition when the data model or calibration changed.
 
         The calibration hot-reloads on a file-mtime check; the data model is a
@@ -142,13 +151,17 @@ class WebsocketServer:
         and a 61-segment rebuild — which does not show up in the camera framerate at all,
         only in the rate frames actually reach the client.
         """
-        self._calibration_state.check_for_update()
         current = self._relay.composition
-        if current is not None and self._live_context_signature() == self._context_signature(current.context):
+        if current is not None and self._live_context_signature(aggregator_output) == self._context_signature(
+            current.context
+        ):
             return
-        self._relay.set_composition(compose_messages(self._build_stream_context()))
+        self._relay.set_composition(compose_messages(self._build_stream_context(aggregator_output)))
 
-    def _live_context_signature(self) -> tuple:
+    def _live_context_signature(
+        self,
+        aggregator_output: AggregationNodeOutputMessage | None,
+    ) -> tuple:
         """The context signature, read straight from its sources.
 
         Must stay identical to `_context_signature`; it exists so the per-frame check does
@@ -159,56 +172,61 @@ class WebsocketServer:
             camera_ids,
             self._current_detector_type(),
             bool(camera_ids),
-            self._calibrated_cameras(),
+            self._calibrated_cameras_from(aggregator_output),
         )
 
-    def _calibrated_cameras(self) -> tuple[CalibratedCamera, ...]:
-        """The current calibration's cameras, merged with the live camera config's
+    def _calibrated_cameras_from(
+        self,
+        aggregator_output: AggregationNodeOutputMessage | None,
+    ) -> tuple[CalibratedCamera, ...]:
+        """Describe every live camera, merging the aggregator's calibration binding with
+        this process's fresh view of rotation + rotated image size.
 
-        rotation + rotated image size. The overlay points and the JPEG both live in
-        the rotated image space, so their dimensions must come from the LIVE camera
-        config (which owns the rotation), not the stale calibration recording."""
-        calibration = self._calibration_state.calibration
-        if calibration is None:
+        Split of responsibility: the aggregator decided WHICH calibration camera (if any)
+        describes each live camera — that depends only on the calibration file and the
+        camera id/index set, both of which it holds correctly. Display geometry is read
+        here, because the aggregator's camera-config copy is a snapshot taken at process
+        spawn and never refreshed, while `pipeline.camera_configs` is always current.
+
+        The overlay points and the JPEG both live in the ROTATED image space, so the
+        dimensions must come from the live config, not the calibration recording.
+
+        Contains no logging. A calibration that does not fit the live cameras is reported
+        once, by its owner, not once per frame by its consumer.
+        """
+        if aggregator_output is None:
             return ()
         configs = self._live_camera_configs()
-        calibration_by_id = {cm.id: cm for cm in calibration.cameras}
-        calibration_by_index = {cm.index: cm for cm in calibration.cameras}
-        cameras = []
-        index_matched_ids: list[str] = []
-        for live_id, config in configs.items():
-            # Match the calibration camera by id; fall back to its index when the
-            # camera was re-enumerated and its id drifted (e.g. d441 -> fa5a).
-            # The fallback is LOUD: pairing one camera's intrinsics with another
-            # id is only tolerable while everyone can see that it happened.
-            camera_model = calibration_by_id.get(live_id)
-            if camera_model is None:
-                camera_model = calibration_by_index.get(config.camera_index)
-                if camera_model is not None:
-                    index_matched_ids.append(
-                        f"{live_id} -> index {config.camera_index} "
-                        f"(calibration id {camera_model.id!r})"
-                    )
-            if camera_model is None:
+        cameras: list[CalibratedCamera] = []
+        for binding in aggregator_output.calibration_bindings:
+            config = configs.get(binding.live_camera_id)
+            if config is None:
                 continue
             rotation = _CAMERA_ROTATION_BY_CONFIG.get(config.rotation, CameraRotation.NONE)
             # config.width / config.height are ALREADY the rotated dimensions
             # (CameraConfig.width/height swap for PORTRAIT orientation).
-            cameras.append(
-                CalibratedCamera.from_camera_model(
-                    camera_model,
-                    camera_id=live_id,
-                    rotation=rotation,
-                    image_size=(config.width, config.height),
+            image_size = (config.width, config.height)
+            if binding.camera_model is None:
+                cameras.append(
+                    CalibratedCamera.unmatched(
+                        camera_id=binding.live_camera_id,
+                        camera_index=config.camera_index,
+                        rotation=rotation,
+                        image_size=image_size,
+                    )
                 )
-            )
-        if index_matched_ids:
-            logger.error(
-                "Calibration cameras matched by INDEX, not id - the camera ids "
-                "drifted from the calibration recording and its intrinsics may "
-                "belong to a different physical camera. Recalibrate to fix: %s",
-                "; ".join(index_matched_ids),
-            )
+            else:
+                cameras.append(
+                    CalibratedCamera.from_camera_model(
+                        binding.camera_model,
+                        camera_id=binding.live_camera_id,
+                        camera_index=config.camera_index,
+                        rotation=rotation,
+                        image_size=image_size,
+                        match_kind=CameraCalibrationMatch(binding.match_kind),
+                        calibration_camera_id=binding.calibration_camera_id,
+                    )
+                )
         return tuple(cameras)
 
     def _live_camera_configs(self) -> CameraConfigs:
@@ -313,7 +331,7 @@ class WebsocketServer:
             return None
         newest = max(outputs, key=lambda m: m.frame_number)
 
-        await self._ensure_composition()
+        await self._ensure_composition(newest)
 
         image_bytes: bytes | bytearray | memoryview | None = None
         mf_timestamp: float = 0.0
@@ -358,7 +376,7 @@ class WebsocketServer:
         Each frame message carries just the
         newest camera-group payload.
         """
-        await self._ensure_composition()
+        await self._ensure_composition(None)
         payloads: dict[
             CameraGroupIdString, tuple[FrameNumberInt, float, bytes | bytearray | memoryview]
         ] = await asyncio.to_thread(

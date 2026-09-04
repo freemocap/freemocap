@@ -252,7 +252,7 @@ const MocapSetupModal: React.FC<MocapSetupModalProps> = ({
                   dispatchProcessMocapRecording();
                   onClose?.();
                 }}
-                disabled={!canProcessMocapRecording || isLoading}
+                disabled={!canProcessMocapRecording}
                 tooltip={true}
                 tooltipPosition="pos-top"
                 tooltipText={processBlockedReason ?? "Start mocap processing"}

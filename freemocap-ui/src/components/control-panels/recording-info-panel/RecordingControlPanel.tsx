@@ -96,8 +96,7 @@ export const RecordingControlPanel: React.FC = () => {
   };
 
   const handleRecordButtonClick = async (): Promise<void> => {
-    if (pendingOperation) return;
-
+    // No in-flight gate: every click sends start-or-stop and the server reconciles.
     if (recordingInfo.isRecording) {
       dispatch(pendingOperationSet({ type: "stop", timestamp: Date.now() }));
       try {

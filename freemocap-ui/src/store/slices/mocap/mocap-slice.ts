@@ -484,18 +484,19 @@ export const selectIsUsingManualMocapPath = createSelector(
     (origin) => origin === 'browsed',
 );
 
-// These guard only what would make the *request itself* malformed or redundant:
-// no target path to send, or an operation of the same kind already running. Whether
-// the directory currently holds videos / a calibration / connected cameras is the
-// server's call — it re-checks and reports back; the UI does not pre-refuse.
+// The only thing the UI checks before sending is whether the request can be formed:
+// there must be a target path to put in the request body. It does NOT gate on server
+// state it is only guessing at — "am I already recording" (assumed from a prior
+// command, never reconciled) or "is a request in flight". The button always sends;
+// the server reconciles the request against live state and reports back.
 export const selectCanStartMocapRecording = createSelector(
-    [selectMocapIsRecording, selectMocapIsLoading, selectEffectiveRecordingPath],
-    (isRecording, isLoading, effectivePath) => !isRecording && !isLoading && !!effectivePath
+    [selectEffectiveRecordingPath],
+    (effectivePath) => !!effectivePath
 );
 
 export const selectCanProcessMocapRecording = createSelector(
-    [selectMocapRecordingPath, selectMocapIsLoading, selectMocapIsRecording],
-    (mocapPath, isLoading, isRecording) => !!mocapPath && !isLoading && !isRecording
+    [selectMocapRecordingPath],
+    (mocapPath) => !!mocapPath
 );
 
 // ==================== Actions Export ====================

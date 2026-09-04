@@ -2,6 +2,7 @@ import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 import {RootState} from '@/store/root-state-types';
 import {ComputedRecordingPath, PendingOperation, RecordingConfig, RecordingInfo} from './recording-types';
 import {startRecording, stopRecording} from './recording-thunks';
+import {serverStateReceived, serverDisconnected} from '../connection/connection-slice';
 import {loadFromStorage} from '@/store/persistence';
 import {getTimestampString} from './getTimestampString';
 import {recordingsDirFromBaseFolder} from '@/utils/dataFolder';
@@ -232,6 +233,20 @@ export const recordingSlice = createSlice({
             .addCase(stopRecording.rejected, (state, action) => {
                 state.pendingOperation = null;
                 state.error = action.error.message ?? 'Failed to stop recording';
+            })
+
+            // Authoritative: the server pushes `recording_in_progress` per camera group
+            // on every state change. That is what "are we recording" means — not the
+            // UI's memory of a start/stop command it sent. The thunk `.fulfilled`
+            // handlers above only set an optimistic value for the round-trip; this
+            // corrects it to reality as soon as the next snapshot lands.
+            .addCase(serverStateReceived, (state, action) => {
+                const groups = Object.values(action.payload.state.camera_groups);
+                state.isRecording = groups.some(g => g.recording_in_progress);
+            })
+            .addCase(serverDisconnected, (state) => {
+                state.isRecording = false;
+                state.pendingOperation = null;
             });
     },
 });

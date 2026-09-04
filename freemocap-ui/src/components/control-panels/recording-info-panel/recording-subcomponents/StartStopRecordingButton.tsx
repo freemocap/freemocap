@@ -38,9 +38,10 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
         return () => clearInterval(interval);
     }, [isRecording, recordingStartTime, isPending]);
 
-    // The button never gates itself on external state (cameras connected, etc.) —
-    // it forms and sends the request, and the server reconciles / reports back.
-    // `isPending` only debounces a request that is already in flight.
+    // The button never gates itself. `isRecording` is live server truth
+    // (app_state.recording_in_progress) and only decides whether a click sends start
+    // or stop; `isPending` only drives the in-flight label. The button always sends —
+    // the server reconciles the request and reports back.
     const buttonEl = (
         <button
             data-onboarding="recording:start-recording"
@@ -49,7 +50,6 @@ export const StartStopRecordingButton: React.FC<StartStopButtonProps> = ({
                 isRecording ? "record-button-active" : isPending ? "record-button-pending" : "accent",
             )}
             onClick={onClick}
-            disabled={isPending}
         >
             {countdown !== null && countdown > 0 ? (
                 <div className="flex items-center gap-1">

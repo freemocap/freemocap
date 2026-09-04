@@ -204,7 +204,6 @@ export const MocapTaskTreeItem: React.FC = () => {
                         e.stopPropagation();
                         dispatchStopMocapRecording();
                     }}
-                    disabled={isLoading}
                     title="Stop mocap recording"
                 />
             ) : (
@@ -214,8 +213,8 @@ export const MocapTaskTreeItem: React.FC = () => {
                         e.stopPropagation();
                         dispatchStartMocapRecording();
                     }}
-                    disabled={!canStartRecording || isLoading}
-                    title={canStartRecording ? "Start mocap recording" : "Cannot record yet"}
+                    disabled={!canStartRecording}
+                    title={canStartRecording ? "Start mocap recording" : "Set a recording folder first"}
                 />
             )}
         </div>
@@ -248,7 +247,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                         <button
                             className="button sm primary flex-1"
                             onClick={dispatchStartMocapRecording}
-                            disabled={!canStartRecording || isLoading}
+                            disabled={!canStartRecording}
                         >
                             <span className="icon play-icon icon-size-20" /> Start Mocap Recording
                         </button>
@@ -256,7 +255,6 @@ export const MocapTaskTreeItem: React.FC = () => {
                             <button
                                 className="button sm btn-danger flex-1"
                                 onClick={dispatchStopMocapRecording}
-                                disabled={isLoading}
                             >
                                 <span className="icon stopstreaming-icon icon-size-20" /> Stop Recording
                             </button>
@@ -372,7 +370,7 @@ export const MocapTaskTreeItem: React.FC = () => {
                     <button
                         className="button sm secondary w-full"
                         onClick={dispatchProcessMocapRecording}
-                        disabled={!canProcessMocapRecording || isLoading}
+                        disabled={!canProcessMocapRecording}
                         title={processBlockedReason ?? undefined}
                     >
                         Process Selected Recording

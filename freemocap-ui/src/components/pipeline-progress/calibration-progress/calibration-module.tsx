@@ -57,7 +57,6 @@ const CalibrationModule = ({
     isLoading,
     isRecording,
     recordingProgress,
-    canStartRecording,
     updateCalibrationConfig,
     setManualRecordingPath,
     dispatchStartCalibrationRecording,
@@ -251,7 +250,6 @@ const CalibrationModule = ({
           className="full-width"
           textClass="text-align-left"
           onClick={handleRecordAndCalibrate}
-          disabled={isLoading}
         />
       )}
       <ButtonSm

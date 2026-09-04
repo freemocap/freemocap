@@ -11,7 +11,6 @@ import {
 import {
     selectActiveRecordingFullPath,
     selectActiveRecordingOrigin,
-    selectEffectiveRecordingPath,
 } from '@/store/slices/active-recording/active-recording-slice';
 
 export type {
@@ -176,20 +175,6 @@ export const selectCalibrationRecordingPath = selectActiveRecordingFullPath;
 export const selectIsUsingManualCalibrationPath = createSelector(
     [selectActiveRecordingOrigin],
     (origin) => origin === 'browsed',
-);
-
-// Guard only what would make the *request itself* malformed or redundant: no target
-// path to send, or a calibration operation of the same kind already running. Whether
-// the directory is in a calibratable state (videos present, cameras connected, …) is
-// the server's call — it re-checks and reports back; the UI does not pre-refuse.
-export const selectCanStartCalibrationRecording = createSelector(
-    [selectCalibrationIsRecording, selectCalibrationIsLoading, selectEffectiveRecordingPath],
-    (isRecording, isLoading, effectivePath) => !isRecording && !isLoading && !!effectivePath
-);
-
-export const selectCanCalibrate = createSelector(
-    [selectCalibrationRecordingPath, selectCalibrationIsLoading, selectCalibrationIsRecording],
-    (recordingPath, isLoading, isRecording) => !!recordingPath && !isLoading && !isRecording
 );
 
 export const {

@@ -13,8 +13,6 @@ import {
     selectCalibration,
     selectCalibrationDirectoryInfo,
     selectCalibrationRecordingPath,
-    selectCanCalibrate,
-    selectCanStartCalibrationRecording,
     selectIsUsingManualCalibrationPath,
     startCalibrationRecording,
     stopCalibrationRecording,
@@ -44,8 +42,6 @@ export function useCalibration() {
     const dispatch = useAppDispatch();
     const { api, isElectron } = useElectronIPC();
     const calibrationState = useAppSelector(selectCalibration);
-    const canStartRecording = useAppSelector(selectCanStartCalibrationRecording);
-    const canCalibrate = useAppSelector(selectCanCalibrate);
     const calibrationRecordingPath = useAppSelector(selectCalibrationRecordingPath);
     const directoryInfo = useAppSelector(selectCalibrationDirectoryInfo);
     const isUsingManualPath = useAppSelector(selectIsUsingManualCalibrationPath);
@@ -125,8 +121,6 @@ export function useCalibration() {
         calibrationRecordingPath,
         directoryInfo,
         isUsingManualPath,
-        canStartRecording,
-        canCalibrate,
         // Actions
         updateCalibrationConfig,
         setManualRecordingPath,

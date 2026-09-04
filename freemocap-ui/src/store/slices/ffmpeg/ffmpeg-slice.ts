@@ -1,5 +1,5 @@
 import {createSlice} from '@reduxjs/toolkit';
-import {RootState} from '@/store/types';
+import {RootState} from '@/store/root-state-types';
 import {detectFfmpeg} from './ffmpeg-thunks';
 
 export interface FfmpegState {

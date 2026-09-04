@@ -20,6 +20,11 @@ import cbor2
 
 from freemocap.core.streaming.message_model import (
     STANDARD_HUMAN_MODEL_ID,
+    CalibratedCamera,
+    CameraCalibrationMatch,
+    CameraExtrinsicsMessage,
+    CameraIntrinsicsMessage,
+    CameraRotation,
     ChannelBlock,
     ChannelKind,
     CoordinateConvention,
@@ -104,9 +109,34 @@ def build_frame_message() -> bytes:
         columns=("w", "x", "y", "z"),
         rows=[[1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]],
     )
+    # The frame's `cameras` array describes EVERY live camera. Pin both shapes: one
+    # the calibration covers, and one it does not (null intrinsics/extrinsics, which a
+    # consumer must handle without dereferencing them).
+    calibrated_camera = CalibratedCamera(
+        id="cam-golden-0",
+        index=0,
+        rotation=CameraRotation.NONE,
+        image_size=(1280, 720),
+        intrinsics=CameraIntrinsicsMessage(
+            fx=900.0, fy=900.0, cx=640.0, cy=360.0, k1=0.0, k2=0.0, p1=0.0, p2=0.0
+        ),
+        extrinsics=CameraExtrinsicsMessage(
+            quaternion_wxyz=(1.0, 0.0, 0.0, 0.0),
+            translation=(0.0, 0.0, 0.0),
+        ),
+        match_kind=CameraCalibrationMatch.EXACT,
+        calibration_camera_id="cam-golden-0",
+    )
+    uncalibrated_camera = CalibratedCamera.unmatched(
+        camera_id="cam-golden-1",
+        camera_index=1,
+        rotation=CameraRotation.CLOCKWISE_90,
+        image_size=(720, 1280),
+    )
     frame = FrameMessage(
         envelope=MessageEnvelope(timestamp=1.5),
         frame_number=99,
+        cameras=(calibrated_camera, uncalibrated_camera),
         instances=(
             ModelInstance(
                 instance_id=0,

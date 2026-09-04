@@ -91,3 +91,25 @@ def test_building_a_skeleton_set_is_expensive_enough_to_be_worth_memoizing() -> 
         f"building a skeleton set now costs {elapsed_ms:.2f}ms — if that is genuinely "
         "cheap now, revisit the memo in WebsocketServer._skeletons_for."
     )
+
+
+def test_the_frame_emit_path_does_not_stat_the_calibration_file() -> None:
+    """The websocket server must not poll calibration from the frame-emit path.
+
+    It used to hold its OWN `CalibrationStateTracker` and call `check_for_update()` from
+    `_ensure_composition` — an `os.path.getmtime` syscall on every emitted frame, plus a
+    second, independent opinion about whether the calibration was valid. That second
+    opinion is why one process could invalidate a calibration while this one went on
+    logging about it forever. Calibration now has exactly one owner (the aggregation
+    node); this server only forwards the binding it publishes.
+    """
+    import inspect
+
+    source = inspect.getsource(WebsocketServer)
+    assert "CalibrationStateTracker" not in source, (
+        "the websocket server must not own calibration state — the aggregation node is "
+        "the single owner and publishes the binding on its output message"
+    )
+    assert "check_for_update" not in source, (
+        "calibration file polling must not happen on the frame-emit path"
+    )

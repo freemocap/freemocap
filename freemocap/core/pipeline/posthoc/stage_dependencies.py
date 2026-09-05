@@ -3,17 +3,13 @@
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 
 
-def stage_dependencies(
-    *,
-    solve_calibration: bool,
-) -> dict[ProcessingStage, frozenset[ProcessingStage]]:
+def stage_dependencies() -> dict[ProcessingStage, frozenset[ProcessingStage]]:
+    """Mocap consumes resolved camera geometry independently of its acquisition."""
     stage = ProcessingStage
     return {
         stage.TIMING: frozenset(),
         stage.OBSERVATIONS: frozenset({stage.TIMING}),
-        stage.CALIBRATION: frozenset({stage.OBSERVATIONS})
-        if solve_calibration
-        else frozenset(),
+        stage.CALIBRATION: frozenset(),
         stage.TRIANGULATION: frozenset({stage.OBSERVATIONS, stage.CALIBRATION}),
         stage.FILTERING: frozenset({stage.TRIANGULATION, stage.TIMING}),
         stage.SCALE_FIT: frozenset({stage.FILTERING}),

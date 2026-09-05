@@ -8,7 +8,16 @@ notes deferred the schema or treated a large streaming window as a completed glo
 
 ## Implementation progress
 
-- Dependency-based invalidation distinguishes supplied calibration from solved calibration.
+Next milestone: process one real recording into canonical observations/timing and 3D outputs, then
+reprocess reconstruction from saved prerequisites with video opening and detector construction
+forbidden. Validate keep/overwrite through actual worker execution. Timestamp-based playback and
+the default annotated grid output follow this milestone. Plans-only check-in is required before
+resuming implementation.
+
+Keep functionality in its owning repository: capture/transport in SkellyCam, detector functionality
+in SkellyTracker, skeleton computation in SkellyForge. FreeMoCap coordinates their inputs and outputs.
+
+- Dependency-based invalidation consumes resolved camera geometry independently of its acquisition.
   Posthoc VideoNode uses the central tracker factory with exact nested detector configuration and
   cleanup on session construction failure. Multi-camera posthoc batching remains to be connected.
 - Validation after these changes: 28 focused tests pass. Tracker construction tests use mocked

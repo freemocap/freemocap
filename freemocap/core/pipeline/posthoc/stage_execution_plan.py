@@ -55,7 +55,7 @@ def build_execution_plan(
     if not set(request.sensor_groups).issubset(base.sensor_groups):
         raise ValueError("Requested sensor group is absent from the base run")
     stop = STAGE_ORDER.index(request.stop_stage)
-    dependencies = stage_dependencies(solve_calibration=request.solve_calibration)
+    dependencies = stage_dependencies()
     descendants = {
         stage
         for stage in STAGE_ORDER

@@ -19,7 +19,7 @@ The folder name is recording_id. All paths come from RecordingStructure.
   output/                            # requested additional exports
   logs/                              # this recording's processing logs
   <recording_id>.blend                # optional export
-  <recording_id>.freemocap.mp4         # optional portable recording export
+  <recording_id>.run-0.freemocap.mp4   # default annotated grid + embedded data
 ```
 
 Existing capture timestamp files remain inputs. The processed data includes the timing needed to
@@ -214,13 +214,13 @@ the new run_id and compute requested descendants. This deliberately avoids cross
 Overwrite replaces the affected outputs and removes invalid descendants from that run; stale
 biomechanics or exports must never appear current. Details are in the rebuild plan.
 
-## Optional exports: next phase
+## Default recording video and optional exports
 
-CSV(wide or tall), .NPY, BVH, .FBX, GLTF, .c3d, .xlsx,  Blender and .freemocap.mp4 are adapters over the canonical reader, never required to finish
+CSV(wide or tall), .NPY, BVH, .FBX, GLTF, .c3d, .xlsx and Blender are adapters over the canonical reader, never required to finish
 mocap processing. Every exporter selects a run explicitly.
 
-<recording_id>.freemocap.mp4 contains:
-- Synchronized video grid, annotated by default; raw or both by user selection.
+The default `<recording_id>.run-<run_id>.freemocap.mp4` contains:
+- Synchronized video grid annotated using the shared UI overlay renderer. The optional raw grid is `<recording_id>.run-<run_id>.raw.freemocap.mp4`.
 - Relevant recording/model information and the selected run's kinematic data.
 - Grid tile/camera/variant layout and video presentation-time -> recording-time mapping.
 - Versioned FreeMoCap payload identification and extractable data.
@@ -239,3 +239,5 @@ missing data, static fits and retained runs. Validate the schema before changing
 Use typed bounded array/Arrow batches before wire float32 packing; do not route disk through CBOR.
 Scientific computation belongs to SkellyForge, detection/mapping to SkellyTracker, and recording
 assembly/orchestration to FreeMoCap.
+
+Video retention, publication and stale-output handling follow [processing and playback integration](../02-pipeline/processing-and-playback-integration.md#recording-video-output).

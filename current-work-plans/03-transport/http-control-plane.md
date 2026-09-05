@@ -2,7 +2,7 @@
 
 **Describes (target):** `freemocap/api/http/` — the `/streaming/*` control endpoints (list / start /
 streams / stop) and the stream lifecycle. **Not built yet** — this is the spec for the [LATER] streaming
-control surface in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
+control surface in [current scope](../README.md#next-work-in-order).
 
 ## What this covers
 
@@ -13,4 +13,4 @@ control surface in [IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
 ## To capture when authored
 
 Confirm which endpoints exist vs. planned before asserting; tag `[IN]`/`[LATER]` per
-[IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
+[current scope](../README.md#next-work-in-order).

@@ -1,7 +1,7 @@
 # Spine & Thorax Redesign — COCO-Anchored Trunk
 
 Status: **IMPLEMENTED** (with two deviations noted inline). Companion to
-[../ontology.md](../ontology.md) and [05-linkage-chain](../05-linkage-chain/linkage-chain-design.md).
+[../ontology.md](../01-data-model/ontology.md) and [05-linkage-chain](../05-linkage-chain/linkage-chain-design.md).
 
 > **What landed vs. what this doc proposed.** The trunk re-partitioning shipped exactly as designed
 > (`sacrolumbar` → `thoracic` → `cervical_spine`, neck_center = shoulder midpoint, SC anterior
@@ -81,7 +81,7 @@ with the FK `connect_at` model. The root `pelvis` stays whole - it keeps the
 midline landmarks (hip center, sacrum_top, sacrum, coccyx, pubic symphysis)
 plus the sided ilium landmarks (crest/ASIS/PSIS/SI joint), and is the CoM
 anchor and tree root. Deferred to `[IN]` in
-[../IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
+[current scope](../README.md#next-work-in-order).
 
 ### Naming + aliases (transition safety)
 

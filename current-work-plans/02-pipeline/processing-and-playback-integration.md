@@ -13,10 +13,37 @@ Realtime consumes current camera frames and may drop stale work. Posthoc consume
 video frame in order with bounded backpressure. Neither mode owns another copy of the scientific
 algorithms. Posthoc scale estimation consumes the complete recording before reconstruction.
 
-Annotation consumes original images and selected saved observations. It is an export operation,
-independent of detector execution. It must never draw over an annotated output from another run.
+Annotation consumes original images and selected saved observations through the UI overlay renderer.
+The default video output is an annotated synchronized grid; per-camera annotated videos are not
+default outputs. The raw grid is optional. Annotation is independent of detector execution.
 
-## Channel and timing contract
+## Recording video output
+
+Default: `<recording_id>.run-<run_id>.freemocap.mp4`, an annotated synchronized grid.
+Optional: `<recording_id>.run-<run_id>.raw.freemocap.mp4`, the raw-image grid.
+Both embed the selected run's metadata and native-rate data. Keep creates another run's files;
+overwrite replaces the selected run's artifacts after successful temporary-file completion.
+Never use a previously annotated image as the source for rendering another result.
+
+Use the existing TypeScript `OverlayManager`, `SkeletonOverlayRenderer` and
+`CharucoOverlayRenderer` in `freemocap-ui/src/services/server/server-helpers/image-overlay/`.
+They draw through OffscreenCanvas and ImageBitmap, independently of React components. A dedicated
+browser rendering worker/page should accept original frames and selected observations, compose
+overlays through the same manager, then assemble grid tiles. Do not reproduce drawing rules in Python.
+The canonical-reader adapter must produce the same observation types used by the live UI.
+
+Before connecting encoding, verify identical UI/export pixels for the same frame, data and settings,
+including camera rotation, resizing, confidence, labels, and combined board/body overlays. Explicitly
+own and release intermediate ImageBitmaps. Browser hosting, encoder integration and payload embedding
+remain to be implemented and validated; this plan does not claim a working MP4 exporter.
+
+Bind artifact validity to the selected result's content signature and rendering settings, not only
+run_id or filename. An overwritten run can have the same filename and different data. If encoding
+fails after data publication, preserve the numerical result and mark the video stale/failed. Do not
+present an older video as current. Processing and default-video generation have separate statuses;
+the full default-output workflow is complete only when both succeed.
+
+## Shared sample semantics
 
 SkellyForge definitions remain authoritative for skeleton semantics. Shared channel definitions
 declare owner, ordered names, components, units and reference frame. Numeric computation produces
@@ -32,13 +59,15 @@ media-derived clock. Cross-device synchronization requires a supplied or measure
 
 ## Dependencies and execution
 
-Stage dependencies govern reuse and invalidation. Supplied calibration is independent of detection;
-solved calibration depends on board observations. Reconstruction reads filtered points and fitted
-scale. Biomechanics also reads recording time. Recompute only descendants of changed inputs.
+Stage dependencies govern reuse and invalidation. Mocap observations mean body/tracker observations;
+board observations belong to the calibration producer. Loading a file and solving board observations
+both deliver resolved camera geometry. Downstream stages do not receive an acquisition-mode flag.
+Changing geometry invalidates triangulation and its descendants; changing body detection preserves
+geometry. A calibration solve is a separate operation, not an implicit consequence of mocap detection.
+Reconstruction reads filtered points and fitted scale. Biomechanics also reads recording time.
 
-The dependency planner distinguishes supplied/solved calibration and validates reusable ancestors.
-It does not yet distinguish board and body observation stages, support initial ingestion into an
-empty store, or dispatch workers. Those are required before GUI integration.
+The planner represents calibration as a resolved geometry boundary. Initial ingestion into an empty
+store and worker dispatch remain required before GUI integration.
 
 The executor opens media and constructs tracker sessions only when observations require computation.
 Reconstruction-only execution reads saved prerequisites and starts numerical processing directly.

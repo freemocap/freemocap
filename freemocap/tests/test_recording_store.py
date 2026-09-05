@@ -39,23 +39,31 @@ from freemocap.core.recording.recording_writer import (
 from freemocap.system.recording_structure.recording_structure import RecordingStructure
 
 
-@pytest.mark.parametrize("solve_calibration", [False, True])
-def test_detection_restart_invalidates_only_dependent_calibration(
-    solve_calibration: bool,
-) -> None:
+def test_body_detection_restart_preserves_camera_geometry() -> None:
     plan = build_execution_plan(
         request=ProcessingRequest(
             sensor_groups=("mocap",),
             start_stage=ProcessingStage.OBSERVATIONS,
-            solve_calibration=solve_calibration,
         ),
         metadata=metadata_fixture(),
         signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
     )
-    assert (ProcessingStage.CALIBRATION in plan.execute) == solve_calibration
-    assert (ProcessingStage.CALIBRATION in plan.invalidate) == solve_calibration
+    assert ProcessingStage.CALIBRATION not in plan.execute
+    assert ProcessingStage.CALIBRATION not in plan.invalidate
     assert ProcessingStage.TIMING not in plan.invalidate
     assert ProcessingStage.RECONSTRUCTION in plan.execute
+
+
+def test_geometry_replacement_preserves_detection_and_invalidates_3d() -> None:
+    plan = build_execution_plan(
+        request=ProcessingRequest(sensor_groups=("mocap",), start_stage=ProcessingStage.CALIBRATION),
+        metadata=metadata_fixture(),
+        signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
+    )
+    assert ProcessingStage.OBSERVATIONS not in plan.invalidate
+    assert ProcessingStage.TIMING not in plan.invalidate
+    assert ProcessingStage.TRIANGULATION in plan.execute
+    assert ProcessingStage.RECONSTRUCTION in plan.invalidate
 
 
 def test_independent_stage_range_is_rejected() -> None:

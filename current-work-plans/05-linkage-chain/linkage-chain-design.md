@@ -2,7 +2,7 @@
 
 Status: PROPOSAL (not yet implemented). This document defines what layers 5–6 own,
 how they get built, and the invariants that prove them correct. It extends
-[ontology.md](../ontology.md) — read that first for the layer definitions.
+[ontology.md](../01-data-model/ontology.md) — read that first for the layer definitions.
 
 ---
 

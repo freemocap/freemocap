@@ -3,7 +3,7 @@
 **Describes (target):** the fan-out of the one message stream to third-party motion-capture protocols
 (LSL, VMC, …): the adapter contract, the LSL route, the VMC adapter, and the "start idle / ephemeral"
 lifecycle. **Not built yet** — this is the spec for the [LATER] adapter workstreams in
-[IMPLEMENTATION_PLAN.md](../IMPLEMENTATION_PLAN.md).
+[current scope](../README.md#next-work-in-order).
 
 ## What this covers
 

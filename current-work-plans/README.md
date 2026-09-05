@@ -18,7 +18,7 @@ into a self-describing stream of tracked skeletons.
 > **"Skeleton" is generic here.** A `SkeletonDefinition` describes any rigid named thing — the
 > VRM-aligned standard human at one end, a one-segment charuco board at the other — and a frame
 > carries several of them. Read "the human" throughout as the worked example, never as the contract
-> ([ontology.md](ontology.md), [07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
+> ([ontology.md](01-data-model/ontology.md), [07-generic-skeletons/design.md](07-generic-skeletons/design.md)).
 
 > **How this folder is organized.** Split **by architectural layer** (below). Older spec sets live
 > verbatim under [`archive/`](archive/) — they are history, not guidance. These docs and the code
@@ -27,7 +27,7 @@ into a self-describing stream of tracked skeletons.
 
 ## Layers (read in order)
 
-**Start with [`ontology.md`](ontology.md)** — the seven-layer kinematic architecture, the now/future line,
+**Start with [`ontology.md`](01-data-model/ontology.md)** — the seven-layer kinematic architecture, the now/future line,
 and the VMC Definition of Done. Then:
 
 | # | Layer | Covers |
@@ -37,7 +37,7 @@ and the VMC Definition of Done. Then:
 | **02** | [pipeline/](02-pipeline/) | The engine: math kernel + solve, the biomechanics layer, model-scale fitting, the realtime loop, the posthoc path. |
 | **03** | [transport/](03-transport/) | The wire: protocol, backend relay, hub + adapters, HTTP control plane, on-disk serialization. |
 | **04** | [ui/](04-ui/) | The frontend: TransportService dispatch, client homes, renderers. |
-| — | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | The cross-cutting scope tracker: scope table + progress log. |
+
 
 ## Status (what has landed)
 
@@ -85,9 +85,14 @@ and the VMC Definition of Done. Then:
 
 ## Next work (in order)
 
-1. **Recording contract + posthoc rebuild** — implement the [data model](03-transport/recording-data-model-proposal.md)
-   and round trip first, then [restartable stages](02-pipeline/posthoc-rebuild.md) with keep/overwrite.
-   Optional CSV/NPY, Blender and `.freemocap.mp4` exporters follow the core.
+1. **One complete posthoc recording into canonical storage** — the recording contract and stage
+   planner have focused tests; the actual processing path still needs integration. Persist named 2D
+   observations and capture timing, then triangulation and reconstruction outputs. Prove saved-data
+   reconstruction opens no video and constructs no detector. Verify keep/overwrite through worker
+   execution. See [posthoc rebuild](02-pipeline/posthoc-rebuild.md) and
+   [processing/playback contract](02-pipeline/processing-and-playback-integration.md).
+   Timestamp-based playback and the default annotated `.freemocap.mp4` follow this milestone;
+   the raw grid and additional formats are optional outputs.
 2. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
    `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 3. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
@@ -95,7 +100,16 @@ and the VMC Definition of Done. Then:
    synthesis/IK/backfill; the remaining deferred linkage/chain piece.
 5. Then `[LATER]`: the VMC adapter, the HTTP control plane and the frontend test suite.
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.
+| Scope | Work |
+|---|---|
+| IN — next milestone | Canonical observation/timing ingestion, 3D outputs, detector-free reprocessing, worker keep/overwrite validation. |
+| IN — follows milestone | Timestamp-based playback and shared-UI-overlay annotated grid output. |
+| LATER | Optional raw grid/additional exports, remaining anatomy work, VMC adapter and broader frontend tests. |
+| Separate SkellyCam follow-up | Unambiguous per-group acknowledgments/backpressure. |
+
+**Check-in gate:** plans updated; no further implementation until the user confirms continuation.
+Live camera operation after the SkellyCam buffer fix was confirmed by the user. See
+[buffer validation](03-transport/skellycam-payload-ownership.md) for test coverage and limits.
 
 ## Conventions (the one-liner; full form in [00-foundation/conventions.md](00-foundation/conventions.md))
 
@@ -114,8 +128,8 @@ never in string patterns** (vocabulary single-sourced in the
   twice is a bug.
 - **Positive definitions** — a doc says what a thing *is*, not the infinite set of what it isn't.
 - **Vocabulary** — keypoint (measured) · landmark (segment-local point) · segment (oriented volume),
-  per [ontology.md](ontology.md).
+  per [ontology.md](01-data-model/ontology.md).
 - **Reconcile, don't defer** — no single artifact (code, docs, conversation) is authoritative. Where they
   disagree, resolve what is *right* and fix whichever one is stale; never treat one as gospel.
-- **Scope lives here, not in history** — current scope is this README + IMPLEMENTATION_PLAN.md;
-  `archive/` and the progress log are history.
+- **Scope lives here, not in history** — current scope is this README;
+  `archive/` is history.

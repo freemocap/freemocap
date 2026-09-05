@@ -24,7 +24,6 @@ class ProcessingRequest(BaseModel):
 
     base_run_id: int = Field(default=0, ge=0)
     keep: bool = False
-    solve_calibration: bool = False
     start_stage: ProcessingStage = ProcessingStage.TIMING
     stop_stage: ProcessingStage = ProcessingStage.BIOMECHANICS
     sensor_groups: tuple[str, ...]

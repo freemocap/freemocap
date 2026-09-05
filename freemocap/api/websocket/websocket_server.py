@@ -38,7 +38,6 @@ from freemocap.app.freemocap_application import FreemocapApplication, get_freemo
 from freemocap.core.pipeline.realtime.camera_node_config import DEFAULT_DETECTOR_TYPE
 from freemocap.core.pipeline.realtime.camera_node_config import CameraNodeConfig
 from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
-from freemocap.core.tasks.mocap.realtime_filtering.realtime_filter_config import RealtimeFilterConfig
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.pubsub.pubsub_topics import AggregationNodeOutputMessage
 from freemocap.core.streaming.message_model import (
@@ -98,7 +97,7 @@ class WebsocketServer:
         # trackers is what let one invalidate while the other logged forever.
         # The skeleton set, memoized on the config it is built from. Constructing one loads
         # several YAMLs off disk, and the composition check runs on every emitted frame.
-        self._tracked_skeletons_cache: tuple[tuple, tuple] | None = None
+        self._tracked_skeletons_cache: tuple[str, tuple] | None = None
         # The relay consumes raw frame contexts via the injected source.
         self._relay = FrameRelay(
             serializer=self._serializer,
@@ -266,31 +265,24 @@ class WebsocketServer:
             if pipeline.alive:
                 return self._skeletons_for(
                     camera_node_config=pipeline.config.camera_node_config,
-                    scale_window_frames=(
-                        pipeline.config.aggregator_config.realtime_filter_config.segment_scale_window_frames
-                    ),
                 )
         # No pipeline yet: describe what the defaults would track, so a client connecting
         # early still receives a coherent model list.
-        return self._skeletons_for(
-            camera_node_config=CameraNodeConfig(),
-            scale_window_frames=RealtimeFilterConfig().segment_scale_window_frames,
-        )
+        return self._skeletons_for(camera_node_config=CameraNodeConfig())
 
     def _skeletons_for(
             self,
             *,
             camera_node_config: CameraNodeConfig,
-            scale_window_frames: int,
     ) -> tuple:
-        cache_key = (camera_node_config.model_dump_json(), scale_window_frames)
+        # This server DESCRIBES skeletons on the wire; it never reconstructs one, so it
+        # needs bundles only. The scale window belongs to a reconstruction state, which is
+        # the aggregator's business.
+        cache_key = camera_node_config.model_dump_json()
         cached = self._tracked_skeletons_cache
         if cached is not None and cached[0] == cache_key:
             return cached[1]
-        skeletons = build_tracked_skeletons(
-            camera_node_config=camera_node_config,
-            scale_window_frames=scale_window_frames,
-        )
+        skeletons = build_tracked_skeletons(camera_node_config=camera_node_config)
         self._tracked_skeletons_cache = (cache_key, skeletons)
         return skeletons
 

@@ -27,6 +27,11 @@ from freemocap.core.skeletons.charuco_board_skeleton import (
 from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
 from freemocap.core.skeletons.standard_human_skeleton import STANDARD_HUMAN_MODEL_ID
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
+from freemocap.core.skeletons.reconstruction_state import (
+    SkeletonReconstructionState,
+    build_reconstruction_states,
+    streaming_model_scale_source,
+)
 from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
 from freemocap.core.streaming.message_composer import compose_messages
 from freemocap.core.streaming.message_model import encode_message
@@ -37,8 +42,19 @@ from freemocap.tests.test_model_scale_in_the_loop import _standing_keypoints
 BOARD_WORLD_OFFSET = np.array([600.0, 300.0, 20.0])
 
 
+def _fresh_states(*bundles: TrackedSkeletonBundle) -> dict[str, SkeletonReconstructionState]:
+    """A clean reconstruction state per bundle — no scale readings, no roll carry."""
+    return build_reconstruction_states(
+        bundles=bundles, scale_source_for=streaming_model_scale_source(window_frames=30)
+    )
+
+
+def _fresh_state(bundle: TrackedSkeletonBundle) -> SkeletonReconstructionState:
+    return _fresh_states(bundle)[bundle.model_id]
+
+
 def _board_bundle(board: CharucoBoardDefinition) -> TrackedSkeletonBundle:
-    return build_charuco_board_bundle(board=board, scale_window_frames=30)
+    return build_charuco_board_bundle(board=board)
 
 
 def _observed_board(
@@ -63,9 +79,11 @@ def test_a_board_is_a_one_segment_skeleton_with_no_joints() -> None:
     assert bundle.skeleton.chains == {}
     assert len(bundle.skeleton.landmarks) == len(board.all_point_names)
     # No mass model, no balance quantities, and its roll is measured — so it opted into
-    # nothing, and has no roll resolver applying a continuity convention over a fact.
+    # nothing, and reconstructing it builds no roll resolver that would apply a continuity
+    # convention over a fact. The skeleton's own declaration is what decides that; nothing
+    # anywhere special-cases "board".
     assert bundle.skeleton.derived_quantities == frozenset()
-    assert bundle.roll_resolver is None
+    assert _fresh_state(bundle).roll_resolver is None
 
 
 def test_a_board_needs_no_authored_mapping_or_rest_pose() -> None:
@@ -86,7 +104,10 @@ def test_a_board_gets_a_centre_of_mass_without_declaring_a_mass_model() -> None:
     observed = _observed_board(bundle=bundle, square_length_mm=54.0)
 
     reconstruction = reconstruct_skeleton(
-        bundle=bundle, filtered_keypoints=observed, compute_center_of_mass=True
+        bundle=bundle,
+        state=_fresh_state(bundle),
+        filtered_keypoints=observed,
+        compute_center_of_mass=True,
     )
 
     assert reconstruction is not None
@@ -125,7 +146,10 @@ def test_the_fitted_scale_is_the_measured_square_length(
     )
 
     reconstruction = reconstruct_skeleton(
-        bundle=bundle, filtered_keypoints=observed, compute_center_of_mass=False
+        bundle=bundle,
+        state=_fresh_state(bundle),
+        filtered_keypoints=observed,
+        compute_center_of_mass=False,
     )
 
     assert reconstruction is not None
@@ -146,6 +170,7 @@ def test_a_misprinted_board_shows_up_as_a_scale_mismatch() -> None:
 
     reconstruction = reconstruct_skeleton(
         bundle=bundle,
+        state=_fresh_state(bundle),
         filtered_keypoints=_observed_board(
             bundle=bundle, square_length_mm=actual_square_length
         ),
@@ -176,7 +201,10 @@ def test_a_partially_visible_board_still_reconstructs() -> None:
     }
 
     reconstruction = reconstruct_skeleton(
-        bundle=bundle, filtered_keypoints=visible, compute_center_of_mass=False
+        bundle=bundle,
+        state=_fresh_state(bundle),
+        filtered_keypoints=visible,
+        compute_center_of_mass=False,
     )
 
     assert reconstruction is not None
@@ -203,6 +231,7 @@ def test_a_board_seen_edge_on_reconstructs_nothing_rather_than_guessing() -> Non
     assert (
         reconstruct_skeleton(
             bundle=bundle,
+            state=_fresh_state(bundle),
             filtered_keypoints=one_row_only,
             compute_center_of_mass=False,
         )
@@ -216,7 +245,7 @@ def test_a_board_seen_edge_on_reconstructs_nothing_rather_than_guessing() -> Non
 def _frame_with_a_person_and_a_board() -> dict:
     config = CameraNodeConfig()
     bundles = build_tracked_skeletons(
-        camera_node_config=config, scale_window_frames=30
+        camera_node_config=config
     )
     board_bundle = next(b for b in bundles if b.model_id == CHARUCO_BOARD_MODEL_ID)
 
@@ -230,9 +259,13 @@ def _frame_with_a_person_and_a_board() -> dict:
     )
 
     reconstructions = {}
+    states = _fresh_states(*bundles)
     for bundle in bundles:
         reconstruction = reconstruct_skeleton(
-            bundle=bundle, filtered_keypoints=keypoints, compute_center_of_mass=True
+            bundle=bundle,
+            state=states[bundle.model_id],
+            filtered_keypoints=keypoints,
+            compute_center_of_mass=True,
         )
         if reconstruction is not None:
             reconstructions[reconstruction.model_id] = reconstruction
@@ -321,6 +354,5 @@ def test_a_board_only_session_tracks_only_the_board() -> None:
     """Turning skeleton tracking off leaves one model, not a human full of NaNs."""
     bundles = build_tracked_skeletons(
         camera_node_config=CameraNodeConfig(skeleton_tracking_enabled=False),
-        scale_window_frames=30,
     )
     assert [b.model_id for b in bundles] == [CHARUCO_BOARD_MODEL_ID]

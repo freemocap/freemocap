@@ -54,15 +54,12 @@ rather than inlined so nobody later reads a bare `1.0` as a measurement.
 """
 
 
-def build_charuco_board_bundle(
-    *, board: CharucoBoardDefinition, scale_window_frames: int
-) -> TrackedSkeletonBundle:
+def build_charuco_board_bundle(*, board: CharucoBoardDefinition) -> TrackedSkeletonBundle:
     """The charuco board this run is tracking, built from its own geometry.
 
     Args:
         board: the board definition the detector is configured with - the single source of
             its point names, normalized geometry and connections.
-        scale_window_frames: how many frames the scale fit remembers.
     """
     skeleton = build_rigid_marker_skeleton(
         name=CHARUCO_BOARD_MODEL_ID,
@@ -117,20 +114,8 @@ def build_charuco_board_bundle(
         # Nothing to author: the markers are on the board, so the rest pose is identity.
         rest_pose=RestPose.default_for(skeleton=skeleton),
         landmark_mapping=mapping,
-        scale_fitter=StreamingModelScaleFitter(
-            skeleton=skeleton,
-            # A pass-through mapping measures everything it produces, so the board's one
-            # segment votes - unlike the human, where constructed trunk landmarks are
-            # excluded from setting the scale.
-            voting_segment_names=scale_voting_segment_names(
-                skeleton=skeleton,
-                measured_landmark_names=mapping.directly_measured_landmark_names,
-            ),
-            window_frames=scale_window_frames,
-        ),
         # The board declares no mass model, so it gets the unweighted mean of its markers.
         center_of_mass_definitions=CenterOfMassDefinitions.default_for(skeleton=skeleton),
         segment_masses={BOARD_SEGMENT_NAME: BOARD_MASS},
         scale_reference_name=SQUARE_LENGTH_SCALE_REFERENCE,
-        roll_resolver=None,
     )

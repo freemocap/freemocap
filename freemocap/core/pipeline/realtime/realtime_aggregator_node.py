@@ -42,7 +42,16 @@ from skellycam.core.types.type_overloads import CameraGroupIdString, CameraIdStr
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 from freemocap.core.skeletons.reconstruct_skeleton import reconstruct_skeleton
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
-from freemocap.core.skeletons.tracked_skeleton_set import build_tracked_skeletons
+from skellyforge.core.skeleton.pose.model_scale_fitting import scale_voting_segment_names
+
+from freemocap.core.skeletons.reconstruction_state import (
+    SkeletonReconstructionState,
+    streaming_model_scale_source,
+)
+from freemocap.core.skeletons.tracked_skeleton_set import (
+    TrackedSkeletonSet,
+    build_tracked_skeleton_set,
+)
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 from freemocap.core.streaming.channel_helpers import (
     origin_landmark_names,
@@ -190,14 +199,19 @@ def _publishable_calibration_bindings(
 def _fill_extrapolated_center_of_mass(
         *,
         reconstruction: SkeletonReconstruction,
-        previous_by_model: dict[str, tuple[np.ndarray, float]],
+        state: SkeletonReconstructionState,
         enabled: bool,
 ) -> None:
     """Add this skeleton's XCoM, from the change in its centre of mass since last frame.
 
-    Cross-frame state, which is why it lives here rather than in the pure per-frame
-    reconstruction. Keyed by model so two tracked skeletons cannot borrow each other's
-    velocity.
+    Cross-frame state, which is why it lives on the skeleton's own reconstruction state
+    rather than in the pure per-frame reconstruction. Per-skeleton so two tracked skeletons
+    cannot borrow each other's velocity.
+
+    This is the STREAMING estimate: a causal two-point backward difference, because a live
+    frame cannot see t+1. A batch driver takes velocity from the whole trajectory via
+    `center_of_mass_velocity` and feeds the SAME `extrapolated_center_of_mass` below. That
+    difference is temporal policy, not a second implementation — do not "unify" them.
 
     Skipped entirely for a skeleton that did not opt into `extrapolated_center_of_mass`:
     XCoM is a balance quantity about a body standing on the ground, and it means nothing
@@ -207,7 +221,7 @@ def _fill_extrapolated_center_of_mass(
     if not enabled or center_of_mass is None:
         return
     now = time.perf_counter()
-    previous = previous_by_model.get(reconstruction.model_id)
+    previous = state.previous_center_of_mass
     if previous is not None and float(center_of_mass[2]) > 0.0:
         previous_center, previous_time = previous
         elapsed = now - previous_time
@@ -217,7 +231,7 @@ def _fill_extrapolated_center_of_mass(
                 com_velocity=(center_of_mass - previous_center) / elapsed,
                 gravity=GRAVITY_ACCELERATION,
             )
-    previous_by_model[reconstruction.model_id] = (center_of_mass.copy(), now)
+    state.previous_center_of_mass = (center_of_mass.copy(), now)
 
 
 def _log_reconstruction_observability(
@@ -264,7 +278,7 @@ def _log_reconstruction_observability(
                     f"Skeleton {bundle.model_id!r} has no measured size yet, so its "
                     "segment lengths and fitted scale stay off the wire until a segment "
                     "that may set the scale is seen. Voting segments: "
-                    f"{len(bundle.scale_fitter.voting_segment_names)}"
+                    f"{len(scale_voting_segment_names(skeleton=bundle.skeleton, measured_landmark_names=bundle.landmark_mapping.directly_measured_landmark_names))}"
                 )
 
 
@@ -414,9 +428,11 @@ class RealtimeAggregatorNode(AggregatorNode):
         # once per run — every recording gets fresh fit windows, no module globals — and
         # rebuilt when the detector changes, because which landmarks are MEASURED (as
         # opposed to constructed from authored ratios) is a property of its mapping.
-        skeleton_bundles: tuple[TrackedSkeletonBundle, ...] = build_tracked_skeletons(
+        skeleton_set: TrackedSkeletonSet = build_tracked_skeleton_set(
             camera_node_config=pipeline_config.camera_node_config,
-            scale_window_frames=filter_config.segment_scale_window_frames,
+            scale_source_for=streaming_model_scale_source(
+                window_frames=filter_config.segment_scale_window_frames
+            ),
         )
 
         skeleton_fitting_enabled: bool = aggregator_config.skeleton_fitting_enabled
@@ -450,10 +466,6 @@ class RealtimeAggregatorNode(AggregatorNode):
         # measure aggregator-startup → first-frame-arrival, which is dominated
         # by camera warmup (~5-7s) and is not a steady-state metric.
         recorded_first_frame: bool = False
-        # XCoM velocity tracking, per skeleton: its previous centre of mass and when it
-        # was taken. Keyed by model so two tracked skeletons cannot borrow each other's
-        # velocity.
-        previous_center_of_mass_by_model: dict[str, tuple[np.ndarray, float]] = {}
         # Observability: log each failure class ONCE per run per skeleton, not per frame.
         skeleton_observability_logged: set[str] = set()
 
@@ -509,9 +521,13 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # segments may set a skeleton's scale changes with it. Rebuilding
                         # also drops the old detector's readings, which is right: they
                         # were measured through a different naming convention.
-                        skeleton_bundles = build_tracked_skeletons(
+                        # Bundles AND their states together: the old detector's scale
+                        # readings and roll carry must not survive into the new mapping.
+                        skeleton_set = build_tracked_skeleton_set(
                             camera_node_config=pipeline_config.camera_node_config,
-                            scale_window_frames=filter_config.segment_scale_window_frames,
+                            scale_source_for=streaming_model_scale_source(
+                                window_frames=filter_config.segment_scale_window_frames
+                            ),
                         )
                         logger.info(
                             f"RealtimeAggregationNode [{camera_group_id}] "
@@ -535,9 +551,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                     logger.info(
                         f"RealtimeAggregationNode [{camera_group_id}] skeleton fit reset"
                     )
-                    for bundle in skeleton_bundles:
-                        bundle.reset()
-                    previous_center_of_mass_by_model.clear()
+                    skeleton_set.reset()
                     skeleton_observability_logged.clear()
 
                 # ---- Periodically check if calibration file changed on disk ----
@@ -555,9 +569,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                         # fitter's windows was measured in the old frame's units.
                         keypoint_filter.reset()
                         point_gate.reset()
-                        for bundle in skeleton_bundles:
-                            bundle.reset()
-                        previous_center_of_mass_by_model.clear()
+                        skeleton_set.reset()
                         skeleton_observability_logged.clear()
 
                 # ---- Request new frames if ready ----
@@ -830,9 +842,11 @@ class RealtimeAggregatorNode(AggregatorNode):
                     # which is which.
                     if skeleton_fitting_enabled and filtered_keypoints:
                         t0 = time.perf_counter() if timer is not None else 0.0
-                        for bundle in skeleton_bundles:
+                        for bundle in skeleton_set.bundles:
+                            state = skeleton_set.state_for(bundle)
                             reconstruction = reconstruct_skeleton(
                                 bundle=bundle,
+                                state=state,
                                 filtered_keypoints=filtered_keypoints,
                                 compute_center_of_mass=aggregator_config.center_of_mass_enabled,
                             )
@@ -840,7 +854,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                                 continue
                             _fill_extrapolated_center_of_mass(
                                 reconstruction=reconstruction,
-                                previous_by_model=previous_center_of_mass_by_model,
+                                state=state,
                                 enabled="extrapolated_center_of_mass"
                                 in bundle.skeleton.derived_quantities,
                             )
@@ -857,7 +871,7 @@ class RealtimeAggregatorNode(AggregatorNode):
                             timer.record("skeleton_fitting", (time.perf_counter() - t0) * 1e3)
 
                         _log_reconstruction_observability(
-                            bundles=skeleton_bundles,
+                            bundles=skeleton_set.bundles,
                             reconstructions=reconstructions,
                             already_logged=skeleton_observability_logged,
                         )

@@ -156,7 +156,7 @@ def _frame_message(
         StreamContext(
             skeletons=(
                 build_standard_human_bundle(
-                    detector_type="rtmpose", scale_window_frames=30
+                    detector_type="rtmpose"
                 ),
             ),
             camera_ids=("cam-0", "cam-1"),

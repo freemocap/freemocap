@@ -8,8 +8,10 @@ Pulled out of the aggregator rather than inlined there because "do this for each
 skeleton" should be a loop over a named thing, not fifty lines that a reader has to check
 for hidden assumptions about which skeleton they refer to.
 
-Cross-frame state (XCoM's previous centre of mass) stays with the caller: this is a pure
-function of one frame, which is what makes it testable without a pipeline.
+Cross-frame state lives in the caller-owned `SkeletonReconstructionState`, never in the
+bundle: this is a pure function of one frame given that state, which is what makes it
+testable without a pipeline AND what lets the posthoc driver call the very same function
+with a whole-recording scale fit instead of a rolling one.
 """
 from __future__ import annotations
 
@@ -23,6 +25,7 @@ from skellyforge.core.math.geometry.spatial_vectors import Point
 from skellyforge.core.skeleton.pose.hydration import hydrate_skeleton
 from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
 
+from freemocap.core.skeletons.reconstruction_state import SkeletonReconstructionState
 from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
 from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
 
@@ -30,13 +33,16 @@ from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBund
 def reconstruct_skeleton(
     *,
     bundle: TrackedSkeletonBundle,
+    state: SkeletonReconstructionState,
     filtered_keypoints: dict[str, np.ndarray],
     compute_center_of_mass: bool,
 ) -> SkeletonReconstruction | None:
     """This skeleton's reconstruction for one frame, or `None` if it did not hydrate.
 
     Args:
-        bundle: the skeleton being reconstructed and everything that reconstructs it.
+        bundle: the skeleton being reconstructed — what it IS, authored once.
+        state: what reconstructing it has accumulated over this take — the scale source and
+            the roll carry. Mutated here; owned by the caller.
         filtered_keypoints: every detector's keypoints this frame, already smoothed and
             gated. The bundle's mapping takes only the ones it recognizes, so one flat
             dict feeds every skeleton.
@@ -62,8 +68,8 @@ def reconstruct_skeleton(
     # marked object is) opted out of roll resolution, and applying a continuity convention
     # to it would invent state where there is a measurement.
     resolved_pose = (
-        bundle.roll_resolver.resolve_pose(pose=hydrated_pose)
-        if bundle.roll_resolver is not None
+        state.roll_resolver.resolve_pose(pose=hydrated_pose)
+        if state.roll_resolver is not None
         else hydrated_pose
     )
 
@@ -76,10 +82,10 @@ def reconstruct_skeleton(
             continue
         landmarks[segment.frame_definition.origin_point_name] = segment_pose.origin.array
 
-    bundle.scale_fitter.observe_pose(pose=resolved_pose)
+    state.scale_source.observe_pose(pose=resolved_pose)
     scale_fit: ModelScaleFit | None = (
-        bundle.scale_fitter.current_fit()
-        if bundle.scale_fitter.has_model_scale
+        state.scale_source.current_fit()
+        if state.scale_source.has_model_scale
         else None
     )
 

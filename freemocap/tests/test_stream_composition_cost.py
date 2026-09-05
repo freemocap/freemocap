@@ -35,14 +35,14 @@ def probe() -> _MemoProbe:
 def test_the_skeleton_set_is_built_once_not_once_per_frame(probe: _MemoProbe) -> None:
     config = CameraNodeConfig()
     first = probe._skeletons_for(
-        camera_node_config=config, scale_window_frames=SCALE_WINDOW_FRAMES
+        camera_node_config=config
     )
 
     call_count = 200
     start = time.perf_counter()
     for _ in range(call_count):
         repeated = probe._skeletons_for(
-            camera_node_config=config, scale_window_frames=SCALE_WINDOW_FRAMES
+            camera_node_config=config
         )
     mean_ms = (time.perf_counter() - start) / call_count * 1000
 
@@ -61,10 +61,10 @@ def test_a_changed_board_still_rebuilds(probe: _MemoProbe) -> None:
     legacy_board.charuco_board.squares_y = 5
 
     default_skeletons = probe._skeletons_for(
-        camera_node_config=default_board, scale_window_frames=SCALE_WINDOW_FRAMES
+        camera_node_config=default_board
     )
     legacy_skeletons = probe._skeletons_for(
-        camera_node_config=legacy_board, scale_window_frames=SCALE_WINDOW_FRAMES
+        camera_node_config=legacy_board
     )
 
     assert legacy_skeletons is not default_skeletons
@@ -78,12 +78,12 @@ def test_building_a_skeleton_set_is_expensive_enough_to_be_worth_memoizing() -> 
     """
     config = CameraNodeConfig()
     build_tracked_skeletons(
-        camera_node_config=config, scale_window_frames=SCALE_WINDOW_FRAMES
+        camera_node_config=config
     )  # warm import-time caches
 
     start = time.perf_counter()
     build_tracked_skeletons(
-        camera_node_config=config, scale_window_frames=SCALE_WINDOW_FRAMES
+        camera_node_config=config
     )
     elapsed_ms = (time.perf_counter() - start) * 1000
 

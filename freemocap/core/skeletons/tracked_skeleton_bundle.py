@@ -4,10 +4,16 @@ A session tracks SEVERAL skeletons - a person and a charuco board are two - and 
 several INSTANCES of one (two people). Every stage that used to hold "the standard human"
 holds a tuple of these instead, and loops.
 
-The bundle is the seam where a skeleton definition meets the run that is using it: the
-mapping that feeds it, the fitter that sizes it, and the roll convention it opted into. All
-of that is per-run state, which is why bundles are built when a run starts and rebuilt when
-the detector changes rather than living at module scope.
+The bundle says WHAT is being reconstructed — the definition, its rest pose, the mapping
+that feeds it, its mass model. All of that is authored once and is identical for every run
+tracking the same thing, so the bundle is genuinely immutable.
+
+What accumulates over a take — the scale fit and the roll carry — lives in
+`SkeletonReconstructionState` beside it, not in here. That separation is what lets one
+`reconstruct_skeleton` serve both the realtime and posthoc pipelines.
+
+Bundles are still rebuilt when the detector changes: a different detector measures
+different landmarks, so the mapping changes with it.
 """
 from __future__ import annotations
 
@@ -16,9 +22,7 @@ from typing import Protocol, runtime_checkable
 
 import numpy as np
 from skellyforge.core.biomechanics.center_of_mass import CenterOfMassDefinitions
-from skellyforge.core.skeleton.pose.model_scale_fitting import StreamingModelScaleFitter
 from skellyforge.core.skeleton.pose.rest_pose import RestPose
-from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
 from skellyforge.core.skeleton.skeleton_definition import SkeletonDefinition
 
 
@@ -66,7 +70,6 @@ class TrackedSkeletonBundle:
         rest_pose: its reference pose - authored for the human, defaulted for a rigid
             object that has nothing to author.
         landmark_mapping: keypoints in, landmark observations out.
-        scale_fitter: pools every hydrated segment's scale reading into one fitted size.
         center_of_mass_definitions: how this skeleton's mass is distributed. EVERY skeleton
             has these - a skeleton that declares no mass model gets the unweighted mean of
             each segment's landmarks - so this is never absent.
@@ -74,10 +77,6 @@ class TrackedSkeletonBundle:
         scale_reference_name: what this skeleton's `1.0` means ("body_height",
             "square_length"), so a consumer can label the fitted number without knowing
             which skeleton it came from.
-        roll_resolver: supplies roll to segments that cannot measure their own. `None` for
-            a skeleton that did not opt into `roll_resolution` - a rigid marked object
-            measures its roll, and applying a continuity convention to it would invent
-            state where there is a measurement.
     """
 
     model_id: str
@@ -86,19 +85,6 @@ class TrackedSkeletonBundle:
     skeleton: SkeletonDefinition
     rest_pose: RestPose
     landmark_mapping: KeypointToLandmarkMapping
-    scale_fitter: StreamingModelScaleFitter
     center_of_mass_definitions: CenterOfMassDefinitions
     segment_masses: dict[str, float]
     scale_reference_name: str
-    roll_resolver: ContinuousRollResolver | None = None
-
-    def reset(self) -> None:
-        """Forget everything measured about this skeleton so far.
-
-        Called when the body being tracked may have changed (the skeleton-fit reset
-        signal) or when the frame the measurements were taken in has (a calibration
-        hot-reload).
-        """
-        self.scale_fitter.reset()
-        if self.roll_resolver is not None:
-            self.roll_resolver.reset()

@@ -3,6 +3,14 @@ import logging
 
 import cv2
 import pytest
+from pathlib import Path
+
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.tests.pipelines.real_data_numeric_bounds import (
+    MAX_REJECTED_OBSERVATION_FRACTION,
+    MAX_REPROJECTION_ERROR_PX,
+    MIN_OBSERVATIONS_USED,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -62,3 +70,33 @@ def test_calibration_annotated_videos_match_source(test_recording_path, calibrat
             ann.release()
             src.release()
     logger.info("All annotated videos match source dimensions and frame counts — PASS")
+
+
+@pytest.mark.e2e
+def test_calibration_solve_is_numerically_sane(calibration_toml_path):
+    """The solved calibration is well-conditioned, not just present.
+
+    Checks the solve quality on the real data without any semantic reading of it:
+    sub-pixel mean reprojection, enough observations, and a small rejected fraction.
+    """
+    result = CalibrationResult.load_anipose_toml(Path(calibration_toml_path))
+    logger.info(
+        f"Calibration solve: reproj={result.reprojection_error_px:.3f}px  "
+        f"observations={result.n_observations_used}  "
+        f"rejected={result.n_observations_rejected}"
+    )
+
+    assert result.reprojection_error_px < MAX_REPROJECTION_ERROR_PX, (
+        f"mean reprojection error {result.reprojection_error_px:.3f}px >= "
+        f"{MAX_REPROJECTION_ERROR_PX}px — solve is not sub-pixel clean"
+    )
+    assert result.n_observations_used >= MIN_OBSERVATIONS_USED, (
+        f"only {result.n_observations_used} observations used "
+        f"(expected >= {MIN_OBSERVATIONS_USED})"
+    )
+    rejected_fraction = result.n_observations_rejected / max(result.n_observations_used, 1)
+    assert rejected_fraction <= MAX_REJECTED_OBSERVATION_FRACTION, (
+        f"rejected {result.n_observations_rejected}/{result.n_observations_used} "
+        f"observations ({rejected_fraction:.1%}) — too much data was thrown away"
+    )
+    logger.info("Calibration solve quality within bounds — PASS")

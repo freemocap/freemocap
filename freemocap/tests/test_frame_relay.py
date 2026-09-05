@@ -44,7 +44,7 @@ class FakeWebSocket:
 
 
 def _human_bundle():
-    return build_standard_human_bundle(detector_type="rtmpose", scale_window_frames=30)
+    return build_standard_human_bundle(detector_type="rtmpose")
 
 
 def _composition():

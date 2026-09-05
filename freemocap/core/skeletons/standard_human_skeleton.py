@@ -31,9 +31,7 @@ Only the RATIOS between segment masses affect the centre of mass, so this cancel
 the CoM entirely; it matters for inertia, which is why it is named rather than inlined."""
 
 
-def build_standard_human_bundle(
-    *, detector_type: str, scale_window_frames: int
-) -> TrackedSkeletonBundle:
+def build_standard_human_bundle(*, detector_type: str) -> TrackedSkeletonBundle:
     """The human this run is tracking, wired to the detector that feeds it.
 
     Rebuilt when the detector changes: a different detector measures different landmarks,
@@ -42,16 +40,6 @@ def build_standard_human_bundle(
     """
     skeleton = SkeletonDefinition.from_default_yaml()
     mapping = load_standard_human_mapping(detector_type)
-    roll_resolver = (
-        ContinuousRollResolver.for_skeleton(
-            skeleton=skeleton,
-            rest_relative_orientations=RestPose.from_default_yaml(
-                skeleton=skeleton
-            ).relative_orientations,
-        )
-        if "roll_resolution" in skeleton.derived_quantities
-        else None
-    )
     # The human declares a de Leva mass model, so its weighted sums override the
     # unweighted-mean default every skeleton would otherwise get.
     com_definitions = CenterOfMassDefinitions.from_default_yaml()
@@ -70,19 +58,7 @@ def build_standard_human_bundle(
         skeleton=skeleton,
         rest_pose=RestPose.from_default_yaml(skeleton=skeleton),
         landmark_mapping=mapping,
-        scale_fitter=StreamingModelScaleFitter(
-            skeleton=skeleton,
-            # Only landmarks the mapping MEASURES may set the subject's height. The
-            # constructed trunk points are near noise-free, so a consistency-weighted
-            # estimator would otherwise rank the template as its best evidence.
-            voting_segment_names=scale_voting_segment_names(
-                skeleton=skeleton,
-                measured_landmark_names=mapping.directly_measured_landmark_names,
-            ),
-            window_frames=scale_window_frames,
-        ),
         center_of_mass_definitions=com_definitions,
         segment_masses=segment_masses,
         scale_reference_name=BODY_HEIGHT_SCALE_REFERENCE,
-        roll_resolver=roll_resolver,
     )

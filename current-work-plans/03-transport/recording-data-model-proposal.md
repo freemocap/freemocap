@@ -197,6 +197,12 @@ Store globally fitted posthoc scale/segment lengths/scales once per run/instance
 Readers broadcast them when reconstructing samples. Never maintain independent static and repeated
 dynamic versions of the same channel.
 
+Implementation status: the complete SkellyForge fit is stored once in each run's typed `scale_fits`
+records, bound to sensor group, source, reference frame and spatial units. An explicit null fit means
+no scale evidence was available. Static channel views of fitted scale/segment lengths/scales remain
+to be exposed from that record; they must be derived views, not a second authoritative measurement.
+Stage invalidation and keep/overwrite include these fit records.
+
 Embed the numeric dataset's interpretation descriptor, including retained runs, in Parquet metadata.
 The JSON document carries the same descriptor plus mutable operational/log/export information.
 Generate shared fields from one model. The completed Parquet is authoritative for its embedded

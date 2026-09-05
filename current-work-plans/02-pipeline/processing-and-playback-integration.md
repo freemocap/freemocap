@@ -54,8 +54,11 @@ the renderer does not require.
 Every sample carries recording-clock time and its sensor-group frame number. A timestamp is a
 temporal coordinate, not a unique scalar-row identifier. Camera capture timestamps and fused group
 timestamps remain distinct. Persist the clock mapping and media-time mapping explicitly. Nominal
-FPS must not silently replace capture timing. Imported media without capture timing needs a declared
-media-derived clock. Cross-device synchronization requires a supplied or measured clock mapping.
+FPS must not silently replace capture timing. Imported media without capture timestamps is supported:
+infer `timestamp_s = offset_s + frame_number / fps` and declare `inferred_from_fps` in metadata.
+Use a known synchronization offset when available; synchronized videos use frame zero as time zero.
+Present but malformed timestamps raise an error. Cross-device synchronization requires a supplied
+or measured clock mapping.
 
 ## Dependencies and execution
 
@@ -66,8 +69,16 @@ Changing geometry invalidates triangulation and its descendants; changing body d
 geometry. A calibration solve is a separate operation, not an implicit consequence of mocap detection.
 Reconstruction reads filtered points and fitted scale. Biomechanics also reads recording time.
 
-The planner represents calibration as a resolved geometry boundary. Initial ingestion into an empty
-store and worker dispatch remain required before GUI integration.
+Calibration is exclusively a separate task producing a calibration TOML. Mocap does not execute a
+calibration stage or handle calibration-completion events. Its planner requires resolved geometry
+only for executed multi-camera triangulation or reprojection. Single-camera planar reconstruction
+and downstream processing from saved inputs do not require calibration. Restart validation checks
+direct saved prerequisites, rather than requiring inputs of operations that will not execute.
+Observation/timing/raw-3D publication is connected, as are world landmarks, segment origins and
+world rotations. The complete recording fit is stored once and can be reloaded into the shared
+numerical reconstruction. Local rotations, joint/derived channels, static fit channel views, full
+scientific definitions, reusable checkpoint completion, automatic input signatures and saved-data
+worker dispatch remain required before GUI integration.
 
 The executor opens media and constructs tracker sessions only when observations require computation.
 Reconstruction-only execution reads saved prerequisites and starts numerical processing directly.

@@ -9,14 +9,14 @@ def stage_dependencies() -> dict[ProcessingStage, frozenset[ProcessingStage]]:
     return {
         stage.TIMING: frozenset(),
         stage.OBSERVATIONS: frozenset({stage.TIMING}),
-        stage.CALIBRATION: frozenset(),
-        stage.TRIANGULATION: frozenset({stage.OBSERVATIONS, stage.CALIBRATION}),
+        stage.TRIANGULATION: frozenset({stage.OBSERVATIONS}),
         stage.FILTERING: frozenset({stage.TRIANGULATION, stage.TIMING}),
         stage.SCALE_FIT: frozenset({stage.FILTERING}),
         stage.RECONSTRUCTION: frozenset({stage.FILTERING, stage.SCALE_FIT}),
         stage.BIOMECHANICS: frozenset(
             {stage.RECONSTRUCTION, stage.SCALE_FIT, stage.TIMING}
         ),
+        stage.REPROJECTION: frozenset({stage.RECONSTRUCTION}),
     }
 
 

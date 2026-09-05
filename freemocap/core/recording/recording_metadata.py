@@ -1,11 +1,15 @@
 """The descriptors required to interpret each retained recording result."""
 
 from typing import Literal
+from enum import StrEnum
 import math
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
+from freemocap.core.types.channel_kind import ChannelKind
+from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
 
 
 class Descriptor(BaseModel):
@@ -17,8 +21,15 @@ class SensorGroup(Descriptor):
     sample_count: int = Field(ge=0)
 
 
+class SourceKind(StrEnum):
+    INSTANCE = "instance"
+    TRACKER = "tracker"
+    CAMERA = "camera"
+    TIMING = "timing"
+
+
 class Source(Descriptor):
-    kind: Literal["instance", "tracker", "camera", "timing"]
+    kind: SourceKind
     definition: dict[str, JsonValue]
 
 
@@ -26,7 +37,7 @@ class Channel(Descriptor):
     sensor_group: str
     source: str
     reference_frame: str | None
-    kind: str
+    kind: ChannelKind
     names: tuple[str, ...]
     components: dict[str, str]
     stage: ProcessingStage
@@ -82,6 +93,10 @@ def channel_key(*, channel: Channel) -> tuple[str, str, str | None, str]:
 
 
 class RunDescriptor(Descriptor):
+    scale_fits: tuple[RecordingScaleFit, ...] = ()
+    camera_geometry: dict[str, tuple[ResolvedCameraGeometry, ...]] = Field(
+        default_factory=dict
+    )
     sensor_groups: dict[str, SensorGroup]
     sources: dict[str, Source]
     reference_frames: dict[str, dict[str, JsonValue]]
@@ -93,6 +108,27 @@ class RunDescriptor(Descriptor):
 
     @model_validator(mode="after")
     def validate_references(self) -> "RunDescriptor":
+        fit_keys = [(fit.sensor_group, fit.source) for fit in self.scale_fits]
+        if len(set(fit_keys)) != len(fit_keys):
+            raise ValueError("Duplicate recording scale fit")
+        for fit in self.scale_fits:
+            if (
+                fit.sensor_group not in self.sensor_groups
+                or fit.source not in self.sources
+                or fit.reference_frame not in self.reference_frames
+            ):
+                raise ValueError(
+                    "Unknown group/source/reference in recording scale fit"
+                )
+            if self.reference_frames[fit.reference_frame].get("units") != fit.units:
+                raise ValueError(
+                    "Recording fit units disagree with its spatial reference"
+                )
+        if not set(self.camera_geometry).issubset(self.sensor_groups):
+            raise ValueError("Unknown camera geometry sensor group")
+        for cameras in self.camera_geometry.values():
+            if len({camera.camera_id for camera in cameras}) != len(cameras):
+                raise ValueError("Duplicate resolved camera geometry")
         keys: set[tuple[str, str, str | None, str]] = set()
         for channel in (
             *self.channels,

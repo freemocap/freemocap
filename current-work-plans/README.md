@@ -86,8 +86,9 @@ and the VMC Definition of Done. Then:
 ## Next work (in order)
 
 1. **One complete posthoc recording into canonical storage** — the recording contract and stage
-   planner have focused tests; the actual processing path still needs integration. Persist named 2D
-   observations and capture timing, then triangulation and reconstruction outputs. Prove saved-data
+   planner have focused tests. The mocap path saves observations/timing/raw 3D, world landmarks,
+   segment origins/rotations and the complete frozen fit. Complete remaining channels, scientific
+   definitions and checkpoint signatures. Prove saved-data
    reconstruction opens no video and constructs no detector. Verify keep/overwrite through worker
    execution. See [posthoc rebuild](02-pipeline/posthoc-rebuild.md) and
    [processing/playback contract](02-pipeline/processing-and-playback-integration.md).
@@ -123,6 +124,11 @@ never in string patterns** (vocabulary single-sourced in the
 [00-foundation/conventions.md](00-foundation/conventions.md)).
 
 ## House rules for these docs
+
+- **Typed construction** — prefer dataclasses/Pydantic models, enum values, named fields and factory
+  methods over raw domain strings, string Literal types, positional channel indexing and long lists
+  of unrelated keyword arguments. Keep serialized spellings at format boundaries. Group related
+  processing inputs into validated request/domain objects; dynamic IDs and user names remain data.
 
 - **Single source** — each fact lives in exactly one doc, cross-linked from the others. A fact stated
   twice is a bug.

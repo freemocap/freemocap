@@ -1,7 +1,7 @@
 """Batch triangulation and two-pass skeleton reconstruction with a frozen recording fit."""
+
 import logging
 import time
-from pathlib import Path
 
 import numpy as np
 from skellyforge.core.math.geometry.spatial_vectors import Point
@@ -14,14 +14,22 @@ from freemocap.core.skeletons.reconstruction_state import (
     build_reconstruction_states,
     streaming_model_scale_source,
 )
-from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction
-from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
+from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
+from freemocap.core.reconstruction.recording_reconstruction import (
+    RecordingReconstructionInput,
+    ModelRecordingReconstruction,
+)
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction  # noqa: TC001 - runtime type checking
 from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
-from freemocap.core.tasks.calibration.shared.calibration_state import _strip_stage_prefix
+from freemocap.core.tasks.calibration.shared.calibration_state import (
+    _strip_stage_prefix,
+)
 from freemocap.core.tasks.triangulation.helpers.project_single_camera import (
     project_2d_batch_to_3d,
 )
-from freemocap.core.tasks.triangulation.helpers.triangulation_config import TriangulationConfig
+from freemocap.core.tasks.triangulation.helpers.triangulation_config import (
+    TriangulationConfig,
+)
 from freemocap.core.tasks.triangulation.triangulator import Triangulator
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from skellycam.core.types.type_overloads import CameraIdString
@@ -45,7 +53,7 @@ def _to_blender(positions: np.ndarray) -> np.ndarray:
 def triangulate_observation_buffers(
     *,
     observation_buffers: dict[CameraIdString, ObservationBuffer],
-    calibration_toml_path: Path | None,
+    calibration: CalibrationResult | None,
     triangulation_config: TriangulationConfig | None,
     max_reprojection_error_px: float | None,
     timing: PosthocTimingReport,
@@ -74,7 +82,9 @@ def triangulate_observation_buffers(
     if stage_name is not None:
         stage_keypoints = first_observation.stages[stage_name].keypoints
         prefixed_names: tuple[str, ...] = tuple(
-            stage_keypoints.names[:n_points] if n_points is not None else stage_keypoints.names
+            stage_keypoints.names[:n_points]
+            if n_points is not None
+            else stage_keypoints.names
         )
         data2d_by_camera: dict[CameraIdString, np.ndarray] = {
             camera_id: buffer.to_stage_array(stage_name, n_points)[..., :2]
@@ -95,7 +105,10 @@ def triangulate_observation_buffers(
         per_camera_weights = None
         reprojection_error = None
     else:
-        calibration = CalibrationResult.load_anipose_toml(calibration_toml_path)
+        if calibration is None:
+            raise ValueError(
+                "Multi-camera triangulation requires resolved calibration geometry"
+            )
         triangulator = Triangulator.from_calibration_for_cameras(
             calibration=calibration,
             camera_ids=camera_ids,
@@ -126,74 +139,91 @@ def triangulate_observation_buffers(
 
 
 def reconstruct_skeletons_for_recording(
-    *,
-    bundles: list[TrackedSkeletonBundle],
-    keypoint_names: tuple[str, ...],
-    keypoints_3d: np.ndarray,
-    frame_count: int,
-    compute_center_of_mass: bool,
-    timing: PosthocTimingReport,
-) -> dict[str, list[SkeletonReconstruction | None]]:
+    request: RecordingReconstructionInput,
+) -> dict[str, ModelRecordingReconstruction]:
     """Fit complete-recording evidence once, then reconstruct with fresh temporal state."""
-    if keypoints_3d.shape != (frame_count, len(keypoint_names), 3) or frame_count < 1:
-        raise ValueError("Expected a nonempty (frame_count, keypoint_count, 3) recording")
-    if len(set(keypoint_names)) != len(keypoint_names):
-        raise ValueError("Keypoint names must be unique")
-    if len({bundle.model_id for bundle in bundles}) != len(bundles):
-        raise ValueError("Recording reconstruction requires unique bundle model IDs")
     t0 = time.perf_counter()
     states = build_reconstruction_states(
-        bundles=bundles,
-        scale_source_for=streaming_model_scale_source(window_frames=frame_count),
+        bundles=request.bundles,
+        scale_source_for=streaming_model_scale_source(
+            window_frames=request.frame_count
+        ),
     )
-    timing.record("build_states", time.perf_counter() - t0)
-
+    request.timing.record("build_states", time.perf_counter() - t0)
     t0 = time.perf_counter()
-    for frame in keypoints_3d:
-        points = {name: frame[index] for index, name in enumerate(keypoint_names)
-                  if np.all(np.isfinite(frame[index]))}
-        for bundle in bundles:
+    for frame in request.keypoints_3d:
+        points = {
+            name: frame[index]
+            for index, name in enumerate(request.keypoint_names)
+            if np.all(np.isfinite(frame[index]))
+        }
+        for bundle in request.bundles:
             mapped = bundle.landmark_mapping.apply(tracker_positions=points)
             if not mapped:
                 continue
             pose = hydrate_skeleton(
                 skeleton=bundle.skeleton,
-                observed={name: Point.from_array(values=position) for name, position in mapped.items()},
+                observed={
+                    name: Point.from_array(values=position)
+                    for name, position in mapped.items()
+                },
                 require_all=False,
             )
             states[bundle.model_id].scale_source.observe_pose(pose=pose)
-    scale_sources = {
-        model_id: FrozenModelScale(fit=state.scale_source.current_fit())
-        if state.scale_source.has_model_scale else state.scale_source
+    fits = {
+        model_id: state.scale_source.current_fit()
+        if state.scale_source.has_model_scale
+        else None
         for model_id, state in states.items()
     }
-    states = build_reconstruction_states(
-        bundles=bundles, scale_source_for=lambda bundle: scale_sources[bundle.model_id],
-    )
-    timing.record("fit_recording_scale", time.perf_counter() - t0)
+    request.timing.record("fit_recording_scale", time.perf_counter() - t0)
+    return reconstruct_skeletons_with_fits(request=request, fits=fits)
 
-    reconstructions: dict[str, list[SkeletonReconstruction | None]] = {
-        bundle.model_id: [] for bundle in bundles
+
+def reconstruct_skeletons_with_fits(
+    *,
+    request: RecordingReconstructionInput,
+    fits: dict[str, ModelScaleFit | None],
+) -> dict[str, ModelRecordingReconstruction]:
+    """Reconstruct from explicit recording fits, without observing new scale evidence."""
+    if set(fits) != {bundle.model_id for bundle in request.bundles}:
+        raise ValueError("Saved fits must match the requested model set")
+    for bundle in request.bundles:
+        fit = fits[bundle.model_id]
+        if fit is not None and set(fit.segment_scales) != set(bundle.skeleton.segments):
+            raise ValueError("Saved fit segment set does not match the skeleton")
+    states = build_reconstruction_states(
+        bundles=request.bundles,
+        scale_source_for=lambda bundle: FrozenModelScale(fit=fits[bundle.model_id]),
+    )
+    frames: dict[str, list[SkeletonReconstruction | None]] = {
+        bundle.model_id: [] for bundle in request.bundles
     }
     t0 = time.perf_counter()
-    for t in range(frame_count):
-        frame_keypoints = {
-            name: keypoints_3d[t, i]
-            for i, name in enumerate(keypoint_names)
-            if np.all(np.isfinite(keypoints_3d[t, i]))
+    for frame in request.keypoints_3d:
+        points = {
+            name: frame[index]
+            for index, name in enumerate(request.keypoint_names)
+            if np.all(np.isfinite(frame[index]))
         }
-        for bundle in bundles:
-            reconstruction = reconstruct_skeleton(
-                bundle=bundle,
-                state=states[bundle.model_id],
-                filtered_keypoints=frame_keypoints,
-                compute_center_of_mass=compute_center_of_mass,
+        for bundle in request.bundles:
+            frames[bundle.model_id].append(
+                reconstruct_skeleton(
+                    bundle=bundle,
+                    state=states[bundle.model_id],
+                    filtered_keypoints=points,
+                    compute_center_of_mass=request.compute_center_of_mass,
+                )
             )
-            reconstructions[bundle.model_id].append(reconstruction)
-    timing.record(
+    request.timing.record(
         "reconstruct_frames",
         time.perf_counter() - t0,
-        call_count=frame_count * len(bundles),
-        note=f"{frame_count} frames x {len(bundles)} model(s)",
+        call_count=request.frame_count * len(request.bundles),
+        note=f"{request.frame_count} frames x {len(request.bundles)} model(s)",
     )
-    return reconstructions
+    return {
+        model_id: ModelRecordingReconstruction(
+            frames=tuple(values), scale_fit=fits[model_id]
+        )
+        for model_id, values in frames.items()
+    }

@@ -8,12 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class ProcessingStage(StrEnum):
     TIMING = "timing"
     OBSERVATIONS = "observations"
-    CALIBRATION = "calibration"
     TRIANGULATION = "triangulation"
     FILTERING = "filtering"
     SCALE_FIT = "scale_fit"
     RECONSTRUCTION = "reconstruction"
     BIOMECHANICS = "biomechanics"
+    REPROJECTION = "reprojection"
 
 
 STAGE_ORDER = tuple(ProcessingStage)

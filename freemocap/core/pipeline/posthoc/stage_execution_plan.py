@@ -11,6 +11,7 @@ from freemocap.core.pipeline.posthoc.processing_request import (
     STAGE_ORDER,
 )
 from freemocap.core.recording.recording_metadata import RecordingMetadata, RunDescriptor
+from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from freemocap.core.pipeline.posthoc.stage_dependencies import (
     dependency_closure,
     stage_dependencies,
@@ -49,6 +50,7 @@ def build_execution_plan(
     request: ProcessingRequest,
     metadata: RecordingMetadata,
     signatures: dict[str, dict[ProcessingStage, str]],
+    inputs: dict[str, CameraExecutionInputs],
 ) -> StageExecutionPlan:
     """Signatures include resolved stage settings and all relevant upstream inputs."""
     base = metadata.runs[request.base_run_id]
@@ -65,13 +67,14 @@ def build_execution_plan(
     execute = tuple(stage for stage in STAGE_ORDER[: stop + 1] if stage in descendants)
     if request.stop_stage not in execute:
         raise ValueError("stop_stage must depend on start_stage")
-    prerequisites = dependency_closure(
-        stages=set(execute), dependencies=dependencies
-    ) - set(execute)
+    prerequisites = set().union(*(dependencies[stage] for stage in execute)) - set(
+        execute
+    )
     saved = {
         (item.sensor_group, item.stage): item.signature for item in base.checkpoints
     }
     for group in request.sensor_groups:
+        inputs[group].validate_for(execute)
         for stage in STAGE_ORDER:
             if stage not in prerequisites:
                 continue
@@ -92,6 +95,12 @@ def build_execution_plan(
 def retained_run(*, base: RunDescriptor, plan: StageExecutionPlan) -> RunDescriptor:
     """Remove invalid dynamic/static outputs and their completion records together."""
     data = base.model_dump()
+    data["scale_fits"] = [
+        fit.model_dump()
+        for fit in base.scale_fits
+        if fit.sensor_group not in plan.sensor_groups
+        or ProcessingStage.SCALE_FIT not in plan.invalidate
+    ]
     data["channels"] = [
         channel.model_dump()
         for channel in base.channels

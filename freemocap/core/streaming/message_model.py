@@ -21,6 +21,7 @@ from enum import Enum, StrEnum
 from typing import Any, ClassVar, Protocol, runtime_checkable
 
 import cbor2
+from freemocap.core.types.channel_kind import ChannelKind
 from skellycam.core.types.type_overloads import (
     CameraGroupIdString,
     CameraIdString,
@@ -54,19 +55,6 @@ class MessageKind(StrEnum):
     FRAMERATE = "framerate"
     APP_STATE = "app_state"
     PROGRESS = "progress"
-
-
-class ChannelKind(StrEnum):
-    KEYPOINTS_3D = "KEYPOINTS_3D"
-    LANDMARKS_3D = "LANDMARKS_3D"
-    SEGMENT_ORIGINS = "SEGMENT_ORIGINS"
-    ROTATIONS_LOCAL = "ROTATIONS_LOCAL"
-    ROTATIONS_WORLD = "ROTATIONS_WORLD"
-    DERIVED_POINTS = "DERIVED_POINTS"
-    JOINT_ANGLES = "JOINT_ANGLES"
-    OVERLAY_2D = "OVERLAY_2D"
-    SEGMENT_LENGTHS = "SEGMENT_LENGTHS"
-    OVERLAY_REPROJECTIONS = "OVERLAY_REPROJECTIONS"
 
 
 class Units(StrEnum):

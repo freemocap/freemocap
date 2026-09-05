@@ -1,6 +1,11 @@
 """Recording contracts across rates, failures and retained processing results."""
 
 from pathlib import Path
+from dataclasses import replace
+from skellyforge.core.skeleton.pose.model_scale_fitting import ModelScaleFit
+from freemocap.core.recording.recording_scale_fit import RecordingScaleFit
+from freemocap.core.recording.sample_conventions import SampleUnit
+from freemocap.core.pipeline.posthoc.execution_inputs import CameraExecutionInputs
 from filelock import Timeout
 
 import pyarrow as pa
@@ -41,6 +46,7 @@ from freemocap.system.recording_structure.recording_structure import RecordingSt
 
 def test_body_detection_restart_preserves_camera_geometry() -> None:
     plan = build_execution_plan(
+        inputs={"mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())},
         request=ProcessingRequest(
             sensor_groups=("mocap",),
             start_stage=ProcessingStage.OBSERVATIONS,
@@ -48,15 +54,126 @@ def test_body_detection_restart_preserves_camera_geometry() -> None:
         metadata=metadata_fixture(),
         signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
     )
-    assert ProcessingStage.CALIBRATION not in plan.execute
-    assert ProcessingStage.CALIBRATION not in plan.invalidate
+    assert plan.execute[0] == ProcessingStage.OBSERVATIONS
+
     assert ProcessingStage.TIMING not in plan.invalidate
     assert ProcessingStage.RECONSTRUCTION in plan.execute
 
 
-def test_geometry_replacement_preserves_detection_and_invalidates_3d() -> None:
+def test_scale_fit_keep_and_overwrite_preserve_other_results(tmp_path: Path) -> None:
+    metadata = metadata_fixture()
+    fit = RecordingScaleFit(
+        sensor_group="mocap",
+        source="human",
+        reference_frame="world",
+        units=SampleUnit.MILLIMETERS,
+        fit=ModelScaleFit(
+            fitted_scale=100.0,
+            segment_scales={"segment": 100.0},
+            segment_lengths={"segment": 10.0},
+            measured_segment_names=frozenset({"segment"}),
+            voting_segment_names=frozenset({"segment"}),
+        ),
+    )
+    run = metadata.runs[0].model_copy(
+        update={
+            "reference_frames": {"world": {"units": SampleUnit.MILLIMETERS}},
+            "scale_fits": (fit, fit.model_copy(update={"sensor_group": "eye"})),
+        }
+    )
+    metadata = RecordingMetadata(
+        recording_id="recording", selected_run_id=0, runs={0: run}
+    )
+    structure = RecordingStructure(base_directory=tmp_path, recording_name="recording")
+    with recording_write_lock(structure=structure):
+        publish_recording(
+            structure=structure,
+            metadata=metadata,
+            batches=[
+                sample_batch(group="mocap", count=2, fps=30.0),
+                sample_batch(group="eye", count=8, fps=120.0),
+            ],
+        )
+        for keep, size in ((True, 102.0), (False, 103.0)):
+            plan = build_execution_plan(
+                request=ProcessingRequest(
+                    sensor_groups=("mocap",),
+                    keep=keep,
+                    start_stage=ProcessingStage.SCALE_FIT,
+                    stop_stage=ProcessingStage.SCALE_FIT,
+                ),
+                inputs={"mocap": CameraExecutionInputs(camera_ids=(), geometry=())},
+                metadata=metadata,
+                signatures={
+                    "mocap": {
+                        ProcessingStage.FILTERING: ProcessingStage.FILTERING.value
+                    }
+                },
+            )
+            retained = retained_run(base=metadata.runs[0], plan=plan)
+            assert (
+                len(retained.scale_fits) == 1
+                and retained.scale_fits[0].sensor_group == "eye"
+            )
+            replacement = fit.model_copy(
+                update={
+                    "fit": replace(
+                        fit.fit, fitted_scale=size, segment_scales={"segment": size}
+                    )
+                }
+            )
+            result = retained.model_copy(
+                update={"scale_fits": (*retained.scale_fits, replacement)}
+            )
+            metadata = publish_checkpoint(
+                structure=structure,
+                metadata=metadata,
+                plan=plan,
+                result=result,
+                computed_batches=(),
+            )
+        assert metadata.runs[0].scale_fits[-1].fit.fitted_scale == 103.0
+        assert metadata.runs[1].scale_fits[-1].fit.fitted_scale == 102.0
+        assert read_metadata(path=structure.data_parquet_path) == metadata
+
+
+def test_reconstruction_restart_preserves_scale_fit() -> None:
+    fit = RecordingScaleFit(
+        sensor_group="mocap",
+        source="human",
+        reference_frame="world",
+        units=SampleUnit.MILLIMETERS,
+        fit=None,
+    )
+    base = (
+        metadata_fixture()
+        .runs[0]
+        .model_copy(
+            update={
+                "reference_frames": {"world": {"units": SampleUnit.MILLIMETERS}},
+                "scale_fits": (fit,),
+            }
+        )
+    )
     plan = build_execution_plan(
-        request=ProcessingRequest(sensor_groups=("mocap",), start_stage=ProcessingStage.CALIBRATION),
+        request=ProcessingRequest(
+            sensor_groups=("mocap",), start_stage=ProcessingStage.RECONSTRUCTION
+        ),
+        metadata=RecordingMetadata(
+            recording_id="recording", selected_run_id=0, runs={0: base}
+        ),
+        signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
+        inputs={"mocap": CameraExecutionInputs(camera_ids=(), geometry=())},
+    )
+    assert retained_run(base=base, plan=plan).scale_fits == (fit,)
+
+
+def test_triangulation_restart_preserves_detection_and_invalidates_3d() -> None:
+    plan = build_execution_plan(
+        inputs={"mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())},
+        request=ProcessingRequest(
+            sensor_groups=("mocap",), start_stage=ProcessingStage.TRIANGULATION
+        ),
         metadata=metadata_fixture(),
         signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
     )
@@ -69,14 +186,81 @@ def test_geometry_replacement_preserves_detection_and_invalidates_3d() -> None:
 def test_independent_stage_range_is_rejected() -> None:
     with pytest.raises(ValueError, match="stop_stage must depend"):
         build_execution_plan(
+            inputs={
+                "mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())
+            },
             request=ProcessingRequest(
                 sensor_groups=("mocap",),
-                start_stage=ProcessingStage.OBSERVATIONS,
-                stop_stage=ProcessingStage.CALIBRATION,
+                start_stage=ProcessingStage.BIOMECHANICS,
+                stop_stage=ProcessingStage.REPROJECTION,
             ),
             metadata=metadata_fixture(),
             signatures={"mocap": {stage: stage.value for stage in STAGE_ORDER}},
         )
+
+
+def test_saved_reconstruction_needs_only_direct_inputs() -> None:
+    metadata = metadata_fixture()
+    required = (ProcessingStage.FILTERING, ProcessingStage.SCALE_FIT)
+    run = metadata.runs[0].model_copy(
+        update={
+            "checkpoints": tuple(
+                checkpoint
+                for checkpoint in metadata.runs[0].checkpoints
+                if checkpoint.stage in required
+            )
+        }
+    )
+    metadata = metadata.model_copy(update={"runs": {0: run}})
+    plan = build_execution_plan(
+        request=ProcessingRequest(
+            sensor_groups=("mocap",),
+            start_stage=ProcessingStage.RECONSTRUCTION,
+            stop_stage=ProcessingStage.RECONSTRUCTION,
+        ),
+        metadata=metadata,
+        signatures={"mocap": {stage: stage.value for stage in required}},
+        inputs={"mocap": CameraExecutionInputs(camera_ids=(), geometry=())},
+    )
+    assert plan.execute == (ProcessingStage.RECONSTRUCTION,)
+    assert ProcessingStage.REPROJECTION in plan.invalidate
+
+
+@pytest.mark.parametrize(
+    "stage,cameras,requires_geometry",
+    [
+        (ProcessingStage.TRIANGULATION, ("one",), False),
+        (ProcessingStage.TRIANGULATION, ("one", "two"), True),
+        (ProcessingStage.REPROJECTION, ("one",), True),
+        (ProcessingStage.FILTERING, ("one", "two"), False),
+        (ProcessingStage.BIOMECHANICS, (), False),
+    ],
+)
+def test_geometry_required_only_by_executed_operation(
+    stage: ProcessingStage,
+    cameras: tuple[str, ...],
+    requires_geometry: bool,
+) -> None:
+    request = ProcessingRequest(
+        sensor_groups=("mocap",), start_stage=stage, stop_stage=stage
+    )
+    inputs = {"mocap": CameraExecutionInputs(camera_ids=cameras, geometry=())}
+    signatures = {"mocap": {item: item.value for item in STAGE_ORDER}}
+    if requires_geometry:
+        with pytest.raises(ValueError, match="requires resolved camera geometry"):
+            build_execution_plan(
+                request=request,
+                metadata=metadata_fixture(),
+                signatures=signatures,
+                inputs=inputs,
+            )
+    else:
+        assert build_execution_plan(
+            request=request,
+            metadata=metadata_fixture(),
+            signatures=signatures,
+            inputs=inputs,
+        ).execute == (stage,)
 
 
 def metadata_fixture() -> RecordingMetadata:
@@ -201,16 +385,26 @@ def test_keep_and_stop_invalidate_only_selected_group() -> None:
     )
     signatures = {"mocap": {stage: stage.value for stage in STAGE_ORDER}}
     plan = build_execution_plan(
-        request=request, metadata=metadata, signatures=signatures
+        inputs={"mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())},
+        request=request,
+        metadata=metadata,
+        signatures=signatures,
     )
     assert plan.target_run_id == 1
     assert plan.execute == (ProcessingStage.FILTERING,)
     retained = retained_run(base=metadata.runs[0], plan=plan)
     assert [channel.sensor_group for channel in retained.channels] == ["eye"]
     assert len(metadata.runs[0].channels) == 2
-    signatures["mocap"][ProcessingStage.CALIBRATION] = "changed calibration"
-    with pytest.raises(ValueError, match="Restart at calibration"):
-        build_execution_plan(request=request, metadata=metadata, signatures=signatures)
+    signatures["mocap"][ProcessingStage.TRIANGULATION] = "changed 3D input"
+    with pytest.raises(ValueError, match="Restart at triangulation"):
+        build_execution_plan(
+            inputs={
+                "mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())
+            },
+            request=request,
+            metadata=metadata,
+            signatures=signatures,
+        )
 
 
 def test_recording_lock_rejects_concurrent_writer(tmp_path: Path) -> None:
@@ -235,6 +429,9 @@ def test_keep_then_overwrite_publishes_independent_runs(tmp_path: Path) -> None:
             ],
         )
         plan = build_execution_plan(
+            inputs={
+                "mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())
+            },
             metadata=metadata,
             signatures=signatures,
             request=ProcessingRequest(
@@ -280,6 +477,9 @@ def test_keep_then_overwrite_publishes_independent_runs(tmp_path: Path) -> None:
             == 24
         )
         overwrite_plan = build_execution_plan(
+            inputs={
+                "mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())
+            },
             metadata=kept,
             signatures=signatures,
             request=ProcessingRequest(
@@ -361,6 +561,9 @@ def test_kept_recomputed_values_do_not_change_base_run(tmp_path: Path) -> None:
             ],
         )
         plan = build_execution_plan(
+            inputs={
+                "mocap": CameraExecutionInputs(camera_ids=("camera",), geometry=())
+            },
             request=ProcessingRequest(
                 keep=True,
                 sensor_groups=("mocap",),

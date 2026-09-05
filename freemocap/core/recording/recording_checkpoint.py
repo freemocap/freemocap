@@ -9,6 +9,7 @@ from freemocap.core.pipeline.posthoc.stage_execution_plan import (
     retained_run,
 )
 from freemocap.core.recording.recording_data import SAMPLE_SCHEMA
+from freemocap.core.pipeline.posthoc.processing_request import ProcessingStage
 from freemocap.core.recording.recording_metadata import (
     RecordingMetadata,
     RunDescriptor,
@@ -97,6 +98,15 @@ def publish_checkpoint(
         raise ValueError("Recording changed after stage planning")
     retained = retained_run(base=metadata.runs[plan.base_run_id], plan=plan)
     result_channels = {channel_key(channel=item): item for item in result.channels}
+    for fit in retained.scale_fits:
+        if fit not in result.scale_fits:
+            raise ValueError("Result must preserve reusable scale fits")
+    for fit in result.scale_fits:
+        if fit not in retained.scale_fits and (
+            fit.sensor_group not in plan.sensor_groups
+            or ProcessingStage.SCALE_FIT not in plan.execute
+        ):
+            raise ValueError("Result contains a scale fit outside the executed stages")
     for channel in retained.channels:
         if result_channels.get(channel_key(channel=channel)) != channel:
             raise ValueError("Result must preserve reusable channel definitions")

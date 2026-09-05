@@ -16,6 +16,7 @@ import json
 import logging
 from pathlib import Path
 
+from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
 import numpy as np
 from skellycam.core.recorders.videos.recording_info import RecordingInfo
 from skellycam.core.types.type_overloads import CameraIdString
@@ -36,6 +37,10 @@ from freemocap.core.tasks.calibration.shared.compare_calibrations import compute
 from freemocap.core.tasks.calibration.shared.groundplane_alignment import GroundPlaneResult
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.utilities.toml_mixin import numpy_to_python
+
+from freemocap.core.reconstruction.posthoc_reconstruction import reconstruct_skeletons_for_recording, triangulate_observation_buffers
+from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
+from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
 
 logger = logging.getLogger(__name__)
 
@@ -334,16 +339,6 @@ def run_posthoc_calibration_task(
     )
     logger.info(f"\n{health.summary}")
 
-    # ---- Build charuco board model from observations on the shared core ----
-    import numpy as np
-
-    from freemocap.core.reconstruction.posthoc_reconstruction import (
-        reconstruct_skeletons_for_recording,
-        triangulate_observation_buffers,
-    )
-    from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
-    from freemocap.core.skeletons.charuco_board_skeleton import build_charuco_board_bundle
-
     observation_buffers: dict[CameraIdString, ObservationBuffer] = {
         camera_id: ObservationBuffer() for camera_id in camera_ids
     }
@@ -354,7 +349,7 @@ def run_posthoc_calibration_task(
     timing = PosthocTimingReport()
     keypoints_blender, keypoint_names, _weights = triangulate_observation_buffers(
         observation_buffers=observation_buffers,
-        calibration_toml_path=get_last_successful_calibration_toml_path(),
+        calibration=result,
         triangulation_config=None,
         max_reprojection_error_px=None,
         timing=timing,
@@ -363,21 +358,20 @@ def run_posthoc_calibration_task(
     )
     frame_count = keypoints_blender.shape[0]
     board_bundle = build_charuco_board_bundle(board=board)
-    reconstructions = reconstruct_skeletons_for_recording(
-        bundles=[board_bundle],
+    reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
+        bundles=(board_bundle,),
         keypoint_names=keypoint_names,
         keypoints_3d=keypoints_blender,
-        frame_count=frame_count,
         compute_center_of_mass=False,
         timing=timing,
-    )
+    ))
 
     # Provisional board output: the hydrated board landmark positions.
     output_data_folder = Path(recording_info.full_recording_path) / "output_data"
     output_data_folder.mkdir(parents=True, exist_ok=True)
     landmark_names = tuple(board_bundle.skeleton.landmarks)
     board_3d = np.full((frame_count, len(landmark_names), 3), np.nan)
-    for t, reconstruction in enumerate(reconstructions[board_bundle.model_id]):
+    for t, reconstruction in enumerate(reconstructions[board_bundle.model_id].frames):
         if reconstruction is None:
             continue
         for i, name in enumerate(landmark_names):

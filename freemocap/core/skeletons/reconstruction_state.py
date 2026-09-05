@@ -15,20 +15,21 @@ This mirrors skellytracker, where `Tracker` is documented "stateless between cal
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable  # noqa: TC003 - runtime type checking
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 import numpy as np
 from skellyforge.core.skeleton.pose.model_scale_fitting import (
     ModelScaleFit,
+    InsufficientScaleEvidence,
     StreamingModelScaleFitter,
     scale_voting_segment_names,
 )
 from skellyforge.core.skeleton.pose.roll_resolution import ContinuousRollResolver
-from skellyforge.core.skeleton.skeleton_pose import SkeletonPose
+from skellyforge.core.skeleton.skeleton_pose import SkeletonPose  # noqa: TC002 - runtime type checking
 
-from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle  # noqa: TC001 - runtime type checking
 
 
 @runtime_checkable
@@ -70,16 +71,18 @@ class FrozenModelScale:
     exactly the duplication this design exists to avoid.
     """
 
-    fit: ModelScaleFit
+    fit: ModelScaleFit | None
 
     def observe_pose(self, *, pose: SkeletonPose) -> None:
         return None
 
     @property
     def has_model_scale(self) -> bool:
-        return True
+        return self.fit is not None
 
     def current_fit(self) -> ModelScaleFit:
+        if self.fit is None:
+            raise InsufficientScaleEvidence("The recording contains no scale evidence")
         return self.fit
 
 

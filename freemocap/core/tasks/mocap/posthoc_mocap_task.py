@@ -8,14 +8,23 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 """
 from __future__ import annotations
 
+from freemocap.core.recording.observation_recording_models import ObservationRecordingRequest, ObservationGroup, TrackerRecordingDefinition
 import csv
+from freemocap.core.tasks.calibration.shared.calibration_result import CalibrationResult
+from freemocap.core.recording.resolved_camera_geometry import ResolvedCameraGeometry
+from freemocap.core.recording.spatial_point_series import SpatialPointSeries, PointSeriesDefinition, SpatialReference
 import json
 import logging
 import shutil
 import time
 from pathlib import Path
 
+from freemocap.core.reconstruction.recording_reconstruction import RecordingReconstructionInput
+from freemocap.core.recording.reconstruction_recording import ReconstructionRecording, ReconstructionSourceDefinition
 import numpy as np
+from numpy.typing import NDArray  # noqa: TC002 - runtime type checking
+from freemocap.core.skeletons.tracked_skeleton_bundle import TrackedSkeletonBundle  # noqa: TC001 - runtime type checking
+from freemocap.core.skeletons.skeleton_reconstruction import SkeletonReconstruction  # noqa: TC001 - runtime type checking
 
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig  # noqa: TC001
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
@@ -36,6 +45,7 @@ from freemocap.core.skeletons.standard_human_skeleton import (
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
+from freemocap.core.recording.posthoc_observation_recording import publish_posthoc_observations
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
 
 from freemocap.core.pipeline.posthoc.video_group_helper import VideoMetadata  # noqa: TC001
@@ -113,9 +123,10 @@ def run_posthoc_mocap_aggregator_task(
 
     timing = PosthocTimingReport()
 
+    calibration = CalibrationResult.load_anipose_toml(calibration_toml_path) if calibration_toml_path is not None else None
     keypoints_blender, keypoint_names, per_camera_weights = triangulate_observation_buffers(
         observation_buffers=observation_recorders,
-        calibration_toml_path=calibration_toml_path,
+        calibration=calibration,
         triangulation_config=task_config.triangulation_config,
         max_reprojection_error_px=None,
         timing=timing,
@@ -123,21 +134,44 @@ def run_posthoc_mocap_aggregator_task(
     frame_count = keypoints_blender.shape[0]
 
     bundle = build_standard_human_bundle(detector_type=task_config.detector_type)
-    reconstructions = reconstruct_skeletons_for_recording(
-        bundles=[bundle],
+    reconstructions = reconstruct_skeletons_for_recording(RecordingReconstructionInput(
+        bundles=(bundle,),
         keypoint_names=keypoint_names,
         keypoints_3d=keypoints_blender,
-        frame_count=frame_count,
         compute_center_of_mass=True,
         timing=timing,
-    )
+    ))
 
+    publication = ObservationRecordingRequest(
+        reconstructions=(ReconstructionRecording(
+            sensor_group="mocap", reference=SpatialReference.for_camera_count(len(camera_ids)),
+            definition=ReconstructionSourceDefinition.from_bundle(bundle),
+            result=reconstructions[bundle.model_id],
+        ),),
+        camera_geometry=tuple(ResolvedCameraGeometry.from_camera(calibration.get_camera(camera)) for camera in camera_ids) if calibration is not None else (),
+        recording=recording_info,
+        spatial_series=(SpatialPointSeries(
+            definition=PointSeriesDefinition(sensor_group="mocap", source=task_config.detector_type,
+                names=keypoint_names, reference=SpatialReference.for_camera_count(len(camera_ids))),
+            values=keypoints_blender,
+        ),),
+        group=ObservationGroup(name="mocap", frames=frame_observations, videos=video_metadata),
+        tracker=TrackerRecordingDefinition(
+            name=task_config.detector_type,
+            configuration=task_config.model_dump(mode="json"),
+            point_names=tuple(dict.fromkeys(
+                name for frame in frame_observations for observation in frame.values()
+                for name in observation.to_keypoints().names
+            )),
+        ),
+    )
+    publish_posthoc_observations(publication)
     t0 = time.perf_counter()
     _write_provisional_human_outputs(
         output_folder=output_folder,
         detector_type=task_config.detector_type,
         bundle=bundle,
-        reconstructions=reconstructions[STANDARD_HUMAN_MODEL_ID],
+        reconstructions=reconstructions[STANDARD_HUMAN_MODEL_ID].frames,
         frame_count=frame_count,
         per_camera_weights=per_camera_weights,
     )
@@ -174,10 +208,10 @@ def _write_provisional_human_outputs(
     *,
     output_folder: Path,
     detector_type: str,
-    bundle,
-    reconstructions: list,
+    bundle: TrackedSkeletonBundle,
+    reconstructions: tuple[SkeletonReconstruction | None, ...],
     frame_count: int,
-    per_camera_weights,
+    per_camera_weights: NDArray[np.float64] | None,
 ) -> None:
     """Provisional on-disk outputs (schema deferred — Phase 4/schema session replaces these).
 

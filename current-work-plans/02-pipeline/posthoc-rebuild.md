@@ -8,33 +8,59 @@ notes deferred the schema or treated a large streaming window as a completed glo
 
 ## Implementation progress
 
-Next milestone: process one real recording into canonical observations/timing and 3D outputs, then
-reprocess reconstruction from saved prerequisites with video opening and detector construction
-forbidden. Validate keep/overwrite through actual worker execution. Timestamp-based playback and
-the default annotated grid output follow this milestone. Plans-only check-in is required before
-resuming implementation.
+- The mocap task publishes observations, camera/group timing and raw 3D points into the canonical
+  Parquet store. It now also publishes LANDMARKS_3D, SEGMENT_ORIGINS and ROTATIONS_WORLD, with named
+  source layouts and explicit spatial references. Single-camera planar coordinates and fits are
+  declared in pixels; calibrated outputs use millimetres. Missing frames remain null.
+- `RecordingReconstructionInput` carries the numerical request without repeated argument lists.
+  Each `ModelRecordingReconstruction` retains frames and the complete SkellyForge `ModelScaleFit`.
+  The recording-wide evidence pass freezes either a fit or an explicit absence of evidence.
+  `reconstruct_skeletons_with_fits` uses fresh temporal state and does not accumulate scale evidence.
+- Per-group/source `scale_fits` stores the complete typed fit once in the run descriptor, including
+  per-segment scales/lengths and the measured/voting sets. SkellyForge owns fit invariants. FreeMoCap
+  binds the fit to recording source/reference/units. Static channel views of this fit remain to be
+  connected; do not create another independent copy of these measurements.
+- Scale-fit invalidation follows SCALE_FIT dependencies. Reconstruction-only restarts retain the fit;
+  scale restarts remove the selected group's fit. Keep and overwrite preserve other results/groups.
+- Point and reconstruction adapters share `ChannelSeries` and `SeriesSampling` for bounded tall Arrow
+  serialization. Channel declarations do not allocate recording-sized arrays. Reconstruction still
+  holds full-recording results in memory, and each channel adapter builds one numeric trajectory array.
+- Calibration solving belongs exclusively to the calibration task, which produces the calibration
+  TOML. Mocap has no calibration stage or calibration-completion checkpoint. Its planner requires
+  geometry only for executed multi-camera triangulation or reprojection. Downstream processing from
+  saved direct inputs does not require historical camera/calibration inputs.
+- Resolved camera geometry is persisted per group from the actual cameras used for triangulation.
+  Solver statistics and acquisition method are not part of this geometry contract.
+- SkellyCam owns timing ingestion: existing sidecars preserve recording-relative timestamps;
+  absent sidecars infer `offset_s + frame_number / fps`; malformed present sidecars fail. The mocap
+  path uses synchronized video frame zero as inferred time zero. Missing group timing uses the mean
+  of camera times. Observation sources declare how their timestamps were obtained.
+- Recording metadata, bounded Parquet validation, write locking, atomic publication, JSON mirror
+  recovery, checkpoint signature comparison and scoped keep/overwrite have focused tests.
+  Observation requests use typed models/factories; streaming and recording share ChannelKind.
+- Validation: **63 focused tests pass**, including a real skeleton's generated reconstruction written
+  through the canonical writer, fit reload from Parquet metadata and numerical replay with scale
+  fitting forbidden. Publication/overwrite tests cover missing frames and world quaternions.
+  Lint and mocap/calibration task imports pass. These are synthetic-data tests, not detector/video
+  acceptance. The validation environment uses editable local SkellyCam and SkellyForge.
 
-Keep functionality in its owning repository: capture/transport in SkellyCam, detector functionality
-in SkellyTracker, skeleton computation in SkellyForge. FreeMoCap coordinates their inputs and outputs.
+### Next bounded chunks
 
-- Dependency-based invalidation consumes resolved camera geometry independently of its acquisition.
-  Posthoc VideoNode uses the central tracker factory with exact nested detector configuration and
-  cleanup on session construction failure. Multi-camera posthoc batching remains to be connected.
-- Validation after these changes: 28 focused tests pass. Tracker construction tests use mocked
-  resources; this does not establish GPU inference or real-recording end-to-end acceptance.
-- Implemented the scalar Arrow schema, validated run/channel descriptors, Parquet reader/writer,
-  static measurement expansion, recording write lock and JSON mirror recovery in core/recording/.
-- Implemented processing requests, checkpoint signature validation, stage-range invalidation and
-  keep/overwrite publication. Unrelated runs/groups survive; retained targets copy reusable rows.
-- Batch reconstruction now collects complete-recording scale evidence before reconstructing with
-  frozen scale and fresh roll state.
-- Validation: 22 focused tests pass for mixed rates, missing data, units, quaternions, static fits,
-  failed publication, metadata repair, keep/overwrite and complete-recording scale consistency.
-- Remaining: domain definition/channel adapters, capture timing ingestion, actual stage workers and
-  detector bypass, filtering policy, API/UI/playback integration, real-data pipeline acceptance and
-  the subsequent optional exporters. The GUI processing action still uses its current output task.
-- Current reader validation requires ordered samples within each scalar trajectory and complete
-  declared group coverage. Arbitrary event/asynchronous sensor ingestion is not implemented.
+1. Complete reconstruction persistence: local-rotation reference semantics, joint angles and derived
+   channels; expose fitted static channel views from the single stored fit. In particular, review
+   `_local_rotations`: a missing parent currently yields a world quaternion, which cannot be labelled
+   unconditionally as parent-relative data on disk.
+2. Persist full scientific definitions/rest pose/mapping and the actual reconstruction input arrays,
+   with explicit filter policy and stage input signatures. Current source layouts describe channel
+   names/topology; they are not a scientific definition snapshot. Ingestion emits no reusable stage
+   completion checkpoints yet.
+3. Connect saved-data worker dispatch with video opening and detector construction forbidden.
+   Validate request-driven keep/overwrite, cancellation and failure through real worker execution.
+4. Process a real recording end to end. Timestamp-based playback and the default annotated grid
+   output follow this acceptance milestone; optional raw grid and other exports follow their plans.
+
+Check in before the next implementation chunk. Keep capture/transport in SkellyCam, detector
+functionality in SkellyTracker, skeleton computation in SkellyForge, and orchestration in FreeMoCap.
 
 ## Outcome
 
@@ -67,36 +93,34 @@ without constructing detector workers when reusing saved detection.
 ## Stage graph and durable boundaries
 
 ```text
-input media + capture timing -> observations ----------------------+
-                                     |                           |
-                      explicit calibration input/solve -> triangulation
-                                                                 |
-                                                            filtering
-                                                                 |
-                                                             scale_fit
-                                                                 |
-                                                          reconstruction
-                                                                 |
-                                                           biomechanics
-                                                                 |
-                                                        optional exports
+input media + timing -> observations -> triangulation -> filtering -> scale_fit
+                                              ^              |           |
+                                              |              +-----------+
+separate calibration task -> TOML -> camera geometry          |
+                                              |         reconstruction -> biomechanics
+                                              |              |
+                                              +--------> reprojection
+
+canonical saved outputs -> optional exports
 ```
 
 Reconstruction also reads filtered points and model/rest-pose definitions. Biomechanics reads
 reconstruction, fitted scale and mass definitions. Reprojection reads reconstruction and calibration.
-Calibration solving consumes board observations; mocap may instead use an explicit existing calibration.
+Calibration solving consumes board observations in its separate task. Mocap consumes resolved camera
+geometry only when executing an operation that requires it. Single-camera planar reconstruction
+sets Z to zero without calibration. Saved-data downstream processing requires only its direct inputs.
 No dependency on whichever global calibration file happens to be newest at a later stage.
 
 | Stage | Reusable input | Saved output |
 |---|---|---|
 | ingest/timing | recording media/capture metadata | sensor groups, timing rows and input descriptions |
 | observations | images + resolved detector config | OVERLAY_2D with names, visibility and camera frames |
-| calibration | board observations/config, or selected calibration | exact per-run calibration/binding descriptor |
-| triangulation | 2D observations + calibration | raw 3D keypoints, reprojection quality and camera weights |
+| triangulation | 2D observations + camera geometry for multiple cameras | raw 3D keypoints, reprojection quality and camera weights |
 | filtering | raw 3D + timestamps/config | filtered 3D keypoints and necessary fitting eligibility |
 | scale_fit | eligible filtered observations + mapping/model | frozen instance scale/segment parameters |
 | reconstruction | filtered points + frozen fit/model/rest pose | landmarks, origins, local/world rotations, joint angles |
 | biomechanics | reconstruction + mass/ground definitions + timestamps | configured derived channels |
+| reprojection | reconstruction + resolved camera geometry | camera-image projections |
 | exports (later) | canonical reader + selected run + media | chosen additional format |
 
 These are current stage boundary artifacts, not every internal iteration. Persist them in the same

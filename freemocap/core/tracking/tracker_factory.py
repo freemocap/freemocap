@@ -6,15 +6,17 @@ registration), config construction, and session creation live in one place.
 All other modules should import from here rather than calling Tracker.create()
 directly, so the registry-side-effect imports are guaranteed to have run.
 """
+
 from __future__ import annotations
 
 import logging
+from contextlib import ExitStack
 from pathlib import Path
 
-import skellytracker.core.detectors.keypoint_detectors.charuco    # noqa: F401 (registry)
+import skellytracker.core.detectors.keypoint_detectors.charuco  # noqa: F401 (registry)
 import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
-import skellytracker.core.detectors.keypoint_detectors.rtmpose    # noqa: F401 (registry)
-import skellytracker.core.detectors.object_detectors.yolox        # noqa: F401 (registry)
+import skellytracker.core.detectors.keypoint_detectors.rtmpose  # noqa: F401 (registry)
+import skellytracker.core.detectors.object_detectors.yolox  # noqa: F401 (registry)
 
 from skellytracker.core import (
     DetectionStageConfig,
@@ -27,7 +29,14 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 )
 from skellytracker.core.detectors.keypoint_detectors.rtmpose import (
     RTMPoseDetectorConfig,
+    RTMPoseKeypointDetector,
 )
+from skellytracker.core.sessions.mediapipe_session import (
+    MediaPipeSession,
+    MediaPipeSessionConfig,
+)
+from skellytracker.core.sessions.session import Session  # noqa: TC002
+from skellytracker.core.sessions.onnx_model_spec import OnnxModelSpec  # noqa: TC002
 from skellytracker.core.detectors.object_detectors.yolox import (
     YoloxPersonDetector,
     YoloxPersonDetectorConfig,
@@ -45,7 +54,60 @@ from skellytracker.core.temporal_processing.temporal_processing_config import (
 logger = logging.getLogger(__name__)
 
 
-def build_charuco_tracker(board_def: CharucoBoardDefinition) -> tuple[Tracker, CpuSession]:
+def build_configured_tracker(*, config: TrackerConfig, batch_size: int) -> Tracker:
+    """Allocate the backends and models declared by every stage of a tracker.
+
+    The returned tracker owns the sessions and closes them through Tracker.close.
+    Construction failures release sessions before propagating the error.
+    """
+    if batch_size < 1:
+        raise ValueError("batch_size must be positive")
+    backends: set[str] = set()
+    models: dict[str, OnnxModelSpec] = {}
+    pending = list(config.stages)
+    while pending:
+        stage = pending.pop()
+        pending.extend(stage.children)
+        detectors = list(stage.keypoint_detectors)
+        if stage.object_detector is not None:
+            detectors = [*detectors, stage.object_detector]
+        for detector in detectors:
+            backends.add(detector.session_backend)
+            if isinstance(detector, RTMPoseDetectorConfig):
+                models[detector.model_name] = RTMPoseKeypointDetector.model_spec(
+                    detector.model_name
+                )
+            elif isinstance(detector, YoloxPersonDetectorConfig):
+                models[detector.model_name] = YoloxPersonDetector.model_spec(
+                    detector.model_name
+                )
+            elif detector.session_backend == "onnx":
+                raise ValueError(f"Unsupported ONNX detector: {detector.detector_type}")
+    if not backends or backends - {"cpu", "mediapipe", "onnx"}:
+        raise ValueError(f"Unsupported tracker backends: {backends}")
+    sessions: dict[str, Session] = {}
+    with ExitStack() as cleanup:
+        for backend in sorted(backends):
+            if backend == "cpu":
+                session = CpuSession.create(CpuSessionConfig())
+            elif backend == "mediapipe":
+                session = MediaPipeSession.create(MediaPipeSessionConfig())
+            else:
+                session = OnnxSession.create(
+                    OnnxSessionConfig(
+                        batch_size=batch_size, models=list(models.values())
+                    )
+                )
+            sessions[backend] = session
+            cleanup.callback(session.close)
+        tracker = Tracker.create(config=config, sessions=sessions)
+        cleanup.pop_all()
+    return tracker
+
+
+def build_charuco_tracker(
+    board_def: CharucoBoardDefinition,
+) -> tuple[Tracker, CpuSession]:
     """Build a charuco board tracker backed by a CpuSession.
 
     Returns both the Tracker and the underlying CpuSession so the caller can
@@ -203,7 +265,9 @@ def build_mediapipe_tracker(
                         min_face_tracking_confidence=tracking_confidence,
                     ),
                 ],
-                keypoint_reset_policy=KeypointResetPolicyConfig(max_consecutive_misses=10),
+                keypoint_reset_policy=KeypointResetPolicyConfig(
+                    max_consecutive_misses=10
+                ),
             )
         ]
     )

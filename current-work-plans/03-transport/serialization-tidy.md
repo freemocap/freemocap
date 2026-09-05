@@ -1,16 +1,13 @@
-# On-Disk Serialization (tidy-long format)
+# On-disk serialization
 
-**Describes (target):** the on-disk form of recorded reconstruction — tidy-long CSV/parquet vs. the
-skellyforge parquet schema. **Not built yet** — this is the spec for the on-disk-serialization workstream.
+Status: part of the posthoc rebuild, 2026-09-05.
 
-## What this covers
+The implementation target is [Recording data model](recording-data-model-proposal.md).
+The execution/persistence plan is [Posthoc rebuild](../02-pipeline/posthoc-rebuild.md).
 
-Migrating the recorded output to a **tidy long** schema (one row per (frame, subject, segment/keypoint,
-channel)) so downstream analysis is uniform across keypoints, positions, and rotations.
+Row grain: one scalar component per group-local sample, source, reference frame, channel and run.
+Timestamp is the primary cross-system temporal coordinate. The schema preserves the existing
+self-describing channel/SkellyForge structure, with component/value for vectors, quaternions and
+scalars. All sample timing lives in the same Parquet.
 
-## To capture when authored
-
-- The tidy-long column schema and how it maps from the frame channels.
-- The relationship to the posthoc rebuild ([../02-pipeline/posthoc-rebuild.md](../02-pipeline/posthoc-rebuild.md)).
-- Align channel names with [../01-data-model/message-contract.md](../01-data-model/message-contract.md);
-  the model's ordered segments/landmarks define row order (61 segments / 124 landmarks today); `wxyz`.
+Core serialization and stage reprocessing precede optional CSV/NPY/Blender/.freemocap.mp4 exporters.

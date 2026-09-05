@@ -8,8 +8,8 @@
 > + `ContinuousRollResolver` (anchored roll + twist backfill). The wire is a self-describing CBOR stream
 > (including named joint angles) and the frontend consumes it data-driven; CoM / XCoM ride every frame.
 > The old `skellymodels`/`post_processing`/`data_models` system is **deleted from skellyforge**;
-> freemocap's posthoc paths still import it behind lazy imports and are therefore broken-if-invoked —
-> deferred by decision (see [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+> posthoc has an initial shared-core implementation, with the recording contract and restartable
+> stage rebuild now planned in [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md).
 
 Engineering plans + design for FreeMoCap's **kinematic reconstruction rebuild** and its
 **self-describing message stream** — the two intertwined efforts that turn synchronized camera frames
@@ -85,15 +85,15 @@ and the VMC Definition of Done. Then:
 
 ## Next work (in order)
 
-1. **Posthoc rebuild** — unblocked: the offline paths get rebuilt on the generic skeleton layer
-   rather than on a human-shaped one ([02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)).
+1. **Recording contract + posthoc rebuild** — implement the [data model](03-transport/recording-data-model-proposal.md)
+   and round trip first, then [restartable stages](02-pipeline/posthoc-rebuild.md) with keep/overwrite.
+   Optional CSV/NPY, Blender and `.freemocap.mp4` exporters follow the core.
 2. **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
    `left_pelvis`/`right_pelvis` pair under the root pelvis, for better shoulder/SC visuals.
 3. **Implement the face component** — currently commented out (`#TODO`); blendshape plumbing exists.
 4. **Finger coupling ratios** — authored per-finger MCP↔PIP↔DIP ratio constraints, enforced in
    synthesis/IK/backfill; the remaining deferred linkage/chain piece.
-5. Then `[LATER]`: the VMC adapter, the HTTP control plane, the frontend test suite, and on-disk tidy
-   serialization.
+5. Then `[LATER]`: the VMC adapter, the HTTP control plane and the frontend test suite.
 
 See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the scope table + progress log.
 

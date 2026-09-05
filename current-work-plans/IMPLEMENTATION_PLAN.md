@@ -6,10 +6,10 @@
 
 ### `[IN]`
 
-- **Posthoc rebuild** — the current initiative, unblocked by generic skeletons: the offline paths get
-  rebuilt on the generic skeleton layer rather than a human-shaped one. They are broken-if-invoked
-  against installed skellyforge today (scope +
-  [02-pipeline/posthoc-rebuild.md](02-pipeline/posthoc-rebuild.md)). The neutral-naming question is
+- **Recording contract + posthoc rebuild** — serialize the shared channel model first, then integrate
+  restartable stages and explicit keep/overwrite semantics. See the
+  [data model](03-transport/recording-data-model-proposal.md) and
+  [rebuild plan](02-pipeline/posthoc-rebuild.md). The neutral-naming question is
   **settled**: `SkeletonDefinition` keeps its name, and "skeleton" is the generic term — a board is a
   one-segment skeleton ([ontology.md](ontology.md)).
 - **Pelvis split** — deferred from the spine redesign (ownership/cascade got tangled); a
@@ -19,7 +19,7 @@
 ### `[LATER]`
 
 VMC adapter · frontend test suite · HTTP control plane ([03-transport/http-control-plane.md](03-transport/http-control-plane.md)) ·
-on-disk tidy serialization ([03-transport/serialization-tidy.md](03-transport/serialization-tidy.md)) ·
+optional CSV/NPY, Blender and .freemocap.mp4 exporters (after the core recording/stage contract) ·
 LSL / URDF / OpenSim exports.
 
 ### `[FUTURE]`
@@ -30,10 +30,21 @@ Finger coupling ratios — authored per-finger MCP↔PIP↔DIP constraints enfor
 
 | Dependency | Blocks | Trigger that resolves it |
 |---|---|---|
-| Posthoc rebuild | tidy serialization | both offline paths run on the new core |
+| Recording schema + reader/writer round trip | posthoc stage persistence | mixed-rate and keep/overwrite fixtures pass |
+| Restartable posthoc core | additional-format exports | stage reuse/invalidation and real recording checks pass |
 | skellyforge + skellytracker pushed | freemocap's venv seeing either repo's changes | user commits/pushes both, then `uv sync` freemocap |
 
 ## Progress log
+
+- **2026-09-05 (recording foundation)** — Added typed Parquet storage, descriptor validation,
+  static channel expansion, checkpoint retention/invalidation, keep/overwrite publication and JSON
+  mirror recovery. Added true two-pass batch scale fitting. 22 focused tests pass. Worker/API/playback
+  integration and additional-format exporters remain; see the posthoc plan's implementation progress.
+
+- **2026-09-05 (plans only)** — Recorded timestamp-first, group-local sample identity; separate source
+  and reference frame; component/value Parquet; explicit integer run keep/overwrite. Planned staged
+  posthoc rebuild, dependency invalidation, checkpoint publication and subsequent optional exporters.
+  No implementation completion is claimed.
 
 - **2026-08-27 (generic skeletons — the charuco board)** — A charuco board is now a
   `SkeletonDefinition` and reconstructs end to end, with **no board-specific branch anywhere in the

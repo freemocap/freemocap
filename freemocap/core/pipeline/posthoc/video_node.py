@@ -29,6 +29,7 @@ from skellytracker.core.detectors.keypoint_detectors.charuco import (
 from skellytracker.core.tracker.tracker import Tracker
 from skellytracker.core.tracker.tracker_state import TrackerState
 
+from freemocap.core.tracking.tracker_factory import build_configured_tracker
 from freemocap.core.pipeline.abcs.pipeline_ipc import PipelineIPC
 from freemocap.core.pipeline.abcs.source_node_abc import SourceNode
 from skellycam.core.types.type_overloads import CameraIdString
@@ -75,45 +76,6 @@ def _is_mediapipe_config(tracker_config: TrackerConfig) -> bool:
             if isinstance(kp_det, MediapipePoseDetectorConfig):
                 return True
     return False
-
-
-def _build_tracker(tracker_config: TrackerConfig) -> tuple[Tracker, object]:
-    """Build a (Tracker, session) pair from a TrackerConfig.
-
-    For charuco configs, returns (Tracker, CpuSession).
-    For mediapipe configs, returns (Tracker, MediaPipeSession).
-    For RTMPose/ONNX configs, returns (Tracker, OnnxSession).
-    """
-    from freemocap.core.tracking.tracker_factory import (
-        build_charuco_tracker,
-        build_skeleton_onnx_session,
-    )
-    from skellytracker.core.detectors.keypoint_detectors.rtmpose import RTMPoseDetectorConfig
-    from skellytracker.core.tracker.tracker import Tracker
-
-    if _is_charuco_config(tracker_config):
-        board_def = _extract_board_def(tracker_config)
-        return build_charuco_tracker(board_def)
-
-    if _is_mediapipe_config(tracker_config):
-        import skellytracker.core.detectors.keypoint_detectors.mediapipe  # noqa: F401 (registry)
-        from skellytracker.core.sessions.mediapipe_session import (
-            MediaPipeSession,
-            MediaPipeSessionConfig,
-        )
-        session = MediaPipeSession.create(MediaPipeSessionConfig())
-        tracker = Tracker.create(tracker_config, {"mediapipe": session})
-        return tracker, session
-
-    model_name = "rtmw-x-l_256x192"
-    for stage in tracker_config.stages:
-        for kp_det in stage.keypoint_detectors:
-            if isinstance(kp_det, RTMPoseDetectorConfig):
-                model_name = kp_det.model_name
-                break
-    onnx_session = build_skeleton_onnx_session(batch_size=1, model_name=model_name)
-    tracker = Tracker.create(tracker_config, {"onnx": onnx_session})
-    return tracker, onnx_session
 
 
 def _build_annotator(tracker_config: TrackerConfig):
@@ -257,7 +219,7 @@ class VideoNode(SourceNode):
             recording_name=recording_path.name,
             recording_path=str(recording_path),
         ))
-        tracker, session = _build_tracker(detector_config)
+        tracker = build_configured_tracker(config=detector_config, batch_size=1)
         tracker_state = TrackerState()
 
         cache = _build_recording_frame_cache(

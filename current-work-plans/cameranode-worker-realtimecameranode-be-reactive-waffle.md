@@ -1,5 +1,11 @@
 # Posthoc pipeline revival on a shared computational core
 
+> **2026-09-05 planning update:** Implementation ordering, recording schema and stage reuse are now
+> specified in [Posthoc rebuild](02-pipeline/posthoc-rebuild.md) and
+> [Recording data model](03-transport/recording-data-model-proposal.md). Use those plans where this
+> exploration defers the schema, infers completion from channel presence, or equates a growing-window
+> reconstruction pass with a completed global fit. This document retains the earlier design context.
+
 ## Context
 
 The posthoc mocap path returns HTTP 500 before spawning a worker. The cause is narrower than it
@@ -13,12 +19,13 @@ So this is a **re-point onto the realtime core**, not a rebuild — which is wha
 anyway: one implementation of every piece of math, realtime and posthoc differing *only* in temporal
 policy.
 
-**The core is already one refactor away.** `reconstruct_skeleton` is documented as "a pure function
-of one frame" and is almost exactly that. Its only two impurities are mutations of
-`TrackedSkeletonBundle`'s two mutable members (`scale_fitter`, `roll_resolver`) — a `frozen=True`
-dataclass that isn't. Extract those into an explicitly-passed state object (precisely how
-skellytracker already handles `TrackerState`; `Tracker` is documented "stateless between calls") and
-one function serves both pipelines.
+**The shared core already exists — the extraction this plan used to call "one refactor away" has
+landed.** `reconstruct_skeleton` is already a pure function of one frame given a caller-owned
+`SkeletonReconstructionState` (see `reconstruction_state.py`); `TrackedSkeletonBundle` is genuinely
+frozen, and the state holds the scale source and roll resolver beside it. Both the realtime aggregator
+and — once re-pointed — the posthoc driver call the very same function, differing only in which scale
+source and temporal policy they pass. The "streaming fitter with a big window IS the global fit"
+equivalence is already pinned by `test_reconstruction_state.py`.
 
 **Three whole-dataset algorithms already exist and posthoc simply never calls them:**
 
@@ -80,10 +87,10 @@ tested *before* the schema exists; the session then swaps the encoder behind one
 
 ## The design
 
-### 1. Extract `SkeletonReconstructionState`
+### 1. `SkeletonReconstructionState` — already extracted
 
-`freemocap/core/skeletons/reconstruction_state.py` (NEW). Everything reconstructing one skeleton
-remembers between frames, held **beside** the bundle:
+`freemocap/core/skeletons/reconstruction_state.py` already exists and holds everything reconstructing
+one skeleton remembers between frames, beside the bundle:
 
 ```python
 @runtime_checkable
@@ -102,21 +109,14 @@ class SkeletonReconstructionState:
     def reset(self) -> None: ...
 ```
 
-`StreamingModelScaleFitter` **already satisfies `ModelScaleSource`** — no adapter. The only new
-implementation is a ~15-line `FrozenModelScale` (one fit, offered to every frame).
+`StreamingModelScaleFitter` already satisfies `ModelScaleSource` (no adapter) and `FrozenModelScale`
+(one fit offered to every frame) already exists. `reconstruct_skeleton(*, bundle, state,
+filtered_keypoints, compute_center_of_mass)` already takes the state, and `TrackedSkeletonBundle` is
+already frozen. Nothing in this section is new work — it is retained only as the reference for the
+split below.
 
-New signature, body edits are two lines:
-
-```python
-def reconstruct_skeleton(*, bundle, state, filtered_keypoints, compute_center_of_mass) -> SkeletonReconstruction | None
-```
-
-`TrackedSkeletonBundle` drops both mutable members and becomes genuinely frozen. Realtime changes at
-five sites in `realtime_aggregator_node.py` with no behaviour change (bundle construction, the deleted
-`previous_center_of_mass_by_model` dict, the detector-change rebuild, two reset sites, the call).
-
-**Split for the two-pass cost:** `solve_skeleton_pose(...) -> SkeletonPose | None` and
-`describe_skeleton(...) -> SkeletonReconstruction`, with `reconstruct_skeleton` as the composition
+**Remaining new work — split for the two-pass cost:** `solve_skeleton_pose(...) -> SkeletonPose | None`
+and `describe_skeleton(...) -> SkeletonReconstruction`, with `reconstruct_skeleton` as the composition
 realtime keeps calling. Pass B needs only the first half. A split, not a duplication.
 
 ### 2. The posthoc driver
@@ -260,10 +260,11 @@ outside `tests/pipelines/` dies with `ValueError: Websocket log queue not create
 `freemocap/tests/conftest.py` as an **autouse session fixture** (~5 lines) so no new test can miss it.
 Hard prerequisite for the parity test, which must live outside `tests/pipelines/`.
 
-**Phase 1 — Unbreak posthoc. No schema.** Extract `SkeletonReconstructionState`; rewrite the dead
-`skeleton_from_mediapipe_observations.py` as the posthoc driver; **keep writing the existing `.npy`
-filenames** `recording_status.BLENDER_INPUT_FILES_BY_DETECTOR` already expects, so `POST
-/mocap/recording/process` goes 500 → 200 with nothing about the on-disk schema decided. Delete
+**Phase 1 — Unbreak posthoc. No schema.** `SkeletonReconstructionState` is already extracted and
+tested — skip that step. Rewrite the dead `skeleton_from_mediapipe_observations.py` as the posthoc
+driver *on top of the existing `reconstruct_skeleton`*; **keep writing the existing `.npy` filenames**
+`recording_status.BLENDER_INPUT_FILES_BY_DETECTOR` already expects, so `POST /mocap/recording/process`
+goes 500 → 200 with nothing about the on-disk schema decided. Delete
 `charuco_model_from_observations.py` and `triangulate_trajectory_array.py` (a third broken importer,
 whose fuzzy substring camera matching also violates structure-not-strings); posthoc calibration's board
 model becomes the same `reconstruct_skeleton` path, removing the `try/except ImportError`.
@@ -344,10 +345,10 @@ batch one element short. Keep substitution per-camera *inside* the loop;
 ## Verification
 
 **Phase 1** — `pytest freemocap/tests/pipelines/test_posthoc_mocap_pipeline.py` green is the gate (its
-fixture currently dies at `create_mocap_pipeline`). New: `reconstruct_skeleton` with the same bundle and
-two *fresh* states returns identical results (the property the extraction buys); and
-`StreamingModelScaleFitter(window_frames=T).current_fit() == fit_model_scale(scale_samples=collected)`
-— pinning that "global fit" and "streaming fitter with a big window" are one call.
+fixture currently dies at `create_mocap_pipeline`). The two extraction properties are *already* pinned by
+`test_reconstruction_state.py` (same bundle + two fresh states ⇒ identical; and
+`StreamingModelScaleFitter(window_frames=T).current_fit() == fit_model_scale(scale_samples=collected)`),
+so Phase 1 only needs to re-point the dead leaf, not re-prove them.
 
 **Phase 2** — the parity test is the gate. `test_realtime_keypoint_filter.py` rewritten against
 `KeypointSeries` with `T == 1`, reproducing current per-frame expectations exactly.
@@ -370,7 +371,7 @@ lets that drift silently.
 
 ## Critical files
 
-- `freemocap/core/skeletons/reconstruct_skeleton.py`, `tracked_skeleton_bundle.py`
+- `freemocap/core/skeletons/reconstruct_skeleton.py`, `reconstruction_state.py`, `tracked_skeleton_bundle.py`
 - `freemocap/core/pipeline/realtime/realtime_aggregator_node.py`, `camera_node_config.py`
 - `freemocap/core/tasks/mocap/mocap_helpers/skeleton_from_mediapipe_observations.py`
 - `freemocap/core/pipeline/posthoc/video_node.py`, `posthoc_aggregation_node.py`

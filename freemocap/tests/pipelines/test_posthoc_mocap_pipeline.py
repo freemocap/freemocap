@@ -136,9 +136,9 @@ def test_reconstructed_anatomy_is_numerically_sane(posthoc_mocap_output_dir):
 
     trajectories = _body_landmark_trajectories(output_dir)
     for a, b, label, (lo, hi) in [
-        ("left_hip", "left_knee", "femur", FEMUR_LENGTH_MM_RANGE),
+        ("left_hip_socket", "left_knee", "femur", FEMUR_LENGTH_MM_RANGE),
         ("left_knee", "left_ankle", "shank", SHANK_LENGTH_MM_RANGE),
-        ("left_shoulder", "left_elbow", "upper arm", UPPER_ARM_LENGTH_MM_RANGE),
+        ("left_acromion", "left_elbow", "upper arm", UPPER_ARM_LENGTH_MM_RANGE),
         ("left_elbow", "left_wrist", "forearm", FOREARM_LENGTH_MM_RANGE),
     ]:
         length = _median_distance_mm(trajectories, a, b)

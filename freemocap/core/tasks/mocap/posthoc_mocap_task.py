@@ -8,18 +8,14 @@ Pre-bind task_config via functools.partial when creating the pipeline.
 """
 from __future__ import annotations
 
+import csv
 import json
 import logging
 import shutil
+import time
 from pathlib import Path
-# Load pyarrow FIRST, before the native libs pulled in by the imports below.
-# pandas>=3.0 uses the pyarrow-backed string dtype by default, so writing the
-# output CSV/parquet calls into pyarrow's native code. On Windows, if another
-# native lib in this module's import graph loads before pyarrow, pyarrow's Arrow
-# DLLs fail to initialize and the worker dies with a STATUS_ACCESS_VIOLATION
-# (0xC0000005) — a hard segfault, not a catchable exception. Importing pyarrow
-# up front makes it win the DLL load-order race. Do not remove or reorder.
-import pyarrow  # noqa: F401
+
+import numpy as np
 
 from freemocap.core.tasks.mocap.mocap_task_config import PosthocMocapPipelineConfig  # noqa: TC001
 from skellytracker.core.data_primitives.observation import Observation  # noqa: TC002
@@ -28,10 +24,16 @@ from skellycam.core.recorders.videos.recording_info import RecordingInfo  # noqa
 from freemocap.core.blender.export_to_blender import export_to_blender
 from freemocap.core.pipeline.posthoc.pipeline_phases import MocapStage
 from freemocap.core.pipeline.posthoc.task_progress_reporter import TaskProgressReporter
+from freemocap.core.reconstruction.posthoc_reconstruction import (
+    reconstruct_skeletons_for_recording,
+    triangulate_observation_buffers,
+)
+from freemocap.core.reconstruction.posthoc_timing import PosthocTimingReport
+from freemocap.core.skeletons.standard_human_skeleton import (
+    STANDARD_HUMAN_MODEL_ID,
+    build_standard_human_bundle,
+)
 from freemocap.core.tasks.calibration.shared.calibration_paths import get_last_successful_calibration_toml_path
-from freemocap.core.tasks.mocap.mocap_helpers.recording_framerate import get_recording_framerate
-from freemocap.core.tasks.mocap.mocap_helpers.skeleton_from_mediapipe_observations import \
-    skeleton_from_mediapipe_observation_recorders
 from freemocap.core.tracking.observation_buffer import ObservationBuffer
 from freemocap.core.tracking.tracker_definitions import RTMPOSE_WHOLEBODY_DEFINITION
 from skellycam.core.types.type_overloads import CameraIdString  # noqa: TC002
@@ -102,42 +104,45 @@ def run_posthoc_mocap_aggregator_task(
         else:
             logger.info(f"Calibration file already in recording folder, skipping copy: {recording_calibration_copy}")
 
-    # ---- Match the post-processing filter to the recording's real framerate ----
-    # FilterConfig.sampling_rate defaults to 30.0 and was never set from the capture, so
-    # the Butterworth low-pass was designed for a framerate the recording never had. The
-    # effective cutoff scales with the error: at 31 fps a nominal 6 Hz cutoff is really
-    # 6.2 Hz; at 60 fps it is 12 Hz, which lets through most of what the filter exists to
-    # remove.
-    filter_config = task_config.filter_config
-    true_fps = get_recording_framerate(recording_folder)
-    if true_fps is None:
-        logger.warning(
-            f"Could not determine recording framerate; leaving filter sampling_rate at "
-            f"{filter_config.sampling_rate} Hz. The {filter_config.cutoff} Hz cutoff will be "
-            f"wrong by whatever margin the real rate differs."
-        )
-    elif abs(true_fps - filter_config.sampling_rate) > 0.01:
-        logger.info(
-            f"Setting filter sampling_rate {filter_config.sampling_rate} -> {true_fps:.3f} Hz "
-            f"(effective cutoff was {filter_config.cutoff * true_fps / filter_config.sampling_rate:.2f} Hz "
-            f"instead of the requested {filter_config.cutoff} Hz)"
-        )
-        filter_config = filter_config.model_copy(update={"sampling_rate": true_fps})
-
-    # ---- Run skeleton triangulation ----
+    # ---- Triangulate + reconstruct on the shared realtime core ----
     _reporter.report(stage=MocapStage.TRIANGULATING, detail="Triangulating skeleton")
     logger.info("Starting skeleton triangulation...")
 
     output_folder = Path(recording_info.full_recording_path) / "output_data"
+    output_folder.mkdir(parents=True, exist_ok=True)
 
-    skeleton = skeleton_from_mediapipe_observation_recorders(
-        detector= task_config.detector_type,
-        observation_recorders=observation_recorders,
-        path_to_calibration_toml=calibration_toml_path,
-        path_to_output_data_folder=output_folder,
-        filter_config=filter_config,
-        triangulation_config=task_config.triangulation_config
+    timing = PosthocTimingReport()
+
+    keypoints_blender, keypoint_names, per_camera_weights = triangulate_observation_buffers(
+        observation_buffers=observation_recorders,
+        calibration_toml_path=calibration_toml_path,
+        triangulation_config=task_config.triangulation_config,
+        max_reprojection_error_px=None,
+        timing=timing,
     )
+    frame_count = keypoints_blender.shape[0]
+
+    bundle = build_standard_human_bundle(detector_type=task_config.detector_type)
+    reconstructions = reconstruct_skeletons_for_recording(
+        bundles=[bundle],
+        keypoint_names=keypoint_names,
+        keypoints_3d=keypoints_blender,
+        frame_count=frame_count,
+        compute_center_of_mass=True,
+        timing=timing,
+    )
+
+    t0 = time.perf_counter()
+    _write_provisional_human_outputs(
+        output_folder=output_folder,
+        detector_type=task_config.detector_type,
+        bundle=bundle,
+        reconstructions=reconstructions[STANDARD_HUMAN_MODEL_ID],
+        frame_count=frame_count,
+        per_camera_weights=per_camera_weights,
+    )
+    timing.record("write_outputs", time.perf_counter() - t0)
+    logger.info("\n" + timing.summary_table())
 
     # ---- Save tracker schema alongside outputs ----
     definition = RTMPOSE_WHOLEBODY_DEFINITION
@@ -163,3 +168,47 @@ def run_posthoc_mocap_aggregator_task(
     logger.info(
         f"Posthoc mocap complete! Output saved to {output_folder}"
     )
+
+
+def _write_provisional_human_outputs(
+    *,
+    output_folder: Path,
+    detector_type: str,
+    bundle,
+    reconstructions: list,
+    frame_count: int,
+    per_camera_weights,
+) -> None:
+    """Provisional on-disk outputs (schema deferred — Phase 4/schema session replaces these).
+
+    Writes the two body files `recording_status.BLENDER_INPUT_FILES_BY_DETECTOR` can already
+    recognise — body landmarks and total centre of mass — plus per-camera triangulation
+    weights. Face/hands/segment-CoM stay deferred with the schema.
+    """
+    landmark_names = tuple(bundle.skeleton.landmarks)
+    body = np.full((frame_count, len(landmark_names), 3), np.nan)
+    center_of_mass = np.full((frame_count, 1, 3), np.nan)
+
+    for t, reconstruction in enumerate(reconstructions):
+        if reconstruction is None:
+            continue
+        for i, name in enumerate(landmark_names):
+            position = reconstruction.landmarks.get(name)
+            if position is not None:
+                body[t, i] = position
+        if reconstruction.center_of_mass is not None:
+            center_of_mass[t, 0] = reconstruction.center_of_mass
+
+    np.save(output_folder / f"{detector_type}_body_3d_xyz.npy", body)
+    np.save(output_folder / f"{detector_type}_body_total_body_center_of_mass.npy", center_of_mass)
+    if per_camera_weights is not None:
+        np.save(output_folder / "per_camera_weights.npy", per_camera_weights)
+
+    with open(output_folder / f"{detector_type}_body_3d_xyz.csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["frame", "keypoint", "x", "y", "z"])
+        for t in range(frame_count):
+            for i, name in enumerate(landmark_names):
+                writer.writerow([t, name, body[t, i][0], body[t, i][1], body[t, i][2]])
+    logger.info(f"Provisional outputs written to {output_folder} (schema deferred)")
+
